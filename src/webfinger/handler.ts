@@ -171,8 +171,22 @@ async function handleWebFingerInternal<TContextData>(
         );
       }
     } else {
-      const resourceHost = domainToASCII(match[2].toLowerCase());
+      const matchHostname = match[2].toLowerCase();
+      let resourceHost = domainToASCII(matchHostname);
+      // in Node.js & Bun
+      // `domainToASCII` will return empty string for hosname like 'localhost:8000'
+      if (resourceHost === "") {
+        if (matchHostname.includes(":")) {
+          const [hostname, port] = matchHostname.split(":");
+          if (hostname && port) {
+            resourceHost = `${domainToASCII(hostname)}:${port}`;
+          }
+        }
+      }
       if (resourceHost != context.url.host && resourceHost != host) {
+        logger.error("Resource hostname {resourceHost} doesn't match.", {
+          resourceHost,
+        });
         return await onNotFound(request);
       }
       identifier = await mapUsernameToIdentifier(match[1]);
