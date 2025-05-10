@@ -306,7 +306,7 @@ Then, try look up an actor from your server:
     init: (projectName, runtime, pm) => ({
       dependencies: {
         express: "^4.19.2",
-        "@fedify/express": "^0.1.3",
+        "@fedify/express": "^0.2.1",
         ...(runtime === "node"
           ? {
             "@dotenvx/dotenvx": "^1.14.1",
