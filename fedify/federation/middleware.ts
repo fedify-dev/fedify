@@ -231,6 +231,7 @@ export class FederationImpl<TContextData>
   inboxRetryPolicy: RetryPolicy;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   tracerProvider: TracerProvider;
+  defaultHttpMessageSignaturesSpec?: HttpMessageSignaturesSpec;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
@@ -384,6 +385,7 @@ export class FederationImpl<TContextData>
             specDeterminer: new KvSpecDeterminer(
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
+              options.defaultHttpMessageSignaturesSpec,
             ),
             tracerProvider: this.tracerProvider,
           }));
@@ -398,6 +400,8 @@ export class FederationImpl<TContextData>
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this.tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
+    this.defaultHttpMessageSignaturesSpec =
+      options.defaultHttpMessageSignaturesSpec;
   }
 
   _initializeRouter() {
@@ -643,6 +647,7 @@ export class FederationImpl<TContextData>
         specDeterminer: new KvSpecDeterminer(
           this.kv,
           this.kvPrefixes.httpMessageSignaturesSpec,
+          this.defaultHttpMessageSignaturesSpec,
         ),
         tracerProvider: this.tracerProvider,
       });
@@ -1097,6 +1102,7 @@ export class FederationImpl<TContextData>
             specDeterminer: new KvSpecDeterminer(
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
+              this.defaultHttpMessageSignaturesSpec,
             ),
             tracerProvider: this.tracerProvider,
           }),
@@ -2839,6 +2845,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
             specDeterminer: new KvSpecDeterminer(
               this.federation.kv,
               this.federation.kvPrefixes.httpMessageSignaturesSpec,
+              this.federation.defaultHttpMessageSignaturesSpec,
             ),
           }),
         );

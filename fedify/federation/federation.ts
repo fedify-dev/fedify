@@ -6,6 +6,7 @@ import type {
   DocumentLoaderFactory,
   GetUserAgentOptions,
 } from "../runtime/docloader.ts";
+import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
 import type { Actor, Recipient } from "../vocab/actor.ts";
 import type { Activity, Hashtag, Object } from "../vocab/vocab.ts";
 import type {
@@ -677,6 +678,8 @@ export interface FederationOptions<TContextData> {
    * @since 0.13.0
    */
   skipSignatureVerification?: boolean;
+
+  defaultHttpMessageSignaturesSpec?: HttpMessageSignaturesSpec;
 
   /**
    * The retry policy for sending activities to recipients' inboxes.
