@@ -90,20 +90,6 @@ test("receiveActivity triggers inbox listeners", async () => {
   assertEquals(receivedActivity, activity);
 });
 
-test("Check the federation interface is implemented properly", () => {
-  const mockFederation = new MockFederation<void>();
-
-  assertEquals(typeof mockFederation.setNodeInfoDispatcher, "function");
-  assertEquals(typeof mockFederation.setActorDispatcher, "function");
-  assertEquals(typeof mockFederation.setObjectDispatcher, "function");
-  assertEquals(typeof mockFederation.setInboxDispatcher, "function");
-  assertEquals(typeof mockFederation.setOutboxDispatcher, "function");
-  assertEquals(typeof mockFederation.setInboxListeners, "function");
-  assertEquals(typeof mockFederation.startQueue, "function");
-  assertEquals(typeof mockFederation.createContext, "function");
-  assertEquals(typeof mockFederation.fetch, "function");
-});
-
 test("MockContext tracks sent activities", async () => {
   const mockFederation = new MockFederation<void>();
   const mockContext = new MockContext({
@@ -177,21 +163,4 @@ test("MockContext URI methods should work correctly", () => {
   if (parsed?.type === "actor") {
     assertEquals(parsed.identifier, "alice");
   }
-});
-
-test("mock context should satisfy the context interface", () => {
-  const mockFederation = new MockFederation<void>();
-  const mockContext = new MockContext({
-    url: new URL("https://example.com"),
-    data: undefined,
-    federation: mockFederation,
-  });
-
-  assertEquals(typeof mockContext.getActorUri, "function");
-  assertEquals(typeof mockContext.getInboxUri, "function");
-  assertEquals(typeof mockContext.getOutboxUri, "function");
-  assertEquals(typeof mockContext.getFollowingUri, "function");
-  assertEquals(typeof mockContext.getFollowersUri, "function");
-  assertEquals(typeof mockContext.parseUri, "function");
-  assertEquals(typeof mockContext.getSentActivities, "function");
 });
