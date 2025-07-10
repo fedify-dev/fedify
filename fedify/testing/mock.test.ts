@@ -187,6 +187,90 @@ test("receiveActivity throws error when contextData not initialized", async () =
   await assertRejects(
     () => mockFederation.receiveActivity(activity),
     Error,
-    "receiveActivity: contextData is not initialized",
+    "MockFederation.receiveActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before receiving activities.",
   );
+});
+
+test("MockFederation distinguishes between immediate and queued activities", async () => {
+  const mockFederation = new MockFederation<void>();
+
+  // Start the queue to enable queued sending
+  await mockFederation.startQueue(undefined);
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const activity1 = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  const activity2 = new Create({
+    id: new URL("https://example.com/activities/2"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  // Send activities after queue is started - should be marked as queued
+  await context.sendActivity(
+    { identifier: "alice" },
+    new Person({ id: new URL("https://example.com/users/bob") }),
+    activity1,
+  );
+
+  await context.sendActivity(
+    { identifier: "alice" },
+    new Person({ id: new URL("https://example.com/users/bob") }),
+    activity2,
+  );
+
+  // Check activity details
+  const sentDetails = mockFederation.getSentActivityDetails();
+  const sentActivities = mockFederation.getSentActivities();
+
+  assertEquals(sentActivities.length, 2);
+  assertEquals(sentActivities[0], activity1);
+  assertEquals(sentActivities[1], activity2);
+
+  // Both should be marked as sent via queue
+  assertEquals(sentDetails.length, 2);
+  assertEquals(sentDetails[0].sentVia, "queue");
+  assertEquals(sentDetails[1].sentVia, "queue");
+  assertEquals(sentDetails[0].queueType, "outbox");
+  assertEquals(sentDetails[1].queueType, "outbox");
+});
+
+test("MockFederation without queue sends all activities immediately", async () => {
+  const mockFederation = new MockFederation<void>();
+  // Do NOT start the queue - activities should be sent immediately
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  // Send activity - should be marked as immediate since queue not started
+  await context.sendActivity(
+    { identifier: "alice" },
+    new Person({ id: new URL("https://example.com/users/bob") }),
+    activity,
+  );
+
+  // Check activity details
+  const sentDetails = mockFederation.getSentActivityDetails();
+  const sentActivities = mockFederation.getSentActivities();
+
+  assertEquals(sentActivities.length, 1);
+  assertEquals(sentActivities[0], activity);
+
+  // Should be marked as sent immediately
+  assertEquals(sentDetails.length, 1);
+  assertEquals(sentDetails[0].sentVia, "immediate");
+  assertEquals(sentDetails[0].queueType, undefined);
 });

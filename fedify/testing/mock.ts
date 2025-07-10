@@ -36,11 +36,22 @@ import type {
   LookupObjectOptions,
   TraverseCollectionOptions,
 } from "../vocab/lookup.ts";
-import {
-  createContext,
-  createInboxContext,
-  createRequestContext,
-} from "./context.ts";
+import { createInboxContext, createRequestContext } from "./context.ts";
+
+/**
+ * Represents a sent activity with metadata about how it was sent.
+ * @since 1.8.0
+ */
+export interface SentActivity {
+  /** The activity that was sent. */
+  activity: Activity;
+  /** How the activity was sent - immediately or via queue. */
+  sentVia: "immediate" | "queue";
+  /** The timestamp when the activity was sent. */
+  timestamp: Date;
+  /** Which queue was used (if sent via queue). */
+  queueType?: "inbox" | "outbox" | "fanout";
+}
 
 /**
  * A mock implementation of the {@link Federation} interface for unit testing.
@@ -51,13 +62,15 @@ import {
  * @since 1.8.0
  */
 export class MockFederation<TContextData> implements Federation<TContextData> {
-  public sentActivities: Activity[] = [];
+  public sentActivities: SentActivity[] = [];
+  public queueStarted = false;
+  private activeQueues: Set<"inbox" | "outbox" | "fanout"> = new Set();
   private nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
   private actorDispatchers: Map<string, ActorDispatcher<TContextData>> =
     new Map();
   private objectDispatchers: Map<
     string,
-    ObjectDispatcher<TContextData, any, any>
+    ObjectDispatcher<TContextData, Object, string>
   > = new Map();
   private inboxDispatcher?: CollectionDispatcher<
     Activity,
@@ -101,7 +114,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     TContextData,
     void
   >;
-  private inboxListeners: Map<string, InboxListener<TContextData, any>[]> =
+  private inboxListeners: Map<string, InboxListener<TContextData, Activity>[]> =
     new Map();
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
@@ -311,7 +324,9 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
         if (!self.inboxListeners.has(typeName)) {
           self.inboxListeners.set(typeName, []);
         }
-        self.inboxListeners.get(typeName)!.push(listener);
+        self.inboxListeners.get(typeName)!.push(
+          listener as InboxListener<TContextData, Activity>,
+        );
         return this;
       },
       onError(): InboxListenerSetters<TContextData> {
@@ -325,10 +340,20 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
 
   async startQueue(
     contextData: TContextData,
-    _options?: FederationStartQueueOptions,
+    options?: FederationStartQueueOptions,
   ): Promise<void> {
     this.contextData = contextData;
-    // not actually starting a queue
+    this.queueStarted = true;
+
+    // If a specific queue is specified, only activate that one
+    if (options?.queue) {
+      this.activeQueues.add(options.queue);
+    } else {
+      // If no specific queue, activate all three
+      this.activeQueues.add("inbox");
+      this.activeQueues.add("outbox");
+      this.activeQueues.add("fanout");
+    }
   }
 
   async processQueuedTask(
@@ -351,23 +376,38 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     const mockFederation = this;
 
     if (baseUrlOrRequest instanceof Request) {
+      // For now, we'll use createRequestContext since MockContext doesn't support Request
+      // But we need to ensure the sendActivity behavior is consistent
       return createRequestContext({
         url: new URL(baseUrlOrRequest.url),
         request: baseUrlOrRequest,
         data: contextData,
         federation: mockFederation as any,
-        sendActivity: async (_sender, _recipients, activity) => {
-          mockFederation.sentActivities.push(activity);
-        },
+        sendActivity: (async (
+          sender: any,
+          recipients: any,
+          activity: any,
+          options: any,
+        ) => {
+          // Create a temporary MockContext to use its sendActivity logic
+          const tempContext = new MockContext({
+            url: new URL(baseUrlOrRequest.url),
+            data: contextData,
+            federation: mockFederation as any,
+          });
+          await tempContext.sendActivity(
+            sender,
+            recipients,
+            activity,
+            options,
+          );
+        }) as any,
       });
     } else {
-      return createContext({
+      return new MockContext({
         url: baseUrlOrRequest,
         data: contextData,
         federation: mockFederation as any,
-        sendActivity: async (_sender, _recipients, activity) => {
-          mockFederation.sentActivities.push(activity);
-        },
       });
     }
   }
@@ -424,6 +464,18 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    * @since 1.8.0
    */
   getSentActivities(): Activity[] {
+    return this.sentActivities.map((record) => record.activity);
+  }
+
+  /**
+   * Gets detailed information about all sent activities including how they were sent.
+   * This method is specific to the mock implementation and is used for
+   * testing purposes.
+   *
+   * @returns An array of sent activity records.
+   * @since 1.8.0
+   */
+  getSentActivityDetails(): SentActivity[] {
     return [...this.sentActivities];
   }
 
@@ -652,16 +704,44 @@ export class MockContext<TContextData> implements Context<TContextData> {
     options?: SendActivityOptionsForCollection,
   ): Promise<void>;
   sendActivity(
-    sender: any,
-    recipients: any,
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string }
+      | { handle: string },
+    recipients: Recipient | Recipient[],
     activity: Activity,
-    _options?: any,
+    options?: SendActivityOptions,
+  ): Promise<void>;
+  sendActivity(
+    sender: { identifier: string } | { username: string } | { handle: string },
+    recipients: "followers",
+    activity: Activity,
+    options?: SendActivityOptionsForCollection,
+  ): Promise<void>;
+  sendActivity(
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string }
+      | { handle: string },
+    recipients: Recipient | Recipient[] | "followers",
+    activity: Activity,
+    _options?: SendActivityOptions | SendActivityOptionsForCollection,
   ): Promise<void> {
     this.sentActivities.push({ sender, recipients, activity });
 
     // If this is a MockFederation, also record it there
     if (this.federation instanceof MockFederation) {
-      this.federation.sentActivities.push(activity);
+      const sentVia = this.federation.queueStarted ? "queue" : "immediate";
+      this.federation.sentActivities.push({
+        activity,
+        sentVia,
+        timestamp: new Date(),
+        queueType: sentVia === "queue" ? "outbox" : undefined,
+      });
     }
 
     return Promise.resolve();
@@ -683,7 +763,12 @@ export class MockContext<TContextData> implements Context<TContextData> {
    * @returns An array of sent activity records.
    */
   getSentActivities(): Array<{
-    sender: any;
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string }
+      | { handle: string };
     recipients: Recipient | Recipient[] | "followers";
     activity: Activity;
   }> {
