@@ -43,14 +43,14 @@ import { createInboxContext, createRequestContext } from "./context.ts";
  * @since 1.8.0
  */
 export interface SentActivity {
+  /** Whether the activity was queued or sent immediately. */
+  queued: boolean;
+  /** Which queue was used (if queued). */
+  queue?: "inbox" | "outbox" | "fanout";
   /** The activity that was sent. */
   activity: Activity;
-  /** How the activity was sent - immediately or via queue. */
-  sentVia: "immediate" | "queue";
-  /** The timestamp when the activity was sent. */
-  timestamp: Date;
-  /** Which queue was used (if sent via queue). */
-  queueType?: "inbox" | "outbox" | "fanout";
+  /** The order in which the activity was sent (auto-incrementing counter). */
+  sentOrder: number;
 }
 
 /**
@@ -65,6 +65,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   public sentActivities: SentActivity[] = [];
   public queueStarted = false;
   private activeQueues: Set<"inbox" | "outbox" | "fanout"> = new Set();
+  public sentCounter = 0;
   private nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
   private actorDispatchers: Map<string, ActorDispatcher<TContextData>> =
     new Map();
@@ -456,26 +457,14 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   /**
-   * Gets all activities that have been sent through this mock federation.
-   * This method is specific to the mock implementation and is used for
-   * testing purposes.
-   *
-   * @returns An array of sent activities.
-   * @since 1.8.0
-   */
-  getSentActivities(): Activity[] {
-    return this.sentActivities.map((record) => record.activity);
-  }
-
-  /**
-   * Gets detailed information about all sent activities including how they were sent.
+   * Gets all sent activities with their metadata.
    * This method is specific to the mock implementation and is used for
    * testing purposes.
    *
    * @returns An array of sent activity records.
    * @since 1.8.0
    */
-  getSentActivityDetails(): SentActivity[] {
+  getSentActivities(): SentActivity[] {
     return [...this.sentActivities];
   }
 
@@ -735,12 +724,12 @@ export class MockContext<TContextData> implements Context<TContextData> {
 
     // If this is a MockFederation, also record it there
     if (this.federation instanceof MockFederation) {
-      const sentVia = this.federation.queueStarted ? "queue" : "immediate";
+      const queued = this.federation.queueStarted;
       this.federation.sentActivities.push({
+        queued,
+        queue: queued ? "outbox" : undefined,
         activity,
-        sentVia,
-        timestamp: new Date(),
-        queueType: sentVia === "queue" ? "outbox" : undefined,
+        sentOrder: ++this.federation.sentCounter,
       });
     }
 
