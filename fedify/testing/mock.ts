@@ -112,7 +112,9 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
       origin?: string;
       tracerProvider?: TracerProvider;
     } = {},
-  ) {}
+  ) {
+    this.contextData = options.contextData;
+  }
 
   setNodeInfoDispatcher(
     _path: string,
@@ -396,9 +398,17 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     const typeName = activity.constructor.name;
     const listeners = this.inboxListeners.get(typeName) || [];
 
+    // Check if we have listeners but no context data
+    if (listeners.length > 0 && this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.receiveActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before receiving activities.",
+      );
+    }
+
     for (const listener of listeners) {
       const context = createInboxContext({
-        data: this.contextData!,
+        data: this.contextData as TContextData,
         federation: this as any,
       });
       await listener(context, activity);

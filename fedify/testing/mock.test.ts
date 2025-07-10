@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { test } from "./mod.ts";
 import { MockContext, MockFederation } from "./mock.ts";
 import { Create, Note } from "../vocab/vocab.ts";
@@ -64,13 +64,16 @@ test("clearSentActivities clears sent activities", async () => {
 });
 
 test("receiveActivity triggers inbox listeners", async () => {
-  const mockFederation = new MockFederation<void>({ contextData: undefined });
+  // Provide contextData through constructor
+  const mockFederation = new MockFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
   let receivedActivity: Create | null = null;
 
   // Set up an inbox listener
   mockFederation
     .setInboxListeners("/users/{identifier}/inbox")
-    .on(Create, async (ctx, activity) => {
+    .on(Create, async (_ctx, activity) => {
       receivedActivity = activity;
     });
 
@@ -163,4 +166,27 @@ test("MockContext URI methods should work correctly", () => {
   if (parsed?.type === "actor") {
     assertEquals(parsed.identifier, "alice");
   }
+});
+
+test("receiveActivity throws error when contextData not initialized", async () => {
+  const mockFederation = new MockFederation<void>();
+
+  // Set up an inbox listener without initializing contextData
+  mockFederation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(Create, async (_ctx, _activity) => {
+      /* should not happen */
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  // Should throw error
+  await assertRejects(
+    () => mockFederation.receiveActivity(activity),
+    Error,
+    "receiveActivity: contextData is not initialized",
+  );
 });
