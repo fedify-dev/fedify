@@ -457,18 +457,6 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   /**
-   * Gets all sent activities with their metadata.
-   * This method is specific to the mock implementation and is used for
-   * testing purposes.
-   *
-   * @returns An array of sent activity records.
-   * @since 1.8.0
-   */
-  getSentActivities(): SentActivity[] {
-    return [...this.sentActivities];
-  }
-
-  /**
    * Clears all sent activities from the mock federation.
    * This method is specific to the mock implementation and is used for
    * testing purposes.

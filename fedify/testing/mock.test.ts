@@ -29,11 +29,10 @@ test("getSentActivities returns sent activities", async () => {
   );
 
   // Check that the activity was recorded
-  const sentActivities = mockFederation.getSentActivities();
-  assertEquals(sentActivities.length, 1);
-  assertEquals(sentActivities[0].activity, activity);
-  assertEquals(sentActivities[0].queued, false);
-  assertEquals(sentActivities[0].sentOrder, 1);
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  assertEquals(mockFederation.sentActivities[0].queued, false);
+  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
 test("clearSentActivities clears sent activities", async () => {
@@ -56,15 +55,14 @@ test("clearSentActivities clears sent activities", async () => {
   );
 
   // Verify it was sent
-  const sentActivities = mockFederation.getSentActivities();
-  assertEquals(sentActivities.length, 1);
-  assertEquals(sentActivities[0].activity, activity);
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
 
   // Clear sent activities
   mockFederation.clearSentActivities();
 
   // Verify they were cleared
-  assertEquals(mockFederation.getSentActivities().length, 0);
+  assertEquals(mockFederation.sentActivities.length, 0);
 });
 
 test("receiveActivity triggers inbox listeners", async () => {
@@ -128,9 +126,8 @@ test("MockContext tracks sent activities", async () => {
   assertEquals(contextSentActivities[0].activity, activity);
 
   // Check that it was also recorded in the federation
-  const federationSentActivities = mockFederation.getSentActivities();
-  assertEquals(federationSentActivities.length, 1);
-  assertEquals(federationSentActivities[0].activity, activity);
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
 });
 
 test("MockContext URI methods should work correctly", () => {
@@ -230,19 +227,17 @@ test("MockFederation distinguishes between immediate and queued activities", asy
   );
 
   // Check activity details
-  const sentActivities = mockFederation.getSentActivities();
-
-  assertEquals(sentActivities.length, 2);
-  assertEquals(sentActivities[0].activity, activity1);
-  assertEquals(sentActivities[1].activity, activity2);
+  assertEquals(mockFederation.sentActivities.length, 2);
+  assertEquals(mockFederation.sentActivities[0].activity, activity1);
+  assertEquals(mockFederation.sentActivities[1].activity, activity2);
 
   // Both should be marked as sent via queue
-  assertEquals(sentActivities[0].queued, true);
-  assertEquals(sentActivities[1].queued, true);
-  assertEquals(sentActivities[0].queue, "outbox");
-  assertEquals(sentActivities[1].queue, "outbox");
-  assertEquals(sentActivities[0].sentOrder, 1);
-  assertEquals(sentActivities[1].sentOrder, 2);
+  assertEquals(mockFederation.sentActivities[0].queued, true);
+  assertEquals(mockFederation.sentActivities[1].queued, true);
+  assertEquals(mockFederation.sentActivities[0].queue, "outbox");
+  assertEquals(mockFederation.sentActivities[1].queue, "outbox");
+  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
+  assertEquals(mockFederation.sentActivities[1].sentOrder, 2);
 });
 
 test("MockFederation without queue sends all activities immediately", async () => {
@@ -267,13 +262,11 @@ test("MockFederation without queue sends all activities immediately", async () =
   );
 
   // Check activity details
-  const sentActivities = mockFederation.getSentActivities();
-
-  assertEquals(sentActivities.length, 1);
-  assertEquals(sentActivities[0].activity, activity);
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
 
   // Should be marked as sent immediately
-  assertEquals(sentActivities[0].queued, false);
-  assertEquals(sentActivities[0].queue, undefined);
-  assertEquals(sentActivities[0].sentOrder, 1);
+  assertEquals(mockFederation.sentActivities[0].queued, false);
+  assertEquals(mockFederation.sentActivities[0].queue, undefined);
+  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
 });
