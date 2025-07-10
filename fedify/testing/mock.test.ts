@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { test } from "./mod.ts";
-import { MockFederation } from "./mock.ts";
+import { MockContext, MockFederation } from "./mock.ts";
 import { Create, Note } from "../vocab/vocab.ts";
 import { Person } from "../vocab/vocab.ts";
 
@@ -90,7 +90,7 @@ test("receiveActivity triggers inbox listeners", async () => {
   assertEquals(receivedActivity, activity);
 });
 
-test("Check the interface is implemented properly", () => {
+test("Check the federation interface is implemented properly", () => {
   const mockFederation = new MockFederation<void>();
 
   assertEquals(typeof mockFederation.setNodeInfoDispatcher, "function");
@@ -102,4 +102,96 @@ test("Check the interface is implemented properly", () => {
   assertEquals(typeof mockFederation.startQueue, "function");
   assertEquals(typeof mockFederation.createContext, "function");
   assertEquals(typeof mockFederation.fetch, "function");
+});
+
+test("MockContext tracks sent activities", async () => {
+  const mockFederation = new MockFederation<void>();
+  const mockContext = new MockContext({
+    url: new URL("https://example.com"),
+    data: undefined,
+    federation: mockFederation,
+  });
+
+  // Create a test activity
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+    object: new Note({
+      id: new URL("https://example.com/notes/1"),
+      content: "Hello from MockContext!",
+    }),
+  });
+
+  // Send the activity
+  await mockContext.sendActivity(
+    { identifier: "alice" },
+    new Person({ id: new URL("https://example.com/users/bob") }),
+    activity,
+  );
+
+  // Check that the activity was recorded in the context
+  const contextSentActivities = mockContext.getSentActivities();
+  assertEquals(contextSentActivities.length, 1);
+  assertEquals(contextSentActivities[0].activity, activity);
+
+  // Check that it was also recorded in the federation
+  const federationSentActivities = mockFederation.getSentActivities();
+  assertEquals(federationSentActivities.length, 1);
+  assertEquals(federationSentActivities[0], activity);
+});
+
+test("MockContext URI methods should work correctly", () => {
+  const mockFederation = new MockFederation<void>();
+  const mockContext = new MockContext({
+    url: new URL("https://example.com"),
+    data: undefined,
+    federation: mockFederation,
+  });
+
+  // Test URI generation methods
+  assertEquals(
+    mockContext.getActorUri("alice").href,
+    "https://example.com/users/alice",
+  );
+  assertEquals(
+    mockContext.getInboxUri("alice").href,
+    "https://example.com/users/alice/inbox",
+  );
+  assertEquals(mockContext.getInboxUri().href, "https://example.com/inbox");
+  assertEquals(
+    mockContext.getOutboxUri("alice").href,
+    "https://example.com/users/alice/outbox",
+  );
+  assertEquals(
+    mockContext.getFollowingUri("alice").href,
+    "https://example.com/users/alice/following",
+  );
+  assertEquals(
+    mockContext.getFollowersUri("alice").href,
+    "https://example.com/users/alice/followers",
+  );
+
+  const actorUri = new URL("https://example.com/users/alice");
+  const parsed = mockContext.parseUri(actorUri);
+  assertEquals(parsed?.type, "actor");
+  if (parsed?.type === "actor") {
+    assertEquals(parsed.identifier, "alice");
+  }
+});
+
+test("mock context should satisfy the context interface", () => {
+  const mockFederation = new MockFederation<void>();
+  const mockContext = new MockContext({
+    url: new URL("https://example.com"),
+    data: undefined,
+    federation: mockFederation,
+  });
+
+  assertEquals(typeof mockContext.getActorUri, "function");
+  assertEquals(typeof mockContext.getInboxUri, "function");
+  assertEquals(typeof mockContext.getOutboxUri, "function");
+  assertEquals(typeof mockContext.getFollowingUri, "function");
+  assertEquals(typeof mockContext.getFollowersUri, "function");
+  assertEquals(typeof mockContext.parseUri, "function");
+  assertEquals(typeof mockContext.getSentActivities, "function");
 });

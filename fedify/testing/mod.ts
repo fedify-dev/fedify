@@ -7,7 +7,7 @@ import {
 } from "@logtape/logtape";
 import type { TestContext } from "node:test";
 
-export { MockFederation } from "./mock.ts";
+export { MockContext, MockFederation } from "./mock.ts";
 export const testDefinitions: Deno.TestDefinition[] = [];
 
 export function test(options: Deno.TestDefinition): void;

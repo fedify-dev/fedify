@@ -1,6 +1,7 @@
-import type { TracerProvider } from "@opentelemetry/api";
+import { trace, type TracerProvider } from "@opentelemetry/api";
 import type { Activity, Hashtag, Object } from "../vocab/vocab.ts";
 import type { Actor, Recipient } from "../vocab/actor.ts";
+import type { Collection } from "../vocab/vocab.ts";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
@@ -17,11 +18,24 @@ import type {
   ObjectDispatcher,
 } from "../federation/callback.ts";
 import type {
+  ActorKeyPair,
   Context,
   InboxContext,
+  ParseUriResult,
   RequestContext,
+  RouteActivityOptions,
+  SendActivityOptions,
+  SendActivityOptionsForCollection,
 } from "../federation/context.ts";
+import type { SenderKeyPair } from "../federation/send.ts";
 import type { Message } from "../federation/queue.ts";
+import type { DocumentLoader } from "../runtime/docloader.ts";
+import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
+import type { ResourceDescriptor } from "../webfinger/jrd.ts";
+import type {
+  LookupObjectOptions,
+  TraverseCollectionOptions,
+} from "../vocab/lookup.ts";
 import {
   createContext,
   createInboxContext,
@@ -101,7 +115,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   ) {}
 
   setNodeInfoDispatcher(
-    path: string,
+    _path: string,
     dispatcher: NodeInfoDispatcher<TContextData>,
   ): void {
     this.nodeInfoDispatcher = dispatcher;
@@ -176,7 +190,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFollowingDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Actor | URL,
       RequestContext<TContextData>,
@@ -198,7 +212,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFollowersDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Recipient,
       Context<TContextData>,
@@ -216,7 +230,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setLikedDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Object | URL,
       RequestContext<TContextData>,
@@ -238,7 +252,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFeaturedDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Object,
       RequestContext<TContextData>,
@@ -260,7 +274,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFeaturedTagsDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Hashtag,
       RequestContext<TContextData>,
@@ -282,8 +296,8 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setInboxListeners(
-    inboxPath: `${string}{identifier}${string}` | `${string}{handle}${string}`,
-    sharedInboxPath?: string,
+    _inboxPath: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _sharedInboxPath?: string,
   ): InboxListenerSetters<TContextData> {
     const self = this;
     return {
@@ -309,18 +323,18 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
 
   async startQueue(
     contextData: TContextData,
-    options?: FederationStartQueueOptions,
+    _options?: FederationStartQueueOptions,
   ): Promise<void> {
     this.contextData = contextData;
-    // Mock implementation - no actual queue to start
+    // not actually starting a queue
   }
 
   async processQueuedTask(
     contextData: TContextData,
-    message: Message,
+    _message: Message,
   ): Promise<void> {
     this.contextData = contextData;
-    // Mock implementation - process immediately
+    // no queue in mock type. process immediately
   }
 
   createContext(baseUrl: URL, contextData: TContextData): Context<TContextData>;
@@ -360,7 +374,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     request: Request,
     options: FederationFetchOptions<TContextData>,
   ): Promise<Response> {
-    // Mock implementation - return 404 by default
+    // returning 404 by default
     if (options.onNotFound) {
       return options.onNotFound(request);
     }
@@ -373,6 +387,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    *
    * @param activity The activity to receive.
    * @returns A promise that resolves when the activity has been processed.
+   * @since 1.8.0
    */
   async receiveActivity(activity: Activity): Promise<void> {
     this.receivedActivities.push(activity);
@@ -396,6 +411,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    * testing purposes.
    *
    * @returns An array of sent activities.
+   * @since 1.8.0
    */
   getSentActivities(): Activity[] {
     return [...this.sentActivities];
@@ -405,6 +421,8 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    * Clears all sent activities from the mock federation.
    * This method is specific to the mock implementation and is used for
    * testing purposes.
+   *
+   * @since 1.8.0
    */
   clearSentActivities(): void {
     this.sentActivities = [];
@@ -417,4 +435,258 @@ interface InboxListener<TContextData, TActivity extends Activity> {
     context: InboxContext<TContextData>,
     activity: TActivity,
   ): void | Promise<void>;
+}
+
+/**
+ * A mock implementation of the {@link Context} interface for unit testing.
+ * This class provides a way to test Fedify applications without needing
+ * a real federation context.
+ *
+ * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @since 1.8.0
+ */
+export class MockContext<TContextData> implements Context<TContextData> {
+  readonly origin: string;
+  readonly canonicalOrigin: string;
+  readonly host: string;
+  readonly hostname: string;
+  readonly data: TContextData;
+  readonly federation: Federation<TContextData>;
+  readonly documentLoader: DocumentLoader;
+  readonly contextLoader: DocumentLoader;
+  readonly tracerProvider: TracerProvider;
+
+  private sentActivities: Array<{
+    sender: any;
+    recipients: Recipient | Recipient[] | "followers";
+    activity: Activity;
+  }> = [];
+
+  constructor(
+    options: {
+      url?: URL;
+      data: TContextData;
+      federation: Federation<TContextData>;
+      documentLoader?: DocumentLoader;
+      contextLoader?: DocumentLoader;
+      tracerProvider?: TracerProvider;
+    },
+  ) {
+    const url = options.url ?? new URL("https://example.com");
+    this.origin = url.origin;
+    this.canonicalOrigin = url.origin;
+    this.host = url.host;
+    this.hostname = url.hostname;
+    this.data = options.data;
+    this.federation = options.federation;
+    this.documentLoader = options.documentLoader ?? (async (url: string) => ({
+      contextUrl: null,
+      document: {},
+      documentUrl: url,
+    }));
+    this.contextLoader = options.contextLoader ?? this.documentLoader;
+    this.tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
+  }
+
+  clone(data: TContextData): Context<TContextData> {
+    return new MockContext({
+      url: new URL(this.origin),
+      data,
+      federation: this.federation,
+      documentLoader: this.documentLoader,
+      contextLoader: this.contextLoader,
+      tracerProvider: this.tracerProvider,
+    });
+  }
+
+  getNodeInfoUri(): URL {
+    return new URL("/nodeinfo/2.0", this.origin);
+  }
+
+  getActorUri(identifier: string): URL {
+    return new URL(`/users/${identifier}`, this.origin);
+  }
+
+  getObjectUri<TObject extends Object>(
+    // deno-lint-ignore no-explicit-any
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+  ): URL {
+    const path = globalThis.Object.entries(values)
+      .map(([key, value]) => `${key}/${value}`)
+      .join("/");
+    return new URL(`/objects/${cls.name.toLowerCase()}/${path}`, this.origin);
+  }
+
+  getOutboxUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/outbox`, this.origin);
+  }
+
+  getInboxUri(identifier: string): URL;
+  getInboxUri(): URL;
+  getInboxUri(identifier?: string): URL {
+    if (identifier) {
+      return new URL(`/users/${identifier}/inbox`, this.origin);
+    }
+    return new URL("/inbox", this.origin);
+  }
+
+  getFollowingUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/following`, this.origin);
+  }
+
+  getFollowersUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/followers`, this.origin);
+  }
+
+  getLikedUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/liked`, this.origin);
+  }
+
+  getFeaturedUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/featured`, this.origin);
+  }
+
+  getFeaturedTagsUri(identifier: string): URL {
+    return new URL(`/users/${identifier}/tags`, this.origin);
+  }
+
+  parseUri(uri: URL): ParseUriResult | null {
+    if (uri.pathname.startsWith("/users/")) {
+      const parts = uri.pathname.split("/");
+      if (parts.length >= 3) {
+        return {
+          type: "actor",
+          identifier: parts[2],
+          handle: parts[2],
+        };
+      }
+    }
+    return null;
+  }
+
+  getActorKeyPairs(_identifier: string): Promise<ActorKeyPair[]> {
+    return Promise.resolve([]);
+  }
+
+  getDocumentLoader(
+    params: { handle: string } | { identifier: string },
+  ): Promise<DocumentLoader>;
+  getDocumentLoader(
+    params: { keyId: URL; privateKey: CryptoKey },
+  ): DocumentLoader;
+  getDocumentLoader(params: any): DocumentLoader | Promise<DocumentLoader> {
+    // return the same document loader
+    if ("keyId" in params) {
+      return this.documentLoader;
+    }
+    return Promise.resolve(this.documentLoader);
+  }
+
+  lookupObject(
+    _uri: URL | string,
+    _options?: LookupObjectOptions,
+  ): Promise<Object | null> {
+    return Promise.resolve(null);
+  }
+
+  traverseCollection<TItem, TContext extends Context<TContextData>>(
+    _collection: Collection | URL | null,
+    _options?: TraverseCollectionOptions,
+  ): AsyncIterable<TItem> {
+    // just returning empty async iterable
+    return {
+      async *[Symbol.asyncIterator]() {
+        // yield nothing
+      },
+    };
+  }
+
+  lookupNodeInfo(
+    url: URL | string,
+    options?: { parse?: "strict" | "best-effort" } & any,
+  ): Promise<NodeInfo | undefined>;
+  lookupNodeInfo(
+    url: URL | string,
+    options?: { parse: "none" } & any,
+  ): Promise<JsonValue | undefined>;
+  lookupNodeInfo(
+    _url: URL | string,
+    _options?: any,
+  ): Promise<NodeInfo | JsonValue | undefined> {
+    return Promise.resolve(undefined);
+  }
+
+  lookupWebFinger(
+    _resource: URL | `acct:${string}@${string}` | string,
+    _options?: any,
+  ): Promise<ResourceDescriptor | null> {
+    return Promise.resolve(null);
+  }
+
+  sendActivity(
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string }
+      | { handle: string },
+    recipients: Recipient | Recipient[],
+    activity: Activity,
+    options?: SendActivityOptions,
+  ): Promise<void>;
+  sendActivity(
+    sender: { identifier: string } | { username: string } | { handle: string },
+    recipients: "followers",
+    activity: Activity,
+    options?: SendActivityOptionsForCollection,
+  ): Promise<void>;
+  sendActivity(
+    sender: any,
+    recipients: any,
+    activity: Activity,
+    _options?: any,
+  ): Promise<void> {
+    this.sentActivities.push({ sender, recipients, activity });
+
+    // If this is a MockFederation, also record it there
+    if (this.federation instanceof MockFederation) {
+      // Access the private property directly
+      (this.federation as any).sentActivities.push(activity);
+    }
+
+    return Promise.resolve();
+  }
+
+  routeActivity(
+    _recipient: string | null,
+    _activity: Activity,
+    _options?: RouteActivityOptions,
+  ): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  /**
+   * Gets all activities that have been sent through this mock context.
+   * This method is specific to the mock implementation and is used for
+   * testing purposes.
+   *
+   * @returns An array of sent activity records.
+   */
+  getSentActivities(): Array<{
+    sender: any;
+    recipients: Recipient | Recipient[] | "followers";
+    activity: Activity;
+  }> {
+    return [...this.sentActivities];
+  }
+
+  /**
+   * Clears all sent activities from the mock context.
+   * This method is specific to the mock implementation and is used for
+   * testing purposes.
+   */
+  clearSentActivities(): void {
+    this.sentActivities = [];
+  }
 }
