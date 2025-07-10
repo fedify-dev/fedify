@@ -51,7 +51,7 @@ import {
  * @since 1.8.0
  */
 export class MockFederation<TContextData> implements Federation<TContextData> {
-  private sentActivities: Activity[] = [];
+  public sentActivities: Activity[] = [];
   private nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
   private actorDispatchers: Map<string, ActorDispatcher<TContextData>> =
     new Map();
@@ -651,8 +651,7 @@ export class MockContext<TContextData> implements Context<TContextData> {
 
     // If this is a MockFederation, also record it there
     if (this.federation instanceof MockFederation) {
-      // Access the private property directly
-      (this.federation as any).sentActivities.push(activity);
+      this.federation.sentActivities.push(activity);
     }
 
     return Promise.resolve();
