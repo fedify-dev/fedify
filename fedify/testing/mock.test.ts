@@ -169,6 +169,96 @@ test("MockContext URI methods should work correctly", () => {
   }
 });
 
+test("MockContext URI methods respect registered paths", () => {
+  const mockFederation = new MockFederation<void>();
+
+  // Register custom paths with dummy dispatchers
+  mockFederation.setNodeInfoDispatcher("/.well-known/nodeinfo", () => ({
+    software: { name: "test", version: { major: 1, minor: 0, patch: 0 } },
+    protocols: [],
+    usage: {
+      users: {},
+      localPosts: 0,
+      localComments: 0,
+    },
+  }));
+  mockFederation.setActorDispatcher("/actors/{identifier}", () => null);
+  mockFederation.setObjectDispatcher(Note, "/notes/{id}", () => null);
+  mockFederation.setInboxListeners(
+    "/actors/{identifier}/inbox",
+    "/shared-inbox",
+  );
+  mockFederation.setOutboxDispatcher("/actors/{identifier}/outbox", () => null);
+  mockFederation.setFollowingDispatcher(
+    "/actors/{identifier}/following",
+    () => null,
+  );
+  mockFederation.setFollowersDispatcher(
+    "/actors/{identifier}/followers",
+    () => null,
+  );
+  mockFederation.setLikedDispatcher("/actors/{identifier}/liked", () => null);
+  mockFederation.setFeaturedDispatcher(
+    "/actors/{identifier}/featured",
+    () => null,
+  );
+  mockFederation.setFeaturedTagsDispatcher(
+    "/actors/{identifier}/tags",
+    () => null,
+  );
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  // Test that URIs use the registered paths
+  assertEquals(
+    context.getNodeInfoUri().href,
+    "https://example.com/.well-known/nodeinfo",
+  );
+  assertEquals(
+    context.getActorUri("alice").href,
+    "https://example.com/actors/alice",
+  );
+  assertEquals(
+    context.getObjectUri(Note, { id: "123" }).href,
+    "https://example.com/notes/123",
+  );
+  assertEquals(
+    context.getInboxUri("alice").href,
+    "https://example.com/actors/alice/inbox",
+  );
+  assertEquals(
+    context.getInboxUri().href,
+    "https://example.com/shared-inbox",
+  );
+  assertEquals(
+    context.getOutboxUri("alice").href,
+    "https://example.com/actors/alice/outbox",
+  );
+  assertEquals(
+    context.getFollowingUri("alice").href,
+    "https://example.com/actors/alice/following",
+  );
+  assertEquals(
+    context.getFollowersUri("alice").href,
+    "https://example.com/actors/alice/followers",
+  );
+  assertEquals(
+    context.getLikedUri("alice").href,
+    "https://example.com/actors/alice/liked",
+  );
+  assertEquals(
+    context.getFeaturedUri("alice").href,
+    "https://example.com/actors/alice/featured",
+  );
+  assertEquals(
+    context.getFeaturedTagsUri("alice").href,
+    "https://example.com/actors/alice/tags",
+  );
+});
+
 test("receiveActivity throws error when contextData not initialized", async () => {
   const mockFederation = new MockFederation<void>();
 
@@ -242,7 +332,6 @@ test("MockFederation distinguishes between immediate and queued activities", asy
 
 test("MockFederation without queue sends all activities immediately", async () => {
   const mockFederation = new MockFederation<void>();
-  // Do NOT start the queue - activities should be sent immediately
 
   const context = mockFederation.createContext(
     new URL("https://example.com"),

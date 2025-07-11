@@ -39,6 +39,22 @@ import type {
 import { createInboxContext, createRequestContext } from "./context.ts";
 
 /**
+ * Helper function to expand URI templates with values.
+ * Supports simple placeholders like {identifier}, {handle}, etc.
+ * @param template The URI template pattern
+ * @param values The values to substitute
+ * @returns The expanded URI path
+ */
+function expandUriTemplate(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(/{([^}]+)}/g, (match, key) => {
+    return values[key] || match;
+  });
+}
+
+/**
  * Represents a sent activity with metadata about how it was sent.
  * @since 1.8.0
  */
@@ -69,6 +85,17 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   private nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
   private actorDispatchers: Map<string, ActorDispatcher<TContextData>> =
     new Map();
+  public actorPath?: string;
+  public inboxPath?: string;
+  public outboxPath?: string;
+  public followingPath?: string;
+  public followersPath?: string;
+  public likedPath?: string;
+  public featuredPath?: string;
+  public featuredTagsPath?: string;
+  public nodeInfoPath?: string;
+  public sharedInboxPath?: string;
+  public objectPaths: Map<string, string> = new Map();
   private objectDispatchers: Map<
     string,
     ObjectDispatcher<TContextData, Object, string>
@@ -131,10 +158,11 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setNodeInfoDispatcher(
-    _path: string,
+    path: string,
     dispatcher: NodeInfoDispatcher<TContextData>,
   ): void {
     this.nodeInfoDispatcher = dispatcher;
+    this.nodeInfoPath = path;
   }
 
   setActorDispatcher(
@@ -142,6 +170,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     dispatcher: ActorDispatcher<TContextData>,
   ): ActorCallbackSetters<TContextData> {
     this.actorDispatchers.set(path, dispatcher);
+    this.actorPath = path;
     return {
       setKeyPairsDispatcher: () => this as any,
       mapHandle: () => this as any,
@@ -156,13 +185,14 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam> {
     this.objectDispatchers.set(path, dispatcher);
+    this.objectPaths.set(cls.typeId.href, path);
     return {
       authorize: () => this as any,
     };
   }
 
   setInboxDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Activity,
       RequestContext<TContextData>,
@@ -175,6 +205,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.inboxDispatcher = dispatcher;
+    // Note: inboxPath is set in setInboxListeners
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -197,6 +228,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.outboxDispatcher = dispatcher;
+    this.outboxPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -206,7 +238,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFollowingDispatcher(
-    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Actor | URL,
       RequestContext<TContextData>,
@@ -219,6 +251,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.followingDispatcher = dispatcher;
+    this.followingPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -228,7 +261,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFollowersDispatcher(
-    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Recipient,
       Context<TContextData>,
@@ -237,6 +270,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     >,
   ): CollectionCallbackSetters<Context<TContextData>, TContextData, URL> {
     this.followersDispatcher = dispatcher;
+    this.followersPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -246,7 +280,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setLikedDispatcher(
-    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Object | URL,
       RequestContext<TContextData>,
@@ -259,6 +293,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.likedDispatcher = dispatcher;
+    this.likedPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -268,7 +303,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFeaturedDispatcher(
-    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Object,
       RequestContext<TContextData>,
@@ -281,6 +316,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.featuredDispatcher = dispatcher;
+    this.featuredPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -290,7 +326,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setFeaturedTagsDispatcher(
-    _path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
     dispatcher: CollectionDispatcher<
       Hashtag,
       RequestContext<TContextData>,
@@ -303,6 +339,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     void
   > {
     this.featuredTagsDispatcher = dispatcher;
+    this.featuredTagsPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
@@ -312,9 +349,11 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setInboxListeners(
-    _inboxPath: `${string}{identifier}${string}` | `${string}{handle}${string}`,
-    _sharedInboxPath?: string,
+    inboxPath: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    sharedInboxPath?: string,
   ): InboxListenerSetters<TContextData> {
+    this.inboxPath = inboxPath;
+    this.sharedInboxPath = sharedInboxPath;
     const self = this;
     return {
       on<TActivity extends Activity>(
@@ -539,10 +578,24 @@ export class MockContext<TContextData> implements Context<TContextData> {
   }
 
   getNodeInfoUri(): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.nodeInfoPath
+    ) {
+      return new URL(this.federation.nodeInfoPath, this.origin);
+    }
     return new URL("/nodeinfo/2.0", this.origin);
   }
 
   getActorUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.actorPath
+    ) {
+      const path = expandUriTemplate(this.federation.actorPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}`, this.origin);
   }
 
@@ -551,6 +604,13 @@ export class MockContext<TContextData> implements Context<TContextData> {
     cls: (new (...args: any[]) => TObject) & { typeId: URL },
     values: Record<string, string>,
   ): URL {
+    if (this.federation instanceof MockFederation) {
+      const pathTemplate = this.federation.objectPaths.get(cls.typeId.href);
+      if (pathTemplate) {
+        const path = expandUriTemplate(pathTemplate, values);
+        return new URL(path, this.origin);
+      }
+    }
     const path = globalThis.Object.entries(values)
       .map(([key, value]) => `${key}/${value}`)
       .join("/");
@@ -558,6 +618,15 @@ export class MockContext<TContextData> implements Context<TContextData> {
   }
 
   getOutboxUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.outboxPath
+    ) {
+      const path = expandUriTemplate(this.federation.outboxPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/outbox`, this.origin);
   }
 
@@ -565,28 +634,89 @@ export class MockContext<TContextData> implements Context<TContextData> {
   getInboxUri(): URL;
   getInboxUri(identifier?: string): URL {
     if (identifier) {
+      if (
+        this.federation instanceof MockFederation && this.federation.inboxPath
+      ) {
+        const path = expandUriTemplate(this.federation.inboxPath, {
+          identifier,
+          handle: identifier,
+        });
+        return new URL(path, this.origin);
+      }
       return new URL(`/users/${identifier}/inbox`, this.origin);
+    }
+    if (
+      this.federation instanceof MockFederation &&
+      this.federation.sharedInboxPath
+    ) {
+      return new URL(this.federation.sharedInboxPath, this.origin);
     }
     return new URL("/inbox", this.origin);
   }
 
   getFollowingUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.followingPath
+    ) {
+      const path = expandUriTemplate(this.federation.followingPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/following`, this.origin);
   }
 
   getFollowersUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.followersPath
+    ) {
+      const path = expandUriTemplate(this.federation.followersPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/followers`, this.origin);
   }
 
   getLikedUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.likedPath
+    ) {
+      const path = expandUriTemplate(this.federation.likedPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/liked`, this.origin);
   }
 
   getFeaturedUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation && this.federation.featuredPath
+    ) {
+      const path = expandUriTemplate(this.federation.featuredPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/featured`, this.origin);
   }
 
   getFeaturedTagsUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation &&
+      this.federation.featuredTagsPath
+    ) {
+      const path = expandUriTemplate(this.federation.featuredTagsPath, {
+        identifier,
+        handle: identifier,
+      });
+      return new URL(path, this.origin);
+    }
     return new URL(`/users/${identifier}/tags`, this.origin);
   }
 
