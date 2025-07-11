@@ -74,6 +74,22 @@ export interface SentActivity {
  * This class provides a way to test Fedify applications without needing
  * a real federation setup.
  *
+ * @example
+ * ```typescript
+ * // Create a mock federation
+ * const federation = new MockFederation<{ userId: string }>();
+ *
+ * // Set up inbox listeners
+ * federation
+ *   .setInboxListeners("/users/{identifier}/inbox")
+ *   .on(Create, async (ctx, activity) => {
+ *     console.log("Received:", activity);
+ *   });
+ *
+ * // Simulate receiving an activity
+ * await federation.receiveActivity(createActivity);
+ * ```
+ *
  * @typeParam TContextData The context data to pass to the {@link Context}.
  * @since 1.8.0
  */
@@ -519,6 +535,27 @@ interface InboxListener<TContextData, TActivity extends Activity> {
  * A mock implementation of the {@link Context} interface for unit testing.
  * This class provides a way to test Fedify applications without needing
  * a real federation context.
+ *
+ * @example
+ * ```typescript
+ * // Create a mock context
+ * const context = new MockContext({
+ *   url: new URL("https://example.com"),
+ *   data: { userId: "test-user" },
+ *   federation: mockFederation
+ * });
+ *
+ * // Send an activity
+ * await context.sendActivity(
+ *   { identifier: "alice" },
+ *   recipient,
+ *   activity
+ * );
+ *
+ * // Check sent activities
+ * const sent = context.getSentActivities();
+ * console.log(sent[0].activity);
+ * ```
  *
  * @typeParam TContextData The context data to pass to the {@link Context}.
  * @since 1.8.0
