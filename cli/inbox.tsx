@@ -50,7 +50,7 @@ export interface InboxOptions {
 export const TunnelConfig = {
   shouldDisableTunnel: (opts: InboxOptions): boolean => {
     return opts.tunnel === false || opts.noTunnel === true;
-  }
+  },
 } as const;
 
 export const command = new Command()
