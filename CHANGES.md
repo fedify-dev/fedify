@@ -30,6 +30,13 @@ To be released.
      -  Added optional `KvStore.cas()` method.
      -  Added `MemoryKvStore.cas()` method.
      -  Added `DenoKvStore.cas()` method.
+  
+ -  Added options to customize the temporary actor information when running
+    `fedify inbox` command.  [[#262] by Hasang Cho]
+
+     -  Added `--actor-name` option to customize the actor display name.
+     -  Added `--actor-summary` option to customize the actor description.
+     -  Both options provide sensible defaults when not specified.
 
  -  Added useful functions for fediverse handles at `@fedify/fedify/vocab`.
     This functions simplify working with fediverse handles and URLs.
@@ -63,6 +70,7 @@ To be released.
 [#168]: https://github.com/fedify-dev/fedify/issues/168
 [#248]: https://github.com/fedify-dev/fedify/issues/248
 [#260]: https://github.com/fedify-dev/fedify/issues/260
+[#262]: https://github.com/fedify-dev/fedify/issues/262
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
 [#282]: https://github.com/fedify-dev/fedify/pull/282
