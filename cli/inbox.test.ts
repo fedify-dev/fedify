@@ -1,10 +1,5 @@
 import { assertEquals } from "@std/assert";
-import type { InboxOptions } from "./inbox.tsx";
-
-// mock of the tunnel disabling logic
-function shouldDisableTunnel(options: InboxOptions): boolean {
-  return options.tunnel === false || options.noTunnel === true;
-}
+import { type InboxOptions, TunnelConfig } from "./inbox.tsx";
 
 Deno.test("handles --no-tunnel flag correctly", () => {
   const optionsWithNoTunnel: InboxOptions = {
@@ -13,7 +8,7 @@ Deno.test("handles --no-tunnel flag correctly", () => {
     acceptFollow: undefined,
   };
   assertEquals(
-    shouldDisableTunnel(optionsWithNoTunnel),
+    TunnelConfig.shouldDisableTunnel(optionsWithNoTunnel),
     true,
     "--no-tunnel flag should disable tunnel",
   );
@@ -27,7 +22,7 @@ Deno.test("set noTunnel true, should handles -T flag correctly", () => {
     acceptFollow: undefined,
   };
   assertEquals(
-    shouldDisableTunnel(optionsWithT),
+    TunnelConfig.shouldDisableTunnel(optionsWithT),
     true,
     "-T flag should disable tunnel",
   );
@@ -40,7 +35,7 @@ Deno.test("handles default behavior (no flags)", () => {
     acceptFollow: undefined,
   };
   assertEquals(
-    shouldDisableTunnel(optionsDefault),
+    TunnelConfig.shouldDisableTunnel(optionsDefault),
     false,
     "Default behavior should enable tunnel",
   );
@@ -54,14 +49,13 @@ Deno.test("handles both flags together", () => {
     acceptFollow: undefined,
   };
   assertEquals(
-    shouldDisableTunnel(optionsBothFlags),
+    TunnelConfig.shouldDisableTunnel(optionsBothFlags),
     true,
     "Both flags should disable tunnel",
   );
 });
 
 Deno.test("Various InboxOptions combinations", () => {
-  // Valid option combinations
   const validOptions: InboxOptions[] = [
     { tunnel: true },
     { tunnel: false },
@@ -72,9 +66,8 @@ Deno.test("Various InboxOptions combinations", () => {
     { tunnel: true, follow: [], acceptFollow: [] },
   ];
 
-  // Test that all valid options work with shouldDisableTunnel
   for (const options of validOptions) {
-    const result = shouldDisableTunnel(options);
+    const result = TunnelConfig.shouldDisableTunnel(options);
     assertEquals(
       typeof result,
       "boolean",
