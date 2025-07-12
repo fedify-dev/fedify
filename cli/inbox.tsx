@@ -61,6 +61,16 @@ export const command = new Command()
     "-T, --no-tunnel",
     "Do not tunnel the ephemeral ActivityPub server to the public Internet.",
   )
+  .option(
+    "--actor-name=<name:string>",
+    "Customize the actor display name.",
+    { default: "Fedify Ephemeral Inbox" },
+  )
+  .option(
+    "--actor-summary=<summary:string>",
+    "Customize the actor description.",
+    { default: "An ephemeral ActivityPub inbox for testing purposes." },
+  )
   .action(async (options) => {
     const spinner = ora({
       text: "Spinning up an ephemeral ActivityPub server...",
