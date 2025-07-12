@@ -37,6 +37,11 @@ import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 
 const logger = getLogger(["fedify", "cli", "inbox"]);
 
+const actorOptions = {
+  name: "Fedify Ephemeral Inbox",
+  summary: "An ephemeral ActivityPub inbox for testing purposes.",
+};
+
 export const command = new Command()
   .description(
     "Spins up an ephemeral server that serves the ActivityPub inbox with " +
@@ -72,6 +77,9 @@ export const command = new Command()
     { default: "An ephemeral ActivityPub inbox for testing purposes." },
   )
   .action(async (options) => {
+    actorOptions.name = options.actorName;
+    actorOptions.summary = options.actorSummary;
+
     const spinner = ora({
       text: "Spinning up an ephemeral ActivityPub server...",
       discardStdin: false,
@@ -152,8 +160,8 @@ federation
     return new Application({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
-      name: "Fedify Ephemeral Inbox",
-      summary: "An ephemeral ActivityPub inbox for testing purposes.",
+      name: actorOptions.name,
+      summary: actorOptions.summary,
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
         sharedInbox: ctx.getInboxUri(),
