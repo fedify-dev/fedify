@@ -60,9 +60,9 @@ To be released.
      render the favicon in terminal emulators that do not support 24-bit
      colors.  [[#168], [#282] by Hyeonseo Kim]
 
-  - Fixed a bug the `--no-tunnel` option in the `fedify inbox` command
+ -  Fixed a bug the `--no-tunnel` option in the `fedify inbox` command
     was being ignored, causing the server to always create a public tunnel
-    regardless of the flag. [[#243], #[284] by Lee ByeongJun]
+    regardless of the flag.  [[#243], [#284] by Lee ByeongJun]
 
 [#168]: https://github.com/fedify-dev/fedify/issues/168
 [#243]: https://github.com/fedify-dev/fedify/issues/243
