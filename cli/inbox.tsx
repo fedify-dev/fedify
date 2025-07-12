@@ -37,6 +37,22 @@ import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 
 const logger = getLogger(["fedify", "cli", "inbox"]);
 
+/**
+ * Options for the inbox command.
+ */
+export interface InboxOptions {
+  follow?: string[];
+  acceptFollow?: string[];
+  tunnel: boolean;
+  noTunnel?: boolean; // for -T shorthand support
+}
+
+export const TunnelConfig = {
+  shouldDisableTunnel: (opts: InboxOptions): boolean => {
+    return opts.tunnel === false || opts.noTunnel === true;
+  },
+} as const;
+
 export const command = new Command()
   .description(
     "Spins up an ephemeral server that serves the ActivityPub inbox with " +
@@ -61,13 +77,13 @@ export const command = new Command()
     "-T, --no-tunnel",
     "Do not tunnel the ephemeral ActivityPub server to the public Internet.",
   )
-  .action(async (options) => {
+  .action(async (options: InboxOptions) => {
     const spinner = ora({
       text: "Spinning up an ephemeral ActivityPub server...",
       discardStdin: false,
     }).start();
     const server = await spawnTemporaryServer(fetch, {
-      noTunnel: !options.tunnel,
+      noTunnel: TunnelConfig.shouldDisableTunnel(options),
     });
     spinner.succeed(
       `The ephemeral ActivityPub server is up and running: ${
