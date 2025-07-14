@@ -1,0 +1,383 @@
+instructions: |
+  Required Labels: Every issue should have at least one type/ label
+  Component Labels: Add relevant component labels when the issue affects specific parts of Fedify
+  Priority Labels: Use priority labels for issues that need special attention
+  Runtime Labels: Add runtime labels when issues affect specific JavaScript runtimes only
+  Status Labels: Use to track the current state of issues and pull requests
+
+labels:
+  # ─────────────── Priority Labels ───────────────
+  - priority/critical:
+      description: "Requires immediate attention due to critical impact"
+      instructions: |
+        Use for issues that:
+        - Block releases or core workflows
+        - Cause crashes or data loss
+        - Have urgent production impact
+
+  - priority/high:
+      description: "High priority — should be addressed soon"
+      instructions: |
+        Use when the issue:
+        - Significantly affects users or contributors
+        - Blocks other tasks
+        - Requires timely resolution but isn't a critical failure
+
+  - priority/medium:
+      description: "Medium priority — normal workflow"
+      instructions: |
+        Use when the issue is valid and actionable but:
+        - Doesn't block other work
+        - Can be scheduled into future milestones
+
+  - priority/low:
+      description: "Low priority — not urgent"
+      instructions: |
+        Use for:
+        - Minor UX polish
+        - Suggestions without clear need
+        - Non-blocking edge cases
+
+  # ─────────────── Type Labels ───────────────
+  - type/bug:
+      description: "Something isn't working as expected"
+      instructions: |
+        Apply when describing or fixing unexpected behavior:
+        - Crashes, broken behavior, incorrect output
+        - PRs that resolve defects
+
+  - type/feature:
+      description: "New functionality"
+      instructions: |
+        Apply when introducing net-new behavior:
+        - New APIs, endpoints, commands, modules
+        - User-visible capabilities
+
+  - type/enhancement:
+      description: "Improves existing features"
+      instructions: |
+        Apply to:
+        - Performance or UX improvements
+        - Expanded functionality
+        Do not use for new features or bug fixes.
+
+  - type/documentation:
+      description: "Documentation changes"
+      instructions: |
+        Use when:
+        - README, CONTRIBUTING, API docs are updated
+        - Code comments or usage examples are the focus
+
+  - type/refactor:
+      description: "Code cleanup or reorganization"
+      instructions: |
+        Use when:
+        - Internal structure is improved
+        - No behavior changes for users
+        - Technical debt is addressed
+
+  - type/performance:
+      description: "Improves speed or efficiency"
+      instructions: |
+        Use when:
+        - Latency or memory usage is improved
+        - Algorithms are optimized
+
+  - type/security:
+      description: "Security-related issue or fix"
+      instructions: |
+        Use when:
+        - Addressing vulnerabilities
+        - Applying best security practices
+
+  - type/test:
+      description: "Testing coverage or infrastructure"
+      instructions: |
+        Use for:
+        - Adding or improving tests
+        - Test utilities or frameworks
+
+  - type/chore:
+      description: "Project maintenance"
+      instructions: |
+        Use for:
+        - Dependency updates
+        - Tooling or config changes
+        - CI/CD pipelines
+
+  # ─────────────── Component Labels ───────────────
+  - component/vocab:
+      description: "Activity vocabulary definitions"
+      instructions: |
+        Use for:
+        - Adding or changing vocab definitions
+        - Affects types, fields, or schema
+
+  - component/federation:
+      description: "Federation and remote activity handling"
+      instructions: |
+        Use for:
+        - Sending or receiving remote objects
+        - Delivery across instances
+
+  - component/actor:
+      description: "Actor and identity dispatch"
+      instructions: |
+        Use when:
+        - Actor creation, lookup, or routing is affected
+
+  - component/inbox:
+      description: "Inbox message handling"
+      instructions: |
+        Use when:
+        - Receiving and validating activities
+        - Inbox-related errors or logic
+
+  - component/outbox:
+      description: "Outbox activity publishing"
+      instructions: |
+        Use when:
+        - Sending activities
+        - Outbox structure or delivery logic
+
+  - component/collections:
+      description: "Object and activity collections"
+      instructions: |
+        Use for:
+        - Lists of followers, likes, etc.
+        - Paging, filtering, ordering
+
+  - component/signatures:
+      description: "Linked Data Signatures (LD Signatures)"
+      instructions: |
+        Use when:
+        - Signing or verifying requests
+        - Security via HTTP signatures
+
+  - component/webfinger:
+      description: "WebFinger discovery"
+      instructions: |
+        Use for:
+        - Account resolution via WebFinger
+        - Compatibility with remote servers
+
+  - component/nodeinfo:
+      description: "NodeInfo metadata"
+      instructions: |
+        Use when:
+        - Publishing server capabilities
+        - NodeInfo endpoints or schemas
+
+  - component/cli:
+      description: "Command-line interface tools"
+      instructions: |
+        Use for:
+        - CLI utilities
+        - Local testing or scaffolding
+
+  - component/integration:
+      description: "Integration with web frameworks"
+      instructions: |
+        Use when:
+        - Adapters or plugins for external systems
+        - Routing or middleware support
+
+  - component/kv:
+      description: "Key-value storage layer"
+      instructions: |
+        Use for:
+        - Persistence changes
+        - Data modeling for key-value store
+
+  - component/mq:
+      description: "Message queue infrastructure"
+      instructions: |
+        Use for:
+        - Pub/sub changes
+        - Event queueing logic
+
+  # ─────────────── Runtime Labels ───────────────
+  - runtime/deno:
+      description: "Deno runtime-specific"
+      instructions: |
+        Use when:
+        - Deno-only APIs or permissions
+        - Deployment or build-specific to Deno
+
+  - runtime/node:
+      description: "Node.js runtime-specific"
+      instructions: |
+        Use when:
+        - Node-specific code or libraries
+        - Compatibility for Node.js
+
+  - runtime/bun:
+      description: "Bun runtime-specific"
+      instructions: |
+        Use for:
+        - Bun-specific issues or optimizations
+
+  # ─────────────── Status Labels ───────────────
+  - status/needs triage:
+      description: "Needs review or categorization"
+      instructions: |
+        Use when:
+        - No label has been applied yet
+        - Further inspection is required
+
+  - status/blocked:
+      description: "Work is currently blocked"
+      instructions: |
+        Use when:
+        - Issue cannot progress due to external dependency
+        - Waiting for upstream fix or decision
+
+  - status/in progress:
+      description: "Work is actively being done"
+      instructions: |
+        Use when:
+        - A contributor is working on the issue
+        - PR is underway
+
+  - status/awaiting response:
+      description: "Waiting for more information"
+      instructions: |
+        Use when:
+        - Waiting for reply from reporter or reviewer
+        - PR feedback or clarification needed
+
+  - status/ready for review:
+      description: "Work is ready for feedback"
+      instructions: |
+        Use when:
+        - PR is complete
+        - Maintainer feedback is needed
+
+  # ─────────────── Difficulty Labels ───────────────
+  - difficulty/beginner:
+      description: "Beginner-friendly issue"
+      instructions: |
+        Use when:
+        - Issue is easy to understand
+        - Has clear scope and success criteria
+
+  - difficulty/intermediate:
+      description: "Moderately difficult"
+      instructions: |
+        Use for:
+        - Issues requiring some project knowledge
+        - Medium complexity tasks
+
+  - difficulty/advanced:
+      description: "High complexity or risk"
+      instructions: |
+        Use when:
+        - Involves core internals or design
+        - Requires deep understanding of system
+
+  # ─────────────── Meta / Utility Labels ───────────────
+  - good first issue:
+      description: "Good for newcomers"
+      instructions: |
+        Use only when:
+        - Task is small, clear, and well-scoped
+        - Suitable for contributors unfamiliar with the codebase
+
+  - help wanted:
+      description: "External contributions welcome"
+      instructions: |
+        Use when:
+        - Maintainers can’t fix it alone
+        - Community support is essential
+
+  - breaking change:
+      description: "Introduces backward-incompatible changes"
+      instructions: |
+        Use when:
+        - API or interface changes break existing usage
+        - Migration is required
+
+  - duplicate:
+      description: "Issue already reported"
+      instructions: |
+        Use when:
+        - Duplicate of another open or closed issue
+
+  - invalid:
+      description: "Not a valid issue"
+      instructions: |
+        Use when:
+        - Misfiled or unrelated issue
+        - Doesn’t meet contribution guidelines
+
+  - wontfix:
+      description: "Will not be fixed"
+      instructions: |
+        Use when:
+        - Project deliberately chooses not to fix
+        - Out of scope or deprecated
+
+  - question:
+      description: "Inquiry or clarification"
+      instructions: |
+        Use when:
+        - Issue is primarily asking a question
+        - Needs information before work can proceed
+
+  - discussion:
+      description: "Needs further discussion"
+      instructions: |
+        Use when:
+        - Architectural or community decision required
+        - Not ready for immediate implementation
+
+  # ─────────────── ActivityPub Labels ───────────────
+  - activitypub/interop:
+      description: "Interoperability with other servers"
+      instructions: |
+        Use for:
+        - Compatibility problems with other ActivityPub implementations
+        - Federation bugs or quirks
+
+  - activitypub/compliance:
+      description: "Standards compliance"
+      instructions: |
+        Use for:
+        - Deviations from ActivityPub or ActivityStreams spec
+        - Spec-driven conformance fixes
+
+  - activitypub/mastodon:
+      description: "Mastodon compatibility"
+      instructions: |
+        Use for:
+        - Issues that affect compatibility with Mastodon servers
+        - Federation problems specific to Mastodon
+
+  - activitypub/misskey:
+      description: "Misskey compatibility"
+      instructions: |
+        Use for:
+        - Issues that affect compatibility with Misskey servers
+        - Misskey-specific behavior or quirks
+
+  - activitypub/lemmy:
+      description: "Lemmy compatibility"
+      instructions: |
+        Use for:
+        - Issues related to federating with Lemmy
+        - Content types, collection behavior differences
+
+  # ─────────────── Examples/Tutorials Labels ───────────────
+  - examples:
+      description: "Example code related"
+      instructions: |
+        Use for:
+        - Example files provided in documentation or repository
+        - Snippets meant to illustrate usage
+
+  - tutorial:
+      description: "Tutorial related"
+      instructions: |
+        Use when:
+        - PRs or issues are focused on step-by-step guides
+        - Educational resources for new users
