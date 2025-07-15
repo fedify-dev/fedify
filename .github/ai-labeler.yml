@@ -230,7 +230,7 @@ labels:
       instructions: |
         Use when:
         - For issues, apply only if the author explicitly states that work has already started.
-        - Apply to all new pull requests. 
+        - Apply to all new pull requests
 
   - status/awaiting response:
       description: "Waiting for more information"
@@ -383,3 +383,4 @@ labels:
         Use when:
         - PRs or issues are focused on step-by-step guides
         - Educational resources for new users
+        
