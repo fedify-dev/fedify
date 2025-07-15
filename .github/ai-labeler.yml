@@ -218,13 +218,6 @@ labels:
         - Bun-specific issues or optimizations
 
   # ─────────────── Status Labels ───────────────
-  - status/needs triage:
-      description: "Needs review or categorization"
-      instructions: |
-        Use when:
-        - No label has been applied yet
-        - Further inspection is required
-
   - status/blocked:
       description: "Work is currently blocked"
       instructions: |
@@ -236,8 +229,8 @@ labels:
       description: "Work is actively being done"
       instructions: |
         Use when:
-        - A contributor is working on the issue
-        - PR is underway
+        - For issues, apply only if the author explicitly states that work has already started.
+        - Apply to all new pull requests. 
 
   - status/awaiting response:
       description: "Waiting for more information"
@@ -252,6 +245,13 @@ labels:
         Use when:
         - PR is complete
         - Maintainer feedback is needed
+
+  - status/needs triage:
+      description: "Needs review or categorization"
+      instructions: |
+        Use when:
+        - Issue's purpose is unclear and requires human review.
+        - Apply this if you cannot confidently assign a more specific `type/*` label.
 
   # ─────────────── Difficulty Labels ───────────────
   - difficulty/beginner:
@@ -280,13 +280,15 @@ labels:
       description: "Good for newcomers"
       instructions: |
         Use only when:
+        - The issue body explicitly mentions "good first issue"
         - Task is small, clear, and well-scoped
         - Suitable for contributors unfamiliar with the codebase
 
   - help wanted:
       description: "External contributions welcome"
       instructions: |
-        Use when:
+        Use only when:
+        - The issue body explicitly mentions "help wanted"
         - Maintainers can’t fix it alone
         - Community support is essential
 
