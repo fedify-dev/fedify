@@ -1,9 +1,9 @@
 instructions: |
-  Required Labels: Every issue should have at least one type/ label
-  Component Labels: Add relevant component labels when the issue affects specific parts of Fedify
-  Priority Labels: Use priority labels for issues that need special attention
-  Runtime Labels: Add runtime labels when issues affect specific JavaScript runtimes only
-  Status Labels: Use to track the current state of issues and pull requests
+  Required Labels: Every issue should have at least one `type/*` label.
+  Component Labels: Add relevant `component/*` labels when the issue affects specific parts of Fedify.
+  Priority Labels: Use `priority/*` labels for issues that need special attention.
+  Runtime Labels: Add `runtime/*` labels when issues affect specific JavaScript runtimes only.
+  Status Labels: Use `status/*` labels to track the current state of issues and pull requests.
 
 labels:
   # ─────────────── Priority Labels ───────────────
