@@ -20,18 +20,29 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Remove PR tag from npm
-        # Remove tag if exists
+      - name: Remove PR tags from npm
+        # Remove tags in fedify packages if exists
         run: |
-          PKG="@fedify/fedify"
           TAG="pr-${PR_NUMBER}"
           
-          if npm dist-tag ls "$PKG" | grep -q "^$TAG:" ; then
-            npm dist-tag rm "$PKG" "$TAG"
-            echo "Removed $TAG from $PKG"
-          else
-            echo "Tag $TAG does not exist."
-          fi
+          PKGS=(
+            "@fedify/fedify"
+            "@fedify/amqp"
+            "@fedify/express"
+            "@fedify/h3"
+            "@fedify/postgres"
+            "@fedify/redis"
+          )
+          
+          for PKG in "${PKGS[@]}"; do
+            if npm dist-tag ls "$PKG" | grep -q "^$TAG:" ; then
+              npm dist-tag rm "$PKG" "$TAG"
+              echo "Removed $TAG from $PKG"
+            else
+              echo "Tag $TAG does not exist on $PKG"
+            fi
+          done
+
         env:
           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
