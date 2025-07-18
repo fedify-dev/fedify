@@ -7,6 +7,8 @@ on:
 
 jobs:
   remove-pr-tags:
+    if: github.event.pull_request.merged == true
+
     runs-on: ubuntu-latest
 
     steps:
