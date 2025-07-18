@@ -1,0 +1,28 @@
+name: Remove npm PR tags
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  remove-pr-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Remove PR tag from npm
+        # Remove tag if exists, ignore error if not found
+        run: |
+          TAG="pr-${PR_NUMBER}"
+          npm dist-tag rm @fedify/fedify $TAG || echo "Tag $TAG not found, skipping."
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
