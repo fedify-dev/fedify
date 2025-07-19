@@ -61,6 +61,8 @@ export function integrateFederation<TContextData>(
 
       if (notFound || (notAcceptable && req.route != null)) return;
       await setEResponse(res, response);
+
+      next();
     }
   }
 
