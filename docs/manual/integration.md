@@ -326,13 +326,13 @@ export class AppModule implements NestModule {
         return {
           request: req,
           response: res,
-          url: new URL(req.url, `${req.protocol}://${req.get('host')}`),
+          url: new URL(req.url, process.env.FEDERATION_ORIGIN),
         };
       },
     );
 
     // Apply middleware to all routes except auth endpoints
-    consumer.apply(fedifyMiddleware)
+    consumer.apply(fedifyMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }
 ~~~~
