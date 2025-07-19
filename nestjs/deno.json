@@ -1,0 +1,23 @@
+{
+  "name": "@fedify/nestjs",
+  "version": "1.8.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "imports": {
+    "express": "npm:express@^4.0.0",
+    "@nestjs/common": "npm:@nestjs/common@^11.0.1"
+  },
+  "nodeModulesDir": "none",
+  "unstable": [
+    "temporal"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check *.ts"
+  }
+}

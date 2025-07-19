@@ -3,6 +3,7 @@ packages:
 - cli
 - amqp
 - express
+- nestjs
 - h3
 - postgres
 - redis
@@ -19,6 +20,7 @@ catalog:
   "@types/amqplib": ^0.10.7
   "@types/express": ^4.0.0
   "@types/node": ^22.16.0
+  "@nestjs/common": ^11.0.1
   amqplib: ^0.10.8
   express: ^4.0.0
   h3: ^1.15.0

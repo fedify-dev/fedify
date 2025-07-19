@@ -218,6 +218,124 @@ export const handle = fedifyHook(federation, (req) => "context data");
 [SvelteKit]: https://kit.svelte.dev/
 [Svelte]: https://svelte.dev/
 
+NestJS
+------
+
+*This API is available since Fedify 1.8.0.*
+
+[NestJS] is a modular, versatile, and scalable framework for building efficient, reliable, and scalable server-side applications with Node.js and TypeScript.
+The [@fedify/nestjs] package provides a middleware to integrate Fedify with
+NestJS:
+
+
+~~~~ typescript
+// --- modules/federation/federation.service ---
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import {
+  FEDIFY_FEDERATION,
+} from '@fedify/nestjs';
+import { Federation, parseSemver } from '@fedify/fedify';
+
+@Injectable()
+export class FederationService implements OnModuleInit {
+  private initialized = false;
+
+  constructor(
+    @Inject(FEDIFY_FEDERATION) private federation: Federation<unknown>,
+  ) { }
+
+  async onModuleInit() {
+    if (!this.initialized) {
+      await this.initialize();
+      this.initialized = true;
+    }
+  }
+
+  async initialize() {
+    this.federation.setNodeInfoDispatcher(async (context) => {
+      return {
+        software: {
+          name: "Fedify NestJS sample",
+          version: parseSemVer("0.0.1")
+        }
+      }
+    });
+  }
+}
+
+// --- modules/federation/federation.module.ts ---
+
+import { Module } from '@nestjs/common';
+import { FederationService } from './federation.service';
+
+@Module({
+  providers: [FederationService],
+  exports: [FederationService],
+})
+export class FederationModule {}
+
+// --- main.module.ts ---
+import {
+  Inject,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { DatabaseModule } from './database/database.module';
+import { FederationModule } from './modules/federation/federation.module';
+import { InProcessMessageQueue, MemoryKvStore, Federation } from '@fedify/fedify';
+
+import {
+  FEDIFY_FEDERATION,
+  FedifyModule,
+  integrateFederation,
+} from '@fedify/nestjs';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    DatabaseModule,
+    FedifyModule.forRoot({
+      kv: new MemoryKvStore(),
+      queue: new InProcessMessageQueue(),
+      origin: process.env.FEDERATION_ORIGIN || 'http://localhost:3000',
+    }),
+    FederationModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+
+export class AppModule implements NestModule {
+  constructor(
+    @Inject(FEDIFY_FEDERATION) private federation: Federation<unknown>,
+  ) { }
+
+  configure(consumer: MiddlewareConsumer) {
+    const fedifyMiddleware = integrateFederation(
+      this.federation,
+      async (req, res) => {
+        return {
+          request: req,
+          response: res,
+          url: new URL(req.url, `${req.protocol}://${req.get('host')}`),
+        };
+      },
+    );
+
+    // Apply middleware to all routes except auth endpoints
+    consumer.apply(fedifyMiddleware)
+  }
+}
+~~~~
+
+[NestJS]: https://nestjs.com/
+
 
 Custom middleware
 -----------------
