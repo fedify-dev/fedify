@@ -182,7 +182,10 @@ test("lookupObject()", {
   fetchMock.hardReset();
 });
 
-test("traverseCollection()", async () => {
+test("traverseCollection()", {
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, async () => {
   const options = {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
