@@ -86,6 +86,10 @@ the versioning.
 
      -  Added `@fedify/nestjs` package.
      -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+     
+  -  `lookupWebFinger()` now supports request cancellation via `AbortSignal`.
+     [[#51] by Hyunchae Kim]
+
 
 
 [#168]: https://github.com/fedify-dev/fedify/issues/168
@@ -102,6 +106,7 @@ the versioning.
 [#300]: https://github.com/fedify-dev/fedify/pull/300
 [#304]: https://github.com/fedify-dev/fedify/issues/304
 [#309]: https://github.com/fedify-dev/fedify/pull/309
+[#51]: https://github.com/fedify-dev/fedify/issues/51
 
 
 Version 1.7.5
