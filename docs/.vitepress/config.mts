@@ -76,9 +76,21 @@ const MANUAL = {
     { text: "Testing", link: "/manual/test.md" },
     { text: "Logging", link: "/manual/log.md" },
     { text: "OpenTelemetry", link: "/manual/opentelemetry.md" },
-    { text: "Deployment", link: "/manual/deploy.md" }
+    { text: "Deployment", link: "/manual/deploy.md" },
   ],
   activeMatch: "/manual",
+};
+
+const REFERENCES = {
+  text: "References",
+  items: [
+    { text: "@fedify/fedify", link: "https://jsr.io/@fedify/fedify/doc" },
+    { text: "@fedify/amqp", link: "https://jsr.io/@fedify/amqp/doc" },
+    { text: "@fedify/express", link: "https://jsr.io/@fedify/express/doc" },
+    { text: "@fedify/h3", link: "https://jsr.io/@fedify/h3/doc" },
+    { text: "@fedify/postgres", link: "https://jsr.io/@fedify/postgres/doc" },
+    { text: "@fedify/redis", link: "https://jsr.io/@fedify/redis/doc" },
+  ],
 };
 
 export default withMermaid(defineConfig({
@@ -92,7 +104,7 @@ export default withMermaid(defineConfig({
       { text: "CLI", link: "/cli.md" },
       TUTORIAL,
       MANUAL,
-      { text: "API reference", link: "https://jsr.io/@fedify/fedify" },
+      REFERENCES,
       ...extraNav,
     ],
 
@@ -106,6 +118,7 @@ export default withMermaid(defineConfig({
       },
       TUTORIAL,
       MANUAL,
+      REFERENCES,
       {
         text: "Examples",
         link: "https://github.com/fedify-dev/fedify/tree/main/examples",
@@ -215,6 +228,8 @@ export default withMermaid(defineConfig({
             moduleResolution: ModuleResolutionKind.Bundler,
             module: ModuleKind.ESNext,
             target: ScriptTarget.ESNext,
+            experimentalDecorators: true, // For @fedify/nestjs
+            emitDecoratorMetadata: true, // For @fedify/nestjs
             lib: ["dom", "dom.iterable", "esnext"],
             types: [
               "dom",

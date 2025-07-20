@@ -87,6 +87,38 @@ see the [*Building the docs* section](#building-the-docs).
 [setext headings]: https://spec.commonmark.org/0.31.2/#setext-headings
 [ATX headings]: https://spec.commonmark.org/0.31.2/#atx-headings
 
+### Branch policy
+
+Fedify follows a structured branching strategy for managing releases and
+maintenance:
+
+#### Branch types
+
+ -  **main**: Contains unreleased development for the next major/minor version.
+ -  **x.y-maintenance**: Maintenance branches for released major/minor versions
+    (e.g., *1.5-maintenance*, *1.6-maintenance*).
+
+#### Target branches
+
+ -  **New features**: Always target the *main* branch.
+ -  **Bug fixes**: Target the oldest applicable maintenance branch that contains
+    the bug.
+
+#### Release and merge strategy
+
+When a bug is fixed in a maintenance branch:
+
+ 1. Fix the bug in the oldest affected maintenance branch
+    (e.g., *1.5-maintenance*).
+ 2. Create a new patch release tag (e.g., `1.5.1`).
+ 3. Merge the fix into the next maintenance branch (e.g., *1.6-maintenance*).
+ 4. Create a new patch release tag for that branch (e.g., `1.6.1`).
+ 5. Continue merging forward through all subsequent maintenance branches.
+ 6. Finally merge into *main*.
+
+This ensures that all maintenance branches and the main development branch
+include the fix.
+
 ### Bug fix
 
 If you want to fix a bug in Fedify, please search the [GitHub issue tracker] to

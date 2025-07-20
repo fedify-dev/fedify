@@ -1,5 +1,6 @@
 import metadata from "../deno.json" with { type: "json" };
 import { generateField, getFieldName } from "./field.ts";
+import { isNonFunctionalProperty } from "./schema.ts";
 import type { TypeSchema } from "./schema.ts";
 import {
   areAllScalarTypes,
@@ -94,7 +95,10 @@ export async function* generateEncoder(
       }
       if (compactItems.length > 0) {
       `;
-      if (property.functional || property.container !== "list") {
+      if (
+        property.functional ||
+        (isNonFunctionalProperty(property) && property.container !== "list")
+      ) {
         yield `
         result[${JSON.stringify(property.compactName)}]
           = compactItems.length > 1
@@ -162,7 +166,7 @@ export async function* generateEncoder(
     yield `
       );
     `;
-    if (!property.functional && property.container === "graph") {
+    if (isNonFunctionalProperty(property) && property.container === "graph") {
       yield `array.push({ "@graph": element });`;
     } else {
       yield `array.push(element);`;
@@ -172,7 +176,7 @@ export async function* generateEncoder(
     if (array.length > 0) {
       const propValue = (
     `;
-    if (!property.functional && property.container === "list") {
+    if (isNonFunctionalProperty(property) && property.container === "list") {
       yield `{ "@list": array }`;
     } else {
       yield `array`;

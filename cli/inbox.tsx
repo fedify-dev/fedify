@@ -35,6 +35,42 @@ import { recordingSink } from "./log.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 
+/**
+ * Context data for the ephemeral ActivityPub inbox server.
+ *
+ * This interface defines the shape of context data passed to federation
+ * handlers during inbox command execution.
+ */
+interface ContextData {
+  activityIndex: number;
+  actorName: string;
+  actorSummary: string;
+}
+
+/**
+ * Options for actor customization.
+ */
+interface ActorOptions {
+  actorName: string;
+  actorSummary: string;
+}
+
+/**
+ * Options for the inbox command.
+ */
+export interface InboxOptions {
+  follow?: string[];
+  acceptFollow?: string[];
+  tunnel: boolean;
+  noTunnel?: boolean; // for -T shorthand support
+}
+
+export const TunnelConfig = {
+  shouldDisableTunnel: (opts: InboxOptions): boolean => {
+    return opts.tunnel === false || opts.noTunnel === true;
+  },
+} as const;
+
 const logger = getLogger(["fedify", "cli", "inbox"]);
 
 export const command = new Command()
@@ -61,13 +97,26 @@ export const command = new Command()
     "-T, --no-tunnel",
     "Do not tunnel the ephemeral ActivityPub server to the public Internet.",
   )
-  .action(async (options) => {
+  .option(
+    "--actor-name=<name:string>",
+    "Customize the actor display name.",
+    { default: "Fedify Ephemeral Inbox" },
+  )
+  .option(
+    "--actor-summary=<summary:string>",
+    "Customize the actor description.",
+    { default: "An ephemeral ActivityPub inbox for testing purposes." },
+  )
+  .action(async (options: InboxOptions & ActorOptions) => {
+    const fetch = createFetchHandler(options);
+    const sendDeleteToPeers = createSendDeleteToPeers(options);
+
     const spinner = ora({
       text: "Spinning up an ephemeral ActivityPub server...",
       discardStdin: false,
     }).start();
     const server = await spawnTemporaryServer(fetch, {
-      noTunnel: !options.tunnel,
+      noTunnel: TunnelConfig.shouldDisableTunnel(options),
     });
     spinner.succeed(
       `The ephemeral ActivityPub server is up and running: ${
@@ -93,7 +142,13 @@ export const command = new Command()
       });
     });
     spinner.start();
-    const fedCtx = federation.createContext(server.url, -1);
+
+    const fedCtx = federation.createContext(server.url, {
+      activityIndex: -1,
+      actorName: options.actorName,
+      actorSummary: options.actorSummary,
+    });
+
     if (options.acceptFollow != null && options.acceptFollow.length > 0) {
       acceptFollows.push(...(options.acceptFollow ?? []));
     }
@@ -128,7 +183,7 @@ export const command = new Command()
     printServerInfo(fedCtx);
   });
 
-const federation = createFederation<number>({
+const federation = createFederation<ContextData>({
   kv: new MemoryKvStore(),
   documentLoader: await getDocumentLoader(),
 });
@@ -142,8 +197,8 @@ federation
     return new Application({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
-      name: "Fedify Ephemeral Inbox",
-      summary: "An ephemeral ActivityPub inbox for testing purposes.",
+      name: ctx.data.actorName,
+      summary: ctx.data.actorSummary,
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
         sharedInbox: ctx.getInboxUri(),
@@ -196,26 +251,37 @@ async function acceptsFollowFrom(actor: Actor): Promise<boolean> {
 
 const peers: Record<string, Actor> = {};
 
-async function sendDeleteToPeers(server: TemporaryServer): Promise<void> {
-  const ctx = federation.createContext(new Request(server.url), -1);
-  const actor = (await ctx.getActor("i"))!;
-  try {
-    await ctx.sendActivity(
-      { identifier: "i" },
-      Object.values(peers),
-      new Delete({
-        id: new URL(`#delete`, actor.id!),
-        actor: actor.id!,
-        to: PUBLIC_COLLECTION,
-        object: actor,
-      }),
-    );
-  } catch (error) {
-    logger.error(
-      "Failed to send Delete(Application) activities to peers:\n{error}",
-      { error },
-    );
-  }
+function createSendDeleteToPeers(
+  actorOptions: ActorOptions,
+): (server: TemporaryServer) => Promise<void> {
+  return async function sendDeleteToPeers(
+    server: TemporaryServer,
+  ): Promise<void> {
+    const ctx = federation.createContext(new Request(server.url), {
+      activityIndex: -1,
+      actorName: actorOptions.actorName,
+      actorSummary: actorOptions.actorSummary,
+    });
+
+    const actor = (await ctx.getActor("i"))!;
+    try {
+      await ctx.sendActivity(
+        { identifier: "i" },
+        Object.values(peers),
+        new Delete({
+          id: new URL(`#delete`, actor.id!),
+          actor: actor.id!,
+          to: PUBLIC_COLLECTION,
+          object: actor,
+        }),
+      );
+    } catch (error) {
+      logger.error(
+        "Failed to send Delete(Application) activities to peers:\n{error}",
+        { error },
+      );
+    }
+  };
 }
 
 const followers: Record<string, Actor> = {};
@@ -224,7 +290,7 @@ federation
   .setInboxListeners("/{identifier}/inbox", "/inbox")
   .setSharedKeyDispatcher((_) => ({ identifier: "i" }))
   .on(Activity, async (ctx, activity) => {
-    activities[ctx.data].activity = activity;
+    activities[ctx.data.activityIndex].activity = activity;
     for await (const actor of activity.getActors()) {
       if (actor.id != null) peers[actor.id.href] = actor;
     }
@@ -309,7 +375,7 @@ federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
   };
 });
 
-function printServerInfo(fedCtx: Context<number>): void {
+function printServerInfo(fedCtx: Context<ContextData>): void {
   new Table(
     [
       new Cell("Actor handle:").align("right"),
@@ -411,30 +477,39 @@ app.get("/r/:idx{[0-9]+}", (c) => {
   );
 });
 
-async function fetch(request: Request): Promise<Response> {
-  const timestamp = Temporal.Now.instant();
-  const idx = activities.length;
-  const pathname = new URL(request.url).pathname;
-  if (pathname === "/r" || pathname.startsWith("/r/")) {
-    return app.fetch(request);
-  }
-  const inboxRequest = pathname === "/inbox" || pathname.startsWith("/i/inbox");
-  if (inboxRequest) {
-    recordingSink.startRecording();
-    // @ts-ignore: Work around `deno publish --dry-run` bug
-    activities.push({ timestamp, request: request.clone(), logs: [] });
-  }
-  const response = await federation.fetch(request, {
-    contextData: inboxRequest ? idx : -1,
-    onNotAcceptable: app.fetch.bind(app),
-    onNotFound: app.fetch.bind(app),
-    onUnauthorized: app.fetch.bind(app),
-  });
-  if (inboxRequest) {
-    recordingSink.stopRecording();
-    activities[idx].response = response.clone();
-    activities[idx].logs = recordingSink.getRecords();
-    printActivityEntry(idx, activities[idx]);
-  }
-  return response;
+function createFetchHandler(
+  actorOptions: ActorOptions,
+): (request: Request) => Promise<Response> {
+  return async function fetch(request: Request): Promise<Response> {
+    const timestamp = Temporal.Now.instant();
+    const idx = activities.length;
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/r" || pathname.startsWith("/r/")) {
+      return app.fetch(request);
+    }
+    const inboxRequest = pathname === "/inbox" ||
+      pathname.startsWith("/i/inbox");
+    if (inboxRequest) {
+      recordingSink.startRecording();
+      // @ts-ignore: Work around `deno publish --dry-run` bug
+      activities.push({ timestamp, request: request.clone(), logs: [] });
+    }
+    const response = await federation.fetch(request, {
+      contextData: {
+        activityIndex: inboxRequest ? idx : -1,
+        actorName: actorOptions.actorName,
+        actorSummary: actorOptions.actorSummary,
+      },
+      onNotAcceptable: app.fetch.bind(app),
+      onNotFound: app.fetch.bind(app),
+      onUnauthorized: app.fetch.bind(app),
+    });
+    if (inboxRequest) {
+      recordingSink.stopRecording();
+      activities[idx].response = response.clone();
+      activities[idx].logs = recordingSink.getRecords();
+      printActivityEntry(idx, activities[idx]);
+    }
+    return response;
+  };
 }

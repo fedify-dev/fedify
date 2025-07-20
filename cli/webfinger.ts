@@ -101,7 +101,7 @@ class NotFoundError extends Error {
  * console.log(url.toString()); // "https://domain.com/@username"
  * ```
  */
-function convertHandleToUrl(handle: string): URL {
+export function convertHandleToUrl(handle: string): URL {
   return toAcctUrl(handle) ?? // Convert the handle to a URL
     new InvalidHandleError(handle).throw(); // or throw an error if invalid
 }

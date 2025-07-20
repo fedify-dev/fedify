@@ -1,0 +1,48 @@
+name: Documentation
+description: >-
+  Report missing, outdated, or incorrect documentation that needs
+  improvement
+labels: [ "type/documentation" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Focuses on correcting, updating, or creating documentation.
+        
+        - Includes: Affected files, what’s missing or incorrect, suggested content.
+        - Goal: Improve clarity, completeness, and usefulness of docs.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the documentation issue.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Affected Docs
+      description: Specify which documentation needs changes (file, section, etc.).
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: What's Missing or Incorrect?
+      description: Describe the issue with the current documentation.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Suggested Content or Structure
+      description: Suggest how the content or structure should be updated.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Related Code / Feature
+      description: Reference any related code or features, if relevant.
+    validations:
+      required: false

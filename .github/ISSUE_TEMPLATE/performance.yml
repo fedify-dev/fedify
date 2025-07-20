@@ -1,0 +1,46 @@
+name: Performance optimization
+description: >-
+  Report performance bottlenecks or suggest optimizations for speed and
+  efficiency
+labels: [ "type/performance" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Optimizations aimed at improving speed or resource usage.
+        
+        - Includes: benchmarks, affected areas.
+        - Goal: Make the system faster or more efficient.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the change you're proposing.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Target Area
+      description: Which part of the codebase is affected?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Why does this change matter? What are you trying to improve?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Risk Assessment
+      description: Is there any risk of regressions or unintended side effects?
+
+  - type: textarea
+    attributes:
+      label: Benchmarks
+      description: Share any profiling data, timing comparisons, or relevant test results.
+    validations:
+      required: true

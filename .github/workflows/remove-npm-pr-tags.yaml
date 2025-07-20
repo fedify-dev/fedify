@@ -1,0 +1,42 @@
+name: Remove npm PR tags
+
+on:
+  pull_request_target:
+    types:
+      - closed
+
+jobs:
+  remove-pr-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Remove PR tags from npm
+        # Remove tags in fedify packages if exists
+        run: |
+          TAG="pr-${PR_NUMBER}"
+          npm config set //registry.npmjs.org/:_authToken "$NPM_AUTH_TOKEN"
+          pnpm list --depth -1 -r --json | jq -r '.[].name | select(.)' | while IFS= read -r PKG; do
+            if npm dist-tag ls "$PKG" | grep -q "^$TAG:" ; then
+              npm dist-tag rm "$PKG" "$TAG"
+              echo "Removed $TAG from $PKG"
+            else
+              echo "Tag $TAG does not exist on $PKG"
+            fi
+          done
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

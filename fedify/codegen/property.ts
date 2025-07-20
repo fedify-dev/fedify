@@ -1,6 +1,7 @@
 import { pascalCase } from "es-toolkit";
 import metadata from "../deno.json" with { type: "json" };
 import { getFieldName } from "./field.ts";
+import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import type { PropertySchema, TypeSchema } from "./schema.ts";
 import { areAllScalarTypes, getTypeNames } from "./type.ts";
 
@@ -29,7 +30,7 @@ async function* generateProperty(
   const override = emitOverride(type.uri, types, property);
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
   if (areAllScalarTypes(property.range, types)) {
-    if (property.functional || property.singularAccessor) {
+    if (hasSingularAccessor(property)) {
       yield doc;
       yield `${override} get ${property.singularName}(): (${
         getTypeNames(property.range, types)
@@ -45,7 +46,7 @@ async function* generateProperty(
       }
       `;
     }
-    if (!property.functional) {
+    if (isNonFunctionalProperty(property)) {
       yield doc;
       yield `get ${property.pluralName}(): (${
         getTypeNames(property.range, types, true)
@@ -161,7 +162,7 @@ async function* generateProperty(
     }
 
     `;
-    if (property.functional || property.singularAccessor) {
+    if (hasSingularAccessor(property)) {
       yield `
       /**
        * Similar to
@@ -230,7 +231,7 @@ async function* generateProperty(
       }
       `;
     }
-    if (!property.functional) {
+    if (isNonFunctionalProperty(property)) {
       yield `
       /**
        * Similar to

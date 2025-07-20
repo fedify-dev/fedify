@@ -1,0 +1,47 @@
+name: Test coverage
+description: >-
+  Add or improve test coverage, fix broken tests, or enhance testing infrastructure
+labels: [ "type/test" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Improving or adding test coverage.
+        
+        - Includes: Scope, test strategy, and rationale.
+        - Goal: Ensure stability and prevent regressions.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the change you're proposing.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Target Area
+      description: Which part of the codebase is affected?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Why does this change matter? What are you trying to improve?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Risk Assessment
+      description: Is there any risk of regressions or unintended side effects?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Benefits
+      description: What should be improved, simplified, or resolved as a result?
+    validations:
+      required: false

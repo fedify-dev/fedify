@@ -89,7 +89,10 @@ export function getTypeId(
 export function getTypeId(
   object: Object | Link | undefined | null,
 ): URL | undefined | null {
-  if (object == null) return object;
+  // TODO: Deno 2.4.2's TypeScript doesn't properly narrow the type with `object == null` check,
+  // so we need an explicit type assertion here. This should be revisited when upgrading
+  // to newer versions that might fix this type narrowing issue.
+  if (object == null) return object as undefined | null;
   const cls = object.constructor as
     & (new (...args: unknown[]) => Object | Link)
     & {

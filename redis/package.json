@@ -1,6 +1,6 @@
 {
   "name": "@fedify/redis",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Redis drivers for Fedify",
   "keywords": [
     "fedify",

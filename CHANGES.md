@@ -3,10 +3,11 @@
 Fedify changelog
 ================
 
-Version 1.8.0
+Version 1.8.1
 -------------
 
-To be released.
+To be released.  Note that 1.8.0 was skipped due to a mistake in
+the versioning.
 
  -  The repository has been restructured as a monorepo, consolidating all
     Fedify packages into a single repository with unified versioning.  This
@@ -31,6 +32,13 @@ To be released.
      -  Added `MemoryKvStore.cas()` method.
      -  Added `DenoKvStore.cas()` method.
 
+ -  Added options to customize the temporary actor information when running
+    `fedify inbox` command.  [[#262], [#285] by Hasang Cho]
+
+     -  Added `--actor-name` option to customize the actor display name.
+     -  Added `--actor-summary` option to customize the actor description.
+     -  Both options provide sensible defaults when not specified.
+
  -  Added useful functions for fediverse handles at `@fedify/fedify/vocab`.
     This functions simplify working with fediverse handles and URLs.
     [[#278] by ChanHaeng Lee]
@@ -45,6 +53,15 @@ To be released.
  -  Added `LookupWebFingerOptions.maxRedirection` option.
     [[#248], [#281] by Lee ByeongJun]
 
+ -  Optimized `doubleKnock()` function to avoid multiple request body clones
+    during redirects.  The request body is now read once and reused throughout
+    the entire operation, preventing potential `TypeError: unusable` errors
+    and improving performance.  [[#300] by Fabien O'Carroll]
+
+     -  Added `SignRequestOptions.body` option.
+     -  Added `DoubleKnockOptions.body` option.
+     -  Updated internal signing functions to accept pre-read body buffers.
+
  -  Added `fedify webfinger` command. This command allows users to look up
     WebFinger information for a given resource.
     [[#260], [#278] by ChanHaeng Lee]
@@ -56,10 +73,57 @@ To be released.
      -  The `--allow-private-address` or `-p` option allows looking up
         WebFinger information for private addresses (e.g., `localhost`).
 
+  -  Added `--dry-run` option to `fedify init` command.  This option allows users
+    to preview what files and configurations would be created without actually
+    creating them.  [[#263], [#298] by Lee ByeongJun]
+
+  -  Fixed a bug where the `fedify node` command had failed to correctly
+     render the favicon in terminal emulators that do not support 24-bit
+     colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
+
+  -  Supported NestJS integration with the `@fedify/nestjs` package.
+     [[#269], [#309] by Jaeyeol Lee]
+
+     -  Added `@fedify/nestjs` package.
+     -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+
+[#168]: https://github.com/fedify-dev/fedify/issues/168
 [#248]: https://github.com/fedify-dev/fedify/issues/248
 [#260]: https://github.com/fedify-dev/fedify/issues/260
+[#262]: https://github.com/fedify-dev/fedify/issues/262
+[#263]: https://github.com/fedify-dev/fedify/issues/263
+[#269]: https://github.com/fedify-dev/fedify/issues/269
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
+[#282]: https://github.com/fedify-dev/fedify/pull/282
+[#285]: https://github.com/fedify-dev/fedify/pull/285
+[#298]: https://github.com/fedify-dev/fedify/pull/298
+[#300]: https://github.com/fedify-dev/fedify/pull/300
+[#304]: https://github.com/fedify-dev/fedify/issues/304
+[#309]: https://github.com/fedify-dev/fedify/pull/309
+
+
+Version 1.7.5
+-------------
+
+Released on July 15, 2025.
+
+ -  Fixed `TypeError: unusable` error that occurred when `doubleKnock()`
+    encountered redirects during HTTP signature retry attempts.
+    [[#294], [#295]]
+
+
+Version 1.7.4
+-------------
+
+Released on July 13, 2025.
+
+  - Fixed a bug the `-T`/`--no-tunnel` option in the `fedify inbox` command
+    was being ignored, causing the server to always create a public tunnel
+    regardless of the flag. [[#243], [#284] by Lee ByeongJun]
+
+[#243]: https://github.com/fedify-dev/fedify/issues/243
+[#284]: https://github.com/fedify-dev/fedify/pull/284
 
 
 Version 1.7.3
@@ -120,6 +184,19 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.6
+-------------
+
+Released on July 15, 2025.
+
+ -  Fixed `TypeError: unusable` error that occurred when `doubleKnock()`
+    encountered redirects during HTTP signature retry attempts.
+    [[#294], [#295]]
+
+[#294]: https://github.com/fedify-dev/fedify/issues/294
+[#295]: https://github.com/fedify-dev/fedify/pull/295
 
 
 Version 1.6.5

@@ -208,6 +208,29 @@ type EmbeddedContext = Record<string, TermDefinition>;
 type TermDefinition = Uri | Record<string, Uri | "@id">;
 
 /**
+ * Type guard to check if a property is not functional (has pluralName).
+ */
+export function isNonFunctionalProperty(
+  property: PropertySchema,
+): property is PropertySchemaBase & PropertySchemaTyping & {
+  functional?: false;
+  pluralName: string;
+  singularAccessor?: boolean;
+  container?: "graph" | "list";
+} {
+  return property.functional !== true;
+}
+
+/**
+ * Type guard to check if a property has singular accessor.
+ */
+export function hasSingularAccessor(property: PropertySchema): boolean {
+  if (property.functional === true) return true;
+  return isNonFunctionalProperty(property) &&
+    property.singularAccessor === true;
+}
+
+/**
  * An error that occurred while loading a schema file.
  */
 export class SchemaError extends Error {

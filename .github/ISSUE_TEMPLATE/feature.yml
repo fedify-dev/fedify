@@ -1,0 +1,47 @@
+name: Feature request
+description: >-
+  Propose new functionality or capabilities to be added to the Fedify project
+labels: [ "type/feature" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A request to add entirely new functionality.
+        
+        - Includes: Motivation, proposed solution, and use cases.
+        - Goal: Expand capabilities of the system.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the feature or enhancement you're suggesting.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Problem
+      description: Why is this needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution
+      description: Describe your suggested solution or behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives Considered
+      description: Have you thought of other approaches or solutions?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Scope / Dependencies
+      description: What parts of the system would be affected or require changes?
+    validations:
+      required: false

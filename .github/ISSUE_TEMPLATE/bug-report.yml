@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a bug or unexpected behavior
+labels: [ "type/bug" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Focuses on reporting unintended behavior in the system.
+
+        - Requires: Reproducible steps, expected vs. actual behavior, environment details.
+        - Goal: Help identify and fix logic or runtime errors.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Describe the issue you're reporting.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Environment
+      description: |
+        Specify your runtime and operating system.
+        - OS:
+        - Runtime (Deno / Node.js / Bun / Cloudflare Workers):
+        - Runtime version:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Logs / Screenshots
+      description: Paste logs or add screenshots to help us diagnose the issue.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Provide a step-by-step guide to reproduce the issue.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+      

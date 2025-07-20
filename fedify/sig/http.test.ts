@@ -1877,3 +1877,61 @@ test("verifyRequest() [rfc9421] error handling for invalid signature base creati
     "Verification should fail gracefully for malformed signature inputs",
   );
 });
+
+test("doubleKnock() regression test for TypeError: unusable bug #294", async () => {
+  // This test reproduces the bug where request.clone().body in the second redirect
+  // handling path causes "TypeError: unusable" when the body is consumed before
+  // subsequent clone() calls in signRequest functions.
+
+  fetchMock.spyGlobal();
+
+  let requestCount = 0;
+
+  // Mock server that:
+  // 1. Returns 401 for first spec (triggers retry with different spec)
+  // 2. Returns 302 redirect for second spec (triggers redirect handling)
+  // 3. Returns 200 for final destination
+  fetchMock.post("https://example.com/inbox-retry-redirect", (_cl) => {
+    requestCount++;
+
+    if (requestCount === 1) {
+      // First request: reject to trigger retry with different spec
+      return new Response("Unauthorized", { status: 401 });
+    } else if (requestCount === 2) {
+      // Second request: redirect to trigger the problematic redirect handling
+      return Response.redirect("https://example.com/final-destination", 302);
+    }
+
+    return new Response("Should not reach here", { status: 500 });
+  });
+
+  // Mock final destination
+  fetchMock.post("https://example.com/final-destination", () => {
+    return new Response("Success", { status: 200 });
+  });
+
+  const request = new Request("https://example.com/inbox-retry-redirect", {
+    method: "POST",
+    body: "Test activity content",
+    headers: {
+      "Content-Type": "application/activity+json",
+    },
+  });
+
+  // This should trigger the bug: 401 -> retry -> 302 -> TypeError: unusable
+  // because the second redirect path uses request.clone().body instead of
+  // await request.clone().arrayBuffer()
+  const response = await doubleKnock(
+    request,
+    {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    },
+  );
+
+  // The test should pass after the fix
+  assertEquals(response.status, 200);
+  assertEquals(requestCount, 2, "Should make 2 requests before redirect");
+
+  fetchMock.hardReset();
+});

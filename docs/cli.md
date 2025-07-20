@@ -196,6 +196,28 @@ option.  The available options are:
 If it's omitted, the in-process message queue (which is for development purpose)
 will be used.
 
+### `--dry-run`: Preview without creating files
+
+*This option is available since Fedify 1.8.0.*
+
+The `--dry-run` option allows you to preview what files and configurations would
+be created without actually creating them.  This is useful for reviewing the
+project structure before committing to the initialization.
+
+~~~~ sh
+fedify init my-fedify-project --dry-run
+~~~~
+
+When using `--dry-run`, the command will:
+
+ -  Display all files that would be created with their contents
+ -  Show which dependencies would be installed
+ -  Preview any commands that would be executed
+ -  Not create any directories or files on your filesystem
+
+This option works with all other initialization options, allowing you to preview
+different configurations before making a decision.
+
 
 `fedify lookup`: Looking up an ActivityPub object
 -------------------------------------------------

@@ -1,0 +1,43 @@
+name: Maintenance task
+description: >-
+  Routine maintenance, build configuration, tooling updates,
+  and other non-functional improvements
+labels: [ "type/chore" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Non-functional tasks related to configuration, tooling, or infrastructure.
+        
+        - Includes: CI/CD changes, build system tweaks, formatting configs.
+        - Goal: Improve the development workflow and internal operations.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the task or change you're proposing.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Affected Area
+      description: What part of the system or tooling is involved?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Reason / Context
+      description: Why is this task necessary? Include any relevant background.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Checklist
+      description: Steps to complete this task.
+      placeholder: |
+        1. 
+        2. 
+        3. 

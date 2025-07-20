@@ -1,4 +1,5 @@
-import { dirname, join } from "@std/path";
+import { dirname, fromFileUrl, join, normalize, resolve } from "@std/path";
+import { parse } from "@std/yaml";
 import workspaceMetadata from "../deno.json" with { type: "json" };
 import fedifyMetadata from "../fedify/deno.json" with { type: "json" };
 
@@ -11,8 +12,21 @@ if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
   Deno.exit(0);
 }
 
-const workspaceMembers = workspaceMetadata.workspace;
 const fix = Deno.args.includes("--fix") || Deno.args.includes("-f");
+
+const workspaceMembers = workspaceMetadata.workspace;
+const pnpmWorkspace = await Deno.readTextFile(
+  fromFileUrl(import.meta.resolve("../pnpm-workspace.yaml")),
+);
+const projectRoot = dirname(import.meta.dirname!);
+const normalizedWorkspaceMembers = workspaceMembers.map((member) =>
+  normalize(resolve(projectRoot, member))
+);
+for (const pkg of (parse(pnpmWorkspace) as { packages: string[] }).packages) {
+  const normalizedPkg = normalize(resolve(projectRoot, pkg));
+  if (normalizedWorkspaceMembers.includes(normalizedPkg)) continue;
+  workspaceMembers.push(pkg);
+}
 
 let version = fedifyMetadata.version;
 let mismatched = 0;
@@ -21,30 +35,32 @@ for (const member of workspaceMembers) {
 
   // deno.json
   const denoJsonPath = join(memberPath, "deno.json");
-  let denoJson: string;
+  let denoJson: string | undefined;
   try {
     denoJson = await Deno.readTextFile(denoJsonPath);
   } catch {
-    continue;
+    denoJson = undefined;
   }
-  const deno = JSON.parse(denoJson);
-  if (deno.version) {
-    if (version == null) version = deno.version;
-    else if (version !== deno.version) {
-      mismatched++;
-      console.error(
-        "Version mismatch in %o: expected %o, found %o",
-        join(member, "deno.json"),
-        version,
-        deno.version,
-      );
-      if (fix) {
-        deno.version = version;
-        await Deno.writeTextFile(
-          denoJsonPath,
-          JSON.stringify(deno, null, 2) + "\n",
+  if (denoJson != null) {
+    const deno = JSON.parse(denoJson);
+    if (deno.version) {
+      if (version == null) version = deno.version;
+      else if (version !== deno.version) {
+        mismatched++;
+        console.error(
+          "Version mismatch in %o: expected %o, found %o",
+          join(member, "deno.json"),
+          version,
+          deno.version,
         );
-        console.error("Fixed version in %o", denoJsonPath);
+        if (fix) {
+          deno.version = version;
+          await Deno.writeTextFile(
+            denoJsonPath,
+            JSON.stringify(deno, null, 2) + "\n",
+          );
+          console.error("Fixed version in %o", denoJsonPath);
+        }
       }
     }
   }
@@ -58,7 +74,7 @@ for (const member of workspaceMembers) {
     continue;
   }
   const pkg = JSON.parse(pkgJson);
-  if (pkg.version) {
+  if (pkg.version && !pkg.private) {
     if (version == null) version = pkg.version;
     else if (version !== pkg.version) {
       mismatched++;

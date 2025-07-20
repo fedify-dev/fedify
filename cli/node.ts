@@ -98,7 +98,9 @@ export const command = new Command()
             buffer = images[0].buffer;
           }
           const image = await Jimp.read(buffer);
-          layout = getAsciiArt(image).split("\n").map((line) => ` ${line}  `);
+          const colorSupport = checkTerminalColorSupport();
+          layout = getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport)
+            .split("\n").map((line) => ` ${line}  `);
           defaultWidth = 41;
         } else {
           logger.error(
@@ -219,7 +221,7 @@ const LINK_REGEXP =
   /<link((?:\s+(?:[-a-z]+)=(?:"[^"]*"|'[^']*'|[^\s]+))*)\s*\/?>/ig;
 const LINK_ATTRS_REGEXP = /(?:\s+([-a-z]+)=("[^"]*"|'[^']*'|[^\s]+))/ig;
 
-async function getFaviconUrl(
+export async function getFaviconUrl(
   url: string | URL,
   userAgent?: string,
 ): Promise<URL> {
@@ -251,19 +253,104 @@ async function getFaviconUrl(
   return new URL("/favicon.ico", response.url);
 }
 
-const Jimp = createJimp({
+export const Jimp = createJimp({
   formats: [...defaultFormats, webp],
   plugins: defaultPlugins,
 });
+
+function checkTerminalColorSupport(): "truecolor" | "256color" | "none" {
+  // Check if colors are explicitly disabled
+  const noColor = Deno.env.get("NO_COLOR");
+  if (noColor != null && noColor !== "") {
+    return "none";
+  }
+
+  // Check for true color (24-bit) support
+  const colorTerm = Deno.env.get("COLORTERM");
+  if (
+    colorTerm != null &&
+    (colorTerm.includes("24bit") || colorTerm.includes("truecolor"))
+  ) {
+    return "truecolor";
+  }
+
+  // Check for xterm 256-color support
+  const term = Deno.env.get("TERM");
+  if (
+    term != null &&
+    (term.includes("256color") ||
+      term.includes("xterm") ||
+      term === "screen" ||
+      term === "tmux")
+  ) {
+    return "256color";
+  }
+
+  // Fallback: assume basic color support if TERM is set
+  if (term != null && term !== "dumb") {
+    return "256color";
+  }
+
+  return "none";
+}
+
+const DEFAULT_IMAGE_WIDTH = 38;
 
 const ASCII_CHARS =
   // cSpell: disable
   "█▓▒░@#B8&WM%*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
 // cSpell: enable
 
-function getAsciiArt(
+const CUBE_VALUES = [0, 95, 135, 175, 215, 255];
+
+const findClosestIndex = (value: number): number => {
+  let minDiff = Infinity;
+  let closestIndex = 0;
+  for (let idx = 0; idx < CUBE_VALUES.length; idx++) {
+    const diff = Math.abs(value - CUBE_VALUES[idx]);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestIndex = idx;
+    }
+  }
+  return closestIndex;
+};
+
+export function rgbTo256Color(r: number, g: number, b: number): number {
+  // Check if it's a grayscale color first (when all RGB values are very close)
+  const gray = Math.round((r + g + b) / 3);
+  const isGrayscale = Math.abs(r - gray) <= 5 && Math.abs(g - gray) <= 5 &&
+    Math.abs(b - gray) <= 5;
+
+  // Handle grayscale colors (colors 232-255) - but exclude exact cube values
+  if (isGrayscale) {
+    const isExactCubeValue = CUBE_VALUES.includes(r) && r === g && g === b;
+
+    if (!isExactCubeValue) {
+      if (gray < 8) return 232; // Darkest grayscale
+      if (gray > 238) return 255; // Brightest grayscale
+
+      // Map to grayscale range 232-255 (24 levels)
+      // XTerm grayscale: 8, 18, 28, ..., 238 maps to 232, 233, 234, ..., 255
+      const grayIndex = Math.round((gray - 8) / 10);
+      return Math.max(232, Math.min(255, 232 + grayIndex));
+    }
+  }
+
+  // Handle RGB colors (colors 16-231)
+  // XTerm 256 color cube values: [0, 95, 135, 175, 215, 255]
+
+  const r6 = findClosestIndex(r);
+  const g6 = findClosestIndex(g);
+  const b6 = findClosestIndex(b);
+
+  return 16 + (36 * r6) + (6 * g6) + b6;
+}
+
+export function getAsciiArt(
   image: Awaited<ReturnType<typeof Jimp.read>>,
-  width = 38,
+  width = DEFAULT_IMAGE_WIDTH,
+  colorSupport: "truecolor" | "256color" | "none",
 ): string {
   const ratio = image.width / image.height;
   const height = Math.round(
@@ -284,7 +371,15 @@ function getAsciiArt(
         (brightness / 255) * (ASCII_CHARS.length - 1),
       );
       const char = ASCII_CHARS[charIndex];
-      art += colors.rgb24(char, color);
+
+      if (colorSupport === "truecolor") {
+        art += colors.rgb24(char, color);
+      } else if (colorSupport === "256color") {
+        const colorIndex = rgbTo256Color(color.r, color.g, color.b);
+        art += colors.rgb8(char, colorIndex);
+      } else {
+        art += char;
+      }
     }
     if (y < height - 1) art += "\n";
   }

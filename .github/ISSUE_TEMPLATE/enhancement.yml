@@ -1,0 +1,46 @@
+name: Enhancement
+description: Improvements to existing features
+labels: [ "type/enhancement" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An improvement to an existing feature.
+        
+        - Includes: Pain points in current behavior and better alternatives.
+        - Goal: Improve usability, performance, or completeness.
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Briefly describe the feature or enhancement you're suggesting.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Problem
+      description: Why is this needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution
+      description: Describe your suggested solution or behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives Considered
+      description: Have you thought of other approaches or solutions?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Scope / Dependencies
+      description: What parts of the system would be affected or require changes?
+    validations:
+      required: false

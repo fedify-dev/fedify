@@ -181,6 +181,39 @@ Documentation Standards
 4. Include examples for new features
 
 
+Branch Policy
+-------------
+
+Fedify follows a structured branching strategy for managing releases and
+maintenance:
+
+### Branch Types
+
+1. **main**: Contains unreleased development for the next major/minor version
+2. **x.y-maintenance**: Maintenance branches for released major/minor versions
+   (e.g., `1.5-maintenance`, `1.6-maintenance`)
+
+### Development Workflow
+
+- **New features**: Always target the `main` branch
+- **Bug fixes**: Target the oldest applicable maintenance branch that contains
+  the bug
+
+### Release and Merge Strategy
+
+When a bug is fixed in a maintenance branch:
+
+1. Fix the bug in the oldest affected maintenance branch (e.g., `1.5-maintenance`)
+2. Create a new patch release tag (e.g., `1.5.1`)
+3. Merge the fix into the next maintenance branch (e.g., `1.6-maintenance`)
+4. Create a new patch release tag for that branch (e.g., `1.6.1`)
+5. Continue merging forward through all subsequent maintenance branches
+6. Finally merge into `main`
+
+This ensures that all maintenance branches and the main development branch
+include the fix.
+
+
 Bugfix Process
 --------------
 

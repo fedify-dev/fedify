@@ -1,4 +1,5 @@
 import { getFieldName } from "./field.ts";
+import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import type { TypeSchema } from "./schema.ts";
 import { emitOverride } from "./type.ts";
 
@@ -52,14 +53,14 @@ export async function* generateInspector(
             }
           : v);
     `;
-    if (property.functional || property.singularAccessor) {
+    if (hasSingularAccessor(property)) {
       yield `
       if (${localName}.length == 1) {
         proxy.${property.singularName} = ${localName}[0];
       }
       `;
     }
-    if (!property.functional) {
+    if (isNonFunctionalProperty(property)) {
       yield `
       if (${localName}.length > 1
           || !(${JSON.stringify(property.singularName)} in proxy)

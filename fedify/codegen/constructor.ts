@@ -1,4 +1,5 @@
 import { getFieldName } from "./field.ts";
+import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import type { PropertySchema, TypeSchema } from "./schema.ts";
 import {
   areAllScalarTypes,
@@ -14,7 +15,7 @@ function generateParameterType(
   const range = property.range;
   const scalar = areAllScalarTypes(range, types);
   const code: string[] = [];
-  if (property.functional || property.singularAccessor) {
+  if (hasSingularAccessor(property)) {
     if (scalar) {
       code.push(
         `${property.singularName}?: ${getTypeNames(range, types)} | null;`,
@@ -27,7 +28,7 @@ function generateParameterType(
       );
     }
   }
-  if (!property.functional) {
+  if (isNonFunctionalProperty(property)) {
     if (scalar) {
       code.push(
         `${property.pluralName}?: (${getTypeNames(range, types, true)})[];`,
@@ -114,7 +115,7 @@ export async function* generateConstructor(
   }
   for (const property of type.properties) {
     const fieldName = await getFieldName(property.uri);
-    if (property.functional || property.singularAccessor) {
+    if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
         property.range,
         types,
@@ -142,7 +143,7 @@ export async function* generateConstructor(
         }
       `;
     }
-    if (!property.functional) {
+    if (isNonFunctionalProperty(property)) {
       let typeGuards = getTypeGuards(property.range, types, `v`);
       let typeNames = getTypeNames(property.range, types);
       const scalar = areAllScalarTypes(property.range, types);
@@ -154,7 +155,7 @@ export async function* generateConstructor(
         if ("${property.pluralName}" in values && \
             values.${property.pluralName} != null) {
       `;
-      if (property.singularAccessor) {
+      if (property && property.singularAccessor) {
         yield `
           if ("${property.singularName}" in values &&
               values.${property.singularName} != null) {
@@ -229,7 +230,7 @@ export async function* generateCloner(
   for (const property of type.properties) {
     const fieldName = await getFieldName(property.uri);
     yield `clone.${fieldName} = this.${fieldName};`;
-    if (property.functional || property.singularAccessor) {
+    if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
         property.range,
         types,
@@ -257,7 +258,7 @@ export async function* generateCloner(
         }
       `;
     }
-    if (!property.functional) {
+    if (isNonFunctionalProperty(property)) {
       let typeGuards = getTypeGuards(property.range, types, `v`);
       let typeNames = getTypeNames(property.range, types);
       const scalar = areAllScalarTypes(property.range, types);
