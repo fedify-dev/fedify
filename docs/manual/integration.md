@@ -218,26 +218,27 @@ export const handle = fedifyHook(federation, (req) => "context data");
 [SvelteKit]: https://kit.svelte.dev/
 [Svelte]: https://svelte.dev/
 
+
 NestJS
 ------
 
 *This API is available since Fedify 1.8.0.*
 
 > [!IMPORTANT]
-> In a CommonJS-based NestJS project, this ESM-only module requires setting `NODE_OPTIONS=--experimental-require-module` at runtime
+> In a CommonJS-based NestJS project, this ESM-only module requires setting
+> `NODE_OPTIONS=--experimental-require-module` at runtime.
 
-[NestJS] is a modular, versatile, and scalable framework for building efficient, reliable, and scalable server-side applications with Node.js and TypeScript.
+[NestJS] is a modular, versatile, and scalable framework for building efficient,
+reliable, and scalable server-side applications with Node.js and TypeScript.
 The [@fedify/nestjs] package provides a middleware to integrate Fedify with
 NestJS:
 
-
-~~~~ typescript
-// --- modules/federation/federation.service ---
+~~~~ typescript [modules/federation/federation.service.ts] twoslash
 import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import {
   FEDIFY_FEDERATION,
 } from '@fedify/nestjs';
-import { Federation, parseSemver } from '@fedify/fedify';
+import { Federation, parseSemVer } from '@fedify/fedify';
 
 @Injectable()
 export class FederationService implements OnModuleInit {
@@ -255,19 +256,56 @@ export class FederationService implements OnModuleInit {
   }
 
   async initialize() {
-    this.federation.setNodeInfoDispatcher(async (context) => {
+    this.federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (context) => {
       return {
         software: {
           name: "Fedify NestJS sample",
           version: parseSemVer("0.0.1")
-        }
+        },
+        protocols: ["activitypub"],
+        usage: {
+          users: {
+            total: 0,
+            activeHalfyear: 0,
+            activeMonth: 0,
+            activeDay: 0,
+          },
+          localPosts: 0,
+          localComments: 0,
+        },
       }
     });
   }
 }
+~~~~
 
-// --- modules/federation/federation.module.ts ---
+~~~~ typescript [modules/federation/federation.module.ts] twoslash
+// @noErrors: 2395 2307
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import {
+  FEDIFY_FEDERATION,
+} from '@fedify/nestjs';
+import { Federation } from '@fedify/fedify';
 
+@Injectable()
+export class FederationService implements OnModuleInit {
+  private initialized = false;
+
+  constructor(
+    @Inject(FEDIFY_FEDERATION) private federation: Federation<unknown>,
+  ) { }
+
+  async onModuleInit() {
+    if (!this.initialized) {
+      await this.initialize();
+      this.initialized = true;
+    }
+  }
+
+  async initialize() {
+  }
+}
+// ---cut-before---
 import { Module } from '@nestjs/common';
 import { FederationService } from './federation.service';
 
@@ -276,8 +314,11 @@ import { FederationService } from './federation.service';
   exports: [FederationService],
 })
 export class FederationModule {}
+~~~~
 
-// --- main.module.ts ---
+~~~~ typescript [app.module.ts] twoslash
+// @noErrors: 2307
+// ---cut-before---
 import {
   Inject,
   MiddlewareConsumer,
@@ -285,11 +326,13 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { FederationModule } from './modules/federation/federation.module';
 import { InProcessMessageQueue, MemoryKvStore, Federation } from '@fedify/fedify';
+import process from 'node:process';
 
 import {
   FEDIFY_FEDERATION,
@@ -313,7 +356,6 @@ import {
   controllers: [AppController],
   providers: [AppService],
 })
-
 export class AppModule implements NestModule {
   constructor(
     @Inject(FEDIFY_FEDERATION) private federation: Federation<unknown>,
