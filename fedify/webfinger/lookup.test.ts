@@ -216,6 +216,105 @@ test({
       );
     });
 
+    fetchMock.removeRoutes();
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger?",
+      () =>
+        new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            resolve({ body: expected });
+          }, 1000);
+
+          return () => clearTimeout(timeoutId);
+        }),
+    );
+
+    await t.step("request cancellation", async () => {
+      // Test cancelling a request immediately using AbortController
+      const controller = new AbortController();
+      const promise = lookupWebFinger("acct:johndoe@example.com", {
+        signal: controller.signal,
+      });
+
+      // Abort the request right after starting it
+      controller.abort();
+      assertEquals(await promise, null);
+    });
+
+    fetchMock.removeRoutes();
+    let redirectCount2 = 0;
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger",
+      () => {
+        redirectCount2++;
+        if (redirectCount2 === 1) {
+          return {
+            status: 302,
+            headers: { Location: "/.well-known/webfinger2" },
+          };
+        }
+        return new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            resolve({ body: expected });
+          }, 1000);
+
+          return () => clearTimeout(timeoutId);
+        });
+      },
+    );
+
+    await t.step("cancellation during redirection", async () => {
+      // Test cancelling a request during redirection process
+      const controller = new AbortController();
+      const promise = lookupWebFinger("acct:johndoe@example.com", {
+        signal: controller.signal,
+      });
+
+      // Cancel during the delayed second request after redirection
+      setTimeout(() => controller.abort(), 100);
+      assertEquals(await promise, null);
+    });
+
+    fetchMock.removeRoutes();
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger?",
+      () =>
+        new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            resolve({ body: expected });
+          }, 500);
+
+          return () => clearTimeout(timeoutId);
+        }),
+    );
+
+    await t.step("cancellation with immediate abort", async () => {
+      // Test starting a request with an already aborted AbortController
+      const controller = new AbortController();
+      controller.abort();
+
+      // Use a signal that was already aborted before starting the request
+      const result = await lookupWebFinger("acct:johndoe@example.com", {
+        signal: controller.signal,
+      });
+      assertEquals(result, null);
+    });
+
+    fetchMock.removeRoutes();
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger?",
+      { body: expected },
+    );
+
+    await t.step("successful request with signal", async () => {
+      // Test successful request with a normal AbortController signal
+      const controller = new AbortController();
+      const result = await lookupWebFinger("acct:johndoe@example.com", {
+        signal: controller.signal,
+      });
+      assertEquals(result, expected);
+    });
+
     fetchMock.hardReset();
   },
 });

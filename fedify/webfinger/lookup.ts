@@ -52,6 +52,11 @@ export interface LookupWebFingerOptions {
    * is used.
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * AbortSignal for cancelling the request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -149,6 +154,7 @@ async function lookupWebFingerInternal(
             : getUserAgent(options.userAgent),
         },
         redirect: "manual",
+        signal: options.signal,
       });
     } catch (error) {
       logger.debug(
