@@ -139,7 +139,9 @@ async function lookupObjectInternal(
   let document: unknown | null = null;
   if (identifier.protocol === "http:" || identifier.protocol === "https:") {
     try {
-      const remoteDoc = await documentLoader(identifier.href);
+      const remoteDoc = await documentLoader(identifier.href, {
+        signal: options.signal,
+      });
       document = remoteDoc.document;
     } catch (error) {
       logger.debug("Failed to fetch remote document:\n{error}", { error });
@@ -162,7 +164,9 @@ async function lookupObjectInternal(
           ) || l.rel !== "self"
       ) continue;
       try {
-        const remoteDoc = await documentLoader(l.href);
+        const remoteDoc = await documentLoader(l.href, {
+          signal: options.signal,
+        });
         document = remoteDoc.document;
         break;
       } catch (error) {

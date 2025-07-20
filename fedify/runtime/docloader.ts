@@ -330,6 +330,9 @@ export function getDocumentLoader(
     url: string,
     _options?: DocumentLoaderOptions,
   ): Promise<RemoteDocument> {
+    if (_options?.signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
     if (!skipPreloadedContexts && url in preloadedContexts) {
       logger.debug("Using preloaded context: {url}.", { url });
       return {
@@ -355,13 +358,14 @@ export function getDocumentLoader(
       // to work around it we specify `redirect: "manual"` here too:
       // https://github.com/oven-sh/bun/issues/10754
       redirect: "manual",
+      signal: _options?.signal,
     });
     // Follow redirects manually to get the final URL:
     if (
       response.status >= 300 && response.status < 400 &&
       response.headers.has("Location")
     ) {
-      return load(response.headers.get("Location")!);
+      return load(response.headers.get("Location")!, _options);
     }
     return getRemoteDocument(url, response, load);
   }
