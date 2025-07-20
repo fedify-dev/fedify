@@ -5,7 +5,6 @@
     "./amqp",
     "./express",
     "./h3",
-    "./nestjs",
     "./postgres",
     "./redis",
     "./examples/blog",
