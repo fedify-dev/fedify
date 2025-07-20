@@ -49,6 +49,7 @@ export interface LookupObjectOptions {
 
   /**
    * AbortSignal for cancelling the request.
+   * @since 1.8.0
    */
   signal?: AbortSignal;
 }
