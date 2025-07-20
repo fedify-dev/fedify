@@ -35,30 +35,32 @@ for (const member of workspaceMembers) {
 
   // deno.json
   const denoJsonPath = join(memberPath, "deno.json");
-  let denoJson: string;
+  let denoJson: string | undefined;
   try {
     denoJson = await Deno.readTextFile(denoJsonPath);
   } catch {
-    continue;
+    denoJson = undefined;
   }
-  const deno = JSON.parse(denoJson);
-  if (deno.version) {
-    if (version == null) version = deno.version;
-    else if (version !== deno.version) {
-      mismatched++;
-      console.error(
-        "Version mismatch in %o: expected %o, found %o",
-        join(member, "deno.json"),
-        version,
-        deno.version,
-      );
-      if (fix) {
-        deno.version = version;
-        await Deno.writeTextFile(
-          denoJsonPath,
-          JSON.stringify(deno, null, 2) + "\n",
+  if (denoJson != null) {
+    const deno = JSON.parse(denoJson);
+    if (deno.version) {
+      if (version == null) version = deno.version;
+      else if (version !== deno.version) {
+        mismatched++;
+        console.error(
+          "Version mismatch in %o: expected %o, found %o",
+          join(member, "deno.json"),
+          version,
+          deno.version,
         );
-        console.error("Fixed version in %o", denoJsonPath);
+        if (fix) {
+          deno.version = version;
+          await Deno.writeTextFile(
+            denoJsonPath,
+            JSON.stringify(deno, null, 2) + "\n",
+          );
+          console.error("Fixed version in %o", denoJsonPath);
+        }
       }
     }
   }
@@ -72,7 +74,7 @@ for (const member of workspaceMembers) {
     continue;
   }
   const pkg = JSON.parse(pkgJson);
-  if (pkg.version) {
+  if (pkg.version && !pkg.private) {
     if (version == null) version = pkg.version;
     else if (version !== pkg.version) {
       mismatched++;

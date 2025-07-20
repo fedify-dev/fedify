@@ -3,10 +3,11 @@
 Fedify changelog
 ================
 
-Version 1.8.0
+Version 1.8.1
 -------------
 
-To be released.
+To be released.  Note that 1.8.0 was skipped due to a mistake in
+the versioning.
 
  -  The repository has been restructured as a monorepo, consolidating all
     Fedify packages into a single repository with unified versioning.  This

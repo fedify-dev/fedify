@@ -381,14 +381,24 @@ jobs:
         npm config set //registry.npmjs.org/:_authToken "$NPM_AUTH_TOKEN"
         for pkg in fedify-*.tgz; do
           if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
-            npm publish --provenance --access public "$pkg"
+            npm publish --logs-dir=. --provenance --access public "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
+            rm *.log
           elif [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
             npm publish \
+              --logs-dir=. \
               --access public \
               --tag "pr-$PR_NUMBER" \
-              "$pkg"
+              "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
           else
-            npm publish --provenance --access public --tag dev "$pkg"
+            npm publish \
+              --logs-dir=. \
+              --provenance \
+              --access public \
+              --tag dev \
+              "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
           fi
         done
       env:
