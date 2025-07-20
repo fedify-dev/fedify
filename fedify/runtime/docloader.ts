@@ -30,11 +30,23 @@ export interface RemoteDocument {
 }
 
 /**
+ * Options for {@link DocumentLoader}.
+ * @since 1.8.0
+ */
+export interface DocumentLoaderOptions {
+  signal?: AbortSignal;
+}
+
+/**
  * A JSON-LD document loader that fetches documents from the Web.
  * @param url The URL of the document to load.
+ * @param options The options for the document loader.
  * @returns The loaded remote document.
  */
-export type DocumentLoader = (url: string) => Promise<RemoteDocument>;
+export type DocumentLoader = (
+  url: string,
+  options?: DocumentLoaderOptions,
+) => Promise<RemoteDocument>;
 
 /**
  * A factory function that creates a {@link DocumentLoader} with options.
@@ -163,7 +175,10 @@ export function logRequest(request: Request) {
 export async function getRemoteDocument(
   url: string,
   response: Response,
-  fetch: (url: string) => Promise<RemoteDocument>,
+  fetch: (
+    url: string,
+    options?: DocumentLoaderOptions,
+  ) => Promise<RemoteDocument>,
 ): Promise<RemoteDocument> {
   const documentUrl = response.url === "" ? url : response.url;
   const docUrl = new URL(documentUrl);
@@ -311,7 +326,10 @@ export function getDocumentLoader(
   { allowPrivateAddress, skipPreloadedContexts, userAgent }:
     GetDocumentLoaderOptions = {},
 ): DocumentLoader {
-  async function load(url: string): Promise<RemoteDocument> {
+  async function load(
+    url: string,
+    _options?: DocumentLoaderOptions,
+  ): Promise<RemoteDocument> {
     if (!skipPreloadedContexts && url in preloadedContexts) {
       logger.debug("Using preloaded context: {url}.", { url });
       return {
@@ -375,15 +393,25 @@ const _fetchDocumentLoader_allowPrivateAddress = getDocumentLoader({
  */
 export function fetchDocumentLoader(
   url: string,
-  allowPrivateAddress: boolean = false,
+  allowPrivateAddress?: boolean,
+): Promise<RemoteDocument>;
+export function fetchDocumentLoader(
+  url: string,
+  options?: DocumentLoaderOptions,
+): Promise<RemoteDocument>;
+export function fetchDocumentLoader(
+  url: string,
+  arg: boolean | DocumentLoaderOptions = false,
 ): Promise<RemoteDocument> {
+  const allowPrivateAddress = typeof arg === "boolean" ? arg : false;
   logger.warn(
     "fetchDocumentLoader() function is deprecated.  " +
       "Use getDocumentLoader() function instead.",
   );
-  return (allowPrivateAddress
+  const loader = allowPrivateAddress
     ? _fetchDocumentLoader_allowPrivateAddress
-    : _fetchDocumentLoader)(url);
+    : _fetchDocumentLoader;
+  return loader(url);
 }
 
 /**
@@ -455,7 +483,10 @@ export function kvCache(
     return null;
   }
 
-  return async (url: string): Promise<RemoteDocument> => {
+  return async (
+    url: string,
+    _options?: DocumentLoaderOptions,
+  ): Promise<RemoteDocument> => {
     const match = matchRule(url);
     if (match == null) return await loader(url);
     const key: KvKey = [...keyPrefix, url];
