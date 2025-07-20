@@ -179,7 +179,38 @@ test("lookupObject()", {
     assertEquals(result, null);
   });
 
+  fetchMock.removeRoutes();
+  fetchMock.get(
+    "https://example.com/slow-object",
+    () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            status: 200,
+            headers: { "Content-Type": "application/activity+json" },
+            body: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              content: "Slow response",
+            },
+          });
+        }, 1000);
+      }),
+  );
+
+  await t.step("direct object fetch cancellation", async () => {
+    const controller = new AbortController();
+    const promise = lookupObject("https://example.com/slow-object", {
+      contextLoader: mockDocumentLoader,
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    assertEquals(await promise, null);
+  });
+
   fetchMock.hardReset();
+  fetchMock.removeRoutes();
 });
 
 test("traverseCollection()", {
