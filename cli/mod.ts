@@ -4,6 +4,7 @@ import { configure, getConsoleSink } from "@logtape/logtape";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { DEFAULT_CACHE_DIR, setCacheDir } from "./cache.ts";
 import metadata from "./deno.json" with { type: "json" };
+import { command as debug } from "./debug.tsx";
 import { command as inbox } from "./inbox.tsx";
 import { command as init } from "./init.ts";
 import { logFile, recordingSink } from "./log.ts";
@@ -60,6 +61,7 @@ const command = new Command()
     },
   })
   .default("help")
+  .command("debug", debug)
   .command("init", init)
   .command("lookup", lookup)
   .command("inbox", inbox)
