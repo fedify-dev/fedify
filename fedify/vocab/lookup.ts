@@ -46,6 +46,11 @@ export interface LookupObjectOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * AbortSignal for cancelling the request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -145,6 +150,7 @@ async function lookupObjectInternal(
       tracerProvider: options.tracerProvider,
       allowPrivateAddress: "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
+      signal: options.signal,
     });
     if (jrd?.links == null) return null;
     for (const l of jrd.links) {
