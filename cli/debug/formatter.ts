@@ -20,118 +20,80 @@ export class TerminalFormatter {
 
   formatActivity(activity: DebugActivity): string {
     const lines: string[] = [];
-    const { colorize } = this.options;
+    const raw = activity.rawActivity as Record<string, unknown> | null;
 
-    // Header with direction and type
+    // Header
     const directionColor = activity.direction === "inbound" ? blue : yellow;
-    const direction = colorize
-      ? directionColor(bold(`[${activity.direction.toUpperCase()}]`))
-      : `[${activity.direction.toUpperCase()}]`;
-
-    const type = colorize ? cyan(activity.type) : activity.type;
+    const direction = this.applyColor(
+      `[${activity.direction.toUpperCase()}]`,
+      directionColor,
+      bold,
+    );
+    const type = this.applyColor(activity.type, cyan);
     lines.push(`${direction} ${type}`);
 
-    // Activity ID if present
+    // ID
     if (activity.activityId) {
-      const label = colorize ? gray("ID:") : "ID:";
-      lines.push(`  ${label} ${activity.activityId}`);
+      lines.push(`  ${this.label("ID:")} ${activity.activityId}`);
     }
 
-    // Extract information from raw activity
-    const raw = activity.rawActivity as Record<string, unknown> | null;
-    
-    // Actor information
-    if (raw?.actor) {
-      const label = colorize ? gray("Actor:") : "Actor:";
-      const actor = typeof raw.actor === "string" 
-        ? raw.actor 
-        : (raw.actor as Record<string, unknown>)?.id || raw.actor;
-      lines.push(`  ${label} ${actor}`);
-    }
-
-    // Object information
-    if (raw?.object) {
-      const label = colorize ? gray("Object:") : "Object:";
-      const obj = raw.object;
-      let objectStr: string;
-      
-      if (typeof obj === "string") {
-        objectStr = obj;
-      } else if (typeof obj === "object" && obj !== null) {
-        const objRecord = obj as Record<string, unknown>;
-        objectStr = objRecord.id as string || objRecord.type as string || "[Object]";
-      } else {
-        objectStr = String(obj);
+    // Actor, Object, Target
+    ["actor", "object", "target"].forEach((field) => {
+      const value = raw ? this.extractEntity(raw, field) : undefined;
+      if (value !== undefined) {
+        lines.push(`  ${this.label(`${this.capitalize(field)}:`)} ${value}`);
       }
-      
-      lines.push(`  ${label} ${objectStr}`);
-    }
-
-    // Target information
-    if (raw?.target) {
-      const label = colorize ? gray("Target:") : "Target:";
-      const target = typeof raw.target === "string"
-        ? raw.target
-        : (raw.target as Record<string, unknown>)?.id || raw.target;
-      lines.push(`  ${label} ${target}`);
-    }
+    });
 
     // Timestamp
     if (this.options.showTimestamp) {
       const timestamp = new Date(activity.timestamp).toISOString();
-      const label = colorize ? gray("Time:") : "Time:";
-      lines.push(`  ${label} ${timestamp}`);
+      lines.push(`  ${this.label("Time:")} ${timestamp}`);
     }
 
-    // Raw activity (optional)
-    if (this.options.showRawActivity && activity.rawActivity) {
+    // Raw Activity
+    if (this.options.showRawActivity && raw) {
       lines.push("");
-      const label = colorize ? gray("Raw Activity:") : "Raw Activity:";
-      lines.push(label);
-      lines.push(JSON.stringify(activity.rawActivity, null, 2));
+      lines.push(this.label("Raw Activity:"));
+      lines.push(JSON.stringify(raw, null, 2));
     }
 
     return lines.join("\n");
   }
 
   formatStatistics(stats: StoreStatistics): string {
-    const { colorize } = this.options;
     const lines: string[] = [];
 
-    lines.push(
-      colorize
-        ? bold("=== Activity Statistics ===")
-        : "=== Activity Statistics ===",
-    );
+    lines.push(this.applyColor("=== Activity Statistics ===", bold));
     lines.push("");
 
-    const total = colorize
-      ? green(stats.totalActivities.toString())
-      : stats.totalActivities.toString();
-    lines.push(`Total Activities: ${total}`);
+    lines.push(
+      `Total Activities: ${
+        this.applyColor(stats.totalActivities.toString(), green)
+      }`,
+    );
+    lines.push(
+      `Inbound:          ${
+        this.applyColor(stats.inboundCount.toString(), blue)
+      }`,
+    );
+    lines.push(
+      `Outbound:         ${
+        this.applyColor(stats.outboundCount.toString(), yellow)
+      }`,
+    );
 
-    const inbound = colorize
-      ? blue(stats.inboundCount.toString())
-      : stats.inboundCount.toString();
-    lines.push(`Inbound:          ${inbound}`);
-
-    const outbound = colorize
-      ? yellow(stats.outboundCount.toString())
-      : stats.outboundCount.toString();
-    lines.push(`Outbound:         ${outbound}`);
-
-    // Type breakdown
     if (stats.typeBreakdown && Object.keys(stats.typeBreakdown).length > 0) {
       lines.push("");
-      lines.push(colorize ? bold("Activity Types:") : "Activity Types:");
+      lines.push(this.applyColor("Activity Types:", bold));
 
-      const sortedTypes = Object.entries(stats.typeBreakdown)
-        .sort(([, a], [, b]) => b - a);
-
-      for (const [type, count] of sortedTypes) {
-        const typeFormatted = colorize ? cyan(type) : type;
-        const countFormatted = colorize ? gray(`(${count})`) : `(${count})`;
-        lines.push(`  ${typeFormatted} ${countFormatted}`);
+      const sorted = Object.entries(stats.typeBreakdown).sort(([, a], [, b]) =>
+        b - a
+      );
+      for (const [type, count] of sorted) {
+        const typeStr = this.applyColor(type, cyan);
+        const countStr = this.applyColor(`(${count})`, gray);
+        lines.push(`  ${typeStr} ${countStr}`);
       }
     }
 
@@ -140,42 +102,63 @@ export class TerminalFormatter {
 
   formatActivityStream(activities: DebugActivity[]): string {
     if (activities.length === 0) {
-      return this.options.colorize
-        ? gray("No activities captured yet.")
-        : "No activities captured yet.";
+      return this.applyColor("No activities captured yet.", gray);
     }
 
-    const separator = this.options.colorize
-      ? gray("─".repeat(60))
-      : "─".repeat(60);
-
+    const separator = this.applyColor("─".repeat(60), gray);
     return activities
       .map((activity) => this.formatActivity(activity))
       .join(`\n${separator}\n`);
   }
 
   formatError(error: Error): string {
-    const { colorize } = this.options;
-    const errorTag = colorize ? red(bold("[ERROR]")) : "[ERROR]";
-    return `${errorTag} ${error.message}`;
+    return this.formatTaggedMessage("ERROR", red, error.message);
   }
 
   formatSuccess(message: string): string {
-    const { colorize } = this.options;
-    const successTag = colorize ? green(bold("[SUCCESS]")) : "[SUCCESS]";
-    return `${successTag} ${message}`;
+    return this.formatTaggedMessage("SUCCESS", green, message);
   }
 
   formatWarning(message: string): string {
-    const { colorize } = this.options;
-    const warningTag = colorize ? yellow(bold("[WARNING]")) : "[WARNING]";
-    return `${warningTag} ${message}`;
+    return this.formatTaggedMessage("WARNING", yellow, message);
   }
 
   formatInfo(message: string): string {
-    const { colorize } = this.options;
-    const infoTag = colorize ? blue(bold("[INFO]")) : "[INFO]";
-    return `${infoTag} ${message}`;
+    return this.formatTaggedMessage("INFO", blue, message);
+  }
+
+  private label(text: string): string {
+    return this.applyColor(text, gray);
+  }
+
+  private capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  private applyColor(text: string, ...fns: ((s: string) => string)[]): string {
+    return this.options.colorize ? fns.reduce((s, fn) => fn(s), text) : text;
+  }
+
+  private formatTaggedMessage(
+    tag: string,
+    colorFn: (s: string) => string,
+    message: string,
+  ): string {
+    const tagStr = this.applyColor(`[${tag}]`, colorFn, bold);
+    return `${tagStr} ${message}`;
+  }
+
+  private extractEntity(
+    raw: Record<string, unknown>,
+    field: string,
+  ): string | undefined {
+    const val = raw[field];
+    if (typeof val === "string") return val;
+    if (typeof val === "object" && val !== null) {
+      const rec = val as Record<string, unknown>;
+      return (rec.id as string) || (rec.type as string) || "[Object]";
+    }
+    return val !== undefined ? String(val) : undefined;
   }
 }
 
