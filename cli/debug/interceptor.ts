@@ -116,7 +116,6 @@ export class ActivityInterceptor {
     if (hasTypeProperty(activityAsUnknown) && activityAsUnknown.type) {
       type = activityAsUnknown.type;
     } else {
-      // For real Fedify objects, try to use getTypeId
       try {
         const typeId = getTypeId(activity);
         if (typeId) {
