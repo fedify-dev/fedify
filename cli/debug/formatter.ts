@@ -9,6 +9,7 @@ export interface FormatterOptions {
 }
 
 export class TerminalFormatter {
+  private colorStrategy: ColorStrategy;
   constructor(private options: FormatterOptions = {}) {
     this.options = {
       showRawActivity: false,
@@ -16,6 +17,9 @@ export class TerminalFormatter {
       colorize: true,
       ...options,
     };
+    this.colorStrategy = options.colorize === false
+      ? new ColorizeOff()
+      : new ColorizeOn();
   }
 
   formatActivity(activity: DebugActivity): string {
@@ -136,7 +140,7 @@ export class TerminalFormatter {
   }
 
   private applyColor(text: string, ...fns: ((s: string) => string)[]): string {
-    return this.options.colorize ? fns.reduce((s, fn) => fn(s), text) : text;
+    return this.colorStrategy.apply(text, ...fns);
   }
 
   private formatTaggedMessage(
@@ -154,14 +158,40 @@ export class TerminalFormatter {
   ): string | undefined {
     const val = raw[field];
     if (typeof val === "string") return val;
-    if (typeof val === "object" && val !== null) {
-      const rec = val as Record<string, unknown>;
-      return (rec.id as string) || (rec.type as string) || "[Object]";
+    if (isEntityLike(val)) {
+      return val.id ?? val.type ?? "[Object]";
     }
     return val !== undefined ? String(val) : undefined;
   }
 }
 
-export function createFormatter(options?: FormatterOptions): TerminalFormatter {
+export function createFormatter<T extends FormatterOptions>(
+  options: T,
+): TerminalFormatter {
+  if (options?.colorize === false) {
+    return new TerminalFormatter({ ...options, colorize: false });
+  }
   return new TerminalFormatter(options);
+}
+interface ColorStrategy {
+  apply(text: string, ...fns: ((s: string) => string)[]): string;
+}
+
+class ColorizeOn implements ColorStrategy {
+  apply(text: string, ...fns: ((s: string) => string)[]) {
+    return fns.reduce((s, fn) => fn(s), text);
+  }
+}
+
+class ColorizeOff implements ColorStrategy {
+  apply(text: string) {
+    return text;
+  }
+}
+
+type EntityLike = { id?: string; type?: string };
+
+function isEntityLike(obj: unknown): obj is EntityLike {
+  return typeof obj === "object" && obj !== null &&
+    ("id" in obj || "type" in obj);
 }

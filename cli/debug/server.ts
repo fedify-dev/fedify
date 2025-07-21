@@ -23,7 +23,6 @@ export class DebugServer {
   private app: Hono;
   private server?: Deno.HttpServer;
   private clients = new Map<string, WebSocketClient>();
-  // private interceptor: ActivityInterceptor;
   private store: ActivityStore;
   private port: number;
   private unsubscribe?: () => void;

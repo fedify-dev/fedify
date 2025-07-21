@@ -1,5 +1,7 @@
 import type { DebugActivity } from "./interceptor.ts";
 
+export const DEFAULT_STORE_CAPACITY = 1000;
+
 /**
  * Search filters for activities
  */
@@ -46,7 +48,7 @@ export class ActivityStore {
   private head = 0;
   private size = 0;
 
-  constructor(capacity = 1000) {
+  constructor(capacity = DEFAULT_STORE_CAPACITY) {
     this.capacity = capacity;
     this.activities = new Array(capacity);
   }

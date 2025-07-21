@@ -1,8 +1,10 @@
 import { ActivityInterceptor } from "./interceptor.ts";
-import { ActivityStore } from "./store.ts";
+import { ActivityStore, DEFAULT_STORE_CAPACITY } from "./store.ts";
 import { type FormatterOptions, TerminalFormatter } from "./formatter.ts";
 import { gray } from "@std/fmt/colors";
 import type { DebugActivity } from "./interceptor.ts";
+
+type ActivityFilter = NonNullable<TerminalDebugOptions["filter"]>;
 
 export interface TerminalDebugOptions extends FormatterOptions {
   follow?: boolean;
@@ -21,21 +23,42 @@ export class TerminalDebugger {
   private options: TerminalDebugOptions;
   private isRunning = false;
 
+  private readonly filterFn: (activity: DebugActivity) => boolean = () => true;
+
   constructor(options: TerminalDebugOptions = {}) {
     this.options = options;
     this.interceptor = new ActivityInterceptor();
-    this.store = new ActivityStore(1000); // Store last 1000 activities
+    this.store = new ActivityStore(DEFAULT_STORE_CAPACITY);
     this.formatter = new TerminalFormatter(options);
+
+    if (options.filter) {
+      this.filterFn = this.buildFilter(options.filter);
+    }
 
     // Connect interceptor to store
     this.interceptor.subscribe((activity) => {
       this.store.insert(activity);
 
       // If following, print new activities immediately
-      if (this.options.follow && this.matchesFilter(activity)) {
+      if (this.options.follow && this.filterFn(activity)) {
         this.printActivity(activity);
       }
     });
+  }
+
+  private buildFilter(
+    filter: ActivityFilter,
+  ): (activity: DebugActivity) => boolean {
+    return (activity) => {
+      if (filter.direction && activity.direction !== filter.direction) {
+        return false;
+      }
+      if (
+        filter.type &&
+        !activity.type.toLowerCase().includes(filter.type.toLowerCase())
+      ) return false;
+      return true;
+    };
   }
 
   start(): void {
@@ -51,10 +74,8 @@ export class TerminalDebugger {
     }
 
     if (!this.options.follow) {
-      // Print existing activities and exit
       this.printExistingActivities();
     } else {
-      // Follow mode - print header
       console.log(
         this.formatter.formatInfo(
           "Following activities... Press Ctrl+C to exit",
@@ -82,35 +103,20 @@ export class TerminalDebugger {
     console.log(this.formatter.formatInfo("Debug terminal stopped"));
   }
 
-  private matchesFilter(activity: DebugActivity): boolean {
-    if (!this.options.filter) return true;
-
-    const { direction, type } = this.options.filter;
-
-    if (direction && activity.direction !== direction) {
-      return false;
-    }
-
-    if (type && !activity.type.toLowerCase().includes(type.toLowerCase())) {
-      return false;
-    }
-
-    return true;
-  }
-
   private printActivity(activity: DebugActivity): void {
     console.log(this.formatter.formatActivity(activity));
     console.log(gray("─".repeat(60)));
   }
 
   private printExistingActivities(): void {
-    const activities = this.store.getAll()
-      .filter((activity) => this.matchesFilter(activity));
+    const all = this.store.getAll();
+    const filtered = this.filterFn === (() => true)
+      ? all
+      : all.filter(this.filterFn);
 
-    const tail = this.options.tail;
-    const displayActivities = tail && tail > 0
-      ? activities.slice(-tail)
-      : activities;
+    const displayActivities = (this.options.tail ?? 0) > 0
+      ? filtered.slice(-this.options.tail!)
+      : filtered;
 
     if (displayActivities.length === 0) {
       console.log(gray("No activities match the filter criteria."));
@@ -152,9 +158,10 @@ export class TerminalDebugger {
   // Export activities to file
   async exportActivities(filepath: string): Promise<void> {
     const activities = this.store.getAll()
-      .filter((activity) => this.matchesFilter(activity));
+      .filter(this.filterFn);
 
     const data = {
+      // TODO: also support local time?
       exported: new Date().toISOString(),
       statistics: this.store.getStats(),
       activities: activities,
