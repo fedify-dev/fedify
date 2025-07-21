@@ -26,6 +26,8 @@ export interface StoreStatistics {
   inboundCount: number;
   /** Number of outbound activities */
   outboundCount: number;
+  /** Breakdown by activity type */
+  typeBreakdown?: Record<string, number>;
 }
 
 /**
@@ -158,11 +160,20 @@ export class ActivityStore {
     const inboundCount = all.filter((a) => a.direction === "inbound").length;
     const outboundCount = all.filter((a) => a.direction === "outbound").length;
 
+    // Calculate type breakdown
+    const typeBreakdown: Record<string, number> = {};
+    for (const activity of all) {
+      typeBreakdown[activity.type] = (typeBreakdown[activity.type] || 0) + 1;
+    }
+
     return {
       totalActivities: this.size,
       capacity: this.capacity,
       inboundCount,
       outboundCount,
+      typeBreakdown: Object.keys(typeBreakdown).length > 0
+        ? typeBreakdown
+        : undefined,
     };
   }
 
