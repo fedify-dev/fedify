@@ -381,14 +381,24 @@ jobs:
         npm config set //registry.npmjs.org/:_authToken "$NPM_AUTH_TOKEN"
         for pkg in fedify-*.tgz; do
           if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
-            npm publish --provenance --access public "$pkg"
+            npm publish --logs-dir=. --provenance --access public "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
+            rm *.log
           elif [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
             npm publish \
+              --logs-dir=. \
               --access public \
               --tag "pr-$PR_NUMBER" \
-              "$pkg"
+              "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
           else
-            npm publish --provenance --access public --tag dev "$pkg"
+            npm publish \
+              --logs-dir=. \
+              --provenance \
+              --access public \
+              --tag dev \
+              "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
           fi
         done
       env:
@@ -413,6 +423,7 @@ jobs:
           | @fedify/amqp     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/amqp]     | [npm][npm:@fedify/amqp]     |
           | @fedify/express  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/express]  | [npm][npm:@fedify/express]  |
           | @fedify/h3       | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/h3]       | [npm][npm:@fedify/h3]       |
+          | @fedify/nestjs   | ${{ steps.versioning.outputs.version }} |                             | [npm][npm:@fedify/nestjs]   |
           | @fedify/postgres | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/postgres] | [npm][npm:@fedify/postgres] |
           | @fedify/redis    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/redis]    | [npm][npm:@fedify/redis]    |
 
@@ -425,6 +436,7 @@ jobs:
           [npm:@fedify/express]: https://www.npmjs.com/package/@fedify/express/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/h3]: https://jsr.io/@fedify/h3@${{ steps.versioning.outputs.version }}
           [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3/v/${{ steps.versioning.outputs.short_version }}
+          [npm:@fedify/nestjs]: https://www.npmjs.com/package/@fedify/nestjs/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/postgres]: https://jsr.io/@fedify/postgres@${{ steps.versioning.outputs.version }}
           [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/redis]: https://jsr.io/@fedify/redis@${{ steps.versioning.outputs.version }}

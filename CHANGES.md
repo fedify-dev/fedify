@@ -3,10 +3,11 @@
 Fedify changelog
 ================
 
-Version 1.8.0
+Version 1.8.1
 -------------
 
-To be released.
+To be released.  Note that 1.8.0 was skipped due to a mistake in
+the versioning.
 
  -  The repository has been restructured as a monorepo, consolidating all
     Fedify packages into a single repository with unified versioning.  This
@@ -80,11 +81,18 @@ To be released.
      render the favicon in terminal emulators that do not support 24-bit
      colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
 
+  -  Supported NestJS integration with the `@fedify/nestjs` package.
+     [[#269], [#309] by Jaeyeol Lee]
+
+     -  Added `@fedify/nestjs` package.
+     -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+
 [#168]: https://github.com/fedify-dev/fedify/issues/168
 [#248]: https://github.com/fedify-dev/fedify/issues/248
 [#260]: https://github.com/fedify-dev/fedify/issues/260
 [#262]: https://github.com/fedify-dev/fedify/issues/262
 [#263]: https://github.com/fedify-dev/fedify/issues/263
+[#269]: https://github.com/fedify-dev/fedify/issues/269
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
 [#282]: https://github.com/fedify-dev/fedify/pull/282
@@ -92,6 +100,7 @@ To be released.
 [#298]: https://github.com/fedify-dev/fedify/pull/298
 [#300]: https://github.com/fedify-dev/fedify/pull/300
 [#304]: https://github.com/fedify-dev/fedify/issues/304
+[#309]: https://github.com/fedify-dev/fedify/pull/309
 
 
 Version 1.7.5

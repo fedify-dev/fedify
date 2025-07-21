@@ -228,6 +228,8 @@ export default withMermaid(defineConfig({
             moduleResolution: ModuleResolutionKind.Bundler,
             module: ModuleKind.ESNext,
             target: ScriptTarget.ESNext,
+            experimentalDecorators: true, // For @fedify/nestjs
+            emitDecoratorMetadata: true, // For @fedify/nestjs
             lib: ["dom", "dom.iterable", "esnext"],
             types: [
               "dom",
