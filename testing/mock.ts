@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import type {
   ActorCallbackSetters,
   ActorDispatcher,
@@ -75,6 +76,9 @@ export interface SentActivity {
  *
  * @example
  * ```typescript
+ * import { Create } from "@fedify/fedify/vocab";
+ * import { MockFederation } from "@fedify/testing";
+ *
  * // Create a mock federation
  * const federation = new MockFederation<{ userId: string }>();
  *
@@ -86,6 +90,10 @@ export interface SentActivity {
  *   });
  *
  * // Simulate receiving an activity
+ * const createActivity = new Create({
+ *   id: new URL("https://example.com/create/1"),
+ *   actor: new URL("https://example.com/users/alice")
+ * });
  * await federation.receiveActivity(createActivity);
  * ```
  *
@@ -369,6 +377,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   ): InboxListenerSetters<TContextData> {
     this.inboxPath = inboxPath;
     this.sharedInboxPath = sharedInboxPath;
+    // deno-lint-ignore no-this-alias
     const self = this;
     return {
       on<TActivity extends Activity>(
@@ -393,6 +402,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     };
   }
 
+  // deno-lint-ignore require-await
   async startQueue(
     contextData: TContextData,
     options?: FederationStartQueueOptions,
@@ -411,6 +421,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     }
   }
 
+  // deno-lint-ignore require-await
   async processQueuedTask(
     contextData: TContextData,
     _message: Message,
@@ -428,6 +439,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     baseUrlOrRequest: URL | Request,
     contextData: TContextData,
   ): Context<TContextData> | RequestContext<TContextData> {
+    // deno-lint-ignore no-this-alias
     const mockFederation = this;
 
     if (baseUrlOrRequest instanceof Request) {
@@ -467,6 +479,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     }
   }
 
+  // deno-lint-ignore require-await
   async fetch(
     request: Request,
     options: FederationFetchOptions<TContextData>,
@@ -537,7 +550,11 @@ interface InboxListener<TContextData, TActivity extends Activity> {
  *
  * @example
  * ```typescript
+ * import { Person, Create } from "@fedify/fedify/vocab";
+ * import { MockContext, MockFederation } from "@fedify/testing";
+ *
  * // Create a mock context
+ * const mockFederation = new MockFederation<{ userId: string }>();
  * const context = new MockContext({
  *   url: new URL("https://example.com"),
  *   data: { userId: "test-user" },
@@ -545,6 +562,11 @@ interface InboxListener<TContextData, TActivity extends Activity> {
  * });
  *
  * // Send an activity
+ * const recipient = new Person({ id: new URL("https://example.com/users/bob") });
+ * const activity = new Create({
+ *   id: new URL("https://example.com/create/1"),
+ *   actor: new URL("https://example.com/users/alice")
+ * });
  * await context.sendActivity(
  *   { identifier: "alice" },
  *   recipient,
@@ -593,6 +615,7 @@ export class MockContext<TContextData> implements Context<TContextData> {
     this.hostname = url.hostname;
     this.data = options.data;
     this.federation = options.federation;
+    // deno-lint-ignore require-await
     this.documentLoader = options.documentLoader ?? (async (url: string) => ({
       contextUrl: null,
       document: {},
@@ -636,7 +659,6 @@ export class MockContext<TContextData> implements Context<TContextData> {
   }
 
   getObjectUri<TObject extends Object>(
-    // deno-lint-ignore no-explicit-any
     cls: (new (...args: any[]) => TObject) & { typeId: URL },
     values: Record<string, string>,
   ): URL {
