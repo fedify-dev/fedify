@@ -3,14 +3,14 @@ import type {
   Context,
   InboxContext,
   RequestContext,
-} from "../federation/context.ts";
-import type { Federation } from "../federation/federation.ts";
-import { RouterError } from "../federation/router.ts";
+} from "@fedify/fedify/federation";
+import type { Federation } from "@fedify/fedify/federation";
+import { RouterError } from "@fedify/fedify/federation";
 import {
   lookupObject as globalLookupObject,
   traverseCollection as globalTraverseCollection,
-} from "../vocab/lookup.ts";
-import { lookupWebFinger as globalLookupWebFinger } from "../webfinger/lookup.ts";
+} from "@fedify/fedify/vocab";
+import { lookupWebFinger as globalLookupWebFinger } from "@fedify/fedify/webfinger";
 import { mockDocumentLoader } from "./docloader.ts";
 
 export function createContext<TContextData>(

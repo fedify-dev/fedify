@@ -1,0 +1,47 @@
+{
+  "name": "@fedify/testing",
+  "version": "1.8.1",
+  "license": "MIT",
+  "exports": {
+    ".": "./mod.ts"
+  },
+  "imports": {
+    "@fedify/fedify": "../fedify/mod.ts",
+    "@fedify/fedify/federation": "../fedify/federation/mod.ts",
+    "@fedify/fedify/nodeinfo": "../fedify/nodeinfo/mod.ts",
+    "@fedify/fedify/runtime": "../fedify/runtime/mod.ts",
+    "@fedify/fedify/vocab": "../fedify/vocab/mod.ts",
+    "@fedify/fedify/webfinger": "../fedify/webfinger/mod.ts",
+    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0"
+  },
+  "exclude": [
+    ".github",
+    "node_modules",
+    "npm",
+    "pnpm-lock.yaml"
+  ],
+  "tasks": {
+    "build": "pnpm build",
+    "check": "deno fmt --check && deno lint && deno check mod.ts",
+    "test": "deno test --allow-read --allow-net",
+    "test:node": {
+      "dependencies": [
+        "build"
+      ],
+      "command": "node --experimental-transform-types --test"
+    },
+    "test:bun": {
+      "dependencies": [
+        "build"
+      ],
+      "command": "bun test --timeout 15000"
+    },
+    "test-all": {
+      "dependencies": [
+        "test",
+        "test:node",
+        "test:bun"
+      ]
+    }
+  }
+}

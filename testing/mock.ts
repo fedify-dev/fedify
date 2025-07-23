@@ -1,7 +1,7 @@
 import { trace, type TracerProvider } from "@opentelemetry/api";
-import type { Activity, Hashtag, Object } from "../vocab/vocab.ts";
-import type { Actor, Recipient } from "../vocab/actor.ts";
-import type { Collection } from "../vocab/vocab.ts";
+import type { Activity, Hashtag, Object } from "@fedify/fedify/vocab";
+import type { Actor, Recipient } from "@fedify/fedify/vocab";
+import type { Collection } from "@fedify/fedify/vocab";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
@@ -10,13 +10,13 @@ import type {
   FederationStartQueueOptions,
   InboxListenerSetters,
   ObjectCallbackSetters,
-} from "../federation/federation.ts";
+} from "@fedify/fedify/federation";
 import type {
   ActorDispatcher,
   CollectionDispatcher,
   NodeInfoDispatcher,
   ObjectDispatcher,
-} from "../federation/callback.ts";
+} from "@fedify/fedify/federation";
 import type {
   ActorKeyPair,
   Context,
@@ -26,16 +26,16 @@ import type {
   RouteActivityOptions,
   SendActivityOptions,
   SendActivityOptionsForCollection,
-} from "../federation/context.ts";
-import type { SenderKeyPair } from "../federation/send.ts";
-import type { Message } from "../federation/queue.ts";
-import type { DocumentLoader } from "../runtime/docloader.ts";
-import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
-import type { ResourceDescriptor } from "../webfinger/jrd.ts";
+} from "@fedify/fedify/federation";
+import type { SenderKeyPair } from "@fedify/fedify/federation";
+import type { Message } from "@fedify/fedify/federation";
+import type { DocumentLoader } from "@fedify/fedify/runtime";
+import type { JsonValue, NodeInfo } from "@fedify/fedify/nodeinfo";
+import type { ResourceDescriptor } from "@fedify/fedify/webfinger";
 import type {
   LookupObjectOptions,
   TraverseCollectionOptions,
-} from "../vocab/lookup.ts";
+} from "@fedify/fedify/vocab";
 import { createInboxContext, createRequestContext } from "./context.ts";
 
 /**
