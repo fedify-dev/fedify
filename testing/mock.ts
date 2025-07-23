@@ -1,41 +1,40 @@
-import { trace, type TracerProvider } from "@opentelemetry/api";
-import type { Activity, Hashtag, Object } from "@fedify/fedify/vocab";
-import type { Actor, Recipient } from "@fedify/fedify/vocab";
-import type { Collection } from "@fedify/fedify/vocab";
 import type {
   ActorCallbackSetters,
+  ActorDispatcher,
+  ActorKeyPair,
   CollectionCallbackSetters,
+  CollectionDispatcher,
+  Context,
   Federation,
   FederationFetchOptions,
   FederationStartQueueOptions,
-  InboxListenerSetters,
-  ObjectCallbackSetters,
-} from "@fedify/fedify/federation";
-import type {
-  ActorDispatcher,
-  CollectionDispatcher,
-  NodeInfoDispatcher,
-  ObjectDispatcher,
-} from "@fedify/fedify/federation";
-import type {
-  ActorKeyPair,
-  Context,
   InboxContext,
+  InboxListenerSetters,
+  Message,
+  NodeInfoDispatcher,
+  ObjectCallbackSetters,
+  ObjectDispatcher,
   ParseUriResult,
   RequestContext,
   RouteActivityOptions,
   SendActivityOptions,
   SendActivityOptionsForCollection,
+  SenderKeyPair,
 } from "@fedify/fedify/federation";
-import type { SenderKeyPair } from "@fedify/fedify/federation";
-import type { Message } from "@fedify/fedify/federation";
-import type { DocumentLoader } from "@fedify/fedify/runtime";
 import type { JsonValue, NodeInfo } from "@fedify/fedify/nodeinfo";
-import type { ResourceDescriptor } from "@fedify/fedify/webfinger";
+import type { DocumentLoader } from "@fedify/fedify/runtime";
 import type {
+  Activity,
+  Actor,
+  Collection,
+  Hashtag,
   LookupObjectOptions,
+  Object,
+  Recipient,
   TraverseCollectionOptions,
 } from "@fedify/fedify/vocab";
+import type { ResourceDescriptor } from "@fedify/fedify/webfinger";
+import { trace, type TracerProvider } from "@opentelemetry/api";
 import { createInboxContext, createRequestContext } from "./context.ts";
 
 /**
@@ -518,7 +517,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    *
    * @since 1.8.0
    */
-  clearSentActivities(): void {
+  reset(): void {
     this.sentActivities = [];
   }
 }
@@ -924,7 +923,7 @@ export class MockContext<TContextData> implements Context<TContextData> {
    * This method is specific to the mock implementation and is used for
    * testing purposes.
    */
-  clearSentActivities(): void {
+  reset(): void {
     this.sentActivities = [];
   }
 }

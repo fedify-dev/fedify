@@ -1,6 +1,6 @@
+import { Create, Note, Person } from "@fedify/fedify/vocab";
 import { assertEquals, assertRejects } from "@std/assert";
 import { MockContext, MockFederation } from "./mock.ts";
-import { Create, Note, Person } from "@fedify/fedify/vocab";
 
 Deno.test("getSentActivities returns sent activities", async () => {
   const mockFederation = new MockFederation<void>();
@@ -33,7 +33,7 @@ Deno.test("getSentActivities returns sent activities", async () => {
   assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
-Deno.test("clearSentActivities clears sent activities", async () => {
+Deno.test("reset clears sent activities", async () => {
   const mockFederation = new MockFederation<void>();
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -57,7 +57,7 @@ Deno.test("clearSentActivities clears sent activities", async () => {
   assertEquals(mockFederation.sentActivities[0].activity, activity);
 
   // Clear sent activities
-  mockFederation.clearSentActivities();
+  mockFederation.reset();
 
   // Verify they were cleared
   assertEquals(mockFederation.sentActivities.length, 0);
