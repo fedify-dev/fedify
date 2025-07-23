@@ -1,9 +1,6 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
-import {
-  createInboxContext,
-  createRequestContext,
-} from "../testing/mod.ts";
+import { createInboxContext, createRequestContext } from "../testing/mod.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   rsaPrivateKey3,
@@ -340,7 +337,10 @@ test("handleObject()", async () => {
     federation,
     data: undefined,
     url: new URL("https://example.com/"),
-    getObjectUri(_cls: (new (...args: any[]) => Object) & { typeId: URL }, values: Record<string, string>) {
+    getObjectUri(
+      _cls: (new (...args: any[]) => Object) & { typeId: URL },
+      values: Record<string, string>,
+    ) {
       return new URL(
         `https://example.com/users/${values.handle}/notes/${values.id}`,
       );
