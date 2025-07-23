@@ -11,7 +11,6 @@ export default [
       "./nodeinfo/mod.ts",
       "./runtime/mod.ts",
       "./sig/mod.ts",
-      "./testing/mod.ts",
       "./vocab/mod.ts",
       "./webfinger/mod.ts",
       "./x/cfworkers.ts",
@@ -30,6 +29,7 @@ export default [
   }),
   defineConfig({
     entry: [
+      "./testing/mod.ts",
       ...(await Array.fromAsync(glob(`**/*.test.ts`)))
         .filter((f) =>
           !f.startsWith(`codegen${sep}`) && f !== `x${sep}denokv.test.ts`
