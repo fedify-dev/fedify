@@ -338,6 +338,7 @@ test("handleObject()", async () => {
     data: undefined,
     url: new URL("https://example.com/"),
     getObjectUri(
+      // deno-lint-ignore no-explicit-any
       _cls: (new (...args: any[]) => Object) & { typeId: URL },
       values: Record<string, string>,
     ) {
