@@ -9,6 +9,7 @@
     "./nodeinfo": "./nodeinfo/mod.ts",
     "./runtime": "./runtime/mod.ts",
     "./sig": "./sig/mod.ts",
+    "./testing": "./testing/mod.ts",
     "./vocab": "./vocab/mod.ts",
     "./webfinger": "./webfinger/mod.ts",
     "./x/cfworkers": "./x/cfworkers.ts",

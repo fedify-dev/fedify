@@ -7,9 +7,7 @@ import {
 } from "@logtape/logtape";
 import type { TestContext } from "node:test";
 
-// Re-export from the new testing package
-export { MockContext, MockFederation } from "../../testing/mod.ts";
-export type { SentActivity } from "../../testing/mod.ts";
+export { createInboxContext, createRequestContext } from "./context.ts";
 export const testDefinitions: Deno.TestDefinition[] = [];
 
 export function test(options: Deno.TestDefinition): void;
