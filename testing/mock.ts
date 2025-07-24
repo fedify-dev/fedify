@@ -79,8 +79,10 @@ export interface SentActivity {
  * import { Create } from "@fedify/fedify/vocab";
  * import { MockFederation } from "@fedify/testing";
  *
- * // Create a mock federation
- * const federation = new MockFederation<{ userId: string }>();
+ * // Create a mock federation with contextData
+ * const federation = new MockFederation<{ userId: string }>({
+ *   contextData: { userId: "test-user" }
+ * });
  *
  * // Set up inbox listeners
  * federation
