@@ -73,6 +73,7 @@ Deno.test("receiveActivity triggers inbox listeners", async () => {
   // Set up an inbox listener
   mockFederation
     .setInboxListeners("/users/{identifier}/inbox")
+    // deno-lint-ignore require-await
     .on(Create, async (_ctx, activity) => {
       receivedActivity = activity;
     });

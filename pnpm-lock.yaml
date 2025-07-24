@@ -459,6 +459,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../fedify
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
     devDependencies:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
