@@ -11,7 +11,7 @@ import {
   traverseCollection as globalTraverseCollection,
 } from "@fedify/fedify/vocab";
 import { lookupWebFinger as globalLookupWebFinger } from "@fedify/fedify/webfinger";
-import { mockDocumentLoader } from "./docloader.ts";
+import { mockDocumentLoader } from "../../testing/docloader.ts";
 
 export function createContext<TContextData>(
   values: Partial<Context<TContextData>> & {
