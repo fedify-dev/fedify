@@ -1,8 +1,9 @@
 import { Create, Note, Person } from "@fedify/fedify/vocab";
 import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "../fedify/testing/mod.ts";
 import { MockContext, MockFederation } from "./mock.ts";
 
-Deno.test("getSentActivities returns sent activities", async () => {
+test("getSentActivities returns sent activities", async () => {
   const mockFederation = new MockFederation<void>();
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -33,7 +34,7 @@ Deno.test("getSentActivities returns sent activities", async () => {
   assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
-Deno.test("reset clears sent activities", async () => {
+test("reset clears sent activities", async () => {
   const mockFederation = new MockFederation<void>();
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -63,7 +64,7 @@ Deno.test("reset clears sent activities", async () => {
   assertEquals(mockFederation.sentActivities.length, 0);
 });
 
-Deno.test("receiveActivity triggers inbox listeners", async () => {
+test("receiveActivity triggers inbox listeners", async () => {
   // Provide contextData through constructor
   const mockFederation = new MockFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -94,7 +95,7 @@ Deno.test("receiveActivity triggers inbox listeners", async () => {
   assertEquals(receivedActivity, activity);
 });
 
-Deno.test("MockContext tracks sent activities", async () => {
+test("MockContext tracks sent activities", async () => {
   const mockFederation = new MockFederation<void>();
   const mockContext = new MockContext({
     url: new URL("https://example.com"),
@@ -129,7 +130,7 @@ Deno.test("MockContext tracks sent activities", async () => {
   assertEquals(mockFederation.sentActivities[0].activity, activity);
 });
 
-Deno.test("MockContext URI methods should work correctly", () => {
+test("MockContext URI methods should work correctly", () => {
   const mockFederation = new MockFederation<void>();
   const mockContext = new MockContext({
     url: new URL("https://example.com"),
@@ -168,7 +169,7 @@ Deno.test("MockContext URI methods should work correctly", () => {
   }
 });
 
-Deno.test("MockContext URI methods respect registered paths", () => {
+test("MockContext URI methods respect registered paths", () => {
   const mockFederation = new MockFederation<void>();
 
   // Register custom paths with dummy dispatchers
@@ -258,7 +259,7 @@ Deno.test("MockContext URI methods respect registered paths", () => {
   );
 });
 
-Deno.test("receiveActivity throws error when contextData not initialized", async () => {
+test("receiveActivity throws error when contextData not initialized", async () => {
   const mockFederation = new MockFederation<void>();
 
   // Set up an inbox listener without initializing contextData
@@ -281,7 +282,7 @@ Deno.test("receiveActivity throws error when contextData not initialized", async
   );
 });
 
-Deno.test("MockFederation distinguishes between immediate and queued activities", async () => {
+test("MockFederation distinguishes between immediate and queued activities", async () => {
   const mockFederation = new MockFederation<void>();
 
   // Start the queue to enable queued sending
@@ -329,7 +330,7 @@ Deno.test("MockFederation distinguishes between immediate and queued activities"
   assertEquals(mockFederation.sentActivities[1].sentOrder, 2);
 });
 
-Deno.test("MockFederation without queue sends all activities immediately", async () => {
+test("MockFederation without queue sends all activities immediately", async () => {
   const mockFederation = new MockFederation<void>();
 
   const context = mockFederation.createContext(
