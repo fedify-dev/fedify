@@ -1,6 +1,9 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
-import { createInboxContext, createRequestContext } from "../testing/mod.ts";
+import {
+  createInboxContext,
+  createRequestContext,
+} from "../testing/context.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   rsaPrivateKey3,
