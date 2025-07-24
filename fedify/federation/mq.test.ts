@@ -112,7 +112,7 @@ test("MessageQueue.nativeRetrial", async (t) => {
     typeof globalThis.Deno.openKv === "function"
   ) {
     await t.step("DenoKvMessageQueue", async () => {
-      const { DenoKvMessageQueue } = await import(".." + "/x/denokv.ts");
+      const { DenoKvMessageQueue } = await import("../x/denokv.ts");
       const mq = new DenoKvMessageQueue(
         // @ts-ignore: Works on Deno
         await globalThis.Deno.openKv(":memory:"),
@@ -173,7 +173,7 @@ if (
   // @ts-ignore: Works on Deno
   typeof globalThis.Deno.openKv === "function"
 ) {
-  const { DenoKvMessageQueue } = await import(".." + "/x/denokv.ts");
+  const { DenoKvMessageQueue } = await import("../x/denokv.ts");
   queues.DenoKvMessageQueue = async () =>
     new DenoKvMessageQueue(
       // @ts-ignore: Works on Deno
