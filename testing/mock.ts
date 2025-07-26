@@ -39,7 +39,7 @@ import { trace, type TracerProvider } from "@opentelemetry/api";
 import {
   createInboxContext,
   createRequestContext,
-} from "@fedify/fedify/testing";
+} from "../fedify/testing/context.ts";
 
 /**
  * Helper function to expand URI templates with values.
