@@ -319,7 +319,7 @@ Then, try look up an actor from your server:
     init: (projectName, runtime, pm) => ({
       dependencies: {
         express: "^4.19.2",
-        "@fedify/express": "^0.2.1",
+        "@fedify/express": getLatestVersion("@fedify/express"),
         ...(runtime === "node"
           ? {
             "@dotenvx/dotenvx": "^1.14.1",
@@ -405,7 +405,7 @@ Then, try look up an actor from your server:
         ".",
       ],
       dependencies: {
-        "@fedify/h3": "^0.1.2",
+        "@fedify/h3": getLatestVersion("@fedify/h3"),
       },
       federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
@@ -462,7 +462,7 @@ const kvStores: Record<KvStore, KvStoreDescription> = {
   redis: {
     label: "Redis",
     dependencies: {
-      "@fedify/redis": "^0.2.1",
+      "@fedify/redis": getLatestVersion("@fedify/redis"),
       "npm:ioredis": "^5.4.1",
     },
     imports: { "@fedify/redis": ["RedisKvStore"], ioredis: ["Redis"] },
@@ -478,7 +478,7 @@ const kvStores: Record<KvStore, KvStoreDescription> = {
   postgres: {
     label: "PostgreSQL",
     dependencies: {
-      "@fedify/postgres": "^0.2.0",
+      "@fedify/postgres": getLatestVersion("@fedify/postgres"),
       "npm:postgres": "^3.4.5",
     },
     imports: { "@fedify/postgres": ["PostgresKvStore"], postgres: "postgres" },
@@ -517,7 +517,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   redis: {
     label: "Redis",
     dependencies: {
-      "@fedify/redis": "^0.2.1",
+      "@fedify/redis": getLatestVersion("@fedify/redis"),
       "npm:ioredis": "^5.4.1",
     },
     imports: { "@fedify/redis": ["RedisMessageQueue"], ioredis: ["Redis"] },
@@ -533,7 +533,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   postgres: {
     label: "PostgreSQL",
     dependencies: {
-      "@fedify/postgres": "^0.2.0",
+      "@fedify/postgres": getLatestVersion("@fedify/postgres"),
       "npm:postgres": "^3.4.5",
     },
     imports: {
@@ -552,7 +552,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   amqp: {
     label: "AMQP (e.g., RabbitMQ)",
     dependencies: {
-      "@fedify/amqp": "^0.1.0",
+      "@fedify/amqp": getLatestVersion("@fedify/amqp"),
       "npm:amqplib": "^0.10.4",
     },
     devDependencies: {
@@ -1082,7 +1082,7 @@ await configure({
       }
     }
     const dependencies: Record<string, string> = {
-      "@fedify/fedify": `^${getLatestVersion("@fedify/fedify")}`,
+      "@fedify/fedify": getLatestVersion("@fedify/fedify"),
       "@logtape/logtape": "^0.8.2",
       ...initializer.dependencies,
       ...kvStoreDesc?.dependencies,
