@@ -36,10 +36,7 @@ import type {
 } from "@fedify/fedify/vocab";
 import type { ResourceDescriptor } from "@fedify/fedify/webfinger";
 import { trace, type TracerProvider } from "@opentelemetry/api";
-import {
-  createInboxContext,
-  createRequestContext,
-} from "../fedify/testing/context.ts";
+import { createInboxContext, createRequestContext } from "./context.ts";
 
 /**
  * Helper function to expand URI templates with values.
