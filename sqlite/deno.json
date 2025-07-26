@@ -1,0 +1,27 @@
+{
+  "name": "@fedify/sqlite",
+  "version": "1.8.1",
+  "license": "MIT",
+  "exports": {
+    ".": "./mod.ts",
+    "./kv": "./kv.ts"
+  },
+  "imports": {
+    "@fedify/sqlite": "./mod.ts",
+    "@fedify/sqlite/": "./",
+    "#sqlite": "./sqlite.node.ts"
+  },
+  "exclude": [
+    "node_modules",
+    "sqlite.bun.ts"
+  ],
+  "publish": {
+    "exclude": [
+      "!dist/"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check *.ts",
+    "test": "deno test --allow-net --allow-env --doc --no-check=leaks"
+  }
+}

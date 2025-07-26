@@ -8,6 +8,7 @@
     "./postgres",
     "./redis",
     "./testing",
+    "./sqlite",
     "./examples/blog",
     "./examples/cloudflare-workers",
     "./examples/hono-sample"
