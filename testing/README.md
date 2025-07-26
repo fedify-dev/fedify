@@ -1,4 +1,7 @@
-# @fedify/testing
+<!-- deno-fmt-ignore-file -->
+
+@fedify/testing
+===============
 
 Testing utilities for Fedify applications.
 
@@ -6,32 +9,36 @@ This package provides mock implementations of the `Federation` and `Context`
 interfaces to facilitate unit testing of federated applications built with
 Fedify.
 
-## Installation
 
-```bash
+Installation
+------------
+
+~~~~ bash
 deno add @fedify/testing
-```
+~~~~
 
-```bash
+~~~~ bash
 npm install @fedify/testing
-```
+~~~~
 
-```bash
+~~~~ bash
 pnpm add @fedify/testing
-```
+~~~~
 
-```bash
+~~~~ bash
 yarn add @fedify/testing
-```
+~~~~
 
-## Usage
 
-### MockFederation
+Usage
+-----
+
+### `MockFederation`
 
 The `MockFederation` class provides a mock implementation of the `Federation`
 interface for unit testing:
 
-```typescript
+~~~~ typescript
 import { MockFederation } from "@fedify/testing";
 import { Create } from "@fedify/fedify/vocab";
 
@@ -51,14 +58,14 @@ await federation.receiveActivity(createActivity);
 // Check sent activities
 const sent = federation.sentActivities;
 console.log(sent[0].activity);
-```
+~~~~
 
-### MockContext
+### `MockContext`
 
 The `MockContext` class provides a mock implementation of the `Context`
 interface:
 
-```typescript
+~~~~ typescript
 import { MockContext } from "@fedify/testing";
 
 // Create a mock context
@@ -78,15 +85,15 @@ await context.sendActivity(
 // Check sent activities
 const sent = context.getSentActivities();
 console.log(sent[0].activity);
-```
+~~~~
 
-### Helper Functions
+### Helper functions
 
 The package also exports helper functions for creating various context types:
 
-- `createContext()` - Creates a basic context
-- `createRequestContext()` - Creates a request context
-- `createInboxContext()` - Creates an inbox context
+ -  `createContext()`: Creates a basic context
+ -  `createRequestContext()`: Creates a request context
+ -  `createInboxContext()`: Creates an inbox context
 
 ## Features
 
@@ -95,7 +102,3 @@ The package also exports helper functions for creating various context types:
 - Configure custom URI templates
 - Test queue-based activity processing
 - Mock document loaders and context loaders
-
-## License
-
-MIT
