@@ -90,6 +90,7 @@ const REFERENCES = {
     { text: "@fedify/h3", link: "https://jsr.io/@fedify/h3/doc" },
     { text: "@fedify/postgres", link: "https://jsr.io/@fedify/postgres/doc" },
     { text: "@fedify/redis", link: "https://jsr.io/@fedify/redis/doc" },
+    { text: "@fedify/testing", link: "https://jsr.io/@fedify/testing/doc" },
   ],
 };
 

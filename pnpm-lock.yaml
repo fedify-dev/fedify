@@ -135,6 +135,9 @@ importers:
       '@fedify/redis':
         specifier: 'workspace:'
         version: link:../redis
+      '@fedify/testing':
+        specifier: 'workspace:'
+        version: link:../testing
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.14.4(hono@4.8.3)
@@ -447,6 +450,31 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.16.0
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+
+  testing:
+    dependencies:
+      '@fedify/fedify':
+        specifier: 'workspace:'
+        version: link:../fedify
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+    devDependencies:
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
+      '@std/assert':
+        specifier: 'catalog:'
+        version: '@jsr/std__assert@1.0.13'
+      '@std/async':
+        specifier: 'catalog:'
+        version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
         version: 0.12.9(typescript@5.8.3)

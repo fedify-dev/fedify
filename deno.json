@@ -7,6 +7,7 @@
     "./h3",
     "./postgres",
     "./redis",
+    "./testing",
     "./examples/blog",
     "./examples/cloudflare-workers",
     "./examples/hono-sample"

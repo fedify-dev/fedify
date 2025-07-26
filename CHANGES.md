@@ -24,6 +24,16 @@ the versioning.
     All packages now follow the same version number and are released together.
     Previously, each package had independent versioning.
 
+ -  Added mock classes for `Federation` and `Context` interfaces to improve
+    testability without requiring a real federation server setup. The mock
+    classes track all sent activities with metadata and support all standard
+    Fedify patterns including custom path registration and multiple activity
+    type listeners.  [[#197], [#283] by Lee ByeongJun]
+
+     -  Added `@fedify/testing` package.
+     -  Added `MockFederation` class.
+     -  Added `MockContext` class.
+
  -  Key–value stores now optionally support CAS (compare-and-swap) operation
     for atomic updates.  This is useful for implementing optimistic locking
     and preventing lost updates in concurrent environments.
@@ -88,6 +98,7 @@ the versioning.
      -  Added `FedifyModule` for integrating Fedify into NestJS applications.
 
 [#168]: https://github.com/fedify-dev/fedify/issues/168
+[#197]: https://github.com/fedify-dev/fedify/issues/197
 [#248]: https://github.com/fedify-dev/fedify/issues/248
 [#260]: https://github.com/fedify-dev/fedify/issues/260
 [#262]: https://github.com/fedify-dev/fedify/issues/262
@@ -96,11 +107,22 @@ the versioning.
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
 [#282]: https://github.com/fedify-dev/fedify/pull/282
+[#283]: https://github.com/fedify-dev/fedify/pull/283
 [#285]: https://github.com/fedify-dev/fedify/pull/285
 [#298]: https://github.com/fedify-dev/fedify/pull/298
 [#300]: https://github.com/fedify-dev/fedify/pull/300
 [#304]: https://github.com/fedify-dev/fedify/issues/304
 [#309]: https://github.com/fedify-dev/fedify/pull/309
+
+
+Version 1.7.6
+-------------
+
+Released on July 24, 2025.
+
+ -  Fixed `doubleKnock()` to properly handle redirects with path-only `Location`
+    headers by resolving them relative to the original request URL.
+    [[#324] by Fabien O'Carroll]
 
 
 Version 1.7.5
@@ -184,6 +206,18 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.7
+-------------
+
+Released on July 24, 2025.
+
+ -  Fixed `doubleKnock()` to properly handle redirects with path-only `Location`
+    headers by resolving them relative to the original request URL.
+    [[#324] by Fabien O'Carroll]
+
+[#324]: https://github.com/fedify-dev/fedify/pull/324
 
 
 Version 1.6.6

@@ -2499,7 +2499,8 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     values: Record<string, string>;
   };
   readonly request: Request;
-  override readonly url: URL;
+  // deno-lint-ignore no-explicit-any
+  override readonly url: URL = undefined as any;
 
   constructor(options: RequestContextOptions<TContextData>) {
     super(options);

@@ -953,7 +953,55 @@ or a full URL.
 [NodeInfo]: https://nodeinfo.diaspora.software/
 [`neofetch`]: https://github.com/dylanaraps/neofetch
 
+### `-r`/`--raw`: Raw JSON
+
+> [!NOTE]
+> This option is mutually exclusive with `-b`/`--best-effort`, `--no-favicon`
+> and `-m`/`--metadata`.
+
+You can also output the fetched NodeInfo document in the raw JSON format by using
+the `-r`/`--raw` option:
+
+~~~~ sh
+fedify node --raw fosstodon.org
+~~~~
+
+The output will be like the below:
+
+~~~~ json
+{
+  "version": "2.0",
+  "software": {
+    "name": "mastodon",
+    "version": "4.4.2"
+  },
+  "protocols": [
+    "activitypub"
+  ],
+  "services": {
+    "outbound": [],
+    "inbound": []
+  },
+  "usage": {
+    "users": {
+      "total": 62444,
+      "activeMonth": 8788,
+      "activeHalfyear": 14000
+    },
+    "localPosts": 4335412
+  },
+  "openRegistrations": false,
+  "metadata": {
+    "nodeName": "Fosstodon",
+    "nodeDescription": "Fosstodon is an invite only Mastodon instance that is open to those who are interested in technology; particularly free & open source software.\r\n\r\nIf you wish to join, contact us for an invite."
+  }
+}
+~~~~
+
 ### `-b`/`--best-effort`: Parsing with best effort
+
+> [!NOTE]
+> This option is mutually exclusive with `-r`/`--raw`.
 
 The `-b`/`--best-effort` option is used to parse the NodeInfo document with
 best effort.  If the NodeInfo document is not well-formed, the option will
@@ -961,10 +1009,16 @@ try to parse it as much as possible.
 
 ### `--no-favicon`: Disabling favicon fetching
 
+> [!NOTE]
+> This option is mutually exclusive with `-r`/`--raw`.
+
 The `--no-favicon` option is used to disable fetching the favicon of the
 instance.
 
 ### `-m`/`--metadata`: Showing metadata
+
+> [!NOTE]
+> This option is mutually exclusive with `-r`/`--raw`.
 
 The `-m`/`--metadata` option is used to show the extra metadata of the NodeInfo,
 i.e., the `metadata` field of the document.

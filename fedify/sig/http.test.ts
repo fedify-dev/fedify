@@ -1935,3 +1935,43 @@ test("doubleKnock() regression test for TypeError: unusable bug #294", async () 
 
   fetchMock.hardReset();
 });
+
+test("doubleKnock() regression test for redirect handling bug", async () => {
+  // This test reproduces the bug where the redirect handling in doubleKnock
+  // would throw for a path only Location header
+
+  fetchMock.spyGlobal();
+
+  fetchMock.post("https://example.com/inbox-retry-redirect", (_cl) => {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: "/final-destination",
+      },
+    });
+  });
+
+  fetchMock.post("https://example.com/final-destination", () => {
+    return new Response("Success", { status: 200 });
+  });
+
+  const request = new Request("https://example.com/inbox-retry-redirect", {
+    method: "POST",
+    body: "Test activity content",
+    headers: {
+      "Content-Type": "application/activity+json",
+    },
+  });
+
+  const response = await doubleKnock(
+    request,
+    {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    },
+  );
+
+  assertEquals(response.status, 200);
+
+  fetchMock.hardReset();
+});
