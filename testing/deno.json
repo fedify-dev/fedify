@@ -6,12 +6,6 @@
     ".": "./mod.ts"
   },
   "imports": {
-    "@fedify/fedify": "../fedify/mod.ts",
-    "@fedify/fedify/federation": "../fedify/federation/mod.ts",
-    "@fedify/fedify/nodeinfo": "../fedify/nodeinfo/mod.ts",
-    "@fedify/fedify/runtime": "../fedify/runtime/mod.ts",
-    "@fedify/fedify/vocab": "../fedify/vocab/mod.ts",
-    "@fedify/fedify/webfinger": "../fedify/webfinger/mod.ts",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0"
   },
   "exclude": [
