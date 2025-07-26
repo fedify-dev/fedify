@@ -9,6 +9,7 @@ import {
   createRequest,
   type DocumentLoader,
   type DocumentLoaderFactoryOptions,
+  type DocumentLoaderOptions,
   getRemoteDocument,
   logRequest,
   type RemoteDocument,
@@ -58,7 +59,10 @@ export function getAuthenticatedDocumentLoader(
     GetAuthenticatedDocumentLoaderOptions = {},
 ): DocumentLoader {
   validateCryptoKey(identity.privateKey);
-  async function load(url: string): Promise<RemoteDocument> {
+  async function load(
+    url: string,
+    _options?: DocumentLoaderOptions,
+  ): Promise<RemoteDocument> {
     if (!allowPrivateAddress) {
       try {
         await validatePublicUrl(url);

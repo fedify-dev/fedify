@@ -46,6 +46,12 @@ export interface LookupObjectOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * AbortSignal for cancelling the request.
+   * @since 1.8.0
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -133,7 +139,9 @@ async function lookupObjectInternal(
   let document: unknown | null = null;
   if (identifier.protocol === "http:" || identifier.protocol === "https:") {
     try {
-      const remoteDoc = await documentLoader(identifier.href);
+      const remoteDoc = await documentLoader(identifier.href, {
+        signal: options.signal,
+      });
       document = remoteDoc.document;
     } catch (error) {
       logger.debug("Failed to fetch remote document:\n{error}", { error });
@@ -145,6 +153,7 @@ async function lookupObjectInternal(
       tracerProvider: options.tracerProvider,
       allowPrivateAddress: "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
+      signal: options.signal,
     });
     if (jrd?.links == null) return null;
     for (const l of jrd.links) {
@@ -155,7 +164,9 @@ async function lookupObjectInternal(
           ) || l.rel !== "self"
       ) continue;
       try {
-        const remoteDoc = await documentLoader(l.href);
+        const remoteDoc = await documentLoader(l.href, {
+          signal: options.signal,
+        });
         document = remoteDoc.document;
         break;
       } catch (error) {

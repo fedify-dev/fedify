@@ -5,7 +5,10 @@ import { test } from "../testing/mod.ts";
 import { lookupObject, traverseCollection } from "./lookup.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
-test("lookupObject()", async (t) => {
+test("lookupObject()", {
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, async (t) => {
   fetchMock.spyGlobal();
 
   fetchMock.get(
@@ -89,10 +92,131 @@ test("lookupObject()", async (t) => {
     assertEquals(await lookupObject("https://example.com/404", options), null);
   });
 
+  fetchMock.removeRoutes();
+  fetchMock.get(
+    "begin:https://example.com/.well-known/webfinger",
+    () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            subject: "acct:johndoe@example.com",
+            links: [
+              {
+                rel: "self",
+                href: "https://example.com/person",
+                type: "application/activity+json",
+              },
+            ],
+          });
+        }, 1000);
+      }),
+  );
+
+  await t.step("request cancellation", async () => {
+    const controller = new AbortController();
+    const promise = lookupObject("johndoe@example.com", {
+      ...options,
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    assertEquals(await promise, null);
+  });
+
+  fetchMock.removeRoutes();
+  fetchMock.get(
+    "begin:https://example.com/.well-known/webfinger",
+    {
+      subject: "acct:johndoe@example.com",
+      links: [
+        {
+          rel: "self",
+          href: "https://example.com/person",
+          type: "application/activity+json",
+        },
+      ],
+    },
+  );
+
+  await t.step("successful request with signal", async () => {
+    const controller = new AbortController();
+    const person = await lookupObject("johndoe@example.com", {
+      ...options,
+      signal: controller.signal,
+    });
+    assertInstanceOf(person, Person);
+    assertEquals(person.id, new URL("https://example.com/person"));
+  });
+
+  fetchMock.removeRoutes();
+  fetchMock.get(
+    "begin:https://example.com/.well-known/webfinger",
+    () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            subject: "acct:johndoe@example.com",
+            links: [
+              {
+                rel: "self",
+                href: "https://example.com/person",
+                type: "application/activity+json",
+              },
+            ],
+          });
+        }, 500);
+      }),
+  );
+
+  await t.step("cancellation with immediate abort", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    const result = await lookupObject("johndoe@example.com", {
+      ...options,
+      signal: controller.signal,
+    });
+    assertEquals(result, null);
+  });
+
+  fetchMock.removeRoutes();
+  fetchMock.get(
+    "https://example.com/slow-object",
+    () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            status: 200,
+            headers: { "Content-Type": "application/activity+json" },
+            body: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              content: "Slow response",
+            },
+          });
+        }, 1000);
+      }),
+  );
+
+  await t.step("direct object fetch cancellation", async () => {
+    const controller = new AbortController();
+    const promise = lookupObject("https://example.com/slow-object", {
+      contextLoader: mockDocumentLoader,
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    assertEquals(await promise, null);
+  });
+
   fetchMock.hardReset();
+  fetchMock.removeRoutes();
 });
 
-test("traverseCollection()", async () => {
+test("traverseCollection()", {
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, async () => {
   const options = {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,

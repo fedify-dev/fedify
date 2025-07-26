@@ -1,5 +1,8 @@
 import { getLogger } from "@logtape/logtape";
-import type { RemoteDocument } from "../runtime/docloader.ts";
+import type {
+  DocumentLoaderOptions,
+  RemoteDocument,
+} from "../runtime/docloader.ts";
 
 const logger = getLogger(["fedify", "testing", "docloader"]);
 
@@ -13,6 +16,7 @@ const logger = getLogger(["fedify", "testing", "docloader"]);
  */
 export async function mockDocumentLoader(
   resource: string,
+  _options?: DocumentLoaderOptions,
 ): Promise<RemoteDocument> {
   const url = new URL(resource);
   if (
