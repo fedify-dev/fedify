@@ -5,8 +5,21 @@ import { getLogger } from "@logtape/logtape";
 import { stringify } from "@std/dotenv/stringify";
 import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
-import { format, greaterThan, parse } from "@std/semver";
-import metadata from "./deno.json" with { type: "json" };
+import fedifyMetaData from "../fedify/deno.json" with { type: "json" };
+import amqpMetaData from "../amqp/deno.json" with { type: "json" };
+import expressMetaData from "../express/deno.json" with { type: "json" };
+import h3MetaData from "../h3/deno.json" with { type: "json" };
+import postgresMetaData from "../postgres/deno.json" with { type: "json" };
+import redisMetaData from "../redis/deno.json" with { type: "json" };
+
+const packagesMetaData: Record<`@fedify/${string}`, Record<string, unknown>> = {
+  "@fedify/fedify": fedifyMetaData,
+  "@fedify/redis": redisMetaData,
+  "@fedify/postgres": postgresMetaData,
+  "@fedify/amqp": amqpMetaData,
+  "@fedify/express": expressMetaData,
+  "@fedify/h3": h3MetaData,
+};
 
 const logger = getLogger(["fedify", "cli", "init"]);
 
@@ -1069,7 +1082,7 @@ await configure({
       }
     }
     const dependencies: Record<string, string> = {
-      "@fedify/fedify": `^${await getLatestFedifyVersion(metadata.version)}`,
+      "@fedify/fedify": `^${getLatestVersion("@fedify/fedify")}`,
       "@logtape/logtape": "^0.8.2",
       ...initializer.dependencies,
       ...kvStoreDesc?.dependencies,
@@ -1489,23 +1502,9 @@ async function addDependencies(
   }
 }
 
-async function getLatestFedifyVersion(version: string): Promise<string> {
-  const response = await fetch("https://jsr.io/@fedify/fedify/meta.json", {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-  // deno-lint-ignore no-explicit-any
-  const result = await response.json() as any;
-  let maxVersion = parse("0.0.0");
-  for (const v in result.versions) {
-    if (v === version) return version;
-    else if (result.versions[v].yanked) continue;
-    const semVer = parse(v);
-    if (semVer.prerelease != null && semVer.prerelease.length > 0) continue;
-    if (greaterThan(semVer, maxVersion)) maxVersion = semVer;
-  }
-  return format(maxVersion);
+export function getLatestVersion(packageName: string): string {
+  const denoJson = packagesMetaData[packageName as `@fedify/${string}`];
+  return (denoJson?.version as string) ?? "latest";
 }
 
 async function rewriteJsonFile(
