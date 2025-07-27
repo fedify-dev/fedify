@@ -8,6 +8,7 @@ import type {
   Context,
   Federation,
   FederationFetchOptions,
+  FederationObserver,
   FederationStartQueueOptions,
   InboxContext,
   InboxListenerSetters,
@@ -171,15 +172,18 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
     new Map();
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
+  public observers: FederationObserver<TContextData>[] = [];
 
   constructor(
     private options: {
       contextData?: TContextData;
       origin?: string;
       tracerProvider?: TracerProvider;
+      observers?: FederationObserver<TContextData>[];
     } = {},
   ) {
     this.contextData = options.contextData;
+    this.observers = options.observers ?? [];
   }
 
   setNodeInfoDispatcher(
@@ -503,6 +507,26 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
    */
   async receiveActivity(activity: Activity): Promise<void> {
     this.receivedActivities.push(activity);
+
+    // Notify observers about the inbound activity
+    if (this.observers.length > 0) {
+      const context = createRequestContext({
+        url: new URL(this.options.origin ?? "https://example.com"),
+        data: this.contextData as TContextData,
+        federation: this as any,
+      });
+      
+      for (const observer of this.observers) {
+        if (observer.onInboundActivity) {
+          try {
+            await observer.onInboundActivity(context, activity);
+          } catch (error) {
+            // Log but don't fail the federation process
+            console.error(`Observer error in onInboundActivity:`, error);
+          }
+        }
+      }
+    }
 
     // Find and execute appropriate inbox listeners
     const typeName = activity.constructor.name;
@@ -887,7 +911,7 @@ export class MockContext<TContextData> implements Context<TContextData> {
     activity: Activity,
     options?: SendActivityOptionsForCollection,
   ): Promise<void>;
-  sendActivity(
+  async sendActivity(
     sender:
       | SenderKeyPair
       | SenderKeyPair[]
@@ -909,9 +933,23 @@ export class MockContext<TContextData> implements Context<TContextData> {
         activity,
         sentOrder: ++this.federation.sentCounter,
       });
+      
+      // Notify observers about the outbound activity
+      if (this.federation.observers.length > 0) {
+        for (const observer of this.federation.observers) {
+          if (observer.onOutboundActivity) {
+            try {
+              await observer.onOutboundActivity(this, activity);
+            } catch (error) {
+              // Log but don't fail the federation process
+              console.error(`Observer error in onOutboundActivity:`, error);
+            }
+          }
+        }
+      }
     }
 
-    return Promise.resolve();
+    return;
   }
 
   routeActivity(

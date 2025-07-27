@@ -80,6 +80,7 @@ import type {
 import type {
   Federation,
   FederationFetchOptions,
+  FederationObserver,
   FederationOptions,
   FederationStartQueueOptions,
 } from "./federation.ts";
@@ -232,6 +233,7 @@ export class FederationImpl<TContextData>
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   tracerProvider: TracerProvider;
   firstKnock?: HttpMessageSignaturesSpec;
+  observers: FederationObserver<TContextData>[];
 
   constructor(options: FederationOptions<TContextData>) {
     super();
@@ -401,11 +403,30 @@ export class FederationImpl<TContextData>
       getDefaultActivityTransformers<TContextData>();
     this.tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     this.firstKnock = options.firstKnock;
+    this.observers = options.observers ?? [];
   }
 
   _initializeRouter() {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
+  }
+
+  private async notifyObservers(
+    method: 'onInboundActivity' | 'onOutboundActivity',
+    context: Context<TContextData>,
+    activity: Activity
+  ): Promise<void> {
+    const logger = getLogger(["fedify", "federation", "observer"]);
+    for (const observer of this.observers) {
+      if (observer[method]) {
+        try {
+          await observer[method]!(context, activity);
+        } catch (error) {
+          // Log but don't fail the federation process
+          logger.error(`Observer error in ${method}: {error}`, { error });
+        }
+      }
+    }
   }
 
   override _getTracer() {
@@ -1000,6 +1021,12 @@ export class FederationImpl<TContextData>
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const { immediate, collectionSync, context: ctx } = options;
+    
+    // Notify observers about the outbound activity
+    if (this.observers.length > 0) {
+      await this.notifyObservers('onOutboundActivity', ctx, activity);
+    }
+    
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -1380,6 +1407,9 @@ export class FederationImpl<TContextData>
           signatureTimeWindow: this.signatureTimeWindow,
           skipSignatureVerification: this.skipSignatureVerification,
           tracerProvider: this.tracerProvider,
+          notifyInboundActivity: this.observers.length > 0
+            ? (ctx, activity) => this.notifyObservers('onInboundActivity', ctx, activity)
+            : undefined,
         });
       case "following":
         return await handleCollection(request, {
