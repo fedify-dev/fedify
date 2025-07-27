@@ -8,6 +8,7 @@ debugging tools through an extensible observer pattern.
 - **Real-time Activity Monitoring**: Capture and inspect all inbound/outbound
   ActivityPub activities
 - **Web Dashboard**: Interactive web interface for browsing activities
+- **CLI Tool**: Terminal-based activity viewer with real-time following
 - **Flexible Integration**: Multiple integration patterns for different use cases
 - **Production Ready**: Built-in security features for production environments
 - **Circular Buffer Storage**: Efficient in-memory storage with configurable
@@ -143,7 +144,52 @@ deno test --allow-env
 deno check mod.ts
 ```
 
-## Migration from CLI Debug
+## CLI Usage
+
+The debugger package includes a CLI tool for terminal-based debugging:
+
+### Installation
+
+```bash
+# Install globally
+deno install --allow-net --allow-env -n fedify-debug jsr:@fedify/debugger/cli
+
+# Or run directly
+deno run --allow-net --allow-env jsr:@fedify/debugger/cli
+```
+
+### Basic Usage
+
+```bash
+# Connect to local debugger (default: http://localhost:3000/__debugger__)
+fedify-debug
+
+# Connect to remote debugger
+fedify-debug --url https://example.com/__debugger__
+
+# Follow new activities in real-time
+fedify-debug --follow
+
+# Filter by direction
+fedify-debug --direction inbound
+
+# Search for specific activities
+fedify-debug --filter "Create"
+
+# Output as JSON for processing
+fedify-debug --json
+```
+
+### Options
+
+- `-u, --url <URL>` - Debug endpoint URL (default: http://localhost:3000/__debugger__)
+- `-f, --filter <TEXT>` - Filter activities by text search
+- `-d, --direction <DIR>` - Filter by direction: inbound or outbound
+- `-w, --follow` - Follow mode - show new activities as they arrive
+- `-j, --json` - Output raw JSON instead of formatted text
+- `-h, --help` - Show help message
+
+## Migration from Old CLI Debug
 
 If you were using the old CLI-based debug command, here's how to migrate:
 
@@ -157,4 +203,9 @@ fedify debug --port 3000
 // In your application code
 const { handler } = integrateDebugger(federation);
 app.route("/__debugger__", handler);
+```
+
+Then use the new CLI to connect:
+```bash
+fedify-debug --url http://localhost:3000/__debugger__
 ```
