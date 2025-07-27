@@ -1502,11 +1502,15 @@ async function addDependencies(
   }
 }
 
-function getLatestVersion(packageName: string): string {
-  const denoJson = packagesMetaData[packageName as `@fedify/${string}`];
-  return (denoJson?.version as string) ?? "latest";
+function getLatestVersion(packageName: `@fedify/${string}`): string {
+  const denoJson = packagesMetaData[packageName];
+  if (!denoJson?.version) {
+    throw new Error(
+      `Version for package "${packageName}" not found in local metadata.`,
+    );
+  }
+  return denoJson?.version as string;
 }
-
 async function rewriteJsonFile(
   path: string,
   // deno-lint-ignore no-explicit-any
