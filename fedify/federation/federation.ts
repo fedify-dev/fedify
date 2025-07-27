@@ -541,6 +541,54 @@ export interface FederationBuilder<TContextData>
 }
 
 /**
+ * An observer that can be registered with a federation to receive
+ * notifications about federation lifecycle events.
+ *
+ * This interface enables extensible hooks into the federation lifecycle,
+ * supporting use cases like debugging, logging, metrics, and security auditing.
+ *
+ * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @since 1.9.0
+ */
+export interface FederationObserver<TContextData> {
+  /**
+   * Called when an inbound activity is received before it is processed.
+   *
+   * This method is called after activity parsing but before listener execution.
+   * Any errors thrown in this method are logged but do not interrupt the
+   * federation process.
+   *
+   * @param context The request context.
+   * @param activity The received activity.
+   * @returns A promise that resolves when the observer has finished processing,
+   *          or void for synchronous processing.
+   * @since 1.9.0
+   */
+  onInboundActivity?(
+    context: Context<TContextData>,
+    activity: Activity,
+  ): void | Promise<void>;
+
+  /**
+   * Called when an outbound activity is about to be sent.
+   *
+   * This method is called before activity transformation and delivery.
+   * Any errors thrown in this method are logged but do not interrupt the
+   * federation process.
+   *
+   * @param context The request context.
+   * @param activity The activity to be sent.
+   * @returns A promise that resolves when the observer has finished processing,
+   *          or void for synchronous processing.
+   * @since 1.9.0
+   */
+  onOutboundActivity?(
+    context: Context<TContextData>,
+    activity: Activity,
+  ): void | Promise<void>;
+}
+
+/**
  * Options for creating a {@link Federation} object.
  * @typeParam TContextData The context data to pass to the {@link Context}.
  * @since 1.6.0
@@ -738,6 +786,17 @@ export interface FederationOptions<TContextData> {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * An array of observers that receive notifications about federation
+   * lifecycle events.
+   *
+   * Observers are called in the order they are registered. Any errors thrown
+   * by observers are logged but do not interrupt the federation process.
+   *
+   * @since 1.9.0
+   */
+  observers?: FederationObserver<TContextData>[];
 }
 
 /**

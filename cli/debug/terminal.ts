@@ -110,9 +110,7 @@ export class TerminalDebugger {
 
   private printExistingActivities(): void {
     const all = this.store.getAll();
-    const filtered = this.options.filter
-      ? all.filter(this.filterFn)
-      : all;
+    const filtered = this.options.filter ? all.filter(this.filterFn) : all;
 
     const displayActivities = (this.options.tail ?? 0) > 0
       ? filtered.slice(-this.options.tail!)
