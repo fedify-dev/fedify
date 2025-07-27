@@ -1502,7 +1502,7 @@ async function addDependencies(
   }
 }
 
-export function getLatestVersion(packageName: string): string {
+function getLatestVersion(packageName: string): string {
   const denoJson = packagesMetaData[packageName as `@fedify/${string}`];
   return (denoJson?.version as string) ?? "latest";
 }
