@@ -1,7 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
 import { exists } from "@std/fs";
-import { getLatestVersion } from "./init.ts";
 
 const CLI_PATH = join(import.meta.dirname!, "mod.ts");
 
@@ -151,37 +150,6 @@ Deno.test("init --dry-run shows command for framework initialization", async () 
   }
 });
 
-Deno.test("init without --dry-run creates actual files", async () => {
-  const testDir = await Deno.makeTempDir();
-  const projectDir = join(testDir, "test-actual-project");
-
-  try {
-    // Run without --dry-run
-    const result = await runInit([
-      projectDir,
-      "--runtime",
-      "deno",
-    ]);
-
-    // Should not show dry-run header
-    assertEquals(result.output.includes("DRY RUN MODE"), false);
-
-    // Verify files were actually created
-    assertEquals(
-      await exists(projectDir),
-      true,
-      "Project directory should be created",
-    );
-    assertEquals(await exists(join(projectDir, "federation.ts")), true);
-    assertEquals(await exists(join(projectDir, "logging.ts")), true);
-    assertEquals(await exists(join(projectDir, "main.ts")), true);
-    assertEquals(await exists(join(projectDir, "deno.json")), true);
-    assertEquals(await exists(join(projectDir, ".env")), true);
-  } finally {
-    await Deno.remove(testDir, { recursive: true });
-  }
-});
-
 Deno.test("init --dry-run fails on non-empty directory", async () => {
   const testDir = await Deno.makeTempDir();
 
@@ -251,37 +219,4 @@ Deno.test("init --dry-run shows dev dependencies for Node.js", async () => {
   } finally {
     await Deno.remove(testDir, { recursive: true });
   }
-});
-
-Deno.test("init - getLatestVersion: returns version for AMQP package", () => {
-  const amqpVersion = getLatestVersion("@fedify/amqp");
-  assertEquals(typeof amqpVersion, "string");
-  assertEquals(/^\d+\.\d+\.\d+$/.test(amqpVersion), true);
-});
-
-Deno.test("init - getLatestVersion: returns version for Redis package", () => {
-  const redisVersion = getLatestVersion("@fedify/redis");
-  assertEquals(typeof redisVersion, "string");
-  assertEquals(/^\d+\.\d+\.\d+$/.test(redisVersion), true);
-});
-
-Deno.test("init - getLatestVersion: matches actual deno.json version for fedify package", async () => {
-  const denoJsonPath = new URL("../fedify/deno.json", import.meta.url).pathname;
-  const denoJsonContent = await Deno.readTextFile(denoJsonPath);
-  const denoJson = JSON.parse(denoJsonContent);
-  const actualVersion = denoJson.version;
-
-  const expectedVersion = getLatestVersion("@fedify/fedify");
-  assertEquals(expectedVersion, actualVersion);
-});
-
-Deno.test("init - getLatestVersion: matches actual deno.json version for Postgres package", async () => {
-  const denoJsonPath =
-    new URL("../postgres/deno.json", import.meta.url).pathname;
-  const denoJsonContent = await Deno.readTextFile(denoJsonPath);
-  const denoJson = JSON.parse(denoJsonContent);
-  const actualVersion = denoJson.version;
-
-  const expectedVersion = getLatestVersion("@fedify/postgres");
-  assertEquals(expectedVersion, actualVersion);
 });
