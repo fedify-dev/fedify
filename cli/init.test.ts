@@ -249,7 +249,7 @@ Deno.test("init - check version for AMQP package", async () => {
 
 Deno.test("init - check version for Redis package", async () => {
   const redisData = await Deno.readTextFile(
-    join(import.meta.dirname!, "../amqp/deno.json"),
+    join(import.meta.dirname!, "../redis/deno.json"),
   );
   const testDir = await Deno.makeTempDir();
   const projectDir = join(testDir, "test-redis-project");
@@ -275,7 +275,7 @@ Deno.test("init - check version for Redis package", async () => {
 
 Deno.test("init - check version for Postgres package", async () => {
   const postgresData = await Deno.readTextFile(
-    join(import.meta.dirname!, "../amqp/deno.json"),
+    join(import.meta.dirname!, "../postgres/deno.json"),
   );
   const testDir = await Deno.makeTempDir();
   const projectDir = join(testDir, "test-postgres-project");
