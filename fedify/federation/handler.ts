@@ -487,7 +487,7 @@ export interface InboxHandlerParameters<TContextData> {
   tracerProvider?: TracerProvider;
   notifyInboundActivity?: (
     context: Context<TContextData>,
-    activity: Activity
+    activity: Activity,
   ) => Promise<void>;
 }
 
@@ -710,7 +710,7 @@ async function handleInboxInternal<TContextData>(
     span.setAttribute("activitypub.activity.id", activity.id.href);
   }
   span.setAttribute("activitypub.activity.type", getTypeId(activity).href);
-  
+
   // Notify observers about the inbound activity
   if (notifyInboundActivity != null) {
     try {
@@ -720,7 +720,7 @@ async function handleInboxInternal<TContextData>(
       // Don't fail the request if observer fails
     }
   }
-  
+
   const routeResult = await routeActivity({
     context: ctx,
     json,

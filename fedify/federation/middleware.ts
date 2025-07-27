@@ -412,9 +412,9 @@ export class FederationImpl<TContextData>
   }
 
   private async notifyObservers(
-    method: 'onInboundActivity' | 'onOutboundActivity',
+    method: "onInboundActivity" | "onOutboundActivity",
     context: Context<TContextData>,
-    activity: Activity
+    activity: Activity,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "observer"]);
     for (const observer of this.observers) {
@@ -1021,12 +1021,12 @@ export class FederationImpl<TContextData>
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const { immediate, collectionSync, context: ctx } = options;
-    
+
     // Notify observers about the outbound activity
     if (this.observers.length > 0) {
-      await this.notifyObservers('onOutboundActivity', ctx, activity);
+      await this.notifyObservers("onOutboundActivity", ctx, activity);
     }
-    
+
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -1408,7 +1408,8 @@ export class FederationImpl<TContextData>
           skipSignatureVerification: this.skipSignatureVerification,
           tracerProvider: this.tracerProvider,
           notifyInboundActivity: this.observers.length > 0
-            ? (ctx, activity) => this.notifyObservers('onInboundActivity', ctx, activity)
+            ? (ctx, activity) =>
+              this.notifyObservers("onInboundActivity", ctx, activity)
             : undefined,
         });
       case "following":

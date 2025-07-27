@@ -2,6 +2,7 @@
   "workspace": [
     "./fedify",
     "./cli",
+    "./debugger",
     "./amqp",
     "./express",
     "./h3",

@@ -1,0 +1,22 @@
+{
+  "name": "@fedify/debugger",
+  "version": "1.9.0",
+  "exports": "./mod.ts",
+  "publish": {
+    "include": [
+      "mod.ts",
+      "observer.ts",
+      "store.ts",
+      "handler.ts",
+      "integration.ts",
+      "types.ts",
+      "README.md"
+    ]
+  },
+  "imports": {
+    "@fedify/fedify": "../fedify/mod.ts",
+    "hono": "jsr:@hono/hono@^4.8.3",
+    "@std/assert": "jsr:@std/assert@^0.226.0",
+    "@std/async": "jsr:@std/async@^1.0.0"
+  }
+}

@@ -515,7 +515,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
         data: this.contextData as TContextData,
         federation: this as any,
       });
-      
+
       for (const observer of this.observers) {
         if (observer.onInboundActivity) {
           try {
@@ -933,7 +933,7 @@ export class MockContext<TContextData> implements Context<TContextData> {
         activity,
         sentOrder: ++this.federation.sentCounter,
       });
-      
+
       // Notify observers about the outbound activity
       if (this.federation.observers.length > 0) {
         for (const observer of this.federation.observers) {

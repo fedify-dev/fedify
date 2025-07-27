@@ -189,7 +189,7 @@ test("MockFederation with observers", async (t) => {
       new Person({
         id: new URL("https://example.com/users/bob"),
       }),
-      activity
+      activity,
     );
 
     assert(outboundCalled, "onOutboundActivity should have been called");
