@@ -5,12 +5,27 @@ import { getLogger } from "@logtape/logtape";
 import { stringify } from "@std/dotenv/stringify";
 import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
-import fedifyMetaData from "../fedify/deno.json" with { type: "json" };
-import amqpMetaData from "../amqp/deno.json" with { type: "json" };
-import expressMetaData from "../express/deno.json" with { type: "json" };
-import h3MetaData from "../h3/deno.json" with { type: "json" };
-import postgresMetaData from "../postgres/deno.json" with { type: "json" };
-import redisMetaData from "../redis/deno.json" with { type: "json" };
+
+const currentDir = dirname(import.meta.url);
+const fedifyMetaData = await import(join(currentDir, "../fedify/deno.json"), {
+  with: { type: "json" },
+}).then((m) => m.default);
+const amqpMetaData = await import(join(currentDir, "../amqp/deno.json"), {
+  with: { type: "json" },
+}).then((m) => m.default);
+const expressMetaData = await import(join(currentDir, "../express/deno.json"), {
+  with: { type: "json" },
+}).then((m) => m.default);
+const h3MetaData = await import(join(currentDir, "../h3/deno.json"), {
+  with: { type: "json" },
+}).then((m) => m.default);
+const postgresMetaData = await import(
+  join(currentDir, "../postgres/deno.json"),
+  { with: { type: "json" } }
+).then((m) => m.default);
+const redisMetaData = await import(join(currentDir, "../redis/deno.json"), {
+  with: { type: "json" },
+}).then((m) => m.default);
 
 const packagesMetaData: Record<`@fedify/${string}`, Record<string, unknown>> = {
   "@fedify/fedify": fedifyMetaData,
