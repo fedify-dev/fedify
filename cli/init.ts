@@ -5,35 +5,15 @@ import { getLogger } from "@logtape/logtape";
 import { stringify } from "@std/dotenv/stringify";
 import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
+import metadata from "./deno.json" with { type: "json" };
 
-const currentDir = dirname(import.meta.url);
-const fedifyMetaData = await import(join(currentDir, "../fedify/deno.json"), {
-  with: { type: "json" },
-}).then((m) => m.default);
-const amqpMetaData = await import(join(currentDir, "../amqp/deno.json"), {
-  with: { type: "json" },
-}).then((m) => m.default);
-const expressMetaData = await import(join(currentDir, "../express/deno.json"), {
-  with: { type: "json" },
-}).then((m) => m.default);
-const h3MetaData = await import(join(currentDir, "../h3/deno.json"), {
-  with: { type: "json" },
-}).then((m) => m.default);
-const postgresMetaData = await import(
-  join(currentDir, "../postgres/deno.json"),
-  { with: { type: "json" } }
-).then((m) => m.default);
-const redisMetaData = await import(join(currentDir, "../redis/deno.json"), {
-  with: { type: "json" },
-}).then((m) => m.default);
-
-const packagesMetaData: Record<`@fedify/${string}`, Record<string, unknown>> = {
-  "@fedify/fedify": fedifyMetaData,
-  "@fedify/redis": redisMetaData,
-  "@fedify/postgres": postgresMetaData,
-  "@fedify/amqp": amqpMetaData,
-  "@fedify/express": expressMetaData,
-  "@fedify/h3": h3MetaData,
+const packagesMetaData: Record<`@fedify/${string}`, string> = {
+  "@fedify/fedify": metadata.version,
+  "@fedify/redis": metadata.version,
+  "@fedify/postgres": metadata.version,
+  "@fedify/amqp": metadata.version,
+  "@fedify/express": metadata.version,
+  "@fedify/h3": metadata.version,
 };
 
 const logger = getLogger(["fedify", "cli", "init"]);
@@ -1518,13 +1498,13 @@ async function addDependencies(
 }
 
 function getLatestVersion(packageName: `@fedify/${string}`): string {
-  const denoJson = packagesMetaData[packageName];
-  if (!denoJson?.version) {
+  const version = packagesMetaData[packageName];
+  if (!version) {
     throw new Error(
       `Version for package "${packageName}" not found in local metadata.`,
     );
   }
-  return denoJson?.version as string;
+  return version;
 }
 async function rewriteJsonFile(
   path: string,
