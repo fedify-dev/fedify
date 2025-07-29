@@ -45,8 +45,7 @@
     "dev": "bun run --watch example.ts"
   },
   "peerDependencies": {
-    "elysia": "^1.3.6",
-    "@fedify/fedify": "workspace*"
+    "elysia": "^1.3.6"
   },
   "devDependencies": {
     "bun-types": "^1.2.19"

@@ -2,12 +2,11 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "elysia",
+      "name": "@fedify/elysia",
       "devDependencies": {
         "bun-types": "^1.2.19",
       },
       "peerDependencies": {
-        "@fedify/fedify": "workspace*",
         "elysia": "^1.3.6",
       },
     },
