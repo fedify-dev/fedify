@@ -8,7 +8,6 @@ export const fedify = <TContextData = unknown>(
     app
       .decorate("federation", federation)
       .onRequest(async ({ request, set }) => {
-        console.log("bye");
         let notFound = false;
         let notAcceptable = false;
 
@@ -40,7 +39,6 @@ export const fedify = <TContextData = unknown>(
 
         // If federation handled the request, return the response
         if (notFound || (notAcceptable && request != null)) {
-          console.log("hi!");
           set.status = response.status;
 
           response.headers.forEach((value, key) => {
