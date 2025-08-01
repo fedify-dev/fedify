@@ -17,7 +17,7 @@ const logger = getLogger(["fedify", "compat", "transformers"]);
  * https://example.com/#Follow/12345678-1234-5678-1234-567812345678
  * ```
  *
- * @typeParam TContextData The type of the context data.
+ * @template TContextData The type of the context data.
  * @param activity The activity to assign an ID to.
  * @param context The context of the activity.
  * @return The activity with an ID assigned.
@@ -80,7 +80,7 @@ export function autoIdAssigner<TContextData>(
  *
  * As some ActivityPub implementations like Threads fail to deal with inlined
  * actor objects, this transformer can be used to work around this issue.
- * @typeParam TContextData The type of the context data.
+ * @template TContextData The type of the context data.
  * @param activity The activity to dehydrate the actor property of.
  * @param context The context of the activity.
  * @returns The dehydrated activity.
@@ -99,7 +99,7 @@ export function actorDehydrator<TContextData>(
 /**
  * Gets the default activity transformers that are applied to all outgoing
  * activities.
- * @typeParam TContextData The type of the context data.
+ * @template TContextData The type of the context data.
  * @returns The default activity transformers.
  * @since 1.4.0
  */

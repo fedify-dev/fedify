@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import fetchMock from "fetch-mock";
-import { getAsciiArt, getFaviconUrl, Jimp, rgbTo256Color } from "./node.ts";
+import { getAsciiArt, getFaviconUrl, Jimp, rgbTo256Color } from "./nodeinfo.ts";
 
 const HTML_WITH_SMALL_ICON = `
 <!DOCTYPE html>

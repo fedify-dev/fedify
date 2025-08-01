@@ -1367,3 +1367,316 @@ ctx.getFeaturedTagsUri("2bd304f9-36b3-44f0-bf0b-29124aafcbb4")
 > tags collection actually exists.  It only constructs a URI based on the given
 > identifier, which may respond with `404 Not Found`.  Make sure to check
 > if the identifier is valid before calling the method.
+
+
+Custom collections
+------------------
+
+*This API is available since Fedify 1.8.0.*
+
+In addition to the built-in collections like outbox, inbox, following, and
+followers, Fedify allows you to create custom collections for your specific
+needs.  Custom collections can be used to expose any type of ActivityPub
+objects in a paginated manner.
+
+There are two types of custom collections you can create:
+
+- **Collection**: An unordered collection of objects
+- **Ordered Collection**: An ordered collection of objects where the order
+  matters
+
+### Setting up a custom collection
+
+To create a custom collection, you use either `setCollectionDispatcher()` for
+unordered collections or `setOrderedCollectionDispatcher()` for ordered
+collections. Both methods work similarly to the built-in collection dispatchers.
+
+Here's an example of creating a custom collection of bookmarked posts:
+
+~~~~ typescript twoslash
+import { Article, type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+/**
+ * A hypothetical type that represents a bookmarked post.
+ */
+interface BookmarkedPost {
+  /**
+   * The ID of the post.
+   */
+  id: string;
+  /**
+   * The title of the post.
+   */
+  title: string;
+  /**
+   * The content of the post.
+   */
+  content: string;
+}
+/**
+ * A hypothetical function that returns the bookmarked posts for a user.
+ */
+async function getBookmarkedPostsByUserId(
+  userId: string,
+  cursor?: string | null,
+  limit = 10,
+): Promise<{ posts: BookmarkedPost[]; nextCursor: string | null }> {
+  return { posts: [], nextCursor: null };
+}
+/**
+ * A hypothetical function that counts bookmarked posts for a user.
+ */
+async function getBookmarkCountByUserId(userId: string): Promise<number> {
+  return 0;
+}
+// ---cut-before---
+federation
+  .setCollectionDispatcher(
+    "bookmarks",  // Unique name for this collection
+    Article,      // Type of objects in the collection
+    "/users/{identifier}/bookmarks", // URI pattern
+    async (ctx, values, cursor) => {
+      // If a whole collection is requested, return null to use pagination
+      if (cursor == null) return null;
+      
+      // Work with the database to find bookmarked posts
+      const { posts, nextCursor } = await getBookmarkedPostsByUserId(
+        values.identifier,
+        cursor === "" ? null : cursor,
+        10
+      );
+      
+      // Convert posts to Article objects
+      const items = posts.map(post =>
+        new Article({
+          id: new URL(`/posts/${post.id}`, ctx.url),
+          summary: post.title,
+          content: post.content,
+        })
+      );
+      
+      return { items, nextCursor };
+    }
+  )
+  .setFirstCursor(async (ctx, values) => "")
+  .setCounter(async (ctx, values) => {
+    // Return the total count of bookmarked posts
+    const count = await getBookmarkCountByUserId(values.identifier);
+    return count;
+  });
+~~~~
+
+For ordered collections, simply use `setOrderedCollectionDispatcher()` instead:
+
+~~~~ typescript twoslash
+import { Article, type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+/**
+ * A hypothetical type that represents a bookmarked post.
+ */
+interface BookmarkedPost {
+  /**
+   * The ID of the post.
+   */
+  id: string;
+  /**
+   * The title of the post.
+   */
+  title: string;
+  /**
+   * The content of the post.
+   */
+  content: string;
+}
+/**
+ * A hypothetical function that returns the bookmarked posts for a user.
+ */
+async function getBookmarkedPostsByUserId(
+  userId: string,
+  cursor?: string | null,
+  limit = 10,
+): Promise<{ posts: BookmarkedPost[]; nextCursor: string | null }> {
+  return { posts: [], nextCursor: null };
+}
+/**
+ * A hypothetical function that counts bookmarked posts for a user.
+ */
+async function getBookmarkCountByUserId(userId: string): Promise<number> {
+  return 0;
+}
+// ---cut-before---
+federation
+  .setOrderedCollectionDispatcher(
+    "bookmarks",  // Unique name for this collection
+    Article,      // Type of objects in the collection
+    "/users/{identifier}/bookmarks", // URI pattern
+    async (ctx, values, cursor) => {
+      // Implementation is the same as regular collections
+      if (cursor == null) return null;
+      
+      const { posts, nextCursor } = await getBookmarkedPostsByUserId(
+        values.identifier,
+        cursor === "" ? null : cursor,
+        10
+      );
+      
+      const items = posts.map(post =>
+        new Article({
+          id: new URL(`/posts/${post.id}`, ctx.url),
+          summary: post.title,
+          content: post.content,
+        })
+      );
+      
+      return { items, nextCursor };
+    }
+  )
+  .setFirstCursor(async (ctx, values) => "")
+  .setCounter(async (ctx, values) => {
+    return await getBookmarkCountByUserId(values.identifier);
+  });
+~~~~
+
+### Custom collection callbacks
+
+Custom collections support the same callback methods as built-in collections:
+
+- **`.setCounter()`**: Sets a callback that returns the total number of items
+  in the collection
+- **`.setFirstCursor()`**: Sets the cursor for the first page of the collection
+- **`.setLastCursor()`**: Sets the cursor for the last page of the collection
+- **`.authorize()`**: Sets an authorization predicate to control access to
+  the collection
+
+### Multiple parameters
+
+Custom collections can have multiple parameters in their URI patterns:
+
+~~~~ typescript twoslash
+import { Note, type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+/**
+ * A hypothetical function that returns posts by category.
+ */
+async function getPostsByCategory(
+  userId: string,
+  category: string,
+  cursor?: string | null,
+): Promise<{ posts: any[]; nextCursor: string | null }> {
+  return { posts: [], nextCursor: null };
+}
+// ---cut-before---
+federation
+  .setCollectionDispatcher(
+    "category-posts",
+    Note,
+    "/users/{identifier}/categories/{category}/posts",
+    async (ctx, values, cursor) => {
+      // values.identifier and values.category are both available
+      const { posts, nextCursor } = await getPostsByCategory(
+        values.identifier,
+        values.category,
+        cursor === "" ? null : cursor
+      );
+      
+      const items = posts.map(post => new Note({
+        id: new URL(`/posts/${post.id}`, ctx.url),
+        content: post.content,
+      }));
+      
+      return { items, nextCursor };
+    }
+  )
+  .setFirstCursor(async (ctx, values) => "");
+~~~~
+
+### Constructing custom collection URIs
+
+To construct a custom collection URI, you can use the `Context.getCollectionUri()`
+method. This method takes the collection name and the parameter values:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+const ctx = null as unknown as Context<void>;
+// ---cut-before---
+// For a collection with one parameter:
+ctx.getCollectionUri("bookmarks", { identifier: "alice" })
+
+// For a collection with multiple parameters:
+ctx.getCollectionUri("category-posts", { 
+  identifier: "alice", 
+  category: "technology" 
+})
+~~~~
+
+> [!NOTE]
+>
+> The `Context.getCollectionUri()` method does not guarantee that the custom
+> collection actually exists.  It only constructs a URI based on the given
+> name and parameters, which may respond with `404 Not Found`.  Make sure to
+> check if the parameters are valid before calling the method.
+
+### Authorization
+
+You can restrict access to custom collections using the `.authorize()` method:
+
+~~~~ typescript twoslash
+import { Article, type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+/**
+ * A hypothetical function that checks if a user can access another user's bookmarks.
+ */
+async function canAccessBookmarks(
+  viewerId: string | null,
+  ownerId: string,
+): Promise<boolean> {
+  return false;
+}
+/**
+ * A hypothetical function that returns the bookmarked posts for a user.
+ */
+async function getBookmarkedPostsByUserId(
+  userId: string,
+  cursor?: string | null,
+  limit = 10,
+): Promise<{ posts: any[]; nextCursor: string | null }> {
+  return { posts: [], nextCursor: null };
+}
+async function getActorIdentifier(actorId: URL|null): Promise<string | null> {
+  // Hypothetical function to get the identifier of an actor
+  return "";
+}
+// ---cut-before---
+federation
+  .setCollectionDispatcher(
+    "private-bookmarks",
+    Article,
+    "/users/{identifier}/private-bookmarks",
+    async (ctx, values, cursor) => {
+      if (cursor == null) return null;
+      
+      const { posts, nextCursor } = await getBookmarkedPostsByUserId(
+        values.identifier,
+        cursor === "" ? null : cursor
+      );
+      
+      const items = posts.map(post =>
+        new Article({
+          id: new URL(`/posts/${post.id}`, ctx.url),
+          summary: post.title,
+          content: post.content,
+        })
+      );
+      
+      return { items, nextCursor };
+    }
+  )
+  .setFirstCursor(async (ctx, values) => "")
+  .authorize(async (ctx, values, signedKey, signedKeyOwner) => {
+    // Only allow access if the viewer is the owner of the bookmarks
+    if (signedKeyOwner == null) return false;
+    
+    const viewerId = await getActorIdentifier(signedKeyOwner.id);
+    return await canAccessBookmarks(viewerId, values.identifier);
+  });
+~~~~

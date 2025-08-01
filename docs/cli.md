@@ -811,6 +811,18 @@ It does not affect the output when looking up a single object.
 > The separator is also used when looking up a collection object with the
 > [`-t`/`--traverse`](#t-traverse-traverse-the-collection) option.
 
+### `-o`/`--output`: Output file path
+
+*This option is available since Fedify 1.8.0.*
+
+You can specify the output file path to save lookup results, instead of
+printing results to stdout. For example, to save the retrieved information
+about the specified objects to a given path, run the command below:
+
+~~~~ sh
+fedify lookup -o actors.json @fedify@hollo.social @hongminhee@fosstodon.org
+~~~~
+
 
 `fedify inbox`: Ephemeral inbox server
 --------------------------------------
@@ -934,15 +946,17 @@ about the security implications of exposing the server to the public internet.
 > be served via HTTP instead of HTTPS.
 
 
-`fedify node`: Visualizing an instance's NodeInfo
--------------------------------------------------
+`fedify nodeinfo`: Visualizing an instance's NodeInfo
+-----------------------------------------------------
 
-*This command is available since Fedify 1.2.0.*
+*This command is available since Fedify 1.8.0.*
+
+*The `fedify node` alias is deprecated and will be removed in version 2.0.0.*
 
 ![The result of fedify lookup fosstodon.org. The NodeInfo document is
-visualized along with the favicon.](cli/fedify-node.png)
+visualized along with the favicon.](cli/fedify-nodeinfo.png)
 
-The `fedify node` command fetches the given instance's [NodeInfo] document and
+The `fedify nodeinfo` command fetches the given instance's [NodeInfo] document and
 visualizes it in [`neofetch`]-style.  The argument can be either a bare hostname
 or a full URL.
 
@@ -963,7 +977,7 @@ You can also output the fetched NodeInfo document in the raw JSON format by usin
 the `-r`/`--raw` option:
 
 ~~~~ sh
-fedify node --raw fosstodon.org
+fedify nodeinfo --raw fosstodon.org
 ~~~~
 
 The output will be like the below:
@@ -1027,14 +1041,14 @@ i.e., the `metadata` field of the document.
 
 *This option is available since Fedify 1.3.0.*
 
-By default, the `fedify node` command sends the `User-Agent` header with the
+By default, the `fedify nodeinfo` command sends the `User-Agent` header with the
 value `Fedify/1.3.0 (Deno/2.0.4)` (version numbers may vary).  You can specify
 a custom `User-Agent` header by using the `-u`/`--user-agent` option.  For
 example, to send the `User-Agent` header with the value `MyApp/1.0`, run the
 below command:
 
 ~~~~ sh
-fedify node --user-agent MyApp/1.0 mastodon.social
+fedify nodeinfo --user-agent MyApp/1.0 mastodon.social
 ~~~~
 
 
@@ -1170,6 +1184,23 @@ fedify webfinger --allow-private-address @username@localhost
 ~~~~
 
 Mostly useful for testing purposes.  *Do not use this in production.*
+
+### `--max-redirection`: Maximum number of redirections
+
+The `--max-redirection` option is used to control the maximum number of
+redirections allowed during WebFinger lookups.  By default, it is set to 5.
+If you want to set a custom limit, run the below command:
+
+~~~~ sh
+# Use default redirection limit (5)
+fedify webfinger @user@example.com
+
+# Set custom redirection limit
+fedify webfinger @user@example.com --max-redirection 3
+
+# Disable redirections entirely
+fedify webfinger @user@example.com --max-redirection 0
+~~~~
 
 
 Shell completions

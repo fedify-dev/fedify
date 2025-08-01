@@ -390,7 +390,7 @@ export interface VerifyObjectOptions extends VerifyProofOptions {
  * Verifies the given object.  It will verify all the proofs in the object,
  * and succeed only if all the proofs are valid and all attributions and
  * actors are authenticated by the proofs.
- * @typeParam T The type of the object to verify.
+ * @template T The type of the object to verify.
  * @param cls The class of the object to verify.  It must be a subclass of
  *            the {@link Object}.
  * @param jsonLd The JSON-LD object to verify.  It's assumed that the object

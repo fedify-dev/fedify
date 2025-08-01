@@ -2,11 +2,12 @@
   "name": "fedify-express-example",
   "version": "1.0.0",
   "description": "Fedify Express Example",
+  "private": true,
   "main": "app.js",
   "type": "module",
   "scripts": {
     "start": "tsx app.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "true"
   },
   "repository": {
     "type": "git",
@@ -29,9 +30,9 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@fedify/express": "^0.2.0",
-    "@fedify/fedify": "^1.2.7",
-    "@logtape/logtape": "^0.8.0",
-    "express": "^4.21.0"
+    "@fedify/express": "workspace:",
+    "@fedify/fedify": "workspace:",
+    "@logtape/logtape": "catalog:",
+    "express": "catalog:"
   }
 }

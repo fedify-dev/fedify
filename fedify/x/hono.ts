@@ -32,9 +32,9 @@ type HonoMiddleware<THonoContext extends HonoContext> = (
  * A factory function to create a context data for the {@link Federation}
  * object.
  *
- * @typeParam TContextData A type of the context data for the {@link Federation}
+ * @template TContextData A type of the context data for the {@link Federation}
  *                         object.
- * @typeParam THonoContext A type of the Hono context.
+ * @template THonoContext A type of the Hono context.
  * @param context A Hono context object.
  * @returns A context data for the {@link Federation} object.
  */
@@ -45,9 +45,9 @@ export type ContextDataFactory<TContextData, THonoContext> = (
 /**
  * Create a Hono middleware to integrate with the {@link Federation} object.
  *
- * @typeParam TContextData A type of the context data for the {@link Federation}
+ * @template TContextData A type of the context data for the {@link Federation}
  *                         object.
- * @typeParam THonoContext A type of the Hono context.
+ * @template THonoContext A type of the Hono context.
  * @param federation A {@link Federation} object to integrate with Hono.
  * @param contextDataFactory A function to create a context data for the
  *                           {@link Federation} object.

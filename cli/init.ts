@@ -5,8 +5,16 @@ import { getLogger } from "@logtape/logtape";
 import { stringify } from "@std/dotenv/stringify";
 import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
-import { format, greaterThan, parse } from "@std/semver";
 import metadata from "./deno.json" with { type: "json" };
+
+const packagesMetaData: Record<`@fedify/${string}`, string> = {
+  "@fedify/fedify": metadata.version,
+  "@fedify/redis": metadata.version,
+  "@fedify/postgres": metadata.version,
+  "@fedify/amqp": metadata.version,
+  "@fedify/express": metadata.version,
+  "@fedify/h3": metadata.version,
+};
 
 const logger = getLogger(["fedify", "cli", "init"]);
 
@@ -306,7 +314,7 @@ Then, try look up an actor from your server:
     init: (projectName, runtime, pm) => ({
       dependencies: {
         express: "^4.19.2",
-        "@fedify/express": "^0.2.1",
+        "@fedify/express": getLatestVersion("@fedify/express"),
         ...(runtime === "node"
           ? {
             "@dotenvx/dotenvx": "^1.14.1",
@@ -392,7 +400,7 @@ Then, try look up an actor from your server:
         ".",
       ],
       dependencies: {
-        "@fedify/h3": "^0.1.2",
+        "@fedify/h3": getLatestVersion("@fedify/h3"),
       },
       federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
@@ -449,7 +457,7 @@ const kvStores: Record<KvStore, KvStoreDescription> = {
   redis: {
     label: "Redis",
     dependencies: {
-      "@fedify/redis": "^0.2.1",
+      "@fedify/redis": getLatestVersion("@fedify/redis"),
       "npm:ioredis": "^5.4.1",
     },
     imports: { "@fedify/redis": ["RedisKvStore"], ioredis: ["Redis"] },
@@ -465,7 +473,7 @@ const kvStores: Record<KvStore, KvStoreDescription> = {
   postgres: {
     label: "PostgreSQL",
     dependencies: {
-      "@fedify/postgres": "^0.2.0",
+      "@fedify/postgres": getLatestVersion("@fedify/postgres"),
       "npm:postgres": "^3.4.5",
     },
     imports: { "@fedify/postgres": ["PostgresKvStore"], postgres: "postgres" },
@@ -504,7 +512,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   redis: {
     label: "Redis",
     dependencies: {
-      "@fedify/redis": "^0.2.1",
+      "@fedify/redis": getLatestVersion("@fedify/redis"),
       "npm:ioredis": "^5.4.1",
     },
     imports: { "@fedify/redis": ["RedisMessageQueue"], ioredis: ["Redis"] },
@@ -520,7 +528,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   postgres: {
     label: "PostgreSQL",
     dependencies: {
-      "@fedify/postgres": "^0.2.0",
+      "@fedify/postgres": getLatestVersion("@fedify/postgres"),
       "npm:postgres": "^3.4.5",
     },
     imports: {
@@ -539,7 +547,7 @@ const messageQueues: Record<MessageQueue, MessageQueueDescription> = {
   amqp: {
     label: "AMQP (e.g., RabbitMQ)",
     dependencies: {
-      "@fedify/amqp": "^0.1.0",
+      "@fedify/amqp": getLatestVersion("@fedify/amqp"),
       "npm:amqplib": "^0.10.4",
     },
     devDependencies: {
@@ -1069,7 +1077,7 @@ await configure({
       }
     }
     const dependencies: Record<string, string> = {
-      "@fedify/fedify": `^${await getLatestFedifyVersion(metadata.version)}`,
+      "@fedify/fedify": getLatestVersion("@fedify/fedify"),
       "@logtape/logtape": "^0.8.2",
       ...initializer.dependencies,
       ...kvStoreDesc?.dependencies,
@@ -1489,25 +1497,15 @@ async function addDependencies(
   }
 }
 
-async function getLatestFedifyVersion(version: string): Promise<string> {
-  const response = await fetch("https://jsr.io/@fedify/fedify/meta.json", {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-  // deno-lint-ignore no-explicit-any
-  const result = await response.json() as any;
-  let maxVersion = parse("0.0.0");
-  for (const v in result.versions) {
-    if (v === version) return version;
-    else if (result.versions[v].yanked) continue;
-    const semVer = parse(v);
-    if (semVer.prerelease != null && semVer.prerelease.length > 0) continue;
-    if (greaterThan(semVer, maxVersion)) maxVersion = semVer;
+function getLatestVersion(packageName: `@fedify/${string}`): string {
+  const version = packagesMetaData[packageName];
+  if (!version) {
+    throw new Error(
+      `Version for package "${packageName}" not found in local metadata.`,
+    );
   }
-  return format(maxVersion);
+  return version;
 }
-
 async function rewriteJsonFile(
   path: string,
   // deno-lint-ignore no-explicit-any

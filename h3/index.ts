@@ -12,7 +12,7 @@ import {
 /**
  * A factory function that creates the context data that will be passed to the
  * `Federation` instance.
- * @typeParam TContextData The type of the context data that will be passed to
+ * @template TContextData The type of the context data that will be passed to
  *                         the `Federation` instance.
  * @param event The event that triggered the handler.
  * @param request The request that triggered the handler.

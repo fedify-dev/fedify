@@ -9,9 +9,10 @@ import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
 import ora from "ora";
 import { printJson } from "./utils.ts";
 
-const logger = getLogger(["fedify", "cli", "node"]);
+const logger = getLogger(["fedify", "cli", "nodeinfo"]);
 
 export const command = new Command()
+  .alias("node")
   .arguments("<host:string>")
   .description(
     "Get information about a remote node using the NodeInfo protocol.  " +
@@ -36,6 +37,15 @@ export const command = new Command()
   )
   .option("-u, --user-agent <string>", "The custom User-Agent header value.")
   .action(async (options, host: string) => {
+    const command = Deno.args.find((arg) =>
+      arg === "node" || arg === "nodeinfo"
+    );
+    if (command === "node") {
+      console.warn(
+        "Warning: `fedify node` will be deprecated in Fedify 2.0.0. Use `fedify nodeinfo` instead.",
+      );
+    }
+
     const spinner = ora({
       text: "Fetching a NodeInfo document...",
       discardStdin: false,

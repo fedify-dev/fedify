@@ -8,7 +8,7 @@ import { command as inbox } from "./inbox.tsx";
 import { command as init } from "./init.ts";
 import { logFile, recordingSink } from "./log.ts";
 import { command as lookup } from "./lookup.ts";
-import { command as node } from "./node.ts";
+import { command as nodeinfo } from "./nodeinfo.ts";
 import { command as tunnel } from "./tunnel.ts";
 import { command as webfinger } from "./webfinger.ts";
 
@@ -63,7 +63,7 @@ const command = new Command()
   .command("init", init)
   .command("lookup", lookup)
   .command("inbox", inbox)
-  .command("node", node)
+  .command("nodeinfo", nodeinfo)
   .command("tunnel", tunnel)
   .command("completions", new CompletionsCommand())
   .command("webfinger", webfinger)

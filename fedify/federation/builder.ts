@@ -13,6 +13,9 @@ import type {
   CollectionCounter,
   CollectionCursor,
   CollectionDispatcher,
+  CustomCollectionCounter,
+  CustomCollectionCursor,
+  CustomCollectionDispatcher,
   InboxErrorHandler,
   InboxListener,
   NodeInfoDispatcher,
@@ -24,13 +27,19 @@ import type { Context, RequestContext } from "./context.ts";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
+  ConstructorWithTypeId,
+  CustomCollectionCallbackSetters,
   Federation,
   FederationBuilder,
   FederationOptions,
   InboxListenerSetters,
   ObjectCallbackSetters,
+  ParamsKeyPath,
 } from "./federation.ts";
-import type { CollectionCallbacks } from "./handler.ts";
+import type {
+  CollectionCallbacks,
+  CustomCollectionCallbacks,
+} from "./handler.ts";
 import { InboxListenerSet } from "./inbox.ts";
 import { Router, RouterError } from "./router.ts";
 
@@ -91,11 +100,31 @@ export class FederationBuilderImpl<TContextData>
   inboxListeners?: InboxListenerSet<TContextData>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
+  collectionTypeIds: Record<
+    string | symbol,
+    ConstructorWithTypeId<Object>
+  >;
+  collectionCallbacks: Record<
+    string | symbol,
+    CustomCollectionCallbacks<
+      Object,
+      Record<string, string>,
+      RequestContext<TContextData>,
+      TContextData
+    >
+  >;
+
+  /**
+   * Symbol registry for unique identification of unnamed symbols.
+   */
+  #symbolRegistry = new Map<symbol, string>();
 
   constructor() {
     this.router = new Router();
     this.objectCallbacks = {};
     this.objectTypeIds = {};
+    this.collectionCallbacks = {};
+    this.collectionTypeIds = {};
   }
 
   async build(
@@ -1166,6 +1195,196 @@ export class FederationBuilderImpl<TContextData>
       },
     };
     return setters;
+  }
+
+  setCollectionDispatcher<
+    TObject extends Object,
+    TParams extends Record<string, string>,
+  >(
+    name: string | symbol,
+    ...args: [
+      ConstructorWithTypeId<TObject>,
+      ParamsKeyPath<TParams>,
+      CustomCollectionDispatcher<
+        TObject,
+        TParams,
+        RequestContext<TContextData>,
+        TContextData
+      >,
+    ]
+  ): CustomCollectionCallbackSetters<
+    TParams,
+    RequestContext<TContextData>,
+    TContextData
+  > {
+    return this.#setCustomCollectionDispatcher(
+      name,
+      "collection",
+      ...args,
+    );
+  }
+
+  setOrderedCollectionDispatcher<
+    TObject extends Object,
+    TParams extends Record<string, string>,
+  >(
+    name: string | symbol,
+    ...args: [
+      ConstructorWithTypeId<TObject>,
+      ParamsKeyPath<TParams>,
+      CustomCollectionDispatcher<
+        TObject,
+        TParams,
+        RequestContext<TContextData>,
+        TContextData
+      >,
+    ]
+  ): CustomCollectionCallbackSetters<
+    TParams,
+    RequestContext<TContextData>,
+    TContextData
+  > {
+    return this.#setCustomCollectionDispatcher(
+      name,
+      "orderedCollection",
+      ...args,
+    );
+  }
+  #setCustomCollectionDispatcher<
+    TObject extends Object,
+    TParams extends Record<string, string>,
+  >(
+    name: string | symbol,
+    collectionType: "collection" | "orderedCollection",
+    itemType: ConstructorWithTypeId<TObject>,
+    path: ParamsKeyPath<TParams>,
+    dispatcher: CustomCollectionDispatcher<
+      TObject,
+      TParams,
+      RequestContext<TContextData>,
+      TContextData
+    >,
+  ): CustomCollectionCallbackSetters<
+    TParams,
+    RequestContext<TContextData>,
+    TContextData
+  > {
+    const strName = String(name);
+    const routeName = `${collectionType}:${this.#uniqueCollectionId(name)}`;
+    if (this.router.has(routeName)) {
+      throw new RouterError(
+        `Collection dispatcher for ${strName} already set.`,
+      );
+    }
+
+    // Check if identifier is already used in collectionCallbacks
+    if (this.collectionCallbacks[name] != null) {
+      throw new RouterError(
+        `Collection dispatcher for ${strName} already set.`,
+      );
+    }
+
+    const variables = this.router.add(path, routeName);
+    if (variables.size < 1) {
+      throw new RouterError(
+        "Path for collection dispatcher must have at least one variable.",
+      );
+    }
+
+    const callbacks: CustomCollectionCallbacks<
+      TObject,
+      TParams,
+      RequestContext<TContextData>,
+      TContextData
+    > = { dispatcher };
+
+    // @ts-ignore: TypeScript does not infer the type correctly
+    this.collectionCallbacks[name] = callbacks;
+    this.collectionTypeIds[name] = itemType;
+
+    const setters: CustomCollectionCallbackSetters<
+      TParams,
+      RequestContext<TContextData>,
+      TContextData
+    > = {
+      setCounter(
+        counter: CustomCollectionCounter<
+          TParams,
+          TContextData
+        >,
+      ) {
+        callbacks.counter = counter;
+        return setters;
+      },
+      setFirstCursor(
+        cursor: CustomCollectionCursor<
+          TParams,
+          RequestContext<TContextData>,
+          TContextData
+        >,
+      ) {
+        callbacks.firstCursor = cursor;
+        return setters;
+      },
+      setLastCursor(
+        cursor: CustomCollectionCursor<
+          TParams,
+          RequestContext<TContextData>,
+          TContextData
+        >,
+      ) {
+        callbacks.lastCursor = cursor;
+        return setters;
+      },
+      authorize(
+        predicate: ObjectAuthorizePredicate<
+          TContextData,
+          keyof TParams & string
+        >,
+      ) {
+        callbacks.authorizePredicate = predicate;
+        return setters;
+      },
+    };
+    return setters;
+  }
+
+  /**
+   * Get the URL path for a custom collection.
+   * If the collection is not registered, returns null.
+   * @template TParam The parameter names of the requested URL.
+   * @param {string | symbol} name The name of the custom collection.
+   * @param {TParam} values The values to fill in the URL parameters.
+   * @returns {string | null} The URL path for the custom collection, or null if not registered.
+   */
+  getCollectionPath<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+  ): string | null {
+    // Check if it's a registered custom collection
+    if (!(name in this.collectionCallbacks)) return null;
+    const routeName = this.#uniqueCollectionId(name);
+    const path = this.router.build(`collection:${routeName}`, values) ??
+      this.router.build(`orderedCollection:${routeName}`, values);
+    return path;
+  }
+
+  /**
+   * Converts a name (string or symbol) to a unique string identifier.
+   * For symbols, generates and caches a UUID if not already present.
+   * For strings, returns the string as-is.
+   * @param name The name to convert to a unique identifier
+   * @returns A unique string identifier
+   */
+  #uniqueCollectionId(name: string | symbol): string {
+    if (typeof name === "string") return name;
+    // Check if symbol already has a unique ID
+    if (!this.#symbolRegistry.has(name)) {
+      // Generate a new UUID for this symbol
+      this.#symbolRegistry.set(name, crypto.randomUUID());
+    }
+
+    return this.#symbolRegistry.get(name)!;
   }
 }
 

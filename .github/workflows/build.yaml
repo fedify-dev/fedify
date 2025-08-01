@@ -53,7 +53,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -124,7 +124,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -181,7 +181,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -207,7 +207,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -230,7 +230,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - run: deno task hooks:pre-commit
 
   release-test:
@@ -248,7 +248,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -283,7 +283,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -332,7 +332,7 @@ jobs:
       working-directory: ${{ github.workspace }}/fedify/
     - run: |
         pnpm install
-        pnpm pack --recursive
+        pnpm pack --recursive --filter='!./examples/**'
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
         fi
@@ -426,6 +426,7 @@ jobs:
           | @fedify/nestjs   | ${{ steps.versioning.outputs.version }} |                             | [npm][npm:@fedify/nestjs]   |
           | @fedify/postgres | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/postgres] | [npm][npm:@fedify/postgres] |
           | @fedify/redis    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/redis]    | [npm][npm:@fedify/redis]    |
+          | @fedify/testing  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/testing]  | [npm][npm:@fedify/testing]  |
 
           [jsr:@fedify/fedify]: https://jsr.io/@fedify/fedify@${{ steps.versioning.outputs.version }}
           [npm:@fedify/fedify]: https://www.npmjs.com/package/@fedify/fedify/v/${{ steps.versioning.outputs.short_version }}
@@ -441,6 +442,8 @@ jobs:
           [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/redis]: https://jsr.io/@fedify/redis@${{ steps.versioning.outputs.version }}
           [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis/v/${{ steps.versioning.outputs.short_version }}
+          [jsr:@fedify/testing]: https://jsr.io/@fedify/testing@${{ steps.versioning.outputs.version }}
+          [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing/v/${{ steps.versioning.outputs.short_version }}
         pr-number: ${{ github.event.pull_request.number }}
         comment-tag: publish
 
@@ -461,7 +464,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - run: deno task codegen
       working-directory: ${{ github.workspace }}/fedify/
     - uses: denoland/deployctl@v1
@@ -492,7 +495,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: "2.4.1"  # FIXME: https://github.com/fedify-dev/fedify/issues/303
+        deno-version: v2.x
     - uses: pnpm/action-setup@v4
       with:
         version: 10

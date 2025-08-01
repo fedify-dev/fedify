@@ -100,7 +100,7 @@ export interface SentActivity {
  * await federation.receiveActivity(createActivity);
  * ```
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @since 1.8.0
  */
 export class MockFederation<TContextData> implements Federation<TContextData> {
@@ -559,6 +559,42 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   reset(): void {
     this.sentActivities = [];
   }
+
+  setCollectionDispatcher<
+    TObject extends Object,
+    TParams extends Record<string, string>,
+  >(
+    _name: string | symbol,
+    _itemType: any,
+    _path: any,
+    _dispatcher: any,
+  ): any {
+    // Mock implementation - just return a mock callback setters object
+    return {
+      setCounter: () => this as any,
+      setFirstCursor: () => this as any,
+      setLastCursor: () => this as any,
+      authorize: () => this as any,
+    };
+  }
+
+  setOrderedCollectionDispatcher<
+    TObject extends Object,
+    TParams extends Record<string, string>,
+  >(
+    _name: string | symbol,
+    _itemType: any,
+    _path: any,
+    _dispatcher: any,
+  ): any {
+    // Mock implementation - just return a mock callback setters object
+    return {
+      setCounter: () => this as any,
+      setFirstCursor: () => this as any,
+      setLastCursor: () => this as any,
+      authorize: () => this as any,
+    };
+  }
 }
 
 // Type definitions for inbox listeners
@@ -604,7 +640,7 @@ interface InboxListener<TContextData, TActivity extends Activity> {
  * console.log(sent[0].activity);
  * ```
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @since 1.8.0
  */
 export class MockContext<TContextData> implements Context<TContextData> {
@@ -802,6 +838,17 @@ export class MockContext<TContextData> implements Context<TContextData> {
       return new URL(path, this.origin);
     }
     return new URL(`/users/${identifier}/tags`, this.origin);
+  }
+
+  getCollectionUri<TParam extends Record<string, string>>(
+    _name: string | symbol,
+    values: TParam,
+  ): URL {
+    // Mock implementation - construct a generic collection URI
+    const path = globalThis.Object.entries(values)
+      .map(([key, value]) => `${key}/${value}`)
+      .join("/");
+    return new URL(`/collections/${String(_name)}/${path}`, this.origin);
   }
 
   parseUri(uri: URL): ParseUriResult | null {

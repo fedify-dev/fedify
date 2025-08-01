@@ -1,16 +1,16 @@
-import { trace } from "@opentelemetry/api";
 import type {
   Context,
+  Federation,
   InboxContext,
   RequestContext,
 } from "@fedify/fedify/federation";
-import type { Federation } from "@fedify/fedify/federation";
 import { RouterError } from "@fedify/fedify/federation";
 import {
   lookupObject as globalLookupObject,
   traverseCollection as globalTraverseCollection,
 } from "@fedify/fedify/vocab";
 import { lookupWebFinger as globalLookupWebFinger } from "@fedify/fedify/webfinger";
+import { trace } from "@opentelemetry/api";
 import { mockDocumentLoader } from "./docloader.ts";
 
 // NOTE: Copied from @fedify/fedify/testing/context.ts
@@ -34,6 +34,7 @@ export function createContext<TContextData>(
     getNodeInfoUri,
     getActorUri,
     getObjectUri,
+    getCollectionUri,
     getOutboxUri,
     getInboxUri,
     getFollowingUri,
@@ -68,6 +69,7 @@ export function createContext<TContextData>(
     getNodeInfoUri: getNodeInfoUri ?? throwRouteError,
     getActorUri: getActorUri ?? throwRouteError,
     getObjectUri: getObjectUri ?? throwRouteError,
+    getCollectionUri: getCollectionUri ?? throwRouteError,
     getOutboxUri: getOutboxUri ?? throwRouteError,
     getInboxUri: getInboxUri ?? throwRouteError,
     getFollowingUri: getFollowingUri ?? throwRouteError,

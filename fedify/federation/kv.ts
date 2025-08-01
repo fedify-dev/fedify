@@ -29,7 +29,7 @@ export interface KvStore {
    * Gets the value for the given key.
    * @param key The key to get the value for.
    * @returns The value for the key, or `undefined` if the key does not exist.
-   * @typeParam T The type of the value to get.
+   * @template T The type of the value to get.
    */
   get<T = unknown>(key: KvKey): Promise<T | undefined>;
 

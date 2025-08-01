@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import { parseSemVer } from "../nodeinfo/semver.ts";
 import type { Protocol } from "../nodeinfo/types.ts";
 import { test } from "../testing/mod.ts";
@@ -213,6 +213,78 @@ test("FederationBuilder", async (t) => {
       const personRoute = impl.router.route("/people/abc");
       assertEquals(personRoute?.name, `object:${Person.typeId.href}`);
       assertEquals(personRoute?.values.id, "abc");
+    },
+  );
+
+  await t.step(
+    "should handle symbol names uniquely in custom collection dispatchers",
+    () => {
+      const builder = createFederationBuilder<string>();
+
+      // Create two unnamed symbols
+      const unnamedSymbol1 = Symbol();
+      const unnamedSymbol2 = Symbol();
+      const namedSymbol1 = Symbol.for("");
+      const namedSymbol2 = Symbol.for("");
+      const strId = String(unnamedSymbol1);
+
+      const dispatcher = (_ctx: unknown, _params: unknown) => ({
+        items: [],
+      });
+
+      // Test that different unnamed symbols are treated as different
+      builder.setCollectionDispatcher(
+        unnamedSymbol1,
+        Note,
+        "/unnamed-symbol1/{id}",
+        dispatcher,
+      );
+
+      // Test that using the same symbol twice throws an error
+      assertThrows(
+        () => {
+          builder.setCollectionDispatcher(
+            unnamedSymbol1,
+            Note,
+            "/unnamed-symbol1-duplicate/{id}",
+            dispatcher,
+          );
+        },
+        Error,
+        "Collection dispatcher for Symbol() already set.",
+      );
+
+      // Test that using a different symbol works
+      builder.setCollectionDispatcher(
+        unnamedSymbol2,
+        Note,
+        "/unnamed-symbol2/{id}",
+        dispatcher,
+      );
+      // Test that using same named symbol twice with a different name throws an error
+      builder.setCollectionDispatcher(
+        namedSymbol1,
+        Note,
+        "/named-symbol/{id}",
+        dispatcher,
+      );
+      assertThrows(
+        () => {
+          builder.setCollectionDispatcher(
+            namedSymbol2,
+            Note,
+            "/named-symbol/{id}",
+            dispatcher,
+          );
+        },
+      );
+      // Test that using string ID stringified from an unnamed symbol works
+      builder.setCollectionDispatcher(
+        strId,
+        Note,
+        "/string-id/{id}",
+        dispatcher,
+      );
     },
   );
 });

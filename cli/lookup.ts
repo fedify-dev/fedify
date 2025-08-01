@@ -15,14 +15,113 @@ import {
   traverseCollection,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
+import { dirname, isAbsolute, resolve } from "@std/path";
 import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { printJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
 const sigSpec = new EnumType(["draft-cavage-http-signatures-12", "rfc9421"]);
+
+interface CommandOptions {
+  authorizedFetch?: boolean;
+  firstKnock: "draft-cavage-http-signatures-12" | "rfc9421";
+  traverse?: boolean;
+  suppressErrors?: boolean;
+  raw?: boolean;
+  compact?: boolean;
+  expand?: boolean;
+  userAgent?: string;
+  separator: string;
+  output?: string;
+}
+
+export async function createFileStream(
+  outputPath: string,
+): Promise<WritableStream> {
+  try {
+    const filepath = isAbsolute(outputPath)
+      ? outputPath
+      : resolve(Deno.env.get("PWD") || Deno.cwd(), outputPath);
+
+    const parentDir = dirname(filepath);
+    await Deno.mkdir(parentDir, { recursive: true });
+
+    const file = await Deno.open(filepath, {
+      write: true,
+      create: true,
+      truncate: true,
+    });
+
+    return new WritableStream({
+      write: (chunk) => file.write(chunk).then(() => {}),
+      close: () => file.close(),
+      abort: (reason) => {
+        file.close();
+        throw reason;
+      },
+    });
+  } catch (err) {
+    const spinner = ora({
+      text: `Failed to write output to ${colors.red(outputPath)}.`,
+      discardStdin: false,
+    });
+    spinner.fail();
+    console.error(`Error: ${String(err)}`);
+
+    if (err instanceof Deno.errors.PermissionDenied) {
+      console.error(
+        "Permission denied. Try running with proper permissions.",
+      );
+    } else if (err instanceof Deno.errors.NotFound) {
+      console.error("Path does not exist or is invalid.");
+    } else if (err instanceof Deno.errors.IsADirectory) {
+      console.error("The specified path is a directory, not a file.");
+    }
+    Deno.exit(1);
+  }
+}
+
+export async function writeObjectToStream(
+  object: Object | Link,
+  options: CommandOptions,
+  contextLoader: DocumentLoader,
+): Promise<void> {
+  const stream = options.output
+    ? await createFileStream(options.output)
+    : Deno.stdout.writable;
+
+  const writer = stream.getWriter();
+
+  try {
+    let content;
+
+    if (options.raw) {
+      content = await object.toJsonLd({ contextLoader });
+    } else if (options.compact) {
+      content = await object.toJsonLd({ format: "compact", contextLoader });
+    } else if (options.expand) {
+      content = await object.toJsonLd({ format: "expand", contextLoader });
+    } else {
+      content = object;
+    }
+
+    content = Deno.inspect(content, {
+      colors: !(options.output),
+    });
+
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(content + "\n");
+
+    await writer.write(bytes);
+  } finally {
+    writer.releaseLock();
+    if (options.output) {
+      await stream.close();
+    }
+  }
+}
 
 export const command = new Command()
   .type("sig-spec", sigSpec)
@@ -65,6 +164,10 @@ export const command = new Command()
       "collection items.",
     { default: "----" },
   )
+  .option(
+    "-o, --output <file>",
+    "Specify the output file path.",
+  )
   .action(async (options, ...urls: string[]) => {
     if (urls.length < 1) {
       console.error("At least one URL or actor handle must be provided.");
@@ -75,6 +178,7 @@ export const command = new Command()
       );
       Deno.exit(1);
     }
+
     const spinner = ora({
       text: `Looking up the ${
         options.traverse ? "collection" : urls.length > 1 ? "objects" : "object"
@@ -143,25 +247,10 @@ export const command = new Command()
         },
       );
     }
+
     spinner.text = `Looking up the ${
       options.traverse ? "collection" : urls.length > 1 ? "objects" : "object"
     }...`;
-
-    async function printObject(object: Object | Link): Promise<void> {
-      if (options.raw) {
-        printJson(await object.toJsonLd({ contextLoader }));
-      } else if (options.compact) {
-        printJson(
-          await object.toJsonLd({ format: "compact", contextLoader }),
-        );
-      } else if (options.expand) {
-        printJson(
-          await object.toJsonLd({ format: "expand", contextLoader }),
-        );
-      } else {
-        console.log(object);
-      }
-    }
 
     if (options.traverse) {
       const url = urls[0];
@@ -198,8 +287,8 @@ export const command = new Command()
             suppressError: options.suppressErrors,
           })
         ) {
-          if (i > 0) console.log(options.separator);
-          printObject(item);
+          if (!options.output && i > 0) console.log(options.separator);
+          await writeObjectToStream(item, options, contextLoader);
           i++;
         }
       } catch (error) {
@@ -218,6 +307,7 @@ export const command = new Command()
         Deno.exit(1);
       }
       spinner.succeed("Successfully fetched all items in the collection.");
+
       await server?.close();
       Deno.exit(0);
     }
@@ -254,7 +344,7 @@ export const command = new Command()
           success = false;
         } else {
           spinner.succeed(`Fetched object: ${colors.green(url)}.`);
-          printObject(object);
+          await writeObjectToStream(object, options, contextLoader);
           if (i < urls.length - 1) {
             console.log(options.separator);
           }
@@ -273,6 +363,11 @@ export const command = new Command()
     await server?.close();
     if (!success) {
       Deno.exit(1);
+    }
+    if (success && options.output) {
+      spinner.succeed(
+        `Successfully wrote output to ${colors.green(options.output)}.`,
+      );
     }
   });
 

@@ -9,7 +9,7 @@ import type { SenderKeyPair } from "./send.ts";
 /**
  * A callback that dispatches a {@link NodeInfo} object.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  */
 export type NodeInfoDispatcher<TContextData> = (
   context: RequestContext<TContextData>,
@@ -18,7 +18,7 @@ export type NodeInfoDispatcher<TContextData> = (
 /**
  * A callback that dispatches an {@link Actor} object.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The request context.
  * @param identifier The actor's internal identifier or username.
  */
@@ -30,7 +30,7 @@ export type ActorDispatcher<TContextData> = (
 /**
  * A callback that dispatches key pairs for an actor.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The context.
  * @param identifier The actor's internal identifier or username.
  * @returns The key pairs.
@@ -44,7 +44,7 @@ export type ActorKeyPairsDispatcher<TContextData> = (
 /**
  * A callback that maps a WebFinger username to the corresponding actor's
  * internal identifier, or `null` if the username is not found.
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The context.
  * @param username The WebFinger username.
  * @returns The actor's internal identifier, or `null` if the username is not
@@ -59,7 +59,7 @@ export type ActorHandleMapper<TContextData> = (
 /**
  * A callback that maps a WebFinger query to the corresponding actor's
  * internal identifier or username, or `null` if the query is not found.
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The request context.
  * @param resource The URL that was queried through WebFinger.
  * @returns The actor's internal identifier or username, or `null` if the query
@@ -78,9 +78,9 @@ export type ActorAliasMapper<TContextData> = (
 /**
  * A callback that dispatches an object.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
- * @typeParam TObject The type of object to dispatch.
- * @typeParam TParam The parameter names of the requested URL.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TObject The type of object to dispatch.
+ * @template TParam The parameter names of the requested URL.
  * @since 0.7.0
  */
 export type ObjectDispatcher<
@@ -95,11 +95,11 @@ export type ObjectDispatcher<
 /**
  * A callback that dispatches a collection.
  *
- * @typeParam TItem The type of items in the collection.
- * @typeParam TContext The type of the context. {@link Context} or
+ * @template TItem The type of items in the collection.
+ * @template TContext The type of the context. {@link Context} or
  *                     {@link RequestContext}.
- * @typeParam TContextData The context data to pass to the `TContext`.
- * @typeParam TFilter The type of the filter, if any.
+ * @template TContextData The context data to pass to the `TContext`.
+ * @template TFilter The type of the filter, if any.
  * @param context The context.
  * @param identifier The internal identifier or the username of the collection
  *                   owner.
@@ -122,7 +122,7 @@ export type CollectionDispatcher<
 /**
  * A callback that counts the number of items in a collection.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The context.
  * @param identifier The internal identifier or the username of the collection
  *                   owner.
@@ -137,10 +137,10 @@ export type CollectionCounter<TContextData, TFilter> = (
 /**
  * A callback that returns a cursor for a collection.
  *
- * @typeParam TContext The type of the context. {@link Context} or
+ * @template TContext The type of the context. {@link Context} or
  *                     {@link RequestContext}.
- * @typeParam TContextData The context data to pass to the {@link Context}.
- * @typeParam TFilter The type of the filter, if any.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TFilter The type of the filter, if any.
  * @param context The context.
  * @param identifier The internal identifier or the username of the collection
  *                   owner.
@@ -159,8 +159,8 @@ export type CollectionCursor<
 /**
  * A callback that listens for activities in an inbox.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
- * @typeParam TActivity The type of activity to listen for.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TActivity The type of activity to listen for.
  * @param context The inbox context.
  * @param activity The activity that was received.
  */
@@ -172,7 +172,7 @@ export type InboxListener<TContextData, TActivity extends Activity> = (
 /**
  * A callback that handles errors in an inbox.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The inbox context.
  */
 export type InboxErrorHandler<TContextData> = (
@@ -184,7 +184,7 @@ export type InboxErrorHandler<TContextData> = (
  * A callback that dispatches the key pair for the authenticated document loader
  * of the {@link Context} passed to the shared inbox listener.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The context.
  * @returns The username or the internal identifier of the actor or the key pair
  *          for the authenticated document loader of the {@link Context} passed
@@ -224,7 +224,7 @@ export type OutboxErrorHandler = (
 /**
  * A callback that determines if a request is authorized or not.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
+ * @template TContextData The context data to pass to the {@link Context}.
  * @param context The request context.
  * @param identifier The internal identifier of the actor that is being requested.
  * @param signedKey *Deprecated in Fedify 1.5.0 in favor of
@@ -250,8 +250,8 @@ export type AuthorizePredicate<TContextData> = (
 /**
  * A callback that determines if a request is authorized or not.
  *
- * @typeParam TContextData The context data to pass to the {@link Context}.
- * @typeParam TParam The parameter names of the requested URL.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TParam The parameter names of the requested URL.
  * @param context The request context.
  * @param values The parameters of the requested URL.
  * @param signedKey *Deprecated in Fedify 1.5.0 in favor of
@@ -273,3 +273,67 @@ export type ObjectAuthorizePredicate<TContextData, TParam extends string> = (
   signedKey: CryptographicKey | null,
   signedKeyOwner: Actor | null,
 ) => boolean | Promise<boolean>;
+
+/**
+ * A callback that dispatches a custom collection.
+ *
+ * @template TItem The type of items in the collection.
+ * @template TParams The parameter names of the requested URL.
+ * @template TContext The type of the context. {@link Context} or
+ *                     {@link RequestContext}.
+ * @template TContextData The context data to pass to the `TContext`.
+ * @template TFilter The type of the filter, if any.
+ * @param context The context.
+ * @param values The parameters of the requested URL.
+ * @param cursor The cursor to start the collection from, or `null` to dispatch
+ *               the entire collection without pagination.
+ * @since 1.8.0
+ */
+export type CustomCollectionDispatcher<
+  TItem,
+  TParams extends Record<string, string>,
+  TContext extends Context<TContextData>,
+  TContextData,
+> = (
+  context: TContext,
+  values: TParams,
+  cursor: string | null,
+) => PageItems<TItem> | null | Promise<PageItems<TItem> | null>;
+
+/**
+ * A callback that counts the number of items in a custom collection.
+ *
+ * @template TParams The parameter names of the requested URL.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The context.
+ * @param values The parameters of the requested URL.
+ * @since 1.8.0
+ */
+export type CustomCollectionCounter<
+  TParams extends Record<string, string>,
+  TContextData,
+> = (
+  context: RequestContext<TContextData>,
+  values: TParams,
+) => number | bigint | null | Promise<number | bigint | null>;
+
+/**
+ * A callback that returns a cursor for a custom collection.
+ *
+ * @template TParams The parameter names of the requested URL.
+ * @template TContext The type of the context. {@link Context} or
+ *                     {@link RequestContext}.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TFilter The type of the filter, if any.
+ * @param context The context.
+ * @param values The parameters of the requested URL.
+ * @since 1.8.0
+ */
+export type CustomCollectionCursor<
+  TParams extends Record<string, string>,
+  TContext extends Context<TContextData>,
+  TContextData,
+> = (
+  context: TContext,
+  values: TParams,
+) => string | null | Promise<string | null>;

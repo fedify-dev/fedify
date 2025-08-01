@@ -35,7 +35,7 @@ type HookParams = {
  * export const handle = fedifyHook(federation, () => undefined);
  * ```
  *
- * @typeParam TContextData A type of the context data for the {@link Federation}
+ * @template TContextData A type of the context data for the {@link Federation}
  *                         object.
  * @param federation A {@link Federation} object to integrate with SvelteKit.
  * @param createContextData A function to create a context data for the

@@ -97,9 +97,10 @@ Here is the list of packages:
 | [@fedify/amqp](/amqp/)         | [JSR][jsr:@fedify/amqp]     | [npm][npm:@fedify/amqp]     | AMQP/RabbitMQ driver                    |
 | [@fedify/express](/express/)   | [JSR][jsr:@fedify/express]  | [npm][npm:@fedify/express]  | Express integration                     |
 | [@fedify/h3](/h3/)             | [JSR][jsr:@fedify/h3]       | [npm][npm:@fedify/h3]       | H3 integration                          |
-| [@fedify/nestjs](/nestjs/)     |                             | [npm][npm:@fedify/nestjs]   | NestJS integration                          |
+| [@fedify/nestjs](/nestjs/)     |                             | [npm][npm:@fedify/nestjs]   | NestJS integration                      |
 | [@fedify/postgres](/postgres/) | [JSR][jsr:@fedify/postgres] | [npm][npm:@fedify/postgres] | PostgreSQL driver                       |
 | [@fedify/redis](/redis/)       | [JSR][jsr:@fedify/redis]    | [npm][npm:@fedify/redis]    | Redis driver                            |
+| [@fedify/testing](/testing/)   | [JSR][jsr:@fedify/testing]  | [npm][npm:@fedify/testing]  | Testing utilities                       |
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
@@ -114,6 +115,8 @@ Here is the list of packages:
 [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres
 [jsr:@fedify/redis]: https://jsr.io/@fedify/redis
 [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis
+[jsr:@fedify/testing]: https://jsr.io/@fedify/testing
+[npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing
 
 
 Sponsors

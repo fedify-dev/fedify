@@ -12,15 +12,13 @@
 2.  Install dependencies:
 
     ```sh
-    # optional
-    nvm use
-    npm i
+    pnpm i
     ```
 
 3.  Start the server:
 
     ```sh
-    npm run dev & npx @fedify/cli tunnel 3000
+    pnpm run dev & pnpx @fedify/cli tunnel 3000
     ```
 
 4.  Open your browser tunneled URL and start interacting with the app.

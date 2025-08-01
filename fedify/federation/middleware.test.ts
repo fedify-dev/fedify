@@ -258,6 +258,10 @@ test({
       assertThrows(() => ctx.getLikedUri("handle"), RouterError);
       assertThrows(() => ctx.getFeaturedUri("handle"), RouterError);
       assertThrows(() => ctx.getFeaturedTagsUri("handle"), RouterError);
+      assertThrows(
+        () => ctx.getCollectionUri("test", { id: "123" }),
+        RouterError,
+      );
       assertEquals(ctx.parseUri(new URL("https://example.com/")), null);
       assertEquals(ctx.parseUri(null), null);
       assertEquals(await ctx.getActorKeyPairs("handle"), []);
@@ -2240,6 +2244,64 @@ test({
       ],
     );
   },
+});
+
+test("ContextImpl.getCollectionUri()", () => {
+  const federation = new FederationImpl({ kv: new MemoryKvStore() });
+  const base = "https://example.com";
+
+  const ctx = new ContextImpl({
+    url: new URL(base),
+    federation,
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: fetchDocumentLoader,
+  });
+
+  const values = { id: "123" };
+  const dispatcher = (_ctx: unknown, _values: { id: string }) => ({
+    items: [],
+  });
+  let url: URL;
+  // Registered with string name
+  const strName = "registered";
+
+  federation.setCollectionDispatcher(
+    strName,
+    Object,
+    "/string-route/{id}",
+    dispatcher,
+  );
+  url = ctx.getCollectionUri(strName, values);
+  assertEquals(url.href, `${base}/string-route/123`);
+
+  // Registered with unnamed symbol name
+  const unnamedSymName = Symbol(strName);
+  federation.setCollectionDispatcher(
+    unnamedSymName,
+    Object,
+    "/symbol-route/{id}",
+    dispatcher,
+  );
+  url = ctx.getCollectionUri(unnamedSymName, values);
+  assertEquals(url.href, `${base}/symbol-route/123`);
+
+  // Registered with named symbol name
+  const namedSymName = Symbol.for(strName);
+  federation.setCollectionDispatcher(
+    namedSymName,
+    Object,
+    "/named-symbol-route/{id}",
+    dispatcher,
+  );
+  url = ctx.getCollectionUri(namedSymName, values);
+  assertEquals(url.href, `${base}/named-symbol-route/123`);
+
+  // Not registered
+  const notReg = "not-registered";
+  assertThrows(() => ctx.getCollectionUri(notReg, values));
+  assertThrows(() => ctx.getCollectionUri(Symbol(notReg), values));
+  assertThrows(() => ctx.getCollectionUri(Symbol.for(notReg), values));
 });
 
 test("InboxContextImpl.forwardActivity()", async (t) => {

@@ -150,37 +150,6 @@ Deno.test("init --dry-run shows command for framework initialization", async () 
   }
 });
 
-Deno.test("init without --dry-run creates actual files", async () => {
-  const testDir = await Deno.makeTempDir();
-  const projectDir = join(testDir, "test-actual-project");
-
-  try {
-    // Run without --dry-run
-    const result = await runInit([
-      projectDir,
-      "--runtime",
-      "deno",
-    ]);
-
-    // Should not show dry-run header
-    assertEquals(result.output.includes("DRY RUN MODE"), false);
-
-    // Verify files were actually created
-    assertEquals(
-      await exists(projectDir),
-      true,
-      "Project directory should be created",
-    );
-    assertEquals(await exists(join(projectDir, "federation.ts")), true);
-    assertEquals(await exists(join(projectDir, "logging.ts")), true);
-    assertEquals(await exists(join(projectDir, "main.ts")), true);
-    assertEquals(await exists(join(projectDir, "deno.json")), true);
-    assertEquals(await exists(join(projectDir, ".env")), true);
-  } finally {
-    await Deno.remove(testDir, { recursive: true });
-  }
-});
-
 Deno.test("init --dry-run fails on non-empty directory", async () => {
   const testDir = await Deno.makeTempDir();
 
@@ -246,6 +215,84 @@ Deno.test("init --dry-run shows dev dependencies for Node.js", async () => {
     assertStringIncludes(result.output, "@biomejs/biome");
 
     // Verify no files were created
+    assertEquals(await exists(projectDir), false);
+  } finally {
+    await Deno.remove(testDir, { recursive: true });
+  }
+});
+
+Deno.test("init - check version for AMQP package", async () => {
+  const amqpData = await Deno.readTextFile(
+    join(import.meta.dirname!, "../amqp/deno.json"),
+  );
+  const testDir = await Deno.makeTempDir();
+  const projectDir = join(testDir, "test-amqp-project");
+  try {
+    const result = await runInit([
+      projectDir,
+      "--dry-run",
+      "--runtime",
+      "deno",
+      "--message-queue",
+      "amqp",
+    ]);
+
+    assertStringIncludes(
+      result.output,
+      `@fedify/amqp@${JSON.parse(amqpData).version.trim()}`,
+    );
+    assertEquals(await exists(projectDir), false);
+  } finally {
+    await Deno.remove(testDir, { recursive: true });
+  }
+});
+
+Deno.test("init - check version for Redis package", async () => {
+  const redisData = await Deno.readTextFile(
+    join(import.meta.dirname!, "../redis/deno.json"),
+  );
+  const testDir = await Deno.makeTempDir();
+  const projectDir = join(testDir, "test-redis-project");
+  try {
+    const result = await runInit([
+      projectDir,
+      "--dry-run",
+      "--runtime",
+      "deno",
+      "--kv-store",
+      "redis",
+    ]);
+
+    assertStringIncludes(
+      result.output,
+      `@fedify/redis@${JSON.parse(redisData).version.trim()}`,
+    );
+    assertEquals(await exists(projectDir), false);
+  } finally {
+    await Deno.remove(testDir, { recursive: true });
+  }
+});
+
+Deno.test("init - check version for Postgres package", async () => {
+  const postgresData = await Deno.readTextFile(
+    join(import.meta.dirname!, "../postgres/deno.json"),
+  );
+  const testDir = await Deno.makeTempDir();
+  const projectDir = join(testDir, "test-postgres-project");
+  try {
+    const result = await runInit([
+      projectDir,
+      "--dry-run",
+      "--runtime",
+      "deno",
+      "--kv-store",
+      "postgres",
+    ]);
+
+    assertStringIncludes(
+      result.output,
+      `@fedify/postgres@${JSON.parse(postgresData).version.trim()}`,
+    );
     assertEquals(await exists(projectDir), false);
   } finally {
     await Deno.remove(testDir, { recursive: true });

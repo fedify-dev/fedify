@@ -60,7 +60,7 @@ export interface SignRequestOptions {
 
   /**
    * The request body as ArrayBuffer. If provided, avoids cloning the request body.
-   * @since 1.8.0
+   * @since 1.7.7
    */
   body?: ArrayBuffer | null;
 
@@ -1228,7 +1228,7 @@ export interface DoubleKnockOptions {
 
   /**
    * The request body as ArrayBuffer. If provided, avoids cloning the request body.
-   * @since 1.8.0
+   * @since 1.7.7
    */
   body?: ArrayBuffer | null;
 

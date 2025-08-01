@@ -18,7 +18,7 @@ import type {
 } from "../vocab/vocab.ts";
 import type { ResourceDescriptor } from "../webfinger/jrd.ts";
 import type { LookupWebFingerOptions } from "../webfinger/lookup.ts";
-import type { Federation } from "./federation.ts";
+import type { ConstructorWithTypeId, Federation } from "./federation.ts";
 import type { SenderKeyPair } from "./send.ts";
 
 /**
@@ -423,6 +423,20 @@ export interface Context<TContextData> {
     activity: Activity,
     options?: RouteActivityOptions,
   ): Promise<boolean>;
+
+  /**
+   * Builds the URI of a collection of objects with the given name and values.
+   * @param name The name of the collection, which can be a string or a symbol.
+   * @param values The values of the URI parameters.
+   * @return The URI of the collection.
+   * @throws {RouteError} If no object dispatcher is available for the name.
+   * @throws {TypeError} If values are invalid.
+   * @since 1.8.0
+   */
+  getCollectionUri<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+  ): URL;
 }
 
 /**
@@ -703,6 +717,28 @@ export type ParseUriResult =
     readonly type: "featuredTags";
     readonly identifier: string;
     readonly handle: string;
+  }
+  /**
+   * The case of a custom collection URI.
+   * @since 1.8.0
+   */
+  | {
+    readonly type: "collection";
+    readonly name: string | symbol;
+    readonly class: ConstructorWithTypeId<Object>;
+    readonly typeId: URL;
+    readonly values: Record<string, string>;
+  }
+  /**
+   * The case of a custom ordered collection URI.
+   * @since 1.8.0
+   */
+  | {
+    readonly type: "orderedCollection";
+    readonly name: string | symbol;
+    readonly class: ConstructorWithTypeId<Object>;
+    readonly typeId: URL;
+    readonly values: Record<string, string>;
   };
 
 /**

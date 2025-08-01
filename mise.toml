@@ -1,5 +1,5 @@
 [tools]
 bun = "latest"
-deno = "2.4.1"  # Temporarily pinned to a specific version; see also #303
+deno = "2.4.3"
 node = "22"
 "npm:pnpm" = "latest"

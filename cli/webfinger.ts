@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command";
+import { Command, ValidationError } from "@cliffy/command";
 import { toAcctUrl } from "@fedify/fedify/vocab";
 import { lookupWebFinger } from "@fedify/fedify/webfinger";
 import ora from "ora";
@@ -17,7 +17,18 @@ export const command = new Command()
     "-p, --allow-private-address",
     "Allow private IP addresses in the URL.",
   )
+  .option(
+    "--max-redirection <maxRedirection:integer>",
+    "Maximum number of redirections to follow.",
+    { default: 5 },
+  )
   .action(async (options, ...resources: string[]) => {
+    if (options.maxRedirection < 0) { // Validate maxRedirection option
+      throw new ValidationError(
+        `Option --max-redirection must be greater than or equal to 0, but got ${options.maxRedirection}.`,
+      );
+    }
+
     for (const resource of resources) {
       const spinner = ora({ // Create a spinner for the lookup process
         text: `Looking up WebFinger for ${resource}`,

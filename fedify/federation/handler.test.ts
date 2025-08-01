@@ -23,13 +23,18 @@ import type {
   CollectionCounter,
   CollectionCursor,
   CollectionDispatcher,
+  CustomCollectionCounter,
+  CustomCollectionCursor,
+  CustomCollectionDispatcher,
   ObjectDispatcher,
 } from "./callback.ts";
 import type { RequestContext } from "./context.ts";
 import {
   acceptsJsonLd,
+  type CustomCollectionCallbacks,
   handleActor,
   handleCollection,
+  handleCustomCollection,
   handleInbox,
   handleObject,
   respondWithObject,
@@ -1436,4 +1441,427 @@ test("respondWithObjectIfAcceptable", async () => {
     { contextLoader: mockDocumentLoader },
   );
   assertEquals(response, null);
+});
+
+test("handleCustomCollection()", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  let context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/"),
+  });
+
+  // Mock dispatcher similar to collection dispatcher pattern
+  const dispatcher: CustomCollectionDispatcher<
+    Create,
+    Record<string, string>,
+    RequestContext<void>,
+    void
+  > = (
+    _ctx: RequestContext<void>,
+    values: Record<string, string>,
+    cursor: string | null,
+  ) => {
+    if (values.handle !== "someone") return null;
+    const items = [
+      new Create({ id: new URL("https://example.com/activities/1") }),
+      new Create({ id: new URL("https://example.com/activities/2") }),
+      new Create({ id: new URL("https://example.com/activities/3") }),
+    ];
+    if (cursor != null) {
+      const idx = parseInt(cursor);
+      return {
+        items: [items[idx]],
+        nextCursor: idx < items.length - 1 ? (idx + 1).toString() : null,
+        prevCursor: idx > 0 ? (idx - 1).toString() : null,
+      };
+    }
+    return { items };
+  };
+
+  const counter: CustomCollectionCounter<Record<string, string>, void> = (
+    _ctx: RequestContext<void>,
+    values: Record<string, string>,
+  ) => values.handle === "someone" ? 3 : null;
+
+  const firstCursor: CustomCollectionCursor<
+    Record<string, string>,
+    RequestContext<void>,
+    void
+  > = (
+    _ctx: RequestContext<void>,
+    values: Record<string, string>,
+  ) => values.handle === "someone" ? "0" : null;
+
+  const lastCursor: CustomCollectionCursor<
+    Record<string, string>,
+    RequestContext<void>,
+    void
+  > = (
+    _ctx: RequestContext<void>,
+    values: Record<string, string>,
+  ) => values.handle === "someone" ? "2" : null;
+
+  const callbacks: CustomCollectionCallbacks<
+    Create,
+    Record<string, string>,
+    RequestContext<void>,
+    void
+  > = {
+    dispatcher,
+    counter,
+    firstCursor,
+    lastCursor,
+  };
+
+  let onNotFoundCalled: Request | null = null;
+  const onNotFound = (request: Request) => {
+    onNotFoundCalled = request;
+    return new Response("Not found", { status: 404 });
+  };
+  let onNotAcceptableCalled: Request | null = null;
+  const onNotAcceptable = (request: Request) => {
+    onNotAcceptableCalled = request;
+    return new Response("Not acceptable", { status: 406 });
+  };
+  let onUnauthorizedCalled: Request | null = null;
+  const onUnauthorized = (request: Request) => {
+    onUnauthorizedCalled = request;
+    return new Response("Unauthorized", { status: 401 });
+  };
+  const errorHandlers = {
+    onNotFound,
+    onNotAcceptable,
+    onUnauthorized,
+  };
+
+  // Test without callbacks (should return 404)
+  let response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 404);
+  assertEquals(onNotFoundCalled, context.request);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with HTML Accept header (should return 406)
+  onNotFoundCalled = null;
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: { dispatcher },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 406);
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, context.request);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with unknown handle (should return 404)
+  onNotAcceptableCalled = null;
+  context = createRequestContext<void>({
+    ...context,
+    request: new Request(context.url, {
+      headers: {
+        Accept: "application/activity+json",
+      },
+    }),
+  });
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "no-one" },
+      collectionCallbacks: { dispatcher },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 404);
+  assertEquals(onNotFoundCalled, context.request);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test successful request without pagination
+  onNotFoundCalled = null;
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: { dispatcher },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  const createCtx = [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      toot: "http://joinmastodon.org/ns#",
+      misskey: "https://misskey-hub.net/ns#",
+      fedibird: "http://fedibird.com/ns#",
+      ChatMessage: "http://litepub.social/ns#ChatMessage",
+      Emoji: "toot:Emoji",
+      Hashtag: "as:Hashtag",
+      sensitive: "as:sensitive",
+      votersCount: {
+        "@id": "toot:votersCount",
+        "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
+      },
+      _misskey_quote: "misskey:_misskey_quote",
+      quoteUri: "fedibird:quoteUri",
+      quoteUrl: "as:quoteUrl",
+      emojiReactions: {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
+    },
+  ];
+  const CONTEXT = [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      toot: "http://joinmastodon.org/ns#",
+      misskey: "https://misskey-hub.net/ns#",
+      fedibird: "http://fedibird.com/ns#",
+      ChatMessage: "http://litepub.social/ns#ChatMessage",
+      Emoji: "toot:Emoji",
+      Hashtag: "as:Hashtag",
+      sensitive: "as:sensitive",
+      votersCount: "toot:votersCount",
+      _misskey_quote: "misskey:_misskey_quote",
+      quoteUri: "fedibird:quoteUri",
+      quoteUrl: "as:quoteUrl",
+      emojiReactions: {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
+    },
+  ];
+  assertEquals(await response.json(), {
+    "@context": CONTEXT,
+    id: "https://example.com/",
+    type: "Collection",
+    items: [
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/1",
+      },
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/2",
+      },
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/3",
+      },
+    ],
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with authorization predicate (should fail without signature)
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: {
+        dispatcher,
+        authorizePredicate: (_ctx, _values, key, keyOwner) =>
+          key != null && keyOwner != null,
+      },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 401);
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, context.request);
+
+  // Test with authorization predicate (should succeed with signature)
+  onUnauthorizedCalled = null;
+  context = createRequestContext<void>({
+    ...context,
+    getSignedKey: () => Promise.resolve(rsaPublicKey2),
+    getSignedKeyOwner: () => Promise.resolve(new Person({})),
+  });
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: {
+        dispatcher,
+        authorizePredicate: (_ctx, _values, key, keyOwner) =>
+          key != null && keyOwner != null,
+      },
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(await response.json(), {
+    "@context": CONTEXT,
+    id: "https://example.com/",
+    type: "Collection",
+    items: [
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/1",
+      },
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/2",
+      },
+      {
+        "@context": createCtx,
+        type: "Create",
+        id: "https://example.com/activities/3",
+      },
+    ],
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with pagination - full collection with pagination info
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: callbacks,
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(await response.json(), {
+    "@context": CONTEXT,
+    id: "https://example.com/",
+    type: "Collection",
+    totalItems: 3,
+    first: "https://example.com/?cursor=0",
+    last: "https://example.com/?cursor=2",
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with cursor - collection page
+  let url = new URL("https://example.com/?cursor=0");
+  context = createRequestContext({
+    ...context,
+    url,
+    request: new Request(url, {
+      headers: {
+        Accept: "application/activity+json",
+      },
+    }),
+  });
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: callbacks,
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(await response.json(), {
+    "@context": CONTEXT,
+    id: "https://example.com/?cursor=0",
+    type: "CollectionPage",
+    partOf: "https://example.com/",
+    next: "https://example.com/?cursor=1",
+    items: {
+      "@context": createCtx,
+      id: "https://example.com/activities/1",
+      type: "Create",
+    },
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // Test with cursor - last page
+  url = new URL("https://example.com/?cursor=2");
+  context = createRequestContext({
+    ...context,
+    url,
+    request: new Request(url, {
+      headers: {
+        Accept: "application/activity+json",
+      },
+    }),
+  });
+  response = await handleCustomCollection(
+    context.request,
+    {
+      context,
+      name: "custom collection",
+      values: { handle: "someone" },
+      collectionCallbacks: callbacks,
+      ...errorHandlers,
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(await response.json(), {
+    "@context": CONTEXT,
+    id: "https://example.com/?cursor=2",
+    type: "CollectionPage",
+    partOf: "https://example.com/",
+    prev: "https://example.com/?cursor=1",
+    items: {
+      "@context": createCtx,
+      id: "https://example.com/activities/3",
+      type: "Create",
+    },
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onNotAcceptableCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
 });

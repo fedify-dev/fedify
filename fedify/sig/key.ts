@@ -193,7 +193,7 @@ export interface FetchKeyResult<T extends CryptographicKey | Multikey> {
  * Fetches a {@link CryptographicKey} or {@link Multikey} from the given URL.
  * If the given URL contains an {@link Actor} object, it tries to find
  * the corresponding key in the `publicKey` or `assertionMethod` property.
- * @typeParam T The type of the key to fetch.  Either {@link CryptographicKey}
+ * @template T The type of the key to fetch.  Either {@link CryptographicKey}
  *              or {@link Multikey}.
  * @param keyId The URL of the key.
  * @param cls The class of the key to fetch.  Either {@link CryptographicKey}

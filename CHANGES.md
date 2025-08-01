@@ -63,15 +63,6 @@ the versioning.
  -  Added `LookupWebFingerOptions.maxRedirection` option.
     [[#248], [#281] by Lee ByeongJun]
 
- -  Optimized `doubleKnock()` function to avoid multiple request body clones
-    during redirects.  The request body is now read once and reused throughout
-    the entire operation, preventing potential `TypeError: unusable` errors
-    and improving performance.  [[#300] by Fabien O'Carroll]
-
-     -  Added `SignRequestOptions.body` option.
-     -  Added `DoubleKnockOptions.body` option.
-     -  Updated internal signing functions to accept pre-read body buffers.
-
  -  Added `fedify webfinger` command. This command allows users to look up
     WebFinger information for a given resource.
     [[#260], [#278] by ChanHaeng Lee]
@@ -82,27 +73,54 @@ the versioning.
         in the WebFinger request.
      -  The `--allow-private-address` or `-p` option allows looking up
         WebFinger information for private addresses (e.g., `localhost`).
+     -  The `--max-redirection` option allows uses to specify the maximum
+        number of redirects to follow when performing WebFinger lookups.
+        [[#311], [#328] by KeunHyeong Park]
 
-  -  Added `--dry-run` option to `fedify init` command.  This option allows users
+ -  Added `--dry-run` option to `fedify init` command.  This option allows users
     to preview what files and configurations would be created without actually
     creating them.  [[#263], [#298] by Lee ByeongJun]
 
-  -  Fixed a bug where the `fedify node` command had failed to correctly
-     render the favicon in terminal emulators that do not support 24-bit
-     colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
+ -  Fixed a bug where the `fedify nodeinfo` command (was `fedify node`) had
+    failed to correctly render the favicon in terminal emulators that do not
+    support 24-bit colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
 
-  -  Supported NestJS integration with the `@fedify/nestjs` package.
-     [[#269], [#309] by Jaeyeol Lee]
+ -  Supported NestJS integration with the `@fedify/nestjs` package.
+    [[#269], [#309] by Jaeyeol Lee]
 
      -  Added `@fedify/nestjs` package.
      -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+
+ -  Added `-o`/`--output` option to `fedify lookup` command. This option allows
+    users to save retrieved lookup results to specified path.
+    [[#261], [#321] by Jiwon Kwon]
+
+ -  Added `fedify nodeinfo` command, and deprecated `fedify node` command in
+    favor of `fedify nodeinfo`.  [[#267], [#331] by Hyeonseo Kim]
+
+ -  Added custom collection dispatchers.  [[#310], [#332] by ChanHaeng Lee]
+
+     -  Added `CustomCollectionDispatcher`, `CustomCollectionCounter`, and
+        `CustomCollectionCursor` types for custom collection dispatching.
+     -  Added `CustomCollectionCallbackSetters` type for setting custom
+        collection callbacks.
+     -  Added `CustomCollectionHandler` class and `handleCustomCollection()` and
+        `handleOrderedCollection()` functions to process custom collections.
+     -  Added `setCollectionDispatcher()` and `setOrderedCollectionDispatcher()`
+        methods to the `Federatable` interface. Implemented in
+        `FederationBuilderImpl` class.
+     -  Added `getCollectionUri()` method to the `Context` interface.
+     -  Added utility types `ConstructorWithTypeId` and `ParamsKeyPath` for
+        custom collection dispatchers.
 
 [#168]: https://github.com/fedify-dev/fedify/issues/168
 [#197]: https://github.com/fedify-dev/fedify/issues/197
 [#248]: https://github.com/fedify-dev/fedify/issues/248
 [#260]: https://github.com/fedify-dev/fedify/issues/260
+[#261]: https://github.com/fedify-dev/fedify/issues/261
 [#262]: https://github.com/fedify-dev/fedify/issues/262
 [#263]: https://github.com/fedify-dev/fedify/issues/263
+[#267]: https://github.com/fedify-dev/fedify/issues/267
 [#269]: https://github.com/fedify-dev/fedify/issues/269
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
@@ -110,9 +128,32 @@ the versioning.
 [#283]: https://github.com/fedify-dev/fedify/pull/283
 [#285]: https://github.com/fedify-dev/fedify/pull/285
 [#298]: https://github.com/fedify-dev/fedify/pull/298
-[#300]: https://github.com/fedify-dev/fedify/pull/300
 [#304]: https://github.com/fedify-dev/fedify/issues/304
 [#309]: https://github.com/fedify-dev/fedify/pull/309
+[#310]: https://github.com/fedify-dev/fedify/issues/310
+[#311]: https://github.com/fedify-dev/fedify/issues/311
+[#321]: https://github.com/fedify-dev/fedify/pull/321
+[#328]: https://github.com/fedify-dev/fedify/pull/328
+[#331]: https://github.com/fedify-dev/fedify/pull/331
+[#332]: https://github.com/fedify-dev/fedify/pull/332
+
+
+Version 1.7.7
+-------------
+
+Released on July 28, 2025.
+
+ -  Optimized `doubleKnock()` function to avoid multiple request body clones
+    during redirects.  The request body is now read once and reused throughout
+    the entire operation, preventing potential `TypeError: unusable` errors
+    and improving performance.  [[#300], [#335] by Fabien O'Carroll]
+
+     -  Added `SignRequestOptions.body` option.
+     -  Added `DoubleKnockOptions.body` option.
+     -  Updated internal signing functions to accept pre-read body buffers.
+
+[#300]: https://github.com/fedify-dev/fedify/pull/300
+[#335]: https://github.com/fedify-dev/fedify/pull/335
 
 
 Version 1.7.6

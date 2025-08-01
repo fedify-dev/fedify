@@ -87,8 +87,10 @@ import type {
 import {
   handleActor,
   handleCollection,
+  handleCustomCollection,
   handleInbox,
   handleObject,
+  handleOrderedCollection,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -107,7 +109,7 @@ import { extractInboxes, sendActivity, type SenderKeyPair } from "./send.ts";
 
 /**
  * Options for {@link createFederation} function.
- * @typeParam TContextData The type of the context data.
+ * @template TContextData The type of the context data.
  * @since 0.10.0
  * @deprecated Use {@link FederationOptions} instead.
  */
@@ -1495,6 +1497,44 @@ export class FederationImpl<TContextData>
           onNotFound,
           onNotAcceptable,
         });
+      case "collection": {
+        const name = route.name.replace(/^collection:/, "");
+        const callbacks = this.collectionCallbacks[name];
+        return await handleCustomCollection<
+          URL | Object | Link | Recipient,
+          Record<string, string>,
+          RequestContext<TContextData>,
+          TContextData
+        >(request, {
+          name,
+          context,
+          values: route.values,
+          collectionCallbacks: callbacks,
+          tracerProvider: this.tracerProvider,
+          onUnauthorized,
+          onNotFound,
+          onNotAcceptable,
+        });
+      }
+      case "orderedCollection": {
+        const name = route.name.replace(/^orderedCollection:/, "");
+        const callbacks = this.collectionCallbacks[name];
+        return await handleOrderedCollection<
+          URL | Object | Link | Recipient,
+          Record<string, string>,
+          RequestContext<TContextData>,
+          TContextData
+        >(request, {
+          name,
+          context,
+          values: route.values,
+          collectionCallbacks: callbacks,
+          tracerProvider: this.tracerProvider,
+          onUnauthorized,
+          onNotFound,
+          onNotAcceptable,
+        });
+      }
       default: {
         const response = onNotFound(request);
         return response instanceof Promise ? await response : response;
@@ -1719,6 +1759,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return new URL(path, this.canonicalOrigin);
   }
 
+  getCollectionUri<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+  ): URL {
+    // Get a path for a collection dispatcher registered for the given name.
+    const path = this.federation.getCollectionPath(name, values);
+    if (path === null) {
+      // If no collection dispatcher is registered for the given name,
+      // throw a router error.
+      throw new RouterError(
+        `No collection dispatcher registered for "${String(name)}".`,
+      );
+    }
+    // Return a URL for the collection path.
+    return new URL(path, this.canonicalOrigin);
+  }
+
   parseUri(uri: URL | null): ParseUriResult | null {
     if (uri == null) return null;
     if (uri.origin !== this.origin && uri.origin !== this.canonicalOrigin) {
@@ -1846,6 +1903,25 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           );
           return identifier;
         },
+      };
+    }
+
+    const collectionTypes = ["collection", "orderedCollection"] as const;
+    const collectionRegex = new RegExp(`^(${collectionTypes.join("|")}):(.*)$`);
+    const match = route.name.match(collectionRegex) as null | [
+      unknown,
+      typeof collectionTypes[number],
+      string,
+    ];
+    if (match !== null) {
+      const [, type, name] = match;
+      const cls = this.federation.collectionTypeIds[name];
+      return {
+        type,
+        name,
+        class: cls,
+        typeId: cls.typeId,
+        values: route.values,
       };
     }
     return null;
