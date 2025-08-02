@@ -1,9 +1,10 @@
-export type TerminalType = "kitty" | "iterm2" | "sixel" | "none";
+import sharp from "sharp";
+
+export type TerminalType = "kitty" | "iterm2" | "none";
 
 const KITTY_IDENTIFIERS: string[] = [
   "kitty",
   "wezterm",
-  "ghostty",
   "konsole",
   "warp",
   "wayst",
@@ -27,9 +28,6 @@ export function detectTerminalCapabilities(): TerminalType {
     return "iterm2";
   }
 
-  if (term.includes("sixel")) {
-    return "sixel";
-  }
   return "none";
 }
 
@@ -99,26 +97,17 @@ export async function renderImageITerm2(
 
   const encoder = new TextEncoder();
   const command = encoder.encode(
-    `\x1b]1337;File=inline=1:${base64Data}\x07\n`,
+    `\x1b]1337;File=inline=1preserveAspectRatio=1:${base64Data}\x07\n`,
   );
   Deno.stdout.writeSync(command);
 }
 
-// Image download using Deno's fetch
 export async function downloadImage(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
     const imageData = new Uint8Array(await response.arrayBuffer());
-
-    // Create temp file
     const tempDir = Deno.env.get("TMPDIR") || Deno.env.get("TMP") || "/tmp";
-    const filename = `terminal_image_${Date.now()}_${
-      Math.random().toString(36).substr(2, 9)
-    }`;
+    const filename = `terminal_image_${Date.now()}_${crypto.randomUUID()}`;
     const extension = new URL(url).pathname.split(".").pop() || "jpg";
     const tempPath = `${tempDir}/${filename}.${extension}`;
 
@@ -130,21 +119,33 @@ export async function downloadImage(url: string): Promise<string | null> {
   }
 }
 
-export async function renderImage(imageUrls: URL[]): Promise<void> {
+export async function renderImage(
+  imageUrls: URL[],
+): Promise<void> {
   const graphicsProtocol = await detectTerminalCapabilities();
   for (const url of imageUrls) {
     const tempPath = await downloadImage(url.toString());
     if (!tempPath) {
       continue;
     }
-    if (graphicsProtocol.includes("kitty")) {
-      const imageData = await Deno.readFile(tempPath);
+    const resizedPath = tempPath + "_resized." +
+      (tempPath.split(".").pop() || "png");
+
+    await sharp(tempPath)
+      .resize(300)
+      .toFile(resizedPath);
+
+    if (graphicsProtocol === "kitty") {
+      const imageData = await Deno.readFile(resizedPath);
       await renderImageKitty(imageData, {
         a: "T",
-        f: 100,
+        f: 100, // specify the image format is png
       });
-    } else if (graphicsProtocol.includes("iterm2")) {
-      await renderImageITerm2(tempPath);
+    } else if (graphicsProtocol === "iterm2") {
+      await renderImageITerm2(resizedPath);
+    } else {
+      // Skip rendering for unsupported terminals
+      continue;
     }
   }
 }

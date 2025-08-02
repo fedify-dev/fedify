@@ -24,7 +24,8 @@
     "icojs": "npm:icojs@^0.19.4",
     "jimp": "npm:jimp@^1.6.0",
     "ora": "npm:ora@^8.0.1",
-    "shiki": "npm:shiki@^1.6.4"
+    "shiki": "npm:shiki@^1.6.4",
+    "sharp": "npm:sharp"
   },
   "exclude": [
     ".vscode",
