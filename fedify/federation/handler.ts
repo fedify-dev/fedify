@@ -552,6 +552,10 @@ export interface InboxHandlerParameters<TContextData> {
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
   tracerProvider?: TracerProvider;
+  notifyInboundActivity?: (
+    context: Context<TContextData>,
+    activity: Activity,
+  ) => Promise<void>;
 }
 
 /**
@@ -613,6 +617,7 @@ async function handleInboxInternal<TContextData>(
     signatureTimeWindow,
     skipSignatureVerification,
     tracerProvider,
+    notifyInboundActivity,
   }: InboxHandlerParameters<TContextData>,
   span: Span,
 ): Promise<Response> {
@@ -787,6 +792,17 @@ async function handleInboxInternal<TContextData>(
     span.setAttribute("activitypub.activity.id", activity.id.href);
   }
   span.setAttribute("activitypub.activity.type", getTypeId(activity).href);
+
+  // Notify observers about the inbound activity
+  if (notifyInboundActivity != null) {
+    try {
+      await notifyInboundActivity(ctx, activity);
+    } catch (error) {
+      logger.error("Failed to notify inbound activity observer", { error });
+      // Don't fail the request if observer fails
+    }
+  }
+
   const routeResult = await routeActivity({
     context: ctx,
     json,

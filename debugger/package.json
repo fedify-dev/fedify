@@ -1,0 +1,40 @@
+{
+  "name": "@fedify/debugger",
+  "version": "1.9.0",
+  "description": "ActivityPub debugger for Fedify applications",
+  "keywords": [
+    "fedify",
+    "activitypub",
+    "debugger",
+    "federation",
+    "fediverse"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "deno test --allow-all"
+  },
+  "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@hono/hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.2.24"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "^1.0.0"
+  }
+}
