@@ -1,4 +1,19 @@
 {
+  "workspaces": {
+    "packages": [
+      "amqp",
+      "cli",
+      "elysia",
+      "express",
+      "fedify",
+      "h3",
+      "postgres",
+      "redis"
+    ],
+    "catalog": {
+      "elysia": "^1.3.6"
+    }
+  },
   "pnpm": {
     "patchedDependencies": {
       "vitepress@1.6.3": "patches/vitepress@1.6.3.patch"
