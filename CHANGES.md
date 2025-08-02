@@ -117,8 +117,6 @@ the versioning.
     in each activity, in addition to the activity's own type.
     [[#191], [#342] by Jang Hanarae]
 
-- Remove redundant workspace fields from subpackage deno.json files. [[#301] by JeongHeon Kim]
-
 [#168]: https://github.com/fedify-dev/fedify/issues/168
 [#191]: https://github.com/fedify-dev/fedify/issues/191
 [#197]: https://github.com/fedify-dev/fedify/issues/197
@@ -135,7 +133,6 @@ the versioning.
 [#283]: https://github.com/fedify-dev/fedify/pull/283
 [#285]: https://github.com/fedify-dev/fedify/pull/285
 [#298]: https://github.com/fedify-dev/fedify/pull/298
-[#301]: https://github.com/fedify-dev/fedify/pull/301
 [#304]: https://github.com/fedify-dev/fedify/issues/304
 [#309]: https://github.com/fedify-dev/fedify/pull/309
 [#310]: https://github.com/fedify-dev/fedify/issues/310
