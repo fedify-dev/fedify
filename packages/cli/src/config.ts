@@ -1,4 +1,7 @@
+import { getLogger } from "@logtape/logtape";
 import { join } from "@std/path";
+
+const logger = getLogger(["fedify", "cli", "config"]);
 
 interface HttpConfig {
   /** http header User-Agent */
@@ -65,7 +68,7 @@ export async function loadConfig(): Promise<Config> {
         continue;
       }
 
-      console.error(`Malformed config at ${path}: ${error}`);
+      logger.error(`Malformed config at ${path}: ${error}`);
     }
   }
 
