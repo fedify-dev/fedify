@@ -18,15 +18,15 @@ Corporate sponsors
 Supporters
 ----------
 
-- [Daniel Supernault](https://pixelfed.org/)
 - [tkgka](https://opencollective.com/tkgka)
 - [Blaine](https://opencollective.com/blaine)
+- [Daniel Supernault](https://pixelfed.org/)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
 
 Backers
 -------
 
-Robin Riley, yamanoku, Encyclia, taye, okin, Andy Piper, box464, Evan Prodromou, Rafael Goulart, malte
+Robin Riley, yamanoku, taye, Encyclia, okin, box464, Evan Prodromou, Rafael Goulart, malte, Andy Piper
 
 One-time donations
 ------------------

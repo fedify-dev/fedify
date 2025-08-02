@@ -28,6 +28,7 @@
     "@types/node": "catalog:",
     "amqplib": "catalog:",
     "dayjs": "^1.11.13",
+    "debug": "^4.4.1",
     "express": "catalog:",
     "h3": "catalog:",
     "hono": "^4.6.14",

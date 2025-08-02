@@ -15,6 +15,7 @@ function getRedis(): { redis: Redis; keyPrefix: string; store: RedisKvStore } {
 }
 
 test("RedisKvStore.get()", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::bar`, '"foobar"');
@@ -25,6 +26,7 @@ test("RedisKvStore.get()", { skip }, async () => {
 });
 
 test("RedisKvStore.set()", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await store.set(["foo", "baz"], "baz");
@@ -35,6 +37,7 @@ test("RedisKvStore.set()", { skip }, async () => {
 });
 
 test("RedisKvStore.delete()", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::baz`, '"baz"');
