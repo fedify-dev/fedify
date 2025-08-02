@@ -8,10 +8,6 @@
   "imports": {
     "express": "npm:express@^4.0.0"
   },
-  "nodeModulesDir": "none",
-  "unstable": [
-    "temporal"
-  ],
   "exclude": [
     "dist",
     "node_modules"

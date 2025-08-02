@@ -8,10 +8,6 @@
     "./kv": "./kv.ts",
     "./mq": "./mq.ts"
   },
-  "unstable": [
-    "temporal"
-  ],
-  "nodeModulesDir": "none",
   "exclude": [
     "dist",
     "node_modules"

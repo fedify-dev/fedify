@@ -5,10 +5,6 @@
   "exports": {
     ".": "./index.ts"
   },
-  "nodeModulesDir": "none",
-  "unstable": [
-    "temporal"
-  ],
   "exclude": [
     "dist",
     "node_modules"

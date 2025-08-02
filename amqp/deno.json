@@ -9,10 +9,6 @@
   "imports": {
     "@alinea/suite": "jsr:@alinea/suite@^0.6.3"
   },
-  "nodeModulesDir": "none",
-  "unstable": [
-    "temporal"
-  ],
   "exclude": [
     ".github",
     "node_modules",
