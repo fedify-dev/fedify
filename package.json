@@ -3,5 +3,8 @@
     "patchedDependencies": {
       "vitepress@1.6.3": "patches/vitepress@1.6.3.patch"
     }
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
   }
 }
