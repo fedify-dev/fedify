@@ -12,7 +12,7 @@ import { logFile, recordingSink } from "./log.ts";
 import { command as lookup } from "./lookup.ts";
 import { command as nodeinfo } from "./nodeinfo.ts";
 import { command as tunnel } from "./tunnel.ts";
-import { colorEnabled } from "./utils.ts";
+import { colorEnabled, setSharedOptions } from "./utils.ts";
 import { command as webfinger } from "./webfinger.ts";
 
 setColorEnabled(colorEnabled);
@@ -59,7 +59,12 @@ async function main() {
         });
       },
     })
-    .globalOption("-c, --cache-dir=<dir:file>", "Set the cache directory.")
+    .globalOption("-c, --cache-dir=<dir:file>", "Set the cache directory.", {
+      async action(options) {
+        await setCacheDir(options.cacheDir);
+      },
+      default: DEFAULT_CACHE_DIR,
+    })
     .globalOption(
       "-u, --user-agent <value:string>",
       "Set the User-Agent header for requests.",
@@ -76,23 +81,22 @@ async function main() {
     .globalOption("--format <format:string>", "The default output format.")
     .globalOption("--no-config [flag:boolean]", "Disable loading config file.")
     .globalAction(async (options) => {
+      const config = await loadConfig();
+      setSharedOptions(config);
+
       if (options.noConfig) {
-        await setCacheDir(DEFAULT_CACHE_DIR);
         return;
       }
 
-      const config = await loadConfig();
-
-      options.cacheDir = options.cacheDir ?? config.cacheDir ??
-        DEFAULT_CACHE_DIR;
-      await setCacheDir(options.cacheDir);
-
+      options.cacheDir = options.cacheDir ?? config.cacheDir;
       options.userAgent = options.userAgent ?? config.http?.userAgent;
       options.timeout = options.timeout ?? config.http?.timeout;
       options.followRedirects = options.followRedirects ??
         config.http?.followRedirects ?? false;
       options.verbose = options.verbose ?? config.verbose ?? false;
       options.format = options.format ?? config.format?.default;
+
+      await setCacheDir(options.cacheDir);
     })
     .default("help")
     .command("init", init)

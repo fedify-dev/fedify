@@ -20,7 +20,11 @@ import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colorEnabled, formatCliObjectOutputWithColor } from "./utils.ts";
+import {
+  colorEnabled,
+  formatCliObjectOutputWithColor,
+  getSharedOption,
+} from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
@@ -211,10 +215,10 @@ export const command = new Command()
     }).start();
     let server: TemporaryServer | undefined = undefined;
     const documentLoader = await getDocumentLoader({
-      userAgent: options.userAgent,
+      userAgent: options.userAgent ?? getSharedOption("userAgent"),
     });
     const contextLoader = await getContextLoader({
-      userAgent: options.userAgent,
+      userAgent: options.userAgent ?? getSharedOption("userAgent"),
     });
     let authLoader: DocumentLoader | undefined = undefined;
     if (options.authorizedFetch) {

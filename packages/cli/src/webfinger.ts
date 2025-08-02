@@ -2,7 +2,7 @@ import { Command, ValidationError } from "@cliffy/command";
 import { toAcctUrl } from "@fedify/fedify/vocab";
 import { lookupWebFinger } from "@fedify/fedify/webfinger";
 import ora from "ora";
-import { printJson } from "./utils.ts";
+import { getSharedOption, printJson } from "./utils.ts";
 
 export const command = new Command()
   .arguments("<...resources:string>")
@@ -36,7 +36,10 @@ export const command = new Command()
       }).start();
       try {
         const url = convertUrlIfHandle(resource); // Convert resource to URL
-        const webFinger = await lookupWebFinger(url, options) ?? // Look up WebFinger
+        const webFinger = await lookupWebFinger(url, {
+          ...options,
+          userAgent: options.userAgent ?? getSharedOption("userAgent"),
+        }) ?? // Look up WebFinger
           new NotFoundError(resource).throw(); // throw NotFoundError if not found
 
         spinner.succeed(`WebFinger found for ${resource}:`); // Succeed the spinner
