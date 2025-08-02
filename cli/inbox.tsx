@@ -399,18 +399,22 @@ function printServerInfo(fedCtx: Context<ContextData>): void {
     .render();
 }
 
-function printActivityEntry(idx: number, entry: ActivityEntry): void {
+async function printActivityEntry(
+  idx: number,
+  entry: ActivityEntry,
+): Promise<void> {
   const request = entry.request.clone();
   const response = entry.response?.clone();
   const url = new URL(request.url);
   const activity = entry.activity;
+  const object = await activity?.getObject();
   new Table(
     [new Cell("Request #:").align("right"), colors.bold(idx.toString())],
     [
       new Cell("Activity type:").align("right"),
-      activity == null
-        ? colors.red("failed to parse")
-        : colors.green(activity.constructor.name),
+      activity == null ? colors.red("failed to parse") : colors.green(
+        `${activity.constructor.name}(${object?.constructor.name})`,
+      ),
     ],
     [
       new Cell("HTTP request:").align("right"),
@@ -508,7 +512,7 @@ function createFetchHandler(
       recordingSink.stopRecording();
       activities[idx].response = response.clone();
       activities[idx].logs = recordingSink.getRecords();
-      printActivityEntry(idx, activities[idx]);
+      await printActivityEntry(idx, activities[idx]);
     }
     return response;
   };
