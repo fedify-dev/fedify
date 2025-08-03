@@ -29,9 +29,6 @@ async function main() {
         "Note that this does not mute console logs.",
     )
     .globalOption("-c, --cache-dir=<dir:file>", "Set the cache directory.", {
-      async action(options) {
-        await setCacheDir(options.cacheDir);
-      },
       default: DEFAULT_CACHE_DIR,
     })
     .globalOption("-v, --verbose [flag:boolean]", "Enable verbose output.")
@@ -44,6 +41,7 @@ async function main() {
 
       await setCacheDir(options.cacheDir);
 
+      options.verbose = options.verbose ?? config.verbose;
       let logLevel: LogLevel = options.verbose ? "info" : "warning";
       if (options.debug) {
         logLevel = "debug";

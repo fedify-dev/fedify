@@ -352,7 +352,8 @@ export const command = new Command()
           {
             documentLoader: authLoader ?? documentLoader,
             contextLoader,
-            userAgent: options.userAgent,
+            userAgent: options.userAgent ??
+              getSharedOption("userAgent", options.noConfig),
           },
         ),
       );
