@@ -139,3 +139,21 @@ Deno.test("loadConfig()", async (t) => {
     },
   );
 });
+
+Deno.test("loadConfig() applies cacheDir correctly", async () => {
+  await withTempEnv(async (tempDir) => {
+    const testConfig = { cacheDir: "./test-cache" };
+    await createConfigFile(tempDir, "fedify.config.json", testConfig);
+    const config = await loadConfig();
+    assertEquals(config.cacheDir, "./test-cache");
+  });
+});
+
+Deno.test("loadConfig() applies verbose correctly", async () => {
+  await withTempEnv(async (tempDir) => {
+    const testConfig = { verbose: true };
+    await createConfigFile(tempDir, "fedify.config.json", testConfig);
+    const config = await loadConfig();
+    assertEquals(config.verbose, true);
+  });
+});
