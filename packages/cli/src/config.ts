@@ -44,11 +44,13 @@ export interface Config {
   verbose?: boolean;
 }
 
-export async function loadConfig(): Promise<Config> {
+export async function loadConfig(
+  os: typeof Deno.build.os = Deno.build.os,
+): Promise<Config> {
   const currentDir = Deno.cwd();
 
   let configDir: string | undefined;
-  if (Deno.build.os === "windows") {
+  if (os === "windows") {
     // On Windows, use APPDATA for storing app configuration. If APPDATA is not
     // set, fall back to USERPROFILE.
     // See https://learn.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables

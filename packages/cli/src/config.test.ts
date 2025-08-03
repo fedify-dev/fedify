@@ -12,9 +12,22 @@ async function withTempEnv(
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   const originalHome = Deno.env.get("HOME");
+  const originalXdgConfigHome = Deno.env.get("XDG_CONFIG_HOME");
+  const originalAppData = Deno.env.get("APPDATA");
+  const originalUserProfile = Deno.env.get("USERPROFILE");
 
-  const homeDir = await Deno.makeTempDir({ dir: tempDir });
+  const homeDir = join(tempDir, "home");
+  await Deno.mkdir(homeDir, { recursive: true });
   Deno.env.set("HOME", homeDir);
+  Deno.env.set("USERPROFILE", homeDir);
+
+  const xdgConfigDir = join(homeDir, ".config");
+  await Deno.mkdir(xdgConfigDir, { recursive: true });
+  Deno.env.set("XDG_CONFIG_HOME", xdgConfigDir);
+
+  const appDataDir = join(homeDir, "AppData", "Roaming");
+  await Deno.mkdir(appDataDir, { recursive: true });
+  Deno.env.set("APPDATA", appDataDir);
 
   try {
     Deno.chdir(tempDir);
@@ -25,6 +38,21 @@ async function withTempEnv(
       Deno.env.set("HOME", originalHome);
     } else {
       Deno.env.delete("HOME");
+    }
+    if (originalXdgConfigHome) {
+      Deno.env.set("XDG_CONFIG_HOME", originalXdgConfigHome);
+    } else {
+      Deno.env.delete("XDG_CONFIG_HOME");
+    }
+    if (originalAppData) {
+      Deno.env.set("APPDATA", originalAppData);
+    } else {
+      Deno.env.delete("APPDATA");
+    }
+    if (originalUserProfile) {
+      Deno.env.set("USERPROFILE", originalUserProfile);
+    } else {
+      Deno.env.delete("USERPROFILE");
     }
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -97,12 +125,31 @@ Deno.test("loadConfig()", async (t) => {
   );
 
   await t.step(
-    "should load config from .fedifyrc in home directory",
+    "should load config from .fedifyrc in home directory (XDG)",
     async () => {
-      await withTempEnv(async (_, homeDir) => {
+      await withTempEnv(async () => {
         const testConfig: Config = { format: { default: "yaml" } };
-        await createConfigFile(homeDir, ".fedifyrc", testConfig);
-        const config = await loadConfig();
+        const configPath = join(
+          Deno.env.get("XDG_CONFIG_HOME")!,
+          "fedify",
+        );
+        await Deno.mkdir(configPath, { recursive: true });
+        await createConfigFile(configPath, ".fedifyrc", testConfig);
+        const config = await loadConfig("linux");
+        assertEquals(config, testConfig);
+      });
+    },
+  );
+
+  await t.step(
+    "should load config from .fedifyrc in home directory (Windows)",
+    async () => {
+      await withTempEnv(async () => {
+        const testConfig: Config = { format: { default: "yaml" } };
+        const configPath = join(Deno.env.get("APPDATA")!, "fedify");
+        await Deno.mkdir(configPath, { recursive: true });
+        await createConfigFile(configPath, ".fedifyrc", testConfig);
+        const config = await loadConfig("windows");
         assertEquals(config, testConfig);
       });
     },
@@ -111,12 +158,17 @@ Deno.test("loadConfig()", async (t) => {
   await t.step(
     "should prioritize current directory over home directory",
     async () => {
-      await withTempEnv(async (tempDir, homeDir) => {
+      await withTempEnv(async (tempDir) => {
         const currentDirConfig: Config = { cacheDir: "./current" };
         const homeDirConfig: Config = { cacheDir: "./home" };
+        const homeConfigPath = join(
+          Deno.env.get("XDG_CONFIG_HOME")!,
+          "fedify",
+        );
+        await Deno.mkdir(homeConfigPath, { recursive: true });
         await createConfigFile(tempDir, ".fedifyrc", currentDirConfig);
-        await createConfigFile(homeDir, ".fedifyrc", homeDirConfig);
-        const config = await loadConfig();
+        await createConfigFile(homeConfigPath, ".fedifyrc", homeDirConfig);
+        const config = await loadConfig("linux");
         assertEquals(config, currentDirConfig);
       });
     },
