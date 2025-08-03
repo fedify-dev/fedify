@@ -196,6 +196,7 @@ export const command = new Command()
     "-o, --output <file>",
     "Specify the output file path.",
   )
+  .option("--no-config [flag:boolean]", "Disable loading config file.")
   .action(async (options, ...urls: string[]) => {
     if (urls.length < 1) {
       console.error("At least one URL or actor handle must be provided.");
@@ -215,10 +216,12 @@ export const command = new Command()
     }).start();
     let server: TemporaryServer | undefined = undefined;
     const documentLoader = await getDocumentLoader({
-      userAgent: options.userAgent ?? getSharedOption("userAgent"),
+      userAgent: options.userAgent ??
+        getSharedOption("userAgent", options.noConfig),
     });
     const contextLoader = await getContextLoader({
-      userAgent: options.userAgent ?? getSharedOption("userAgent"),
+      userAgent: options.userAgent ??
+        getSharedOption("userAgent", options.noConfig),
     });
     let authLoader: DocumentLoader | undefined = undefined;
     if (options.authorizedFetch) {
@@ -285,7 +288,8 @@ export const command = new Command()
       const collection = await lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
-        userAgent: options.userAgent,
+        userAgent: options.userAgent ??
+          getSharedOption("userAgent", options.noConfig),
       });
       if (collection == null) {
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);

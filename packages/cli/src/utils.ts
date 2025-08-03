@@ -40,6 +40,7 @@ export function setSharedOptions(config: Config): void {
 
 export function getSharedOption<K extends keyof SharedOptions>(
   key: K,
-): SharedOptions[K] {
-  return sharedOptions[key];
+  noConfig: boolean = false,
+): SharedOptions[K] | undefined {
+  return noConfig ? undefined : sharedOptions[key];
 }

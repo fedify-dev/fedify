@@ -1,6 +1,6 @@
 import { Command, CompletionsCommand, HelpCommand } from "@cliffy/command";
 import { getFileSink } from "@logtape/file";
-import { configure, getConsoleSink } from "@logtape/logtape";
+import { configure, getConsoleSink, type LogLevel } from "@logtape/logtape";
 import { setColorEnabled } from "@std/fmt/colors";
 import { AsyncLocalStorage } from "node:async_hooks";
 import metadata from "../deno.json" with { type: "json" };
@@ -28,75 +28,54 @@ async function main() {
         "all levels of logs are written to this file.  " +
         "Note that this does not mute console logs.",
     )
-    .globalOption("-d, --debug", "Enable debug mode.", {
-      async action() {
-        await configure({
-          sinks: {
-            console: getConsoleSink(),
-            recording: recordingSink,
-            file: logFile == null ? () => undefined : getFileSink(logFile),
-          },
-          filters: {},
-          loggers: [
-            {
-              category: "fedify",
-              lowestLevel: "debug",
-              sinks: ["console", "recording", "file"],
-            },
-            {
-              category: "localtunnel",
-              lowestLevel: "debug",
-              sinks: ["console", "file"],
-            },
-            {
-              category: ["logtape", "meta"],
-              lowestLevel: "warning",
-              sinks: ["console", "file"],
-            },
-          ],
-          reset: true,
-          contextLocalStorage: new AsyncLocalStorage(),
-        });
-      },
-    })
     .globalOption("-c, --cache-dir=<dir:file>", "Set the cache directory.", {
       async action(options) {
         await setCacheDir(options.cacheDir);
       },
       default: DEFAULT_CACHE_DIR,
     })
-    .globalOption(
-      "-u, --user-agent <value:string>",
-      "Set the User-Agent header for requests.",
-    )
-    .globalOption(
-      "--timeout <ms:number>",
-      "Set the request timeout in milliseconds.",
-    )
-    .globalOption(
-      "--follow-redirects [flag:boolean]",
-      "Follow HTTP redirects.",
-    )
-    .globalOption("--verbose [flag:boolean]", "Enable verbose output.")
-    .globalOption("--format <format:string>", "The default output format.")
-    .globalOption("--no-config [flag:boolean]", "Disable loading config file.")
+    .globalOption("-v, --verbose [flag:boolean]", "Enable verbose output.")
+    .globalOption("-d, --debug", "Enable debug mode.")
     .globalAction(async (options) => {
       const config = await loadConfig();
       setSharedOptions(config);
 
-      if (options.noConfig) {
-        return;
-      }
-
       options.cacheDir = options.cacheDir ?? config.cacheDir;
-      options.userAgent = options.userAgent ?? config.http?.userAgent;
-      options.timeout = options.timeout ?? config.http?.timeout;
-      options.followRedirects = options.followRedirects ??
-        config.http?.followRedirects ?? false;
-      options.verbose = options.verbose ?? config.verbose ?? false;
-      options.format = options.format ?? config.format?.default;
 
       await setCacheDir(options.cacheDir);
+
+      let logLevel: LogLevel = options.verbose ? "info" : "warning";
+      if (options.debug) {
+        logLevel = "debug";
+      }
+
+      await configure({
+        sinks: {
+          console: getConsoleSink(),
+          recording: recordingSink,
+          file: logFile == null ? () => undefined : getFileSink(logFile),
+        },
+        filters: {},
+        loggers: [
+          {
+            category: "fedify",
+            lowestLevel: logLevel,
+            sinks: ["console", "recording", "file"],
+          },
+          {
+            category: "localtunnel",
+            lowestLevel: logLevel,
+            sinks: ["console", "file"],
+          },
+          {
+            category: ["logtape", "meta"],
+            lowestLevel: logLevel,
+            sinks: ["console", "file"],
+          },
+        ],
+        reset: true,
+        contextLocalStorage: new AsyncLocalStorage(),
+      });
     })
     .default("help")
     .command("init", init)
