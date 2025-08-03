@@ -40,7 +40,7 @@ export const command = new Command()
     { conflicts: ["raw"] },
   )
   .option("-u, --user-agent <string>", "The custom User-Agent header value.")
-  .option("--no-config [flag:boolean]", "Disable loading config file.")
+  .option("--no-config", "Disable loading config file.")
   .action(async (options, host: string) => {
     const command = Deno.args.find((arg) =>
       arg === "node" || arg === "nodeinfo"
@@ -60,7 +60,7 @@ export const command = new Command()
       const nodeInfo = await getNodeInfo(url, {
         parse: "none",
         userAgent: options.userAgent ??
-          getSharedOption("userAgent", options.noConfig),
+          getSharedOption("userAgent", !options.config),
       });
       if (nodeInfo === undefined) {
         spinner.fail("No NodeInfo document found.");
@@ -74,7 +74,7 @@ export const command = new Command()
     const nodeInfo = await getNodeInfo(url, {
       parse: options.bestEffort ? "best-effort" : "strict",
       userAgent: options.userAgent ??
-        getSharedOption("userAgent", options.noConfig),
+        getSharedOption("userAgent", !options.config),
     });
     logger.debug("NodeInfo document: {nodeInfo}", { nodeInfo });
     if (nodeInfo == undefined) {
@@ -94,12 +94,12 @@ export const command = new Command()
       try {
         const faviconUrl = await getFaviconUrl(
           url,
-          options.userAgent ?? getSharedOption("userAgent", options.noConfig),
+          options.userAgent ?? getSharedOption("userAgent", !options.config),
         );
         const response = await fetch(faviconUrl, {
           headers: {
             "User-Agent": options.userAgent ??
-              getSharedOption("userAgent", options.noConfig) ??
+              getSharedOption("userAgent", !options.config) ??
               getUserAgent(),
           },
         });

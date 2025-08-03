@@ -22,7 +22,7 @@ export const command = new Command()
     "Maximum number of redirections to follow.",
     { default: 5 },
   )
-  .option("--no-config [flag:boolean]", "Disable loading config file.")
+  .option("--no-config", "Disable loading config file.")
   .action(async (options, ...resources: string[]) => {
     if (options.maxRedirection < 0) { // Validate maxRedirection option
       throw new ValidationError(
@@ -40,7 +40,7 @@ export const command = new Command()
         const webFinger = await lookupWebFinger(url, {
           ...options,
           userAgent: options.userAgent ??
-            getSharedOption("userAgent", options.noConfig),
+            getSharedOption("userAgent", !options.config),
         }) ?? // Look up WebFinger
           new NotFoundError(resource).throw(); // throw NotFoundError if not found
 
