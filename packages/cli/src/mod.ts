@@ -33,6 +33,7 @@ async function main() {
     })
     .globalOption("-v, --verbose [flag:boolean]", "Enable verbose output.")
     .globalOption("-d, --debug", "Enable debug mode.")
+    .globalOption("--no-config", "Disable loading config file.")
     .globalAction(async (options) => {
       const config = await loadConfig();
       setSharedOptions(config);
@@ -67,7 +68,7 @@ async function main() {
           },
           {
             category: ["logtape", "meta"],
-            lowestLevel: logLevel,
+            lowestLevel: "warning",
             sinks: ["console", "file"],
           },
         ],
