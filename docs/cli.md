@@ -102,6 +102,101 @@ the appropriate executable for your platform and put it in your `PATH`.
 [releases]: https://github.com/fedify-dev/fedify/releases
 
 
+Configuration
+-------------
+
+The `fedify` command can be configured via configuration files. This allows
+you to set default options for various commands without having to specify them
+on the command line every time.
+
+To disable loading configuration files, you can use the `--no-config` global
+option.
+
+### Configuration Files
+
+`fedify` looks for configuration files with the following names:
+
+-   `.fedifyrc`
+-   `fedify.config.json`
+
+The files are expected to be in JSON format.
+
+### Configuration File Locations
+
+The `fedify` command searches for configuration files in the following
+locations, in order:
+
+1.  **Current Directory**: The directory from which you run the `fedify`
+    command.
+    -   `./.fedifyrc`
+    -   `./fedify.config.json`
+
+2.  **System-Specific Configuration Directory**:
+    -   **Linux and macOS**: Based on the [XDG Base Directory Specification],
+        `fedify` looks in `$XDG_CONFIG_HOME/fedify/`. If `$XDG_CONFIG_HOME`
+        is not set, it defaults to `~/.config/fedify/`.
+        -   `$XDG_CONFIG_HOME/fedify/.fedifyrc`
+        -   `$XDG_CONFIG_HOME/fedify/fedify.config.json`
+    -   **Windows**: `fedify` looks in the directory obtained from the `APPDATA`
+        environment variable. If `APPDATA` is not set, it falls back to
+        `%USERPROFILE%\AppData\Roaming`. The configuration directory will be
+        `APPDATA\fedify\`.
+        -   `%APPDATA%\fedify\.fedifyrc`
+        -   `%APPDATA%\fedify\fedify.config.json`
+
+`fedify` will use the first configuration file it finds and stop searching.
+
+[XDG Base Directory Specification]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+### Precedence
+
+The settings are applied with the following precedence, from highest to lowest:
+
+1.  Command-line options (e.g., `--cache-dir`, `--verbose`).
+2.  Configuration file in the current working directory (`.fedifyrc` takes
+    precedence over `fedify.config.json`).
+3.  Configuration file in the system-specific configuration directory
+    (`.fedifyrc` takes precedence over `fedify.config.json`).
+
+For example, if `cacheDir` is specified in a configuration file, but you also
+provide the `--cache-dir` option on the command line, the value from the
+command line option will be used.
+
+### Available Fields
+
+The following fields are available in the configuration file:
+
+~~~~ json
+{
+  "cacheDir": "/path/to/cache",
+  "verbose": true,
+  "http": {
+    "timeout": 30000,
+    "userAgent": "MyFedifyClient/1.0",
+    "followRedirects": true
+  },
+  "format": {
+    "default": "json"
+  }
+}
+~~~~
+
+-   `cacheDir` (string): Path to the cache directory. Corresponds to the global
+    `--cache-dir` option.
+-   `verbose` (boolean): Enable verbose output. Corresponds to the global
+    `-v`/`--verbose` option.
+-   `http` (object): HTTP-related settings.
+    -   `timeout` (number): Timeout for HTTP requests in milliseconds.
+    -   `userAgent` (string): The `User-Agent` header for HTTP requests.
+        Corresponds to the `--user-agent` option in commands like `lookup` and
+        `nodeinfo`.
+    -   `followRedirects` (boolean): Whether to automatically follow HTTP
+    redirects (e.g., 301, 302, 307, 308 status codes) when making requests.
+    Defaults to `true`.
+-   `format` (object): Output formatting options for commands like `lookup`.
+    -   `default` (string): Default output format. Can be `json`, `json-ld`, or
+        `yaml`.
+
 `fedify init`: Initializing a Fedify project
 --------------------------------------------
 
