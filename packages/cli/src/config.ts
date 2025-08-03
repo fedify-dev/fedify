@@ -47,18 +47,39 @@ export interface Config {
 export async function loadConfig(): Promise<Config> {
   const currentDir = Deno.cwd();
 
-  // for more details, see https://wiki.archlinux.org/title/XDG_Base_Directory
-  const homeDir = Deno.env.get("XDG_CONFIG_HOME") ??
-    `${Deno.env.get("HOME")}/.config`;
+  let configDir: string | undefined;
+  if (Deno.build.os === "windows") {
+    // On Windows, use APPDATA for storing app configuration. If APPDATA is not
+    // set, fall back to USERPROFILE.
+    // See https://learn.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+    configDir = Deno.env.get("APPDATA");
+    if (!configDir) {
+      const userProfile = Deno.env.get("USERPROFILE");
+      if (userProfile) {
+        configDir = join(userProfile, "AppData", "Roaming");
+      }
+    }
+  } else {
+    // On other systems (Linux, macOS), follow the XDG Base Directory Specification.
+    // See https://wiki.archlinux.org/title/XDG_Base_Directory
+    configDir = Deno.env.get("XDG_CONFIG_HOME");
+    if (!configDir) {
+      const homeDir = Deno.env.get("HOME");
+      if (homeDir) {
+        configDir = join(homeDir, ".config");
+      }
+    }
+  }
 
-  // search config file in current directory, priority arrays
+  // Search for config file in current directory first, then in the system-specific config directory.
   const paths = [
     join(currentDir, ".fedifyrc"),
     join(currentDir, "fedify.config.json"),
   ];
-  if (homeDir) {
-    paths.push(join(homeDir, ".fedifyrc"));
-    paths.push(join(homeDir, "fedify.config.json"));
+  if (configDir) {
+    const fedifyConfigDir = join(configDir, "fedify");
+    paths.push(join(fedifyConfigDir, ".fedifyrc"));
+    paths.push(join(fedifyConfigDir, "fedify.config.json"));
   }
 
   for (const path of paths) {
