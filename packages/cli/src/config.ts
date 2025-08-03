@@ -46,7 +46,10 @@ export interface Config {
 
 export async function loadConfig(): Promise<Config> {
   const currentDir = Deno.cwd();
-  const homeDir = Deno.env.get("HOME");
+
+  // for more details, see https://wiki.archlinux.org/title/XDG_Base_Directory
+  const homeDir = Deno.env.get("XDG_CONFIG_HOME") ??
+    `${Deno.env.get("HOME")}/.config`;
 
   // search config file in current directory, priority arrays
   const paths = [
