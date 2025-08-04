@@ -20,7 +20,11 @@ import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colorEnabled, formatCliObjectOutputWithColor } from "./utils.ts";
+import {
+  colorEnabled,
+  formatCliObjectOutputWithColor,
+  getSharedOption,
+} from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
@@ -192,6 +196,7 @@ export const command = new Command()
     "-o, --output <file>",
     "Specify the output file path.",
   )
+  .option("--no-config", "Disable loading config file.")
   .action(async (options, ...urls: string[]) => {
     if (urls.length < 1) {
       console.error("At least one URL or actor handle must be provided.");
@@ -211,10 +216,12 @@ export const command = new Command()
     }).start();
     let server: TemporaryServer | undefined = undefined;
     const documentLoader = await getDocumentLoader({
-      userAgent: options.userAgent,
+      userAgent: options.userAgent ??
+        getSharedOption("userAgent", !options.config),
     });
     const contextLoader = await getContextLoader({
-      userAgent: options.userAgent,
+      userAgent: options.userAgent ??
+        getSharedOption("userAgent", !options.config),
     });
     let authLoader: DocumentLoader | undefined = undefined;
     if (options.authorizedFetch) {
@@ -281,7 +288,8 @@ export const command = new Command()
       const collection = await lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
-        userAgent: options.userAgent,
+        userAgent: options.userAgent ??
+          getSharedOption("userAgent", !options.config),
       });
       if (collection == null) {
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
@@ -344,7 +352,8 @@ export const command = new Command()
           {
             documentLoader: authLoader ?? documentLoader,
             contextLoader,
-            userAgent: options.userAgent,
+            userAgent: options.userAgent ??
+              getSharedOption("userAgent", !options.config),
           },
         ),
       );

@@ -1,0 +1,102 @@
+import { getLogger } from "@logtape/logtape";
+import { join } from "@std/path";
+
+const logger = getLogger(["fedify", "cli", "config"]);
+
+interface HttpConfig {
+  /** http header User-Agent */
+  userAgent?: string;
+  /** http request timeout */
+  timeout?: number;
+  /** auto follow redirects mode */
+  followRedirects?: boolean;
+}
+
+interface FormatConfig {
+  /** default output format */
+  default?: string;
+}
+
+/**
+ * @description config for cli
+ * @example
+ * {
+ *   "http": {
+ *     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+ *     "timeout": 10000,
+ *     "followRedirects": true
+ *   },
+ *   "format": {
+ *     "default": "json"
+ *   },
+ *   "cacheDir": "./cache",
+ *   "verbose": true
+ * }
+ */
+export interface Config {
+  /** HTTP related configuration */
+  http?: HttpConfig;
+  /** Output format configuration */
+  format?: FormatConfig;
+  /** cache directory */
+  cacheDir?: string;
+  /** verbose mode */
+  verbose?: boolean;
+}
+
+export async function loadConfig(
+  os: typeof Deno.build.os = Deno.build.os,
+): Promise<Config> {
+  const currentDir = Deno.cwd();
+
+  let configDir: string | undefined;
+  if (os === "windows") {
+    // On Windows, use APPDATA for storing app configuration. If APPDATA is not
+    // set, fall back to USERPROFILE.
+    // See https://learn.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+    configDir = Deno.env.get("APPDATA");
+    if (!configDir) {
+      const userProfile = Deno.env.get("USERPROFILE");
+      if (userProfile) {
+        configDir = join(userProfile, "AppData", "Roaming");
+      }
+    }
+  } else {
+    // On other systems (Linux, macOS), follow the XDG Base Directory Specification.
+    // See https://wiki.archlinux.org/title/XDG_Base_Directory
+    configDir = Deno.env.get("XDG_CONFIG_HOME");
+    if (!configDir) {
+      const homeDir = Deno.env.get("HOME");
+      if (homeDir) {
+        configDir = join(homeDir, ".config");
+      }
+    }
+  }
+
+  // Search for config file in current directory first, then in the system-specific config directory.
+  const paths = [
+    join(currentDir, ".fedifyrc"),
+    join(currentDir, "fedify.config.json"),
+  ];
+  if (configDir) {
+    const fedifyConfigDir = join(configDir, "fedify");
+    paths.push(join(fedifyConfigDir, ".fedifyrc"));
+    paths.push(join(fedifyConfigDir, "fedify.config.json"));
+  }
+
+  for (const path of paths) {
+    try {
+      const text = await Deno.readTextFile(path);
+      const config = JSON.parse(text);
+      return config;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        continue;
+      }
+
+      logger.error(`Malformed config at ${path}: ${error}`);
+    }
+  }
+
+  return {};
+}
