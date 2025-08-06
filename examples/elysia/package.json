@@ -1,0 +1,37 @@
+{
+  "name": "fedify-elysia-example",
+  "version": "1.0.0",
+  "description": "Fedify Elysia Example",
+  "private": true,
+  "main": "app.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run app.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "examples/elysia"
+  },
+  "keywords": [
+    "Fedify",
+    "Elysia"
+  ],
+  "author": {
+    "name": "Hyeonseo Kim",
+    "email": "dodok8@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "homepage": "https://github.com/fedify-dev/fedify/tree/main/examples/elysia#readme",
+  "devDependencies": {
+    "bun-types": "^1.2.19"
+  },
+  "dependencies": {
+    "@fedify/elysia": "workspace:*",
+    "@fedify/fedify": "workspace:*",
+    "elysia": "catalog:"
+  }
+}

@@ -13,90 +13,25 @@ the versioning.
     Fedify packages into a single repository with unified versioning.  This
     change affects the following packages:
 
-     -  `@fedify/fedify` (main library)
-     -  `@fedify/cli` (CLI toolchain)
-     -  `@fedify/amqp` (AMQP/RabbitMQ driver)
-     -  `@fedify/express` (Express integration)
-     -  `@fedify/h3` (h3 framework integration)
-     -  `@fedify/postgres` (PostgreSQL drivers)
-     -  `@fedify/redis` (Redis drivers)
+     -  *@fedify/fedify* (main library)
+     -  *@fedify/cli* (CLI toolchain)
+     -  *@fedify/amqp* (AMQP/RabbitMQ driver)
+     -  *@fedify/express* (Express integration)
+     -  *@fedify/h3* (h3 framework integration)
+     -  *@fedify/postgres* (PostgreSQL drivers)
+     -  *@fedify/redis* (Redis drivers)
 
     All packages now follow the same version number and are released together.
     Previously, each package had independent versioning.
 
- -  Added mock classes for `Federation` and `Context` interfaces to improve
-    testability without requiring a real federation server setup. The mock
-    classes track all sent activities with metadata and support all standard
-    Fedify patterns including custom path registration and multiple activity
-    type listeners.  [[#197], [#283] by Lee ByeongJun]
+ -  Several new packages have been added to the monorepo:
 
-     -  Added `@fedify/testing` package.
-     -  Added `MockFederation` class.
-     -  Added `MockContext` class.
+     -  *@fedify/elysia* ([Elysia] integration)
+     -  *@fedify/nestjs* ([NestJS] integration)
+     -  *@fedify/sqlite* (SQLite drivers)
+     -  *@fedify/testing* (testing utilities)
 
- -  Key–value stores now optionally support CAS (compare-and-swap) operation
-    for atomic updates.  This is useful for implementing optimistic locking
-    and preventing lost updates in concurrent environments.
-
-     -  Added optional `KvStore.cas()` method.
-     -  Added `MemoryKvStore.cas()` method.
-     -  Added `DenoKvStore.cas()` method.
-
- -  Added options to customize the temporary actor information when running
-    `fedify inbox` command.  [[#262], [#285] by Hasang Cho]
-
-     -  Added `--actor-name` option to customize the actor display name.
-     -  Added `--actor-summary` option to customize the actor description.
-     -  Both options provide sensible defaults when not specified.
-
- -  Added useful functions for fediverse handles at `@fedify/fedify/vocab`.
-    This functions simplify working with fediverse handles and URLs.
-    [[#278] by ChanHaeng Lee]
-
-     -  `FediverseHandle`: An interface representing a fediverse handle.
-     -  `parseFediverseHandle()`: A function to parse a fediverse handle into
-        its components.
-     -  `isFediverseHandle()`: A function to check if a string is a valid
-        fediverse handle.
-     -  `toAcctUrl()`: A function to convert a fediverse handle to a `URL`.
-
- -  Added `LookupWebFingerOptions.maxRedirection` option.
-    [[#248], [#281] by Lee ByeongJun]
-
- -  Added `fedify webfinger` command. This command allows users to look up
-    WebFinger information for a given resource.
-    [[#260], [#278] by ChanHaeng Lee]
-
-     -  The input can be a handle (e.g., `@user@server`, `user@server`) or
-        a URL (e.g., `https://server/users/path`).
-     -  The `--user-agent` or `-a` option used as `User-Agent` header value
-        in the WebFinger request.
-     -  The `--allow-private-address` or `-p` option allows looking up
-        WebFinger information for private addresses (e.g., `localhost`).
-     -  The `--max-redirection` option allows uses to specify the maximum
-        number of redirects to follow when performing WebFinger lookups.
-        [[#311], [#328] by KeunHyeong Park]
-
- -  Added `--dry-run` option to `fedify init` command.  This option allows users
-    to preview what files and configurations would be created without actually
-    creating them.  [[#263], [#298] by Lee ByeongJun]
-
- -  Fixed a bug where the `fedify nodeinfo` command (was `fedify node`) had
-    failed to correctly render the favicon in terminal emulators that do not
-    support 24-bit colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
-
- -  Supported NestJS integration with the `@fedify/nestjs` package.
-    [[#269], [#309] by Jaeyeol Lee]
-
-     -  Added `@fedify/nestjs` package.
-     -  Added `FedifyModule` for integrating Fedify into NestJS applications.
-
- -  Added `-o`/`--output` option to `fedify lookup` command. This option allows
-    users to save retrieved lookup results to specified path.
-    [[#261], [#321] by Jiwon Kwon]
-
- -  Added `fedify nodeinfo` command, and deprecated `fedify node` command in
-    favor of `fedify nodeinfo`.  [[#267], [#331] by Hyeonseo Kim]
+### @fedify/fedify
 
  -  Added custom collection dispatchers.  [[#310], [#332] by ChanHaeng Lee]
 
@@ -113,29 +48,185 @@ the versioning.
      -  Added utility types `ConstructorWithTypeId` and `ParamsKeyPath` for
         custom collection dispatchers.
 
+ -  Key–value stores now optionally support CAS (compare-and-swap) operation
+    for atomic updates.  This is useful for implementing optimistic locking
+    and preventing lost updates in concurrent environments.
+
+     -  Added optional `KvStore.cas()` method.
+     -  Added `MemoryKvStore.cas()` method.
+     -  Added `DenoKvStore.cas()` method.
+
+ -  Added useful functions for fediverse handles at `@fedify/fedify/vocab`.
+    This functions simplify working with fediverse handles and URLs.
+    [[#278] by ChanHaeng Lee]
+
+     -  `FediverseHandle`: An interface representing a fediverse handle.
+     -  `parseFediverseHandle()`: A function to parse a fediverse handle into
+        its components.
+     -  `isFediverseHandle()`: A function to check if a string is a valid
+        fediverse handle.
+     -  `toAcctUrl()`: A function to convert a fediverse handle to a `URL`.
+
+ -  Added `LookupWebFingerOptions.maxRedirection` option.
+    [[#248], [#281] by Lee ByeongJun]
+
+ -  APIs making HTTP requests became able to optionally take `AbortSignal`.
+    [[#51], [#315] by Hyunchae Kim]
+
+     -  Added `DocumentLoaderOptions` interface.
+     -  The `DocumentLoader` type became able to optionally take
+        the second parameter.
+     -  Added `LookupObjectOptions.signal` option.
+     -  Added `LookupWebFingerOptions.signal` option.
+     -  Added `DoubleKnockOptions.signal` option.
+
+### @fedify/cli
+
+ -  The `fedify` CLI now correctly disables color output when standard output
+    isn't a TTY (for example, when redirecting to a file) or when the `NO_COLOR`
+    environment variable is set.  [[#257], [#341] by Cho Hasang]
+
+ -  Added `fedify nodeinfo` command, and deprecated `fedify node` command in
+    favor of `fedify nodeinfo`.  [[#267], [#331] by Hyeonseo Kim]
+
+ -  Added `fedify webfinger` command. This command allows users to look up
+    WebFinger information for a given resource.
+    [[#260], [#278] by ChanHaeng Lee]
+
+     -  The input can be a handle (e.g., `@user@server`, `user@server`) or
+        a URL (e.g., `https://server/users/path`).
+     -  The `--user-agent` or `-a` option used as `User-Agent` header value
+        in the WebFinger request.
+     -  The `--allow-private-address` or `-p` option allows looking up
+        WebFinger information for private addresses (e.g., `localhost`).
+     -  The `--max-redirection` option allows uses to specify the maximum
+        number of redirects to follow when performing WebFinger lookups.
+        [[#311], [#328] by KeunHyeong Park]
+
+ -  The `fedify lookup` command now displays images depending on user's
+    terminal emulator. [[#169], [#348] by Jiwon Kwon]
+
+     -  Supported terminal emulators are [Kitty], [WezTerm], [Konsole], [Warp],
+        [Wayst], [st], and [iTerm].
+
+ -  Added `-o`/`--output` option to `fedify lookup` command. This option allows
+    users to save retrieved lookup results to specified path.
+    [[#261], [#321] by Jiwon Kwon]
+
+ -  Added options to customize the temporary actor information when running
+    `fedify inbox` command.  [[#262], [#285] by Hasang Cho]
+
+     -  Added `--actor-name` option to customize the actor display name.
+     -  Added `--actor-summary` option to customize the actor description.
+     -  Both options provide sensible defaults when not specified.
+
+ -  The `fedify inbox` command now displays the type of the object contained
+    in each activity, in addition to the activity's own type.
+    [[#191], [#342] by Jang Hanarae]
+
+ -  Added `--dry-run` option to `fedify init` command.  This option allows users
+    to preview what files and configurations would be created without actually
+    creating them.  [[#263], [#298] by Lee ByeongJun]
+
+ -  Fixed a bug where the `fedify nodeinfo` command (was `fedify node`) had
+    failed to correctly render the favicon in terminal emulators that do not
+    support 24-bit colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
+
+### @fedify/elysia
+
+ -  Supported [Elysia] integration with the *@fedify/elysia* package.
+    [[#286], [#339] by Hyeonseo Kim]
+
+     -  Added *@fedify/elysia* package.
+     -  Added `fedify` Elysia plugin for integrating Fedify into Elysia
+        applications.
+
+### @fedify/nestjs
+
+ -  Supported [NestJS] integration with the *@fedify/nestjs* package.
+    [[#269], [#309] by Jaeyeol Lee]
+
+     -  Added *@fedify/nestjs* package.
+     -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+
+### @fedify/sqlite
+
+ -  Added `SqliteKvStore`, implementing `KvStore` using SQLite with the
+    *@fedify/sqlite* package. Compatible with Bun, Deno, and Node.js.
+    [[#274], [#318] by An Subin]
+
+     -  Added *@fedify/sqlite* package.
+     -  Added `SqliteKvStore`, a SQLite implementation of `KvStore`.
+
+### @fedify/testing
+
+ -  Added mock classes for `Federation` and `Context` interfaces to improve
+    testability without requiring a real federation server setup. The mock
+    classes track all sent activities with metadata and support all standard
+    Fedify patterns including custom path registration and multiple activity
+    type listeners.  [[#197], [#283] by Lee ByeongJun]
+
+     -  Added *@fedify/testing* package.
+     -  Added `MockFederation` class.
+     -  Added `MockContext` class.
+
+[#51]: https://github.com/fedify-dev/fedify/issues/51
 [#168]: https://github.com/fedify-dev/fedify/issues/168
+[#169]: https://github.com/fedify-dev/fedify/issues/169
+[#191]: https://github.com/fedify-dev/fedify/issues/191
 [#197]: https://github.com/fedify-dev/fedify/issues/197
 [#248]: https://github.com/fedify-dev/fedify/issues/248
+[#257]: https://github.com/fedify-dev/fedify/issues/257
 [#260]: https://github.com/fedify-dev/fedify/issues/260
 [#261]: https://github.com/fedify-dev/fedify/issues/261
 [#262]: https://github.com/fedify-dev/fedify/issues/262
 [#263]: https://github.com/fedify-dev/fedify/issues/263
 [#267]: https://github.com/fedify-dev/fedify/issues/267
 [#269]: https://github.com/fedify-dev/fedify/issues/269
+[#274]: https://github.com/fedify-dev/fedify/issues/274
 [#278]: https://github.com/fedify-dev/fedify/pull/278
 [#281]: https://github.com/fedify-dev/fedify/pull/281
 [#282]: https://github.com/fedify-dev/fedify/pull/282
 [#283]: https://github.com/fedify-dev/fedify/pull/283
 [#285]: https://github.com/fedify-dev/fedify/pull/285
+[#286]: https://github.com/fedify-dev/fedify/issues/286
 [#298]: https://github.com/fedify-dev/fedify/pull/298
 [#304]: https://github.com/fedify-dev/fedify/issues/304
 [#309]: https://github.com/fedify-dev/fedify/pull/309
 [#310]: https://github.com/fedify-dev/fedify/issues/310
 [#311]: https://github.com/fedify-dev/fedify/issues/311
+[#315]: https://github.com/fedify-dev/fedify/pull/315
+[#318]: https://github.com/fedify-dev/fedify/pull/318
 [#321]: https://github.com/fedify-dev/fedify/pull/321
 [#328]: https://github.com/fedify-dev/fedify/pull/328
 [#331]: https://github.com/fedify-dev/fedify/pull/331
 [#332]: https://github.com/fedify-dev/fedify/pull/332
+[#339]: https://github.com/fedify-dev/fedify/pull/339
+[#341]: https://github.com/fedify-dev/fedify/pull/341
+[#342]: https://github.com/fedify-dev/fedify/pull/342
+[#348]: https://github.com/fedify-dev/fedify/pull/348
+[Kitty]: https://sw.kovidgoyal.net/kitty/
+[Elysia]: https://elysiajs.com/
+[NestJS]: https://nestjs.com/
+[WezTerm]: https://wezterm.org/
+[Konsole]: https://konsole.kde.org/
+[Warp]: https://www.warp.dev/
+[Wayst]: https://github.com/91861/wayst
+[st]: https://st.suckless.org/
+[iTerm]: https://iterm2.com/
+
+
+Version 1.7.8
+-------------
+
+Released on August 5, 2025.
+
+ -  Updated `kvCache()` wrapper to read from preloaded contexts rather than
+    from the `KvStore`. This saves network and disk overheads when parsing
+    activities and objects using the JSON-LD processor.
+    [[#352] by Fabien O'Carroll]
+
+[#352]: https://github.com/fedify-dev/fedify/pull/352
 
 
 Version 1.7.7
@@ -154,6 +245,7 @@ Released on July 28, 2025.
 
 [#300]: https://github.com/fedify-dev/fedify/pull/300
 [#335]: https://github.com/fedify-dev/fedify/pull/335
+
 
 
 Version 1.7.6

@@ -121,17 +121,17 @@ addresses this:
 flowchart TB
     A[Client] -->|Create post| B[Application]
     B -->|Create activity| C[Fedify]
-    
+
     subgraph "Two-stage delivery process"
         C -->|1\. Single consolidated message| D[(Message Queue)]
         D -->|2\. Process message| E[Fan-out Worker]
         E -->|3\. Create individual delivery tasks| F[(Delivery Queue)]
     end
-    
+
     F -->|Deliver to recipient 1| G[Remote server 1]
     F -->|Deliver to recipient 2| H[Remote server 2]
     F -->|Deliver to recipient N| I[Remote server N]
-    
+
     G -.-|Failed? Retry with backoff| F
     H -.-|Failed? Retry with backoff| F
     I -.-|Failed? Retry with backoff| F
@@ -214,7 +214,7 @@ Observability
 
 
 Success stories
---------------
+---------------
 
 Several notable projects have chosen Fedify to implement ActivityPub federation,
 demonstrating its effectiveness in real-world applications:
@@ -304,6 +304,22 @@ Contributor ID) records available on the fediverse:
 [Encyclia]: https://encyclia.pub/
 [ORCID]: https://orcid.org/
 [Encyclia roadmap]: https://encyclia.pub/roadmap
+
+
+### Typo Blue: Text-only blogging meets the fediverse
+
+[Typo Blue] is a Korean text-only blogging platform that embraces minimalist
+writing, allowing users to focus purely on text without images or attachments:
+
+ -  Originally featured email subscription for readers to follow blogs
+ -  Recently added opt-in ActivityPub integration using Fedify, enabling blogs
+    to be discoverable across the fediverse
+ -  Allows readers on Mastodon, Misskey, and other ActivityPub-compatible
+    platforms to follow and interact with blogs
+ -  Demonstrates how specialized platforms can maintain their unique identity
+    while participating in the open social web
+
+[Typo Blue]: https://typo.blue/
 
 
 Conclusion

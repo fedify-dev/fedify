@@ -1,7 +1,0 @@
-name = "fedify-test"
-main = "cfworkers/server.ts"
-compatibility_date = "2025-05-23"
-compatibility_flags = ["nodejs_compat"]
-
-[build]
-command = "tsdown --platform=neutral --out-dir=cfworkers/dist/ && deno run --allow-read scripts/discover_tests.ts > cfworkers/imports.ts"

@@ -1,0 +1,70 @@
+{
+  "name": "@fedify/sqlite",
+  "version": "1.8.1",
+  "description": "SQLite drivers for Fedify",
+  "keywords": [
+    "fedify",
+    "sqlite"
+  ],
+  "license": "MIT",
+  "author": "An Nyeong <me@annyeong.me>",
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/sqlite"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.js",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js",
+      "default": "./dist/mod.js"
+    },
+    "./kv": {
+      "types": "./dist/kv.d.ts",
+      "import": "./dist/kv.js",
+      "default": "./dist/kv.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#sqlite": {
+      "bun": "./dist/sqlite.bun.js",
+      "deno": "./dist/sqlite.node.js",
+      "import": "./dist/sqlite.node.js",
+      "require": "./dist/sqlite.node.cjs"
+    }
+  },
+  "dependencies": {
+    "@logtape/logtape": "catalog:",
+    "es-toolkit": "^1.31.0"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:"
+  },
+  "devDependencies": {
+    "@js-temporal/polyfill": "catalog:",
+    "@std/async": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && node --experimental-transform-types --test",
+    "test:bun": "tsdown && bun test --timeout=10000",
+    "test:deno": "deno task test"
+  }
+}

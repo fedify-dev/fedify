@@ -73,8 +73,32 @@ Express
 -------
 
 [Express] is a fast, unopinionated, minimalist web framework for Node.js.
-The [@fedify/express] package provides a middleware to integrate Fedify with
+The *@fedify/express* package provides a middleware to integrate Fedify with
 Express:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/express
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/express
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/express
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/express
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/express
+~~~~
+
+:::
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -94,7 +118,6 @@ app.use(integrateFederation(federation, (req) => "context data goes here"));  //
 ~~~~
 
 [Express]: https://expressjs.com/
-[@fedify/express]: https://github.com/fedify-dev/express
 
 
 Hono
@@ -127,7 +150,31 @@ h3
 
 [h3] is an HTTP server framework behind [Nitro], [Analog], [Vinxi],
 [SolidStart], [TanStack Start], and other many web frameworks.
-The [@fedify/h3] package provides a middleware to integrate Fedify with h3:
+The *@fedify/h3* package provides a middleware to integrate Fedify with h3:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/h3
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/h3
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/h3
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/h3
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/h3
+~~~~
+
+:::
 
 ~~~~ typescript {9-15} twoslash
 // @noErrors: 2345
@@ -162,7 +209,6 @@ app.use(router);
 [Vinxi]: https://vinxi.vercel.app/
 [SolidStart]: https://start.solidjs.com/
 [TanStack Start]: https://tanstack.com/start
-[@fedify/h3]: https://github.com/fedify-dev/h3
 
 
 Fresh
@@ -230,8 +276,28 @@ NestJS
 
 [NestJS] is a modular, versatile, and scalable framework for building efficient,
 reliable, and scalable server-side applications with Node.js and TypeScript.
-The [@fedify/nestjs] package provides a middleware to integrate Fedify with
+The *@fedify/nestjs* package provides a middleware to integrate Fedify with
 NestJS:
+
+::: code-group
+
+~~~~ sh [npm]
+npm add @fedify/nestjs
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/nestjs
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/nestjs
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/nestjs
+~~~~
+
+:::
 
 ~~~~ typescript [modules/federation/federation.service.ts] twoslash
 import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
@@ -380,6 +446,38 @@ export class AppModule implements NestModule {
 ~~~~
 
 [NestJS]: https://nestjs.com/
+
+
+Elysia
+------
+
+*This API is available since Fedify 1.8.0.*
+
+[Elysia] is an ergonomic framework designed for humans, featuring built-in
+TypeScript support with end-to-end type safety, type integrity, and
+an exceptional developer experience.  Powered by Bun, it delivers high
+performance and modern tooling.  The *@fedify/elysia* package provides
+a seamless plugin for integrating Fedify with Elysia:
+
+~~~~ sh [Bun]
+bun add @fedify/elysia
+~~~~
+
+~~~~ typescript
+import { fedify } from "@fedify/elysia";
+import { federation } from "./federation.ts";  // Your `Federation` instance
+import { Elysia } from "elysia";
+
+const app = new Elysia();
+
+app
+  .use(fedify(federation, () => "context data goes here"))
+  .listen(3000);
+
+console.log("Elysia App Start!");
+~~~~
+
+[Elysia]: https://elysiajs.com/
 
 
 Custom middleware

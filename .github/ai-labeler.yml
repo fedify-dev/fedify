@@ -183,11 +183,11 @@ labels:
         - Routing or middleware support
 
   - component/kv:
-      description: "Key-value storage layer"
+      description: "key–value storage layer"
       instructions: |
         Use for:
         - Persistence changes
-        - Data modeling for key-value store
+        - Data modeling for key–value store
 
   - component/mq:
       description: "Message queue infrastructure"

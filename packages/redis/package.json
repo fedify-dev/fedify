@@ -1,0 +1,80 @@
+{
+  "name": "@fedify/redis",
+  "version": "1.8.1",
+  "description": "Redis drivers for Fedify",
+  "keywords": [
+    "fedify",
+    "redis"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/redis"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.js",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js",
+      "default": "./dist/mod.js"
+    },
+    "./codec": {
+      "types": "./dist/codec.d.ts",
+      "import": "./dist/codec.js",
+      "default": "./dist/codec.js"
+    },
+    "./kv": {
+      "types": "./dist/kv.d.ts",
+      "import": "./dist/kv.js",
+      "default": "./dist/kv.js"
+    },
+    "./mq": {
+      "types": "./dist/mq.d.ts",
+      "import": "./dist/mq.js",
+      "default": "./dist/mq.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:",
+    "ioredis": "catalog:"
+  },
+  "devDependencies": {
+    "@std/async": "catalog:",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && node --experimental-transform-types --test",
+    "test:bun": "tsdown && bun test --timeout=10000"
+  }
+}

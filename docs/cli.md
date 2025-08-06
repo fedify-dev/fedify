@@ -24,7 +24,7 @@ the following command:
 
 ::: code-group
 
-~~~~ sh [Node.js]
+~~~~ sh [npm]
 npm install -g @fedify/cli
 ~~~~
 
@@ -66,10 +66,17 @@ command:
 
 ::: code-group
 
-~~~~ sh [Linux/macOS]
+~~~~ sh [Linux]
 deno install \
-  -g \
-  -A \
+  -gA \
+  --unstable-fs --unstable-kv --unstable-temporal \
+  -n fedify \
+  jsr:@fedify/cli
+~~~~
+
+~~~~ sh [macOS]
+deno install \
+  -gA \
   --unstable-fs --unstable-kv --unstable-temporal \
   -n fedify \
   jsr:@fedify/cli
@@ -77,8 +84,7 @@ deno install \
 
 ~~~~ powershell [Windows]
 deno install `
-  -g `
-  -A `
+  -gA `
   --unstable-fs --unstable-kv --unstable-temporal `
   -n fedify `
   jsr:@fedify/cli

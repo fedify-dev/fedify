@@ -50,24 +50,28 @@ Repository Structure
 
 The repository is organized as a monorepo with the following packages:
 
- -  *fedify/*: Main Fedify library (@fedify/fedify)
-    -  *codegen/*: Code generation scripts
-    -  *compat/*: Compatibility layer
-    -  *federation/*: Core federation functionality
-    -  *nodeinfo/*: NodeInfo protocol implementation
-    -  *runtime/*: Runtime utilities
-    -  *shim/*: Platform abstraction layer
-    -  *sig/*: Signature implementation
-    -  *testing/*: Testing utilities
-    -  *vocab/*: ActivityPub vocabulary implementation
-    -  *webfinger/*: WebFinger protocol implementation
-    -  *x/*: Framework integrations
- -  *cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
- -  *amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
- -  *express/*: Express.js integration (@fedify/express)
- -  *h3/*: h3 framework integration (@fedify/h3)
- -  *postgres/*: PostgreSQL drivers (@fedify/postgres)
- -  *redis/*: Redis drivers (@fedify/redis)
+ -  *packages/fedify/*: Main Fedify library (@fedify/fedify)
+    -  *src/codegen/*: Code generation scripts
+    -  *src/compat/*: Compatibility layer
+    -  *src/federation/*: Core federation functionality
+    -  *src/nodeinfo/*: NodeInfo protocol implementation
+    -  *src/runtime/*: Runtime utilities
+    -  *src/shim/*: Platform abstraction layer
+    -  *src/sig/*: Signature implementation
+    -  *src/testing/*: Testing utilities
+    -  *src/vocab/*: ActivityPub vocabulary implementation
+    -  *src/webfinger/*: WebFinger protocol implementation
+    -  *src/x/*: Framework integrations
+ -  *packages/cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
+ -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
+ -  *packages/elysia/*: Elysia integration (@fedify/elysia)
+ -  *packages/express/*: Express.js integration (@fedify/express)
+ -  *packages/h3/*: h3 framework integration (@fedify/h3)
+ -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres)
+ -  *packages/redis/*: Redis drivers (@fedify/redis)
+ -  *packages/nestjs/*: NestJS integration (@fedify/nestjs)
+ -  *packages/sqlite/*: SQLite driver (@fedify/sqlite)
+ -  *packages/testing/*: Testing utilities (@fedify/testing)
  -  *docs/*: Documentation built with Node.js and VitePress
  -  *examples/*: Example projects demonstrating Fedify usage
 
@@ -132,21 +136,23 @@ Common Tasks
 
 ### Adding ActivityPub Vocabulary Types
 
-1. Create a new YAML file in *fedify/vocab/* following existing patterns
+1. Create a new YAML file in *packages/fedify/src/vocab/* following existing patterns
 2. Run `deno task codegen` to generate TypeScript classes
 3. Export the new types from appropriate module files
 
 ### Implementing Framework Integrations
 
-1. Add new integrations in the *fedify/x/* directory
+1. Add new integrations in the *packages/fedify/src/x/* directory
 2. Follow pattern from existing integrations (hono.ts, sveltekit.ts)
 3. Use standard request/response interfaces for compatibility
 4. Consider creating a dedicated package for substantial integrations
 
 ### Creating Database Adapters
 
-1. For core KV/MQ interfaces: implement in *fedify/federation/kv.ts* and *fedify/federation/mq.ts*
-2. For specific database adapters: create dedicated packages (*postgres/*, *redis/*, *amqp/*)
+1. For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
+   and *packages/fedify/src/federation/mq.ts*
+2. For specific database adapters: create dedicated packages
+   (*packages/sqlite/*, *packages/postgres/*, *packages/redis/*, *packages/amqp/*)
 3. Follow the pattern from existing database adapter packages
 4. Implement both KV store and message queue interfaces as needed
 
@@ -167,7 +173,7 @@ Testing Requirements
 
 1. Write unit tests for all new functionality
 2. Follow the pattern of existing tests
-3. Use the testing utilities in *fedify/testing/*
+3. Use the testing utilities in *packages/fedify/src/testing/* or *packages/testing/*
 4. Consider interoperability with other fediverse software
 5. For package-specific tests, follow the testing patterns in each package
 
@@ -251,7 +257,9 @@ The monorepo uses different build processes for different packages:
 2. **@fedify/cli**: Built with Deno, distributed via JSR and npm
 
 3. **Database adapters and integrations**: Use tsdown for TypeScript compilation:
-   - *amqp/*, *express/*, *h3/*, *postgres/*, *redis/*
+   - *packages/amqp/*, *packages/elysia*, *packages/express/*, *packages/h3/*,
+     *packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
+     *packages/nestjs/*
    - Built to support Node.js and Bun environments
 
 Ensure changes work across all distribution formats and target environments.

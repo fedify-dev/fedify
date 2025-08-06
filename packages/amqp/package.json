@@ -1,0 +1,68 @@
+{
+  "name": "@fedify/amqp",
+  "version": "1.8.1",
+  "description": "AMQP/RabbitMQ driver for Fedify",
+  "keywords": [
+    "fedify",
+    "amqp",
+    "rabbitmq"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/amqp"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.js",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js",
+      "default": "./dist/mod.js"
+    },
+    "./mq": {
+      "types": "./dist/mq.d.ts",
+      "import": "./dist/mq.js",
+      "default": "./dist/mq.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:",
+    "amqplib": "catalog:"
+  },
+  "devDependencies": {
+    "@alinea/suite": "^0.6.3",
+    "@js-temporal/polyfill": "catalog:",
+    "@std/assert": "catalog:",
+    "@std/async": "catalog:",
+    "@types/amqplib": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && node --experimental-transform-types --test",
+    "test:bun": "tsdown && bun test --timeout 15000",
+    "test:deno": "deno task test",
+    "test-all": "tsdown && node --experimental-transform-types --test && bun test --timeout 15000 && deno task test"
+  }
+}

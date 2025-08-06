@@ -1,0 +1,17 @@
+.cov/
+.cov.lcov
+.dnt-import-map.json
+.test-report.xml
+apidoc/
+coverage/
+dist/
+fedify-fedify-*.tgz
+node_modules/
+npm/
+pnpm-lock.yaml
+src/cfworkers/dist/
+src/cfworkers/fixtures/
+src/cfworkers/imports.ts
+src/cfworkers/README.md
+src/cfworkers/server.js
+src/cfworkers/server.js.map

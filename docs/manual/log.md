@@ -32,8 +32,16 @@ To enable logging in your federated server app, you need to install the
 deno add jsr:@logtape/logtape
 ~~~~
 
-~~~~ sh [Node.js]
+~~~~ sh [npm]
 npm add @logtape/logtape
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @logtape/logtape
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @logtape/logtape
 ~~~~
 
 ~~~~ sh [Bun]
@@ -45,17 +53,6 @@ bun add @logtape/logtape
 Then, you can [`configure()`] the logger in the entry point of your app:
 
 ~~~~ typescript twoslash
-// @noErrors: 2307
-import { type ContextLocalStorage } from "@logtape/logtape";
-class AsyncLocalStorage<T> implements ContextLocalStorage<T> {
-  getStore(): T | undefined {
-    return undefined;
-  }
-  run<R>(store: T, callback: () => R): R {
-    return callback();
-  }
-}
-// ---cut-before---
 import { AsyncLocalStorage } from "node:async_hooks";
 import { configure, getConsoleSink } from "@logtape/logtape";
 
@@ -364,17 +361,6 @@ a [file sink] with a [JSON Lines] formatter.  Oh, and don't forget to set
 loggers like this:
 
 ~~~~ typescript twoslash
-// @noErrors: 2307
-import { type ContextLocalStorage } from "@logtape/logtape";
-class AsyncLocalStorage<T> implements ContextLocalStorage<T> {
-  getStore(): T | undefined {
-    return undefined;
-  }
-  run<R>(store: T, callback: () => R): R {
-    return callback();
-  }
-}
-// ---cut-before---
 import { AsyncLocalStorage } from "node:async_hooks";
 import { getFileSink } from "@logtape/file";
 import { type LogRecord, configure } from "@logtape/logtape";

@@ -42,6 +42,9 @@ catalogs:
     amqplib:
       specifier: ^0.10.8
       version: 0.10.8
+    elysia:
+      specifier: ^1.3.8
+      version: 1.3.8
     express:
       specifier: ^4.0.0
       version: 4.21.2
@@ -70,39 +73,6 @@ importers:
 
   .: {}
 
-  amqp:
-    dependencies:
-      '@fedify/fedify':
-        specifier: 'workspace:'
-        version: link:../fedify
-      amqplib:
-        specifier: 'catalog:'
-        version: 0.10.8
-    devDependencies:
-      '@alinea/suite':
-        specifier: ^0.6.3
-        version: 0.6.3
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
-      '@std/assert':
-        specifier: 'catalog:'
-        version: '@jsr/std__assert@1.0.13'
-      '@std/async':
-        specifier: 'catalog:'
-        version: '@jsr/std__async@1.0.13'
-      '@types/amqplib':
-        specifier: 'catalog:'
-        version: 0.10.7
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.12.9(typescript@5.8.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.8.3
-
-  cli: {}
-
   docs:
     devDependencies:
       '@braintree/sanitize-url':
@@ -116,28 +86,31 @@ importers:
         version: 0.8.4
       '@fedify/amqp':
         specifier: 'workspace:'
-        version: link:../amqp
+        version: link:../packages/amqp
       '@fedify/express':
         specifier: 'workspace:'
-        version: link:../express
+        version: link:../packages/express
       '@fedify/fedify':
         specifier: 'workspace:'
-        version: link:../fedify
+        version: link:../packages/fedify
       '@fedify/h3':
         specifier: 'workspace:'
-        version: link:../h3
+        version: link:../packages/h3
       '@fedify/nestjs':
         specifier: 'workspace:'
-        version: link:../nestjs
+        version: link:../packages/nestjs
       '@fedify/postgres':
         specifier: 'workspace:'
-        version: link:../postgres
+        version: link:../packages/postgres
       '@fedify/redis':
         specifier: 'workspace:'
-        version: link:../redis
+        version: link:../packages/redis
+      '@fedify/sqlite':
+        specifier: 'workspace:'
+        version: link:../packages/sqlite
       '@fedify/testing':
         specifier: 'workspace:'
-        version: link:../testing
+        version: link:../packages/testing
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.14.4(hono@4.8.3)
@@ -189,6 +162,9 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
+      debug:
+        specifier: ^4.4.1
+        version: 4.4.1
       express:
         specifier: 'catalog:'
         version: 4.21.2
@@ -245,7 +221,7 @@ importers:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
-        version: link:../../fedify
+        version: link:../../packages/fedify
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -254,14 +230,30 @@ importers:
         specifier: ^4.18.0
         version: 4.22.0(@cloudflare/workers-types@4.20250529.0)
 
+  examples/elysia:
+    dependencies:
+      '@fedify/elysia':
+        specifier: workspace:*
+        version: link:../../packages/elysia
+      '@fedify/fedify':
+        specifier: workspace:*
+        version: link:../../packages/fedify
+      elysia:
+        specifier: 'catalog:'
+        version: 1.3.8(exact-mirror@0.1.3(@sinclair/typebox@0.34.38))(file-type@21.0.0)(typescript@5.8.3)
+    devDependencies:
+      bun-types:
+        specifier: ^1.2.19
+        version: 1.2.19(@types/react@19.1.8)
+
   examples/express:
     dependencies:
       '@fedify/express':
         specifier: 'workspace:'
-        version: link:../../express
+        version: link:../../packages/express
       '@fedify/fedify':
         specifier: 'workspace:'
-        version: link:../../fedify
+        version: link:../../packages/fedify
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.0.0
@@ -286,7 +278,7 @@ importers:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
-        version: link:../../fedify
+        version: link:../../packages/fedify
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.0.0
@@ -332,7 +324,7 @@ importers:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
-        version: link:../../fedify
+        version: link:../../packages/fedify
       next:
         specifier: 15.3.1
         version: 15.3.1(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -374,7 +366,59 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  express:
+  packages/amqp:
+    dependencies:
+      '@fedify/fedify':
+        specifier: 'workspace:'
+        version: link:../fedify
+      amqplib:
+        specifier: 'catalog:'
+        version: 0.10.8
+    devDependencies:
+      '@alinea/suite':
+        specifier: ^0.6.3
+        version: 0.6.3
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
+      '@std/assert':
+        specifier: 'catalog:'
+        version: '@jsr/std__assert@1.0.13'
+      '@std/async':
+        specifier: 'catalog:'
+        version: '@jsr/std__async@1.0.13'
+      '@types/amqplib':
+        specifier: 'catalog:'
+        version: 0.10.7
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+
+  packages/cli: {}
+
+  packages/elysia:
+    dependencies:
+      '@fedify/fedify':
+        specifier: 'workspace:'
+        version: link:../fedify
+      elysia:
+        specifier: ^1.3.6
+        version: 1.3.8(exact-mirror@0.1.3(@sinclair/typebox@0.34.38))(file-type@21.0.0)(typescript@5.8.3)
+    devDependencies:
+      bun-types:
+        specifier: ^1.2.19
+        version: 1.2.19(@types/react@19.1.8)
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+
+  packages/express:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -396,7 +440,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  fedify:
+  packages/fedify:
     dependencies:
       '@cfworker/json-schema':
         specifier: ^4.1.1
@@ -473,7 +517,7 @@ importers:
         version: '@jsr/std__yaml@1.0.8'
       '@types/node':
         specifier: ^22.15.21
-        version: 22.15.34
+        version: 22.16.0
       fast-check:
         specifier: ^3.22.0
         version: 3.23.2
@@ -496,7 +540,7 @@ importers:
         specifier: ^4.17.0
         version: 4.22.0(@cloudflare/workers-types@4.20250529.0)
 
-  h3:
+  packages/h3:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -512,7 +556,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  nestjs:
+  packages/nestjs:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -537,7 +581,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  postgres:
+  packages/postgres:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -562,7 +606,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  redis:
+  packages/redis:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -590,7 +634,32 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
-  testing:
+  packages/sqlite:
+    dependencies:
+      '@fedify/fedify':
+        specifier: 'workspace:'
+        version: link:../fedify
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 1.0.0
+      es-toolkit:
+        specifier: ^1.31.0
+        version: 1.39.5
+    devDependencies:
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
+      '@std/async':
+        specifier: 'catalog:'
+        version: '@jsr/std__async@1.0.13'
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+
+  packages/testing:
     dependencies:
       '@fedify/fedify':
         specifier: 'workspace:'
@@ -863,9 +932,6 @@ packages:
 
   '@emnapi/core@1.4.3':
     resolution: {integrity: sha512-4m62DuCE07lw01soJwPiBGC0nAww0Q+RY70VZ+n49yDIO13yyinhbWCeNnaob0lakDtWQzSdtNWzJeOJt2ma+g==}
-
-  '@emnapi/runtime@1.4.3':
-    resolution: {integrity: sha512-pBPWdu6MLKROBX05wSNKcNb++m5Er+KQ9QkB+WVM+pW2Kx9hoSrVTnu3BdkI5eBLZoKu/J6mW/B6i6bJB2ytXQ==}
 
   '@emnapi/runtime@1.4.5':
     resolution: {integrity: sha512-++LApOtY0pEEz1zrd9vy1/zXVaVJJ/EbAF3u0fXIzPJEDtnITsBGbbK0EkM72amhl/R5b+5xx0Y/QhcVOpuulg==}
@@ -2536,6 +2602,9 @@ packages:
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
 
+  '@sinclair/typebox@0.34.38':
+    resolution: {integrity: sha512-HpkxMmc2XmZKhvaKIZZThlHmx1L0I/V1hWK1NubtlFnr6ZqdiOpV72TKudZUNQjZNsyDBay72qFEhEvb+bcwcA==}
+
   '@swc/counter@0.1.3':
     resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
 
@@ -3387,6 +3456,11 @@ packages:
   bun-types@1.2.17:
     resolution: {integrity: sha512-ElC7ItwT3SCQwYZDYoAH+q6KT4Fxjl8DtZ6qDulUFBmXA8YB4xo+l54J9ZJN+k2pphfn9vk7kfubeSd5QfTVJQ==}
 
+  bun-types@1.2.19:
+    resolution: {integrity: sha512-uAOTaZSPuYsWIXRpj7o56Let0g/wjihKCkeRqUBhlLVM/Bt+Fj9xTo+LhC1OV1XDaGkz4hNC80et5xgy+9KTHQ==}
+    peerDependencies:
+      '@types/react': ^19
+
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
     engines: {node: '>=10.16.0'}
@@ -3550,6 +3624,10 @@ packages:
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
+
+  cookie@1.0.2:
+    resolution: {integrity: sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==}
+    engines: {node: '>=18'}
 
   copy-anything@3.0.5:
     resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
@@ -3875,6 +3953,13 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  elysia@1.3.8:
+    resolution: {integrity: sha512-kxYFhegJbUEf5otzmisEvGt3R7d/dPBNVERO2nHo0kFqKBHyj5slArc90mSRKLfi1vamMtPcz67rL6Zeg5F2yg==}
+    peerDependencies:
+      exact-mirror: '>= 0.0.9'
+      file-type: '>= 20.0.0'
+      typescript: '>= 5.0.0'
+
   emoji-regex-xs@1.0.0:
     resolution: {integrity: sha512-LRlerrMYoIDrT6jgpeZ2YYl/L8EulRTt5hQcYjy5AInh7HWXKimpqx68aknBFpGL2+/IcogTcaydJEgaTmOpDg==}
 
@@ -4130,6 +4215,14 @@ packages:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
     engines: {node: '>=6'}
 
+  exact-mirror@0.1.3:
+    resolution: {integrity: sha512-yI62LpSby0ItzPJF05C4DRycVAoknRiCIDOLOCCs9zaEKylOXQtOFM3flX54S44swpRz584vk3P70yWQodsLlg==}
+    peerDependencies:
+      '@sinclair/typebox': ^0.34.15
+    peerDependenciesMeta:
+      '@sinclair/typebox':
+        optional: true
+
   exit-hook@2.2.1:
     resolution: {integrity: sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw==}
     engines: {node: '>=6'}
@@ -4151,6 +4244,9 @@ packages:
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
     engines: {node: '>=8.0.0'}
+
+  fast-decode-uri-component@1.0.1:
+    resolution: {integrity: sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -5232,6 +5328,9 @@ packages:
 
   oniguruma-to-es@3.1.1:
     resolution: {integrity: sha512-bUH8SDvPkH3ho3dvwJwfonjlQ4R80vjyvrU8YpxuROddv55vAEJrTuCuCVUhhsHbtlD9tGGbaNApGQckXhS8iQ==}
+
+  openapi-types@12.1.3:
+    resolution: {integrity: sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -6661,11 +6760,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/runtime@1.4.3':
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
   '@emnapi/runtime@1.4.5':
     dependencies:
       tslib: 2.8.1
@@ -7182,7 +7276,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.33.5':
     dependencies:
-      '@emnapi/runtime': 1.4.3
+      '@emnapi/runtime': 1.4.5
     optional: true
 
   '@img/sharp-wasm32@0.34.3':
@@ -7299,7 +7393,7 @@ snapshots:
   '@napi-rs/wasm-runtime@0.2.11':
     dependencies:
       '@emnapi/core': 1.4.3
-      '@emnapi/runtime': 1.4.3
+      '@emnapi/runtime': 1.4.5
       '@tybys/wasm-util': 0.9.0
     optional: true
 
@@ -8187,6 +8281,9 @@ snapshots:
       - typescript
 
   '@shikijs/vscode-textmate@10.0.2': {}
+
+  '@sinclair/typebox@0.34.38':
+    optional: true
 
   '@swc/counter@0.1.3': {}
 
@@ -9142,6 +9239,11 @@ snapshots:
     dependencies:
       '@types/node': 22.16.0
 
+  bun-types@1.2.19(@types/react@19.1.8):
+    dependencies:
+      '@types/node': 22.16.0
+      '@types/react': 19.1.8
+
   busboy@1.6.0:
     dependencies:
       streamsearch: 1.1.0
@@ -9281,6 +9383,8 @@ snapshots:
   cookie@0.7.1: {}
 
   cookie@0.7.2: {}
+
+  cookie@1.0.2: {}
 
   copy-anything@3.0.5:
     dependencies:
@@ -9606,6 +9710,17 @@ snapshots:
 
   ee-first@1.1.1: {}
 
+  elysia@1.3.8(exact-mirror@0.1.3(@sinclair/typebox@0.34.38))(file-type@21.0.0)(typescript@5.8.3):
+    dependencies:
+      cookie: 1.0.2
+      exact-mirror: 0.1.3(@sinclair/typebox@0.34.38)
+      fast-decode-uri-component: 1.0.1
+      file-type: 21.0.0
+      typescript: 5.8.3
+    optionalDependencies:
+      '@sinclair/typebox': 0.34.38
+      openapi-types: 12.1.3
+
   emoji-regex-xs@1.0.0: {}
 
   emoji-regex@8.0.0: {}
@@ -9826,8 +9941,8 @@ snapshots:
       '@typescript-eslint/parser': 7.18.0(eslint@8.57.1)(typescript@5.8.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -9866,7 +9981,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.1
@@ -9877,7 +9992,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -9896,14 +10011,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 7.18.0(eslint@8.57.1)(typescript@5.8.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -9918,7 +10033,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -9929,7 +10044,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -10197,6 +10312,10 @@ snapshots:
 
   event-target-shim@5.0.1: {}
 
+  exact-mirror@0.1.3(@sinclair/typebox@0.34.38):
+    optionalDependencies:
+      '@sinclair/typebox': 0.34.38
+
   exit-hook@2.2.1: {}
 
   express@4.21.2:
@@ -10246,6 +10365,8 @@ snapshots:
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
+
+  fast-decode-uri-component@1.0.1: {}
 
   fast-deep-equal@3.1.3: {}
 
@@ -11526,6 +11647,9 @@ snapshots:
       emoji-regex-xs: 1.0.0
       regex: 6.0.1
       regex-recursion: 6.0.2
+
+  openapi-types@12.1.3:
+    optional: true
 
   optionator@0.9.4:
     dependencies:

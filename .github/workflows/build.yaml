@@ -216,7 +216,7 @@ jobs:
         node-version: lts/*
         cache: pnpm
     - run: deno task test:cfworkers
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
 
   lint:
     runs-on: ubuntu-latest
@@ -257,7 +257,7 @@ jobs:
         node-version: lts/*
         cache: pnpm
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: deno task -f @fedify/fedify codegen
     - run: deno publish --dry-run
     - run: pnpm install
@@ -299,7 +299,7 @@ jobs:
           '.version = .version + "-dev." + $build + "+" + $commit' \
           deno.json > deno.json.tmp
         mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - if: github.event_name == 'pull_request_target'
       run: |
         jq \
@@ -309,7 +309,7 @@ jobs:
           '.version = .version + "-pr." + $pr_number + "." + $build + "+" + $commit' \
           deno.json > deno.json.tmp
         mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
       env:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_SHA: ${{ github.event.pull_request.head.sha }}
@@ -318,18 +318,18 @@ jobs:
         set -ex
         echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
         echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: deno task check-versions --fix
     - if: github.ref_type == 'tag'
       run: |
         set -ex
         [[ "$(jq -r .version deno.json)" = "$GITHUB_REF_NAME" ]]
         ! grep -i "to be released" CHANGES.md
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
     # Don't know why, but the .gitignore list is not overridden by include list
     # in deno.json:
-    - run: rm vocab/.gitignore
-      working-directory: ${{ github.workspace }}/fedify/
+    - run: rm src/vocab/.gitignore
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: |
         pnpm install
         pnpm pack --recursive --filter='!./examples/**'
@@ -337,7 +337,7 @@ jobs:
           rm fedify-cli-*.tgz
         fi
     - run: deno task pack
-      working-directory: ${{ github.workspace }}/cli/
+      working-directory: ${{ github.workspace }}/packages/cli/
     - id: extract-changelog
       uses: dahlia/submark@5a5ff0a58382fb812616a5801402f5aef00f90ce
       with:
@@ -421,11 +421,13 @@ jobs:
           | @fedify/fedify   | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/fedify]   | [npm][npm:@fedify/fedify]   |
           | @fedify/cli      | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/cli]      |                             |
           | @fedify/amqp     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/amqp]     | [npm][npm:@fedify/amqp]     |
+          | @fedify/elysia   | ${{ steps.versioning.outputs.version }} |                             | [npm][npm:@fedify/elysia]   |
           | @fedify/express  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/express]  | [npm][npm:@fedify/express]  |
           | @fedify/h3       | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/h3]       | [npm][npm:@fedify/h3]       |
           | @fedify/nestjs   | ${{ steps.versioning.outputs.version }} |                             | [npm][npm:@fedify/nestjs]   |
           | @fedify/postgres | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/postgres] | [npm][npm:@fedify/postgres] |
           | @fedify/redis    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/redis]    | [npm][npm:@fedify/redis]    |
+          | @fedify/sqlite   | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/sqlite]   | [npm][npm:@fedify/sqlite]   |
           | @fedify/testing  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/testing]  | [npm][npm:@fedify/testing]  |
 
           [jsr:@fedify/fedify]: https://jsr.io/@fedify/fedify@${{ steps.versioning.outputs.version }}
@@ -433,6 +435,7 @@ jobs:
           [jsr:@fedify/cli]: https://jsr.io/@fedify/cli@${{ steps.versioning.outputs.version }}
           [jsr:@fedify/amqp]: https://jsr.io/@fedify/amqp@${{ steps.versioning.outputs.version }}
           [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp/v/${{ steps.versioning.outputs.short_version }}
+          [npm:@fedify/elysia]: https://www.npmjs.com/package/@fedify/elysia/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/express]: https://jsr.io/@fedify/express@${{ steps.versioning.outputs.version }}
           [npm:@fedify/express]: https://www.npmjs.com/package/@fedify/express/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/h3]: https://jsr.io/@fedify/h3@${{ steps.versioning.outputs.version }}
@@ -442,6 +445,8 @@ jobs:
           [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/redis]: https://jsr.io/@fedify/redis@${{ steps.versioning.outputs.version }}
           [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis/v/${{ steps.versioning.outputs.short_version }}
+          [jsr:@fedify/sqlite]: https://jsr.io/@fedify/sqlite@${{ steps.versioning.outputs.version }}
+          [npm:@fedify/sqlite]: https://www.npmjs.com/package/@fedify/sqlite/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/testing]: https://jsr.io/@fedify/testing@${{ steps.versioning.outputs.version }}
           [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing/v/${{ steps.versioning.outputs.short_version }}
         pr-number: ${{ github.event.pull_request.number }}
@@ -466,7 +471,7 @@ jobs:
       with:
         deno-version: v2.x
     - run: deno task codegen
-      working-directory: ${{ github.workspace }}/fedify/
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - uses: denoland/deployctl@v1
       with:
         project: fedify-blog

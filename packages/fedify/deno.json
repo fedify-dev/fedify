@@ -1,0 +1,140 @@
+{
+  "name": "@fedify/fedify",
+  "version": "1.8.1",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./compat": "./src/compat/mod.ts",
+    "./federation": "./src/federation/mod.ts",
+    "./nodeinfo": "./src/nodeinfo/mod.ts",
+    "./runtime": "./src/runtime/mod.ts",
+    "./sig": "./src/sig/mod.ts",
+    "./testing": "./src/testing/mod.ts",
+    "./vocab": "./src/vocab/mod.ts",
+    "./webfinger": "./src/webfinger/mod.ts",
+    "./x/cfworkers": "./src/x/cfworkers.ts",
+    "./x/denokv": "./src/x/denokv.ts",
+    "./x/fresh": "./src/x/fresh.ts",
+    "./x/hono": "./src/x/hono.ts",
+    "./x/sveltekit": "./src/x/sveltekit.ts"
+  },
+  "imports": {
+    "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
+    "@hugoalh/http-header-link": "jsr:@hugoalh/http-header-link@^1.0.2",
+    "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
+    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
+    "@opentelemetry/semantic-conventions": "npm:@opentelemetry/semantic-conventions@^1.27.0",
+    "@phensley/language-tag": "npm:@phensley/language-tag@^1.9.0",
+    "@std/assert": "jsr:@std/assert@^0.226.0",
+    "@std/testing": "jsr:@std/testing@^0.224.0",
+    "@std/url": "jsr:@std/url@^0.225.1",
+    "asn1js": "npm:asn1js@^3.0.5",
+    "byte-encodings": "npm:byte-encodings@^1.0.11",
+    "es-toolkit": "jsr:@es-toolkit/es-toolkit@^1.39.5",
+    "fast-check": "npm:fast-check@^3.22.0",
+    "fetch-mock": "npm:fetch-mock@^12.5.2",
+    "json-canon": "npm:json-canon@^1.0.1",
+    "jsonld": "npm:jsonld@^8.3.2",
+    "multicodec": "npm:multicodec@^3.2.1",
+    "pkijs": "npm:pkijs@^3.2.4",
+    "structured-field-values": "npm:structured-field-values@^2.0.4",
+    "uri-template-router": "npm:uri-template-router@^0.0.17",
+    "url-template": "npm:url-template@^3.1.1"
+  },
+  "include": [
+    "src/vocab/vocab.ts"
+  ],
+  "exclude": [
+    ".test-report.xml",
+    "apidoc/",
+    "dist/",
+    "node_modules/",
+    "npm/",
+    "pnpm-lock.yaml",
+    "src/cfworkers/dist/",
+    "src/cfworkers/fixtures/",
+    "src/cfworkers/imports.ts",
+    "src/cfworkers/README.md",
+    "src/cfworkers/server.ts",
+    "src/cfworkers/server.js",
+    "src/cfworkers/server.js.map",
+    "src/codegen/schema.yaml",
+    "src/vocab/*.yaml",
+    "!src/vocab/vocab.ts"
+  ],
+  "tasks": {
+    "codegen": "GENPATH=vocab-$(deno eval \"console.log(crypto.randomUUID());\").ts && deno run --allow-read --allow-write --check src/codegen/main.ts src/vocab/ ../runtime/ src/vocab/$GENPATH && deno fmt src/vocab/$GENPATH && mv src/vocab/$GENPATH src/vocab/vocab.ts && deno cache src/vocab/vocab.ts && deno check src/vocab/vocab.ts",
+    "cache": {
+      "command": "deno cache src/mod.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "check": {
+      "command": "deno fmt --check && deno lint && deno check src/**/*.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "test": {
+      "command": "deno test --check --doc --allow-read --allow-write --allow-env --unstable-kv --trace-leaks --parallel",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "coverage": "deno task test --clean --coverage && deno coverage --html coverage",
+    "bench": {
+      "command": "deno bench --allow-read --allow-write --allow-net --allow-env --allow-run --unstable-kv",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "apidoc": {
+      "command": "deno doc --html --name=Fedify --output=apidoc/ src/mod.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "publish": {
+      "command": "deno publish",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "pnpm:install": "pnpm install",
+    "pnpm:build": {
+      "command": "pnpm exec tsdown",
+      "dependencies": [
+        "codegen",
+        "pnpm:install"
+      ]
+    },
+    "test:node": {
+      "command": "cd dist/ && node --test",
+      "dependencies": [
+        "pnpm:build"
+      ]
+    },
+    "test:bun": {
+      "command": "cd dist/ && bun test --timeout 60000",
+      "dependencies": [
+        "pnpm:build"
+      ]
+    },
+    "test:cfworkers": {
+      "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts",
+      "dependencies": [
+        "pnpm:build"
+      ]
+    },
+    "test-all": {
+      "dependencies": [
+        "check",
+        "test",
+        "test:node",
+        "test:bun",
+        "test:cfworkers"
+      ]
+    }
+  }
+}

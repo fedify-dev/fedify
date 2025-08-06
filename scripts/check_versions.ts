@@ -1,7 +1,7 @@
 import { dirname, fromFileUrl, join, normalize, resolve } from "@std/path";
 import { parse } from "@std/yaml";
 import workspaceMetadata from "../deno.json" with { type: "json" };
-import fedifyMetadata from "../fedify/deno.json" with { type: "json" };
+import fedifyMetadata from "../packages/fedify/deno.json" with { type: "json" };
 
 if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
   console.log("Usage: deno task check-versions [--help|-h] [--fix|-f]");

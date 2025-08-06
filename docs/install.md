@@ -19,20 +19,24 @@ following instructions:
 
 ::: code-group
 
-~~~~ sh [Node.js]
+~~~~ sh [npm]
 npm install -g @fedify/cli
 ~~~~
 
-~~~~ sh [Bun]
-bun install -g @fedify/cli
+~~~~ sh [Homebrew (Linux/macOS)]
+brew install fedify
 ~~~~
 
 ~~~~ powershell [Scoop (Windows)]
 scoop install fedify
 ~~~~
 
+~~~~ sh [Bun]
+bun install -g @fedify/cli
+~~~~
+
 ~~~~ sh [Deno]
-deno install -g -A --unstable-fs --unstable-kv --unstable-temporal -n fedify jsr:@fedify/cli
+deno install -gA --unstable-fs --unstable-kv --unstable-temporal -n fedify jsr:@fedify/cli
 ~~~~
 
 :::
@@ -114,9 +118,21 @@ Fedify can also be used in Node.js.  As a prerequisite, you need to have Node.js
 22.0.0 or later installed on your system.  Then you can install Fedify via
 the following command:
 
-~~~~ sh
+::: code-group
+
+~~~~ sh [npm]
 npm add @fedify/fedify
 ~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/fedify
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/fedify
+~~~~
+
+:::
 
 Fedify is an ESM-only package, so you need to add `"type": "module"` to the
 *package.json* file:
@@ -125,7 +141,7 @@ Fedify is an ESM-only package, so you need to add `"type": "module"` to the
 {
   "type": "module",
   "dependencies": {
-    "@fedify/fedify": "^1.1.0"
+    "@fedify/fedify": "^1.8.1"
   }
 }
 ~~~~

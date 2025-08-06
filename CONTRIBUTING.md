@@ -181,15 +181,20 @@ Build
 
 The repository is organized as a monorepo with the following packages:
 
- -  *fedify/*: The main Fedify library (@fedify/fedify).  The library is built
-    with Deno, and tested with Deno, Node.js, and [Bun].
-     -  *codegen/*: The code generation scripts.
- -  *cli/*: The Fedify CLI (@fedify/cli).  The CLI is built with [Deno].
- -  *amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
- -  *express/*: Express.js integration (@fedify/express) for Fedify.
- -  *h3/*: h3 framework integration (@fedify/h3) for Fedify.
- -  *postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
- -  *redis/*: Redis drivers (@fedify/redis) for Fedify.
+ -  *packages/fedify/*: The main Fedify library (@fedify/fedify).  The library
+    is built with Deno, and tested with Deno, Node.js, and [Bun].
+     -  *src/codegen/*: The code generation scripts.
+ -  *packages/cli/*: The Fedify CLI (@fedify/cli).  The CLI is built with
+    [Deno].
+ -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
+ -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
+ -  *packages/express/*: Express integration (@fedify/express) for Fedify.
+ -  *packages/h3/*: h3 framework integration (@fedify/h3) for Fedify.
+ -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
+ -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
+ -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
+ -  *packages/sqlite/*: SQLite driver (@fedify/sqlite) for Fedify.
+ -  *packages/testing/*: Testing utilities (@fedify/testing) for Fedify.
  -  *docs/*: The Fedify docs.  The docs are built with [Node.js] and
     [VitePress].
  -  *examples/*: The example projects.  Some examples are built with Deno, and

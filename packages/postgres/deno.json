@@ -1,0 +1,18 @@
+{
+  "name": "@fedify/postgres",
+  "version": "1.8.1",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./kv": "./src/kv.ts",
+    "./mq": "./src/mq.ts"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test --allow-net --allow-env"
+  }
+}

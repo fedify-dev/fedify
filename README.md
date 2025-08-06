@@ -1,1 +1,1 @@
-fedify/README.md
+packages/fedify/README.md

@@ -89,8 +89,31 @@ const federation = createFederation<void>({
 
 ### [`RedisMessageQueue`]
 
-> [!NOTE]
-> The [`RedisMessageQueue`] class is available in the [@fedify/redis] package.
+To use [`RedisMessageQueue`], you need to install the *@fedify/redis* package:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/redis
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/redis
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/redis
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/redis
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/redis
+~~~~
+
+:::
 
 [`RedisMessageQueue`] is a message queue implementation that uses Redis as
 the backend. It provides scalability and high performance, making it
@@ -123,13 +146,35 @@ const federation = createFederation<void>({
 ~~~~
 
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
-[@fedify/redis]: https://github.com/fedify-dev/redis
 
 ### [`PostgresMessageQueue`]
 
-> [!NOTE]
-> The [`PostgresMessageQueue`] class is available in the [@fedify/postgres]
-> package.
+To use [`PostgresMessageQueue`], you need to install the *@fedify/postgres*
+package first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/postgres
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/postgres
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/postgres
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/postgres
+~~~~
+
+:::
 
 [`PostgresMessageQueue`] is a message queue implementation that uses
 a PostgreSQL database as the message queue backend.  Under the hood,
@@ -165,14 +210,37 @@ const federation = createFederation<void>({
 ~~~~
 
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/mq/~/PostgresMessageQueue
-[@fedify/postgres]: https://github.com/fedify-dev/postgres
 [`LISTEN`]: https://www.postgresql.org/docs/current/sql-listen.html
 [`NOTIFY`]: https://www.postgresql.org/docs/current/sql-notify.html
 
 ### `AmqpMessageQueue`
 
-> [!NOTE]
-> The [`AmqpMessageQueue`] class is available in the [@fedify/amqp] package.
+To use [`AmqpMessageQueue`], you need to install the *@fedify/amqp* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/amqp
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/amqp
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/amqp
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/amqp
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/amqp
+~~~~
+
+:::
 
 > [!NOTE]
 >
@@ -211,7 +279,6 @@ const federation = createFederation({
 
 *[AMQP]: Advanced Message Queuing Protocol
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
-[@fedify/amqp]: https://github.com/fedify-dev/amqp
 [RabbitMQ]: https://www.rabbitmq.com/
 
 ### `WorkersMessageQueue` (Cloudflare Workers only)
