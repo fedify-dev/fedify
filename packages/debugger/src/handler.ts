@@ -6,7 +6,7 @@
  */
 
 import { type Context, Hono } from "hono";
-import { cors } from "hono/cors";
+// import { cors } from "hono/cors";
 import type { DebugObserver } from "./observer.ts";
 import type { ActivityFilters } from "./types.ts";
 
@@ -41,7 +41,7 @@ export function createDebugHandler<TContextData>(
   const store = observer.getStore();
 
   // Enable CORS for development
-  app.use("/api/*", cors());
+  // app.use("/api/*", cors());
 
   /**
    * GET /api/activities
@@ -86,8 +86,8 @@ export function createDebugHandler<TContextData>(
 
     if (query.deliveryStatus) {
       filters.deliveryStatus = Array.isArray(query.deliveryStatus)
-        ? query.deliveryStatus as any[]
-        : [query.deliveryStatus as any];
+        ? query.deliveryStatus as ("pending" | "success" | "failed" | "retrying")[]
+        : [query.deliveryStatus as "pending" | "success" | "failed" | "retrying"];
     }
 
     if (query.searchText) {

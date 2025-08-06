@@ -27,8 +27,7 @@
     "test": "deno test --allow-all"
   },
   "dependencies": {
-    "@fedify/fedify": "workspace:^",
-    "@hono/hono": "^4.0.0"
+    "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -1,6 +1,6 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { delay } from "@std/async";
-import { ActivityStore } from "./store.ts";
+import { ActivityStore } from "../src/store.ts";
 import type { DebugActivity } from "./types.ts";
 
 function createMockActivity(
