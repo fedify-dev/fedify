@@ -354,8 +354,8 @@ jobs:
         name: dist
         path: |
           fedify-*.tgz
-          cli/fedify-cli-*.tar.xz
-          cli/fedify-cli-*.zip
+          packages/cli/fedify-cli-*.tar.xz
+          packages/cli/fedify-cli-*.zip
     - if: github.event_name == 'push' && github.ref_type == 'tag'
       uses: softprops/action-gh-release@v1
       with:
@@ -363,8 +363,8 @@ jobs:
         name: Fedify ${{ github.ref_name }}
         files: |
           fedify-*.tgz
-          cli/fedify-cli-*.tar.xz
-          cli/fedify-cli-*.zip
+          packages/cli/fedify-cli-*.tar.xz
+          packages/cli/fedify-cli-*.zip
         generate_release_notes: false
     - run: |
         set -ex

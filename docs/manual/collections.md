@@ -158,7 +158,7 @@ is up to the server implementation.
 
 If your database system supports cursor-based pagination ([Deno KV], for
 example), you can just use the cursor that the database system provides as is.
-If your database system supports only offset-based pagination (the most
+If your database system supports only offset-based pagination (most
 relational databases), you can use the offset as the cursor.
 
 Although it's omitted in the previous example, there is the third parameter to
@@ -887,7 +887,7 @@ Under the hood, the `Context.sendActivity()` method tries to gather the
 recipients by calling the followers collection dispatcher with the `cursor`
 parameter set to `null`.  However, if the followers collection dispatcher
 returns `null`, the method treats it as a signal that the followers collection
-is always paginated, and it gather the recipients by paginating the followers
+is always paginated, and it gathers the recipients by paginating the followers
 collection with multiple invocation of the followers collection dispatcher.
 If the followers collection dispatcher returns an object that contains
 the entire followers collection, the method gathers the recipients at once.
@@ -1225,7 +1225,7 @@ on top of their profile, i.e., pinned statuses.  The featured collection is
 similar to the outbox collection, but it's a collection of any ActivityStreams
 objects instead of activities.
 
-Cursor and counter for the featured collection are implemented in the same way
+Cursors and counters for the featured collection are implemented in the same way
 as the outbox collection, so we don't repeat the explanation here.
 
 The below example shows how to construct a featured collection:
@@ -1299,7 +1299,7 @@ on top of their profile.  The featured tags collection is similar to the
 featured collection, but it's a collection of `Hashtag` objects instead of
 any ActivityStreams objects.
 
-Cursor and counter for the featured tags collection are implemented in the same
+Cursors and counters for the featured tags collection are implemented in the same
 way as the outbox collection, so we don't repeat the explanation here.
 
 The below example shows how to construct a featured tags collection:

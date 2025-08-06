@@ -2,11 +2,11 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isFile, main as install } from "./install.mjs";
+import { main as install, isFile } from "./install.mjs";
 
 async function main() {
   const filename = fileURLToPath(import.meta.url);
-  const dirName = dirname(filename);
+  const dirName = dirname(dirname(filename));
   const binPath = join(
     dirName,
     "bin",

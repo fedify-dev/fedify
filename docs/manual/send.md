@@ -263,7 +263,7 @@ await ctx.sendActivity(
 > manually in this case.
 
 > [!TIP]
-> Does the `Context.sendActivity()` method takes quite a long time to complete
+> Does the `Context.sendActivity()` method take quite a long time to complete
 > even if you configured the [`queue`](./federation.md#queue)?  It might be
 > because the followers collection is large and the method under the hood
 > invokes your [followers collection dispatcher](./collections.md#followers)

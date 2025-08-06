@@ -28,7 +28,7 @@ The key features of the `Context` object are as follows:
 Where to get a `Context` object
 -------------------------------
 
-You can get a `Context` object from the first parameter of the most of callbacks
+You can get a `Context` object from the first parameter of most of the callbacks
 that are registered to the `Federation` object.  The following shows a few
 callbacks that take a `Context` object as the first parameter:
 

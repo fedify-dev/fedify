@@ -26,7 +26,7 @@ activities with various specifications, such as:
  -  [Linked Data Signatures]
  -  Object Integrity Proofs ([FEP-8b32])
 
-You don't mind about the signature verification at all—unsigned activities and
+You don't need to worry about the signature verification at all—unsigned activities and
 invalid signatures are silently ignored.  If you want to see why some activities
 are ignored, you can turn on [logging](./log.md) for `["fedify", "sig"]`
 category.

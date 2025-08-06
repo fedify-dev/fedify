@@ -13,7 +13,7 @@ Logging
 > We highly recommend enabling logging in your federated server app to debug
 > your app easily.
 
-Fedify uses the [LogTape] package to log message.  You can enable logging in
+Fedify uses the [LogTape] package to log messages.  You can enable logging in
 your federated server app by installing the `@logtape/logtape` package and
 configuring it in the entry point of your app.
 

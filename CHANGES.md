@@ -3,10 +3,53 @@
 Fedify changelog
 ================
 
+Version 1.9.0
+-------------
+
+To be released.
+
+
+Version 1.8.3
+-------------
+
+Released on August 6, 2025.
+
+### @fedify/cli
+
+ -  Restored image resizing functionality in `fedify lookup` command by using
+    the existing [Jimp] library for image manipulation. This properly displays
+    `icon` and `image` fields with appropriate sizing in terminals.
+
+ -  Added support for Ghostty terminal emulator for image rendering in
+    `fedify lookup` command.
+
+[Jimp]: https://jimp-dev.github.io/jimp/
+
+
+Version 1.8.2
+-------------
+
+Released on August 6, 2025.
+
+### @fedify/cli
+
+ -  Fixed `npx @fedify/cli` command not working on various platforms by
+    correcting the binary path resolution in the Node.js wrapper script.
+
+ -  Temporarily removed Sharp dependency to resolve installation issues
+    across different platforms. As a result, `fedify lookup` command will no
+    longer resize images when displaying them in the terminal. This is a
+    temporary workaround and image resizing functionality will be restored
+    in a future patch version using an alternative approach.
+
+ -  Fixed build artifact paths in GitHub Actions workflow to correctly
+    reference CLI package location in the monorepo structure.
+
+
 Version 1.8.1
 -------------
 
-To be released.  Note that 1.8.0 was skipped due to a mistake in
+Released on August 6, 2025.  Note that 1.8.0 was skipped due to a mistake in
 the versioning.
 
  -  The repository has been restructured as a monorepo, consolidating all

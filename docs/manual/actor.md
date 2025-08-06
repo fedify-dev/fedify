@@ -103,11 +103,11 @@ Cons
         Hence, the fediverse handle is immutable in practice.
      -  It's usually treated as an anti-pattern in the fediverse.
 
-You need to choose the best approach for you before implementing the actor
-dispatcher.  If you decided to use the WebFinger username as the actor's
+You need to choose the best approach for your use case before implementing the actor
+dispatcher.  If you decide to use the WebFinger username as the actor's
 identifier, there's nothing to do—Fedify assumes it by default.
 
-If you decided to decouple the WebFinger username from the actor's identifier,
+If you decide to decouple the WebFinger username from the actor's identifier,
 see the [next section](#decoupling-actor-uris-from-webfinger-usernames) for
 details.
 

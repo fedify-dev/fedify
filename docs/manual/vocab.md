@@ -198,7 +198,7 @@ manner, both `a.objectId` and `b.objectId` return the equivalent URI.
 > [!TIP]
 > Dereferencing accessors take option `documentLoader` to specify the method
 > to fetch the remote object.  By default, it uses the default document loader
-> which utilizes th  [`fetch()`] API.
+> which utilizes the [`fetch()`] API.
 >
 > If you want to implement your own document loader, see the `DocumentLoader`
 > interface in the API reference.

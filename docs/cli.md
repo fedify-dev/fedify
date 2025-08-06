@@ -668,7 +668,7 @@ The output will be like the below:
 ### `-a`/`--authorized-fetch`: Authorized fetch
 
 You can also use the `-a`/`--authorized-fetch` option to fetch the object with
-authentication.  Under the hood, this option generates an one-time key pair,
+authentication.  Under the hood, this option generates a one-time key pair,
 spins up a temporary ActivityPub server to serve the public key, and signs
 the request with the private key.
 
@@ -834,7 +834,7 @@ fedify lookup -o actors.json @fedify@hollo.social @hongminhee@fosstodon.org
 --------------------------------------
 
 The `fedify inbox` command is used to spin up an ephemeral server that serves
-the ActivityPub inbox with an one-time actor, through a short-lived public DNS
+the ActivityPub inbox with a one-time actor, through a short-lived public DNS
 with HTTPS. This is useful when you want to test and debug the outgoing
 activities of your server.  To start an ephemeral inbox server,
 run the below command:

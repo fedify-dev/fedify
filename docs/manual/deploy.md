@@ -49,7 +49,7 @@ Logging
     destinations) for your environment.
 
 Tracing
-:   Enable [OpenTelemtry](./opentelemetry.md) integration to trace ActivityPub
+:   Enable [OpenTelemetry](./opentelemetry.md) integration to trace ActivityPub
     operations across your infrastructure.
 
 Monitoring
@@ -183,7 +183,7 @@ have cached your public keys.
 ### Web frameworks
 
 For web framework integration patterns,
-see the [*Integration* secion](./integration.md), which covers Express, Hono,
+see the [*Integration* section](./integration.md), which covers Express, Hono,
 Fresh, SvelteKit, and other popular frameworks.
 
 
