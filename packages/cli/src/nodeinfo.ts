@@ -7,7 +7,7 @@ import * as colors from "@std/fmt/colors";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
 import ora from "ora";
-import { formatCliObjectOutputWithColor, printJson } from "./utils.ts";
+import { formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
 
@@ -62,7 +62,7 @@ export const command = new Command()
         Deno.exit(1);
       }
       spinner.succeed("NodeInfo document fetched.");
-      printJson(nodeInfo);
+      console.log(formatObject(nodeInfo, undefined, true));
       return;
     }
     const nodeInfo = await getNodeInfo(url, {
@@ -212,9 +212,7 @@ export const command = new Command()
       for (const [key, value] of Object.entries(nodeInfo.metadata)) {
         layout[next()] += `  ${colors.dim(key + ":")} ${
           indent(
-            typeof value === "string"
-              ? value
-              : formatCliObjectOutputWithColor(value),
+            typeof value === "string" ? value : formatObject(value),
             defaultWidth + 4 + key.length,
           )
         }`;
@@ -299,6 +297,14 @@ function checkTerminalColorSupport(): "truecolor" | "256color" | "none" {
   // Fallback: assume basic color support if TERM is set
   if (term != null && term !== "dumb") {
     return "256color";
+  }
+
+  // Check for Windows Terminal support
+  // FIXME: WT_SESSION is not a reliable way to check for Windows Terminal support
+  const isWindows = Deno.build.os === "windows";
+  const isWT = Deno.env.get("WT_SESSION");
+  if (isWindows && isWT != null && isWT !== "") {
+    return "truecolor";
   }
 
   return "none";

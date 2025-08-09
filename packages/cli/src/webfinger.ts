@@ -2,7 +2,7 @@ import { Command, ValidationError } from "@cliffy/command";
 import { toAcctUrl } from "@fedify/fedify/vocab";
 import { lookupWebFinger } from "@fedify/fedify/webfinger";
 import ora from "ora";
-import { printJson } from "./utils.ts";
+import { formatObject } from "./utils.ts";
 
 export const command = new Command()
   .arguments("<...resources:string>")
@@ -40,7 +40,7 @@ export const command = new Command()
           new NotFoundError(resource).throw(); // throw NotFoundError if not found
 
         spinner.succeed(`WebFinger found for ${resource}:`); // Succeed the spinner
-        printJson(webFinger); // Print the WebFinger
+        console.log(formatObject(webFinger, undefined, true)); // Print the WebFinger
       } catch (error) {
         if (error instanceof InvalidHandleError) { // If the handle format is invalid,
           spinner.fail(`Invalid handle format: ${error.handle}`); // log error message with handle

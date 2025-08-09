@@ -20,7 +20,7 @@ import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colorEnabled, formatCliObjectOutputWithColor } from "./utils.ts";
+import { colorEnabled, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
@@ -113,6 +113,7 @@ export async function writeObjectToStream(
 
   try {
     let content;
+    let json = true;
     let imageUrls: URL[] = [];
 
     if (options.raw) {
@@ -123,10 +124,11 @@ export async function writeObjectToStream(
       content = await object.toJsonLd({ format: "expand", contextLoader });
     } else {
       content = object;
+      json = false;
     }
 
     const enableColors = colorEnabled && options.output === undefined;
-    content = formatCliObjectOutputWithColor(content, enableColors);
+    content = formatObject(content, enableColors, json);
 
     const encoder = new TextEncoder();
     const bytes = encoder.encode(content + "\n");

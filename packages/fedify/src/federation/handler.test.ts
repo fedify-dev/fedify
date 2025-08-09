@@ -40,6 +40,7 @@ import {
   respondWithObject,
   respondWithObjectIfAcceptable,
 } from "./handler.ts";
+import { InboxListenerSet } from "./inbox.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
 
@@ -1384,6 +1385,94 @@ test("respondWithObject()", async () => {
     type: "Note",
     content: "Hello, world!",
   });
+});
+
+test("handleInbox() - authentication bypass vulnerability", async () => {
+  // This test reproduces the authentication bypass vulnerability where
+  // activities are processed before verifying the signing key belongs
+  // to the claimed actor
+
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  let processedActivity: Create | undefined;
+  const inboxListeners = new InboxListenerSet<void>();
+  inboxListeners.add(Create, (_ctx, activity) => {
+    // Track that the malicious activity was processed
+    processedActivity = activity;
+  });
+
+  // Create malicious activity claiming to be from victim actor
+  const maliciousActivity = new Create({
+    id: new URL("https://attacker.example.com/activities/malicious"),
+    actor: new URL("https://victim.example.com/users/alice"), // Impersonating victim
+    object: new Note({
+      id: new URL("https://attacker.example.com/notes/forged"),
+      attribution: new URL("https://victim.example.com/users/alice"),
+      content: "This is a forged message from the victim!",
+    }),
+  });
+
+  // Sign request with attacker's key (not victim's key)
+  const maliciousRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await maliciousActivity.toJsonLd()),
+    }),
+    rsaPrivateKey3, // Attacker's private key
+    rsaPublicKey3.id!, // Attacker's public key ID
+  );
+
+  const maliciousContext = createRequestContext({
+    request: maliciousRequest,
+    url: new URL(maliciousRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    federation,
+  });
+
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+
+  const response = await handleInbox(maliciousRequest, {
+    recipient: "someone",
+    context: maliciousContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        url: new URL(maliciousRequest.url),
+        data: undefined,
+        documentLoader: mockDocumentLoader,
+        federation,
+        recipient: "someone",
+      });
+    },
+    kv: new MemoryKvStore(),
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+    },
+    actorDispatcher,
+    inboxListeners,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+  });
+
+  // The vulnerability: Even though the response is 401 (unauthorized),
+  // the malicious activity was already processed by routeActivity()
+  assertEquals(response.status, 401);
+  assertEquals(await response.text(), "The signer and the actor do not match.");
+
+  assertEquals(
+    processedActivity,
+    undefined,
+    `SECURITY VULNERABILITY: Malicious activity with mismatched signature was processed! ` +
+      `Activity ID: ${processedActivity?.id?.href}, ` +
+      `Claimed actor: ${processedActivity?.actorId?.href}`,
+  );
+
+  // If we reach here, the vulnerability is fixed - activities with mismatched
+  // signatures are properly rejected before processing
 });
 
 test("respondWithObjectIfAcceptable", async () => {

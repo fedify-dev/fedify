@@ -9,6 +9,43 @@ Version 1.9.0
 To be released.
 
 
+Version 1.8.5
+-------------
+
+Released on August 8, 2025.
+
+### @fedify/fedify
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` color support in Windows Terminal.
+    [[#358], [#360] by KeunHyeong Park]
+
+[#358]: https://github.com/fedify-dev/fedify/issues/358
+[#360]: https://github.com/fedify-dev/fedify/pull/360
+
+
+Version 1.8.4
+-------------
+
+Released on August 7, 2025.
+
+### @fedify/cli
+
+ -  Fixed `fedify lookup` command's `-r`/`--raw`, `-C`/`--compact`, and
+    `-e`/`--expand` options to properly output valid JSON format instead of
+    Deno's object inspection format.  [[#357]]
+
+[#357]: https://github.com/fedify-dev/fedify/issues/357
+
+
 Version 1.8.3
 -------------
 
@@ -259,6 +296,19 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.9
+-------------
+
+Released on August 8, 2025.
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
+
+
 Version 1.7.8
 -------------
 
@@ -382,6 +432,19 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.8
+-------------
+
+Released on August 8, 2025.
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
 
 
 Version 1.6.7
@@ -510,6 +573,19 @@ the versioning.
 [#237]: https://github.com/fedify-dev/fedify/pull/237
 [#241]: https://github.com/fedify-dev/fedify/issues/241
 [#242]: https://github.com/fedify-dev/fedify/pull/242
+
+
+Version 1.5.5
+-------------
+
+Released on August 8, 2025.
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
 
 
 Version 1.5.4
@@ -684,6 +760,19 @@ Released on March 28, 2025.
 [#223]: https://github.com/fedify-dev/fedify/pull/223
 [FEP-8fcf]: https://w3id.org/fep/8fcf
 [multibase]: https://github.com/multiformats/js-multibase
+
+
+Version 1.4.13
+--------------
+
+Released on August 8, 2025.
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
 
 
 Version 1.4.12
@@ -933,6 +1022,21 @@ Released on February 5, 2025.
 
 [#3]: https://github.com/fedify-dev/fedify/issues/3
 [#195]: https://github.com/fedify-dev/fedify/issues/195
+
+
+Version 1.3.20
+--------------
+
+Released on August 8, 2025.
+
+ -  Fixed a critical authentication bypass vulnerability in the inbox handler
+    that allowed unauthenticated attackers to impersonate any ActivityPub actor.
+    The vulnerability occurred because activities were processed before
+    verifying that the HTTP Signatures key belonged to the claimed actor.
+    Now authentication verification is performed before activity processing to
+    prevent actor impersonation attacks.  [[CVE-2025-54888]]
+
+[CVE-2025-54888]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-6jcc-xgcr-q3h4
 
 
 Version 1.3.19

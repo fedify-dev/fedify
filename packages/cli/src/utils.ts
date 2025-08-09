@@ -1,17 +1,18 @@
 import { highlight } from "cli-highlight";
 
-export function printJson(json: unknown): void {
-  const formatted = JSON.stringify(json, null, 2);
-  console.log(highlight(formatted, { language: "json" }));
-}
-
 export const colorEnabled: boolean = Deno.stdout.isTerminal() &&
   !Deno.env.has("NO_COLOR");
 
-export function formatCliObjectOutputWithColor(
+export function formatObject(
   obj: unknown,
   colors?: boolean,
+  json?: boolean,
 ): string {
   const enableColors = colors ?? colorEnabled;
-  return Deno.inspect(obj, { colors: enableColors });
+  if (!json) return Deno.inspect(obj, { colors: enableColors });
+  const formatted = JSON.stringify(obj, null, 2);
+  if (enableColors) {
+    return highlight(formatted, { language: "json" });
+  }
+  return formatted;
 }
