@@ -1,0 +1,20 @@
+{
+  "name": "@fedify/fastify",
+  "version": "1.9.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "fastify": "npm:fastify",
+    "fastify-plugin": "npm:fastify-plugin"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test --allow-all"
+  }
+}
