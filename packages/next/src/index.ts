@@ -10,7 +10,6 @@
  * @since 1.9.0
  */
 import type { Federation, FederationFetchOptions } from "@fedify/fedify";
-import { notFound } from "next/navigation";
 import { NextResponse } from "next/server";
 
 interface ContextDataFactory<TContextData> {
@@ -125,12 +124,13 @@ export function integrateFederation<TContextData>(
       request,
       {
         contextData: await contextDataFactory(request),
-        onNotFound: notFound,
+        onNotFound,
         onNotAcceptable,
         ...errorHandlers,
       },
     );
 }
+const onNotFound = () => new Response("Not found", { status: 404 });
 const onNotAcceptable = () =>
   new Response("Not acceptable", {
     status: 406,
