@@ -35,10 +35,16 @@ To be released.
  -  Created [Next.js] integration as the *@fedify/next* package.
     [[#313] by Chanhaeng Lee]
 
+### @fedify/redis
+
+ -  Added support for Redis Cluster to the *@fedify/redis* package.
+    [[#368] by Michael Barrett]
+
 [Next.js]: https://nextjs.org/
 [#313]: https://github.com/fedify-dev/fedify/issues/313
 [#353]: https://github.com/fedify-dev/fedify/issues/353
 [#365]: https://github.com/fedify-dev/fedify/pull/365
+[#368]: https://github.com/fedify-dev/fedify/pull/368
 
 
 Version 1.8.5

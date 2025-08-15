@@ -5,7 +5,7 @@ import type {
   MessageQueueListenOptions,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import type { Redis, RedisKey } from "ioredis";
+import type { Cluster, Redis, RedisKey } from "ioredis";
 import { type Codec, JsonCodec } from "./codec.ts";
 
 const logger = getLogger(["fedify", "redis", "mq"]);
@@ -63,17 +63,28 @@ export interface RedisMessageQueueOptions {
  * ```ts ignore
  * import { createFederation } from "@fedify/fedify";
  * import { RedisMessageQueue } from "@fedify/redis";
- * import { Redis } from "ioredis";
+ * import { Redis, Cluster } from "ioredis";
  *
+ * // Using a standalone Redis instance:
  * const federation = createFederation({
  *   // ...
  *   queue: new RedisMessageQueue(() => new Redis()),
  * });
+ *
+ * // Using a Redis Cluster:
+ * const federation = createFederation({
+ *   // ...
+ *   queue: new RedisMessageQueue(() => new Cluster([
+ *     { host: "127.0.0.1", port: 7000 },
+ *     { host: "127.0.0.1", port: 7001 },
+ *     { host: "127.0.0.1", port: 7002 },
+ *   ])),
+ * });
  * ```
  */
 export class RedisMessageQueue implements MessageQueue, Disposable {
-  #redis: Redis;
-  #subRedis: Redis;
+  #redis: Redis | Cluster;
+  #subRedis: Redis | Cluster;
   #workerId: string;
   #channelKey: RedisKey;
   #queueKey: RedisKey;
@@ -87,7 +98,10 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
    * @param redis The Redis client factory.
    * @param options The options for the message queue.
    */
-  constructor(redis: () => Redis, options: RedisMessageQueueOptions = {}) {
+  constructor(
+    redis: () => Redis | Cluster,
+    options: RedisMessageQueueOptions = {},
+  ) {
     this.#redis = redis();
     this.#subRedis = redis();
     this.#workerId = options.workerId ?? crypto.randomUUID();
@@ -196,9 +210,24 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       }
     };
     const promise = this.#subRedis.subscribe(this.#channelKey, () => {
-      this.#subRedis.on("message", poll);
+      /**
+       * Cast to Redis for event methods. Both Redis and Cluster extend EventEmitter
+       * and get the same methods via applyMixin at runtime, but their TypeScript
+       * interfaces are incompatible:
+       * - Redis declares specific overloads: on(event: "message", cb: (channel, message) => void)
+       * - Cluster only has generic: on(event: string | symbol, listener: Function)
+       *
+       * This makes the union type Redis | Cluster incompatible for these method calls.
+       * The cast is safe because both classes use applyMixin(Class, EventEmitter) which
+       * copies all EventEmitter prototype methods, giving them identical pub/sub functionality.
+       *
+       * @see https://github.com/redis/ioredis/blob/main/lib/Redis.ts#L863 (has specific overloads)
+       * @see https://github.com/redis/ioredis/blob/main/lib/cluster/index.ts#L1110 (empty interface)
+       */
+      const subRedis = this.#subRedis as Redis;
+      subRedis.on("message", poll);
       signal?.addEventListener("abort", () => {
-        this.#subRedis.off("message", poll);
+        subRedis.off("message", poll);
       });
     });
     signal?.addEventListener(

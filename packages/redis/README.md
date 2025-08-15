@@ -16,11 +16,26 @@ implementations for Redis:
 ~~~~ typescript
 import { createFederation } from "@fedify/fedify";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
-import { Redis } from "ioredis";
+import { Redis, Cluster } from "ioredis";
 
+// Using a standalone Redis instance:
 const federation = createFederation({
   kv: new RedisKvStore(new Redis()),
   queue: new RedisMessageQueue(() => new Redis()),
+});
+
+// Using a Redis Cluster:
+const federation = createFederation({
+  kv: new RedisKvStore(new Cluster([
+    { host: "127.0.0.1", port: 7000 },
+    { host: "127.0.0.1", port: 7001 },
+    { host: "127.0.0.1", port: 7002 },
+  ])),
+  queue: new RedisMessageQueue(() => new Cluster([
+    { host: "127.0.0.1", port: 7000 },
+    { host: "127.0.0.1", port: 7001 },
+    { host: "127.0.0.1", port: 7002 },
+  ])),
 });
 ~~~~
 

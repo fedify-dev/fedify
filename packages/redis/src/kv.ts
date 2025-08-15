@@ -1,5 +1,5 @@
 import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
-import type { Redis, RedisKey } from "ioredis";
+import type { Cluster, Redis, RedisKey } from "ioredis";
 import { Buffer } from "node:buffer";
 import { type Codec, JsonCodec } from "./codec.ts";
 
@@ -27,26 +27,38 @@ export interface RedisKvStoreOptions {
  * ```ts ignore
  * import { createFederation } from "@fedify/fedify";
  * import { RedisKvStore } from "@fedify/redis";
- * import { Redis } from "ioredis";
+ * import { Redis, Cluster } from "ioredis";
  *
+ * // Using a standalone Redis instance:
  * const federation = createFederation({
  *   // ...
  *   kv: new RedisKvStore(new Redis()),
  * });
+ *
+ * // Using a Redis Cluster:
+ * const cluster = new Cluster([
+ *   { host: "127.0.0.1", port: 7000 },
+ *   { host: "127.0.0.1", port: 7001 },
+ *   { host: "127.0.0.1", port: 7002 },
+ * ]);
+ * const federation = createFederation({
+ *   // ...
+ *   kv: new RedisKvStore(cluster),
+ * });
  * ```
  */
 export class RedisKvStore implements KvStore {
-  #redis: Redis;
+  #redis: Redis | Cluster;
   #keyPrefix: RedisKey;
   #codec: Codec;
   #textEncoder = new TextEncoder();
 
   /**
    * Creates a new Redis key–value store.
-   * @param redis The Redis client to use.
+   * @param redis The Redis client (standalone or cluster) to use.
    * @param options The options for the key–value store.
    */
-  constructor(redis: Redis, options: RedisKvStoreOptions = {}) {
+  constructor(redis: Redis | Cluster, options: RedisKvStoreOptions = {}) {
     this.#redis = redis;
     this.#keyPrefix = options.keyPrefix ?? "fedify::";
     this.#codec = options.codec ?? new JsonCodec();
