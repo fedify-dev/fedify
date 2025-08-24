@@ -1,6 +1,12 @@
-import { argument, command, constant, message, object } from "@optique/core";
+import {
+  argument,
+  command,
+  constant,
+  type InferValue,
+  message,
+  object,
+} from "@optique/core";
 import { path } from "@optique/run";
-import { InferValue } from "@optique/core/parser";
 
 export const initCommand = command(
   "init",
