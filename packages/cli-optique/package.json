@@ -1,0 +1,43 @@
+{
+  "name": "@fedify/cli-optique",
+  "version": "2.0.0",
+  "private": true,
+  "description": "CLI toolchain for Fedify and debugging ActivityPub",
+  "keywords": [
+    "fedify",
+    "activitypub",
+    "cli",
+    "fediverse"
+  ],
+  "homepage": "https://fedify.dev/cli",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.2.0",
+    "denp": ">=2.0.0"
+  },
+  "dependencies": {
+    "@fedify/fedify": "workspace:",
+    "@optique/core": "^0.2.0",
+    "@optique/run": "^0.2.0",
+    "ora": "^8.2.0"
+  }
+}
