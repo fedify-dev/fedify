@@ -125,6 +125,10 @@ Hono
 
 *This API is available since Fedify 0.6.0.*
 
+> [!WARNING]
+> The `@fedify/fedify/x/hono` module is deprecated and will be removed in
+> Fedify 2.0.0.  Please use the `@fedify/hono` package instead.
+
 [Hono] is a fast, lightweight, and Web standard-compliant server framework for
 TypeScript.  Fedify has the `@fedify/fedify/x/hono` module that provides
 a middleware to integrate Fedify with Hono:
@@ -243,6 +247,10 @@ SvelteKit
 ---------
 
 *This API is available since Fedify 1.3.0.*
+
+> [!WARNING]
+> The `@fedify/fedify/x/sveltekit` module is deprecated and will be removed in
+> Fedify 2.0.0.  Please use the `@fedify/sveltekit` package instead.
 
 [SvelteKit] is a framework for building web applications with [Svelte].  Fedify
 has the `@fedify/fedify/x/sveltekit` module that provides a hook handler to

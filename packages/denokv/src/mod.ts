@@ -7,27 +7,21 @@
  * using Deno's KV store, and the `DenoKvMessageQueue` class implements the
  * `MessageQueue` interface using Deno's KV store.
  *
- * @deprecated This module has been moved to a separate package.
- *             Install and import from `@fedify/denokv` instead.
- *             This module will be removed in Fedify v2.0.
- *
  * @module
  * @since 0.5.0
  */
-import { isEqual } from "es-toolkit";
-import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 import type {
+  KvKey,
+  KvStore,
+  KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
-} from "../federation/mq.ts";
+} from "@fedify/fedify/federation";
+import { isEqual } from "es-toolkit";
 
 /**
  * Represents a key–value store implementation using Deno's KV store.
- *
- * @deprecated This class has been moved to `@fedify/denokv` package.
- *             Import `DenoKvStore` from `@fedify/denokv` instead.
- *             This class will be removed in Fedify v2.0.
  */
 export class DenoKvStore implements KvStore {
   #kv: Deno.Kv;
@@ -101,10 +95,6 @@ export class DenoKvStore implements KvStore {
 
 /**
  * Represents a message queue adapter that uses Deno KV store.
- *
- * @deprecated This class has been moved to `@fedify/denokv` package.
- *             Import `DenoKvMessageQueue` from `@fedify/denokv` instead.
- *             This class will be removed in Fedify v2.0.
  */
 export class DenoKvMessageQueue implements MessageQueue, Disposable {
   #kv: Deno.Kv;

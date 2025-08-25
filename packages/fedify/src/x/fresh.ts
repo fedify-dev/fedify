@@ -7,6 +7,12 @@
  *
  * [Fresh]: https://fresh.deno.dev/
  *
+ * @deprecated This module is deprecated due to significant breaking changes
+ *             in Fresh v2. A new integration for Fresh v2 will be implemented
+ *             in a separate package in the future. Consider migrating to other
+ *             frameworks supported by Fedify in the meantime.
+ *             This module will be removed in Fedify v2.0.
+ *
  * @module
  * @since 0.4.0
  */
@@ -22,6 +28,11 @@ interface FreshContext {
 /**
  * Create options for the {@link Federation.fetch} method to integrate with
  * Fresh.
+ *
+ * @deprecated This function is deprecated due to significant breaking changes
+ *             in Fresh v2. A new integration for Fresh v2 will be implemented
+ *             in a separate package in the future.
+ *             This function will be removed in Fedify v2.0.
  *
  * @example _middleware.ts
  * ``` typescript
@@ -75,6 +86,11 @@ export function integrateFetchOptions(
 /**
  * Create a Fresh middleware handler to integrate with the {@link Federation}
  * object.
+ *
+ * @deprecated This function is deprecated due to significant breaking changes
+ *             in Fresh v2. A new integration for Fresh v2 will be implemented
+ *             in a separate package in the future.
+ *             This function will be removed in Fedify v2.0.
  *
  * @example _middleware.ts
  * ``` typescript

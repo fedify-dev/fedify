@@ -60,6 +60,10 @@ const federation = createFederation<void>({
 
 ### `DenoKvMessageQueue` (Deno only)
 
+> [!WARNING]
+> The `@fedify/fedify/x/denokv` module is deprecated and will be removed in
+> Fedify 2.0.0.  Please use the `@fedify/denokv` package instead.
+
 `DenoKvMessageQueue` is a message queue implementation for [Deno] runtime that
 uses Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and
 good performance for Deno environments.  It's suitable for production use in
@@ -284,6 +288,10 @@ const federation = createFederation({
 ### `WorkersMessageQueue` (Cloudflare Workers only)
 
 *This API is available since Fedify 1.6.0.*
+
+> [!WARNING]
+> The `@fedify/fedify/x/cfworkers` module is deprecated and will be removed in
+> Fedify 2.0.0.  Please use the `@fedify/cfworkers` package instead.
 
 `WorkersMessageQueue` is a message queue implementation for [Cloudflare Workers]
 that uses Cloudflare's built-in [Cloudflare Queues] API.  It provides

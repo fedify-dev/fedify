@@ -5,10 +5,6 @@
  * This module provides `KvStore` and `MessageQueue` implementations that use
  * Cloudflare Workers' KV and Queues bindings, respectively.
  *
- * @deprecated This module has been moved to a separate package.
- *             Install and import from `@fedify/cfworkers` instead.
- *             This module will be removed in Fedify v2.0.
- *
  * @module
  * @since 1.6.0
  */
@@ -17,12 +13,14 @@ import type {
   MessageSendRequest,
   Queue,
 } from "@cloudflare/workers-types/experimental";
-import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 import type {
+  KvKey,
+  KvStore,
+  KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
-} from "../federation/mq.ts";
+} from "@fedify/fedify/federation";
 
 interface KvMetadata {
   expires?: number;
@@ -37,10 +35,6 @@ interface KvMetadata {
  * operation, as Cloudflare Workers KV does not support atomic compare-and-swap
  * operations.  If you need this functionality, consider using a different
  * key–value store that supports atomic operations.
- *
- * @deprecated This class has been moved to `@fedify/cfworkers` package.
- *             Import `WorkersKvStore` from `@fedify/cfworkers` instead.
- *             This class will be removed in Fedify v2.0.
  * @since 1.6.0
  */
 export class WorkersKvStore implements KvStore {
@@ -101,10 +95,6 @@ export class WorkersKvStore implements KvStore {
  * way as other message queue systems.  Instead, you should use
  * the {@link Federation.processQueuedTask} method to process messages
  * passed to the queue.
- *
- * @deprecated This class has been moved to `@fedify/cfworkers` package.
- *             Import `WorkersMessageQueue` from `@fedify/cfworkers` instead.
- *             This class will be removed in Fedify v2.0.
  * @since 1.6.0
  */
 export class WorkersMessageQueue implements MessageQueue {

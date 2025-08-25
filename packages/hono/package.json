@@ -1,0 +1,66 @@
+{
+  "name": "@fedify/hono",
+  "version": "1.9.0",
+  "description": "",
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse",
+    "Hono"
+  ],
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/hono"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:",
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown"
+  }
+}

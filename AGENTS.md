@@ -61,17 +61,21 @@ The repository is organized as a monorepo with the following packages:
     -  *src/testing/*: Testing utilities
     -  *src/vocab/*: ActivityPub vocabulary implementation
     -  *src/webfinger/*: WebFinger protocol implementation
-    -  *src/x/*: Framework integrations
+    -  ~~src/x/: Framework integrations~~ **Don't use.** This directory will be removed in version 2.0.0. Use packages from the `@fedify` scope, which are located in the `packages/` directory (e.g., `@fedify/hono` is in `packages/hono/`).
  -  *packages/cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
+ -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
+ -  *packages/denokv/*: Deno KV integration (@fedify/denokv)
  -  *packages/elysia/*: Elysia integration (@fedify/elysia)
  -  *packages/express/*: Express.js integration (@fedify/express)
  -  *packages/h3/*: h3 framework integration (@fedify/h3)
+ -  *packages/hono/*: Hono integration (@fedify/hono)
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres)
  -  *packages/redis/*: Redis drivers (@fedify/redis)
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs)
  -  *packages/next/*: Next.js integration (@fedify/next)
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite)
+ -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit)
  -  *packages/testing/*: Testing utilities (@fedify/testing)
  -  *docs/*: Documentation built with Node.js and VitePress
  -  *examples/*: Example projects demonstrating Fedify usage
@@ -143,10 +147,10 @@ Common Tasks
 
 ### Implementing Framework Integrations
 
-1. Add new integrations in the *packages/fedify/src/x/* directory
-2. Follow pattern from existing integrations (hono.ts, sveltekit.ts)
+1. Create a new package in *packages/* directory for new integrations
+2. Follow pattern from existing integration packages (*packages/hono/*, *packages/sveltekit/*)
 3. Use standard request/response interfaces for compatibility
-4. Consider creating a dedicated package for substantial integrations
+4. Consider creating example applications in *examples/* that demonstrate usage
 
 ### Creating Database Adapters
 
