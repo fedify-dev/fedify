@@ -2,6 +2,7 @@
   "workspace": [
     "./packages/fedify",
     "./packages/cli",
+    "./packages/cli-optique",
     "./packages/amqp",
     "./packages/cfworkers",
     "./packages/denokv",

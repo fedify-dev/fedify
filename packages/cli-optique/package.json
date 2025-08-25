@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:",
-    "@optique/core": "^0.2.0",
-    "@optique/run": "^0.2.0",
+    "@optique/core": "^0.3.0-dev.34",
+    "@optique/run": "^0.3.0-dev.34",
     "ora": "^8.2.0"
   }
 }

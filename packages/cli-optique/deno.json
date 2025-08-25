@@ -4,8 +4,8 @@
   "license": "MIT",
   "exports": "./src/mod.ts",
   "imports": {
-    "@optique/core": "jsr:@optique/core@^0.2.0",
-    "@optique/run": "jsr:@optique/run@^0.2.0",
+    "@optique/core": "jsr:@optique/core@^0.3.0-dev.34",
+    "@optique/run": "jsr:@optique/run@^0.3.0-dev.34",
     "ora": "npm:ora@^8.2.0"
   },
   "tasks": {
