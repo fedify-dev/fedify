@@ -2,6 +2,7 @@
   "workspace": [
     "./packages/fedify",
     "./packages/cli",
+    "./packages/debugger",
     "./packages/amqp",
     "./packages/elysia",
     "./packages/express",
