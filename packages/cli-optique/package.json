@@ -38,6 +38,16 @@
     "@fedify/fedify": "workspace:",
     "@optique/core": "^0.3.0-dev.34",
     "@optique/run": "^0.3.0-dev.34",
-    "ora": "^8.2.0"
+    "cli-highlight": "^2.1.11",
+    "icojs": "^0.19.5",
+    "jimp": "^1.6.0",
+    "@jimp/core": "^1.6.0",
+    "@jimp/wasm-webp": "^1.6.0",
+    "ora": "^8.2.0",
+    "@cross/dir": "jsr:@cross/dir@^1.1.0",
+    "cli-highlight": "^2.1.11",
+    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
+    "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors",
+    "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.4"
   }
 }

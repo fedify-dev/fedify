@@ -4,9 +4,17 @@
   "license": "MIT",
   "exports": "./src/mod.ts",
   "imports": {
+    "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.4",
+    "@cross/dir": "jsr:@cross/dir@^1.1.0",
     "@optique/core": "jsr:@optique/core@^0.3.0-dev.34",
     "@optique/run": "jsr:@optique/run@^0.3.0-dev.34",
-    "ora": "npm:ora@^8.2.0"
+    "@std/fmt": "jsr:@std/fmt@^1.0.8",
+    "ora": "npm:ora@^8.2.0",
+    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
+    "icojs": "npm:icojs@^0.19.4",
+    "@jimp/wasm-webp": "npm:@jimp/wasm-webp@^1.6.0",
+    "@jimp/core": "npm:@jimp/core@^1.6.0",
+    "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors"
   },
   "tasks": {
     "codegen": "deno task -f @fedify/fedify codegen",
