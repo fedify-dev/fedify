@@ -36,10 +36,16 @@ import ora from "ora";
 import * as colors from "@std/fmt/colors";
 import process from "node:process";
 import { createWriteStream, type WriteStream } from "node:fs";
-import { getContextLoader, getDocumentLoader } from "./docloader.ts";
-import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colorEnabled, formatObject } from "./utils.ts";
-import { renderImages } from "./imagerenderer.ts";
+import {
+  getContextLoader,
+  getDocumentLoader,
+} from "../../cli/src/docloader.ts";
+import {
+  spawnTemporaryServer,
+  type TemporaryServer,
+} from "../../cli/src/tempserver.ts";
+import { colorEnabled, formatObject } from "../../cli/src/utils.ts";
+import { renderImages } from "../../cli/src/imagerenderer.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 

@@ -1,15 +1,14 @@
 import { Activity, Note } from "@fedify/fedify";
 import { assertEquals, assertExists } from "@std/assert";
 import test from "node:test";
-import { readFile, rm } from "node:fs/promises";
-import { getContextLoader } from "./docloader.ts";
+import { mkdir, readFile, rm } from "node:fs/promises";
+import { getContextLoader } from "../../cli/src/docloader.ts";
 import {
   clearTimeoutSignal,
   createTimeoutSignal,
   TimeoutError,
   writeObjectToStream,
 } from "./lookup.ts";
-import { mkdir } from "node:fs/promises";
 
 test("writeObjectToStream - writes Note object with default options", async () => {
   const testDir = "./test_output_note";
