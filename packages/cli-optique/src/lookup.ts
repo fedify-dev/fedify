@@ -1,11 +1,12 @@
 import {
   argument,
   choice,
-  command,
   constant,
+  flag,
   float,
   type InferValue,
   map,
+  merge,
   message,
   multiple,
   object,
@@ -17,11 +18,17 @@ import {
 } from "@optique/core";
 import { path } from "@optique/run/valueparser";
 import {
+  Application,
   Collection,
+  CryptographicKey,
   type DocumentLoader,
+  generateCryptoKeyPair,
+  getAuthenticatedDocumentLoader,
   type Link,
   lookupObject,
   Object as APObject,
+  type ResourceDescriptor,
+  respondWithObject,
   traverseCollection,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
@@ -30,42 +37,51 @@ import * as colors from "@std/fmt/colors";
 import process from "node:process";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
-import type { TemporaryServer } from "./tempserver.ts";
+import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, formatObject } from "./utils.ts";
 import { renderImages } from "./imagerenderer.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const lookupCommand = command(
-  "lookup",
+const authorizedFetchOption = withDefault(
+  object({
+    authorizedFetch: flag("-a", "--authorized-fetch", {
+      description: message`Sign the request with an one-time key.`,
+    }),
+    firstKnock: withDefault(
+      option(
+        "--first-knock",
+        choice(["draft-cavage-http-signatures-12", "rfc9421"]),
+        {
+          description:
+            message`The first-knock spec for -a/--authorized-fetch. It is used for the double-knocking technique.`,
+        },
+      ),
+      "draft-cavage-http-signatures-12" as const,
+    ),
+  }),
+  { authorizedFetch: false } as const,
+);
+
+const traverseOption = withDefault(
+  object({
+    traverse: flag("-t", "--traverse", {
+      description:
+        message`Traverse the given collection to fetch all items. If it is turned on, the argument cannot be multiple.`,
+    }),
+    suppressErrors: option("-S", "--suppress-errors", {
+      description:
+        message`Suppress partial errors while traversing the collection`,
+    }),
+  }),
+  { traverse: false } as const,
+);
+
+export const lookupCommand = merge(
+  traverseOption,
+  authorizedFetchOption,
   object({
     command: constant("lookup"),
-    authorizedFetch: object({
-      enabled: option("-a", "--authorized-fetch", {
-        description: message`Sign the request with an one-time key.`,
-      }),
-      firstKnock: withDefault(
-        option(
-          "--first-knock",
-          choice(["draft-cavage-http-signatures-12", "rfc9421"]),
-          {
-            description:
-              message`The first-knock spec for -a/--authorized-fetch. It is used for the double-knocking technique.`,
-          },
-        ),
-        "draft-cavage-http-signatures-12",
-      ),
-    }),
-    traverse: object({
-      enabled: option("-t", "--traverse", {
-        description:
-          message`Traverse the given collection to fetch all items. If it is turned on, the argument cannot be multiple.`,
-      }),
-      suppressErrors: option("-S", "--suppress-errors", {
-        description:
-          message`Suppress partial errors while traversing the collection`,
-      }),
-    }),
     format: withDefault(
       or(
         map(
@@ -124,10 +140,6 @@ export const lookupCommand = command(
       { min: 1 },
     ),
   }),
-  {
-    description:
-      message`Look up an Activity Streams object by URL or the actor handle. The argument can be either a URL or an actor handle (e.g., @username@domain), and it can be multiple.`,
-  },
 );
 
 class TimeoutError extends Error {
@@ -255,7 +267,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
   if (command.urls.length < 1) {
     console.error("At least one URL or actor handle must be provided.");
     process.exit(1);
-  } else if (command.traverse.enabled && command.urls.length > 1) {
+  } else if (command.traverse && command.urls.length > 1) {
     console.error(
       "The -t/--traverse option cannot be used with multiple arguments.",
     );
@@ -263,7 +275,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
   }
   const spinner = ora({
     text: `Looking up the ${
-      command.traverse.enabled
+      command.traverse
         ? "collection"
         : command.urls.length > 1
         ? "objects"
@@ -272,7 +284,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
     discardStdin: false,
   }).start();
 
-  let server: TemporaryServer | undefined;
+  let server: TemporaryServer | undefined = undefined;
   const baseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
   });
@@ -287,19 +299,77 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
     baseContextLoader,
     command.timeout,
   );
-  //TODO: implement auth
-  const authLoader: DocumentLoader | undefined = undefined;
+
+  let authLoader: DocumentLoader | undefined = undefined;
+
+  if (command.authorizedFetch) {
+    spinner.text = "Generating a one-time key pair...";
+    const key = await generateCryptoKeyPair();
+    spinner.text = "Spinning up a temporary ActivityPub server...";
+    server = await spawnTemporaryServer((req) => {
+      const serverUrl = server?.url ?? new URL("http://localhost/");
+      if (new URL(req.url).pathname == "/.well-known/webfinger") {
+        const jrd: ResourceDescriptor = {
+          subject: `acct:${serverUrl.hostname}@${serverUrl.hostname}`,
+          aliases: [serverUrl.href],
+          links: [
+            {
+              rel: "self",
+              href: serverUrl.href,
+              type: "application/activity+json",
+            },
+          ],
+        };
+        return new Response(JSON.stringify(jrd), {
+          headers: { "Content-Type": "application/jrd+json" },
+        });
+      }
+      return respondWithObject(
+        new Application({
+          id: serverUrl,
+          preferredUsername: serverUrl?.hostname,
+          publicKey: new CryptographicKey({
+            id: new URL("#main-key", serverUrl),
+            owner: serverUrl,
+            publicKey: key.publicKey,
+          }),
+          manuallyApprovesFollowers: true,
+          inbox: new URL("/inbox", serverUrl),
+          outbox: new URL("/outbox", serverUrl),
+        }),
+        { contextLoader },
+      );
+    });
+    const baseAuthLoader = getAuthenticatedDocumentLoader(
+      {
+        keyId: new URL("#main-key", server.url),
+        privateKey: key.privateKey,
+      },
+      {
+        specDeterminer: {
+          determineSpec() {
+            return command.firstKnock;
+          },
+          rememberSpec() {
+          },
+        },
+      },
+    );
+    authLoader = wrapDocumentLoaderWithTimeout(
+      baseAuthLoader,
+      command.timeout,
+    );
+  }
 
   spinner.text = `Looking up the ${
-    command.traverse.enabled
+    command.traverse
       ? "collection"
       : command.urls.length > 1
       ? "objects"
       : "object"
   }...`;
 
-  if (command.traverse.enabled) {
-    // FIXME: Implement traversal logic with multiple urls
+  if (command.traverse) {
     const url = command.urls[0];
     let collection: APObject | null;
     try {
@@ -312,7 +382,6 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       if (error instanceof TimeoutError) {
         handleTimeoutError(spinner, command.timeout, url);
       } else {
-        // TODO: Implement text colour
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
         if (authLoader == null) {
           console.error(
@@ -323,7 +392,6 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       await server?.close();
       process.exit(1);
     }
-
     if (collection == null) {
       spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
       if (authLoader == null) {
@@ -334,7 +402,6 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       await server?.close();
       process.exit(1);
     }
-
     if (!(collection instanceof Collection)) {
       spinner.fail(
         `Not a collection: ${colors.red(url)}.  ` +
@@ -343,15 +410,15 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       await server?.close();
       process.exit(1);
     }
-
     spinner.succeed(`Fetched collection: ${colors.green(url)}.`);
+
     try {
       let i = 0;
       for await (
         const item of traverseCollection(collection, {
           documentLoader: authLoader ?? documentLoader,
           contextLoader,
-          suppressError: command.traverse.suppressErrors,
+          suppressError: command.suppressErrors,
         })
       ) {
         if (!command.output && i > 0) console.log(command.separator);
@@ -378,18 +445,18 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       process.exit(1);
     }
     spinner.succeed("Successfully fetched all items in the collection.");
+
     await server?.close();
     process.exit(0);
   }
-
-  //TODO: implement -a --authorized-fetch
-  //let server: TemporaryServer | undefined = undefined;
 
   const promises: Promise<APObject | null>[] = [];
 
   for (const url of command.urls) {
     promises.push(
       lookupObject(url, {
+        documentLoader: authLoader ?? documentLoader,
+        contextLoader,
         userAgent: command.userAgent,
       }).catch((error) => {
         if (error instanceof TimeoutError) {
@@ -406,7 +473,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
   } catch (_error) {
     //TODO: implement -a --authorized-fetch
     // await server?.close();
-    Deno.exit(1);
+    process.exit(1);
   }
 
   spinner.stop();
@@ -439,10 +506,9 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
         : "Successfully fetched the object.",
     );
   }
-  // TODO: implement -a --authorized-fetch
-  // await server?.close();
+  await server?.close();
   if (!success) {
-    Deno.exit(1);
+    process.exit(1);
   }
   if (success && command.output) {
     spinner.succeed(
