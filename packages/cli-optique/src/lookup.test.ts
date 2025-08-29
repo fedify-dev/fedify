@@ -2,7 +2,7 @@ import { Activity, Note } from "@fedify/fedify";
 import { assertEquals, assertExists } from "@std/assert";
 import test from "node:test";
 import { mkdir, readFile, rm } from "node:fs/promises";
-import { getContextLoader } from "../../cli/src/docloader.ts";
+import { getContextLoader } from "./docloader.ts";
 import {
   clearTimeoutSignal,
   createTimeoutSignal,
