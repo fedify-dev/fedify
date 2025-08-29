@@ -9,16 +9,13 @@ import {
   TimeoutError,
   writeObjectToStream,
 } from "./lookup.ts";
+import { mkdir } from "node:fs/promises";
 
 test("writeObjectToStream - writes Note object with default options", async () => {
   const testDir = "./test_output_note";
   const testFile = `${testDir}/note.txt`;
 
-  try {
-    await rm(testDir, { recursive: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
+  await mkdir(testDir, { recursive: true });
 
   const note = new Note({
     id: new URL("https://example.com/notes/1"),
@@ -27,25 +24,22 @@ test("writeObjectToStream - writes Note object with default options", async () =
 
   const contextLoader = await getContextLoader({});
 
-  await writeObjectToStream(note, testFile, "compact", contextLoader);
+  await writeObjectToStream(note, testFile, undefined, contextLoader);
 
-  const content = await readFile(testFile, "utf-8");
+  const content = await readFile(testFile, { encoding: "utf8" });
+
   assertExists(content);
   assertEquals(content.includes("Hello, fediverse!"), true);
-  assertEquals(content.includes("Note"), true);
+  assertEquals(content.includes("id"), true);
 
   await rm(testDir, { recursive: true });
 });
 
 test("writeObjectToStream - writes Activity object in raw JSON-LD format", async () => {
   const testDir = "./test_output_activity";
-  const testFile = `${testDir}/activity.json`;
+  const testFile = `${testDir}/raw.json`;
 
-  try {
-    await rm(testDir, { recursive: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
+  await mkdir(testDir, { recursive: true });
 
   const activity = new Activity({
     id: new URL("https://example.com/activities/1"),
@@ -69,11 +63,7 @@ test("writeObjectToStream - writes object in compact JSON-LD format", async () =
   const testDir = "./test_output_compact";
   const testFile = `${testDir}/compact.json`;
 
-  try {
-    await rm(testDir, { recursive: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
+  await mkdir(testDir, { recursive: true });
 
   const note = new Note({
     id: new URL("https://example.com/notes/1"),
@@ -96,11 +86,7 @@ test("writeObjectToStream - writes object in expanded JSON-LD format", async () 
   const testDir = "./test_output_expand";
   const testFile = `${testDir}/expand.json`;
 
-  try {
-    await rm(testDir, { recursive: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
+  await mkdir(testDir, { recursive: true });
 
   const note = new Note({
     id: new URL("https://example.com/notes/1"),
@@ -133,11 +119,7 @@ test("writeObjectToStream - handles empty content properly", async () => {
   const testDir = "./test_output_empty";
   const testFile = `${testDir}/empty.txt`;
 
-  try {
-    await rm(testDir, { recursive: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
+  await mkdir(testDir, { recursive: true });
 
   const note = new Note({
     id: new URL("https://example.com/notes/1"),

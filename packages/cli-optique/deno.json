@@ -6,8 +6,8 @@
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.4",
     "@cross/dir": "jsr:@cross/dir@^1.1.0",
-    "@optique/core": "jsr:@optique/core@^0.3.0-dev.40",
-    "@optique/run": "jsr:@optique/run@^0.3.0-dev.34",
+    "@optique/core": "jsr:@optique/core@^0.3.0",
+    "@optique/run": "jsr:@optique/run@^0.3.0",
     "@std/fmt": "jsr:@std/fmt@^1.0.8",
     "ora": "npm:ora@^8.2.0",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
