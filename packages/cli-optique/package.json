@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:",
-    "@optique/core": "^0.3.0-dev.34",
+    "@optique/core": "^0.3.0-dev.40",
     "@optique/run": "^0.3.0-dev.34",
     "cli-highlight": "^2.1.11",
     "icojs": "^0.19.5",

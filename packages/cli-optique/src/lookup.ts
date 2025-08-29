@@ -142,10 +142,11 @@ export const lookupCommand = merge(
   }),
 );
 
-class TimeoutError extends Error {
+export class TimeoutError extends Error {
   override name = "TimeoutError";
   constructor(message: string) {
     super(message);
+    this.name = "TimeoutError";
   }
 }
 
@@ -166,23 +167,24 @@ async function findAllImages(obj: APObject): Promise<URL[]> {
 
 export async function writeObjectToStream(
   object: APObject | Link,
-  command: InferValue<typeof lookupCommand>,
+  outputPath: string | undefined,
+  format: string | undefined,
   contextLoader: DocumentLoader,
 ): Promise<void> {
-  const stream: WriteStream | NodeJS.WritableStream = command.output
-    ? createWriteStream(command.output)
+  const stream: WriteStream | NodeJS.WritableStream = outputPath
+    ? createWriteStream(outputPath)
     : process.stdout;
 
   let content;
   let json = true;
   let imageUrls: URL[] = [];
 
-  if (command.format) {
-    if (command.format === "raw") {
+  if (format) {
+    if (format === "raw") {
       content = await object.toJsonLd({ contextLoader });
-    } else if (command.format === "compact") {
+    } else if (format === "compact") {
       content = await object.toJsonLd({ format: "compact", contextLoader });
-    } else if (command.format === "expand") {
+    } else if (format === "expand") {
       content = await object.toJsonLd({ format: "expand", contextLoader });
     } else {
       content = object;
@@ -193,7 +195,7 @@ export async function writeObjectToStream(
     json = false;
   }
 
-  const enableColors = colorEnabled && command.output === undefined;
+  const enableColors = colorEnabled && outputPath === undefined;
   content = formatObject(content, enableColors, json);
 
   const encoder = new TextEncoder();
@@ -204,7 +206,7 @@ export async function writeObjectToStream(
   if (object instanceof APObject) {
     imageUrls = await findAllImages(object);
   }
-  if (!command.output && imageUrls.length > 0) {
+  if (!outputPath && imageUrls.length > 0) {
     await renderImages(imageUrls);
   }
 }
@@ -255,7 +257,7 @@ function handleTimeoutError(
   timeoutSeconds?: number,
   url?: string,
 ): void {
-  const urlText = url ? ` for: ${url}` : ""; // TODO: URL color should be red
+  const urlText = url ? ` for: ${colors.red(url)}` : "";
   spinner.fail(`Request timed out after ${timeoutSeconds} seconds${urlText}.`);
   console.error(
     "Try increasing the timeout with -T/--timeout option or check network connectivity.",
@@ -422,7 +424,12 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
         })
       ) {
         if (!command.output && i > 0) console.log(command.separator);
-        await writeObjectToStream(item, command, contextLoader);
+        await writeObjectToStream(
+          item,
+          command.output,
+          command.format,
+          contextLoader,
+        );
         i++;
       }
     } catch (error) {
@@ -493,7 +500,12 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
-      await writeObjectToStream(obj, command, contextLoader);
+      await writeObjectToStream(
+        obj,
+        command.output,
+        command.format,
+        contextLoader,
+      );
       if (i < command.urls.length - 1) {
         console.log(command.separator);
       }
