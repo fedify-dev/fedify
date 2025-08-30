@@ -22,8 +22,8 @@ test("writeObjectToStream - writes Note object with default options", async () =
   });
 
   const contextLoader = await getContextLoader({});
-
   await writeObjectToStream(note, testFile, undefined, contextLoader);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   const content = await readFile(testFile, { encoding: "utf8" });
 
@@ -45,8 +45,8 @@ test("writeObjectToStream - writes Activity object in raw JSON-LD format", async
   });
 
   const contextLoader = await getContextLoader({});
-
   await writeObjectToStream(activity, testFile, "raw", contextLoader);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   // Verify file exists and contains JSON-LD
   const content = await readFile(testFile);
@@ -70,8 +70,8 @@ test("writeObjectToStream - writes object in compact JSON-LD format", async () =
   });
 
   const contextLoader = await getContextLoader({});
-
   await writeObjectToStream(note, testFile, "compact", contextLoader);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   // Verify file exists and contains compacted JSON-LD
   const content = await readFile(testFile);
@@ -93,8 +93,8 @@ test("writeObjectToStream - writes object in expanded JSON-LD format", async () 
   });
 
   const contextLoader = await getContextLoader({});
-
   await writeObjectToStream(note, testFile, "expand", contextLoader);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   const content = await readFile(testFile);
   assertExists(content);
@@ -127,6 +127,7 @@ test("writeObjectToStream - handles empty content properly", async () => {
   const contextLoader = await getContextLoader({});
 
   await writeObjectToStream(note, testFile, undefined, contextLoader);
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   const content = await readFile(testFile);
   assertExists(content);
