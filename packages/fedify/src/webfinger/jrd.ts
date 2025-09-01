@@ -21,7 +21,7 @@ export interface ResourceDescriptor {
   /**
    * Links to other resources.
    */
-  links?: Link[];
+  links?: Array<Link | OStatusSubscribeLink>;
 }
 
 /**
@@ -44,7 +44,7 @@ export interface Link {
   /**
    * A URI pointing to the target resource.
    */
-  href: string;
+  href?: string;
 
   /**
    * Human-readable titles describing the link relation.  If the language is
@@ -56,4 +56,18 @@ export interface Link {
    * Conveys additional information about the link relation.
    */
   properties?: Record<string, string>;
+}
+
+/**
+ * References a link. See also
+ * [OStatus 1.0 Draft 2](https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf)
+ */
+export interface OStatusSubscribeLink {
+  rel: "http://ostatus.org/schema/1.0/subscribe";
+  /**
+   * A URI template (RFC 6570) that can be used to construct URIs by
+   * substituting variables. Used primarily for subscription endpoints
+   * where parameters like account URIs need to be dynamically inserted.
+   */
+  template: string;
 }
