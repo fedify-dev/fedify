@@ -71,3 +71,38 @@ export interface OStatusSubscribeLink {
    */
   template: string;
 }
+
+export function isOStatusSubscribeLink(
+  link: Link | OStatusSubscribeLink,
+): link is OStatusSubscribeLink {
+  if (
+    "template" in link &&
+    link.rel === "http://ostatus.org/schema/1.0/subscribe" &&
+    typeof link.template === "string"
+  ) return true;
+  return false;
+}
+
+isOStatusSubscribeLink.withCondition = (
+  condition: (link: OStatusSubscribeLink) => boolean,
+) =>
+(link: Link | OStatusSubscribeLink): link is OStatusSubscribeLink => {
+  return isOStatusSubscribeLink(link) && condition(link);
+};
+
+export function isLink(
+  link: Link | OStatusSubscribeLink,
+): link is Link {
+  if (
+    "rel" in link &&
+    typeof link.rel === "string"
+  ) return true;
+  return false;
+}
+
+isLink.withCondition = (
+  condition: (link: Link) => boolean,
+) =>
+(link: Link | Link): link is Link => {
+  return isLink(link) && condition(link);
+};

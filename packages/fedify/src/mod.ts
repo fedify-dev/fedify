@@ -48,4 +48,9 @@ export * from "./nodeinfo/mod.ts";
 export * from "./runtime/mod.ts";
 export * from "./sig/mod.ts";
 export * from "./vocab/mod.ts";
-export { lookupWebFinger, type ResourceDescriptor } from "./webfinger/mod.ts";
+export {
+  isLink,
+  isOStatusSubscribeLink,
+  lookupWebFinger,
+  type ResourceDescriptor,
+} from "./webfinger/mod.ts";
