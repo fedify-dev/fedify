@@ -435,7 +435,7 @@ The returned WebFinger document contains links to various resources associated
 with the account, such as profile pages, ActivityPub actor URIs, and more:
 
 ~~~~ typescript twoslash
-import { type Context, isLink } from "@fedify/fedify";
+import { type Context, isLink, isOStatusSubscribeLink } from "@fedify/fedify";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 const webfingerData = await ctx.lookupWebFinger("acct:fedify@hollo.social");
@@ -452,6 +452,16 @@ if (activityPubActorLink?.href) {
   const actor = await ctx.lookupObject(activityPubActorLink.href);
   // Work with the actor...
 }
+
+// Get subscription template URI
+const activityPubSubscribeLink = webfingerData?.links?.find((link) =>
+  isOStatusSubscribeLink(link)
+);
+
+if (activityPubSubscribeLink?.template) {
+  // Work with remote follow URI...
+}
+
 ~~~~
 
 > [!NOTE]
