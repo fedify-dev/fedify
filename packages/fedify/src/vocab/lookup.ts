@@ -7,6 +7,7 @@ import {
   getDocumentLoader,
   type GetUserAgentOptions,
 } from "../runtime/docloader.ts";
+import { isOStatusSubscribeLink } from "../webfinger/jrd.ts";
 import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { toAcctUrl } from "./handle.ts";
 import { getTypeId } from "./type.ts";
@@ -158,10 +159,12 @@ async function lookupObjectInternal(
     if (jrd?.links == null) return null;
     for (const l of jrd.links) {
       if (
+        isOStatusSubscribeLink(l) ||
         l.type !== "application/activity+json" &&
           !l.type?.match(
             /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
-          ) || l.rel !== "self"
+          ) ||
+        l.rel !== "self" || l.href == null
       ) continue;
       try {
         const remoteDoc = await documentLoader(l.href, {

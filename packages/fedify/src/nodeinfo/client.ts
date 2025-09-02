@@ -3,7 +3,7 @@ import {
   getUserAgent,
   type GetUserAgentOptions,
 } from "../runtime/docloader.ts";
-import type { ResourceDescriptor } from "../webfinger/jrd.ts";
+import { isLink, type ResourceDescriptor } from "../webfinger/jrd.ts";
 import { parseSemVer, type SemVer } from "./semver.ts";
 import type {
   InboundService,
@@ -113,15 +113,17 @@ export async function getNodeInfo(
         return undefined;
       }
       const wellKnownRd = await wellKnownResponse.json() as ResourceDescriptor;
-      const link = wellKnownRd?.links?.find((link) =>
-        link != null &&
-        "rel" in link &&
-        (link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.0" ||
-          link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.1") &&
-        "href" in link &&
-        link.href != null
+      const link = wellKnownRd?.links?.find(
+        isLink.withCondition((link) =>
+          link != null &&
+          "rel" in link &&
+          (link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.0" ||
+            link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.1") &&
+          "href" in link &&
+          link.href != null
+        ),
       );
-      if (link == null) {
+      if (link == null || link.href == null) {
         logger.error(
           "Failed to find a NodeInfo document link from {url}: {resourceDescriptor}",
           { url: wellKnownUrl.href, resourceDescriptor: wellKnownRd },

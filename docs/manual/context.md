@@ -435,14 +435,17 @@ The returned WebFinger document contains links to various resources associated
 with the account, such as profile pages, ActivityPub actor URIs, and more:
 
 ~~~~ typescript twoslash
-import { type Context } from "@fedify/fedify";
+import { type Context, isLink } from "@fedify/fedify";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 const webfingerData = await ctx.lookupWebFinger("acct:fedify@hollo.social");
 
 // Find the ActivityPub actor URI
-const activityPubActorLink = webfingerData?.links?.find(link =>
-  link.rel === "self" && link.type === "application/activity+json"
+const activityPubActorLink = webfingerData?.links?.find(
+  isLink.withCondition((link) =>
+    link.rel === "self" &&
+    link.type === "application/activity+json"
+  ),
 );
 
 if (activityPubActorLink?.href) {
