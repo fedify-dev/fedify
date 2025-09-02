@@ -1,11 +1,11 @@
 import { or } from "@optique/core";
 import { run } from "@optique/run";
-import { lookupCommand, runLookup } from "./lookup.ts";
-import { runWebFinger, webFingerCommand } from "./webfinger.ts";
-import { initCommand, runInit } from "./init.ts";
 import { inboxCommand, runInbox } from "./inbox.ts";
+import { initCommand, runInit } from "./init/mod.ts";
+import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
+import { runWebFinger, webFingerCommand } from "./webfinger.ts";
 
 const command = or(
   initCommand,
