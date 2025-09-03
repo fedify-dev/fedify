@@ -3290,11 +3290,12 @@ app.post("/users/:username/posts", async (c) => {
       url,
       post.id,
     );
+    post.url = url;
+    post.uri = url;
     return post;
   })();
   if (post == null) return c.text("Failed to create post", 500);
-  const noteArgs = { identifier: username, id: post.id.toString() };
-  const note = await ctx.getObject(Note, noteArgs);
+  const note = await ctx.lookupObject(post.uri);
   await ctx.sendActivity(
     { identifier: username },
     "followers",
@@ -3310,7 +3311,7 @@ app.post("/users/:username/posts", async (c) => {
 });
 ~~~~
 
-The `getObject()` method returns the ActivityPub object created by the object
+The `lookupObject()` method returns the ActivityPub object created by the object
 dispatcher. Here, it will return a `Note` object. We put that `Note` object in
 the `object` property when creating the `Create` object. We set the `tos`
 (plural of `to`) and `ccs` (plural of `cc`) properties of the activity the same
