@@ -3307,7 +3307,7 @@ app.post("/users/:username/posts", async (c) => {
       ccs: note?.ccIds,
     }),
   );
-  return c.redirect(ctx.getObjectUri(Note, noteArgs).href);
+  return c.redirect(post.url);
 });
 ~~~~
 
