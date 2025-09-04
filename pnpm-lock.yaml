@@ -509,12 +509,18 @@ importers:
       '@optique/run':
         specifier: ^0.3.0
         version: 0.3.0
+      '@std/dotenv':
+        specifier: jsr:^0.225.5
+        version: '@jsr/std__dotenv@0.225.5'
       '@std/fmt/colors':
         specifier: jsr:@std/fmt@^0.224.0/colors
         version: link:jsr:@std/fmt@^0.224.0/colors
       cli-highlight:
         specifier: ^2.1.11
         version: 2.1.11
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
       jimp:
         specifier: ^1.6.0
         version: 1.6.0
@@ -2105,6 +2111,9 @@ packages:
 
   '@jsr/std__bytes@1.0.6':
     resolution: {integrity: sha512-St6yKggjFGhxS52IFLJWvkchRFbAKg2Xh8UxA4S1EGz7GJ2Ui+ssDDldj/w2c8vCxvl6qgR0HaYbKeFJNqujmA==, tarball: https://npm.jsr.io/~/11/@jsr/std__bytes/1.0.6.tgz}
+
+  '@jsr/std__dotenv@0.225.5':
+    resolution: {integrity: sha512-qrBt3wfQgvXbjo+Up6lyzBGxk0IPhDqW9Jx7CJQUQpsxqhoqnBmD8gn0Mt8i+RHHI9uZFCO+FP122ClAC8yljg==, tarball: https://npm.jsr.io/~/11/@jsr/std__dotenv/0.225.5.tgz}
 
   '@jsr/std__fmt@1.0.8':
     resolution: {integrity: sha512-miZHzj9OgjuajrcMKzpqNVwFb9O71UHZzV/FHVq0E0Uwmv/1JqXgmXAoBNPrn+MP0fHT3mMgaZ6XvQO7dam67Q==, tarball: https://npm.jsr.io/~/11/@jsr/std__fmt/1.0.8.tgz}
@@ -3759,6 +3768,10 @@ packages:
     resolution: {integrity: sha512-Tfn1O9sFgAP8DqeMEpt2IacsVTENBpblB3SqLdn0jK2AeX8iyCvbptBc8lyATT9bQ31MsjVwUSQ1g8f4jHOUfw==}
     engines: {node: '>=10'}
 
+  ansi-colors@4.1.3:
+    resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
+    engines: {node: '>=6'}
+
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
     engines: {node: '>=8'}
@@ -4486,6 +4499,10 @@ packages:
   enhanced-resolve@5.18.2:
     resolution: {integrity: sha512-6Jw4sE1maoRJo3q8MsSIn2onJFbLTOjY9hlx4DZXmOKvLRd1Ok2kXmAGXaafL2+ijsJZ1ClYbl/pmqr9+k4iUQ==}
     engines: {node: '>=10.13.0'}
+
+  enquirer@2.4.1:
+    resolution: {integrity: sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ==}
+    engines: {node: '>=8.6'}
 
   entities@4.5.0:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
@@ -8370,6 +8387,8 @@ snapshots:
 
   '@jsr/std__bytes@1.0.6': {}
 
+  '@jsr/std__dotenv@0.225.5': {}
+
   '@jsr/std__fmt@1.0.8': {}
 
   '@jsr/std__fs@1.0.19':
@@ -10189,6 +10208,8 @@ snapshots:
       buffer-more-ints: 1.0.0
       url-parse: 1.5.10
 
+  ansi-colors@4.1.3: {}
+
   ansi-regex@5.0.1: {}
 
   ansi-regex@6.1.0: {}
@@ -10906,6 +10927,11 @@ snapshots:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.2.2
+
+  enquirer@2.4.1:
+    dependencies:
+      ansi-colors: 4.1.3
+      strip-ansi: 6.0.1
 
   entities@4.5.0: {}
 

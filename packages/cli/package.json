@@ -35,18 +35,18 @@
     "denp": ">=2.0.0"
   },
   "dependencies": {
+    "@cross/dir": "jsr:@cross/dir@^1.1.0",
+    "@david/dax": "jsr:@david/dax@^0.43.2",
     "@fedify/fedify": "workspace:",
-    "@optique/core": "^0.3.0",
-    "@optique/run": "^0.3.0",
-    "cli-highlight": "^2.1.11",
-    "jimp": "^1.6.0",
+    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
     "@jimp/core": "^1.6.0",
     "@jimp/wasm-webp": "^1.6.0",
-    "ora": "^8.2.0",
-    "@cross/dir": "jsr:@cross/dir@^1.1.0",
-    "cli-highlight": "^2.1.11",
-    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
+    "@optique/core": "^0.3.0",
+    "@optique/run": "^0.3.0",
+    "@std/dotenv": "jsr:^0.225.5",
     "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors",
-    "@david/dax": "jsr:@david/dax@^0.43.2"
+    "cli-highlight": "^2.1.11",
+    "jimp": "^1.6.0",
+    "ora": "^8.2.0"
   }
 }

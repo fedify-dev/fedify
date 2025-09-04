@@ -1,4 +1,4 @@
-import { stringify } from "@std/dotenv/stringify";
+import { stringify } from "@std/dotenv";
 import * as colors from "@std/fmt/colors";
 import { basename, dirname, join, normalize } from "@std/path";
 import { flow, toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
