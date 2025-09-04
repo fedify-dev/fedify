@@ -53,7 +53,7 @@ export interface MessageQueueDescription {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   imports: Record<string, Record<string, string>>;
-  object: Partial<Record<PackageManager, string>>;
+  object: string;
   denoUnstable?: string[];
   env?: Record<string, string>;
 }
@@ -64,7 +64,7 @@ export interface KvStoreDescription {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   imports: Record<string, Record<string, string>>;
-  object: Partial<Record<PackageManager, string>>;
+  object: string;
   denoUnstable?: string[];
   env?: Record<string, string>;
 }

@@ -11,13 +11,7 @@
       },
       "ioredis": { "Redis": "Redis" }
     },
-    "object": {
-      "deno": "new RedisMessageQueue(() => new Redis(Deno.env.get(\"REDIS_URL\")))",
-      "pnpm": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
-      "yarn": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
-      "npm": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
-      "bun": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))"
-    },
+    "object": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",,
     "env": {
       "REDIS_URL": "redis://localhost:6379"
     }
@@ -34,13 +28,7 @@
       },
       "postgres": { "default": "postgres" }
     },
-    "object": {
-      "deno": "new PostgresMessageQueue(postgres(Deno.env.get(\"DATABASE_URL\")))",
-      "pnpm": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
-      "yarn": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
-      "npm": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
-      "bun": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))"
-    },
+    "object": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
     "env": {
       "DATABASE_URL": "postgres://postgres@localhost:5432/postgres"
     }
@@ -60,13 +48,7 @@
       },
       "amqplib": { "connect": "connect" }
     },
-    "object": {
-      "deno": "new AmqpMessageQueue(await connect(Deno.env.get(\"AMQP_URL\")))",
-      "pnpm": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
-      "yarn": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
-      "npm": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
-      "bun": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))"
-    },
+    "object": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
     "env": {
       "AMQP_URL": "amqp://localhost"
     }
@@ -77,7 +59,7 @@
     "imports": {
       "@fedify/denokv": { "DenoKvMessageQueue": "DenoKvMessageQueue" }
     },
-    "object": { "deno": "new DenoKvMessageQueue(await Deno.openKv())" },
+    "object": "new DenoKvMessageQueue(await Deno.openKv())",
     "denoUnstable": ["kv"]
   }
 }

@@ -464,8 +464,12 @@ const readFederation = <
   readTemplate("defaults/federation.ts")
     .replace(/\/\* imports \*\//, imports)
     .replace(/\/\* logger \*\//, JSON.stringify(projectName))
-    .replace(/\/\* kv \*\//, kv.object[packageManger]!)
-    .replace(/\/\* queue \*\//, mq.object[packageManger]!);
+    .replace(/\/\* kv \*\//, convertEnv(kv.object, packageManger))
+    .replace(/\/\* queue \*\//, convertEnv(mq.object, packageManger));
+const convertEnv = (obj: string, pm: PackageManager) =>
+  pm === "deno" && /process\.env\.(\w+)/.test(obj)
+    ? obj.replace(/process\.env\.(\w+)/, (_, g1) => `Deno.env.get("${g1}")`)
+    : obj;
 
 const readLogging = <T extends { projectName: string }>({ projectName }: T) =>
   readTemplate("defaults/logging.ts")
