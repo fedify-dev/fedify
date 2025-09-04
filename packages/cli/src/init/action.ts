@@ -1,0 +1,481 @@
+import { stringify } from "@std/dotenv/stringify";
+import * as colors from "@std/fmt/colors";
+import { basename, dirname, join, normalize } from "@std/path";
+import { flow, toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
+import type {
+  KvStoreDescription,
+  MessageQueueDescription,
+  PackageManager,
+  Runtime,
+  WebFrameworkInitializer,
+} from "./types.ts";
+import {
+  addDependencies,
+  checkDirectoryEmpty,
+  displayFileContent,
+  drawDinosaur,
+  kvStores,
+  logger,
+  logOptions,
+  mergeVscSettings,
+  messageQueues,
+  PACKAGE_VERSION,
+  readTemplate,
+  rewriteJsonFile,
+  validateOptions,
+} from "./lib.ts";
+import webFrameworks from "./webframeworks.ts";
+import type { InitCommand } from "./command.ts";
+import askOptions from "./ask.ts";
+import { exists } from "@std/fs";
+
+export default async function main(options: InitCommand) {
+  drawDinosaur();
+  const state = flow(
+    askOptions,
+    validateOptions,
+  )(options);
+  logOptions(state);
+  const {
+    dir,
+    runtime,
+    packageManager,
+    webFramework,
+    kvStore,
+    messageQueue,
+    dryRun,
+  } = state;
+  logger.debug(
+    "Runtime: {runtime}; package manager: {packageManager}; " +
+      "web framework: {webFramework}; key–value store: {kvStore}; " +
+      "message queue: {messageQueue}",
+    {
+      runtime,
+      packageManager,
+      webFramework,
+      kvStore,
+      messageQueue,
+    },
+  );
+  const projectName = basename(
+    await exists(dir) ? await Deno.realPath(dir) : normalize(dir),
+  );
+
+  const initializer = webFrameworks[webFramework].init(
+    projectName,
+    runtime,
+    packageManager,
+  );
+
+  const kv = kvStores[kvStore];
+  const mq = messageQueues[messageQueue];
+  const env = { ...kv.env, ...mq.env };
+  noticeDryRun({ dryRun });
+  await checkDirectory({ dir, dryRun });
+  await precommand({ initializer, dir, dryRun });
+  await packageJson({
+    runtime,
+    dir,
+    dryRun,
+  });
+  await installDependencies({
+    runtime,
+    packageManager,
+    dir,
+    dryRun,
+    initializer,
+    kv,
+    mq,
+  });
+  await rewriteJsonFiles({
+    dir,
+    dryRun,
+    runtime,
+    initializer,
+    kv,
+    mq,
+    env,
+    projectName,
+  });
+  configEnv({ env });
+  howToRun({ initializer });
+}
+function noticeDryRun<T extends { dryRun: boolean }>({ dryRun }: T) {
+  if (dryRun) {
+    console.log(
+      colors.bold(
+        colors.yellow("🔍 DRY RUN MODE - No files will be created\n"),
+      ),
+    );
+  }
+}
+
+async function checkDirectory<T extends { dir: string; dryRun: boolean }>(
+  { dir, dryRun }: T,
+) {
+  if (dryRun) {
+    await checkDirectoryEmpty(dir);
+  } else {
+    await Deno.mkdir(dir, { recursive: true });
+    await checkDirectoryEmpty(dir);
+  }
+}
+
+async function installDependencies<
+  T extends {
+    runtime: Runtime;
+    packageManager: PackageManager;
+    dir: string;
+    dryRun: boolean;
+    initializer: WebFrameworkInitializer;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+  },
+>({
+  runtime,
+  packageManager,
+  dir,
+  dryRun,
+  initializer,
+  kv,
+  mq,
+}: T): Promise<void> {
+  const dependencies: Record<string, string> = {
+    "@fedify/fedify": PACKAGE_VERSION,
+    "@logtape/logtape": "^0.8.2",
+    ...initializer.dependencies,
+    ...kv?.dependencies,
+    ...mq?.dependencies,
+  };
+  if (dryRun) {
+    const deps = Object.entries(dependencies)
+      .map(([name, version]) => `${name}@${version}`)
+      .join("\n");
+    if (deps) {
+      console.log(colors.bold(colors.cyan("📦 Would install dependencies:")));
+      console.log(`${deps}\n`);
+    }
+  } else {
+    await addDependencies(
+      runtime,
+      packageManager,
+      dir,
+      dependencies,
+    );
+  }
+  if (runtime !== "deno") {
+    const devDependencies: Record<string, string> = {
+      "@biomejs/biome": "^1.8.3",
+      ...initializer.devDependencies,
+      ...kv?.devDependencies,
+      ...mq?.devDependencies,
+    };
+    if (dryRun) {
+      const devDeps = Object.entries(devDependencies)
+        .map(([name, version]) => `${name}@${version}`)
+        .join("\n");
+      if (devDeps) {
+        console.log(
+          colors.bold(colors.cyan("📦 Would install dev dependencies:")),
+        );
+        console.log(`${devDeps}\n`);
+      }
+    } else {
+      await addDependencies(
+        runtime,
+        packageManager,
+        dir,
+        devDependencies,
+        true,
+      );
+    }
+  }
+}
+
+async function rewriteJsonFiles<
+  T extends {
+    dir: string;
+    dryRun: boolean;
+    runtime: Runtime;
+    initializer: WebFrameworkInitializer;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+    env: Record<string, string>;
+    projectName: string;
+  },
+>(
+  { dir, dryRun, runtime, initializer, kv, mq, env, projectName }: T,
+): Promise<void> {
+  const importStatements = getImports({ kv, mq });
+  const federation = readFederation({
+    imports: importStatements,
+    projectName,
+    kv,
+    mq,
+    runtime,
+  });
+  const logging = readLogging({ projectName });
+  const files = {
+    [initializer.federationFile]: federation,
+    [initializer.loggingFile]: logging,
+    ".env": stringify(env),
+    ...initializer.files,
+  };
+  if (dryRun) {
+    console.log(colors.bold(colors.green("📄 Would create files:\n")));
+    for (const [filename, content] of Object.entries(files)) {
+      const path = join(dir, filename);
+      displayFileContent(path, content);
+    }
+  } else {
+    for (const [filename, content] of Object.entries(files)) {
+      const path = join(dir, filename);
+      const dirName = dirname(path);
+      await Deno.mkdir(dirName, { recursive: true });
+      await Deno.writeTextFile(path, content);
+    }
+  }
+  if (runtime === "deno") {
+    if (dryRun) {
+      console.log(
+        colors.bold(colors.green("Would create/update JSON files:\n")),
+      );
+    }
+    await rewriteJsonFile(
+      join(dir, "deno.json"),
+      {},
+      (cfg) => ({
+        ...cfg,
+        ...initializer.compilerOptions == null ? {} : {
+          compilerOptions: {
+            ...cfg?.compilerOptions,
+            ...initializer.compilerOptions,
+          },
+        },
+        unstable: [
+          "temporal",
+          ...kv.denoUnstable ?? [],
+          ...mq.denoUnstable ?? [],
+        ],
+        tasks: { ...cfg.tasks, ...initializer.tasks },
+      }),
+      dryRun,
+    );
+    await rewriteJsonFile(
+      join(dir, ".vscode", "settings.json"),
+      {},
+      mergeVscSettings,
+      dryRun,
+    );
+    await rewriteJsonFile(
+      join(dir, ".vscode", "extensions.json"),
+      {},
+      (vsCodeExtensions) => ({
+        recommendations: uniq([
+          "denoland.vscode-deno",
+          ...vsCodeExtensions.recommendations ?? [],
+        ]),
+        ...vsCodeExtensions,
+      }),
+      dryRun,
+    );
+  } else {
+    if (dryRun) {
+      console.log(
+        colors.bold(colors.green("Would create/update JSON files:\n")),
+      );
+    }
+    await rewriteJsonFile(
+      join(dir, "package.json"),
+      {},
+      (cfg) => ({
+        type: "module",
+        ...cfg,
+        scripts: { ...cfg.scripts, ...initializer.tasks },
+      }),
+      dryRun,
+    );
+    if (initializer.compilerOptions != null) {
+      await rewriteJsonFile(
+        join(dir, "tsconfig.json"),
+        {},
+        (cfg) => ({
+          ...cfg,
+          compilerOptions: {
+            ...cfg?.compilerOptions,
+            ...initializer.compilerOptions,
+          },
+        }),
+        dryRun,
+      );
+    }
+    await rewriteJsonFile(
+      join(dir, ".vscode", "settings.json"),
+      {},
+      mergeVscSettings,
+      dryRun,
+    );
+    await rewriteJsonFile(
+      join(dir, ".vscode", "extensions.json"),
+      {},
+      (vsCodeExtensions) => ({
+        recommendations: uniq([
+          "biomejs.biome",
+          ...vsCodeExtensions.recommendations ?? [],
+        ]),
+        ...vsCodeExtensions,
+      }),
+      dryRun,
+    );
+    await rewriteJsonFile(
+      join(dir, "biome.json"),
+      {},
+      (cfg) => ({
+        "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
+        ...cfg,
+        organizeImports: {
+          ...cfg.organizeImports,
+          enabled: true,
+        },
+        formatter: {
+          ...cfg.formatter,
+          enabled: true,
+          indentStyle: "space",
+          indentWidth: 2,
+        },
+        linter: {
+          ...cfg.linter,
+          enabled: true,
+          rules: { recommended: true },
+        },
+      }),
+      dryRun,
+    );
+  }
+}
+const getImports = <
+  T extends { kv: KvStoreDescription; mq: MessageQueueDescription },
+>({ kv, mq }: T) =>
+  Object.entries(toMerged(kv.imports, mq.imports))
+    .map((
+      [module, { "default": defaultImport = "", ...imports }],
+    ) => [
+      module,
+      defaultImport,
+      Object.entries(imports).map(
+        ([name, alias]) => name === alias ? name : `${name} as ${alias}`,
+      )
+        .join(", "),
+    ]).map(([module, defaultImport, namedImports]) =>
+      `import ${
+        [defaultImport, namedImports.length > 0 ? `{ ${namedImports} }` : ""]
+          .filter((x) => x.length > 0)
+          .join(", ")
+      }
+      } from ${JSON.stringify(module)};`
+    )
+    .join("\n");
+
+function configEnv<T extends { env: Record<string, string> }>(
+  { env }: T,
+): void {
+  if (Object.keys(env).length > 0) {
+    console.error(
+      `Note that you probably want to edit the ${
+        colors.bold(colors.blue(".env"))
+      } file.  It currently contains the following values:\n`,
+    );
+    for (const key in env) {
+      const value = stringify({ _: env[key] }).substring(2);
+      console.error(
+        `  ${colors.bold(colors.green(key))}${colors.gray("=")}${value}`,
+      );
+    }
+    console.error();
+  }
+}
+function howToRun<T extends { initializer: WebFrameworkInitializer }>(
+  { initializer: { instruction, federationFile } }: T,
+) {
+  console.error(instruction);
+  console.error(`\
+Start by editing the ${colors.bold(colors.blue(federationFile))} \
+file to define your federation!
+`);
+}
+
+async function precommand<
+  T extends {
+    initializer: WebFrameworkInitializer;
+    dir: string;
+    dryRun: boolean;
+  },
+>({
+  initializer: { command },
+  dir,
+  dryRun,
+}: T) {
+  if (command != null) {
+    if (dryRun) {
+      console.log(colors.bold(colors.cyan("📦 Would run command:")));
+      console.log(
+        `  ${[command[0], ...command.slice(1)].join(" ")}\n`,
+      );
+    } else {
+      const cmd = new Deno.Command(command[0], {
+        args: command.slice(1),
+        cwd: dir,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      const result = await cmd.output();
+      if (!result.success) {
+        console.error("Failed to initialize the project.");
+        Deno.exit(1);
+      }
+    }
+  }
+}
+
+async function packageJson<
+  T extends {
+    runtime: Runtime;
+    dir: string;
+    dryRun: boolean;
+  },
+>({ runtime, dir, dryRun }: T): Promise<void> {
+  if (runtime !== "deno") {
+    const packageJsonPath = join(dir, "package.json");
+    if (!dryRun) {
+      try {
+        await Deno.stat(packageJsonPath);
+      } catch (e) {
+        if (e instanceof Deno.errors.NotFound) {
+          await Deno.writeTextFile(packageJsonPath, "{}");
+        } else throw e;
+      }
+    }
+  }
+}
+
+const readFederation = <
+  T extends {
+    imports: string;
+    projectName: string;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+    runtime: Runtime;
+  },
+>(
+  { imports, projectName, kv, mq, runtime }: T,
+) =>
+  readTemplate("defaults/federation.ts")
+    .replace(/\/\* imports \*\//, imports)
+    .replace(/\/\* logger \*\//, JSON.stringify(projectName))
+    .replace(/\/\* kv \*\//, kv.object[runtime]!)
+    .replace(/\/\* queue \*\//, mq.object[runtime]!);
+
+const readLogging = <T extends { projectName: string }>({ projectName }: T) =>
+  readTemplate("defaults/logging.ts")
+    .replace(/\/\* project name \*\//, JSON.stringify(projectName));

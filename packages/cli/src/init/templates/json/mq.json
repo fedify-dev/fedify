@@ -1,0 +1,77 @@
+{
+  "redis": {
+    "label": "Redis",
+    "runtimes": ["deno", "node", "bun"],
+    "dependencies": {
+      "npm:ioredis": "^5.4.1"
+    },
+    "imports": {
+      "@fedify/redis": {
+        "RedisMessageQueue": "RedisMessageQueue"
+      },
+      "ioredis": { "Redis": "Redis" }
+    },
+    "object": {
+      "deno": "new RedisMessageQueue(() => new Redis(Deno.env.get(\"REDIS_URL\")))",
+      "node": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
+      "bun": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))"
+    },
+    "env": {
+      "REDIS_URL": "redis://localhost:6379"
+    }
+  },
+  "postgres": {
+    "label": "PostgreSQL",
+    "runtimes": ["deno", "node", "bun"],
+    "dependencies": {
+      "npm:postgres": "^3.4.5"
+    },
+    "imports": {
+      "@fedify/postgres": {
+        "PostgresMessageQueue": "PostgresMessageQueue"
+      },
+      "postgres": { "default": "postgres" }
+    },
+    "object": {
+      "deno": "new PostgresMessageQueue(postgres(Deno.env.get(\"DATABASE_URL\")))",
+      "node": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
+      "bun": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))"
+    },
+    "env": {
+      "DATABASE_URL": "postgres://postgres@localhost:5432/postgres"
+    }
+  },
+  "amqp": {
+    "label": "AMQP (e.g., RabbitMQ)",
+    "runtimes": ["deno", "node", "bun"],
+    "dependencies": {
+      "npm:amqplib": "^0.10.4"
+    },
+    "devDependencies": {
+      "npm:@types/amqplib": "^0.10.5"
+    },
+    "imports": {
+      "@fedify/amqp": {
+        "AmqpMessageQueue": "AmqpMessageQueue"
+      },
+      "amqplib": { "connect": "connect" }
+    },
+    "object": {
+      "deno": "new AmqpMessageQueue(await connect(Deno.env.get(\"AMQP_URL\")))",
+      "node": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
+      "bun": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))"
+    },
+    "env": {
+      "AMQP_URL": "amqp://localhost"
+    }
+  },
+  "denokv": {
+    "label": "Deno KV",
+    "runtimes": ["deno"],
+    "imports": {
+      "@fedify/denokv": { "DenoKvMessageQueue": "DenoKvMessageQueue" }
+    },
+    "object": { "deno": "new DenoKvMessageQueue(await Deno.openKv())" },
+    "denoUnstable": ["kv"]
+  }
+}

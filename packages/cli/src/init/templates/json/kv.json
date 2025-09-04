@@ -1,0 +1,47 @@
+{
+  "redis": {
+    "label": "Redis",
+    "runtimes": ["deno", "node", "bun"],
+    "dependencies": {
+      "npm:ioredis": "^5.4.1"
+    },
+    "imports": {
+      "@fedify/redis": { "RedisKvStore": "RedisKvStore" },
+      "ioredis": { "Redis": "Redis" }
+    },
+    "object": {
+      "deno": "new RedisKvStore(new Redis(Deno.env.get(\"REDIS_URL\")))",
+      "node": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
+      "bun": "new RedisKvStore(new Redis(process.env.REDIS_URL))"
+    },
+    "env": {
+      "REDIS_URL": "redis://localhost:6379"
+    }
+  },
+  "postgres": {
+    "label": "PostgreSQL",
+    "runtimes": ["deno", "node", "bun"],
+    "dependencies": {
+      "npm:postgres": "^3.4.5"
+    },
+    "imports": {
+      "@fedify/postgres": { "PostgresKvStore": "PostgresKvStore" },
+      "postgres": { "default": "postgres" }
+    },
+    "object": {
+      "deno": "new PostgresKvStore(postgres(Deno.env.get(\"DATABASE_URL\")))",
+      "node": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
+      "bun": "new PostgresKvStore(postgres(process.env.DATABASE_URL))"
+    },
+    "env": {
+      "DATABASE_URL": "postgres://postgres@localhost:5432/postgres"
+    }
+  },
+  "denokv": {
+    "label": "Deno KV",
+    "runtimes": ["deno"],
+    "imports": { "@fedify/denokv": { "DenoKvStore": "DenoKvStore" } },
+    "object": { "deno": "new DenoKvStore(await Deno.openKv())" },
+    "denoUnstable": ["kv"]
+  }
+}

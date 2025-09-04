@@ -16,9 +16,8 @@ import {
   RUNTIME,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { join } from "npm:@fxts/core@^1.15.0";
 
-const joinSep = join(" | ");
+const joinSep = (str: readonly string[]) => str.join(" | ");
 const webFramework = option(
   "-w",
   "--web-framework",
