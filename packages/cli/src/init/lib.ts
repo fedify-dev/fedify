@@ -5,7 +5,6 @@ import type {
   MessageQueues,
   PackageManager,
   PackageManagerDescription,
-  Runtime,
   RuntimeDescription,
 } from "./types.ts";
 import kv from "./templates/json/kv.json" with { type: "json" };
@@ -51,11 +50,12 @@ ${d("                   ")}  ${f("                      |___/")}
 }
 export const logOptions: (options: Required<InitCommand>) => void = (options) =>
   logger.debug(
-    "Runtime: {runtime}; package manager: {packageManager}; " +
+    "Package manager: {packageManager}; " +
       "web framework: {webFramework}; key–value store: {kvStore}; " +
       "message queue: {messageQueue}",
     options,
   );
+
 export function validateOptions(
   options: Required<InitCommand>,
 ): Required<InitCommand> {
@@ -64,26 +64,15 @@ export function validateOptions(
       webFramework,
       kvStore,
       messageQueue,
-      runtime,
       packageManager,
     } = options;
-    const wfDesc = webFrameworks[webFramework];
-    const kvDesc = kvStores[kvStore];
-    const mqDesc = messageQueues[messageQueue];
 
     [
-      validateRuntimeWith(wfDesc, "framework"),
-      validateRuntimeWith(kvDesc, "store"),
-      validateRuntimeWith(mqDesc, "message queue"),
-    ].map((f) => f(runtime));
-    if (!runtimeAvailabilities[runtime]) {
-      throw new Error(
-        `The ${
-          runtimes[runtime].label
-        } runtime is not available on this system.`,
-      );
-    }
-    if (runtime === "node" && !packageManagerLocations[packageManager]) {
+      validatePackageMangerWith(webFrameworks[webFramework], "framework"),
+      validatePackageMangerWith(kvStores[kvStore], "kv store"),
+      validatePackageMangerWith(messageQueues[messageQueue], "message queue"),
+    ].map((f) => f(packageManager));
+    if (!packageManagerLocations[packageManager]) {
       throw new Error(`The ${packageManager} is not available on this system.`);
     }
     return options;
@@ -121,6 +110,16 @@ const packageManagers: Record<
   PackageManager,
   PackageManagerDescription
 > = {
+  deno: {
+    label: "deno",
+    checkCommand: ["deno", "--version"],
+    outputPattern: /^\d+\.\d+\.\d+$/,
+  },
+  bun: {
+    label: "bun",
+    checkCommand: ["bun", "--version"],
+    outputPattern: /^\d+\.\d+\.\d+$/,
+  },
   npm: {
     label: "npm",
     checkCommand: ["npm", "--version"],
@@ -137,7 +136,7 @@ const packageManagers: Record<
     outputPattern: /^\d+\.\d+\.\d+$/,
   },
 };
-const runtimes: Record<Runtime, RuntimeDescription> = {
+const runtimes: Record<PackageManager, RuntimeDescription> = {
   deno: {
     label: "Deno",
     checkCommand: ["deno", "--version"],
@@ -148,32 +147,45 @@ const runtimes: Record<Runtime, RuntimeDescription> = {
     checkCommand: ["bun", "--version"],
     outputPattern: /^\d+\.\d+\.\d+$/,
   },
-  node: {
+  pnpm: {
+    label: "Node.js",
+    checkCommand: ["node", "--version"],
+    outputPattern: /^v\d+\.\d+\.\d+$/,
+  },
+  yarn: {
+    label: "Node.js",
+    checkCommand: ["node", "--version"],
+    outputPattern: /^v\d+\.\d+\.\d+$/,
+  },
+  npm: {
     label: "Node.js",
     checkCommand: ["node", "--version"],
     outputPattern: /^v\d+\.\d+\.\d+$/,
   },
 };
 
-export const validateRuntimeWith =
-  (desc: { runtimes: readonly string[]; label: string }, kind: string) =>
-  (runtime: string) => {
-    if (!desc.runtimes.includes(runtime)) {
-      throw new Error(
-        `The ${desc.label} ${kind} is not available on the ${runtime} runtime.`,
-      );
-    }
-  };
+export const validatePackageMangerWith = (
+  desc: { packageManagers: readonly PackageManager[]; label: string },
+  kind: string,
+) =>
+(pm: PackageManager) => {
+  if (!desc.packageManagers.includes(pm)) {
+    throw new Error(
+      `The ${desc.label} ${kind} is not available on the ${
+        runtimes[pm].label
+      } runtime.`,
+    );
+  }
+};
 export const readTemplate: (path: string) => string = (path) =>
   Deno.readTextFileSync(join(".", "templates", ...path.split("/")));
 
 export const getInstruction: (
-  runtime: Runtime,
   packageManager: PackageManager,
-) => string = (rt, pm) => `
+) => string = (pm) => `
 To start the server, run the following command:
 
-  ${getDevCommand(rt, pm)}
+  ${getDevCommand(pm)}
 
 Then, try look up an actor from your server:
 
@@ -182,27 +194,16 @@ Then, try look up an actor from your server:
 `;
 export const mergeVscSettings = curry(toMerged)(vscodeSettings);
 
-const getDevCommand = (rt: Runtime, pm: PackageManager) =>
+const getDevCommand = (pm: PackageManager) =>
   colors.bold(
     colors.green(
-      rt === "deno"
+      pm === "deno"
         ? "deno task dev"
-        : rt === "bun"
+        : pm === "bun"
         ? "bun dev"
         : `${pm} run dev`,
     ),
   );
-const runtimeAvailabilities: Record<Runtime, boolean> = Object
-  .fromEntries(
-    await Promise.all(
-      (Object.keys(runtimes) as Runtime[])
-        .map(async (r) => [r, await isRuntimeAvailable(r)]),
-    ),
-  );
-
-function isRuntimeAvailable(runtime: Runtime): Promise<boolean> {
-  return isCommandAvailable(runtimes[runtime]);
-}
 
 async function isCommandAvailable(
   { checkCommand, outputPattern }: {
@@ -235,7 +236,6 @@ async function isCommandAvailable(
 }
 
 export async function addDependencies(
-  runtime: Runtime,
   pm: PackageManager,
   dir: string,
   dependencies: Record<string, string>,
@@ -244,25 +244,25 @@ export async function addDependencies(
   const deps = Object.entries(dependencies)
     .map(([name, version]) =>
       `${
-        runtime !== "deno" && name.startsWith("npm:")
+        pm !== "deno" && name.startsWith("npm:")
           ? name.substring(4)
-          : runtime === "deno" && !name.startsWith("npm:")
+          : pm === "deno" && !name.startsWith("npm:")
           ? `jsr:${name}`
           : name
       }@${
-        runtime !== "deno" && version.includes("+")
+        pm !== "deno" && version.includes("+")
           ? version.substring(0, version.indexOf("+"))
           : version
       }`
     );
   if (deps.length < 1) return;
   const cmd = new Deno.Command(
-    runtime === "node" ? (packageManagerLocations[pm] ?? pm) : runtime,
+    pm,
     {
       args: [
         "add",
         ...(dev
-          ? [runtime === "bun" || pm === "yarn" ? "--dev" : "--save-dev"]
+          ? [pm === "bun" || pm === "yarn" ? "--dev" : "--save-dev"]
           : []),
         ...uniq(deps),
       ],
@@ -327,18 +327,35 @@ export const checkDirectoryEmpty = async (path: string) => {
   }
 };
 export const getNextInitCommand = (
-  rt: Runtime,
   pm: PackageManager,
 ): string[] => [
-  ...createNextAppCommand(rt, pm),
+  ...createNextAppCommand(pm),
   ".",
   "--ts",
   "--app",
   "--skip-install",
 ];
-const createNextAppCommand = (rt: Runtime, pm: PackageManager): string[] =>
-  rt === "node"
-    ? pm === "npm" ? ["npx", "create-next-app"] : [pm, "dlx", "create-next-app"]
-    : rt === "bun"
+const createNextAppCommand = (pm: PackageManager): string[] =>
+  pm === "deno"
+    ? ["deno", "run", "-A", "npm:create-next-app@latest"]
+    : pm === "bun"
     ? ["bun", "create", "next-app"]
-    : ["deno", "run", "-A", "npm:create-next-app@latest"];
+    : pm === "npm"
+    ? ["npx", "create-next-app"]
+    : [pm, "dlx", "create-next-app"];
+export const getNitroInitCommand = (
+  pm: PackageManager,
+): string[] => [
+  ...createNitroAppCommand(pm),
+  pm === "deno" ? "npm:giget@latest" : "giget@latest",
+  "nitro",
+  ".",
+];
+const createNitroAppCommand = (pm: PackageManager): string[] =>
+  pm === "deno"
+    ? ["deno", "run", "-A"]
+    : pm === "bun"
+    ? ["bunx"]
+    : pm === "npm"
+    ? ["npx"]
+    : [pm, "dlx"];

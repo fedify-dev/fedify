@@ -6,7 +6,6 @@ import type {
   KvStoreDescription,
   MessageQueueDescription,
   PackageManager,
-  Runtime,
   WebFrameworkInitializer,
 } from "./types.ts";
 import {
@@ -38,7 +37,6 @@ export default async function main(options: InitCommand) {
   logOptions(state);
   const {
     dir,
-    runtime,
     packageManager,
     webFramework,
     kvStore,
@@ -46,11 +44,10 @@ export default async function main(options: InitCommand) {
     dryRun,
   } = state;
   logger.debug(
-    "Runtime: {runtime}; package manager: {packageManager}; " +
+    "Package manager: {packageManager}; " +
       "web framework: {webFramework}; key–value store: {kvStore}; " +
       "message queue: {messageQueue}",
     {
-      runtime,
       packageManager,
       webFramework,
       kvStore,
@@ -63,7 +60,6 @@ export default async function main(options: InitCommand) {
 
   const initializer = webFrameworks[webFramework].init(
     projectName,
-    runtime,
     packageManager,
   );
 
@@ -74,12 +70,11 @@ export default async function main(options: InitCommand) {
   await checkDirectory({ dir, dryRun });
   await precommand({ initializer, dir, dryRun });
   await packageJson({
-    runtime,
+    packageManager,
     dir,
     dryRun,
   });
   await installDependencies({
-    runtime,
     packageManager,
     dir,
     dryRun,
@@ -90,7 +85,7 @@ export default async function main(options: InitCommand) {
   await rewriteJsonFiles({
     dir,
     dryRun,
-    runtime,
+    packageManger,
     initializer,
     kv,
     mq,
@@ -123,7 +118,6 @@ async function checkDirectory<T extends { dir: string; dryRun: boolean }>(
 
 async function installDependencies<
   T extends {
-    runtime: Runtime;
     packageManager: PackageManager;
     dir: string;
     dryRun: boolean;
@@ -132,8 +126,7 @@ async function installDependencies<
     mq: MessageQueueDescription;
   },
 >({
-  runtime,
-  packageManager,
+  packageManager: pm,
   dir,
   dryRun,
   initializer,
@@ -157,13 +150,12 @@ async function installDependencies<
     }
   } else {
     await addDependencies(
-      runtime,
-      packageManager,
+      pm,
       dir,
       dependencies,
     );
   }
-  if (runtime !== "deno") {
+  if (pm !== "deno") {
     const devDependencies: Record<string, string> = {
       "@biomejs/biome": "^1.8.3",
       ...initializer.devDependencies,
@@ -182,8 +174,7 @@ async function installDependencies<
       }
     } else {
       await addDependencies(
-        runtime,
-        packageManager,
+        pm,
         dir,
         devDependencies,
         true,
@@ -196,7 +187,7 @@ async function rewriteJsonFiles<
   T extends {
     dir: string;
     dryRun: boolean;
-    runtime: Runtime;
+    packageManger: PackageManager;
     initializer: WebFrameworkInitializer;
     kv: KvStoreDescription;
     mq: MessageQueueDescription;
@@ -204,7 +195,7 @@ async function rewriteJsonFiles<
     projectName: string;
   },
 >(
-  { dir, dryRun, runtime, initializer, kv, mq, env, projectName }: T,
+  { dir, dryRun, packageManger, initializer, kv, mq, env, projectName }: T,
 ): Promise<void> {
   const importStatements = getImports({ kv, mq });
   const federation = readFederation({
@@ -212,7 +203,7 @@ async function rewriteJsonFiles<
     projectName,
     kv,
     mq,
-    runtime,
+    packageManger,
   });
   const logging = readLogging({ projectName });
   const files = {
@@ -235,7 +226,7 @@ async function rewriteJsonFiles<
       await Deno.writeTextFile(path, content);
     }
   }
-  if (runtime === "deno") {
+  if (packageManger === "deno") {
     if (dryRun) {
       console.log(
         colors.bold(colors.green("Would create/update JSON files:\n")),
@@ -440,12 +431,12 @@ async function precommand<
 
 async function packageJson<
   T extends {
-    runtime: Runtime;
+    packageManager: PackageManager;
     dir: string;
     dryRun: boolean;
   },
->({ runtime, dir, dryRun }: T): Promise<void> {
-  if (runtime !== "deno") {
+>({ packageManager, dir, dryRun }: T): Promise<void> {
+  if (packageManager !== "deno") {
     const packageJsonPath = join(dir, "package.json");
     if (!dryRun) {
       try {
@@ -465,16 +456,16 @@ const readFederation = <
     projectName: string;
     kv: KvStoreDescription;
     mq: MessageQueueDescription;
-    runtime: Runtime;
+    packageManger: PackageManager;
   },
 >(
-  { imports, projectName, kv, mq, runtime }: T,
+  { imports, projectName, kv, mq, packageManger }: T,
 ) =>
   readTemplate("defaults/federation.ts")
     .replace(/\/\* imports \*\//, imports)
     .replace(/\/\* logger \*\//, JSON.stringify(projectName))
-    .replace(/\/\* kv \*\//, kv.object[runtime]!)
-    .replace(/\/\* queue \*\//, mq.object[runtime]!);
+    .replace(/\/\* kv \*\//, kv.object[packageManger]!)
+    .replace(/\/\* queue \*\//, mq.object[packageManger]!);
 
 const readLogging = <T extends { projectName: string }>({ projectName }: T) =>
   readTemplate("defaults/logging.ts")

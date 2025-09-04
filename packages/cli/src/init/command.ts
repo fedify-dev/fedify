@@ -13,7 +13,6 @@ import {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
-  RUNTIME,
   WEB_FRAMEWORK,
 } from "./const.ts";
 
@@ -24,11 +23,6 @@ const webFramework = option(
   choice(WEB_FRAMEWORK, {
     metavar: `WEB_FRAMEWORK: ${joinSep(WEB_FRAMEWORK)}`,
   }),
-);
-const runtime = option(
-  "-r",
-  "--runtime",
-  choice(RUNTIME, { metavar: `RUNTIME: ${joinSep(RUNTIME)}` }),
 );
 const packageManager = option(
   "-p",
@@ -56,7 +50,6 @@ export const initCommand = command(
     command: constant("init"),
     dir: argument(path({ metavar: "DIRECTORY" })),
     webFramework,
-    runtime,
     packageManager,
     kvStore,
     messageQueue,

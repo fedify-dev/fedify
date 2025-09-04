@@ -1,7 +1,7 @@
 {
   "redis": {
     "label": "Redis",
-    "runtimes": ["deno", "node", "bun"],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:ioredis": "^5.4.1"
     },
@@ -11,7 +11,9 @@
     },
     "object": {
       "deno": "new RedisKvStore(new Redis(Deno.env.get(\"REDIS_URL\")))",
-      "node": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
+      "pnpm": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
+      "yarn": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
+      "npm": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
       "bun": "new RedisKvStore(new Redis(process.env.REDIS_URL))"
     },
     "env": {
@@ -20,7 +22,7 @@
   },
   "postgres": {
     "label": "PostgreSQL",
-    "runtimes": ["deno", "node", "bun"],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:postgres": "^3.4.5"
     },
@@ -30,7 +32,9 @@
     },
     "object": {
       "deno": "new PostgresKvStore(postgres(Deno.env.get(\"DATABASE_URL\")))",
-      "node": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
+      "pnpm": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
+      "yarn": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
+      "npm": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
       "bun": "new PostgresKvStore(postgres(process.env.DATABASE_URL))"
     },
     "env": {
@@ -39,7 +43,7 @@
   },
   "denokv": {
     "label": "Deno KV",
-    "runtimes": ["deno"],
+    "packageManagers": ["deno"],
     "imports": { "@fedify/denokv": { "DenoKvStore": "DenoKvStore" } },
     "object": { "deno": "new DenoKvStore(await Deno.openKv())" },
     "denoUnstable": ["kv"]

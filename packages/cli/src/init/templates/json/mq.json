@@ -1,7 +1,7 @@
 {
   "redis": {
     "label": "Redis",
-    "runtimes": ["deno", "node", "bun"],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:ioredis": "^5.4.1"
     },
@@ -13,7 +13,9 @@
     },
     "object": {
       "deno": "new RedisMessageQueue(() => new Redis(Deno.env.get(\"REDIS_URL\")))",
-      "node": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
+      "pnpm": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
+      "yarn": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
+      "npm": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
       "bun": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))"
     },
     "env": {
@@ -22,7 +24,7 @@
   },
   "postgres": {
     "label": "PostgreSQL",
-    "runtimes": ["deno", "node", "bun"],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:postgres": "^3.4.5"
     },
@@ -34,7 +36,9 @@
     },
     "object": {
       "deno": "new PostgresMessageQueue(postgres(Deno.env.get(\"DATABASE_URL\")))",
-      "node": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
+      "pnpm": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
+      "yarn": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
+      "npm": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
       "bun": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))"
     },
     "env": {
@@ -43,7 +47,7 @@
   },
   "amqp": {
     "label": "AMQP (e.g., RabbitMQ)",
-    "runtimes": ["deno", "node", "bun"],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:amqplib": "^0.10.4"
     },
@@ -58,7 +62,9 @@
     },
     "object": {
       "deno": "new AmqpMessageQueue(await connect(Deno.env.get(\"AMQP_URL\")))",
-      "node": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
+      "pnpm": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
+      "yarn": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
+      "npm": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
       "bun": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))"
     },
     "env": {
@@ -67,7 +73,7 @@
   },
   "denokv": {
     "label": "Deno KV",
-    "runtimes": ["deno"],
+    "packageManagers": ["deno"],
     "imports": {
       "@fedify/denokv": { "DenoKvMessageQueue": "DenoKvMessageQueue" }
     },

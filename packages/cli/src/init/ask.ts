@@ -2,7 +2,6 @@ import type {
   KvStore,
   MessageQueue,
   PackageManager,
-  Runtime,
   WebFramework,
 } from "./types.ts";
 import type { InitCommand } from "./command.ts";
@@ -10,12 +9,9 @@ import {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
-  RUNTIME,
   WEB_FRAMEWORK,
 } from "./const.ts";
 
-const askRuntime: (r: Runtime | undefined) => Runtime = //
-  (r) => r ?? RUNTIME[0];
 const askPackageManager: //
   (p: PackageManager | undefined) => PackageManager = //
   (p) => p ?? PACKAGE_MANAGER[0];
@@ -33,7 +29,6 @@ const askOptions: (options: InitCommand) => Required<InitCommand> = (
 ) => ({
   ...options,
   dir: askDir(options.dir),
-  runtime: askRuntime(options.runtime),
   packageManager: askPackageManager(options.packageManager),
   webFramework: askWebFramework(options.webFramework),
   messageQueue: askMessageQueue(options.messageQueue),
