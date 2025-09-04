@@ -46,6 +46,7 @@
     "@std/dotenv": "jsr:^0.225.5",
     "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors",
     "cli-highlight": "^2.1.11",
+    "enquirer": "^2.4.1",
     "jimp": "^1.6.0",
     "ora": "^8.2.0"
   }
