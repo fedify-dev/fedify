@@ -14,18 +14,19 @@ import {
 import { input, select } from "@inquirer/prompts";
 import toggle from "inquirer-toggle";
 import { isDirectoryEmpty, kvStores, messageQueues } from "./lib.ts";
-import { flow } from "es-toolkit";
+import { pipe } from "@fxts/core";
 import webFrameworks from "./webframeworks.ts";
 
 const askOptions: (options: InitCommand) => Promise<Required<InitCommand>> = //
   (options) =>
-    flow(
+    pipe(
+      options,
       fillDir,
       fillWebFramework,
       fillPackageManager,
       fillMessageQueue,
       fillKvStore,
-    )(options);
+    );
 
 export default askOptions;
 

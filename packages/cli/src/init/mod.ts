@@ -8,7 +8,7 @@ import {
   object,
 } from "@optique/core";
 import { path } from "@optique/run";
-import { debugOption } from "./globals.ts";
+import { debugOption } from "../globals.ts";
 
 export const initCommand = command(
   "init",

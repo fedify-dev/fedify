@@ -38,6 +38,7 @@
     "@cross/dir": "jsr:@cross/dir@^1.1.0",
     "@david/dax": "jsr:@david/dax@^0.43.2",
     "@fedify/fedify": "workspace:",
+    "@fxts/core": "^1.15.0",
     "@hongminhee/localtunnel": "^0.3.0",
     "@inquirer/prompts": "^7.8.4",
     "@jimp/core": "^1.6.0",

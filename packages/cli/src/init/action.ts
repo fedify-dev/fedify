@@ -1,11 +1,12 @@
 import { stringify } from "@std/dotenv";
 import * as colors from "@std/fmt/colors";
 import { basename, dirname, join, normalize } from "@std/path";
-import { flow, toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
+import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
 import type {
   KvStoreDescription,
   MessageQueueDescription,
   PackageManager,
+  WebFramework,
   WebFrameworkInitializer,
 } from "./types.ts";
 import {
@@ -14,7 +15,6 @@ import {
   displayFileContent,
   drawDinosaur,
   kvStores,
-  logger,
   logOptions,
   mergeVscSettings,
   messageQueues,
@@ -27,13 +27,16 @@ import webFrameworks from "./webframeworks.ts";
 import type { InitCommand } from "./command.ts";
 import askOptions from "./ask.ts";
 import { exists } from "@std/fs";
+import { pipe, tap } from "@fxts/core";
+import { merge, set } from "../utils.ts";
 
 export default async function main(options: InitCommand) {
   drawDinosaur();
-  const state = flow(
+  const state = await pipe(
+    options,
     askOptions,
     validateOptions,
-  )(options);
+  );
   logOptions(state);
   const {
     dir,

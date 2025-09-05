@@ -564,6 +564,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../fedify
+      '@fxts/core':
+        specifier: ^1.15.0
+        version: 1.15.0
       '@hongminhee/localtunnel':
         specifier: ^0.3.0
         version: 0.3.0
@@ -1694,6 +1697,9 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@fxts/core@1.15.0':
+    resolution: {integrity: sha512-qkY9lKrLyEZ54wg0jZfpQ/5Zy69o4/npVJjipykdRHOIbPBsRptisgwEGh+C4KZVViQ6zUhf1cc/fOsfNp3oGw==}
 
   '@grpc/grpc-js@1.13.4':
     resolution: {integrity: sha512-GsFaMXCkMqkKIvwCQjCrwH+GHbPKBjhwo/8ZuUkWHqbI73Kky9I+pQltrlT0+MWpedCoosda53lgjYfyEPgxBg==}
@@ -8483,6 +8489,10 @@ snapshots:
       '@floating-ui/core': 1.7.2
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@fxts/core@1.15.0':
+    dependencies:
+      tslib: 2.8.1
 
   '@grpc/grpc-js@1.13.4':
     dependencies:
