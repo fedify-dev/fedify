@@ -16,9 +16,9 @@ import {
   ATTR_HTTP_RESPONSE_STATUS_CODE,
   ATTR_URL_FULL,
 } from "@opentelemetry/semantic-conventions";
+import metadata from "../../deno.json" with { type: "json" };
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
-import metadata from "../../deno.json" with { type: "json" };
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
@@ -1280,6 +1280,7 @@ export class FederationImpl<TContextData>
           actorDispatcher: this.actorCallbacks?.dispatcher,
           actorHandleMapper: this.actorCallbacks?.handleMapper,
           actorAliasMapper: this.actorCallbacks?.aliasMapper,
+          webFingerLinksDispatcher: this.webFingerLinksDispatcher,
           onNotFound,
           tracer,
         });

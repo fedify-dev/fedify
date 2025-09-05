@@ -6,6 +6,7 @@ import type {
   ActorAliasMapper,
   ActorDispatcher,
   ActorHandleMapper,
+  WebFingerLinksDispatcher,
 } from "../federation/callback.ts";
 import type { RequestContext } from "../federation/context.ts";
 import { Link as LinkObject } from "../vocab/mod.ts";
@@ -46,6 +47,11 @@ export interface WebFingerHandlerParameters<TContextData> {
    * @since 1.4.0
    */
   actorAliasMapper?: ActorAliasMapper<TContextData>;
+
+  /**
+   * The callback for dispatching the Links of webFinger.
+   */
+  webFingerLinksDispatcher?: WebFingerLinksDispatcher<TContextData>;
 
   /**
    * The function to call when the actor is not found.
@@ -112,6 +118,7 @@ async function handleWebFingerInternal<TContextData>(
     actorAliasMapper,
     onNotFound,
     span,
+    webFingerLinksDispatcher,
   }: WebFingerHandlerParameters<TContextData>,
 ): Promise<Response> {
   if (actorDispatcher == null) {
@@ -223,6 +230,16 @@ async function handleWebFingerInternal<TContextData>(
     if (image.mediaType != null) link.type = image.mediaType;
     links.push(link);
   }
+
+  if (webFingerLinksDispatcher != null) {
+    const customLinks = await webFingerLinksDispatcher(context, resourceUrl);
+    if (customLinks != null) {
+      for (const link of customLinks) {
+        links.push(link);
+      }
+    }
+  }
+
   const aliases: string[] = [];
   if (resourceUrl.protocol != "acct:" && actor.preferredUsername != null) {
     aliases.push(`acct:${actor.preferredUsername}@${host ?? context.url.host}`);

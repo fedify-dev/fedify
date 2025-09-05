@@ -2,6 +2,7 @@ import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { Actor } from "../vocab/actor.ts";
 import type { Activity, CryptographicKey } from "../vocab/mod.ts";
 import type { Object } from "../vocab/vocab.ts";
+import type { Link } from "../webfinger/mod.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { SenderKeyPair } from "./send.ts";
@@ -14,6 +15,18 @@ import type { SenderKeyPair } from "./send.ts";
 export type NodeInfoDispatcher<TContextData> = (
   context: RequestContext<TContextData>,
 ) => NodeInfo | Promise<NodeInfo>;
+
+/**
+ * A callback that dispatches a array of {@link Link}.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param resource The URL queried via WebFinger.
+ * @returns Links related to the queried resource.
+ */
+export type WebFingerLinksDispatcher<TContextData> = (
+  context: RequestContext<TContextData>,
+  resource: URL,
+) => readonly Link[] | Promise<readonly Link[]>;
 
 /**
  * A callback that dispatches an {@link Actor} object.
