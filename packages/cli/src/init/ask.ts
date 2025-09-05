@@ -11,28 +11,120 @@ import {
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
+import { input, select } from "@inquirer/prompts";
+import toggle from "inquirer-toggle";
+import { isDirectoryEmpty, kvStores, messageQueues } from "./lib.ts";
+import { flow } from "es-toolkit";
+import webFrameworks from "./webframeworks.ts";
 
-const askPackageManager: //
-  (p: PackageManager | undefined) => PackageManager = //
-  (p) => p ?? PACKAGE_MANAGER[0];
-const askWebFramework: //
-  (w: WebFramework | undefined) => WebFramework = //
-  (w) => w ?? WEB_FRAMEWORK[0];
-const askMessageQueue: //
-  (m: MessageQueue | undefined) => MessageQueue = //
-  (m) => m ?? MESSAGE_QUEUE[0];
-const askKvStore: (k: KvStore | undefined) => KvStore = //
-  (k) => k ?? KV_STORE[0];
-const askDir: (d: string | undefined) => string = (d) => d ?? ".";
-const askOptions: (options: InitCommand) => Required<InitCommand> = (
-  options,
-) => ({
-  ...options,
-  dir: askDir(options.dir),
-  packageManager: askPackageManager(options.packageManager),
-  webFramework: askWebFramework(options.webFramework),
-  messageQueue: askMessageQueue(options.messageQueue),
-  kvStore: askKvStore(options.kvStore),
-});
+const askOptions: (options: InitCommand) => Promise<Required<InitCommand>> = //
+  (options) =>
+    flow(
+      fillDir,
+      fillWebFramework,
+      fillPackageManager,
+      fillMessageQueue,
+      fillKvStore,
+    )(options);
 
 export default askOptions;
+
+const fillDir: <T extends { dir?: string }>(
+  options: T,
+) => Promise<T & { dir: string }> = async (options) => {
+  const dir = options.dir ?? await askDir();
+  return await askNonEmpty(dir) ? { ...options, dir } : await fillDir(options);
+};
+const askDir = () => input({ message: "Project directory:", default: "." });
+const askNonEmpty = async (directory: string) =>
+  await isDirectoryEmpty(directory) || await toggle.default({
+    message:
+      `Directory "${directory}" is not empty. Do you want to use it anyway?`,
+    default: false,
+  });
+
+const fillWebFramework: //
+  <T extends { webFramework?: WebFramework }>(options: T) => //
+  Promise<T & { webFramework: WebFramework }> = async (options) => //
+  ({
+    ...options,
+    webFramework: options.webFramework ?? await askWebFramework(),
+  });
+const askWebFramework = () =>
+  select<WebFramework>({
+    message: "Choose the web framework to use",
+    choices: WEB_FRAMEWORK.map((value) => //
+    ({ name: webFrameworks[value].label, value })),
+  });
+
+const fillPackageManager: //
+  <T extends { packageManager?: PackageManager; webFramework: WebFramework }> //
+  (options: T) => Promise<T & { packageManager: PackageManager }> = //
+  async (options) => //
+  ({
+    ...options,
+    packageManager: options.packageManager ??
+      await askPackageManager(options.webFramework),
+  });
+const askPackageManager = (wf: WebFramework) =>
+  select<PackageManager>({
+    message: "Choose the package manager to use",
+    choices: PACKAGE_MANAGER.map(choicePackageManager(wf)),
+  });
+const choicePackageManager = (wf: WebFramework) => (value: PackageManager) => ({
+  name: isWfSupportsPm(wf, value)
+    ? value
+    : `${value} (not supported with ${webFrameworks[wf].label})`,
+  value,
+  disabled: !isWfSupportsPm(wf, value),
+});
+const isWfSupportsPm = (
+  wf: WebFramework,
+  pm: PackageManager,
+) => webFrameworks[wf].packageManagers.includes(pm);
+
+const fillMessageQueue: //
+  <T extends { messageQueue?: MessageQueue; packageManager: PackageManager }> //
+  (options: T) => Promise<T & { messageQueue: MessageQueue }> = //
+  async (options) => ({
+    ...options,
+    messageQueue: options.messageQueue ??
+      await askMessageQueue(options.packageManager),
+  });
+const askMessageQueue = (pm: PackageManager) =>
+  select<MessageQueue>({
+    message: "Choose the message queue to use",
+    choices: MESSAGE_QUEUE.map(choiceMessageQueue(pm)),
+  });
+const choiceMessageQueue = (pm: PackageManager) => (value: MessageQueue) => ({
+  name: isMqSupportsPm(value, pm)
+    ? value
+    : `${value} (not supported with ${pm})`,
+  value,
+  disabled: !isMqSupportsPm(value, pm),
+});
+const isMqSupportsPm = (mq: MessageQueue, pm: PackageManager) =>
+  messageQueues[mq].packageManagers.includes(pm);
+
+const fillKvStore: //
+  <T extends { kvStore?: KvStore; packageManager: PackageManager }>(
+    options: T,
+  ) => Promise<T & { kvStore: KvStore }> = async (options) => //
+  ({
+    ...options,
+    kvStore: options.kvStore ?? await askKvStore(options.packageManager),
+  });
+const askKvStore = (pm: PackageManager) =>
+  select<KvStore>({
+    message: "Choose the key-value store to use",
+    choices: KV_STORE.map(choiceKvStore(pm)),
+  });
+const choiceKvStore = (pm: PackageManager) => (value: KvStore) => ({
+  name: isKvSupportsPm(value, pm)
+    ? value
+    : `${value} (not supported with ${pm})`,
+  value,
+  disabled: !isKvSupportsPm(value, pm),
+});
+const isKvSupportsPm = (kv: KvStore, pm: PackageManager) =>
+  kvStores[kv].packageManagers.includes(pm);

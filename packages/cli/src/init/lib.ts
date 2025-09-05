@@ -326,6 +326,20 @@ export const checkDirectoryEmpty = async (path: string) => {
     }
   }
 };
+export const isDirectoryEmpty = async (
+  path: string,
+): Promise<boolean> => {
+  try {
+    for await (const _ of Deno.readDir(path)) return false;
+    return true;
+  } catch (e) {
+    if (!(e instanceof Deno.errors.NotFound)) {
+      throw e;
+    }
+    return true;
+  }
+};
+
 export const getNextInitCommand = (
   pm: PackageManager,
 ): string[] => [
