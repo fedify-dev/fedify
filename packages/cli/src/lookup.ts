@@ -1,6 +1,7 @@
 import {
   argument,
   choice,
+  command,
   constant,
   flag,
   float,
@@ -16,7 +17,7 @@ import {
   string,
   withDefault,
 } from "@optique/core";
-import { path } from "@optique/run/valueparser";
+import { path, print, printError } from "@optique/run";
 import {
   Application,
   Collection,
@@ -40,11 +41,11 @@ import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, formatObject } from "./utils.ts";
 import { renderImages } from "./imagerenderer.ts";
-import { print, printError } from "@optique/run";
+import { configureLogging, debugOption } from "./globals.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-const authorizedFetchOption = withDefault(
+export const authorizedFetchOption = withDefault(
   object({
     authorizedFetch: flag("-a", "--authorized-fetch", {
       description: message`Sign the request with an one-time key.`,
@@ -72,75 +73,84 @@ const traverseOption = withDefault(
     }),
     suppressErrors: option("-S", "--suppress-errors", {
       description:
-        message`Suppress partial errors while traversing the collection`,
+        message`Suppress partial errors while traversing the collection.`,
     }),
   }),
   { traverse: false } as const,
 );
 
-export const lookupCommand = merge(
-  traverseOption,
-  authorizedFetchOption,
-  object({
-    command: constant("lookup"),
-    format: withDefault(
-      or(
-        map(
-          option("-r", "--raw", {
-            description: message`Print the fetched JSON-LD document as is.`,
-          }),
-          () => "raw" as const,
-        ),
-        map(
-          option("-C", "--compact", {
-            description: message`Compact the fetched JSON-LD document.`,
-          }),
-          () => "compact" as const,
-        ),
-        map(
-          option("-e", "--expand", {
-            description: message`Expand the fetched JSON-LD document.`,
-          }),
-          () => "expand" as const,
-        ),
+export const lookupCommand = command(
+  "lookup",
+  merge(
+    "Looking up options",
+    object({ command: constant("lookup") }),
+    traverseOption,
+    authorizedFetchOption,
+    debugOption,
+    object({
+      urls: multiple(
+        argument(string({ metavar: "URL_OR_HANDLE" }), {
+          description: message`One or more URLs or handles to look up.`,
+        }),
+        { min: 1 },
       ),
-      "default" as const,
-    ),
-    userAgent: optional(
-      option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
-        description: message`The custom User-Agent header value.`,
-      }),
-    ),
-    separator: withDefault(
-      option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
-        description:
-          message`Specify the separator between adjacent output objects or collection items.`,
-      }),
-      "----",
-    ),
-    output: optional(option(
-      "-o",
-      "--output",
-      path({
-        metavar: "OUTPUT_PATH",
-        type: "file",
-        allowCreate: true,
-      }),
-      { description: message`Specify the output file path.` },
-    )),
-    timeout: optional(option(
-      "-T",
-      "--timeout",
-      float({ min: 0, metavar: "SECONDS" }),
-      { description: message`Set timeout for network requests in seconds.` },
-    )),
-    urls: multiple(
-      argument(string({ metavar: "URL_OR_HANDLE" }), {
-        description: message`One or more URLs or handles to look up.`,
-      }),
-      { min: 1 },
-    ),
-  }),
+      format: withDefault(
+        or(
+          map(
+            option("-r", "--raw", {
+              description: message`Print the fetched JSON-LD document as is.`,
+            }),
+            () => "raw" as const,
+          ),
+          map(
+            option("-C", "--compact", {
+              description: message`Compact the fetched JSON-LD document.`,
+            }),
+            () => "compact" as const,
+          ),
+          map(
+            option("-e", "--expand", {
+              description: message`Expand the fetched JSON-LD document.`,
+            }),
+            () => "expand" as const,
+          ),
+        ),
+        "default" as const,
+      ),
+      userAgent: optional(
+        option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
+          description: message`The custom User-Agent header value.`,
+        }),
+      ),
+      separator: withDefault(
+        option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
+          description:
+            message`Specify the separator between adjacent output objects or collection items.`,
+        }),
+        "----",
+      ),
+      output: optional(option(
+        "-o",
+        "--output",
+        path({
+          metavar: "OUTPUT_PATH",
+          type: "file",
+          allowCreate: true,
+        }),
+        { description: message`Specify the output file path.` },
+      )),
+      timeout: optional(option(
+        "-T",
+        "--timeout",
+        float({ min: 0, metavar: "SECONDS" }),
+        { description: message`Set timeout for network requests in seconds.` },
+      )),
+    }),
+  ),
+  {
+    description:
+      message`Lookup an Activity Streams object by URL or the actor handle. The argument can be either a URL or an actor handle (e.g., @username@domain), and it can be multiple.`,
+  },
 );
 
 export class TimeoutError extends Error {
@@ -276,6 +286,12 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
     );
     process.exit(1);
   }
+
+  // Enable Debug mode if requested
+  if (command.debug) {
+    await configureLogging();
+  }
+
   const spinner = ora({
     text: `Looking up the ${
       command.traverse

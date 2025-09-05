@@ -10,7 +10,7 @@ import {
 } from "@std/assert";
 import fetchMock from "fetch-mock";
 import { getAuthenticatedDocumentLoader } from "../runtime/authdocloader.ts";
-import { fetchDocumentLoader, FetchError } from "../runtime/docloader.ts";
+import { fetchDocumentLoader } from "../runtime/docloader.ts";
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
 import { detachSignature, signJsonLd, verifyJsonLd } from "../sig/ld.ts";
@@ -64,12 +64,6 @@ test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
 
   await t.step("allowPrivateAddress", () => {
-    assertThrows(() =>
-      createFederation<number>({
-        kv,
-        documentLoader: mockDocumentLoader,
-        allowPrivateAddress: true,
-      }), TypeError);
     assertThrows(() =>
       createFederation<number>({
         kv,
@@ -206,13 +200,10 @@ test({
   permissions: { env: true, read: true },
   async fn(t) {
     const kv = new MemoryKvStore();
-    const documentLoader = (url: string) => {
-      throw new FetchError(new URL(url), "Not found");
-    };
 
     fetchMock.spyGlobal();
 
-    fetchMock.get("https://example.com/object", async (cl) => {
+    fetchMock.get("https://example.com/auth-check", async (cl) => {
       const v = await verifyRequest(
         cl.request!,
         {
@@ -227,10 +218,13 @@ test({
     });
 
     await t.step("Context", async () => {
+      const rejectingLoader = (_url: string) =>
+        Promise.reject(new Error("Not found"));
+
       const federation = createFederation<number>({
         kv,
-        documentLoader,
-        contextLoader: mockDocumentLoader,
+        documentLoaderFactory: () => rejectingLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
       });
       let ctx = federation.createContext(
         new URL("https://example.com:1234/"),
@@ -241,7 +235,7 @@ test({
       assertEquals(ctx.canonicalOrigin, "https://example.com:1234");
       assertEquals(ctx.host, "example.com:1234");
       assertEquals(ctx.hostname, "example.com");
-      assertStrictEquals(ctx.documentLoader, documentLoader);
+      assertStrictEquals(ctx.documentLoader, rejectingLoader);
       assertStrictEquals(ctx.contextLoader, mockDocumentLoader);
       assertStrictEquals(ctx.federation, federation);
       assertThrows(() => ctx.getNodeInfoUri(), RouterError);
@@ -352,24 +346,24 @@ test({
         ],
       );
       const loader = await ctx.getDocumentLoader({ identifier: "handle" });
-      assertEquals(await loader("https://example.com/object"), {
+      assertEquals(await loader("https://example.com/auth-check"), {
         contextUrl: null,
-        documentUrl: "https://example.com/object",
+        documentUrl: "https://example.com/auth-check",
         document: true,
       });
       const loader2 = await ctx.getDocumentLoader({ username: "HANDLE" });
-      assertEquals(await loader2("https://example.com/object"), {
+      assertEquals(await loader2("https://example.com/auth-check"), {
         contextUrl: null,
-        documentUrl: "https://example.com/object",
+        documentUrl: "https://example.com/auth-check",
         document: true,
       });
       const loader3 = ctx.getDocumentLoader({
         keyId: new URL("https://example.com/key2"),
         privateKey: rsaPrivateKey2,
       });
-      assertEquals(await loader3("https://example.com/object"), {
+      assertEquals(await loader3("https://example.com/auth-check"), {
         contextUrl: null,
-        documentUrl: "https://example.com/object",
+        documentUrl: "https://example.com/auth-check",
         document: true,
       });
       assertEquals(await ctx.lookupObject("https://example.com/object"), null);
@@ -386,10 +380,24 @@ test({
         }),
       );
 
+      fetchMock.get(
+        "https://example.com/object",
+        () =>
+          new Response(
+            JSON.stringify({
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Object",
+              id: "https://example.com/object",
+              name: "Fetched object",
+            }),
+            { headers: { "Content-Type": "application/activity+json" } },
+          ),
+      );
+
       const federation2 = createFederation<number>({
         kv,
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
+        documentLoaderFactory: () => fetchDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
       });
       const ctx2 = federation2.createContext(
         new URL("https://example.com/"),
@@ -540,7 +548,7 @@ test({
       const federation = createFederation<void>({
         kv,
         origin: "https://ap.example.com",
-        documentLoader,
+        documentLoaderFactory: () => mockDocumentLoader,
         contextLoader: mockDocumentLoader,
       });
       const ctx = federation.createContext(
@@ -835,7 +843,7 @@ test({
     await t.step("RequestContext", async () => {
       const federation = createFederation<number>({
         kv,
-        documentLoader: mockDocumentLoader,
+        documentLoaderFactory: () => mockDocumentLoader,
       });
       const req = new Request("https://example.com/");
       const ctx = federation.createContext(req, 123);
@@ -978,7 +986,7 @@ test("Federation.setInboxListeners()", async (t) => {
   await t.step("path match", () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
     });
     federation.setInboxDispatcher(
       "/users/{identifier}/inbox",
@@ -993,7 +1001,7 @@ test("Federation.setInboxListeners()", async (t) => {
   await t.step("wrong variables in path", () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
     });
     assertThrows(
       () =>
@@ -1023,7 +1031,7 @@ test("Federation.setInboxListeners()", async (t) => {
     const authenticatedRequests: [string, string][] = [];
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
         const docLoader = getAuthenticatedDocumentLoader(identity);
         return (url: string) => {
@@ -1205,7 +1213,7 @@ test("Federation.setInboxListeners()", async (t) => {
   await t.step("onError()", async () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
         const docLoader = getAuthenticatedDocumentLoader(identity);
         return (url: string) => {
@@ -1266,7 +1274,7 @@ test("Federation.setInboxDispatcher()", async (t) => {
   await t.step("path match", () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
     });
     federation.setInboxListeners("/users/{identifier}/inbox");
     assertThrows(
@@ -1282,7 +1290,7 @@ test("Federation.setInboxDispatcher()", async (t) => {
   await t.step("path match", () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
     });
     federation.setInboxListeners("/users/{identifier}/inbox");
     federation.setInboxDispatcher(
@@ -1294,7 +1302,7 @@ test("Federation.setInboxDispatcher()", async (t) => {
   await t.step("wrong variables in path", () => {
     const federation = createFederation<void>({
       kv,
-      documentLoader: mockDocumentLoader,
+      documentLoaderFactory: () => mockDocumentLoader,
     });
     assertThrows(
       () =>

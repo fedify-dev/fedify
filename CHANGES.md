@@ -22,8 +22,14 @@ To be released.
         of `LanguageTag`.
      -  Removed the `@phensley/language-tag` dependency.
 
+ -  Remove `documentLoader` option (which was deprecated) from
+    `FederationOptions` interface in favor of `documentLoaderFactory` option
+    for better flexibility.  [[#376], [#393] by Hasang Cho]
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
+[#376]: https://github.com/fedify-dev/fedify/issues/376
 [#392]: https://github.com/fedify-dev/fedify/pull/392
+[#393]: https://github.com/fedify-dev/fedify/pulls/393
 
 
 Version 1.9.0

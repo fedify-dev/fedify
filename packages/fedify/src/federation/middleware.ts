@@ -16,9 +16,9 @@ import {
   ATTR_HTTP_RESPONSE_STATUS_CODE,
   ATTR_URL_FULL,
 } from "@opentelemetry/semantic-conventions";
+import metadata from "../../deno.json" with { type: "json" };
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
-import metadata from "../../deno.json" with { type: "json" };
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
@@ -317,12 +317,7 @@ export class FederationImpl<TContextData>
       false;
     this._initializeRouter();
     if (options.allowPrivateAddress || options.userAgent != null) {
-      if (options.documentLoader != null) {
-        throw new TypeError(
-          "Cannot set documentLoader with allowPrivateAddress or " +
-            "userAgent options.",
-        );
-      } else if (options.contextLoader != null) {
+      if (options.contextLoader != null) {
         throw new TypeError(
           "Cannot set contextLoader with allowPrivateAddress or " +
             "userAgent options.",
@@ -336,32 +331,18 @@ export class FederationImpl<TContextData>
     }
     const { allowPrivateAddress, userAgent } = options;
     this.allowPrivateAddress = allowPrivateAddress ?? false;
-    if (options.documentLoader != null) {
-      if (options.documentLoaderFactory != null) {
-        throw new TypeError(
-          "Cannot set both documentLoader and documentLoaderFactory options " +
-            "at a time; use documentLoaderFactory only.",
-        );
-      }
-      this.documentLoaderFactory = () => options.documentLoader!;
-      logger.warn(
-        "The documentLoader option is deprecated; use documentLoaderFactory " +
-          "option instead.",
-      );
-    } else {
-      this.documentLoaderFactory = options.documentLoaderFactory ??
-        ((opts) => {
-          return kvCache({
-            loader: getDocumentLoader({
-              allowPrivateAddress: opts?.allowPrivateAddress ??
-                allowPrivateAddress,
-              userAgent: opts?.userAgent ?? userAgent,
-            }),
-            kv: options.kv,
-            prefix: this.kvPrefixes.remoteDocument,
-          });
+    this.documentLoaderFactory = options.documentLoaderFactory ??
+      ((opts) => {
+        return kvCache({
+          loader: getDocumentLoader({
+            allowPrivateAddress: opts?.allowPrivateAddress ??
+              allowPrivateAddress,
+            userAgent: opts?.userAgent ?? userAgent,
+          }),
+          kv: options.kv,
+          prefix: this.kvPrefixes.remoteDocument,
         });
-    }
+      });
     if (options.contextLoader != null) {
       if (options.contextLoaderFactory != null) {
         throw new TypeError(

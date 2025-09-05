@@ -675,13 +675,6 @@ export interface FederationOptions<TContextData> {
   contextLoaderFactory?: DocumentLoaderFactory;
 
   /**
-   * A custom JSON-LD document loader.  By default, this uses the built-in
-   * cache-backed loader that fetches remote documents over HTTP(S).
-   * @deprecated Use {@link documentLoaderFactory} instead.
-   */
-  documentLoader?: DocumentLoader;
-
-  /**
    * A custom JSON-LD context loader.  By default, this uses the same loader
    * as the document loader.
    * @deprecated Use {@link contextLoaderFactory} instead.

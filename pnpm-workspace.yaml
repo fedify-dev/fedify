@@ -21,6 +21,7 @@ packages:
 - examples/next-integration
 - examples/next14-app-router
 - examples/next15-app-router
+- examples/sveltekit-sample
 
 catalog:
   "@cloudflare/workers-types": ^4.20250529.0

@@ -50,6 +50,12 @@
     "inquirer": "^12.9.4",
     "inquirer-toggle": "^1.0.1",
     "jimp": "^1.6.0",
-    "ora": "^8.2.0"
+    "@jimp/core": "^1.6.0",
+    "@jimp/wasm-webp": "^1.6.0",
+    "ora": "^8.2.0",
+    "@cross/dir": "jsr:@cross/dir@^1.1.0",
+    "@hongminhee/localtunnel": "^0.3.0",
+    "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors",
+    "@david/dax": "jsr:@david/dax@^0.43.2"
   }
 }
