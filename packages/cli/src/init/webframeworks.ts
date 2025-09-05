@@ -34,13 +34,10 @@ const webFrameworks: WebFrameworks = {
       files: {
         "src/app.tsx": readTemplate("hono/app.tsx")
           .replace(
-            /^import \{ Hono \} from "";$/,
-            `import { Hono } from "${pm === "deno" ? "@hono/hono" : "hono"}";`,
+            /\/\* hono \*\//,
+            pm === "deno" ? "@hono/hono" : "hono",
           )
-          .replace(
-            /getLogger\(\)/,
-            `getLogger(${JSON.stringify(projectName)})`,
-          ),
+          .replace(/\/\* logger \*\//, projectName),
         "src/index.ts": readTemplate(`hono/index/${pm}.ts`),
       },
       compilerOptions: pm === "deno" ? undefined : {
@@ -89,10 +86,7 @@ const webFrameworks: WebFrameworks = {
       loggingFile: "src/logging.ts",
       files: {
         "src/app.ts": readTemplate("express/app.ts")
-          .replace(
-            /getLogger\(\)/,
-            `getLogger(${JSON.stringify(projectName)})`,
-          ),
+          .replace(/\/\* logger \*\//, projectName),
         "src/index.ts": readTemplate("express/index.ts"),
       },
       compilerOptions: pm === "deno" ? undefined : {

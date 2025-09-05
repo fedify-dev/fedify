@@ -3,7 +3,7 @@ import { getLogger } from "@logtape/logtape";
 import express from "express";
 import federation from "./federation.ts";
 
-const logger = getLogger();
+const logger = getLogger("/* logger */");
 
 export const app = express();
 

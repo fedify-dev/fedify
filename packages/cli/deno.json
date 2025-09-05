@@ -34,5 +34,7 @@
       "command": "deno run -A scripts/pack.ts",
       "dependencies": ["codegen"]
     }
-  }
+  },
+  "fmt": { "exclude": ["src/init/templates/**"] },
+  "lint": { "exclude": ["src/init/templates/**"] }
 }
