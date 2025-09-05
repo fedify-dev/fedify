@@ -28,7 +28,7 @@ async function main() {
     await runLookup(result);
   }
   if (result.command === "webfinger") {
-    runWebFinger(result);
+    await runWebFinger(result);
   }
   if (result.command === "inbox") {
     runInbox(result);
