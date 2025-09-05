@@ -32,72 +32,33 @@ import { merge, set } from "../utils.ts";
 
 export default async function main(options: InitCommand) {
   drawDinosaur();
-  const state = await pipe(
+  const input = await pipe(
     options,
     askOptions,
     validateOptions,
+    tap(logOptions),
+    tap(noticeDryRun),
+    tap(checkDirectory),
   );
-  logOptions(state);
-  const {
-    dir,
-    packageManager,
-    webFramework,
-    kvStore,
-    messageQueue,
-    dryRun,
-  } = state;
-  logger.debug(
-    "Package manager: {packageManager}; " +
-      "web framework: {webFramework}; key–value store: {kvStore}; " +
-      "message queue: {messageQueue}",
-    {
-      packageManager,
-      webFramework,
-      kvStore,
-      messageQueue,
-    },
+  const data = await pipe(
+    input,
+    set("projectName", getProjectName),
+    set("initializer", getInitializer),
+    set("kv", ({ kvStore }) => kvStores[kvStore]),
+    set("mq", ({ messageQueue }) => messageQueues[messageQueue]),
+    set("env", ({ kv, mq }) => merge(kv.env)(mq.env)),
   );
-  const projectName = basename(
-    await exists(dir) ? await Deno.realPath(dir) : normalize(dir),
+  pipe(
+    data,
+    tap(precommand),
+    tap(checkPackageJson),
+    tap(installDependencies),
+    tap(rewriteJsonFiles),
+    tap(configEnv),
+    tap(howToRun),
   );
-
-  const initializer = webFrameworks[webFramework].init(
-    projectName,
-    packageManager,
-  );
-
-  const kv = kvStores[kvStore];
-  const mq = messageQueues[messageQueue];
-  const env = { ...kv.env, ...mq.env };
-  noticeDryRun({ dryRun });
-  await checkDirectory({ dir, dryRun });
-  await precommand({ initializer, dir, dryRun });
-  await packageJson({
-    packageManager,
-    dir,
-    dryRun,
-  });
-  await installDependencies({
-    packageManager,
-    dir,
-    dryRun,
-    initializer,
-    kv,
-    mq,
-  });
-  await rewriteJsonFiles({
-    dir,
-    dryRun,
-    packageManger,
-    initializer,
-    kv,
-    mq,
-    env,
-    projectName,
-  });
-  configEnv({ env });
-  howToRun({ initializer });
 }
+
 function noticeDryRun<T extends { dryRun: boolean }>({ dryRun }: T) {
   if (dryRun) {
     console.log(
@@ -116,6 +77,81 @@ async function checkDirectory<T extends { dir: string; dryRun: boolean }>(
   } else {
     await Deno.mkdir(dir, { recursive: true });
     await checkDirectoryEmpty(dir);
+  }
+}
+
+const getInitializer = <
+  T extends {
+    webFramework: WebFramework;
+    projectName: string;
+    packageManager: PackageManager;
+  },
+>({
+  webFramework,
+  projectName,
+  packageManager,
+}: T) =>
+  webFrameworks[webFramework].init(
+    projectName,
+    packageManager,
+  );
+
+const getProjectName: <T extends { dir: string }>({ dir }: T) => //
+Promise<string> = async ({ dir }) =>
+  basename(await exists(dir) ? await Deno.realPath(dir) : normalize(dir));
+
+async function precommand<
+  T extends {
+    initializer: WebFrameworkInitializer;
+    dir: string;
+    dryRun: boolean;
+  },
+>({
+  initializer: { command },
+  dir,
+  dryRun,
+}: T) {
+  if (command != null) {
+    if (dryRun) {
+      console.log(colors.bold(colors.cyan("📦 Would run command:")));
+      console.log(
+        `  ${[command[0], ...command.slice(1)].join(" ")}\n`,
+      );
+    } else {
+      const cmd = new Deno.Command(command[0], {
+        args: command.slice(1),
+        cwd: dir,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      const result = await cmd.output();
+      if (!result.success) {
+        console.error("Failed to initialize the project.");
+        Deno.exit(1);
+      }
+    }
+  }
+}
+
+async function checkPackageJson<
+  T extends {
+    packageManager: PackageManager;
+    dir: string;
+    dryRun: boolean;
+  },
+>({ packageManager, dir, dryRun }: T): Promise<void> {
+  if (packageManager !== "deno") {
+    const packageJsonPath = join(dir, "package.json");
+    if (!dryRun) {
+      try {
+        await Deno.stat(packageJsonPath);
+      } catch (e) {
+        if (e instanceof Deno.errors.NotFound) {
+          await Deno.writeTextFile(packageJsonPath, "{}");
+        } else throw e;
+      }
+    }
   }
 }
 
@@ -190,7 +226,7 @@ async function rewriteJsonFiles<
   T extends {
     dir: string;
     dryRun: boolean;
-    packageManger: PackageManager;
+    packageManager: PackageManager;
     initializer: WebFrameworkInitializer;
     kv: KvStoreDescription;
     mq: MessageQueueDescription;
@@ -198,7 +234,7 @@ async function rewriteJsonFiles<
     projectName: string;
   },
 >(
-  { dir, dryRun, packageManger, initializer, kv, mq, env, projectName }: T,
+  { dir, dryRun, packageManager, initializer, kv, mq, env, projectName }: T,
 ): Promise<void> {
   const importStatements = getImports({ kv, mq });
   const federation = readFederation({
@@ -206,7 +242,7 @@ async function rewriteJsonFiles<
     projectName,
     kv,
     mq,
-    packageManger,
+    packageManager,
   });
   const logging = readLogging({ projectName });
   const files = {
@@ -229,7 +265,7 @@ async function rewriteJsonFiles<
       await Deno.writeTextFile(path, content);
     }
   }
-  if (packageManger === "deno") {
+  if (packageManager === "deno") {
     if (dryRun) {
       console.log(
         colors.bold(colors.green("Would create/update JSON files:\n")),
@@ -347,6 +383,7 @@ async function rewriteJsonFiles<
     );
   }
 }
+
 const getImports = <
   T extends { kv: KvStoreDescription; mq: MessageQueueDescription },
 >({ kv, mq }: T) =>
@@ -388,6 +425,7 @@ function configEnv<T extends { env: Record<string, string> }>(
     console.error();
   }
 }
+
 function howToRun<T extends { initializer: WebFrameworkInitializer }>(
   { initializer: { instruction, federationFile } }: T,
 ) {
@@ -398,77 +436,22 @@ file to define your federation!
 `);
 }
 
-async function precommand<
-  T extends {
-    initializer: WebFrameworkInitializer;
-    dir: string;
-    dryRun: boolean;
-  },
->({
-  initializer: { command },
-  dir,
-  dryRun,
-}: T) {
-  if (command != null) {
-    if (dryRun) {
-      console.log(colors.bold(colors.cyan("📦 Would run command:")));
-      console.log(
-        `  ${[command[0], ...command.slice(1)].join(" ")}\n`,
-      );
-    } else {
-      const cmd = new Deno.Command(command[0], {
-        args: command.slice(1),
-        cwd: dir,
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      });
-      const result = await cmd.output();
-      if (!result.success) {
-        console.error("Failed to initialize the project.");
-        Deno.exit(1);
-      }
-    }
-  }
-}
-
-async function packageJson<
-  T extends {
-    packageManager: PackageManager;
-    dir: string;
-    dryRun: boolean;
-  },
->({ packageManager, dir, dryRun }: T): Promise<void> {
-  if (packageManager !== "deno") {
-    const packageJsonPath = join(dir, "package.json");
-    if (!dryRun) {
-      try {
-        await Deno.stat(packageJsonPath);
-      } catch (e) {
-        if (e instanceof Deno.errors.NotFound) {
-          await Deno.writeTextFile(packageJsonPath, "{}");
-        } else throw e;
-      }
-    }
-  }
-}
-
 const readFederation = <
   T extends {
     imports: string;
     projectName: string;
     kv: KvStoreDescription;
     mq: MessageQueueDescription;
-    packageManger: PackageManager;
+    packageManager: PackageManager;
   },
 >(
-  { imports, projectName, kv, mq, packageManger }: T,
+  { imports, projectName, kv, mq, packageManager }: T,
 ) =>
   readTemplate("defaults/federation.ts")
     .replace(/\/\* imports \*\//, imports)
     .replace(/\/\* logger \*\//, JSON.stringify(projectName))
-    .replace(/\/\* kv \*\//, convertEnv(kv.object, packageManger))
-    .replace(/\/\* queue \*\//, convertEnv(mq.object, packageManger));
+    .replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager))
+    .replace(/\/\* queue \*\//, convertEnv(mq.object, packageManager));
 const convertEnv = (obj: string, pm: PackageManager) =>
   pm === "deno" && /process\.env\.(\w+)/.test(obj)
     ? obj.replace(/process\.env\.(\w+)/, (_, g1) => `Deno.env.get("${g1}")`)
