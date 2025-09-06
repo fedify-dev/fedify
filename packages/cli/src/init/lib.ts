@@ -1,5 +1,18 @@
-import metadata from "../../deno.json" with { type: "json" };
+import { getLogger } from "@logtape/logtape";
 import * as colors from "@std/fmt/colors";
+import { dirname, join } from "@std/path";
+import { curry, flow, toMerged, uniq } from "es-toolkit";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import process from "node:process";
+import metadata from "../../deno.json" with { type: "json" };
+import { isNotFoundError, runSubCommand } from "../utils.ts";
+import type { InitCommand } from "./command.ts";
+import { PACKAGE_MANAGER } from "./const.ts";
+import kv from "./templates/json/kv.json" with { type: "json" };
+import mq from "./templates/json/mq.json" with { type: "json" };
+import vscodeSettings from "./templates/json/vscode-settings.json" with {
+  type: "json",
+};
 import type {
   KvStores,
   MessageQueues,
@@ -7,17 +20,7 @@ import type {
   PackageManagerDescription,
   RuntimeDescription,
 } from "./types.ts";
-import kv from "./templates/json/kv.json" with { type: "json" };
-import mq from "./templates/json/mq.json" with { type: "json" };
-import vscodeSettings from "./templates/json/vscode-settings.json" with {
-  type: "json",
-};
-import { curry, flow, toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
-import { dirname, join } from "@std/path";
-import type { InitCommand } from "./command.ts";
 import webFrameworks from "./webframeworks.ts";
-import { getLogger } from "@logtape/logtape";
-import { PACKAGE_MANAGER } from "./const.ts";
 
 export const PACKAGE_VERSION = metadata.version;
 export const logger = getLogger(["fedify", "cli", "init"]);
@@ -30,7 +33,7 @@ const addFedifyDeps = <T extends object>(json: T): T =>
         dependencies: {
           [`@fedify/${key}`]: PACKAGE_VERSION,
         },
-      }) as typeof value,
+      }),
     ]),
   ) as T;
 export const kvStores = addFedifyDeps(kv as KvStores);
@@ -78,7 +81,7 @@ export function validateOptions(
     return options;
   } catch (e) {
     if (e instanceof Error) console.error(e.message);
-    Deno.exit(1);
+    process.exit(1);
   }
 }
 const packageManagerLocations: Record<
@@ -96,12 +99,17 @@ async function locatePackageManager(
   if (await isCommandAvailable(packageManagers[pm])) {
     return packageManagers[pm].checkCommand[0];
   }
-  if (Deno.build.os !== "windows") return undefined;
+  if (process.platform !== "win32") return undefined;
   const cmd: [string, ...string[]] = [
     packageManagers[pm].checkCommand[0] + ".cmd",
     ...packageManagers[pm].checkCommand.slice(1),
   ];
-  if (await isCommandAvailable({ ...packageManagers[pm], checkCommand: cmd })) {
+  if (
+    await isCommandAvailable({
+      ...packageManagers[pm],
+      checkCommand: cmd,
+    })
+  ) {
     return cmd[0];
   }
   return undefined;
@@ -177,8 +185,9 @@ export const validatePackageMangerWith = (
     );
   }
 };
-export const readTemplate: (path: string) => string = (path) =>
-  Deno.readTextFileSync(join(".", "templates", ...path.split("/")));
+export const readTemplate: (templatePath: string) => Promise<string> = async (
+  templatePath,
+) => await readFile(join(".", "templates", ...templatePath.split("/")), "utf8");
 
 export const getInstruction: (
   packageManager: PackageManager,
@@ -189,7 +198,11 @@ To start the server, run the following command:
 
 Then, try look up an actor from your server:
 
-  ${colors.bold(colors.green("fedify lookup http://localhost:8000/users/john"))}
+  ${
+  colors.bold(colors.green(
+    "fedify lookup http://localhost:8000/users/john",
+  ))
+}
 
 `;
 export const mergeVscSettings = curry(toMerged)(vscodeSettings);
@@ -211,26 +224,21 @@ async function isCommandAvailable(
     outputPattern: RegExp;
   },
 ): Promise<boolean> {
-  const cmd = new Deno.Command(checkCommand[0], {
-    args: checkCommand.slice(1),
-    stdin: "null",
-    stdout: "piped",
-    stderr: "null",
-  });
   try {
-    const output = await cmd.output();
-    const stdout = new TextDecoder().decode(output.stdout);
+    const { stdout } = await runSubCommand(checkCommand, {
+      stdio: [null, "pipe", null],
+    });
     logger.debug(
       "The stdout of the command {command} is: {stdout}",
       { command: checkCommand, stdout },
     );
     return outputPattern.exec(stdout.trim()) ? true : false;
   } catch (error) {
+    if (isNotFoundError(error)) return false;
     logger.debug(
       "The command {command} failed with the error: {error}",
       { command: checkCommand, error },
     );
-    if (error instanceof Deno.errors.NotFound) return false;
     throw error;
   }
 }
@@ -256,24 +264,20 @@ export async function addDependencies(
       }`
     );
   if (deps.length < 1) return;
-  const cmd = new Deno.Command(
+
+  const command = [
     pm,
-    {
-      args: [
-        "add",
-        ...(dev
-          ? [pm === "bun" || pm === "yarn" ? "--dev" : "--save-dev"]
-          : []),
-        ...uniq(deps),
-      ],
+    "add",
+    ...(dev ? [pm === "bun" || pm === "yarn" ? "--dev" : "--save-dev"] : []),
+    ...uniq(deps),
+  ];
+
+  try {
+    await runSubCommand(command, {
       cwd: dir,
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-    },
-  );
-  const result = await cmd.output();
-  if (!result.success) {
+      stdio: "inherit",
+    });
+  } catch (_error) {
     throw new Error("Failed to add dependencies.");
   }
 }
@@ -286,11 +290,11 @@ export async function rewriteJsonFile(
   rewriter: (json: any) => any,
   dryRun: boolean = false,
 ): Promise<void> {
-  let jsonText: string | null = null;
+  let jsonText = null;
   try {
-    jsonText = await Deno.readTextFile(path);
+    jsonText = await readFile(path, "utf8");
   } catch (e) {
-    if (!(e instanceof Deno.errors.NotFound)) throw e;
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
   }
   let json = jsonText == null ? empty : JSON.parse(jsonText);
   json = rewriter(json);
@@ -298,8 +302,8 @@ export async function rewriteJsonFile(
   if (dryRun) {
     displayFileContent(path, JSON.stringify(json, null, 2));
   } else {
-    await Deno.mkdir(dirname(path), { recursive: true });
-    await Deno.writeTextFile(path, JSON.stringify(json, null, 2) + "\n");
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, JSON.stringify(json, null, 2) + "\n");
   }
 }
 export function displayFileContent(
@@ -316,12 +320,13 @@ export function displayFileContent(
 // Check if directory is empty
 export const checkDirectoryEmpty = async (path: string) => {
   try {
-    for await (const _ of Deno.readDir(path)) {
+    const files = await readdir(path);
+    if (files.length > 0) {
       console.error("The directory is not empty.  Aborting.");
-      Deno.exit(1);
+      process.exit(1);
     }
   } catch (e) {
-    if (!(e instanceof Deno.errors.NotFound)) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
       throw e;
     }
   }
@@ -330,10 +335,10 @@ export const isDirectoryEmpty = async (
   path: string,
 ): Promise<boolean> => {
   try {
-    for await (const _ of Deno.readDir(path)) return false;
-    return true;
+    const files = await readdir(path);
+    return files.length === 0;
   } catch (e) {
-    if (!(e instanceof Deno.errors.NotFound)) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
       throw e;
     }
     return true;

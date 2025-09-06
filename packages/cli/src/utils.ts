@@ -1,5 +1,7 @@
+import { isObject } from "@fxts/core";
 import { highlight } from "cli-highlight";
-import { toMerged } from "jsr:@es-toolkit/es-toolkit";
+import { toMerged } from "es-toolkit";
+import { spawn } from "node:child_process";
 
 export const colorEnabled: boolean = Deno.stdout.isTerminal() &&
   !Deno.env.has("NO_COLOR");
@@ -61,3 +63,41 @@ export function set<K extends PropertyKey, T extends object, S>(
 export const merge =
   (source: Parameters<typeof toMerged>[1] = {}) =>
   (target: Parameters<typeof toMerged>[0] = {}) => toMerged(target, source);
+
+export const isNotFoundError = (e: unknown): e is { code: "ENOENT" } =>
+  isObject(e) &&
+  "code" in e &&
+  e.code === "ENOENT";
+
+export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>
+(
+  command: string[],
+  options: Opt,
+): Promise<{
+  stdout: string;
+  stderr: string;
+}> =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command[0], command.slice(1), options);
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("close", () => {
+      resolve({
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+      });
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+  });

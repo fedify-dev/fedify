@@ -1,14 +1,15 @@
+import { pipe, tap } from "@fxts/core";
 import { stringify } from "@std/dotenv";
 import * as colors from "@std/fmt/colors";
+import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
 import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
-import type {
-  KvStoreDescription,
-  MessageQueueDescription,
-  PackageManager,
-  WebFramework,
-  WebFrameworkInitializer,
-} from "./types.ts";
+import type {} from "node:fs";
+import { mkdir, realpath, stat, writeFile } from "node:fs/promises";
+import process from "node:process";
+import { isNotFoundError, merge, runSubCommand, set } from "../utils.ts";
+import askOptions from "./ask.ts";
+import type { InitCommand } from "./command.ts";
 import {
   addDependencies,
   checkDirectoryEmpty,
@@ -23,12 +24,14 @@ import {
   rewriteJsonFile,
   validateOptions,
 } from "./lib.ts";
+import type {
+  KvStoreDescription,
+  MessageQueueDescription,
+  PackageManager,
+  WebFramework,
+  WebFrameworkInitializer,
+} from "./types.ts";
 import webFrameworks from "./webframeworks.ts";
-import type { InitCommand } from "./command.ts";
-import askOptions from "./ask.ts";
-import { exists } from "@std/fs";
-import { pipe, tap } from "@fxts/core";
-import { merge, set } from "../utils.ts";
 
 export default async function main(options: InitCommand) {
   drawDinosaur();
@@ -75,7 +78,7 @@ async function checkDirectory<T extends { dir: string; dryRun: boolean }>(
   if (dryRun) {
     await checkDirectoryEmpty(dir);
   } else {
-    await Deno.mkdir(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
     await checkDirectoryEmpty(dir);
   }
 }
@@ -98,7 +101,7 @@ const getInitializer = <
 
 const getProjectName: <T extends { dir: string }>({ dir }: T) => //
 Promise<string> = async ({ dir }) =>
-  basename(await exists(dir) ? await Deno.realPath(dir) : normalize(dir));
+  basename(await exists(dir) ? await realpath(dir) : normalize(dir));
 
 async function precommand<
   T extends {
@@ -114,22 +117,17 @@ async function precommand<
   if (command != null) {
     if (dryRun) {
       console.log(colors.bold(colors.cyan("📦 Would run command:")));
-      console.log(
-        `  ${[command[0], ...command.slice(1)].join(" ")}\n`,
-      );
+      console.log(`  ${command.join(" ")}\n`);
     } else {
-      const cmd = new Deno.Command(command[0], {
-        args: command.slice(1),
+      await runSubCommand(command, {
         cwd: dir,
         stdin: "inherit",
         stdout: "inherit",
         stderr: "inherit",
-      });
-      const result = await cmd.output();
-      if (!result.success) {
+      }).catch(() => {
         console.error("Failed to initialize the project.");
-        Deno.exit(1);
-      }
+        process.exit(1);
+      });
     }
   }
 }
@@ -145,10 +143,10 @@ async function checkPackageJson<
     const packageJsonPath = join(dir, "package.json");
     if (!dryRun) {
       try {
-        await Deno.stat(packageJsonPath);
+        await stat(packageJsonPath);
       } catch (e) {
-        if (e instanceof Deno.errors.NotFound) {
-          await Deno.writeTextFile(packageJsonPath, "{}");
+        if (isNotFoundError(e)) {
+          await writeTextFile(packageJsonPath, "{}");
         } else throw e;
       }
     }
@@ -222,6 +220,12 @@ async function installDependencies<
   }
 }
 
+async function writeTextFile(path: string, content: string): Promise<void> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  return await writeFile(path, data);
+}
+
 async function rewriteJsonFiles<
   T extends {
     dir: string;
@@ -261,8 +265,8 @@ async function rewriteJsonFiles<
     for (const [filename, content] of Object.entries(files)) {
       const path = join(dir, filename);
       const dirName = dirname(path);
-      await Deno.mkdir(dirName, { recursive: true });
-      await Deno.writeTextFile(path, content);
+      await mkdir(dirName, { recursive: true });
+      await writeTextFile(path, content);
     }
   }
   if (packageManager === "deno") {
