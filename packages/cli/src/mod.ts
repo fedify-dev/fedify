@@ -22,7 +22,7 @@ async function main() {
     help: "both",
   });
   if (result.command === "init") {
-    runInit(result);
+    await runInit(result);
   }
   if (result.command === "lookup") {
     await runLookup(result);

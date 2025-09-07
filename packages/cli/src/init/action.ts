@@ -4,7 +4,6 @@ import * as colors from "@std/fmt/colors";
 import { exists } from "@std/fs";
 import { basename, dirname, join, normalize } from "@std/path";
 import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
-import type {} from "node:fs";
 import { mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import process from "node:process";
 import { isNotFoundError, merge, runSubCommand, set } from "../utils.ts";
@@ -33,7 +32,7 @@ import type {
 } from "./types.ts";
 import webFrameworks from "./webframeworks.ts";
 
-export default async function main(options: InitCommand) {
+export default async function runInit(options: InitCommand) {
   drawDinosaur();
   const input = await pipe(
     options,
