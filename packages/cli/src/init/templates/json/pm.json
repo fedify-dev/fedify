@@ -1,0 +1,42 @@
+{
+  "deno": {
+    "label": "deno",
+    "checkCommand": [
+      "deno",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "bun": {
+    "label": "bun",
+    "checkCommand": [
+      "bun",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "npm": {
+    "label": "npm",
+    "checkCommand": [
+      "npm",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "yarn": {
+    "label": "Yarn",
+    "checkCommand": [
+      "yarn",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "pnpm": {
+    "label": "pnpm",
+    "checkCommand": [
+      "pnpm",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  }
+}

@@ -13,6 +13,8 @@ export type KvStore = typeof KV_STORE[number];
 export type MessageQueues = Record<MessageQueue, MessageQueueDescription>;
 export type KvStores = Record<KvStore, KvStoreDescription>;
 export type WebFrameworks = Record<WebFramework, WebFrameworkDescription>;
+export type PackageManagers = Record<PackageManager, PackageManagerDescription>;
+export type Runtimes = Record<PackageManager, RuntimeDescription>;
 
 export interface RuntimeDescription {
   label: string;

@@ -1,0 +1,42 @@
+{
+  "deno": {
+    "label": "Deno",
+    "checkCommand": [
+      "deno",
+      "--version"
+    ],
+    "outputPattern": "^deno\\s+\\d+\\.\\d+\\.\\d+\\b"
+  },
+  "bun": {
+    "label": "Bun",
+    "checkCommand": [
+      "bun",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "pnpm": {
+    "label": "Node.js",
+    "checkCommand": [
+      "node",
+      "--version"
+    ],
+    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
+  },
+  "yarn": {
+    "label": "Node.js",
+    "checkCommand": [
+      "node",
+      "--version"
+    ],
+    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
+  },
+  "npm": {
+    "label": "Node.js",
+    "checkCommand": [
+      "node",
+      "--version"
+    ],
+    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
+  }
+}

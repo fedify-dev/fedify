@@ -1,3 +1,4 @@
+import { entries, evolve, fromEntries, map, pipe } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import * as colors from "@std/fmt/colors";
 import { dirname, join } from "@std/path";
@@ -10,6 +11,8 @@ import type { InitCommand } from "./command.ts";
 import { PACKAGE_MANAGER } from "./const.ts";
 import kv from "./templates/json/kv.json" with { type: "json" };
 import mq from "./templates/json/mq.json" with { type: "json" };
+import pm from "./templates/json/pm.json" with { type: "json" };
+import rt from "./templates/json/rt.json" with { type: "json" };
 import vscodeSettings from "./templates/json/vscode-settings.json" with {
   type: "json",
 };
@@ -17,8 +20,8 @@ import type {
   KvStores,
   MessageQueues,
   PackageManager,
-  PackageManagerDescription,
-  RuntimeDescription,
+  PackageManagers,
+  Runtimes,
 } from "./types.ts";
 import webFrameworks from "./webframeworks.ts";
 
@@ -38,6 +41,20 @@ const addFedifyDeps = <T extends object>(json: T): T =>
   ) as T;
 export const kvStores = addFedifyDeps(kv as KvStores);
 export const messageQueues = addFedifyDeps(mq as MessageQueues);
+const toRegExp = (str: string): RegExp => new RegExp(str);
+const convertPattern = <K extends string, T extends { outputPattern: string }>(
+  obj: Record<K, T>,
+): Record<K, Omit<T, "outputPattern"> & { outputPattern: RegExp }> =>
+  pipe(
+    obj,
+    entries as (obj: Record<K, T>) => Generator<[K, T]>,
+    map(([key, value]: [K, T]) =>
+      [key, evolve({ outputPattern: toRegExp })(value)] as const
+    ),
+    fromEntries,
+  ) as Record<K, Omit<T, "outputPattern"> & { outputPattern: RegExp }>;
+const packageManagers = convertPattern(pm) as PackageManagers;
+const runtimes = convertPattern(rt) as Runtimes;
 
 export function drawDinosaur() {
   const d = flow(colors.bgBlue, colors.black);
@@ -114,63 +131,6 @@ async function locatePackageManager(
   }
   return undefined;
 }
-const packageManagers: Record<
-  PackageManager,
-  PackageManagerDescription
-> = {
-  deno: {
-    label: "deno",
-    checkCommand: ["deno", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-  bun: {
-    label: "bun",
-    checkCommand: ["bun", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-  npm: {
-    label: "npm",
-    checkCommand: ["npm", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-  yarn: {
-    label: "Yarn",
-    checkCommand: ["yarn", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-  pnpm: {
-    label: "pnpm",
-    checkCommand: ["pnpm", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-};
-const runtimes: Record<PackageManager, RuntimeDescription> = {
-  deno: {
-    label: "Deno",
-    checkCommand: ["deno", "--version"],
-    outputPattern: /^deno\s+\d+\.\d+\.\d+\b/,
-  },
-  bun: {
-    label: "Bun",
-    checkCommand: ["bun", "--version"],
-    outputPattern: /^\d+\.\d+\.\d+$/,
-  },
-  pnpm: {
-    label: "Node.js",
-    checkCommand: ["node", "--version"],
-    outputPattern: /^v\d+\.\d+\.\d+$/,
-  },
-  yarn: {
-    label: "Node.js",
-    checkCommand: ["node", "--version"],
-    outputPattern: /^v\d+\.\d+\.\d+$/,
-  },
-  npm: {
-    label: "Node.js",
-    checkCommand: ["node", "--version"],
-    outputPattern: /^v\d+\.\d+\.\d+$/,
-  },
-};
 
 export const validatePackageMangerWith = (
   desc: { packageManagers: readonly PackageManager[]; label: string },
