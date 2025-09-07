@@ -69,8 +69,7 @@ export const isNotFoundError = (e: unknown): e is { code: "ENOENT" } =>
   "code" in e &&
   e.code === "ENOENT";
 
-export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>
-(
+export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
   command: string[],
   options: Opt,
 ): Promise<{
@@ -101,3 +100,7 @@ export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>
       reject(error);
     });
   });
+
+export type RequiredNotNull<T> = {
+  [P in keyof T]: NonNullable<T[P]>;
+};

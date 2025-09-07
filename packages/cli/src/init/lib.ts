@@ -6,7 +6,11 @@ import { curry, flow, toMerged, uniq } from "es-toolkit";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import process from "node:process";
 import metadata from "../../deno.json" with { type: "json" };
-import { isNotFoundError, runSubCommand } from "../utils.ts";
+import {
+  isNotFoundError,
+  type RequiredNotNull,
+  runSubCommand,
+} from "../utils.ts";
 import type { InitCommand } from "./command.ts";
 import { PACKAGE_MANAGER } from "./const.ts";
 import kv from "./templates/json/kv.json" with { type: "json" };
@@ -68,7 +72,9 @@ ${d("  <__.|_|-|_|      ")}  ${f("|_|  \\___|\\__,_|_|_|  \\__, |")}
 ${d("                   ")}  ${f("                      |___/")}
 `);
 }
-export const logOptions: (options: Required<InitCommand>) => void = (options) =>
+export const logOptions: (options: RequiredNotNull<InitCommand>) => void = (
+  options,
+) =>
   logger.debug(
     "Package manager: {packageManager}; " +
       "web framework: {webFramework}; key–value store: {kvStore}; " +
@@ -77,8 +83,8 @@ export const logOptions: (options: Required<InitCommand>) => void = (options) =>
   );
 
 export function validateOptions(
-  options: Required<InitCommand>,
-): Required<InitCommand> {
+  options: RequiredNotNull<InitCommand>,
+): RequiredNotNull<InitCommand> {
   try {
     const {
       webFramework,

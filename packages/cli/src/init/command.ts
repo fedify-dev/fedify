@@ -7,6 +7,7 @@ import {
   message,
   object,
   option,
+  optional,
 } from "@optique/core";
 import { path } from "@optique/run";
 import {
@@ -17,38 +18,38 @@ import {
 } from "./const.ts";
 
 const joinSep = (str: readonly string[]) => str.join(" | ");
-const webFramework = option(
+const webFramework = optional(option(
   "-w",
   "--web-framework",
   choice(WEB_FRAMEWORK, {
     metavar: `WEB_FRAMEWORK: ${joinSep(WEB_FRAMEWORK)}`,
   }),
-);
-const packageManager = option(
+));
+const packageManager = optional(option(
   "-p",
   "--package-manager",
   choice(PACKAGE_MANAGER, {
     metavar: `PACKAGE_MANAGER: ${joinSep(PACKAGE_MANAGER)}`,
   }),
-);
-const kvStore = option(
+));
+const kvStore = optional(option(
   "-k",
   "--kv-store",
   choice(KV_STORE, { metavar: `KV_STORE: ${joinSep(KV_STORE)}` }),
-);
-const messageQueue = option(
+));
+const messageQueue = optional(option(
   "-m",
   "--message-queue",
   choice(MESSAGE_QUEUE, {
     metavar: `MESSAGE_QUEUE: ${joinSep(MESSAGE_QUEUE)}`,
   }),
-);
+));
 
 export const initCommand = command(
   "init",
   object({
     command: constant("init"),
-    dir: argument(path({ metavar: "DIRECTORY" })),
+    dir: optional(argument(path({ metavar: "DIRECTORY" }))),
     webFramework,
     packageManager,
     kvStore,

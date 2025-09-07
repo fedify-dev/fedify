@@ -1,9 +1,7 @@
-import type {
-  KvStore,
-  MessageQueue,
-  PackageManager,
-  WebFramework,
-} from "./types.ts";
+import { pipe } from "@fxts/core";
+import { input, select } from "@inquirer/prompts";
+import toggle from "inquirer-toggle";
+import type { RequiredNotNull } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
 import {
   KV_STORE,
@@ -11,13 +9,18 @@ import {
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { input, select } from "@inquirer/prompts";
-import toggle from "inquirer-toggle";
 import { isDirectoryEmpty, kvStores, messageQueues } from "./lib.ts";
-import { pipe } from "@fxts/core";
+import type {
+  KvStore,
+  MessageQueue,
+  PackageManager,
+  WebFramework,
+} from "./types.ts";
 import webFrameworks from "./webframeworks.ts";
 
-const askOptions: (options: InitCommand) => Promise<Required<InitCommand>> = //
+const askOptions: (
+  options: InitCommand,
+) => Promise<RequiredNotNull<InitCommand>> = //
   (options) =>
     pipe(
       options,
