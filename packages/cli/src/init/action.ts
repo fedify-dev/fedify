@@ -249,8 +249,8 @@ async function rewriteJsonFiles<
   });
   const logging = readLogging({ projectName });
   const files = {
-    [initializer.federationFile]: federation,
-    [initializer.loggingFile]: logging,
+    [initializer.federationFile]: await federation,
+    [initializer.loggingFile]: await logging,
     ".env": stringify(env),
     ...initializer.files,
   };
@@ -448,9 +448,19 @@ const readFederation = <
     packageManager: PackageManager;
   },
 >(
-  { imports, projectName, kv, mq, packageManager }: T,
-) =>
-  readTemplate("defaults/federation.ts")
+  data: T,
+) => readTemplate("defaults/federation.ts").then(replaceFederation(data));
+const replaceFederation = <
+  T extends {
+    imports: string;
+    projectName: string;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+    packageManager: PackageManager;
+  },
+>({ imports, projectName, kv, mq, packageManager }: T) =>
+(content: string) =>
+  content
     .replace(/\/\* imports \*\//, imports)
     .replace(/\/\* logger \*\//, JSON.stringify(projectName))
     .replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager))
@@ -461,5 +471,6 @@ const convertEnv = (obj: string, pm: PackageManager) =>
     : obj;
 
 const readLogging = <T extends { projectName: string }>({ projectName }: T) =>
-  readTemplate("defaults/logging.ts")
-    .replace(/\/\* project name \*\//, JSON.stringify(projectName));
+  readTemplate("defaults/logging.ts").then(replaceLogging(projectName));
+const replaceLogging = (projectName: string) => (content: string) =>
+  content.replace(/\/\* project name \*\//, JSON.stringify(projectName));
