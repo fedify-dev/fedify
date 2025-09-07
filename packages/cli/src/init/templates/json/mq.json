@@ -1,7 +1,13 @@
 {
   "redis": {
     "label": "Redis",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
       "npm:ioredis": "^5.4.1"
     },
@@ -9,16 +15,24 @@
       "@fedify/redis": {
         "RedisMessageQueue": "RedisMessageQueue"
       },
-      "ioredis": { "Redis": "Redis" }
+      "ioredis": {
+        "Redis": "Redis"
+      }
     },
-    "object": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",,
+    "object": "new RedisMessageQueue(() => new Redis(process.env.REDIS_URL))",
     "env": {
       "REDIS_URL": "redis://localhost:6379"
     }
   },
   "postgres": {
     "label": "PostgreSQL",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
       "npm:postgres": "^3.4.5"
     },
@@ -26,7 +40,9 @@
       "@fedify/postgres": {
         "PostgresMessageQueue": "PostgresMessageQueue"
       },
-      "postgres": { "default": "postgres" }
+      "postgres": {
+        "default": "postgres"
+      }
     },
     "object": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
     "env": {
@@ -35,7 +51,13 @@
   },
   "amqp": {
     "label": "AMQP (e.g., RabbitMQ)",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
       "npm:amqplib": "^0.10.4"
     },
@@ -46,7 +68,9 @@
       "@fedify/amqp": {
         "AmqpMessageQueue": "AmqpMessageQueue"
       },
-      "amqplib": { "connect": "connect" }
+      "amqplib": {
+        "connect": "connect"
+      }
     },
     "object": "new AmqpMessageQueue(await connect(process.env.AMQP_URL))",
     "env": {
@@ -55,11 +79,17 @@
   },
   "denokv": {
     "label": "Deno KV",
-    "packageManagers": ["deno"],
+    "packageManagers": [
+      "deno"
+    ],
     "imports": {
-      "@fedify/denokv": { "DenoKvMessageQueue": "DenoKvMessageQueue" }
+      "@fedify/denokv": {
+        "DenoKvMessageQueue": "DenoKvMessageQueue"
+      }
     },
     "object": "new DenoKvMessageQueue(await Deno.openKv())",
-    "denoUnstable": ["kv"]
+    "denoUnstable": [
+      "kv"
+    ]
   }
 }
