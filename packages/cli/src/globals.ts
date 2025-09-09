@@ -29,7 +29,7 @@ export async function configureLogging() {
       {
         category: "localtunnel",
         lowestLevel: "debug",
-        sinks: ["console", "file"],
+        sinks: ["console", "recording", "file"],
       },
       {
         category: ["logtape", "meta"],
