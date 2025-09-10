@@ -1,8 +1,8 @@
-import { pipe, tap } from "@fxts/core";
+import { entries, join, map, pipe, tap } from "@fxts/core";
 import { stringify } from "@std/dotenv";
 import * as colors from "@std/fmt/colors";
 import { exists } from "@std/fs";
-import { basename, dirname, join, normalize } from "@std/path";
+import { basename, dirname, join as joinPath, normalize } from "@std/path";
 import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
 import { mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import process from "node:process";
@@ -145,7 +145,7 @@ async function checkPackageJson<
   },
 >({ packageManager, dir, dryRun }: T): Promise<void> {
   if (packageManager !== "deno") {
-    const packageJsonPath = join(dir, "package.json");
+    const packageJsonPath = joinPath(dir, "package.json");
     if (!dryRun) {
       try {
         await stat(packageJsonPath);
@@ -245,9 +245,8 @@ async function rewriteJsonFiles<
 >(
   { dir, dryRun, packageManager, initializer, kv, mq, env, projectName }: T,
 ): Promise<void> {
-  const importStatements = getImports({ kv, mq });
   const federation = readFederation({
-    imports: importStatements,
+    imports: getImports({ kv, mq }),
     projectName,
     kv,
     mq,
@@ -255,20 +254,20 @@ async function rewriteJsonFiles<
   });
   const logging = readLogging({ projectName });
   const files = {
-    [initializer.federationFile]: await federation,
-    [initializer.loggingFile]: await logging,
+    [initializer.federationFile]: federation,
+    [initializer.loggingFile]: logging,
     ".env": stringify(env),
     ...initializer.files,
   };
   if (dryRun) {
     console.log(colors.bold(colors.green("📄 Would create files:\n")));
     for (const [filename, content] of Object.entries(files)) {
-      const path = join(dir, filename);
+      const path = joinPath(dir, filename);
       displayFileContent(path, content);
     }
   } else {
     for (const [filename, content] of Object.entries(files)) {
-      const path = join(dir, filename);
+      const path = joinPath(dir, filename);
       const dirName = dirname(path);
       await mkdir(dirName, { recursive: true });
       await writeTextFile(path, content);
@@ -281,7 +280,7 @@ async function rewriteJsonFiles<
       );
     }
     await rewriteJsonFile(
-      join(dir, "deno.json"),
+      joinPath(dir, "deno.json"),
       {},
       (cfg) => ({
         ...cfg,
@@ -301,13 +300,13 @@ async function rewriteJsonFiles<
       dryRun,
     );
     await rewriteJsonFile(
-      join(dir, ".vscode", "settings.json"),
+      joinPath(dir, ".vscode", "settings.json"),
       {},
       mergeVscSettings,
       dryRun,
     );
     await rewriteJsonFile(
-      join(dir, ".vscode", "extensions.json"),
+      joinPath(dir, ".vscode", "extensions.json"),
       {},
       (vsCodeExtensions) => ({
         recommendations: uniq([
@@ -325,7 +324,7 @@ async function rewriteJsonFiles<
       );
     }
     await rewriteJsonFile(
-      join(dir, "package.json"),
+      joinPath(dir, "package.json"),
       {},
       (cfg) => ({
         type: "module",
@@ -336,7 +335,7 @@ async function rewriteJsonFiles<
     );
     if (initializer.compilerOptions != null) {
       await rewriteJsonFile(
-        join(dir, "tsconfig.json"),
+        joinPath(dir, "tsconfig.json"),
         {},
         (cfg) => ({
           ...cfg,
@@ -349,13 +348,13 @@ async function rewriteJsonFiles<
       );
     }
     await rewriteJsonFile(
-      join(dir, ".vscode", "settings.json"),
+      joinPath(dir, ".vscode", "settings.json"),
       {},
       mergeVscSettings,
       dryRun,
     );
     await rewriteJsonFile(
-      join(dir, ".vscode", "extensions.json"),
+      joinPath(dir, ".vscode", "extensions.json"),
       {},
       (vsCodeExtensions) => ({
         recommendations: uniq([
@@ -367,7 +366,7 @@ async function rewriteJsonFiles<
       dryRun,
     );
     await rewriteJsonFile(
-      join(dir, "biome.json"),
+      joinPath(dir, "biome.json"),
       {},
       (cfg) => ({
         "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
@@ -396,8 +395,10 @@ async function rewriteJsonFiles<
 const getImports = <
   T extends { kv: KvStoreDescription; mq: MessageQueueDescription },
 >({ kv, mq }: T) =>
-  Object.entries(toMerged(kv.imports, mq.imports))
-    .map((
+  pipe(
+    toMerged(kv.imports, mq.imports),
+    entries,
+    map((
       [module, { "default": defaultImport = "", ...imports }],
     ) => [
       module,
@@ -406,15 +407,16 @@ const getImports = <
         ([name, alias]) => name === alias ? name : `${name} as ${alias}`,
       )
         .join(", "),
-    ]).map(([module, defaultImport, namedImports]) =>
+    ]),
+    map(([module, defaultImport, namedImports]) =>
       `import ${
         [defaultImport, namedImports.length > 0 ? `{ ${namedImports} }` : ""]
           .filter((x) => x.length > 0)
           .join(", ")
-      }
       } from ${JSON.stringify(module)};`
-    )
-    .join("\n");
+    ),
+    join("\n"),
+  );
 
 function configEnv<T extends { env: Record<string, string> }>(
   { env }: T,
