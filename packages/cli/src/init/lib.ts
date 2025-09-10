@@ -1,4 +1,4 @@
-import { entries, evolve, fromEntries, map, pipe } from "@fxts/core";
+import { entries, evolve, fromEntries, map, pipe, when } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import * as colors from "@std/fmt/colors";
 import { dirname, join } from "@std/path";
@@ -60,6 +60,21 @@ const convertPattern = <K extends string, T extends { outputPattern: string }>(
   ) as Record<K, Omit<T, "outputPattern"> & { outputPattern: RegExp }>;
 const packageManagers = convertPattern(pm) as PackageManagers;
 const runtimes = convertPattern(rt) as Runtimes;
+
+export const getLabel = (name: string) =>
+  pipe(
+    name,
+    whenHasLabel(webFrameworks),
+    whenHasLabel(packageManagers),
+    whenHasLabel(messageQueues),
+    whenHasLabel(kvStores),
+    whenHasLabel(runtimes),
+  );
+const whenHasLabel = <T extends Record<string, { label: string }>>(desc: T) =>
+  when((name: string) => name in desc, (name) => desc[name as keyof T].label);
+
+export const getInstallUrl = (pm: PackageManager) =>
+  packageManagers[pm].installUrl;
 
 export function drawDinosaur() {
   const d = flow(colors.bgBlue, colors.black);
@@ -140,6 +155,24 @@ async function locatePackageManager(
     return cmd[0];
   }
   return undefined;
+}
+
+export async function isPackageManagerAvailable(
+  pm: PackageManager,
+): Promise<boolean> {
+  if (await isCommandAvailable(packageManagers[pm])) return true;
+  if (process.platform !== "win32") return false;
+  const cmd: [string, ...string[]] = [
+    packageManagers[pm].checkCommand[0] + ".cmd",
+    ...packageManagers[pm].checkCommand.slice(1),
+  ];
+  if (
+    await isCommandAvailable({
+      ...packageManagers[pm],
+      checkCommand: cmd,
+    })
+  ) return true;
+  return false;
 }
 
 export const validatePackageMangerWith = (

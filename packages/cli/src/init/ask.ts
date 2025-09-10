@@ -1,5 +1,8 @@
 import { pipe } from "@fxts/core";
 import { input, select } from "@inquirer/prompts";
+import { message } from "@optique/core/message";
+import { print } from "@optique/run";
+import * as colors from "@std/fmt/colors";
 import toggle from "inquirer-toggle";
 import { getCwd, type RequiredNotNull } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
@@ -9,7 +12,14 @@ import {
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { isDirectoryEmpty, kvStores, messageQueues } from "./lib.ts";
+import {
+  getInstallUrl,
+  getLabel,
+  isDirectoryEmpty,
+  isPackageManagerAvailable,
+  kvStores,
+  messageQueues,
+} from "./lib.ts";
 import type {
   KvStore,
   MessageQueue,
@@ -64,13 +74,17 @@ const askWebFramework = () =>
 
 const fillPackageManager: //
   <T extends { packageManager?: PackageManager; webFramework: WebFramework }> //
-  (options: T) => Promise<T & { packageManager: PackageManager }> = //
-  async (options) => //
-  ({
-    ...options,
-    packageManager: options.packageManager ??
-      await askPackageManager(options.webFramework),
-  });
+  (options: T) => //
+  Promise<Omit<T, "packageManager"> & { packageManager: PackageManager }> = //
+  async ({ packageManager, ...options }) => {
+    const pm = packageManager ?? await askPackageManager(options.webFramework);
+    if (await isPackageManagerAvailable(pm)) {
+      return ({ ...options, packageManager: pm });
+    }
+    noticeInstallUrl(pm);
+    return await fillPackageManager(options) as //
+    typeof options & { packageManager: PackageManager };
+  };
 const askPackageManager = (wf: WebFramework) =>
   select<PackageManager>({
     message: "Choose the package manager to use",
@@ -87,6 +101,13 @@ const isWfSupportsPm = (
   wf: WebFramework,
   pm: PackageManager,
 ) => webFrameworks[wf].packageManagers.includes(pm);
+const noticeInstallUrl = (pm: PackageManager) => {
+  const label = colors.bold(getLabel(pm));
+  const url = colors.underline(colors.blue(getInstallUrl(pm)));
+  print(message`  Package manager "${label}" is not installed.`);
+  print(message`  You can install it from following link: ${url}`);
+  print(message`  or choose another package manager:`);
+};
 
 const fillMessageQueue: //
   <T extends { messageQueue?: MessageQueue; packageManager: PackageManager }> //
