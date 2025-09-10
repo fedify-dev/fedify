@@ -121,7 +121,7 @@ export async function getNodeInfo(
         "href" in link &&
         link.href != null
       );
-      if (link == null) {
+      if (link == null || link.href == null) {
         logger.error(
           "Failed to find a NodeInfo document link from {url}: {resourceDescriptor}",
           { url: wellKnownUrl.href, resourceDescriptor: wellKnownRd },

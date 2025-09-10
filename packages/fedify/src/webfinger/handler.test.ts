@@ -3,6 +3,7 @@ import type {
   ActorAliasMapper,
   ActorDispatcher,
   ActorHandleMapper,
+  WebFingerLinksDispatcher,
 } from "../federation/callback.ts";
 import type { RequestContext } from "../federation/context.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
@@ -537,5 +538,44 @@ test("handleWebFinger()", async (t) => {
     assertEquals(response.headers.get("Content-Type"), "application/jrd+json");
     assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
     assertEquals(await response.json(), expectedForHostnameWithPort);
+  });
+
+  await t.step("webFingerLinksDispatcher", async () => {
+    const webFingerLinksDispatcher: WebFingerLinksDispatcher<void> = (_ctx) => {
+      return [
+        {
+          rel: "http://ostatus.org/schema/1.0/subscribe",
+          template: "https://example.com/follow?acct={uri}",
+        },
+      ];
+    };
+
+    const u = new URL(url);
+    u.searchParams.set("resource", "acct:someone@example.com");
+    const context = createContext(u);
+    const request = context.request;
+    const response = await handleWebFinger(request, {
+      context,
+      actorDispatcher,
+      webFingerLinksDispatcher,
+      onNotFound,
+    });
+
+    assertEquals(response.status, 200);
+    const result = await response.json();
+
+    // Check that custom links are added to the existing links
+    const expectedWithCustomLinks = {
+      ...expected,
+      links: [
+        ...expected.links,
+        {
+          rel: "http://ostatus.org/schema/1.0/subscribe",
+          template: "https://example.com/follow?acct={uri}",
+        },
+      ],
+    };
+
+    assertEquals(result, expectedWithCustomLinks);
   });
 });

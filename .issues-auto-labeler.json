@@ -1,0 +1,15 @@
+{
+  "allowLabelCreation": false,
+  "autoComment": false,
+  "triggerEvents": [
+    "issues.opened",
+    "issues.edited",
+    "pull_request.opened",
+    "pull_request.edited",
+    "issue_comment.created",
+    "pull_request_review_comment.created"
+  ],
+  "excludeLabels": [],
+  "includeLabelsOnly": [],
+  "language": "en"
+}

@@ -1,6 +1,6 @@
 import { or } from "@optique/core";
 import { run } from "@optique/run";
-import { inboxCommand, runInbox } from "./inbox.ts";
+import { inboxCommand, runInbox } from "./inbox.tsx";
 import { initCommand, runInit } from "./init/mod.ts";
 import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";

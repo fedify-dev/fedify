@@ -1,7 +1,13 @@
 {
-  "deno": {
-    "enable": true,
-    "unstable": true
+  "lsp": {
+    "deno": {
+      "settings": {
+        "deno": {
+          "enable": true,
+          "unstable": true
+        }
+      }
+    }
   },
   "ensure_final_newline_on_save": true,
   "format_on_save": "on",

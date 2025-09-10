@@ -21,6 +21,7 @@ import type {
   SendActivityOptions,
   SendActivityOptionsForCollection,
   SenderKeyPair,
+  WebFingerLinksDispatcher,
 } from "@fedify/fedify/federation";
 import type { JsonValue, NodeInfo } from "@fedify/fedify/nodeinfo";
 import type { DocumentLoader } from "@fedify/fedify/runtime";
@@ -108,6 +109,7 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   private activeQueues: Set<"inbox" | "outbox" | "fanout"> = new Set();
   public sentCounter = 0;
   private nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
+  private webFingerDispatcher?: WebFingerLinksDispatcher<TContextData>;
   private actorDispatchers: Map<string, ActorDispatcher<TContextData>> =
     new Map();
   public actorPath?: string;
@@ -188,6 +190,12 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
   ): void {
     this.nodeInfoDispatcher = dispatcher;
     this.nodeInfoPath = path;
+  }
+
+  setWebFingerLinksDispatcher(
+    dispatcher: WebFingerLinksDispatcher<TContextData>,
+  ): void {
+    this.webFingerDispatcher = dispatcher;
   }
 
   setActorDispatcher(

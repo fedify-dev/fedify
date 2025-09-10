@@ -161,7 +161,7 @@ async function lookupObjectInternal(
         l.type !== "application/activity+json" &&
           !l.type?.match(
             /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
-          ) || l.rel !== "self"
+          ) || l.rel !== "self" || l.href == null
       ) continue;
       try {
         const remoteDoc = await documentLoader(l.href, {

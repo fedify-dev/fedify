@@ -478,6 +478,12 @@ WebFinger links
 Some properties of an `Actor` returned by the actor dispatcher affect
 responses to WebFinger requests.
 
+> [!TIP]
+> *Since Fedify 1.9.0*, you can also customize WebFinger responses using
+> `~Federatable.setWebFingerLinksDispatcher()` to add custom links with
+> the `template` field. See the [WebFinger documentation](./webfinger.md#customizing-webfinger-endpoint)
+> for details.
+
 ### `preferredUsername`
 
 *This API is available since Fedify 0.15.0.*

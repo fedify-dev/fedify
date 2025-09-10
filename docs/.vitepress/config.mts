@@ -68,6 +68,7 @@ const MANUAL = {
     { text: "Collections", link: "/manual/collections.md" },
     { text: "Object dispatcher", link: "/manual/object.md" },
     { text: "Access control", link: "/manual/access-control.md" },
+    { text: "WebFinger", link: "/manual/webfinger.md" },
     { text: "NodeInfo", link: "/manual/nodeinfo.md" },
     { text: "Pragmatics", link: "/manual/pragmatics.md" },
     { text: "Key–value store", link: "/manual/kv.md" },
