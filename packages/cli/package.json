@@ -32,7 +32,7 @@
   "engines": {
     "node": ">=20.0.0",
     "bun": ">=1.2.0",
-    "denp": ">=2.0.0"
+    "deno": ">=2.0.0"
   },
   "dependencies": {
     "@cross/dir": "jsr:@cross/dir@^1.1.0",
@@ -43,19 +43,21 @@
     "@inquirer/prompts": "^7.8.4",
     "@jimp/core": "^1.6.0",
     "@jimp/wasm-webp": "^1.6.0",
-    "@optique/core": "^0.4.0-dev.54",
-    "@optique/run": "^0.3.0",
     "@std/dotenv": "jsr:^0.225.5",
     "@std/fmt/colors": "jsr:@std/fmt@^0.224.0/colors",
+    "@optique/core": "^0.4.0-dev.54",
+    "@optique/run": "^0.3.0",
+    "@poppanator/http-constants": "^1.1.1",
+    "cli-highlight": "^2.1.11",
+    "fetch-mock": "^12.5.4",
+    "icojs": "^0.19.5",
     "cli-table3": "^0.6.5",
     "hono": "^4.8.3",
-    "@poppanator/http-constants": "^1.1.1",
-    "shiki": "^1.6.4",
-    "srvx": "^0.8.7",
-    "cli-highlight": "^2.1.11",
     "inquirer": "^12.9.4",
     "inquirer-toggle": "^1.0.1",
     "jimp": "^1.6.0",
+    "shiki": "^1.6.4",
+    "srvx": "^0.8.7",
     "ora": "^8.2.0"
   }
 }

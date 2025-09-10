@@ -5,7 +5,7 @@ import { initCommand, runInit } from "./init/mod.ts";
 import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
-import { runWebFinger, webFingerCommand } from "./webfinger.ts";
+import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
 
 const command = or(
   initCommand,
