@@ -26,6 +26,7 @@ export interface PackageManagerDescription {
   label: string;
   checkCommand: [string, ...string[]];
   outputPattern: RegExp;
+  installUrl: string;
 }
 
 export interface WebFrameworkInitializer {
