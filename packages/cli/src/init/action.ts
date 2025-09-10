@@ -27,7 +27,6 @@ import {
   PACKAGE_VERSION,
   readTemplate,
   rewriteJsonFile,
-  validateOptions,
 } from "./lib.ts";
 import type {
   KvStoreDescription,
@@ -43,7 +42,6 @@ export default async function runInit(options: InitCommand) {
   const input = await pipe(
     options,
     askOptions,
-    validateOptions,
     tap(logOptions),
     tap(noticeDryRun),
     tap(checkDirectory),

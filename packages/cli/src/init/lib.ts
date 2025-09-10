@@ -13,7 +13,6 @@ import {
   runSubCommand,
 } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
-import { PACKAGE_MANAGER } from "./const.ts";
 import kv from "./templates/json/kv.json" with { type: "json" };
 import mq from "./templates/json/mq.json" with { type: "json" };
 import pm from "./templates/json/pm.json" with { type: "json" };
@@ -98,65 +97,6 @@ export const logOptions: (options: RequiredNotNull<InitCommand>) => void = (
     options,
   );
 
-export function validateOptions(
-  options: RequiredNotNull<InitCommand>,
-): RequiredNotNull<InitCommand> {
-  try {
-    const {
-      webFramework,
-      kvStore,
-      messageQueue,
-      packageManager,
-    } = options;
-    console.log(options);
-
-    [
-      validatePackageMangerWith(webFrameworks[webFramework], "framework"),
-      validatePackageMangerWith(kvStores[kvStore], "kv store"),
-      validatePackageMangerWith(messageQueues[messageQueue], "message queue"),
-    ].map((f) => f(packageManager));
-    if (!packageManagerLocations[packageManager]) {
-      throw new Error(`The ${packageManager} is not available on this system.`);
-    }
-    console.log(options);
-
-    return options;
-  } catch (e) {
-    if (e instanceof Error) console.error(e.message);
-    process.exit(1);
-  }
-}
-const packageManagerLocations: Record<
-  PackageManager,
-  string | undefined
-> = Object.fromEntries(
-  await Promise.all(
-    PACKAGE_MANAGER
-      .map(async (pm) => [pm, await locatePackageManager(pm)]),
-  ),
-);
-async function locatePackageManager(
-  pm: PackageManager,
-): Promise<string | undefined> {
-  if (await isCommandAvailable(packageManagers[pm])) {
-    return packageManagers[pm].checkCommand[0];
-  }
-  if (process.platform !== "win32") return undefined;
-  const cmd: [string, ...string[]] = [
-    packageManagers[pm].checkCommand[0] + ".cmd",
-    ...packageManagers[pm].checkCommand.slice(1),
-  ];
-  if (
-    await isCommandAvailable({
-      ...packageManagers[pm],
-      checkCommand: cmd,
-    })
-  ) {
-    return cmd[0];
-  }
-  return undefined;
-}
-
 export async function isPackageManagerAvailable(
   pm: PackageManager,
 ): Promise<boolean> {
@@ -175,19 +115,6 @@ export async function isPackageManagerAvailable(
   return false;
 }
 
-export const validatePackageMangerWith = (
-  desc: { packageManagers: readonly PackageManager[]; label: string },
-  kind: string,
-) =>
-(pm: PackageManager) => {
-  if (!desc.packageManagers.includes(pm)) {
-    throw new Error(
-      `The ${desc.label} ${kind} is not available on the ${
-        runtimes[pm].label
-      } runtime.`,
-    );
-  }
-};
 export const readTemplate: (templatePath: string) => string = (
   templatePath,
 ) =>
