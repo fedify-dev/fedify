@@ -4,7 +4,7 @@ import * as colors from "@std/fmt/colors";
 import { exists } from "@std/fs";
 import { basename, dirname, join as joinPath, normalize } from "@std/path";
 import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
-import { mkdir, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, realpath, stat } from "node:fs/promises";
 import process from "node:process";
 import {
   isNotFoundError,
@@ -12,6 +12,7 @@ import {
   replace,
   runSubCommand,
   set,
+  writeTextFile,
 } from "../utils.ts";
 import askOptions from "./ask/mod.ts";
 import type { InitCommand } from "./command.ts";
@@ -43,8 +44,8 @@ export default async function runInit(options: InitCommand) {
     options,
     askOptions,
     tap(logOptions),
-    tap(noticeDryRun),
-    tap(checkDirectory),
+    tap(noticeDry),
+    tap(makeDirIfHyd),
   );
   const data = await pipe(
     input,
@@ -65,7 +66,7 @@ export default async function runInit(options: InitCommand) {
   );
 }
 
-function noticeDryRun<T extends { dryRun: boolean }>({ dryRun }: T) {
+function noticeDry<T extends { dryRun: boolean }>({ dryRun }: T) {
   if (dryRun) {
     console.log(
       colors.bold(
@@ -75,14 +76,11 @@ function noticeDryRun<T extends { dryRun: boolean }>({ dryRun }: T) {
   }
 }
 
-async function checkDirectory<T extends { dir: string; dryRun: boolean }>(
+async function makeDirIfHyd<T extends { dir: string; dryRun: boolean }>(
   { dir, dryRun }: T,
 ) {
-  if (dryRun) {
-    await checkDirectoryEmpty(dir);
-  } else {
+  if (!dryRun) {
     await mkdir(dir, { recursive: true });
-    await checkDirectoryEmpty(dir);
   }
 }
 
@@ -112,47 +110,59 @@ async function precommand<
     dir: string;
     dryRun: boolean;
   },
->({
-  initializer: { command },
-  dir,
-  dryRun,
-}: T) {
-  if (command != null) {
-    if (dryRun) {
-      console.log(colors.bold(colors.cyan("📦 Would run command:")));
-      console.log(`  ${command.join(" ")}\n`);
+>(data: T) {
+  if (data.initializer.command) {
+    if (data.dryRun) {
+      recommendPrecommand(data);
     } else {
-      await runSubCommand(command, {
-        cwd: dir,
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      }).catch(() => {
-        console.error("Failed to initialize the project.");
-        process.exit(1);
-      });
+      await runPrecommand(data);
     }
   }
 }
 
-async function checkPackageJson<
+function recommendPrecommand<
   T extends {
-    packageManager: PackageManager;
+    initializer: WebFrameworkInitializer;
     dir: string;
-    dryRun: boolean;
   },
->({ packageManager, dir, dryRun }: T): Promise<void> {
-  if (packageManager !== "deno") {
-    const packageJsonPath = joinPath(dir, "package.json");
-    if (!dryRun) {
-      try {
-        await stat(packageJsonPath);
-      } catch (e) {
-        if (isNotFoundError(e)) {
-          await writeTextFile(packageJsonPath, "{}");
-        } else throw e;
-      }
-    }
+>({
+  initializer: { command },
+  dir,
+}: T) {
+  console.log(colors.bold(colors.cyan("📦 Would run command:")));
+  console.log(`  cd ${dir}`);
+  console.log(`  ${command!.join(" ")}\n`);
+}
+async function runPrecommand<
+  T extends {
+    initializer: WebFrameworkInitializer;
+    dir: string;
+  },
+>({
+  initializer: { command },
+  dir,
+}: T) {
+  await runSubCommand(command!, {
+    cwd: dir,
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  }).catch(() => {
+    console.error("Failed to initialize the project.");
+    process.exit(1);
+  });
+}
+
+async function checkPackageJson<
+  T extends { dir: string },
+>({ dir }: T): Promise<void> {
+  const packageJsonPath = joinPath(dir, "package.json");
+  try {
+    await stat(packageJsonPath);
+  } catch (e) {
+    if (isNotFoundError(e)) {
+      await writeTextFile(packageJsonPath, "{}");
+    } else throw e;
   }
 }
 
@@ -166,7 +176,7 @@ async function installDependencies<
     mq: MessageQueueDescription;
   },
 >({
-  packageManager: pm,
+  packageManager,
   dir,
   dryRun,
   initializer,
@@ -181,52 +191,61 @@ async function installDependencies<
     ...mq?.dependencies,
   };
   if (dryRun) {
-    const deps = Object.entries(dependencies)
-      .map(([name, version]) => `${name}@${version}`)
-      .join("\n");
-    if (deps) {
-      console.log(colors.bold(colors.cyan("📦 Would install dependencies:")));
-      console.log(`${deps}\n`);
-    }
+    recommendInstall({ dependencies });
   } else {
-    await addDependencies(
-      pm,
-      dir,
-      dependencies,
-    );
+    await addDependencies(packageManager, dir, dependencies);
   }
-  if (pm !== "deno") {
-    const devDependencies: Record<string, string> = {
-      "@biomejs/biome": "^1.8.3",
-      ...initializer.devDependencies,
-      ...kv?.devDependencies,
-      ...mq?.devDependencies,
-    };
-    if (dryRun) {
-      const devDeps = Object.entries(devDependencies)
-        .map(([name, version]) => `${name}@${version}`)
-        .join("\n");
-      if (devDeps) {
-        console.log(
-          colors.bold(colors.cyan("📦 Would install dev dependencies:")),
-        );
-        console.log(`${devDeps}\n`);
-      }
-    } else {
-      await addDependencies(
-        pm,
-        dir,
-        devDependencies,
-        true,
-      );
-    }
+  if (packageManager !== "deno") {
+    installDevDependencies({
+      packageManager,
+      dir,
+      dryRun,
+      initializer,
+      kv,
+      mq,
+    });
   }
 }
 
-async function writeTextFile(path: string, content: string): Promise<void> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
-  return await writeFile(path, data);
+async function installDevDependencies<
+  T extends {
+    packageManager: PackageManager;
+    dir: string;
+    dryRun: boolean;
+    initializer: WebFrameworkInitializer;
+    kv?: KvStoreDescription;
+    mq?: MessageQueueDescription;
+  },
+>({ packageManager: pm, dir, dryRun, initializer, kv, mq }: T): Promise<void> {
+  const dependencies: Record<string, string> = {
+    "@biomejs/biome": "^1.8.3",
+    ...initializer.devDependencies,
+    ...kv?.devDependencies,
+    ...mq?.devDependencies,
+  };
+  if (dryRun) {
+    recommendInstall({ dependencies, dev: true });
+  } else {
+    await addDependencies(pm, dir, dependencies, true);
+  }
+}
+
+function recommendInstall<
+  T extends { dependencies: Record<string, string>; dev?: boolean },
+>(
+  { dependencies, dev = false }: T,
+) {
+  const deps = Object.entries(dependencies)
+    .map(([name, version]) => `${name}@${version}`)
+    .join("\n");
+  if (deps) {
+    console.log(
+      colors.bold(
+        colors.cyan(`📦 Would install ${dev ? "dev " : ""}dependencies:`),
+      ),
+    );
+    console.log(`${deps}\n`);
+  }
 }
 
 async function rewriteJsonFiles<
@@ -258,136 +277,171 @@ async function rewriteJsonFiles<
     ...initializer.files,
   };
   if (dryRun) {
-    console.log(colors.bold(colors.green("📄 Would create files:\n")));
-    for (const [filename, content] of Object.entries(files)) {
-      const path = joinPath(dir, filename);
-      displayFileContent(path, content);
-    }
+    recommendCreate();
+    displayFiles({ dir, files });
+    recommendInsertJsons();
   } else {
-    for (const [filename, content] of Object.entries(files)) {
-      const path = joinPath(dir, filename);
-      const dirName = dirname(path);
-      await mkdir(dirName, { recursive: true });
-      await writeTextFile(path, content);
-    }
+    createFiles({ dir, files });
   }
   if (packageManager === "deno") {
-    if (dryRun) {
-      console.log(
-        colors.bold(colors.green("Would create/update JSON files:\n")),
-      );
-    }
-    await rewriteJsonFile(
-      joinPath(dir, "deno.json"),
-      {},
-      (cfg) => ({
-        ...cfg,
-        ...initializer.compilerOptions == null ? {} : {
-          compilerOptions: {
-            ...cfg?.compilerOptions,
-            ...initializer.compilerOptions,
-          },
-        },
-        unstable: [
-          "temporal",
-          ...kv.denoUnstable ?? [],
-          ...mq.denoUnstable ?? [],
-        ],
-        tasks: { ...cfg.tasks, ...initializer.tasks },
-      }),
-      dryRun,
-    );
-    await rewriteJsonFile(
-      joinPath(dir, ".vscode", "settings.json"),
-      {},
-      mergeVscSettings,
-      dryRun,
-    );
-    await rewriteJsonFile(
-      joinPath(dir, ".vscode", "extensions.json"),
-      {},
-      (vsCodeExtensions) => ({
-        recommendations: uniq([
-          "denoland.vscode-deno",
-          ...vsCodeExtensions.recommendations ?? [],
-        ]),
-        ...vsCodeExtensions,
-      }),
-      dryRun,
-    );
+    await insertJsonForDeno({ dir, dryRun, initializer, kv, mq });
   } else {
-    if (dryRun) {
-      console.log(
-        colors.bold(colors.green("Would create/update JSON files:\n")),
-      );
-    }
+    await insertJsonForNotDeno({ dir, dryRun, initializer });
+  }
+}
+
+const recommendCreate = () =>
+  console.log(colors.bold(colors.green("📄 Would create files:\n")));
+
+function displayFiles<
+  T extends { dir: string; files: Record<string, string> },
+>({ dir, files }: T) {
+  for (const [filename, content] of Object.entries(files)) {
+    const path = joinPath(dir, filename);
+    displayFileContent(path, content);
+  }
+}
+
+async function createFiles<
+  T extends { dir: string; files: Record<string, string> },
+>({ dir, files }: T) {
+  for (const [filename, content] of Object.entries(files)) {
+    const path = joinPath(dir, filename);
+    const dirName = dirname(path);
+    await mkdir(dirName, { recursive: true });
+    await writeTextFile(path, content);
+  }
+}
+
+const recommendInsertJsons = () =>
+  console.log(
+    colors.bold(colors.green("Would create/update JSON files:\n")),
+  );
+
+async function insertJsonForDeno<
+  T extends {
+    dir: string;
+    dryRun: boolean;
+    initializer: WebFrameworkInitializer;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+  },
+>({ dir, dryRun, initializer, kv, mq }: T) {
+  await rewriteJsonFile(
+    joinPath(dir, "deno.json"),
+    {},
+    (cfg) => ({
+      ...cfg,
+      ...initializer.compilerOptions == null ? {} : {
+        compilerOptions: {
+          ...cfg?.compilerOptions,
+          ...initializer.compilerOptions,
+        },
+      },
+      unstable: [
+        "temporal",
+        ...kv.denoUnstable ?? [],
+        ...mq.denoUnstable ?? [],
+      ],
+      tasks: { ...cfg.tasks, ...initializer.tasks },
+    }),
+    dryRun,
+  );
+  await rewriteJsonFile(
+    joinPath(dir, ".vscode", "settings.json"),
+    {},
+    mergeVscSettings,
+    dryRun,
+  );
+  await rewriteJsonFile(
+    joinPath(dir, ".vscode", "extensions.json"),
+    {},
+    (vsCodeExtensions) => ({
+      recommendations: uniq([
+        "denoland.vscode-deno",
+        ...vsCodeExtensions.recommendations ?? [],
+      ]),
+      ...vsCodeExtensions,
+    }),
+    dryRun,
+  );
+}
+
+async function insertJsonForNotDeno<
+  T extends {
+    dir: string;
+    dryRun: boolean;
+    initializer: WebFrameworkInitializer;
+  },
+>(
+  { dir, dryRun, initializer }: T,
+) {
+  await rewriteJsonFile(
+    joinPath(dir, "package.json"),
+    {},
+    (cfg) => ({
+      type: "module",
+      ...cfg,
+      scripts: { ...cfg.scripts, ...initializer.tasks },
+    }),
+    dryRun,
+  );
+  if (initializer.compilerOptions != null) {
     await rewriteJsonFile(
-      joinPath(dir, "package.json"),
+      joinPath(dir, "tsconfig.json"),
       {},
       (cfg) => ({
-        type: "module",
         ...cfg,
-        scripts: { ...cfg.scripts, ...initializer.tasks },
-      }),
-      dryRun,
-    );
-    if (initializer.compilerOptions != null) {
-      await rewriteJsonFile(
-        joinPath(dir, "tsconfig.json"),
-        {},
-        (cfg) => ({
-          ...cfg,
-          compilerOptions: {
-            ...cfg?.compilerOptions,
-            ...initializer.compilerOptions,
-          },
-        }),
-        dryRun,
-      );
-    }
-    await rewriteJsonFile(
-      joinPath(dir, ".vscode", "settings.json"),
-      {},
-      mergeVscSettings,
-      dryRun,
-    );
-    await rewriteJsonFile(
-      joinPath(dir, ".vscode", "extensions.json"),
-      {},
-      (vsCodeExtensions) => ({
-        recommendations: uniq([
-          "biomejs.biome",
-          ...vsCodeExtensions.recommendations ?? [],
-        ]),
-        ...vsCodeExtensions,
-      }),
-      dryRun,
-    );
-    await rewriteJsonFile(
-      joinPath(dir, "biome.json"),
-      {},
-      (cfg) => ({
-        "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
-        ...cfg,
-        organizeImports: {
-          ...cfg.organizeImports,
-          enabled: true,
-        },
-        formatter: {
-          ...cfg.formatter,
-          enabled: true,
-          indentStyle: "space",
-          indentWidth: 2,
-        },
-        linter: {
-          ...cfg.linter,
-          enabled: true,
-          rules: { recommended: true },
+        compilerOptions: {
+          ...cfg?.compilerOptions,
+          ...initializer.compilerOptions,
         },
       }),
       dryRun,
     );
   }
+  await rewriteJsonFile(
+    joinPath(dir, ".vscode", "settings.json"),
+    {},
+    mergeVscSettings,
+    dryRun,
+  );
+  await rewriteJsonFile(
+    joinPath(dir, ".vscode", "extensions.json"),
+    {},
+    (vsCodeExtensions) => ({
+      recommendations: uniq([
+        "biomejs.biome",
+        ...vsCodeExtensions.recommendations ?? [],
+      ]),
+      ...vsCodeExtensions,
+    }),
+    dryRun,
+  );
+  await rewriteJsonFile(
+    joinPath(dir, "biome.json"),
+    {},
+    (cfg) => ({
+      "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
+      ...cfg,
+      organizeImports: {
+        ...cfg.organizeImports,
+        enabled: true,
+      },
+      formatter: {
+        ...cfg.formatter,
+        enabled: true,
+        indentStyle: "space",
+        indentWidth: 2,
+      },
+      linter: {
+        ...cfg.linter,
+        enabled: true,
+        rules: { recommended: true },
+      },
+    }),
+    dryRun,
+  );
 }
 
 const getImports = <

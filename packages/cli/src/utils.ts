@@ -2,6 +2,7 @@ import { isObject } from "@fxts/core";
 import { highlight } from "cli-highlight";
 import { toMerged } from "es-toolkit";
 import { spawn } from "node:child_process";
+import { writeFile } from "node:fs/promises";
 import process from "node:process";
 
 export const colorEnabled: boolean = Deno.stdout.isTerminal() &&
@@ -115,3 +116,12 @@ export const replace = (
 (text: string): string => text.replace(pattern, replacement as string);
 
 export const getOsType = () => process.platform;
+
+export async function writeTextFile(
+  path: string,
+  content: string,
+): Promise<void> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  return await writeFile(path, data);
+}
