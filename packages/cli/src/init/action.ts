@@ -13,7 +13,7 @@ import {
   runSubCommand,
   set,
 } from "../utils.ts";
-import askOptions from "./ask.ts";
+import askOptions from "./ask/mod.ts";
 import type { InitCommand } from "./command.ts";
 import {
   addDependencies,
