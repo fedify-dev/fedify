@@ -3,6 +3,7 @@ import { getLogger } from "@logtape/logtape";
 import * as colors from "@std/fmt/colors";
 import { dirname, join } from "@std/path";
 import { curry, flow, toMerged, uniq } from "es-toolkit";
+import { readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import process from "node:process";
 import metadata from "../../deno.json" with { type: "json" };
@@ -92,6 +93,7 @@ export function validateOptions(
       messageQueue,
       packageManager,
     } = options;
+    console.log(options);
 
     [
       validatePackageMangerWith(webFrameworks[webFramework], "framework"),
@@ -101,6 +103,8 @@ export function validateOptions(
     if (!packageManagerLocations[packageManager]) {
       throw new Error(`The ${packageManager} is not available on this system.`);
     }
+    console.log(options);
+
     return options;
   } catch (e) {
     if (e instanceof Error) console.error(e.message);
@@ -151,9 +155,13 @@ export const validatePackageMangerWith = (
     );
   }
 };
-export const readTemplate: (templatePath: string) => Promise<string> = async (
+export const readTemplate: (templatePath: string) => string = (
   templatePath,
-) => await readFile(join(".", "templates", ...templatePath.split("/")), "utf8");
+) =>
+  readFileSync(
+    join(import.meta.dirname!, "templates", ...templatePath.split("/")),
+    "utf8",
+  );
 
 export const getInstruction: (
   packageManager: PackageManager,

@@ -1,3 +1,5 @@
+import { pipe } from "@fxts/core";
+import { replace } from "../utils.ts";
 import { PACKAGE_MANAGER } from "./const.ts";
 import {
   getInstruction,
@@ -32,11 +34,14 @@ const webFrameworks: WebFrameworks = {
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
-        "src/app.tsx": readTemplate("hono/app.tsx")
-          .replace(
+        "src/app.tsx": pipe(
+          "hono/app.tsx",
+          readTemplate,
+          replace(
             /\/\* hono \*\//,
             pm === "deno" ? "@hono/hono" : "hono",
-          )
+          ),
+        )
           .replace(/\/\* logger \*\//, projectName),
         "src/index.ts": readTemplate(`hono/index/${pm}.ts`),
       },

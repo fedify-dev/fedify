@@ -6,7 +6,13 @@ import { basename, dirname, join, normalize } from "@std/path";
 import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
 import { mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import process from "node:process";
-import { isNotFoundError, merge, runSubCommand, set } from "../utils.ts";
+import {
+  isNotFoundError,
+  merge,
+  replace,
+  runSubCommand,
+  set,
+} from "../utils.ts";
 import askOptions from "./ask.ts";
 import type { InitCommand } from "./command.ts";
 import {
@@ -448,29 +454,30 @@ const readFederation = <
     packageManager: PackageManager;
   },
 >(
-  data: T,
-) => readTemplate("defaults/federation.ts").then(replaceFederation(data));
-const replaceFederation = <
-  T extends {
-    imports: string;
-    projectName: string;
-    kv: KvStoreDescription;
-    mq: MessageQueueDescription;
-    packageManager: PackageManager;
-  },
->({ imports, projectName, kv, mq, packageManager }: T) =>
-(content: string) =>
-  content
-    .replace(/\/\* imports \*\//, imports)
-    .replace(/\/\* logger \*\//, JSON.stringify(projectName))
-    .replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager))
-    .replace(/\/\* queue \*\//, convertEnv(mq.object, packageManager));
+  {
+    imports,
+    projectName,
+    kv,
+    mq,
+    packageManager,
+  }: T,
+) =>
+  pipe(
+    "defaults/federation.ts",
+    readTemplate,
+    replace(/\/\* imports \*\//, imports),
+    replace(/\/\* logger \*\//, JSON.stringify(projectName)),
+    replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager)),
+    replace(/\/\* queue \*\//, convertEnv(mq.object, packageManager)),
+  );
 const convertEnv = (obj: string, pm: PackageManager) =>
   pm === "deno" && /process\.env\.(\w+)/.test(obj)
     ? obj.replace(/process\.env\.(\w+)/, (_, g1) => `Deno.env.get("${g1}")`)
     : obj;
 
 const readLogging = <T extends { projectName: string }>({ projectName }: T) =>
-  readTemplate("defaults/logging.ts").then(replaceLogging(projectName));
-const replaceLogging = (projectName: string) => (content: string) =>
-  content.replace(/\/\* project name \*\//, JSON.stringify(projectName));
+  pipe(
+    "defaults/logging.ts",
+    readTemplate,
+    replace(/\/\* project name \*\//, JSON.stringify(projectName)),
+  );

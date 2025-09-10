@@ -107,3 +107,9 @@ export type RequiredNotNull<T> = {
 };
 
 export const getCwd = () => process.cwd();
+
+export const replace = (
+  pattern: string | RegExp,
+  replacement: string | ((substring: string, ...args: unknown[]) => string),
+) =>
+(text: string): string => text.replace(pattern, replacement as string);
