@@ -113,3 +113,5 @@ export const replace = (
   replacement: string | ((substring: string, ...args: unknown[]) => string),
 ) =>
 (text: string): string => text.replace(pattern, replacement as string);
+
+export const getOsType = () => process.platform;

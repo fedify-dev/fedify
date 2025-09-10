@@ -1,10 +1,15 @@
-import { pipe } from "@fxts/core";
+import { identity, pipe, unless, when } from "@fxts/core";
 import { input, select } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { print } from "@optique/run";
 import * as colors from "@std/fmt/colors";
 import toggle from "inquirer-toggle";
-import { getCwd, type RequiredNotNull } from "../utils.ts";
+import {
+  getCwd,
+  getOsType,
+  type RequiredNotNull,
+  runSubCommand,
+} from "../utils.ts";
 import type { InitCommand } from "./command.ts";
 import {
   KV_STORE,
@@ -47,16 +52,79 @@ const fillDir: <T extends { dir?: string }>(
   options: T,
 ) => Promise<T & { dir: string }> = async (options) => {
   const dir = options.dir ?? await askDir(getCwd());
-  return await askNonEmpty(dir) ? { ...options, dir } : await fillDir(options);
+  return await askIfNonEmpty(dir)
+    ? { ...options, dir }
+    : await fillDir(options);
 };
 const askDir = (cwd: string) =>
   input({ message: "Project directory:", default: cwd });
-const askNonEmpty = async (directory: string) =>
-  await isDirectoryEmpty(directory) || await toggle.default({
-    message:
-      `Directory "${directory}" is not empty. Do you want to use it anyway?`,
+const askIfNonEmpty = async (dir: string) => {
+  if (await isDirectoryEmpty(dir)) return true;
+  if (await askNonEmpty(dir)) return await moveDirToTrash(dir);
+  return false;
+};
+const askNonEmpty = (dir: string) =>
+  toggle.default({
+    message: `Directory "${dir}" is not empty.
+Do you want to use it anyway?`,
     default: false,
   });
+const moveDirToTrash = (dir: string) =>
+  pipe(
+    dir,
+    askMoveToTrash,
+    when(identity, moveToTrash(dir)),
+  );
+const askMoveToTrash = (dir: string) =>
+  toggle.default({
+    message: `Do you want to move the contents of "${dir}" to the trash?
+If you choose "No", you should choose another directory.`,
+    default: false,
+  });
+const moveToTrash = (dir: string) => () =>
+  pipe(
+    getOsType(),
+    getTrashCommand,
+    (fn) => fn(dir),
+    (cmd) => runSubCommand(cmd, { stdio: "ignore" }),
+    () => true,
+  ).catch(() => {
+    print(message`Failed to move "${dir}" to trash.
+Please move it manually.`);
+    return false;
+  });
+const getTrashCommand = (
+  os: NodeJS.Platform,
+) => (os in trashCommands
+  ? trashCommands[os as keyof typeof trashCommands]
+  : trashCommands.linux);
+const trashCommands: Record<
+  Extract<NodeJS.Platform, "darwin" | "win32" | "linux">,
+  (dir: string) => string[]
+> = {
+  darwin: (dir: string) => [ // mac
+    "osascript",
+    "-e",
+    `tell application "Finder" to delete POSIX file "${dir}"`,
+  ],
+  win32: (dir: string) => [ // windows
+    "powershell",
+    "-Command",
+    getPowershellTrashCommand(dir),
+  ],
+  linux: (dir: string) => ["gio", "trash", dir], // other unix
+};
+const getPowershellTrashCommand = (dir: string) =>
+  [
+    "Add-Type",
+    "-AssemblyName",
+    "Microsoft.VisualBasic;",
+    "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('",
+    dir,
+    "',",
+    "'OnlyErrorDialogs',",
+    "'SendToRecycleBin')",
+  ].join(" ");
 
 const fillWebFramework: //
   <T extends { webFramework?: WebFramework }>(options: T) => //
