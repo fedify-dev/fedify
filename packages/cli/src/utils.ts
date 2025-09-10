@@ -2,6 +2,7 @@ import { isObject } from "@fxts/core";
 import { highlight } from "cli-highlight";
 import { toMerged } from "es-toolkit";
 import { spawn } from "node:child_process";
+import process from "node:process";
 
 export const colorEnabled: boolean = Deno.stdout.isTerminal() &&
   !Deno.env.has("NO_COLOR");
@@ -104,3 +105,5 @@ export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
 export type RequiredNotNull<T> = {
   [P in keyof T]: NonNullable<T[P]>;
 };
+
+export const getCwd = () => process.cwd();

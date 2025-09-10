@@ -1,7 +1,7 @@
 import { pipe } from "@fxts/core";
 import { input, select } from "@inquirer/prompts";
 import toggle from "inquirer-toggle";
-import type { RequiredNotNull } from "../utils.ts";
+import { getCwd, type RequiredNotNull } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
 import {
   KV_STORE,
@@ -36,10 +36,11 @@ export default askOptions;
 const fillDir: <T extends { dir?: string }>(
   options: T,
 ) => Promise<T & { dir: string }> = async (options) => {
-  const dir = options.dir ?? await askDir();
+  const dir = options.dir ?? await askDir(getCwd());
   return await askNonEmpty(dir) ? { ...options, dir } : await fillDir(options);
 };
-const askDir = () => input({ message: "Project directory:", default: "." });
+const askDir = (cwd: string) =>
+  input({ message: "Project directory:", default: cwd });
 const askNonEmpty = async (directory: string) =>
   await isDirectoryEmpty(directory) || await toggle.default({
     message:
