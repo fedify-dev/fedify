@@ -44,7 +44,7 @@
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "amqplib": "catalog:"
   },
   "devDependencies": {

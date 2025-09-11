@@ -47,7 +47,7 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "@nestjs/common": "catalog:",
     "express": "catalog:"
   },

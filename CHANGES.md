@@ -140,6 +140,18 @@ To be released.
 [#394]: https://github.com/fedify-dev/fedify/pull/394
 
 
+Version 1.8.9
+-------------
+
+Released on September 10, 2025.
+
+ -  Integration and database adapter packages (*@fedify/amqp*, *@fedify/elysia*,
+    *@fedify/express*, *@fedify/h3*, *@fedify/nestjs*, *@fedify/postgres*,
+    *@fedify/redis*, *@fedify/sqlite*, *@fedify/testing*) now specify explicit
+    version ranges for the *@fedify/fedify* peer dependency instead of
+    accepting any version, improving compatibility guarantees.
+
+
 Version 1.8.8
 -------------
 
