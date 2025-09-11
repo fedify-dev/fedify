@@ -45,7 +45,9 @@ function expandVar(
     if (items.length === 0) {
       if (spec.first === ".") return [""]; // empty label still emits the dot
       if (spec.named && spec.ifEmpty === "nameOnly") return [v.name];
-      if (spec.named && spec.ifEmpty === "empty")   return [`${v.name}${spec.kvSep}`];
+      if (spec.named && spec.ifEmpty === "empty") {
+        return [`${v.name}${spec.kvSep}`];
+      }
       return [];
     }
     if (v.explode) return items.map((it) => emitNamed(spec, v.name, it));

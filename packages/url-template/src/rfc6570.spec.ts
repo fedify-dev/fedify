@@ -26,10 +26,104 @@ Deno.test("multiple vars", () => {
   assertEquals(t.expand({ x: "1024" }), "1024");
 });
 
-Deno.test("{+var} allows reserved", () => {
+Deno.test("{+var} allows reserved - basic", () => {
+  const t = compile("{+var}");
+  assertEquals(t.expand({ var: "value" }), "value");
+});
+
+Deno.test("{+var} allows reserved - percent encoding", () => {
+  const t = compile("{+hello}");
+  assertEquals(t.expand({ hello: "Hello World!" }), "Hello%20World!");
+});
+
+Deno.test("{+var} allows reserved - already encoded", () => {
+  const t = compile("{+half}");
+  assertEquals(t.expand({ half: "50%" }), "50%25");
+});
+
+Deno.test("{+var} allows reserved - base URL comparison", () => {
+  const t1 = compile("{base}index");
+  const t2 = compile("{+base}index");
+  const vars = { base: "http://example.com/home/" };
+  assertEquals(t1.expand(vars), "http%3A%2F%2Fexample.com%2Fhome%2Findex");
+  assertEquals(t2.expand(vars), "http://example.com/home/index");
+});
+
+Deno.test("{+var} allows reserved - empty value", () => {
+  const t = compile("O{+empty}X");
+  assertEquals(t.expand({ empty: "" }), "OX");
+});
+
+Deno.test("{+var} allows reserved - undefined value", () => {
+  const t = compile("O{+undef}X");
+  assertEquals(t.expand({ undef: undefined }), "OX");
+});
+
+Deno.test("{+var} allows reserved - path", () => {
   const t = compile("{+path}");
   assertEquals(t.expand({ path: "/foo/bar" }), "/foo/bar");
-  assertEquals(t.expand({ path: "a&b=c" }), "a&b=c");
+});
+
+Deno.test("{+var} allows reserved - path appended", () => {
+  const t = compile("{+path}/here");
+  assertEquals(t.expand({ path: "/foo/bar" }), "/foo/bar/here");
+});
+
+Deno.test("{+var} allows reserved - in query", () => {
+  const t = compile("here?ref={+path}");
+  assertEquals(t.expand({ path: "/foo/bar" }), "here?ref=/foo/bar");
+});
+
+Deno.test("{+var} allows reserved - mixed with normal var", () => {
+  const t = compile("up{+path}{var}/here");
+  assertEquals(
+    t.expand({ path: "/foo/bar", var: "value" }),
+    "up/foo/barvalue/here",
+  );
+});
+
+Deno.test("{+var} allows reserved - multiple vars", () => {
+  const t = compile("{+x,hello,y}");
+  assertEquals(
+    t.expand({ x: "1024", hello: "Hello World!", y: "768" }),
+    "1024,Hello%20World!,768",
+  );
+});
+
+Deno.test("{+var} allows reserved - multiple vars with path", () => {
+  const t = compile("{+path,x}/here");
+  assertEquals(t.expand({ path: "/foo/bar", x: "1024" }), "/foo/bar,1024/here");
+});
+
+Deno.test("{+var} allows reserved - prefix modifier", () => {
+  const t = compile("{+path:6}/here");
+  assertEquals(t.expand({ path: "/foo/bar" }), "/foo/b/here");
+});
+
+Deno.test("{+var} allows reserved - list", () => {
+  const t = compile("{+list}");
+  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "red,green,blue");
+});
+
+Deno.test("{+var} allows reserved - list explode", () => {
+  const t = compile("{+list*}");
+  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "red,green,blue");
+});
+
+Deno.test("{+var} allows reserved - map", () => {
+  const t = compile("{+keys}");
+  assertEquals(
+    t.expand({ keys: { semi: ";", dot: ".", comma: "," } }),
+    "semi,;,dot,.,comma,,",
+  );
+});
+
+Deno.test("{+var} allows reserved - map explode", () => {
+  const t = compile("{+keys*}");
+  assertEquals(
+    t.expand({ keys: { semi: ";", dot: ".", comma: "," } }),
+    "semi=;,dot=.,comma=,",
+  );
 });
 
 Deno.test("{#var} fragment", () => {
@@ -85,12 +179,18 @@ Deno.test("{.var} label - prefix modifier", () => {
 
 Deno.test("{.var} label - list without explode", () => {
   const t = compile("X{.list}");
-  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "X.red,green,blue");
+  assertEquals(
+    t.expand({ list: ["red", "green", "blue"] }),
+    "X.red,green,blue",
+  );
 });
 
 Deno.test("{.var} label - list with explode", () => {
   const t = compile("X{.list*}");
-  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "X.red.green.blue");
+  assertEquals(
+    t.expand({ list: ["red", "green", "blue"] }),
+    "X.red.green.blue",
+  );
 });
 
 Deno.test("{.var} label - map without explode", () => {
