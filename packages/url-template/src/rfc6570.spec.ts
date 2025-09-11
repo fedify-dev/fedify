@@ -38,9 +38,85 @@ Deno.test("{#var} fragment", () => {
   assertEquals(t.expand({ frag: "a/b?c#d" }), "#a/b?c%23d");
 });
 
-Deno.test("{.var} label", () => {
+Deno.test("{.var} label - basic", () => {
   const t = compile("www{.domain}");
   assertEquals(t.expand({ domain: "example" }), "www.example");
+});
+
+Deno.test("{.var} label - single variable", () => {
+  const t = compile("{.who}");
+  assertEquals(t.expand({ who: "fred" }), ".fred");
+});
+
+Deno.test("{.var} label - same variable twice", () => {
+  const t = compile("{.who,who}");
+  assertEquals(t.expand({ who: "fred" }), ".fred.fred");
+});
+
+Deno.test("{.var} label - mixed variables with encoding", () => {
+  const t = compile("{.half,who}");
+  assertEquals(t.expand({ half: "50%", who: "fred" }), ".50%25.fred");
+});
+
+Deno.test("{.var} label - explode with multiple labels", () => {
+  const t = compile("www{.dom*}");
+  assertEquals(t.expand({ dom: ["example", "com"] }), "www.example.com");
+});
+
+Deno.test("{.var} label - with prefix", () => {
+  const t = compile("X{.var}");
+  assertEquals(t.expand({ var: "value" }), "X.value");
+});
+
+Deno.test("{.var} label - empty value", () => {
+  const t = compile("X{.empty}");
+  assertEquals(t.expand({ empty: "" }), "X.");
+});
+
+Deno.test("{.var} label - undefined value", () => {
+  const t = compile("X{.undef}");
+  assertEquals(t.expand({ undef: undefined }), "X");
+});
+
+Deno.test("{.var} label - prefix modifier", () => {
+  const t = compile("X{.var:3}");
+  assertEquals(t.expand({ var: "value" }), "X.val");
+});
+
+Deno.test("{.var} label - list without explode", () => {
+  const t = compile("X{.list}");
+  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "X.red,green,blue");
+});
+
+Deno.test("{.var} label - list with explode", () => {
+  const t = compile("X{.list*}");
+  assertEquals(t.expand({ list: ["red", "green", "blue"] }), "X.red.green.blue");
+});
+
+Deno.test("{.var} label - map without explode", () => {
+  const t = compile("X{.keys}");
+  assertEquals(
+    t.expand({ keys: { semi: ";", dot: ".", comma: "," } }),
+    "X.semi,%3B,dot,.,comma,%2C",
+  );
+});
+
+Deno.test("{.var} label - map with explode", () => {
+  const t = compile("X{.keys*}");
+  assertEquals(
+    t.expand({ keys: { semi: ";", dot: ".", comma: "," } }),
+    "X.semi=%3B.dot=..comma=%2C",
+  );
+});
+
+Deno.test("{.var} label - empty map without explode", () => {
+  const t = compile("X{.empty_keys}");
+  assertEquals(t.expand({ empty_keys: {} }), "X");
+});
+
+Deno.test("{.var} label - empty map with explode", () => {
+  const t = compile("X{.empty_keys*}");
+  assertEquals(t.expand({ empty_keys: {} }), "X");
 });
 
 Deno.test("{/var} path segment", () => {
