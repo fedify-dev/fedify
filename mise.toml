@@ -1,5 +1,6 @@
 [tools]
 bun = "latest"
+# Deno version should be kept in sync with GitHub Actions workflows
 deno = "2.4.5"
 node = "22"
 "npm:pnpm" = "latest"

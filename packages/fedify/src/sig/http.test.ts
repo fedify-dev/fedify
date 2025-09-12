@@ -671,7 +671,7 @@ test("verifyRequest() [rfc9421] manual POST verification", async () => {
   const signatureVerified = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     rsaPublicKey2.publicKey,
-    parsedSignature.sig1,
+    parsedSignature.sig1.slice(),
     new TextEncoder().encode(signatureBase),
   );
 

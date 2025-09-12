@@ -1196,7 +1196,7 @@ async function verifyRequestRfc9421(
       const verified = await crypto.subtle.verify(
         algorithm,
         key.publicKey,
-        sigBytes,
+        sigBytes.slice(),
         signatureBaseBytes,
       );
 
