@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import {
   createInboxContext,
@@ -30,7 +30,6 @@ import type {
 } from "./callback.ts";
 import type { RequestContext } from "./context.ts";
 import {
-  acceptsJsonLd,
   type CustomCollectionCallbacks,
   handleActor,
   handleCollection,
@@ -43,36 +42,6 @@ import {
 import { InboxListenerSet } from "./inbox.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
-
-test("acceptsJsonLd()", () => {
-  assert(acceptsJsonLd(
-    new Request("https://example.com/", {
-      headers: { Accept: "application/activity+json" },
-    }),
-  ));
-  assert(acceptsJsonLd(
-    new Request("https://example.com/", {
-      headers: { Accept: "application/ld+json" },
-    }),
-  ));
-  assert(acceptsJsonLd(
-    new Request("https://example.com/", {
-      headers: { Accept: "application/json" },
-    }),
-  ));
-  assertFalse(acceptsJsonLd(
-    new Request("https://example.com/", {
-      headers: { Accept: "application/ld+json; q=0.5, text/html; q=0.8" },
-    }),
-  ));
-  assertFalse(acceptsJsonLd(
-    new Request("https://example.com/", {
-      headers: {
-        Accept: "application/ld+json; q=0.4, application/xhtml+xml; q=0.9",
-      },
-    }),
-  ));
-});
 
 test("handleActor()", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
@@ -96,11 +65,6 @@ test("handleActor()", async () => {
     onNotFoundCalled = request;
     return new Response("Not found", { status: 404 });
   };
-  let onNotAcceptableCalled: Request | null = null;
-  const onNotAcceptable = (request: Request) => {
-    onNotAcceptableCalled = request;
-    return new Response("Not acceptable", { status: 406 });
-  };
   let onUnauthorizedCalled: Request | null = null;
   const onUnauthorized = (request: Request) => {
     onUnauthorizedCalled = request;
@@ -112,39 +76,14 @@ test("handleActor()", async () => {
       context,
       identifier: "someone",
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  context = createRequestContext<void>({
-    ...context,
-    getActor(handle: string) {
-      return Promise.resolve(actorDispatcher(context, handle));
-    },
-  });
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "someone",
-      actorDispatcher,
-      onNotFound,
-      onNotAcceptable,
-      onUnauthorized,
-    },
-  );
-  assertEquals(response.status, 406);
-  assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, context.request);
-  assertEquals(onUnauthorizedCalled, null);
-
-  onNotAcceptableCalled = null;
   response = await handleActor(
     context.request,
     {
@@ -152,13 +91,11 @@ test("handleActor()", async () => {
       identifier: "no-one",
       actorDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -177,7 +114,6 @@ test("handleActor()", async () => {
       identifier: "someone",
       actorDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -230,7 +166,6 @@ test("handleActor()", async () => {
     name: "Someone",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   response = await handleActor(
@@ -240,13 +175,11 @@ test("handleActor()", async () => {
       identifier: "no-one",
       actorDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -259,13 +192,11 @@ test("handleActor()", async () => {
       authorizePredicate: (_ctx, _handle, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
 
   onUnauthorizedCalled = null;
@@ -283,7 +214,6 @@ test("handleActor()", async () => {
       authorizePredicate: (_ctx, _handle, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -336,7 +266,6 @@ test("handleActor()", async () => {
     name: "Someone",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 });
 
@@ -371,11 +300,6 @@ test("handleObject()", async () => {
     onNotFoundCalled = request;
     return new Response("Not found", { status: 404 });
   };
-  let onNotAcceptableCalled: Request | null = null;
-  const onNotAcceptable = (request: Request) => {
-    onNotAcceptableCalled = request;
-    return new Response("Not acceptable", { status: 406 });
-  };
   let onUnauthorizedCalled: Request | null = null;
   const onUnauthorized = (request: Request) => {
     onUnauthorizedCalled = request;
@@ -387,13 +311,11 @@ test("handleObject()", async () => {
       context,
       values: { handle: "someone", id: "123" },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -404,16 +326,13 @@ test("handleObject()", async () => {
       values: { handle: "someone", id: "123" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
-  assertEquals(response.status, 406);
+  assertEquals(response.status, 200);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
-  onNotAcceptableCalled = null;
   response = await handleObject(
     context.request,
     {
@@ -421,13 +340,11 @@ test("handleObject()", async () => {
       values: { handle: "no-one", id: "123" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -438,13 +355,11 @@ test("handleObject()", async () => {
       values: { handle: "someone", id: "not-exist" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -463,7 +378,6 @@ test("handleObject()", async () => {
       values: { handle: "someone", id: "123" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -497,7 +411,6 @@ test("handleObject()", async () => {
     type: "Note",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   response = await handleObject(
@@ -507,13 +420,11 @@ test("handleObject()", async () => {
       values: { handle: "no-one", id: "123" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -524,13 +435,11 @@ test("handleObject()", async () => {
       values: { handle: "someone", id: "not-exist" },
       objectDispatcher,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -543,13 +452,11 @@ test("handleObject()", async () => {
       authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
 
   onUnauthorizedCalled = null;
@@ -567,7 +474,6 @@ test("handleObject()", async () => {
       authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -601,7 +507,6 @@ test("handleObject()", async () => {
     type: "Note",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 });
 
@@ -656,11 +561,6 @@ test("handleCollection()", async () => {
     onNotFoundCalled = request;
     return new Response("Not found", { status: 404 });
   };
-  let onNotAcceptableCalled: Request | null = null;
-  const onNotAcceptable = (request: Request) => {
-    onNotAcceptableCalled = request;
-    return new Response("Not acceptable", { status: 406 });
-  };
   let onUnauthorizedCalled: Request | null = null;
   const onUnauthorized = (request: Request) => {
     onUnauthorizedCalled = request;
@@ -676,13 +576,11 @@ test("handleCollection()", async () => {
         return new URL(`https://example.com/users/${identifier}`);
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -697,16 +595,13 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: { dispatcher },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
-  assertEquals(response.status, 406);
+  assertEquals(response.status, 200);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
-  onNotAcceptableCalled = null;
   response = await handleCollection(
     context.request,
     {
@@ -718,13 +613,11 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: { dispatcher },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -747,13 +640,11 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: { dispatcher },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
@@ -768,7 +659,6 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: { dispatcher },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -845,7 +735,6 @@ test("handleCollection()", async () => {
     ],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   response = await handleCollection(
@@ -863,13 +752,11 @@ test("handleCollection()", async () => {
           key != null && keyOwner != null,
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
 
   onUnauthorizedCalled = null;
@@ -893,7 +780,6 @@ test("handleCollection()", async () => {
           key != null && keyOwner != null,
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -945,7 +831,6 @@ test("handleCollection()", async () => {
     ],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   response = await handleCollection(
@@ -964,7 +849,6 @@ test("handleCollection()", async () => {
         lastCursor,
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -1002,7 +886,6 @@ test("handleCollection()", async () => {
     last: "https://example.com/?cursor=2",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   let url = new URL("https://example.com/?cursor=0");
@@ -1031,7 +914,6 @@ test("handleCollection()", async () => {
         lastCursor,
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -1073,7 +955,6 @@ test("handleCollection()", async () => {
     }],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   url = new URL("https://example.com/?cursor=2");
@@ -1102,7 +983,6 @@ test("handleCollection()", async () => {
         lastCursor,
       },
       onNotFound,
-      onNotAcceptable,
       onUnauthorized,
     },
   );
@@ -1144,7 +1024,6 @@ test("handleCollection()", async () => {
     }],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 });
 
@@ -1608,11 +1487,6 @@ test("handleCustomCollection()", async () => {
     onNotFoundCalled = request;
     return new Response("Not found", { status: 404 });
   };
-  let onNotAcceptableCalled: Request | null = null;
-  const onNotAcceptable = (request: Request) => {
-    onNotAcceptableCalled = request;
-    return new Response("Not acceptable", { status: 406 });
-  };
   let onUnauthorizedCalled: Request | null = null;
   const onUnauthorized = (request: Request) => {
     onUnauthorizedCalled = request;
@@ -1620,7 +1494,6 @@ test("handleCustomCollection()", async () => {
   };
   const errorHandlers = {
     onNotFound,
-    onNotAcceptable,
     onUnauthorized,
   };
 
@@ -1636,28 +1509,9 @@ test("handleCustomCollection()", async () => {
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
-  assertEquals(onUnauthorizedCalled, null);
-
-  // Test with HTML Accept header (should return 406)
-  onNotFoundCalled = null;
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { handle: "someone" },
-      collectionCallbacks: { dispatcher },
-      ...errorHandlers,
-    },
-  );
-  assertEquals(response.status, 406);
-  assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with unknown handle (should return 404)
-  onNotAcceptableCalled = null;
   context = createRequestContext<void>({
     ...context,
     request: new Request(context.url, {
@@ -1678,7 +1532,6 @@ test("handleCustomCollection()", async () => {
   );
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test successful request without pagination
@@ -1767,7 +1620,6 @@ test("handleCustomCollection()", async () => {
     ],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with authorization predicate (should fail without signature)
@@ -1787,7 +1639,6 @@ test("handleCustomCollection()", async () => {
   );
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
 
   // Test with authorization predicate (should succeed with signature)
@@ -1839,7 +1690,6 @@ test("handleCustomCollection()", async () => {
     ],
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with pagination - full collection with pagination info
@@ -1867,7 +1717,6 @@ test("handleCustomCollection()", async () => {
     last: "https://example.com/?cursor=2",
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with cursor - collection page
@@ -1909,7 +1758,6 @@ test("handleCustomCollection()", async () => {
     },
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with cursor - last page
@@ -1951,6 +1799,5 @@ test("handleCustomCollection()", async () => {
     },
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 });

@@ -44,19 +44,7 @@ import { type InboxListenerSet, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
-import { preferredMediaTypes } from "./negotiation.ts";
-
-export function acceptsJsonLd(request: Request): boolean {
-  const accept = request.headers.get("Accept");
-  const types = accept ? preferredMediaTypes(accept) : ["*/*"];
-  if (types == null) return true;
-  if (types[0] === "text/html" || types[0] === "application/xhtml+xml") {
-    return false;
-  }
-  return types.includes("application/activity+json") ||
-    types.includes("application/ld+json") ||
-    types.includes("application/json");
-}
+import { acceptsJsonLd } from "./negotiation.ts";
 
 /**
  * Parameters for handling an actor request.
@@ -69,7 +57,6 @@ export interface ActorHandlerParameters<TContextData> {
   authorizePredicate?: AuthorizePredicate<TContextData>;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
-  onNotAcceptable(request: Request): Response | Promise<Response>;
 }
 
 /**
@@ -87,7 +74,6 @@ export async function handleActor<TContextData>(
     actorDispatcher,
     authorizePredicate,
     onNotFound,
-    onNotAcceptable,
     onUnauthorized,
   }: ActorHandlerParameters<TContextData>,
 ): Promise<Response> {
@@ -101,7 +87,6 @@ export async function handleActor<TContextData>(
     logger.debug("Actor {identifier} not found.", { identifier });
     return await onNotFound(request);
   }
-  if (!acceptsJsonLd(request)) return await onNotAcceptable(request);
   if (authorizePredicate != null) {
     let key = await context.getSignedKey();
     key = key?.clone({}, {
@@ -147,7 +132,6 @@ export interface ObjectHandlerParameters<TContextData> {
   authorizePredicate?: ObjectAuthorizePredicate<TContextData, string>;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
-  onNotAcceptable(request: Request): Response | Promise<Response>;
 }
 
 /**
@@ -165,14 +149,12 @@ export async function handleObject<TContextData>(
     objectDispatcher,
     authorizePredicate,
     onNotFound,
-    onNotAcceptable,
     onUnauthorized,
   }: ObjectHandlerParameters<TContextData>,
 ): Promise<Response> {
   if (objectDispatcher == null) return await onNotFound(request);
   const object = await objectDispatcher(context, values);
   if (object == null) return await onNotFound(request);
-  if (!acceptsJsonLd(request)) return await onNotAcceptable(request);
   if (authorizePredicate != null) {
     let key = await context.getSignedKey();
     key = key?.clone({}, {
@@ -274,7 +256,6 @@ export interface CollectionHandlerParameters<
   tracerProvider?: TracerProvider;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
-  onNotAcceptable(request: Request): Response | Promise<Response>;
 }
 
 /**
@@ -305,7 +286,6 @@ export async function handleCollection<
     tracerProvider,
     onUnauthorized,
     onNotFound,
-    onNotAcceptable,
   }: CollectionHandlerParameters<TItem, TContext, TContextData, TFilter>,
 ): Promise<Response> {
   const spanName = name.trim().replace(/\s+/g, "_");
@@ -445,7 +425,6 @@ export async function handleCollection<
       partOf,
     });
   }
-  if (!acceptsJsonLd(request)) return await onNotAcceptable(request);
   if (collectionCallbacks.authorizePredicate != null) {
     let key = await context.getSignedKey();
     key = key?.clone({}, {
@@ -981,7 +960,6 @@ async function _handleCustomCollection<
   >,
 ): Promise<Response> {
   verifyDefined(callbacks);
-  verifyJsonLdRequest(request);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
   return await new CustomCollectionHandler(
@@ -1045,7 +1023,6 @@ async function _handleOrderedCollection<
   >,
 ): Promise<Response> {
   verifyDefined(callbacks);
-  verifyJsonLdRequest(request);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
   return await new CustomCollectionHandler(
@@ -1413,12 +1390,10 @@ function exceptWrapper<TParams extends ErrorHandlers>(
     try {
       return await handler(request, handlerParams);
     } catch (error) {
-      const { onNotFound, onNotAcceptable, onUnauthorized } = handlerParams;
+      const { onNotFound, onUnauthorized } = handlerParams;
       switch (error?.constructor) {
         case ItemsNotFoundError:
           return await onNotFound(request);
-        case NotAcceptableError:
-          return await onNotAcceptable(request);
         case UnauthorizedError:
           return await onUnauthorized(request);
         default:
@@ -1434,7 +1409,6 @@ function exceptWrapper<TParams extends ErrorHandlers>(
  */
 interface ErrorHandlers {
   onNotFound(request: Request): Response | Promise<Response>;
-  onNotAcceptable(request: Request): Response | Promise<Response>;
   onUnauthorized(request: Request): Response | Promise<Response>;
 }
 
@@ -1451,16 +1425,6 @@ const verifyDefined: <T extends Exclude<unknown, undefined>>(
   callbacks: T | undefined,
 ): asserts callbacks is T => {
   if (callbacks === undefined) throw new ItemsNotFoundError();
-};
-
-/**
- * Verifies that a request accepts JSON-LD content type.
- * @param request The HTTP request to verify.
- * @throws {NotAcceptableError} If the request doesn't accept JSON-LD.
- * @since 1.8.0
- */
-const verifyJsonLdRequest = (request: Request): void | never => {
-  if (!acceptsJsonLd(request)) throw new NotAcceptableError();
 };
 
 /**
@@ -1576,16 +1540,6 @@ class HandlerError extends Error {
 class ItemsNotFoundError extends HandlerError {
   constructor() {
     super("Items not found in the collection.");
-  }
-}
-
-/**
- * Error thrown when the request is not acceptable (e.g., wrong content type).
- * @since 1.8.0
- */
-class NotAcceptableError extends HandlerError {
-  constructor() {
-    super("The request is not acceptable.");
   }
 }
 
