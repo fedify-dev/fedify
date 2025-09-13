@@ -5,6 +5,7 @@ import {
   type OperatorSpec,
   strictPercentDecode,
 } from "./spec.ts";
+
 /**
  * Encoding policy for variable values when matching URLs.
  *

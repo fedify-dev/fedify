@@ -38,7 +38,6 @@ export interface CompiledTemplate<V = Record<string, unknown>> {
  */
 export function compile<V = Record<string, unknown>>(
   template: string,
-  opts?: CompileOptions,
 ): CompiledTemplate<V> {
   const ast = parse(template);
   return {

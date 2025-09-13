@@ -13,7 +13,6 @@
     "node_modules"
   ],
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check *.ts",
-    "test": "deno test"
+    "check": "deno fmt --check && deno lint && deno check *.ts"
   }
 }

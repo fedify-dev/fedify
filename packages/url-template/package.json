@@ -54,6 +54,7 @@
   "scripts": {
     "build": "tsdown",
     "prepack": "tsdown",
-    "prepublish": "tsdown"
+    "prepublish": "tsdown",
+    "test": "deno task codegen && tsdown && cd dist/ && node --test"
   }
 }
