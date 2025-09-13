@@ -4,6 +4,7 @@ export default defineConfig({
   entry: ["src/mod.ts", "src/kv.ts", "src/sqlite.node.ts", "src/sqlite.bun.ts"],
   dts: true,
   unbundle: true,
+  format: ["esm", "cjs"],
   platform: "node",
   inputOptions: {
     onwarn(warning, defaultHandler) {
@@ -16,9 +17,16 @@ export default defineConfig({
       defaultHandler(warning);
     },
   },
-  outputOptions: {
-    intro: `
-      import { Temporal } from "@js-temporal/polyfill";
-    `,
+  outputOptions(outputOptions, format) {
+    if (format === "cjs") {
+      outputOptions.intro = `
+        const { Temporal } = require("@js-temporal/polyfill");
+      `;
+    } else {
+      outputOptions.intro = `
+        import { Temporal } from "@js-temporal/polyfill";
+      `;
+    }
+    return outputOptions;
   },
 });

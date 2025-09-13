@@ -124,8 +124,10 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 > Fedify framework without any issues.
 
 > [!NOTE]
-> In Bun and Node.js, you need to add [`"type": "module"`] to the *package.json*
-> file because Fedify is an ESM-only package.
+> In Bun and Node.js, we recommend adding [`"type": "module"`] to the
+> *package.json* file to use [ESM] imports. While Fedify also supports
+> [CommonJS] for legacy compatibility, ESM is the preferred and recommended
+> approach.
 
 > [!TIP]
 > Do you wonder why we need to add *[tsx]* and *@types/node* in the case of
@@ -142,6 +144,8 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 [`"unstable"`]: https://docs.deno.com/runtime/manual/tools/unstable_flags/#configuring-flags-in-deno.json
 [`Temporal`]: https://tc39.es/proposal-temporal/docs/
 [`"type": "module"`]: https://nodejs.org/api/packages.html#type
+[ESM]: https://nodejs.org/api/esm.html
+[CommonJS]: https://nodejs.org/docs/latest/api/modules.html
 [tsx]: https://tsx.is/
 
 
