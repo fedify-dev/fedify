@@ -61,6 +61,11 @@ To be released.
  -  Added `Federatable.setWebFingerLinksDispatcher()` method to set additional
     links to WebFinger.  [[#119], [#407] by HyeonseoKim]
 
+ -  Added CommonJS support alongside ESM for better NestJS integration and
+    broader Node.js ecosystem compatibility.  This eliminates the need for
+    Node.js's `--experimental-require-module` flag and resolves dual package
+    hazard issues.  [[#429], [#431]]
+
 [FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf
 [RFC 7033 Section 4.4.4.3]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.4.4.3
@@ -73,6 +78,7 @@ To be released.
 [#402]: https://github.com/fedify-dev/fedify/issues/402
 [#404]: https://github.com/fedify-dev/fedify/pull/404
 [#407]: https://github.com/fedify-dev/fedify/pull/407
+[#429]: https://github.com/fedify-dev/fedify/issues/429
 
 ### @fedify/cli
 
@@ -94,6 +100,11 @@ To be released.
 [#353]: https://github.com/fedify-dev/fedify/issues/353
 [#365]: https://github.com/fedify-dev/fedify/pull/365
 
+### @fedify/amqp
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/cfworkers
 
  -  Created Cloudflare Workers integration as the *@fedify/cfworkers* package.
@@ -106,26 +117,60 @@ To be released.
     Separated from `@fedify/fedify/x/denokv` to improve modularity and
     reduce bundle size.  [[#375] by Chanhaeng Lee]
 
+### @fedify/elysia
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
+### @fedify/express
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
+### @fedify/h3
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/hono
 
  -  Created Hono integration as the *@fedify/hono* package.
     Separated from `@fedify/fedify/x/hono` to improve modularity and
     reduce bundle size.  [[#375] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/next
 
  -  Created [Next.js] integration as the *@fedify/next* package.
     [[#313] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [Next.js]: https://nextjs.org/
 [#313]: https://github.com/fedify-dev/fedify/issues/313
+
+### @fedify/postgres
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
 
 ### @fedify/redis
 
  -  Added support for Redis Cluster to the *@fedify/redis* package.
     [[#368] by Michael Barrett]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [#368]: https://github.com/fedify-dev/fedify/pull/368
+
+### @fedify/sqlite
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
 
 ### @fedify/sveltekit
 
@@ -136,8 +181,16 @@ To be released.
  -  Fixed SvelteKit integration hook types to correctly infer the request
     and response types in hooks.  [[#271], [#394] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [#271]: https://github.com/fedify-dev/fedify/pull/271
 [#394]: https://github.com/fedify-dev/fedify/pull/394
+
+### @fedify/testing
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
 
 
 Version 1.8.9

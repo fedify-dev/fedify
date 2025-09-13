@@ -28,21 +28,19 @@
     "https://github.com/sponsors/dahlia"
   ],
   "type": "module",
-  "main": "./dist/mod.js",
+  "main": "./dist/mod.cjs",
   "module": "./dist/mod.js",
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
-      "require": {
-        "types": "./dist/mod.d.ts",
-        "import": "./dist/mod.js",
-        "default": "./dist/mod.js"
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
       },
-      "import": {
-        "types": "./dist/mod.d.ts",
-        "import": "./dist/mod.js",
-        "default": "./dist/mod.js"
-      }
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
     },
     "./package.json": "./package.json"
   },
