@@ -4,7 +4,7 @@ import { message } from "@optique/core/message";
 import { print } from "@optique/run";
 import toggle from "inquirer-toggle";
 import { getCwd, getOsType, runSubCommand } from "../../utils.ts";
-import { isDirectoryEmpty } from "../lib.ts";
+import { isDirectoryEmpty, logger } from "../lib.ts";
 
 const fillDir: <T extends { dir?: string }>(
   options: T,
@@ -49,8 +49,9 @@ const moveToTrash = (dir: string) => () =>
     (fn) => fn(dir),
     (cmd) => runSubCommand(cmd, { stdio: "ignore" }),
     () => true,
-  ).catch(() => {
-    print(message`Failed to move "${dir}" to trash.
+  ).catch((e) => {
+    logger.error(e);
+    print(message`Failed to move ${dir} to trash.
 Please move it manually.`);
     return false;
   });

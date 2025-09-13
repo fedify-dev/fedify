@@ -1,7 +1,6 @@
 import { select } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { print } from "@optique/run";
-import * as colors from "@std/fmt/colors";
 import { PACKAGE_MANAGER } from "../const.ts";
 import { getInstallUrl, getLabel, isPackageManagerAvailable } from "../lib.ts";
 import type { PackageManager, WebFramework } from "../types.ts";
@@ -43,9 +42,9 @@ const isWfSupportsPm = (
 ) => webFrameworks[wf].packageManagers.includes(pm);
 
 const noticeInstallUrl = (pm: PackageManager) => {
-  const label = colors.bold(getLabel(pm));
-  const url = colors.underline(colors.blue(getInstallUrl(pm)));
-  print(message`  Package manager "${label}" is not installed.`);
+  const label = getLabel(pm);
+  const url = getInstallUrl(pm);
+  print(message`  Package manager ${label} is not installed.`);
   print(message`  You can install it from following link: ${url}`);
   print(message`  or choose another package manager:`);
 };
