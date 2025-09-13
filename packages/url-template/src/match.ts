@@ -5,7 +5,33 @@ import {
   type OperatorSpec,
   strictPercentDecode,
 } from "./spec.ts";
-
+/**
+ * Encoding policy for variable values when matching URLs.
+ *
+ * Three modes are supported:
+ * - `"opaque"` (default):
+ *   - Treats `%XX` as opaque atoms.
+ *   - No decoding is applied; raw bytes are preserved.
+ *   - Guarantees byte-for-byte symmetry:
+ *     `expand(match(url)) === url`.
+ *   - Background: added to solve `uri-template-router#11` where
+ *     sequences like "%30#" lost information.
+ *
+ * - `"cooked"`:
+ *   - Decodes valid `%XX` sequences exactly once.
+ *   - More convenient for application logic where you want
+ *     human-readable values (`"a%20b"` → `"a b"`).
+ *   - Guarantees semantic symmetry:
+ *     `match(expand(vars)) === vars`.
+ *   - Note: Name chosen to contrast with `"opaque"`: think of
+ *     “cooked strings” (escaped string literals) in programming languages.
+ *
+ * - `"lossless"`:
+ *   - Returns both raw and decoded forms:
+ *     `{ raw: "a%2Fb", decoded: "a/b" }`.
+ *   - Useful if you need to display the original URL while
+ *     still working with decoded values.
+ */
 export type EncodingPolicy = "opaque" | "cooked" | "lossless";
 
 export interface MatchOptions {
@@ -21,7 +47,13 @@ function decodeAccordingToPolicy(s: string, policy: EncodingPolicy): unknown {
   return { raw: s, decoded: strictPercentDecode(s) };
 }
 
-// consume a percent triplet or a single char; used to advance safely
+/**
+ * consume a percent triplet or a single char; used to advance safely
+ *
+ * Percent triplet handling policies:
+ * - When advancing, treat "%XX" as a single atom to avoid slicing inside a byte.
+ * - In strict mode, a bare '%' or bad hex after '%' fails the match.
+ */
 function advanceOne(url: string, i: number): number {
   if (i < url.length && url[i] === "%" && looksLikePctTriplet(url, i)) {
     return i + 3;
@@ -29,6 +61,17 @@ function advanceOne(url: string, i: number): number {
   return i + 1;
 }
 
+/**
+ * Match a URL string against a compiled template.
+ * Policies:
+ * - "opaque"  -> return raw percent-encoded slices (byte-for-byte round-trip)
+ * - "cooked"  -> decode %XX exactly once
+ * - "lossless"-> { raw, decoded } pair
+ *
+ * Strictness:
+ * - strict=true rejects bad percent triplets (e.g. "%GZ"), preventing
+ *   ambiguous or lossy normalization early.
+ */
 export function match(
   ast: TemplateAST,
   url: string,
@@ -40,12 +83,18 @@ export function match(
   let i = 0;
   const varsOut: Record<string, unknown> = {};
 
+  // Comsume a literal exactly
   const readLiteral = (lit: string): boolean => {
     if (url.slice(i, i + lit.length) !== lit) return false;
     i += lit.length;
     return true;
   };
 
+  // URL:    /users/foo/hello%2Fworld?q=a%20b&lang=en
+  // Tmpl:   /users{/owner,repo}{?q,lang}
+  // Phases: LIT----^  EXPR(owner,repo)   EXPR(q,lang)
+  //            i-> after literal
+  //      [capture until itemSep or next literal/operator.first]
   const nextIs = (s: string) => url.slice(i, i + s.length) === s;
 
   for (const node of ast.nodes) {
@@ -55,13 +104,16 @@ export function match(
     }
     const spec = OP[node.op];
     if (spec.first) {
+      // Operators starting with a distinct char must appear in URL
       if (!readLiteral(spec.first)) return null;
     }
 
+    // Greedy capture for each var until separator or upcoming literal.
+    // We respect %XX boundaries to avoid splitting in the middle of bytes.
+    //
     // For each variable (or entry) separated by itemSep, we capture greedily until:
     //  - next literal (if any) starts
     //  - or next separator occurs
-
     const takeUntil = (stopPred: (j: number) => boolean): string => {
       const start = i;
       while (i < url.length && !stopPred(i)) {
@@ -146,7 +198,12 @@ export function match(
       return true;
     };
 
-    // For named operators (; ? &), items may look like name=val or name (empty)
+    // Named operators ( ; ? & ):
+    // - Non-explode: "name[=value]" -> store VALUE only (not "name=")
+    // - Explode:     ";x=a;x=b" or "?k=v&..." -> list or map
+    // Decision rule for explode named parts:
+    //   if every piece starts with "varName=" => list
+    //   else => map (k=v)
     for (let idx = 0; idx < node.vars.length; idx++) {
       const v = node.vars[idx];
       const last = idx === node.vars.length - 1;

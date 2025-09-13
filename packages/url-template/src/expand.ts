@@ -79,12 +79,15 @@ function expandVar(
 
   // Scalar
   let s = String(value as Scalar);
+  // Prefix `:n` applies BEFORE encoding; then we encode the substring.
+  // Do not slice encoded output.
   if (v.prefix !== undefined) s = s.slice(0, v.prefix);
   const e = enc(s);
 
   if (e.length === 0) {
-    // RFC 6570: label operator should still emit the dot when value is empty.
-    if (spec.first === ".") return [""]; // prints just "."
+    // Label '.' must still print the dot even if the value is empty.
+    // We return [""] so caller pints `first="."` + empty piece -> "."
+    if (spec.first === ".") return [""];
     if (spec.named && spec.ifEmpty === "nameOnly") return [v.name];
     if (spec.named && spec.ifEmpty === "empty") {
       return [`${v.name}${spec.kvSep}`];
@@ -94,19 +97,38 @@ function expandVar(
   return [emitNamed(spec, v.name, e)];
 }
 
+/**
+ * Expand a parsed template with variables (RFC 6570 L1–L4).
+ * - Idempotent percent encoding (existing `%XX` kept).
+ * - Operator-specific empty/undefined rules:
+ *   - ";"  empty -> `nameOnly` (";x")
+ *   - "?" "&" empty -> "key=" ("?x=")
+ *   - `undefined` -> `omit` (all operators)
+ * - Label "." emits the dot even if empty ("X{.y}" with y="" -> "X.")
+ */
 export function expand(ast: TemplateAST, vars: Vars): string {
   let out = "";
   for (const node of ast.nodes) {
+    // no need to encode literals, append as-is
     if (node.kind === "Literal") {
       out += node.value;
     } else {
       const spec = OP[node.op];
       const pieces: string[] = [];
+
       for (const v of node.vars) {
+        // Expand a single `VarSpec` into 0..n pieces per operator rules.
+        // For explode lists/maps we may produce multiple times.
         pieces.push(...expandVar(node.op, v, vars[v.name]));
       }
+
+      // If this expr produced no output, nothing to prepend
       if (pieces.length === 0) continue;
+
+      // Prepend operator 1st char (e.g. "#", ".", "/", ";", "?", "&")
       if (spec.first) out += spec.first;
+
+      // Join with operator item separator (",", ".", "/", "&", ";")
       out += pieces.join(spec.itemSep);
     }
   }

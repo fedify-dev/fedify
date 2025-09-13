@@ -19,14 +19,25 @@ export function looksLikePctTriplet(s: string, i: number): boolean {
   return hex(a) && hex(b);
 }
 
+/** @internal
+ * OperatorSpec is the single source of truth (SSOT) for both expand & match.
+ * - first: string added before the first element (e.g. "#", ".", "/", ";", "?", "&")
+ * - named: if true, items are "name=value" pairs (e.g. ;, ?, & operators)
+ * - ifEmpty:
+ *   - "omit"     -> remove entirely (default simple operator)
+ *   - "nameOnly" -> emit only key (e.g. ;x)
+ *   - "empty"    -> emit "key=" (e.g. ?x= / &x=)
+ * - allowReserved/reservedSet: precise reserved char pass-through control
+ *   (e.g. "#" allows most reserved but NOT '#', which would start a fragment)
+ */
 export interface OperatorSpec {
-  first?: string; // first char inserted when non-empty (e.g., "#", ".", "/", ";", "?", "&")
-  named?: boolean; // include varname (for ; ? & )
-  ifEmpty?: "omit" | "nameOnly" | "empty"; // behavior when value empty
-  allowReserved: boolean; // +, # allow reserved as-is
-  reservedSet?: Set<string>; // custom allowed reserved set
-  itemSep: string; // separator between items
-  kvSep: string; // key=value separator (for maps & named)
+  first?: string;
+  named?: boolean;
+  ifEmpty?: "omit" | "nameOnly" | "empty";
+  allowReserved: boolean;
+  reservedSet?: Set<string>;
+  itemSep: string;
+  kvSep: string;
 }
 
 export const OP: Record<Operator, OperatorSpec> = {
@@ -107,6 +118,8 @@ export function encodeComponentIdempotent(
 ): string {
   let out = "";
   for (let i = 0; i < s.length;) {
+    // Fast-path: copy %XX untouched; encode others by UTF-8 bytes.
+    // We iterate by JS code points but encode by TextEncoder (UTF-8).
     if (s[i] === "%" && looksLikePctTriplet(s, i)) {
       out += s.slice(i, i + 3);
       i += 3;

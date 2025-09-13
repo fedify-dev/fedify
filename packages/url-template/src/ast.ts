@@ -1,4 +1,7 @@
-// AST for RFC 6570
+/**
+ * RFC 6570 operator set. Keep in sync with {@link OperatorSpec} in spec.ts.
+ * The operator controls separators, first-char prefix, and reserved char handling.
+ */
 export type Operator =
   | "" // simple
   | "+"
@@ -9,6 +12,11 @@ export type Operator =
   | "?"
   | "&";
 
+/**
+ * A variable specification inside an expression
+ * - `explode` (`*`) and `prefix` (`:n`) modifies are Level 4 features.
+ * - Parser guarentees: if `prefix` is present, it is a positive integer.
+ */
 export interface VarSpec {
   name: string;
   explode: boolean;
@@ -32,6 +40,10 @@ export interface Expression {
   end?: number;
 }
 
+/**
+ * Template AST root. Expansion and matching both consume this structure.
+ * @note Literals are kept as-is to avoid re-encoding surprises.
+ */
 export interface TemplateAST {
   nodes: Node[];
 }

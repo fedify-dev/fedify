@@ -6,6 +6,16 @@ export class ParseError extends Error {
   }
 }
 
+/**
+ * Parse a RFC 6570 template into an AST.
+ * Parser guarentees:
+ * - Balanced braces: every '{' has a matching '}' or throws ParseError.
+ * - Operator is one of "", "+", "#", ".", "/", ";", "?", "&".
+ * - VarSpec list: "name[:prefix][*]" items separated by ','.
+ *
+ * We avoid regex for correctness and slice the source directly to keep
+ * raw segments intact for later matching.
+ */
 export function parse(template: string): TemplateAST {
   const nodes: Node[] = [];
   let i = 0;
@@ -20,6 +30,8 @@ export function parse(template: string): TemplateAST {
     }
   };
 
+  // We collect [literal] chunks until '{', then parse an [expression],
+  // then continue scanning for the next '{'.
   while (i < template.length) {
     const litStart = i;
     while (i < template.length && template[i] !== "{") i++;
@@ -31,10 +43,14 @@ export function parse(template: string): TemplateAST {
     if (i >= template.length) {
       throw new ParseError("Unclosed expression", exprStart);
     }
+    // Read operator (optional). If next char in "+#./;?&", consume as operator.
+    // Otherwise use "" (simple operator).
     const opChar = "+#./;?&".includes(template[i])
       ? template[i++] as Expression["op"]
       : "" as Expression["op"];
     const vars: VarSpec[] = [];
+    // Read variable name; stop at ':', '*', ',', or '}'.
+    // Note: Empty names are illegal per RFC 6570.
     const readName = (): string => {
       const start = i;
       while (
@@ -53,6 +69,10 @@ export function parse(template: string): TemplateAST {
       let explode = false;
       let prefix: number | undefined;
 
+      // Handle modifiers:
+      //  - :n  -> prefix length (integer >= 0)
+      //  - *   -> explode
+      // Enforce ordering: name [ ":" digits ] [ "*" ]
       if (template[i] === ":") {
         i++;
         const start = i;
@@ -73,6 +93,7 @@ export function parse(template: string): TemplateAST {
         i++;
         continue;
       }
+      // Close '}' or throw.
       if (template[i] === "}") {
         i++;
         break;
