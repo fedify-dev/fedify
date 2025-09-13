@@ -125,3 +125,23 @@ export async function writeTextFile(
   const data = encoder.encode(content);
   return await writeFile(path, data);
 }
+
+export const resolveProps = async <T extends object>(obj: T): Promise<
+  { [P in keyof T]: Awaited<T[P]> }
+> =>
+  Object.fromEntries(
+    await Array.fromAsync(
+      Object.entries(obj),
+      async ([k, v]) => [k, await v],
+    ),
+  ) as Promise<{ [P in keyof T]: Awaited<T[P]> }>;
+
+export const formatJson = (obj: unknown) => JSON.stringify(obj, null, 2) + "\n";
+
+
+type Arrow = (...args: any) => any;
+
+export const spreadArgs = <F extends Arrow>(fn: F): //
+(args: Parameters<typeof fn> | readonly [...Parameters<typeof fn>]) => //
+ReturnType<typeof fn> =>
+(args) => fn(...args);

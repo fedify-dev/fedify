@@ -2,8 +2,8 @@ import { entries, join, map, pipe, tap } from "@fxts/core";
 import { stringify } from "@std/dotenv";
 import * as colors from "@std/fmt/colors";
 import { exists } from "@std/fs";
-import { basename, dirname, join as joinPath, normalize } from "@std/path";
-import { toMerged, uniq } from "jsr:@es-toolkit/es-toolkit";
+import { basename, join as joinPath, normalize } from "@std/path";
+import { toMerged } from "jsr:@es-toolkit/es-toolkit";
 import { mkdir, realpath, stat } from "node:fs/promises";
 import process from "node:process";
 import {
@@ -12,22 +12,23 @@ import {
   replace,
   runSubCommand,
   set,
+  spreadArgs,
   writeTextFile,
 } from "../utils.ts";
 import askOptions from "./ask/mod.ts";
 import type { InitCommand } from "./command.ts";
 import {
   addDependencies,
-  checkDirectoryEmpty,
-  displayFileContent,
+  createFile,
+  displayFile,
   drawDinosaur,
   kvStores,
   logOptions,
-  mergeVscSettings,
   messageQueues,
   PACKAGE_VERSION,
   readTemplate,
-  rewriteJsonFile,
+  rewriteFile,
+  rewriters,
 } from "./lib.ts";
 import type {
   KvStoreDescription,
@@ -259,190 +260,134 @@ async function rewriteJsonFiles<
     env: Record<string, string>;
     projectName: string;
   },
->(
-  { dir, dryRun, packageManager, initializer, kv, mq, env, projectName }: T,
-): Promise<void> {
-  const federation = readFederation({
-    imports: getImports({ kv, mq }),
-    projectName,
-    kv,
-    mq,
-    packageManager,
-  });
-  const logging = readLogging({ projectName });
-  const files = {
-    [initializer.federationFile]: federation,
-    [initializer.loggingFile]: logging,
-    ".env": stringify(env),
-    ...initializer.files,
-  };
+>(data: T): Promise<void> {
+  const { dir, dryRun } = data;
+  const files = getFiles(data);
+  const jsons = getJsons(data);
+
   if (dryRun) {
     recommendCreate();
-    displayFiles({ dir, files });
+    rewriteFiles(displayFile)({ dir, files });
     recommendInsertJsons();
+    rewriteFiles(displayFile)({ dir, files: jsons });
   } else {
-    createFiles({ dir, files });
-  }
-  if (packageManager === "deno") {
-    await insertJsonForDeno({ dir, dryRun, initializer, kv, mq });
-  } else {
-    await insertJsonForNotDeno({ dir, dryRun, initializer });
+    await Array.fromAsync(rewriteFiles(createFile)({ dir, files }));
+    await Array.fromAsync(rewriteFiles(createFile)({ dir, files: jsons }));
   }
 }
+
+const getFiles = <
+  T extends {
+    dir: string;
+    initializer: WebFrameworkInitializer;
+    env: Record<string, string>;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+    packageManager: PackageManager;
+    projectName: string;
+  },
+>(data: T) => ({
+  [data.initializer.federationFile]: readFederation({
+    imports: getImports(data),
+    ...data,
+  }),
+  [data.initializer.loggingFile]: readLogging(data),
+  ".env": stringify(data.env),
+  ...data.initializer.files,
+});
+
+const getJsons = <
+  T extends {
+    packageManager: PackageManager;
+    dir: string;
+    initializer: WebFrameworkInitializer;
+    kv: KvStoreDescription;
+    mq: MessageQueueDescription;
+  },
+>(data: T) =>
+  data.packageManager === "deno"
+    ? {
+      "deno.json": rewriteDenoConfig(data).data,
+      [rewriters["vscSetDeno"].path]: rewriters["vscSetDeno"].data,
+      [rewriters["vscExtDeno"].path]: rewriters["vscExtDeno"].data,
+    }
+    : {
+      "tsconfig.json": rewriteTsConfig(data).data,
+      "package.json": rewritePackageJson(data).data,
+      [rewriters["biome"].path]: rewriters["biome"].data,
+      [rewriters["vscSet"].path]: rewriters["vscSet"].data,
+      [rewriters["vscExt"].path]: rewriters["vscExt"].data,
+    };
 
 const recommendCreate = () =>
   console.log(colors.bold(colors.green("📄 Would create files:\n")));
-
-function displayFiles<
-  T extends { dir: string; files: Record<string, string> },
->({ dir, files }: T) {
-  for (const [filename, content] of Object.entries(files)) {
-    const path = joinPath(dir, filename);
-    displayFileContent(path, content);
-  }
-}
-
-async function createFiles<
-  T extends { dir: string; files: Record<string, string> },
->({ dir, files }: T) {
-  for (const [filename, content] of Object.entries(files)) {
-    const path = joinPath(dir, filename);
-    const dirName = dirname(path);
-    await mkdir(dirName, { recursive: true });
-    await writeTextFile(path, content);
-  }
-}
 
 const recommendInsertJsons = () =>
   console.log(
     colors.bold(colors.green("Would create/update JSON files:\n")),
   );
 
-async function insertJsonForDeno<
+const joinDir =
+  (dir: string) => ([filename, content]: readonly [string, string | object]) =>
+    [joinPath(dir, ...filename.split("/")), content] as const;
+
+const rewriteFiles = (
+  process: (path: string, content: string) => void | Promise<void>,
+) =>
+<
+  T extends { dir: string; files: Record<string, string | object> },
+>({ dir, files }: T) =>
+  pipe(
+    files,
+    entries,
+    map((i) =>
+      pipe(
+        i,
+        joinDir(dir),
+        spreadArgs(rewriteFile),
+        spreadArgs(process),
+      )
+    ),
+  );
+
+const rewriteDenoConfig = <
   T extends {
     dir: string;
-    dryRun: boolean;
     initializer: WebFrameworkInitializer;
     kv: KvStoreDescription;
     mq: MessageQueueDescription;
   },
->({ dir, dryRun, initializer, kv, mq }: T) {
-  await rewriteJsonFile(
-    joinPath(dir, "deno.json"),
-    {},
-    (cfg) => ({
-      ...cfg,
-      ...initializer.compilerOptions == null ? {} : {
-        compilerOptions: {
-          ...cfg?.compilerOptions,
-          ...initializer.compilerOptions,
-        },
-      },
-      unstable: [
-        "temporal",
-        ...kv.denoUnstable ?? [],
-        ...mq.denoUnstable ?? [],
-      ],
-      tasks: { ...cfg.tasks, ...initializer.tasks },
-    }),
-    dryRun,
-  );
-  await rewriteJsonFile(
-    joinPath(dir, ".vscode", "settings.json"),
-    {},
-    mergeVscSettings,
-    dryRun,
-  );
-  await rewriteJsonFile(
-    joinPath(dir, ".vscode", "extensions.json"),
-    {},
-    (vsCodeExtensions) => ({
-      recommendations: uniq([
-        "denoland.vscode-deno",
-        ...vsCodeExtensions.recommendations ?? [],
-      ]),
-      ...vsCodeExtensions,
-    }),
-    dryRun,
-  );
-}
-
-async function insertJsonForNotDeno<
-  T extends {
-    dir: string;
-    dryRun: boolean;
-    initializer: WebFrameworkInitializer;
+>({ kv, mq, initializer, dir }: T) => ({
+  path: joinPath(dir, "deno.json"),
+  data: {
+    compilerOptions: initializer.compilerOptions,
   },
->(
-  { dir, dryRun, initializer }: T,
-) {
-  await rewriteJsonFile(
-    joinPath(dir, "package.json"),
-    {},
-    (cfg) => ({
-      type: "module",
-      ...cfg,
-      scripts: { ...cfg.scripts, ...initializer.tasks },
-    }),
-    dryRun,
-  );
-  if (initializer.compilerOptions != null) {
-    await rewriteJsonFile(
-      joinPath(dir, "tsconfig.json"),
-      {},
-      (cfg) => ({
-        ...cfg,
-        compilerOptions: {
-          ...cfg?.compilerOptions,
-          ...initializer.compilerOptions,
-        },
-      }),
-      dryRun,
-    );
-  }
-  await rewriteJsonFile(
-    joinPath(dir, ".vscode", "settings.json"),
-    {},
-    mergeVscSettings,
-    dryRun,
-  );
-  await rewriteJsonFile(
-    joinPath(dir, ".vscode", "extensions.json"),
-    {},
-    (vsCodeExtensions) => ({
-      recommendations: uniq([
-        "biomejs.biome",
-        ...vsCodeExtensions.recommendations ?? [],
-      ]),
-      ...vsCodeExtensions,
-    }),
-    dryRun,
-  );
-  await rewriteJsonFile(
-    joinPath(dir, "biome.json"),
-    {},
-    (cfg) => ({
-      "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
-      ...cfg,
-      organizeImports: {
-        ...cfg.organizeImports,
-        enabled: true,
-      },
-      formatter: {
-        ...cfg.formatter,
-        enabled: true,
-        indentStyle: "space",
-        indentWidth: 2,
-      },
-      linter: {
-        ...cfg.linter,
-        enabled: true,
-        rules: { recommended: true },
-      },
-    }),
-    dryRun,
-  );
-}
+  unstable: [
+    "temporal",
+    ...kv.denoUnstable ?? [],
+    ...mq.denoUnstable ?? [],
+  ],
+  tasks: initializer.tasks,
+});
+
+const rewriteTsConfig = <
+  T extends { initializer: WebFrameworkInitializer; dir: string },
+>({ initializer, dir }: T) => ({
+  path: joinPath(dir, "tsconfig.json"),
+  data: {
+    compilerOptions: initializer.compilerOptions,
+  },
+});
+
+const rewritePackageJson = <
+  T extends { initializer: WebFrameworkInitializer; dir: string },
+>({ initializer, dir }: T) => ({
+  path: joinPath(dir, "package.json"),
+  data: {
+    type: "module",
+    scripts: initializer.tasks,
+  },
+});
 
 const getImports = <
   T extends { kv: KvStoreDescription; mq: MessageQueueDescription },

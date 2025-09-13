@@ -1,22 +1,37 @@
-import { entries, evolve, fromEntries, map, pipe, when } from "@fxts/core";
+import {
+  concat,
+  entries,
+  evolve,
+  fromEntries,
+  join,
+  map,
+  pipe,
+  when,
+} from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import * as colors from "@std/fmt/colors";
-import { dirname, join } from "@std/path";
+import { dirname, join as joinPath } from "@std/path";
 import { curry, flow, toMerged, uniq } from "es-toolkit";
 import { readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import process from "node:process";
 import metadata from "../../deno.json" with { type: "json" };
 import {
+  formatJson,
   isNotFoundError,
+  merge,
   type RequiredNotNull,
   runSubCommand,
 } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
+import biome from "./templates/json/biome.json" with { type: "json" };
 import kv from "./templates/json/kv.json" with { type: "json" };
 import mq from "./templates/json/mq.json" with { type: "json" };
 import pm from "./templates/json/pm.json" with { type: "json" };
 import rt from "./templates/json/rt.json" with { type: "json" };
+import vscodeSettingsForDeno from "./templates/json/vscode-settings-for-deno.json" with {
+  type: "json",
+};
 import vscodeSettings from "./templates/json/vscode-settings.json" with {
   type: "json",
 };
@@ -119,7 +134,7 @@ export const readTemplate: (templatePath: string) => string = (
   templatePath,
 ) =>
   readFileSync(
-    join(import.meta.dirname!, "templates", ...templatePath.split("/")),
+    joinPath(import.meta.dirname!, "templates", ...templatePath.split("/")),
     "utf8",
   );
 
@@ -216,31 +231,38 @@ export async function addDependencies(
   }
 }
 
-export async function rewriteJsonFile(
+export async function rewriteFile(
   path: string,
-  // deno-lint-ignore no-explicit-any
-  empty: any,
-  // deno-lint-ignore no-explicit-any
-  rewriter: (json: any) => any,
-  dryRun: boolean = false,
-): Promise<void> {
-  let jsonText = null;
+  content: string | object,
+): Promise<[string, string]> {
+  const prev = await readFileIfExists(path);
+  const data = typeof content === "object"
+    ? formatJson(mergeJson(prev, content))
+    : appendText(prev, content);
+  return [path, data];
+}
+
+const mergeJson = (prev: string, data: object): string =>
+  pipe(prev ? JSON.parse(prev) : {}, merge(data), formatJson);
+
+const appendText = (prev: string, data: string) =>
+  pipe(data.split("\n"), concat(prev.split("\n")), join("\n"));
+
+async function readFileIfExists(path: string): Promise<string> {
   try {
-    jsonText = await readFile(path, "utf8");
+    return await readFile(path, "utf8");
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
-  }
-  let json = jsonText == null ? empty : JSON.parse(jsonText);
-  json = rewriter(json);
-
-  if (dryRun) {
-    displayFileContent(path, JSON.stringify(json, null, 2));
-  } else {
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, JSON.stringify(json, null, 2) + "\n");
+    return "";
   }
 }
-export function displayFileContent(
+
+export async function createFile(path: string, content: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, content);
+}
+
+export function displayFile(
   path: string,
   content: string,
   emoji: string = "📄",
@@ -251,20 +273,30 @@ export function displayFileContent(
   console.log(content);
   console.error(colors.gray("─".repeat(60)) + "\n");
 }
-// Check if directory is empty
-export const checkDirectoryEmpty = async (path: string) => {
-  try {
-    const files = await readdir(path);
-    if (files.length > 0) {
-      console.error("The directory is not empty.  Aborting.");
-      process.exit(1);
-    }
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw e;
-    }
-  }
-};
+
+export const rewriters = {
+  biome: {
+    path: joinPath("biome.json"),
+    data: biome,
+  },
+  vscExt: {
+    path: joinPath(".vscode", "extensions.json"),
+    data: { recommendations: ["biomejs.biome"] },
+  },
+  vscSet: {
+    path: joinPath(".vscode", "settings.json"),
+    data: vscodeSettings,
+  },
+  vscSetDeno: {
+    path: joinPath(".vscode", "settings.json"),
+    data: vscodeSettingsForDeno,
+  },
+  vscExtDeno: {
+    path: joinPath(".vscode", "extensions.json"),
+    data: { recommendations: ["denoland.vscode-deno"] },
+  },
+} as const;
+
 export const isDirectoryEmpty = async (
   path: string,
 ): Promise<boolean> => {
