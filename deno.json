@@ -13,6 +13,7 @@
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
+    "./packages/url-template",
     "./examples/blog",
     "./examples/hono-sample"
   ],
