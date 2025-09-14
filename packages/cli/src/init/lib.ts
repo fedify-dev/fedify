@@ -1,4 +1,5 @@
 import {
+  always,
   concat,
   entries,
   evolve,
@@ -6,6 +7,7 @@ import {
   join,
   map,
   pipe,
+  toArray,
   when,
 } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
@@ -19,7 +21,9 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   formatJson,
   isNotFoundError,
+  match,
   merge,
+  notEmpty,
   type RequiredNotNull,
   runSubCommand,
 } from "../utils.ts";
@@ -192,44 +196,86 @@ async function isCommandAvailable(
   }
 }
 
-export async function addDependencies(
-  pm: PackageManager,
-  dir: string,
-  dependencies: Record<string, string>,
-  dev: boolean = false,
-): Promise<void> {
-  const deps = Object.entries(dependencies)
-    .map(([name, version]) =>
-      `${
-        pm !== "deno" && name.startsWith("npm:")
-          ? name.substring(4)
-          : pm === "deno" && !name.startsWith("npm:")
-          ? `jsr:${name}`
-          : name
-      }@${
-        pm !== "deno" && version.includes("+")
-          ? version.substring(0, version.indexOf("+"))
-          : version
-      }`
+export const addDeps = <
+  T extends {
+    packageManager: PackageManager;
+    dir: string;
+    dependencies: Record<string, string>;
+    dev?: boolean;
+  },
+>(data: T) =>
+  addDependencies({
+    ...data,
+    args: getAddDepsArgs(data),
+  });
+
+const getAddDepsArgs = match(
+  ({ dev = false }) => !dev,
+  always(["add"]),
+  ({ packageManager: pm }) => pm === "bun" || pm === "yarn",
+  always(["add", "--dev"]),
+  always(["add", "--save-dev"]),
+);
+
+const addDependencies = <
+  T extends {
+    packageManager: PackageManager;
+    dir: string;
+    dependencies: Record<string, string>;
+    args: string[];
+  },
+>({
+  packageManager,
+  dir,
+  dependencies,
+  args = [],
+}: T) =>
+  pipe(
+    dependencies,
+    entryDeps(packageManager),
+    when(notEmpty, (deps) =>
+      pipe(
+        deps,
+        uniq,
+        concat([packageManager, ...args]),
+        toArray,
+        runDepAdd(dir),
+      )),
+  );
+
+export const entryDeps =
+  (pm: PackageManager) => (dependencies: Record<string, string>) =>
+    pipe(
+      dependencies,
+      entries,
+      map(([name, version]) =>
+        `${getPackageName(pm, name)}@${getPackageVersion(pm, version)}`
+      ),
+      toArray,
     );
-  if (deps.length < 1) return;
 
-  const command = [
-    pm,
-    "add",
-    ...(dev ? [pm === "bun" || pm === "yarn" ? "--dev" : "--save-dev"] : []),
-    ...uniq(deps),
-  ];
+const getPackageName = (pm: PackageManager, name: string) =>
+  pm !== "deno" && name.startsWith("npm:")
+    ? name.substring(4)
+    : pm === "deno" && !name.startsWith("npm:")
+    ? `jsr:${name}`
+    : name;
+const getPackageVersion = (pm: PackageManager, version: string) =>
+  pm !== "deno" && version.includes("+")
+    ? version.substring(0, version.indexOf("+"))
+    : version;
 
-  try {
-    await runSubCommand(command, {
-      cwd: dir,
-      stdio: "inherit",
-    });
-  } catch (_error) {
+const runDepAdd = (dir: string) => (command: string[]) =>
+  runSubCommand(command, {
+    cwd: dir,
+    stdio: "inherit",
+  }).catch((error) => {
+    logger.error(
+      "The command {command} failed with the error: {error}",
+      { command: command.join(" "), error },
+    );
     throw new Error("Failed to add dependencies.");
-  }
-}
+  });
 
 export async function rewriteFile(
   path: string,
