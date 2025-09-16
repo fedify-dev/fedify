@@ -53,7 +53,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -124,7 +124,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -181,7 +181,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -207,7 +207,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -230,7 +230,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - run: deno task hooks:pre-commit
 
   release-test:
@@ -248,7 +248,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -283,7 +283,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -482,7 +482,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - run: deno task codegen
       working-directory: ${{ github.workspace }}/packages/fedify/
     - uses: denoland/deployctl@v1
@@ -513,7 +513,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.4.5  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
         version: 10

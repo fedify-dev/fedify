@@ -44,7 +44,7 @@ test("getNodeInfo()", async (t) => {
   const expected: NodeInfo = {
     software: {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: "1.2.3",
     },
     protocols: ["activitypub", "diaspora"],
     usage: { users: {}, localPosts: 123, localComments: 456 },
@@ -126,7 +126,7 @@ test("parseNodeInfo()", () => {
   const output: NodeInfo = {
     software: {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: "1.2.3",
       repository: new URL("https://codeberg.org/foo/foo"),
       homepage: new URL("https://foo.example"),
     },
@@ -266,7 +266,7 @@ test("parseSoftware()", () => {
     }),
     {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: "1.2.3",
       repository: new URL("https://codeberg.org/foo/foo"),
       homepage: new URL("https://foo.example"),
     },
@@ -278,13 +278,7 @@ test("parseSoftware()", () => {
     }),
     {
       name: "foo",
-      version: {
-        major: 4,
-        minor: 5,
-        patch: 6,
-        build: ["build", "8"],
-        prerelease: ["beta", 7],
-      },
+      version: "4.5.6-beta.7+build.8",
     },
   );
   assertEquals(parseSoftware(123), null);
@@ -298,37 +292,43 @@ test("parseSoftware()", () => {
     parseSoftware({ name: " FOO " }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 0, minor: 0, patch: 0, build: [], prerelease: [] },
+      version: "0.0.0",
     },
   );
-  assertEquals(parseSoftware({ name: "foo", version: 123 }), null);
+  assertEquals(parseSoftware({ name: "foo", version: 123 }), {
+    name: "foo",
+    version: "123",
+  });
   assertEquals(
     parseSoftware({ name: "foo", version: 123 }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 0, minor: 0, patch: 0, build: [], prerelease: [] },
+      version: "123",
     },
   );
-  assertEquals(parseSoftware({ name: "foo", version: "abc" }), null);
+  assertEquals(parseSoftware({ name: "foo", version: "abc" }), {
+    name: "foo",
+    version: "abc",
+  });
   assertEquals(
     parseSoftware({ name: "foo", version: "abc" }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 0, minor: 0, patch: 0, build: [], prerelease: [] },
+      version: "abc",
     },
   );
   assertEquals(
     parseSoftware({ name: "foo", version: " 1.2.3 " }),
     {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: " 1.2.3 ",
     },
   );
   assertEquals(
     parseSoftware({ name: "foo", version: " 1.2.3 " }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: " 1.2.3 ",
     },
   );
   assertEquals(
@@ -348,7 +348,7 @@ test("parseSoftware()", () => {
     }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: "1.2.3",
     },
   );
   assertEquals(
@@ -368,7 +368,7 @@ test("parseSoftware()", () => {
     }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+      version: "1.2.3",
     },
   );
   assertEquals(
@@ -380,7 +380,7 @@ test("parseSoftware()", () => {
     }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 2, minor: 81, patch: 0, build: [], prerelease: [] },
+      version: "2.81",
     },
   );
   assertEquals(
@@ -392,7 +392,7 @@ test("parseSoftware()", () => {
     }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 3, minor: 0, patch: 0, build: [], prerelease: [] },
+      version: "3",
     },
   );
   assertEquals(
@@ -404,7 +404,7 @@ test("parseSoftware()", () => {
     }, { tryBestEffort: true }),
     {
       name: "foo",
-      version: { major: 2, minor: 1, patch: 3, build: [], prerelease: [] },
+      version: "2.1.3.4",
     },
   );
 });

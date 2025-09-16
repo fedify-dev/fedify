@@ -1,5 +1,4 @@
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
-import { parseSemVer } from "../nodeinfo/semver.ts";
 import type { Protocol } from "../nodeinfo/types.ts";
 import { test } from "../testing/mod.ts";
 import { Activity, Note, Person } from "../vocab/vocab.ts";
@@ -46,7 +45,7 @@ test("FederationBuilder", async (t) => {
         version: "2.1",
         software: {
           name: "test",
-          version: parseSemVer("1.0.0"),
+          version: "1.0.0",
         },
         protocols: ["activitypub"] as Protocol[],
         services: { inbound: [], outbound: [] },

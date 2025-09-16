@@ -26,10 +26,22 @@ To be released.
     `FederationOptions` interface in favor of `documentLoaderFactory` option
     for better flexibility.  [[#376], [#393] by Hasang Cho]
 
+ -  Changed NodeInfo `software.version` field type from `SemVer` to `string`
+    to properly handle non-SemVer version strings in accordance with the
+    NodeInfo specification.  [[#366], [#433] by Hyeonseo Kim]
+
+     -  The `parseNodeInfo()` function now returns version as `string` instead
+        of `SemVer` object.
+     -  The `Software.version` field is now of `string` (was of `SemVer`).
+     -  Removed `parseSemVer()` and `formatSemVer()` functions.
+     -  Updated related CLI tools and documentation.
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
+[#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
 [#392]: https://github.com/fedify-dev/fedify/pull/392
 [#393]: https://github.com/fedify-dev/fedify/pulls/393
+[#433]: https://github.com/fedify-dev/fedify/pull/433
 
 
 Version 1.9.0
@@ -88,7 +100,7 @@ To be released.
         [RFC 7033 Section 4.4.4.3].
 
  -  Added `Federatable.setWebFingerLinksDispatcher()` method to set additional
-    links to WebFinger.  [[#119], [#407] by HyeonseoKim]
+    links to WebFinger.  [[#119], [#407] by Hyeonseo Kim]
 
 [FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf

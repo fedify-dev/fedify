@@ -1,5 +1,3 @@
-import { formatSemVer, type SemVer } from "./semver.ts";
-
 /**
  * The type of the result of parsing JSON.
  */
@@ -60,9 +58,8 @@ export interface Software {
 
   /**
    * The version of this server software.
-   * @see {@link parseSemVer}
    */
-  version: SemVer;
+  version: string;
 
   /**
    * The URL of the source code repository of this server software.
@@ -249,7 +246,7 @@ export function nodeInfoToJson(nodeInfo: NodeInfo): JsonValue {
     version: "2.1",
     software: {
       name: nodeInfo.software.name,
-      version: formatSemVer(nodeInfo.software.version),
+      version: nodeInfo.software.version,
       repository: nodeInfo.software.repository?.href,
       homepage: nodeInfo.software.homepage?.href,
     },

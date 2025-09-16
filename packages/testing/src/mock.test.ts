@@ -174,7 +174,7 @@ test("MockContext URI methods respect registered paths", () => {
 
   // Register custom paths with dummy dispatchers
   mockFederation.setNodeInfoDispatcher("/.well-known/nodeinfo", () => ({
-    software: { name: "test", version: { major: 1, minor: 0, patch: 0 } },
+    software: { name: "test", version: "1.0.0" },
     protocols: [],
     usage: {
       users: {},

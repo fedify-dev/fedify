@@ -313,7 +313,7 @@ export async function verifySignature(
   const verified = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     key.publicKey,
-    signature,
+    signature.slice(),
     messageBytes,
   );
   if (verified) return key;
@@ -339,7 +339,7 @@ export async function verifySignature(
     const verified = await crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       key.publicKey,
-      signature,
+      signature.slice(),
       messageBytes,
     );
     return verified ? key : null;

@@ -273,7 +273,7 @@ test({
       federation.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
         software: {
           name: "Example",
-          version: { major: 1, minor: 2, patch: 3 },
+          version: "1.2.3",
         },
         protocols: ["activitypub"],
         usage: {
@@ -562,7 +562,7 @@ test({
       federation.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
         software: {
           name: "Example",
-          version: { major: 1, minor: 2, patch: 3 },
+          version: "1.2.3",
         },
         protocols: ["activitypub"],
         usage: {
@@ -824,7 +824,7 @@ test({
       assertEquals(nodeInfo, {
         software: {
           name: "foo",
-          version: { major: 1, minor: 2, patch: 3, build: [], prerelease: [] },
+          version: "1.2.3",
         },
         protocols: ["activitypub", "diaspora"],
         usage: { users: {}, localPosts: 123, localComments: 456 },

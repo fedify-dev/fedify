@@ -1,5 +1,4 @@
 import { createFederation } from "@fedify/fedify/federation";
-import { parseSemVer } from "@fedify/fedify/nodeinfo";
 import {
   Accept,
   Activity,
@@ -322,7 +321,7 @@ federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (_ctx) => {
   return {
     software: {
       name: "fedify-example-blog",
-      version: parseSemVer(denoJson.version),
+      version: denoJson.version,
       repository: new URL(
         "https://github.com/fedify-dev/fedify/tree/main/examples/blog",
       ),

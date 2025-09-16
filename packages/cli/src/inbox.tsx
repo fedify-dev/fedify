@@ -1,19 +1,6 @@
 /** @jsx react-jsx */
 /** @jsxImportSource hono/jsx */
 import {
-  command,
-  constant,
-  type InferValue,
-  merge,
-  message,
-  multiple,
-  object,
-  option,
-  optional,
-  string,
-  withDefault,
-} from "@optique/core";
-import {
   Accept,
   Activity,
   type Actor,
@@ -33,21 +20,33 @@ import {
   type Recipient,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
+import {
+  command,
+  constant,
+  type InferValue,
+  merge,
+  message,
+  multiple,
+  object,
+  option,
+  optional,
+  string,
+  withDefault,
+} from "@optique/core";
 import * as colors from "@std/fmt/colors";
-import process from "node:process";
+import Table from "cli-table3";
 import { type Context as HonoContext, Hono } from "hono";
 import type { BlankEnv, BlankInput } from "hono/types";
+import process from "node:process";
 import ora from "ora";
-import Table from "cli-table3";
 import metadata from "../deno.json" with { type: "json" };
 import { getDocumentLoader } from "./docloader.ts";
+import { configureLogging, debugOption } from "./globals.ts";
 import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { recordingSink } from "./log.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { configureLogging, debugOption } from "./globals.ts";
-import { parseSemVer } from "@fedify/fedify/nodeinfo";
 
 /**
  * Context data for the ephemeral ActivityPub inbox server.
@@ -382,7 +381,7 @@ federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
   return {
     software: {
       name: "fedify-cli",
-      version: parseSemVer(metadata.version),
+      version: metadata.version,
       repository: new URL("https://github.com/fedify-dev/fedify"),
     },
     protocols: ["activitypub"],

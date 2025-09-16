@@ -5,7 +5,6 @@
  * @module
  * @since 0.2.0
  */
-export { formatSemVer, parseSemVer, type SemVer } from "./semver.ts";
 export {
   getNodeInfo,
   type GetNodeInfoOptions,

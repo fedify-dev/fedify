@@ -4,7 +4,6 @@ import {
   type GetUserAgentOptions,
 } from "../runtime/docloader.ts";
 import type { ResourceDescriptor } from "../webfinger/jrd.ts";
-import { parseSemVer, type SemVer } from "./semver.ts";
 import type {
   InboundService,
   JsonValue,
@@ -265,25 +264,12 @@ export function parseSoftware(
   } else {
     return null;
   }
-  let version: SemVer;
-  if ("version" in data && typeof data.version === "string") {
-    try {
-      version = parseSemVer(data.version);
-    } catch {
-      if (!options.tryBestEffort) return null;
-
-      const parts = data.version.split(".").map((p) => parseInt(p, 10));
-      version = {
-        major: !isNaN(parts[0]) ? parts[0] : 0,
-        minor: !isNaN(parts[1]) ? parts[1] : 0,
-        patch: !isNaN(parts[2]) ? parts[2] : 0,
-        build: [],
-        prerelease: [],
-      };
-    }
+  let version: string;
+  if ("version" in data) {
+    version = String(data.version);
   } else {
     if (!options.tryBestEffort) return null;
-    version = { major: 0, minor: 0, patch: 0, build: [], prerelease: [] };
+    version = "0.0.0";
   }
   let repository: URL | undefined;
   if ("repository" in data) {

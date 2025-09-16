@@ -352,7 +352,7 @@ async function verifyProofInternal(
   const verified = await crypto.subtle.verify(
     "Ed25519",
     publicKey.publicKey,
-    proof.proofValue,
+    proof.proofValue.slice(),
     digest,
   );
   if (!verified) {

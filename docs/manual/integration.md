@@ -359,7 +359,7 @@ import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import {
   FEDIFY_FEDERATION,
 } from '@fedify/nestjs';
-import { Federation, parseSemVer } from '@fedify/fedify';
+import { Federation } from '@fedify/fedify';
 
 @Injectable()
 export class FederationService implements OnModuleInit {
@@ -381,7 +381,7 @@ export class FederationService implements OnModuleInit {
       return {
         software: {
           name: "Fedify NestJS sample",
-          version: parseSemVer("0.0.1")
+          version: "0.0.1"
         },
         protocols: ["activitypub"],
         usage: {

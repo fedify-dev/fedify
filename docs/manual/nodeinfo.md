@@ -93,16 +93,7 @@ The `NodeInfo` interface is defined as follows:
     with pattern `/^[a-z0-9-]+$/`.
 
 `software.version`
-:   *Required.*  The version of the server software.  This must be a valid
-    [`SemVer`] object.  For your information, a Semantic Versioning string
-    can be parsed into a [`SemVer`] object using [`parseSemVer()`] function.
-    In the other way around, you can render a [`SemVer`] object into a Semantic
-    Versioning string using [`formatSemVer()`] function.
-
-    > [!TIP]
-    > The [`SemVer`] type, and the [`parseSemVer()`] and [`formatSemVer()`]
-    > functions are provided by the [@std/semver] package, but for convenience,
-    > Fedify re-exports them.
+:   *Required.*  The version of the server software.
 
 `software.repository`
 :   The [`URL`] of the source code repository of the server software.
@@ -147,10 +138,6 @@ The `NodeInfo` interface is defined as follows:
     the server.  This `number` has to be an integer greater than or equal to
     zero.
 
-[`SemVer`]: https://jsr.io/@std/semver/doc/~/SemVer
-[`parseSemVer()`]: https://jsr.io/@std/semver/doc/~/parse
-[`formatSemVer()`]: https://jsr.io/@std/semver/doc/~/format
-[@std/semver]: https://jsr.io/@std/semver
 [`URL`]: https://developer.mozilla.org/en-US/docs/Web/API/URL
 
 

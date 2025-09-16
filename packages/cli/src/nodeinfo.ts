@@ -1,4 +1,4 @@
-import { formatSemVer, getNodeInfo, getUserAgent } from "@fedify/fedify";
+import { getNodeInfo, getUserAgent } from "@fedify/fedify";
 import { createJimp } from "@jimp/core";
 import webp from "@jimp/wasm-webp";
 import { getLogger } from "@logtape/logtape";
@@ -185,9 +185,7 @@ export async function runNodeInfo(
   layout[i] += colors.bold(url.host);
   layout[next()] += colors.dim("=".repeat(url.host.length));
   layout[next()] += colors.bold(colors.dim("Software:"));
-  layout[next()] += `  ${nodeInfo.software.name} v${
-    formatSemVer(nodeInfo.software.version)
-  }`;
+  layout[next()] += `  ${nodeInfo.software.name} v${nodeInfo.software.version}`;
   if (nodeInfo.software.homepage != null) {
     layout[next()] += `  ${nodeInfo.software.homepage.href}`;
   }
