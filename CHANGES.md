@@ -43,6 +43,14 @@ To be released.
 [#393]: https://github.com/fedify-dev/fedify/pulls/393
 [#433]: https://github.com/fedify-dev/fedify/pull/433
 
+### @fedify/cli
+
+ -  Rewrite `init` CLI command using `optique` library and refactor the
+    implementation for better modularity and maintainability.
+    [[#397] by Chanhaeng Lee]
+
+[#397]: https://github.com/fedify-dev/fedify/issues/397
+
 
 Version 1.9.0
 -------------
