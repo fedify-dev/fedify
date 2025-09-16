@@ -10,8 +10,8 @@ import {
   noticeHowToRun,
   noticeOptions,
 } from "./notice.ts";
+import patchFiles from "./patch.ts";
 import runPrecommand from "./precommand.ts";
-import rewriteJsonFiles from "./rewrite.ts";
 import setData from "./set.ts";
 import { hasCommand, isDry } from "./utils.ts";
 
@@ -25,7 +25,7 @@ const runInit = (options: InitCommand) =>
     when(isDry, tap(noticeDry)),
     unless(isDry, tap(makeDirIfHyd)),
     when(hasCommand, runPrecommand),
-    tap(rewriteJsonFiles),
+    tap(patchFiles),
     tap(installDependencies),
     tap(recommendConfigEnv),
     tap(noticeHowToRun),

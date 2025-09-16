@@ -53,7 +53,7 @@ export function noticePrecommand({
 
 export const recommendCreate = () => printMessage`📄 Would create files:\n`;
 
-export const recommendInsertJsons = () =>
+export const recommendInsert = () =>
   printMessage`Would create/update JSON files:\n`;
 
 export const noticeDepsIfExist = () =>
