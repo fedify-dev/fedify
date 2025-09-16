@@ -127,99 +127,11 @@ export const resolveProps = async <T extends object>(obj: T): Promise<
 
 export const formatJson = (obj: unknown) => JSON.stringify(obj, null, 2) + "\n";
 
-type Arrow = (...args: any) => any;
-
-export function match<T>(): (x: T) => T;
-export function match<T, R>(defaultFn: (x: T) => R): (x: T) => R;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-): <T extends Parameters<typeof fn1>[0]>(x: T) => ReturnType<typeof fn1> | T;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-  defaultFn: Arrow,
-): <T extends Parameters<typeof fn1>[0] | Parameters<typeof defaultFn>[0]>(
-  x: T,
-) => ReturnType<typeof fn1> | ReturnType<typeof defaultFn>;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-  predicate2: (x: Parameters<typeof fn2>[0]) => boolean,
-  fn2: Arrow,
-): <T extends Parameters<typeof fn1>[0] | Parameters<typeof fn2>[0]>(
-  x: T,
-) => ReturnType<typeof fn1> | ReturnType<typeof fn2> | T;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-  predicate2: (x: Parameters<typeof fn2>[0]) => boolean,
-  fn2: Arrow,
-  defaultFn: Arrow,
-): <
-  T extends
-    | Parameters<typeof fn1>[0]
-    | Parameters<typeof fn2>[0]
-    | Parameters<typeof defaultFn>[0],
->(
-  x: T,
-) =>
-  | ReturnType<typeof fn1>
-  | ReturnType<typeof fn2>
-  | ReturnType<typeof defaultFn>;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-  predicate2: (x: Parameters<typeof fn2>[0]) => boolean,
-  fn2: Arrow,
-  predicate3: (x: Parameters<typeof fn3>[0]) => boolean,
-  fn3: Arrow,
-): <
-  T extends
-    | Parameters<typeof fn1>[0]
-    | Parameters<typeof fn2>[0]
-    | Parameters<typeof fn3>[0],
->(
-  x: T,
-) =>
-  | ReturnType<typeof fn1>
-  | ReturnType<typeof fn2>
-  | ReturnType<typeof fn3>
-  | T;
-export function match(
-  predicate1: (x: Parameters<typeof fn1>[0]) => boolean,
-  fn1: Arrow,
-  predicate2: (x: Parameters<typeof fn2>[0]) => boolean,
-  fn2: Arrow,
-  predicate3: (x: Parameters<typeof fn3>[0]) => boolean,
-  fn3: Arrow,
-  defaultFn: Arrow,
-): <
-  T extends
-    | Parameters<typeof fn1>[0]
-    | Parameters<typeof fn2>[0]
-    | Parameters<typeof fn3>[0]
-    | Parameters<typeof defaultFn>[0],
->(
-  x: T,
-) =>
-  | ReturnType<typeof fn1>
-  | ReturnType<typeof fn2>
-  | ReturnType<typeof fn3>
-  | ReturnType<typeof defaultFn>;
-export function match(...fns: Function[]) {
-  return <T>(x: T) => {
-    for (const [cond, fn] of chunk(2, fns)) {
-      if (!fn) return cond(x); // if `fns` has an odd number of item, the last function is a default case
-      if (cond(x)) return fn(x);
-    }
-    return x; // if `fns` has an even number of item, just return argument as is
-  };
-}
-
 export const notEmpty = <T extends string | { length: number }>(s: T) =>
   s.length > 0;
 
 export const notEmptyObj = <T extends Record<PropertyKey, never> | object>(
   obj: T,
 ): obj is Exclude<T, Record<PropertyKey, never>> => Object.keys(obj).length > 0;
+
+export const exit = (code: number) => process.exit(code);

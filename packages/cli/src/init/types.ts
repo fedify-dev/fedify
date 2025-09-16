@@ -1,3 +1,5 @@
+import type { RequiredNotNull } from "../utils.ts";
+import type { InitCommand } from "./command.ts";
 import type {
   KV_STORE,
   MESSAGE_QUEUE,
@@ -71,3 +73,16 @@ export interface KvStoreDescription {
   denoUnstable?: string[];
   env?: Record<string, string>;
 }
+
+export type InitCommandOptions = RequiredNotNull<InitCommand>;
+
+export interface InitCommandData extends InitCommandOptions {
+  readonly projectName: string;
+  readonly initializer: WebFrameworkInitializer;
+  readonly kv: KvStoreDescription;
+  readonly mq: MessageQueueDescription;
+  readonly env: Record<string, string>;
+}
+
+export type InitCommandIo = (data: InitCommandData) => void;
+export type InitCommandAsyncIo = (data: InitCommandData) => Promise<void>;
