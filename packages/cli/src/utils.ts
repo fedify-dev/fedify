@@ -1,5 +1,4 @@
 import { isObject } from "@fxts/core";
-import { chunk } from "@fxts/core/Lazy/index.js";
 import { highlight } from "cli-highlight";
 import { toMerged } from "es-toolkit";
 import { spawn } from "node:child_process";
