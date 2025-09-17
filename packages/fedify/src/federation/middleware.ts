@@ -95,6 +95,7 @@ import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
+import { acceptsJsonLd } from "./negotiation.ts";
 import type {
   FanoutMessage,
   InboxMessage,
@@ -1191,6 +1192,9 @@ export class FederationImpl<TContextData>
           let response: Response;
           try {
             response = await this.#fetch(request, { ...options, span, tracer });
+            if (acceptsJsonLd(request)) {
+              response.headers.set("Vary", "Accept");
+            }
           } catch (error) {
             span.setStatus({
               code: SpanStatusCode.ERROR,
@@ -1253,6 +1257,8 @@ export class FederationImpl<TContextData>
     span.updateName(`${request.method} ${route.template}`);
     let context = this.#createContext(request, contextData);
     const routeName = route.name.replace(/:.*$/, "");
+
+    // Routes that aren't JSON-LD based:
     switch (routeName) {
       case "webfinger":
         return await handleWebFinger(request, {
@@ -1272,6 +1278,11 @@ export class FederationImpl<TContextData>
           context,
           nodeInfoDispatcher: this.nodeInfoDispatcher!,
         });
+    }
+
+    // Routes that require JSON-LD Accepts header:
+    if (!acceptsJsonLd(request)) return await onNotAcceptable(request);
+    switch (routeName) {
       case "actor":
         context = this.#createContext(request, contextData, {
           invokedFromActorDispatcher: {
@@ -1285,7 +1296,6 @@ export class FederationImpl<TContextData>
           authorizePredicate: this.actorCallbacks?.authorizePredicate,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "object": {
         const typeId = route.name.replace(/^object:/, "");
@@ -1301,7 +1311,6 @@ export class FederationImpl<TContextData>
           authorizePredicate: callbacks?.authorizePredicate,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       }
       case "outbox":
@@ -1314,7 +1323,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "inbox":
         if (request.method !== "POST") {
@@ -1327,7 +1335,6 @@ export class FederationImpl<TContextData>
             tracerProvider: this.tracerProvider,
             onUnauthorized,
             onNotFound,
-            onNotAcceptable,
           });
         }
         context = this.#createContext(request, contextData, {
@@ -1375,7 +1382,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "followers": {
         let baseUrl = url.searchParams.get("base-url");
@@ -1409,7 +1415,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       }
       case "liked":
@@ -1422,7 +1427,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "featured":
         return await handleCollection(request, {
@@ -1434,7 +1438,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "featuredTags":
         return await handleCollection(request, {
@@ -1446,7 +1449,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       case "collection": {
         const name = route.name.replace(/^collection:/, "");
@@ -1464,7 +1466,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       }
       case "orderedCollection": {
@@ -1483,7 +1484,6 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           onUnauthorized,
           onNotFound,
-          onNotAcceptable,
         });
       }
       default: {

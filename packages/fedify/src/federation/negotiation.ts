@@ -132,3 +132,15 @@ export function preferredMediaTypes(
 }
 
 // cSpell: ignore Schlueter kvps
+
+export function acceptsJsonLd(request: Request): boolean {
+  const accept = request.headers.get("Accept");
+  const types = accept ? preferredMediaTypes(accept) : ["*/*"];
+  if (types == null) return true;
+  if (types[0] === "text/html" || types[0] === "application/xhtml+xml") {
+    return false;
+  }
+  return types.includes("application/activity+json") ||
+    types.includes("application/ld+json") ||
+    types.includes("application/json");
+}
