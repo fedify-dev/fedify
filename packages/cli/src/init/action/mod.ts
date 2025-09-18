@@ -12,6 +12,7 @@ import {
 } from "./notice.ts";
 import patchFiles from "./patch.ts";
 import runPrecommand from "./precommand.ts";
+import { recommendDependencies } from "./recommend.ts";
 import setData from "./set.ts";
 import { hasCommand, isDry } from "./utils.ts";
 
@@ -26,7 +27,8 @@ const runInit = (options: InitCommand) =>
     unless(isDry, tap(makeDirIfHyd)),
     when(hasCommand, runPrecommand),
     tap(patchFiles),
-    tap(installDependencies),
+    when(isDry, tap(recommendDependencies)),
+    unless(isDry, tap(installDependencies)),
     tap(recommendConfigEnv),
     tap(noticeHowToRun),
   );
