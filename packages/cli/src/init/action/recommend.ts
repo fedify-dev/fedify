@@ -25,7 +25,9 @@ const recommendDevDeps: InitCommandIo = pipeLazy(
   map(noticeDeps),
 );
 
-export const recommendDependencies: InitCommandIo = pipeLazy(
+const recommendDependencies: InitCommandIo = pipeLazy(
   tap(recommendDeps),
   unless(isDeno, tap(recommendDevDeps)),
 );
+
+export default recommendDependencies;

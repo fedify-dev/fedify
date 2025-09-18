@@ -1,8 +1,5 @@
-import { pipe, tap, unless, when } from "@fxts/core";
 import { exit, runSubCommand } from "../../utils.ts";
 import type { InitCommandData } from "../types.ts";
-import { noticePrecommand } from "./notice.ts";
-import { isDry } from "./utils.ts";
 
 const runPrecommand = ({
   initializer: { command },
@@ -18,11 +15,4 @@ const runPrecommand = ({
     exit(1);
   });
 
-const executePrecommand = (data: InitCommandData) =>
-  pipe(
-    data,
-    when(isDry, tap(noticePrecommand)),
-    unless(isDry, tap(runPrecommand)),
-  );
-
-export default executePrecommand;
+export default runPrecommand;

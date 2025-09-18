@@ -23,7 +23,7 @@ import {
 } from "./configs.ts";
 import { displayFile, recommendCreate, recommendInsert } from "./notice.ts";
 import { getImports, loadFederation, loadLogging } from "./templates.ts";
-import { isDry, joinDir } from "./utils.ts";
+import { joinDir } from "./utils.ts";
 
 /**
  * Main function that initializes the project by creating necessary files and configurations.
@@ -33,16 +33,21 @@ import { isDry, joinDir } from "./utils.ts";
  * @param data - The initialization command data containing project configuration
  * @returns A processed data object with files and JSONs ready for creation
  */
-const patchFiles = (data: InitCommandData) =>
+export const patchFiles = (data: InitCommandData) =>
   pipe(
     data,
     set("files", getFiles),
     set("jsons", getJsons),
-    when(isDry, tap(recommendFiles)),
-    unless(isDry, tap(createFiles)),
+    createFiles,
   );
 
-export default patchFiles;
+export const recommendPatchFiles = (data: InitCommandData) =>
+  pipe(
+    data,
+    set("files", getFiles),
+    set("jsons", getJsons),
+    recommendFiles,
+  );
 
 /**
  * Generates text-based files (TypeScript, environment files) for the project.
