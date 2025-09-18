@@ -24,23 +24,41 @@
     "fetch-mock": "npm:fetch-mock@^12.5.4",
     "icojs": "npm:icojs@^0.19.5"
   },
-  "exclude": ["fedify-cli-*.tar.xz", "fedify-cli-*.tgz", "fedify-cli-*.zip"],
+  "exclude": [
+    "fedify-cli-*.tar.xz",
+    "fedify-cli-*.tgz",
+    "fedify-cli-*.zip"
+  ],
   "tasks": {
     "codegen": "deno task -f @fedify/fedify codegen",
     "check": {
       "command": "deno task codegen && deno fmt --check && deno lint && deno check src/**/*.ts",
-      "dependencies": ["codegen"]
+      "dependencies": [
+        "codegen"
+      ]
     },
     "run": {
       "command": "deno run --allow-all src/mod.ts",
-      "dependencies": ["codegen"]
+      "dependencies": [
+        "codegen"
+      ]
     },
     "runi": "deno run --allow-all src/mod.ts",
     "pack": {
       "command": "deno run -A scripts/pack.ts",
-      "dependencies": ["codegen"]
+      "dependencies": [
+        "codegen"
+      ]
     }
   },
-  "fmt": { "exclude": ["src/init/templates/**"] },
-  "lint": { "exclude": ["src/init/templates/**"] }
+  "fmt": {
+    "exclude": [
+      "src/init/templates/**"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      "src/init/templates/**"
+    ]
+  }
 }

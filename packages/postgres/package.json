@@ -58,7 +58,7 @@
     "@logtape/logtape": "catalog:"
   },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "postgres": "catalog:"
   },
   "devDependencies": {

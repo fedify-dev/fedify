@@ -44,7 +44,7 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "express": "catalog:"
   },
   "devDependencies": {

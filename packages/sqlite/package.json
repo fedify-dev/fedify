@@ -51,7 +51,7 @@
     "es-toolkit": "^1.31.0"
   },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:"
+    "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
     "@js-temporal/polyfill": "catalog:",

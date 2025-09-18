@@ -51,7 +51,7 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "@cloudflare/workers-types": "catalog:"
   },
   "devDependencies": {
