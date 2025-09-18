@@ -1,14 +1,4 @@
-import {
-  apply,
-  concat,
-  entries,
-  join,
-  map,
-  pipe,
-  tap,
-  unless,
-  when,
-} from "@fxts/core";
+import { apply, entries, map, pipe, tap } from "@fxts/core";
 import { stringify } from "@std/dotenv";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
