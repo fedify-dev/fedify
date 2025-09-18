@@ -565,7 +565,7 @@ importers:
         specifier: jsr:@david/dax@^0.43.2
         version: '@jsr/david__dax@0.43.2'
       '@fedify/fedify':
-        specifier: workspace:*
+        specifier: 'workspace:'
         version: link:../fedify
       '@fxts/core':
         specifier: ^1.15.0
