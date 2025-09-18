@@ -6,6 +6,14 @@ import { getInstallUrl, getLabel, isPackageManagerAvailable } from "../lib.ts";
 import type { PackageManager, WebFramework } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
+/**
+ * Fills in the package manager by prompting the user if not provided.
+ * Ensures the selected package manager is compatible with the chosen web framework.
+ * If the selected package manager is not installed, informs the user and prompts again.
+ *
+ * @param options - Initialization options possibly containing a packageManager and webFramework
+ * @returns A promise resolving to options with a guaranteed packageManager
+ */
 const fillPackageManager: //
   <T extends { packageManager?: PackageManager; webFramework: WebFramework }> //
   (options: T) => //

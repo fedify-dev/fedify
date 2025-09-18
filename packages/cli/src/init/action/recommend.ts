@@ -12,7 +12,6 @@ import { isDeno } from "./utils.ts";
 const recommendDeps: InitCommandIo = pipeLazy(
   getDependencies,
   Object.entries<string>,
-  toArray,
   when(notEmpty<[string, string][]>, tap(noticeDepsIfExist)),
   peek(noticeDeps),
 );
@@ -20,11 +19,17 @@ const recommendDeps: InitCommandIo = pipeLazy(
 const recommendDevDeps: InitCommandIo = pipeLazy(
   getDevDependencies,
   Object.entries<string>,
-  toArray,
   when(notEmpty<[string, string][]>, tap(noticeDevDepsIfExist)),
   map(noticeDeps),
 );
 
+/**
+ * Recommends dependencies and devDependencies to be added to package.json.
+ * Skips devDependencies recommendation if the package manager is Deno.
+ *
+ * @param data - The initialization command data
+ * @returns An InitCommandIo function that performs the recommendation
+ */
 const recommendDependencies: InitCommandIo = pipeLazy(
   tap(recommendDeps),
   unless(isDeno, tap(recommendDevDeps)),

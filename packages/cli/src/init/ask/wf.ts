@@ -3,6 +3,12 @@ import { WEB_FRAMEWORK } from "../const.ts";
 import type { WebFramework } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
+/**
+ * Fills in the web framework by prompting the user if not provided.
+ *
+ * @param options - Initialization options possibly containing a webFramework
+ * @returns A promise resolving to options with a guaranteed webFramework
+ */
 const fillWebFramework: //
   <T extends { webFramework?: WebFramework }>(options: T) => //
   Promise<T & { webFramework: WebFramework }> = async (options) => //

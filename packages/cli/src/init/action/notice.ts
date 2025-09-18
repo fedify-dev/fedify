@@ -51,9 +51,11 @@ export function noticePrecommand({
   printMessage`  ${command!.join(" ")}\n`;
 }
 
-export const recommendCreate = () => printMessage`📄 Would create files:\n`;
+export const noticeFilesToCreate = () =>
+  //
+  printMessage`📄 Would create files:\n`;
 
-export const recommendInsert = () =>
+export const noticeFilesToInsert = () =>
   printMessage`Would create/update JSON files:\n`;
 
 export const noticeDepsIfExist = () =>

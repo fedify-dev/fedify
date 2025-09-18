@@ -3,6 +3,13 @@ import { KV_STORE } from "../const.ts";
 import { kvStores } from "../lib.ts";
 import type { KvStore, PackageManager } from "../types.ts";
 
+/**
+ * Fills in the key-value store by prompting the user if not provided.
+ * Ensures the selected KV store is compatible with the chosen package manager.
+ *
+ * @param options - Initialization options possibly containing a kvStore and packageManager
+ * @returns A promise resolving to options with a guaranteed kvStore
+ */
 const fillKvStore: //
   <T extends { kvStore?: KvStore; packageManager: PackageManager }>(
     options: T,

@@ -15,6 +15,15 @@ import type {
 } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
+/**
+ * Set all necessary data for initializing the project.
+ * This function orchestrates the setting of project name, initializer,
+ * key-value store, message queue, and environment variables by calling
+ * individual setter functions for each piece of data.
+ *
+ * @param data - The initial command options provided by the user
+ * @returns A promise resolving to a complete InitCommandData object
+ */
 const setData = (data: InitCommandOptions): Promise<InitCommandData> =>
   pipe(
     data,

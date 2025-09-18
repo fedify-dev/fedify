@@ -21,7 +21,11 @@ import {
   loadPackageJson,
   loadTsConfig,
 } from "./configs.ts";
-import { displayFile, recommendCreate, recommendInsert } from "./notice.ts";
+import {
+  displayFile,
+  noticeFilesToCreate,
+  noticeFilesToInsert,
+} from "./notice.ts";
 import { getImports, loadFederation, loadLogging } from "./templates.ts";
 import { joinDir } from "./utils.ts";
 
@@ -105,9 +109,9 @@ const getJsons = <
 const recommendFiles = (data: InitCommandWithFiles) =>
   pipe(
     data,
-    tap(recommendCreate),
+    tap(noticeFilesToCreate),
     tap(processAllFiles(displayFile)),
-    tap(recommendInsert),
+    tap(noticeFilesToInsert),
     set("files", ({ jsons }) => jsons),
     tap(processAllFiles(displayFile)),
   );
@@ -199,7 +203,7 @@ const mergeJson = (prev: string, data: object): string =>
  * @returns Combined text content as a single string
  */
 const appendText = (prev: string, data: string) =>
-  pipe(data.split("\n"), concat(prev.split("\n")), join("\n"));
+  prev ? `${prev}\n${data}` : data;
 
 /**
  * Safely reads a file if it exists, returns empty string if it doesn't exist.

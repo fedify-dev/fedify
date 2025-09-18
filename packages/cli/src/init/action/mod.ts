@@ -17,6 +17,22 @@ import recommendDependencies from "./recommend.ts";
 import setData from "./set.ts";
 import { hasCommand, isDry } from "./utils.ts";
 
+/**
+ *             options: InitCommand
+ *                ├ drawDinosaur
+ *          ┌─────┴──────┐
+ *          │ askOptions │ InitCommand -> InitCommandOptions
+ *          └─────┬──────┘
+ *                ├ noticeOptions
+ *           ┌────┴────┐
+ *           │ setData │ InitCommandOptions -> InitCommandData
+ *           └────┬────┘
+ *              ┌─┴─┐ isDry
+ * handleDryRun ┤   ├ handleHydRun
+ *              └─┬─┘
+ *                ├ recommendConfigEnv
+ *                ├ noticeHowToRun
+ */
 const runInit = (options: InitCommand) =>
   pipe(
     options,
@@ -38,7 +54,6 @@ const handleDryRun = (data: InitCommandData) =>
     tap(when(hasCommand, noticePrecommand)),
     tap(recommendPatchFiles),
     tap(recommendDependencies),
-    tap(recommendConfigEnv),
   );
 
 const handleHydRun = (data: InitCommandData) =>

@@ -1,10 +1,10 @@
 import { join as joinPath } from "@std/path";
 import biome from "../templates/json/biome.json" with { type: "json" };
 import vscodeSettingsForDeno from "../templates/json/vscode-settings-for-deno.json" with {
-  type: "json",
+  type: "json"
 };
 import vscodeSettings from "../templates/json/vscode-settings.json" with {
-  type: "json",
+  type: "json"
 };
 import type { InitCommandData } from "../types.ts";
 
@@ -62,7 +62,7 @@ export const loadPackageJson = ({ initializer, dir }: InitCommandData) => ({
 /**
  * Configuration objects for various development tool setup files.
  * Contains predefined configurations for code formatting, VS Code settings, and extensions
- * based on the project type (Node.js/Bun vs Deno).
+ * based on the project type (Node.js/Bun or Deno).
  */
 export const devToolConfigs = {
   biome: {

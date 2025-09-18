@@ -1,11 +1,20 @@
 import { identity, pipe, when } from "@fxts/core";
 import { input } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
-import { print } from "@optique/run";
+import { printError } from "@optique/run";
 import toggle from "inquirer-toggle";
 import { getCwd, getOsType, runSubCommand } from "../../utils.ts";
 import { isDirectoryEmpty, logger } from "../lib.ts";
 
+/**
+ * Fills in the project directory by prompting the user if not provided.
+ * If the directory is not empty, asks the user whether to use it anyway.
+ * If the user agrees, offers to move existing contents to trash.
+ * Else, recursively prompts for a new directory until a valid one is provided.
+ *
+ * @param options - Initialization options possibly containing a directory
+ * @returns A promise resolving to options with a guaranteed directory
+ */
 const fillDir: <T extends { dir?: string }>(
   options: T,
 ) => Promise<T & { dir: string }> = async (options) => {
@@ -51,7 +60,7 @@ const moveToTrash = (dir: string) => () =>
     () => true,
   ).catch((e) => {
     logger.error(e);
-    print(message`Failed to move ${dir} to trash.
+    printError(message`Failed to move ${dir} to trash.
 Please move it manually.`);
     return false;
   });
@@ -64,11 +73,7 @@ const trashCommands: Record<
   (dir: string) => string[]
 > = {
   // mac
-  darwin: (dir: string) => [
-    "osascript",
-    "-e",
-    `tell application "Finder" to delete POSIX file "${dir}"`,
-  ],
+  darwin: (dir: string) => ["trash", dir],
   // windows
   win32: (dir: string) => [
     "powershell",
@@ -76,7 +81,7 @@ const trashCommands: Record<
     getPowershellTrashCommand(dir),
   ],
   // other unix
-  linux: (dir: string) => ["gio", "trash", dir],
+  linux: (dir: string) => ["rm", "-rf", dir],
 };
 
 const getPowershellTrashCommand = (dir: string) =>

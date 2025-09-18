@@ -3,6 +3,13 @@ import { MESSAGE_QUEUE } from "../const.ts";
 import { messageQueues } from "../lib.ts";
 import type { MessageQueue, PackageManager } from "../types.ts";
 
+/**
+ * Fills in the message queue by prompting the user if not provided.
+ * Ensures the selected message queue is compatible with the chosen package manager.
+ *
+ * @param options - Initialization options possibly containing a messageQueue and packageManager
+ * @returns A promise resolving to options with a guaranteed messageQueue
+ */
 const fillMessageQueue: //
   <T extends { messageQueue?: MessageQueue; packageManager: PackageManager }> //
   (options: T) => Promise<T & { messageQueue: MessageQueue }> = //
