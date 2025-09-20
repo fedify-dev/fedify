@@ -13,6 +13,7 @@
     "Bluesky",
     "Bridgy",
     "btos",
+    "bunx",
     "callouts",
     "cfworker",
     "cfworkers",
@@ -38,6 +39,7 @@
     "fedify",
     "fediverse",
     "followable",
+    "giget",
     "Guppe",
     "halfyear",
     "highligher",
@@ -49,6 +51,7 @@
     "instanceof",
     "interoperating",
     "jsonld",
+    "jsons",
     "keycache",
     "keypair",
     "langstr",
@@ -78,6 +81,7 @@
     "Pleroma",
     "popd",
     "poppanator",
+    "precommand",
     "proto",
     "pushd",
     "pwsh",
@@ -112,6 +116,7 @@
     "vitepress",
     "vtsls",
     "webfinger",
+    "webframeworks",
     "webp"
   ]
 }

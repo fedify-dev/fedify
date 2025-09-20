@@ -1,7 +1,7 @@
 import { or } from "@optique/core";
 import { run } from "@optique/run";
 import { inboxCommand, runInbox } from "./inbox.tsx";
-import { initCommand, runInit } from "./init.ts";
+import { initCommand, runInit } from "./init/mod.ts";
 import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
@@ -22,7 +22,7 @@ async function main() {
     help: "both",
   });
   if (result.command === "init") {
-    runInit(result);
+    await runInit(result);
   }
   if (result.command === "lookup") {
     await runLookup(result);

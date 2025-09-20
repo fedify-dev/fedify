@@ -1,9 +1,4 @@
 {
-  "test": {
-    "include": [
-      "./packages"
-    ]
-  },
   "workspace": [
     "./packages/fedify",
     "./packages/cli",
@@ -116,6 +111,9 @@
   "test": {
     "include": [
       "./packages"
+    ],
+    "exclude": [
+      "./packages/cli/src/init/templates/**"
     ]
   }
 }

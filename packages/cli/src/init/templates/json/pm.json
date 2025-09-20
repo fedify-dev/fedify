@@ -1,0 +1,47 @@
+{
+  "deno": {
+    "label": "deno",
+    "checkCommand": [
+      "deno",
+      "--version"
+    ],
+    "outputPattern": "^deno\\s+\\d+\\.\\d+\\.\\d+\\b",
+    "installUrl": "https://docs.deno.com/runtime/getting_started/installation"
+  },
+  "bun": {
+    "label": "bun",
+    "checkCommand": [
+      "bun",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "installUrl": "https://bun.sh/docs/installation"
+  },
+  "npm": {
+    "label": "npm",
+    "checkCommand": [
+      "npm",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "installUrl": "https://docs.npmjs.com/downloading-and-installing-node-js-and-npm"
+  },
+  "yarn": {
+    "label": "Yarn",
+    "checkCommand": [
+      "yarn",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "installUrl": "https://classic.yarnpkg.com/en/docs/install/#windows-stable"
+  },
+  "pnpm": {
+    "label": "pnpm",
+    "checkCommand": [
+      "pnpm",
+      "--version"
+    ],
+    "outputPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "installUrl": "https://pnpm.io/installation"
+  }
+}
