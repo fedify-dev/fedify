@@ -61,6 +61,11 @@ To be released.
  -  Added `Federatable.setWebFingerLinksDispatcher()` method to set additional
     links to WebFinger.  [[#119], [#407] by HyeonseoKim]
 
+ -  Added CommonJS support alongside ESM for better NestJS integration and
+    broader Node.js ecosystem compatibility.  This eliminates the need for
+    Node.js's `--experimental-require-module` flag and resolves dual package
+    hazard issues.  [[#429], [#431]]
+
 [FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf
 [RFC 7033 Section 4.4.4.3]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.4.4.3
@@ -73,6 +78,7 @@ To be released.
 [#402]: https://github.com/fedify-dev/fedify/issues/402
 [#404]: https://github.com/fedify-dev/fedify/pull/404
 [#407]: https://github.com/fedify-dev/fedify/pull/407
+[#429]: https://github.com/fedify-dev/fedify/issues/429
 
 ### @fedify/cli
 
@@ -94,6 +100,11 @@ To be released.
 [#353]: https://github.com/fedify-dev/fedify/issues/353
 [#365]: https://github.com/fedify-dev/fedify/pull/365
 
+### @fedify/amqp
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/cfworkers
 
  -  Created Cloudflare Workers integration as the *@fedify/cfworkers* package.
@@ -106,26 +117,60 @@ To be released.
     Separated from `@fedify/fedify/x/denokv` to improve modularity and
     reduce bundle size.  [[#375] by Chanhaeng Lee]
 
+### @fedify/elysia
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
+### @fedify/express
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
+### @fedify/h3
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/hono
 
  -  Created Hono integration as the *@fedify/hono* package.
     Separated from `@fedify/fedify/x/hono` to improve modularity and
     reduce bundle size.  [[#375] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 ### @fedify/next
 
  -  Created [Next.js] integration as the *@fedify/next* package.
     [[#313] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [Next.js]: https://nextjs.org/
 [#313]: https://github.com/fedify-dev/fedify/issues/313
+
+### @fedify/postgres
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
 
 ### @fedify/redis
 
  -  Added support for Redis Cluster to the *@fedify/redis* package.
     [[#368] by Michael Barrett]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [#368]: https://github.com/fedify-dev/fedify/pull/368
+
+### @fedify/sqlite
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
 
 ### @fedify/sveltekit
 
@@ -136,8 +181,54 @@ To be released.
  -  Fixed SvelteKit integration hook types to correctly infer the request
     and response types in hooks.  [[#271], [#394] by Chanhaeng Lee]
 
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
 [#271]: https://github.com/fedify-dev/fedify/pull/271
 [#394]: https://github.com/fedify-dev/fedify/pull/394
+
+### @fedify/testing
+
+ -  Added CommonJS support alongside ESM for better compatibility with
+    CommonJS-based Node.js applications.  [[#429], [#431]]
+
+
+Version 1.8.12
+--------------
+
+Released on September 20, 2025.
+
+### @fedify/sqlite
+
+ -  Fixed bundling issues where incorrect import paths to *node\_modules* were
+    included in the bundled output.  The *@js-temporal/polyfill* dependency
+    was moved from `devDependencies` to `dependencies` to ensure proper
+    bundling.
+
+
+Version 1.8.11
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.8.10
+--------------
+
+Released on Steptember 17, 2025.
+
+### @fedify/fedify
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.8.9
@@ -494,6 +585,29 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.13
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.7.12
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
+
+
 Version 1.7.11
 --------------
 
@@ -654,6 +768,29 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.12
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.6.11
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.6.10
@@ -819,6 +956,29 @@ the versioning.
 [#237]: https://github.com/fedify-dev/fedify/pull/237
 [#241]: https://github.com/fedify-dev/fedify/issues/241
 [#242]: https://github.com/fedify-dev/fedify/pull/242
+
+
+Version 1.5.9
+-------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.5.8
+-------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.5.7
@@ -1030,6 +1190,29 @@ Released on March 28, 2025.
 [#223]: https://github.com/fedify-dev/fedify/pull/223
 [FEP-8fcf]: https://w3id.org/fep/8fcf
 [multibase]: https://github.com/multiformats/js-multibase
+
+
+Version 1.4.17
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.4.16
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.4.15
@@ -1316,6 +1499,29 @@ Released on February 5, 2025.
 
 [#3]: https://github.com/fedify-dev/fedify/issues/3
 [#195]: https://github.com/fedify-dev/fedify/issues/195
+
+
+Version 1.3.24
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.3.23
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.3.22
@@ -1720,6 +1926,29 @@ Released on November 30, 2024.
 [#186]: https://github.com/fedify-dev/fedify/pull/186
 [#192]: https://github.com/fedify-dev/fedify/issues/192
 [#193]: https://github.com/fedify-dev/fedify/issues/193
+
+
+Version 1.2.27
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.2.26
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.2.25
@@ -2157,6 +2386,29 @@ Released on October 31, 2024.
 
 [implicit contexts]: https://logtape.org/manual/contexts#implicit-contexts
 [#118]: https://github.com/fedify-dev/fedify/issues/118
+
+
+Version 1.1.27
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.1.26
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
 
 
 Version 1.1.25
@@ -2635,6 +2887,31 @@ Released on October 20, 2024.
 [ActivityPub and HTTP Signatures]: https://swicg.github.io/activitypub-http-signature/
 [#146]: https://github.com/fedify-dev/fedify/issues/146
 [#150]: https://github.com/fedify-dev/fedify/issues/150
+
+
+Version 1.0.30
+--------------
+
+Released on September 17, 2025.
+
+ -  Improved the AT Protocol URI workaround to handle all DID methods and
+    edge cases. The fix now properly percent-encodes any authority component
+    in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
+    beyond just `did:plc`. Also handles URIs without path components
+    correctly.  [[#436]]
+
+
+Version 1.0.29
+--------------
+
+Released on September 17, 2025.
+
+ -  Added a temporary workaround for invalid AT Protocol URIs from BridgyFed.
+    URIs like `at://did:plc:...` that violate RFC 3986 URI syntax are now
+    automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
+    failures when processing bridged Bluesky content.  [[#436]]
+
+[#436]: https://github.com/fedify-dev/fedify/issues/436
 
 
 Version 1.0.28

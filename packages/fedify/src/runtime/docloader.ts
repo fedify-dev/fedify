@@ -1,9 +1,9 @@
-import { HTTPHeaderLink } from "@hugoalh/http-header-link";
 import { getLogger } from "@logtape/logtape";
 import process from "node:process";
 import metadata from "../../deno.json" with { type: "json" };
 import type { KvKey, KvStore } from "../federation/kv.ts";
 import preloadedContexts from "./contexts.ts";
+import { HttpHeaderLink } from "./link.ts";
 import { UrlError, validatePublicUrl } from "./url.ts";
 
 const logger = getLogger(["fedify", "runtime", "docloader"]);
@@ -209,12 +209,12 @@ export async function getRemoteDocument(
   const linkHeader = response.headers.get("Link");
   let contextUrl: string | null = null;
   if (linkHeader != null) {
-    let link: HTTPHeaderLink;
+    let link: HttpHeaderLink;
     try {
-      link = new HTTPHeaderLink(linkHeader);
+      link = new HttpHeaderLink(linkHeader);
     } catch (e) {
       if (e instanceof SyntaxError) {
-        link = new HTTPHeaderLink();
+        link = new HttpHeaderLink();
       } else {
         throw e;
       }

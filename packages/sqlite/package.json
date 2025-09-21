@@ -22,18 +22,28 @@
     "https://github.com/sponsors/dahlia"
   ],
   "type": "module",
-  "main": "./dist/mod.js",
+  "main": "./dist/mod.cjs",
   "module": "./dist/mod.js",
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/mod.d.ts",
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
       "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
     },
     "./kv": {
-      "types": "./dist/kv.d.ts",
+      "types": {
+        "import": "./dist/kv.d.ts",
+        "require": "./dist/kv.d.cts",
+        "default": "./dist/kv.d.ts"
+      },
       "import": "./dist/kv.js",
+      "require": "./dist/kv.cjs",
       "default": "./dist/kv.js"
     },
     "./package.json": "./package.json"
@@ -47,6 +57,7 @@
     }
   },
   "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
     "@logtape/logtape": "catalog:",
     "es-toolkit": "^1.31.0"
   },
@@ -54,7 +65,6 @@
     "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
-    "@js-temporal/polyfill": "catalog:",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

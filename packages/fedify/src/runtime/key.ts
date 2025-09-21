@@ -114,7 +114,6 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
     const spki = exported instanceof Uint8Array
       ? exported
       : new Uint8Array(exported);
-
     return await crypto.subtle.importKey(
       "spki",
       new Uint8Array(spki),

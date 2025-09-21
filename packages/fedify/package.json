@@ -35,67 +35,122 @@
     "dist"
   ],
   "module": "./dist/mod.js",
+  "main": "./dist/mod.cjs",
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/mod.d.ts",
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
       "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
     },
     "./compat": {
-      "types": "./dist/compat/mod.d.ts",
+      "types": {
+        "import": "./dist/compat/mod.d.ts",
+        "require": "./dist/compat/mod.d.cts",
+        "default": "./dist/compat/mod.d.ts"
+      },
       "import": "./dist/compat/mod.js",
+      "require": "./dist/compat/mod.cjs",
       "default": "./dist/compat/mod.js"
     },
     "./federation": {
-      "types": "./dist/federation/mod.d.ts",
+      "types": {
+        "import": "./dist/federation/mod.d.ts",
+        "require": "./dist/federation/mod.d.cts",
+        "default": "./dist/federation/mod.d.ts"
+      },
       "import": "./dist/federation/mod.js",
+      "require": "./dist/federation/mod.cjs",
       "default": "./dist/federation/mod.js"
     },
     "./nodeinfo": {
-      "types": "./dist/nodeinfo/mod.d.ts",
+      "types": {
+        "import": "./dist/nodeinfo/mod.d.ts",
+        "require": "./dist/nodeinfo/mod.d.cts",
+        "default": "./dist/nodeinfo/mod.d.ts"
+      },
       "import": "./dist/nodeinfo/mod.js",
+      "require": "./dist/nodeinfo/mod.cjs",
       "default": "./dist/nodeinfo/mod.js"
     },
     "./runtime": {
-      "types": "./dist/runtime/mod.d.ts",
+      "types": {
+        "import": "./dist/runtime/mod.d.ts",
+        "require": "./dist/runtime/mod.d.cts",
+        "default": "./dist/runtime/mod.d.ts"
+      },
       "import": "./dist/runtime/mod.js",
+      "require": "./dist/runtime/mod.cjs",
       "default": "./dist/runtime/mod.js"
     },
     "./sig": {
-      "types": "./dist/sig/mod.d.ts",
+      "types": {
+        "import": "./dist/sig/mod.d.ts",
+        "require": "./dist/sig/mod.d.cts",
+        "default": "./dist/sig/mod.d.ts"
+      },
       "import": "./dist/sig/mod.js",
+      "require": "./dist/sig/mod.cjs",
       "default": "./dist/sig/mod.js"
     },
     "./vocab": {
-      "types": "./dist/vocab/mod.d.ts",
+      "types": {
+        "import": "./dist/vocab/mod.d.ts",
+        "require": "./dist/vocab/mod.d.cts",
+        "default": "./dist/vocab/mod.d.ts"
+      },
       "import": "./dist/vocab/mod.js",
+      "require": "./dist/vocab/mod.cjs",
       "default": "./dist/vocab/mod.js"
     },
     "./webfinger": {
-      "types": "./dist/webfinger/mod.d.ts",
+      "types": {
+        "import": "./dist/webfinger/mod.d.ts",
+        "require": "./dist/webfinger/mod.d.cts",
+        "default": "./dist/webfinger/mod.d.ts"
+      },
       "import": "./dist/webfinger/mod.js",
+      "require": "./dist/webfinger/mod.cjs",
       "default": "./dist/webfinger/mod.js"
     },
     "./x/cfworkers": {
-      "types": "./dist/x/cfworkers.d.ts",
+      "types": {
+        "import": "./dist/x/cfworkers.d.ts",
+        "require": "./dist/x/cfworkers.d.cts",
+        "default": "./dist/x/cfworkers.d.ts"
+      },
       "import": "./dist/x/cfworkers.js",
+      "require": "./dist/x/cfworkers.cjs",
       "default": "./dist/x/cfworkers.js"
     },
     "./x/hono": {
-      "types": "./dist/x/hono.d.ts",
+      "types": {
+        "import": "./dist/x/hono.d.ts",
+        "require": "./dist/x/hono.d.cts",
+        "default": "./dist/x/hono.d.ts"
+      },
       "import": "./dist/x/hono.js",
+      "require": "./dist/x/hono.cjs",
       "default": "./dist/x/hono.js"
     },
     "./x/sveltekit": {
-      "types": "./dist/x/sveltekit.d.ts",
+      "types": {
+        "import": "./dist/x/sveltekit.d.ts",
+        "require": "./dist/x/sveltekit.d.cts",
+        "default": "./dist/x/sveltekit.d.ts"
+      },
       "import": "./dist/x/sveltekit.js",
+      "require": "./dist/x/sveltekit.cjs",
       "default": "./dist/x/sveltekit.js"
     }
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
-    "@hugoalh/http-header-link": "^1.0.2",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
     "@multiformats/base-x": "^4.0.1",

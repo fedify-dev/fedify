@@ -13,6 +13,7 @@ test("MemoryKvStore", async (t) => {
     await store.set(["foo", "baz"], "baz", {
       ttl: Temporal.Duration.from({ seconds: 0 }),
     });
+    await new Promise((resolve) => setTimeout(resolve, 10));
     assertEquals(await store.get(["foo", "baz"]), undefined);
   });
 

@@ -11,6 +11,7 @@
   },
   "exclude": [
     ".github",
+    "dist",
     "node_modules",
     "npm",
     "pnpm-lock.yaml"

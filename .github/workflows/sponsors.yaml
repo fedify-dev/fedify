@@ -18,7 +18,7 @@ jobs:
         fetch-depth: 0
     - uses: denoland/setup-deno@v1
       with:
-        deno-version: 2.4.5  # Keep in sync with mise.toml
+        deno-version: 2.5.0  # Keep in sync with mise.toml
     - uses: qoomon/actions--setup-git@v1
     - run: |
         set -e

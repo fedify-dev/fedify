@@ -26,7 +26,7 @@ Supporters
 Backers
 -------
 
-Robin Riley, taye, yamanoku, Encyclia, okin, box464, Evan Prodromou, Rafael Goulart, malte, Andy Piper
+Robin Riley, Encyclia, taye, yamanoku, okin, box464, Evan Prodromou, Rafael Goulart, malte, Andy Piper
 
 One-time donations
 ------------------

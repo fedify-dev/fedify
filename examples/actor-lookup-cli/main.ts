@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-empty
+// deno-lint-ignore-file no-empty no-import-prefix
 import {
   Collection,
   getActorHandle,

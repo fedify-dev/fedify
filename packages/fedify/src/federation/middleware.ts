@@ -1947,15 +1947,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
       throw new Error("No actor key pairs dispatcher registered.");
     }
-    const path = this.federation.router.build(
-      "actor",
-      { identifier, handle: identifier },
-    );
-    if (path == null) {
-      logger.warn("No actor dispatcher registered.");
-      return [];
+    let actorUri: URL;
+    try {
+      actorUri = this.getActorUri(identifier);
+    } catch (error) {
+      if (error instanceof RouterError) {
+        logger.warn(error.message);
+        return [];
+      }
+      throw error;
     }
-    const actorUri = new URL(path, this.canonicalOrigin);
     const keyPairs = await this.federation.actorCallbacks?.keyPairsDispatcher(
       new ContextImpl({
         ...this,
@@ -2263,13 +2264,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         expandedRecipients.push(recipient);
       }
       if (options.syncCollection) {
-        const collectionId = this.federation.router.build(
-          "followers",
-          { identifier, handle: identifier },
-        );
-        opts.collectionSync = collectionId == null
-          ? undefined
-          : new URL(collectionId, this.canonicalOrigin).href;
+        try {
+          opts.collectionSync = this.getFollowersUri(identifier).href;
+        } catch (error) {
+          if (error instanceof RouterError) {
+            opts.collectionSync = undefined;
+          } else throw error;
+        }
       }
     } else {
       expandedRecipients = [recipients];

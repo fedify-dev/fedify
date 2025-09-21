@@ -325,10 +325,6 @@ NestJS
 
 *This API is available since Fedify 1.8.0.*
 
-> [!IMPORTANT]
-> In a CommonJS-based NestJS project, this ESM-only module requires setting
-> `NODE_OPTIONS=--experimental-require-module` at runtime.
-
 [NestJS] is a modular, versatile, and scalable framework for building efficient,
 reliable, and scalable server-side applications with Node.js and TypeScript.
 The *@fedify/nestjs* package provides a middleware to integrate Fedify with

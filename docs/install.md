@@ -134,8 +134,9 @@ yarn add @fedify/fedify
 
 :::
 
-Fedify is an ESM-only package, so you need to add `"type": "module"` to the
-*package.json* file:
+We recommend using [ESM] with Fedify by adding `"type": "module"` to the
+*package.json* file. While Fedify also supports [CommonJS] for legacy
+compatibility, ESM is the preferred approach:
 
 ~~~~ json{2}
 {
@@ -145,3 +146,6 @@ Fedify is an ESM-only package, so you need to add `"type": "module"` to the
   }
 }
 ~~~~
+
+[ESM]: https://nodejs.org/api/esm.html
+[CommonJS]: https://nodejs.org/docs/latest/api/modules.html
