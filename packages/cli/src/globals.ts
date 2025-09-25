@@ -1,9 +1,9 @@
-import { message, object, option } from "@optique/core";
-import { configure, getConsoleSink } from "@logtape/logtape";
 import { getFileSink } from "@logtape/file";
-import { recordingSink } from "./log.ts";
+import { configure, getConsoleSink } from "@logtape/logtape";
+import { message, object, option } from "@optique/core";
 import { AsyncLocalStorage } from "node:async_hooks";
 import process from "node:process";
+import { recordingSink } from "./log.ts";
 
 export const debugOption = object("Global options", {
   debug: option("-d", "--debug", {
