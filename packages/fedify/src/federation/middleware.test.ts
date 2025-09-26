@@ -59,7 +59,7 @@ test("createFederation()", async (t) => {
     assertThrows(() =>
       createFederation<number>({
         kv,
-        contextLoader: mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
         allowPrivateAddress: true,
       }), TypeError);
     assertThrows(() =>
@@ -543,7 +543,7 @@ test({
         kv,
         origin: "https://ap.example.com",
         documentLoaderFactory: () => mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
       });
       const ctx = federation.createContext(
         new URL("https://example.com:1234/"),
@@ -1637,7 +1637,7 @@ test("FederationImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoader: mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
   });
   const context = federation.createContext(new URL("https://example.com/"));
 
@@ -2007,7 +2007,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoader: mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
   });
 
   federation
@@ -2166,7 +2166,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   };
   const federation2 = new FederationImpl<void>({
     kv,
-    contextLoader: mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
     queue,
   });
   federation2
@@ -2621,7 +2621,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoader: mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
   });
 
   await t.step("skip", async () => {

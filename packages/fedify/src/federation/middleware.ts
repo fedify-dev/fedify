@@ -238,7 +238,6 @@ export class FederationImpl<TContextData>
 
   constructor(options: FederationOptions<TContextData>) {
     super();
-    const logger = getLogger(["fedify", "federation"]);
     this.kv = options.kv;
     this.kvPrefixes = {
       ...({
@@ -318,12 +317,19 @@ export class FederationImpl<TContextData>
       false;
     this._initializeRouter();
     if (options.allowPrivateAddress || options.userAgent != null) {
-      if (options.contextLoader != null) {
+      if (options.documentLoaderFactory != null) {
         throw new TypeError(
-          "Cannot set contextLoader with allowPrivateAddress or " +
+          "Cannot set documentLoaderFactory with allowPrivateAddress or " +
             "userAgent options.",
         );
-      } else if (options.authenticatedDocumentLoaderFactory != null) {
+      }
+      if (options.contextLoaderFactory != null) {
+        throw new TypeError(
+          "Cannot set contextLoaderFactory with allowPrivateAddress or " +
+            "userAgent options.",
+        );
+      }
+      if (options.authenticatedDocumentLoaderFactory != null) {
         throw new TypeError(
           "Cannot set authenticatedDocumentLoaderFactory with " +
             "allowPrivateAddress or userAgent options.",
@@ -344,22 +350,8 @@ export class FederationImpl<TContextData>
           prefix: this.kvPrefixes.remoteDocument,
         });
       });
-    if (options.contextLoader != null) {
-      if (options.contextLoaderFactory != null) {
-        throw new TypeError(
-          "Cannot set both contextLoader and contextLoaderFactory options " +
-            "at a time; use contextLoaderFactory only.",
-        );
-      }
-      this.contextLoaderFactory = () => options.contextLoader!;
-      logger.warn(
-        "The contextLoader option is deprecated; use contextLoaderFactory " +
-          "option instead.",
-      );
-    } else {
-      this.contextLoaderFactory = options.contextLoaderFactory ??
-        this.documentLoaderFactory;
-    }
+    this.contextLoaderFactory = options.contextLoaderFactory ??
+      this.documentLoaderFactory;
     this.authenticatedDocumentLoaderFactory =
       options.authenticatedDocumentLoaderFactory ??
         ((identity) =>
