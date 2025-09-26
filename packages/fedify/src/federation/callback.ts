@@ -304,12 +304,12 @@ export type ObjectAuthorizePredicate<TContextData, TParam extends string> = (
  */
 export type CustomCollectionDispatcher<
   TItem,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends Context<TContextData>,
   TContextData,
 > = (
   context: TContext,
-  values: TParams,
+  values: Record<TParam, string>,
   cursor: string | null,
 ) => PageItems<TItem> | null | Promise<PageItems<TItem> | null>;
 
@@ -323,11 +323,11 @@ export type CustomCollectionDispatcher<
  * @since 1.8.0
  */
 export type CustomCollectionCounter<
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContextData,
 > = (
   context: RequestContext<TContextData>,
-  values: TParams,
+  values: Record<TParam, string>,
 ) => number | bigint | null | Promise<number | bigint | null>;
 
 /**
@@ -343,10 +343,10 @@ export type CustomCollectionCounter<
  * @since 1.8.0
  */
 export type CustomCollectionCursor<
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends Context<TContextData>,
   TContextData,
 > = (
   context: TContext,
-  values: TParams,
+  values: Record<TParam, string>,
 ) => string | null | Promise<string | null>;

@@ -1543,7 +1543,7 @@ test("handleCustomCollection()", async () => {
   // Mock dispatcher similar to collection dispatcher pattern
   const dispatcher: CustomCollectionDispatcher<
     Create,
-    Record<string, string>,
+    string,
     RequestContext<void>,
     void
   > = (
@@ -1568,13 +1568,13 @@ test("handleCustomCollection()", async () => {
     return { items };
   };
 
-  const counter: CustomCollectionCounter<Record<string, string>, void> = (
+  const counter: CustomCollectionCounter<string, void> = (
     _ctx: RequestContext<void>,
     values: Record<string, string>,
   ) => values.handle === "someone" ? 3 : null;
 
   const firstCursor: CustomCollectionCursor<
-    Record<string, string>,
+    string,
     RequestContext<void>,
     void
   > = (
@@ -1583,7 +1583,7 @@ test("handleCustomCollection()", async () => {
   ) => values.handle === "someone" ? "0" : null;
 
   const lastCursor: CustomCollectionCursor<
-    Record<string, string>,
+    string,
     RequestContext<void>,
     void
   > = (
@@ -1593,7 +1593,7 @@ test("handleCustomCollection()", async () => {
 
   const callbacks: CustomCollectionCallbacks<
     Create,
-    Record<string, string>,
+    string,
     RequestContext<void>,
     void
   > = {

@@ -1473,7 +1473,7 @@ export class FederationImpl<TContextData>
         const callbacks = this.collectionCallbacks[name];
         return await handleCustomCollection<
           URL | Object | Link | Recipient,
-          Record<string, string>,
+          string,
           RequestContext<TContextData>,
           TContextData
         >(request, {
@@ -1492,7 +1492,7 @@ export class FederationImpl<TContextData>
         const callbacks = this.collectionCallbacks[name];
         return await handleOrderedCollection<
           URL | Object | Link | Recipient,
-          Record<string, string>,
+          string,
           RequestContext<TContextData>,
           TContextData
         >(request, {
