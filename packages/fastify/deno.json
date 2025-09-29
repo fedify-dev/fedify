@@ -6,8 +6,8 @@
     ".": "./src/index.ts"
   },
   "imports": {
-    "fastify": "npm:fastify",
-    "fastify-plugin": "npm:fastify-plugin"
+    "fastify": "npm:fastify@^5.2.0",
+    "fastify-plugin": "npm:fastify-plugin@^5.0.1"
   },
   "exclude": [
     "dist",
