@@ -11,7 +11,7 @@ const federation = createFederation<void>({
 // Add a simple actor
 federation.setActorDispatcher(
   "/users/{identifier}",
-  async (ctx, identifier) => {
+  (ctx, identifier) => {
     return new Person({
       id: ctx.getActorUri(identifier),
       name: identifier,
@@ -23,7 +23,7 @@ federation.setActorDispatcher(
 );
 
 // Regular application routes
-fastify.get("/", async () => {
+fastify.get("/", () => {
   return {
     message: "Hello World! This is a Fastify server with Fedify integration.",
   };

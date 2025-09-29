@@ -13,13 +13,13 @@ test("Fedify should handle requests successfully", async () => {
   const fastify = Fastify({ logger: false });
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
 
-  fastify.get("/", async () => {
+  fastify.get("/", () => {
     return { message: "Hello World" };
   });
 
   federation.setActorDispatcher(
     "/users/{identifier}",
-    async (_ctx: RequestContext<void>, identifier: string) => {
+    (_ctx: RequestContext<void>, identifier: string) => {
       if (identifier === "alice") {
         return new Person({
           id: new URL(`https://example.com/users/${identifier}`),
@@ -65,7 +65,7 @@ test("Fedify should delegate to Fastify on notFound", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   federation.setActorDispatcher(
     "/users/{identifier}",
-    async (_ctx: RequestContext<void>, identifier: string) => {
+    (_ctx: RequestContext<void>, identifier: string) => {
       if (identifier === "alice") {
         return new Person({
           id: new URL(`https://example.com/users/${identifier}`),
@@ -79,7 +79,7 @@ test("Fedify should delegate to Fastify on notFound", async () => {
 
   await fastify.register(fedifyPlugin, { federation });
 
-  fastify.get("/api/users/:id", async (request) => {
+  fastify.get("/api/users/:id", (request) => {
     const params = request.params as { id: string };
     return { message: "Fastify handled this", userId: params.id };
   });
@@ -106,7 +106,7 @@ test("Fedify should handle notAcceptable and return 406", async () => {
 
   federation.setActorDispatcher(
     "/users/{identifier}",
-    async (_ctx: RequestContext<void>, identifier: string) => {
+    (_ctx: RequestContext<void>, identifier: string) => {
       return new Person({
         id: new URL(`https://example.com/users/${identifier}`),
         preferredUsername: identifier,
@@ -141,7 +141,7 @@ test("Fedify should handle notAcceptable with custom error handler", async () =>
 
   federation.setActorDispatcher(
     "/users/{identifier}",
-    async (_ctx: RequestContext<void>, identifier: string) => {
+    (_ctx: RequestContext<void>, identifier: string) => {
       return new Person({
         id: new URL(`https://example.com/users/${identifier}`),
         preferredUsername: identifier,
@@ -183,7 +183,7 @@ test("Fedify should handle notFound with custom error handler", async () => {
 
   federation.setActorDispatcher(
     "/users/{identifier}",
-    async (_ctx: RequestContext<void>, identifier: string) => {
+    (_ctx: RequestContext<void>, identifier: string) => {
       if (identifier === "alice") {
         return new Person({
           id: new URL(`https://example.com/users/${identifier}`),

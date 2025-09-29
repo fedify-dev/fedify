@@ -39,51 +39,65 @@ export interface FedifyPluginOptions<TContextData>
  *
  * @example
  * ```typescript
+ * import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+ * import fedifyPlugin from "@fedify/fastify";
+ * import Fastify from "fastify";
+ *
+ * const fastify = Fastify();
+ *
  * const federation = createFederation({ kv: new MemoryKvStore() });
  *
  * // Add federation routes
- * federation.setActorDispatcher("/users/{identifier}", ...);
+ * federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+ *   return new Person({
+ *     id: ctx.getActorUri(identifier),
+ *     preferredUsername: identifier,
+ *   });
+ * });
  *
  * // Register the plugin
  * await fastify.register(fedifyPlugin, {
  *   federation,
- *   contextDataFactory: (request) => ({ userId: request.user?.id }),
- *   errorHandlers: { onUnauthroized },
+ *   contextDataFactory: () => undefined,
+ *   errorHandlers: { onNotFound: () => new Response("Not Found", { status: 404 }) },
  * });
  * ```
  */
-const fedifyPluginCore: FastifyPluginAsync<FedifyPluginOptions<unknown>> =
-  async (
-    fastify: FastifyInstance,
-    options: FedifyPluginOptions<unknown>,
-  ) => {
-    const { federation, contextDataFactory = () => undefined, errorHandlers } =
-      options;
-    fastify.addHook("onRequest", async (request, reply) => {
-      const webRequest = toWebRequest(request);
-      const contextData = await contextDataFactory(request);
+const fedifyPluginCore: FastifyPluginAsync<FedifyPluginOptions<unknown>> = (
+  fastify: FastifyInstance,
+  options: FedifyPluginOptions<unknown>,
+) => {
+  const { federation, contextDataFactory = () => undefined, errorHandlers } =
+    options;
+  fastify.addHook("onRequest", async (request, reply) => {
+    const webRequest = toWebRequest(request);
+    const contextData = await contextDataFactory(request);
 
-      const response = await federation.fetch(webRequest, {
-        contextData,
-        onNotAcceptable: () => defaultNotAcceptableResponse,
-        onNotFound: () => dummyNotFoundResponse,
-        ...errorHandlers,
-      });
-
-      // Delegate to Fastify if the response is a dummy not found response.
-      if (response === dummyNotFoundResponse) {
-        return;
-      }
-
-      await reply.send(response);
+    const response = await federation.fetch(webRequest, {
+      contextData,
+      onNotAcceptable: () => defaultNotAcceptableResponse,
+      onNotFound: () => dummyNotFoundResponse,
+      ...errorHandlers,
     });
-  };
+
+    // Delegate to Fastify if the response is a dummy not found response.
+    if (response === dummyNotFoundResponse) {
+      return;
+    }
+
+    await reply.send(response);
+  });
+  return Promise.resolve();
+};
 
 // Wrap with fastify-plugin to bypass encapsulation
-const fedifyPlugin = fp(fedifyPluginCore, {
-  name: "fedify-plugin",
-  fastify: "5.x",
-});
+const fedifyPlugin: FastifyPluginAsync<FedifyPluginOptions<unknown>> = fp(
+  fedifyPluginCore,
+  {
+    name: "fedify-plugin",
+    fastify: "5.x",
+  },
+);
 
 const dummyNotFoundResponse = new Response("", { status: 404 });
 const defaultNotAcceptableResponse = new Response("Not Acceptable", {
