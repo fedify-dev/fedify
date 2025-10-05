@@ -1,0 +1,1 @@
+# @fedify/uri-template

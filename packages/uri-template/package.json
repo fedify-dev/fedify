@@ -1,10 +1,10 @@
 {
-  "name": "@fedify/url-template",
+  "name": "@fedify/uri-template",
   "version": "1.9.0",
-  "description": "URL template utilities for Fedify",
+  "description": "uri template utilities for Fedify",
   "keywords": [
     "Fedify",
-    "URL",
+    "URI",
     "template",
     "RFC6570"
   ],
