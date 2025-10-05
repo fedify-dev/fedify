@@ -66,6 +66,13 @@ follows the [URI Template] specification.
 > See the [next section](#decoupling-actor-uris-from-webfinger-usernames)
 > for details.
 
+> [!NOTE]
+> The URI Template syntax supports different expansion types like `{identifier}`
+> (simple expansion) and `{+identifier}` (reserved expansion).  Choosing the
+> right expansion type is important to avoid encoding issues.  See the
+> [*URI Template* guide](./uri-template.md) for details on when to use
+> each type.
+
 [actors]: https://www.w3.org/TR/activitystreams-core/#actors
 [activities]: https://www.w3.org/TR/activitystreams-core/#activities
 [URI Template]: https://datatracker.ietf.org/doc/html/rfc6570

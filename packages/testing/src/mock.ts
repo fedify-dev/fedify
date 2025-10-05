@@ -409,6 +409,9 @@ export class MockFederation<TContextData> implements Federation<TContextData> {
       setSharedKeyDispatcher(): InboxListenerSetters<TContextData> {
         return this;
       },
+      withIdempotency(): InboxListenerSetters<TContextData> {
+        return this;
+      },
     };
   }
 

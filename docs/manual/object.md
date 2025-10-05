@@ -53,6 +53,13 @@ an object dispatcher for the `Note` class and
 the `/users/{userId}/notes/{noteId}` path.  This pattern syntax follows
 the [URI Template] specification.
 
+> [!NOTE]
+> The URI Template syntax supports different expansion types like `{userId}`
+> (simple expansion) and `{+userId}` (reserved expansion).  If your
+> identifiers contain URIs or special characters, you may need to use
+> `{+userId}` to avoid double-encoding issues.  See the
+> [*URI Template* guide](./uri-template.md) for details.
+
 [objects]: https://www.w3.org/TR/activitystreams-core/#object
 [URI Template]: https://datatracker.ietf.org/doc/html/rfc6570
 

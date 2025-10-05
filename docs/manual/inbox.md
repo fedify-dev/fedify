@@ -82,6 +82,13 @@ and a callback function that takes a `Context` object and the activity object.
 Note that the `~InboxListenerSetters.on()` method can be chained to register
 multiple inbox listeners for different activity types.
 
+> [!NOTE]
+> The URI Template syntax supports different expansion types like `{identifier}`
+> (simple expansion) and `{+identifier}` (reserved expansion).  If your
+> identifiers contain URIs or special characters, you may need to use
+> `{+identifier}` to avoid double-encoding issues.  See the
+> [*URI Template* guide](./uri-template.md) for details.
+
 > [!WARNING]
 > Activities of any type that are not registered with
 > the `~InboxListenerSetters.on()` method are silently ignored.
@@ -382,6 +389,96 @@ duplicate retry mechanisms and leverages the backend's optimized retry features.
 [`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
 [`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
+
+
+Activity idempotency
+--------------------
+
+*This API is available since Fedify 1.9.0.*
+
+In ActivityPub, the same activity might be delivered multiple times to your
+inbox for various reasons, such as network failures, server restarts, or
+federation protocol retries.  To prevent processing the same activity multiple
+times, Fedify provides idempotency mechanisms that detect and skip duplicate
+activities.
+
+### Idempotency strategies
+
+Fedify supports three built-in idempotency strategies:
+
+`"per-inbox"`
+:   Activities are deduplicated per inbox.  The same activity ID can be
+    processed once per inbox, allowing the same activity to be delivered to
+    multiple inboxes independently.  This follows standard ActivityPub behavior
+    and will be the default in Fedify 2.0.
+
+`"per-origin"`
+:   Activities are deduplicated per receiving server's origin.  The same
+    activity ID will be processed only once on each receiving server,
+    but can be processed separately on different receiving servers.
+    This was the default behavior in Fedify 1.x versions.
+
+`"global"`
+:   Activities are deduplicated globally across all inboxes and origins.
+    The same activity ID will be processed only once, regardless of
+    which inbox receives it or which server sent it.
+
+You can configure the idempotency strategy using the
+`~InboxListenerSetters.withIdempotency()` method:
+
+~~~~ typescript twoslash
+import { type Federation, Follow } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .withIdempotency("per-inbox")  // Standard ActivityPub behavior
+  .on(Follow, async (ctx, follow) => {
+    // Handle the follow activity
+  });
+~~~~
+
+> [!WARNING]
+> If you don't explicitly configure an idempotency strategy, Fedify currently
+> uses `"per-origin"` as the default for backward compatibility.  However, this
+> default will change to `"per-inbox"` in Fedify 2.0.  We recommend explicitly
+> setting the strategy to avoid unexpected behavior changes.
+
+### Custom idempotency strategy
+
+If the built-in strategies don't meet your needs, you can implement a custom
+idempotency strategy by providing a callback function.  The callback receives
+the inbox context and the activity, and should return a unique cache key for
+the activity, or `null` to skip idempotency checking for that activity:
+
+~~~~ typescript twoslash
+import { type Federation, Follow } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .withIdempotency(async (ctx, activity) => {
+    // Skip idempotency for Follow activities
+    if (activity instanceof Follow) return null;
+
+    // Use per-inbox strategy for other activities
+    const inboxId
+      = ctx.recipient == null
+      ? "shared"
+      : `actor\n${ctx.recipient}`;
+    return `${ctx.origin}\n${activity.id?.href}\n${inboxId}`;
+  })
+  .on(Follow, async (ctx, follow) => {
+    // This Follow activity will not be deduplicated
+  });
+~~~~
+
+### Idempotency cache
+
+Processed activities are cached for 24 hours to detect duplicates.  The cache
+uses the same [key–value store](./kv.md) that you provided to
+the `createFederation()` function.  Cache keys are automatically namespaced to
+avoid conflicts with other data.
 
 
 Error handling

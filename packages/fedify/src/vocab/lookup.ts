@@ -6,6 +6,7 @@ import {
   type DocumentLoader,
   getDocumentLoader,
   type GetUserAgentOptions,
+  type RemoteDocument,
 } from "../runtime/docloader.ts";
 import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { toAcctUrl } from "./handle.ts";
@@ -30,6 +31,25 @@ export interface LookupObjectOptions {
    * @since 0.8.0
    */
   contextLoader?: DocumentLoader;
+
+  /**
+   * Whether to allow fetching an object with an `@id` having a different
+   * origin than the object's URL.  This is not recommended, as it may
+   * lead to security issues.  Only use this option if you know what you
+   * are doing.
+   *
+   * How to handle the case when an object's `@id` has a different origin
+   * than the object's URL:
+   *
+   *  -  `"ignore"` (default): Do not return the object, and log a warning.
+   *  -  `"throw"`: Throw an error.
+   *  -  `"trust"`: Bypass the check and return the object anyway.  This
+   *     is not recommended, as it may lead to security issues.  Only use
+   *     this option if you know what you are doing.
+   *
+   * @since 1.9.0
+   */
+  crossOrigin?: "ignore" | "throw" | "trust";
 
   /**
    * The options for making `User-Agent` header.
@@ -136,18 +156,17 @@ async function lookupObjectInternal(
   if (typeof identifier === "string") {
     identifier = toAcctUrl(identifier) ?? new URL(identifier);
   }
-  let document: unknown | null = null;
+  let remoteDoc: RemoteDocument | null = null;
   if (identifier.protocol === "http:" || identifier.protocol === "https:") {
     try {
-      const remoteDoc = await documentLoader(identifier.href, {
+      remoteDoc = await documentLoader(identifier.href, {
         signal: options.signal,
       });
-      document = remoteDoc.document;
     } catch (error) {
       logger.debug("Failed to fetch remote document:\n{error}", { error });
     }
   }
-  if (document == null) {
+  if (remoteDoc == null) {
     const jrd = await lookupWebFinger(identifier, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
@@ -164,10 +183,9 @@ async function lookupObjectInternal(
           ) || l.rel !== "self" || l.href == null
       ) continue;
       try {
-        const remoteDoc = await documentLoader(l.href, {
+        remoteDoc = await documentLoader(l.href, {
           signal: options.signal,
         });
-        document = remoteDoc.document;
         break;
       } catch (error) {
         logger.debug("Failed to fetch remote document:\n{error}", { error });
@@ -175,23 +193,47 @@ async function lookupObjectInternal(
       }
     }
   }
-  if (document == null) return null;
+  if (remoteDoc == null) return null;
+  let object: Object;
   try {
-    return await Object.fromJsonLd(document, {
+    object = await Object.fromJsonLd(remoteDoc.document, {
       documentLoader,
       contextLoader: options.contextLoader,
       tracerProvider: options.tracerProvider,
+      baseUrl: new URL(remoteDoc.documentUrl),
     });
   } catch (error) {
     if (error instanceof TypeError) {
       logger.debug(
         "Failed to parse JSON-LD document: {error}\n{document}",
-        { error, document },
+        { ...remoteDoc, error },
       );
       return null;
     }
     throw error;
   }
+  if (
+    options.crossOrigin !== "trust" && object.id != null &&
+    object.id.origin !== new URL(remoteDoc.documentUrl).origin
+  ) {
+    if (options.crossOrigin === "throw") {
+      throw new Error(
+        `The object's @id (${object.id.href}) has a different origin than ` +
+          `the document URL (${remoteDoc.documentUrl}); refusing to return ` +
+          `the object.  If you want to bypass this check and are aware of ` +
+          `the security implications, set the crossOrigin option to "trust".`,
+      );
+    }
+    logger.warn(
+      "The object's @id ({objectId}) has a different origin than the document " +
+        "URL ({documentUrl}); refusing to return the object.  If you want to " +
+        "bypass this check and are aware of the security implications, " +
+        'set the crossOrigin option to "trust".',
+      { ...remoteDoc, objectId: object.id.href },
+    );
+    return null;
+  }
+  return object;
 }
 
 /**

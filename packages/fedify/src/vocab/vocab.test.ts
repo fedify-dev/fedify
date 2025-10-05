@@ -569,6 +569,7 @@ test("Person.fromJsonLd()", async () => {
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/v1",
     ],
+    "id": "https://todon.eu/users/hongminhee",
     "publicKey": {
       "id": "https://todon.eu/users/hongminhee#main-key",
       "owner": "https://todon.eu/users/hongminhee",
@@ -584,7 +585,11 @@ test("Person.fromJsonLd()", async () => {
         "-----END PUBLIC KEY-----\n",
       // cSpell: enable
     },
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://todon.eu/"),
+  });
   assertEquals(
     person.publicKeyId,
     new URL("https://todon.eu/users/hongminhee#main-key"),
@@ -886,6 +891,578 @@ test("Link.fromJsonLd()", async () => {
   assertEquals(
     link3.href,
     new URL("at://did%3Aplc%3Aia76kvnndjutgedggx2ibrem"),
+  );
+});
+
+test("Person.fromJsonLd() with relative URLs", async () => {
+  const json = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    id: "https://example.com/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
+    type: "Person",
+    name: "Test User",
+    icon: { type: "Image", url: "/avatars/test-avatar.jpg" },
+  };
+
+  const person = await Person.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  const icon = await person.getIcon();
+  assertEquals(
+    icon?.url,
+    new URL("https://example.com/avatars/test-avatar.jpg"),
+  );
+
+  const json2 = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    id: "https://example.com/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
+    type: "Person",
+    name: "Test User",
+    icon: {
+      id: "https://media.example.com/avatars/test-avatar.jpg",
+      type: "Image",
+      url: "/avatars/test-avatar.jpg",
+    },
+  };
+
+  const person2 = await Person.fromJsonLd(json2, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  const icon2 = await person2.getIcon();
+  assertEquals(
+    icon2?.url,
+    new URL("https://media.example.com/avatars/test-avatar.jpg"),
+  );
+});
+
+test("Person.fromJsonLd() with relative URLs and baseUrl", async () => {
+  const json = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    "id": "https://example.com/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
+    "type": "Person",
+    "name": "Test User",
+    "icon": {
+      "type": "Image",
+      "url": "/avatars/test-avatar.jpg",
+    },
+  };
+
+  const personWithBase = await Person.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com"),
+  });
+
+  const icon = await personWithBase.getIcon();
+  assertEquals(
+    icon?.url,
+    new URL("https://example.com/avatars/test-avatar.jpg"),
+  );
+});
+
+test("FEP-fe34: Trust tracking in object construction", async () => {
+  // Test that objects created with embedded objects have trust set
+  const note = new Note({
+    id: new URL("https://example.com/note"),
+    content: "Hello World",
+  });
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: note, // Embedded object should be trusted
+  });
+
+  // Trust should be automatically set for embedded objects during construction
+  // We can verify this by checking that the object is returned immediately
+  // without requiring remote fetching
+  assertEquals(create.objectId, new URL("https://example.com/note"));
+
+  // Should return the embedded object directly (no remote fetch needed)
+  const result = await create.getObject();
+  assertEquals(result, note);
+  assertEquals(result?.content, "Hello World");
+});
+
+test("FEP-fe34: Trust tracking in object cloning", () => {
+  const originalNote = new Note({
+    id: new URL("https://example.com/note"),
+    content: "Original content",
+  });
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: originalNote,
+  });
+
+  const newNote = new Note({
+    id: new URL("https://example.com/new-note"),
+    content: "New content",
+  });
+
+  // Clone with a new embedded object - should establish new trust
+  const clonedCreate = create.clone({
+    object: newNote,
+  });
+
+  assertEquals(clonedCreate.objectId, new URL("https://example.com/new-note"));
+});
+
+test("FEP-fe34: crossOrigin ignore behavior (default)", async () => {
+  // Create a mock document loader that returns objects with different origins
+  // deno-lint-ignore require-await
+  const crossOriginDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note", // Different origin!
+          "content": "This is a spoofed note",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: new URL("https://different-origin.com/note"),
+  });
+
+  // Default behavior should ignore cross-origin objects and return null
+  const result = await create.getObject({
+    documentLoader: crossOriginDocumentLoader,
+  });
+  assertEquals(result, null);
+});
+
+test("FEP-fe34: crossOrigin throw behavior", async () => {
+  // deno-lint-ignore require-await
+  const crossOriginDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note", // Different origin!
+          "content": "This is a spoofed note",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: new URL("https://different-origin.com/note"),
+  });
+
+  // Should throw an error when encountering cross-origin objects
+  await assertRejects(
+    () =>
+      create.getObject({
+        documentLoader: crossOriginDocumentLoader,
+        crossOrigin: "throw",
+      }),
+    Error,
+    "The object's @id (https://malicious.com/fake-note) has a different origin than the document URL (https://different-origin.com/note)",
+  );
+});
+
+test("FEP-fe34: crossOrigin trust behavior", async () => {
+  // deno-lint-ignore require-await
+  const crossOriginDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note", // Different origin!
+          "content": "This is a spoofed note",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: new URL("https://different-origin.com/note"),
+  });
+
+  // Should bypass origin checks and return the object
+  const result = await create.getObject({
+    documentLoader: crossOriginDocumentLoader,
+    crossOrigin: "trust",
+  });
+
+  assertInstanceOf(result, Note);
+  assertEquals(result?.id, new URL("https://malicious.com/fake-note"));
+  assertEquals(result?.content, "This is a spoofed note");
+});
+
+test("FEP-fe34: Same origin objects are trusted", async () => {
+  // deno-lint-ignore require-await
+  const sameOriginDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://example.com/note", // Same origin
+          "content": "This is a legitimate note",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const create = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: new URL("https://example.com/note"),
+  });
+
+  // Same origin objects should be returned normally
+  const result = await create.getObject({
+    documentLoader: sameOriginDocumentLoader,
+  });
+
+  assertInstanceOf(result, Note);
+  assertEquals(result?.id, new URL("https://example.com/note"));
+  assertEquals(result?.content, "This is a legitimate note");
+});
+
+test("FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default", async () => {
+  // Mock document loader for creating the Create object from JSON-LD
+  // deno-lint-ignore require-await
+  const createDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/create") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Create",
+          "@id": "https://example.com/create",
+          "actor": "https://example.com/actor",
+          "object": {
+            "@type": "Note",
+            "@id": "https://different-origin.com/note", // Different origin from parent!
+            "content": "Embedded note from JSON-LD",
+          },
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  // Create object from JSON-LD (embedded objects won't be trusted)
+  const create = await Create.fromJsonLd(
+    await createDocumentLoader("https://example.com/create").then((r) =>
+      r.document
+    ),
+    { documentLoader: createDocumentLoader },
+  );
+
+  // Mock document loader that would return the "legitimate" version
+  // deno-lint-ignore require-await
+  const objectDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://different-origin.com/note",
+          "content": "Legitimate note from origin",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  // Should fetch from origin instead of trusting embedded object
+  const result = await create.getObject({
+    documentLoader: objectDocumentLoader,
+  });
+  assertInstanceOf(result, Note);
+  assertEquals(result?.content, "Legitimate note from origin");
+});
+
+test("FEP-fe34: Constructor vs JSON-LD parsing trust difference", async () => {
+  // 1. Constructor-created objects: embedded objects are trusted
+  const constructorCreate = new Create({
+    id: new URL("https://example.com/create"),
+    actor: new URL("https://example.com/actor"),
+    object: new Note({
+      id: new URL("https://different-origin.com/note"), // Different origin!
+      content: "Constructor embedded note",
+    }),
+  });
+
+  // Should return the embedded object directly (trusted)
+  const constructorResult = await constructorCreate.getObject();
+  assertEquals(constructorResult?.content, "Constructor embedded note");
+
+  // 2. JSON-LD parsed objects: embedded objects are NOT trusted
+  const jsonLdCreate = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Create",
+    "@id": "https://example.com/create",
+    "actor": "https://example.com/actor",
+    "object": {
+      "@type": "Note",
+      "@id": "https://different-origin.com/note", // Same different origin!
+      "content": "JSON-LD embedded note",
+    },
+  });
+
+  // Mock document loader for the cross-origin fetch
+  // deno-lint-ignore require-await
+  const documentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://different-origin.com/note",
+          "content": "Fetched from origin",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  // Should fetch from origin instead of using embedded object (not trusted)
+  const jsonLdResult = await jsonLdCreate.getObject({ documentLoader });
+  assertEquals(jsonLdResult?.content, "Fetched from origin");
+});
+
+test("FEP-fe34: Array properties respect cross-origin policy", async () => {
+  // deno-lint-ignore require-await
+  const crossOriginDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note1") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note1", // Different origin!
+          "content": "Fake note 1",
+        },
+      };
+    } else if (url === "https://example.com/note2") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://example.com/note2", // Same origin
+          "content": "Legitimate note 2",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const collection = new Collection({
+    id: new URL("https://example.com/collection"),
+    items: [
+      new URL("https://different-origin.com/note1"), // Cross-origin
+      new URL("https://example.com/note2"), // Same origin
+    ],
+  });
+
+  const items = [];
+  for await (
+    const item of collection.getItems({
+      documentLoader: crossOriginDocumentLoader,
+    })
+  ) {
+    items.push(item);
+  }
+
+  // Should only get the same-origin item, cross-origin item should be filtered out
+  assertEquals(items.length, 1);
+  assertInstanceOf(items[0], Note);
+  assertEquals((items[0] as Note).content, "Legitimate note 2");
+});
+
+test("FEP-fe34: Array properties with crossOrigin trust option", async () => {
+  // deno-lint-ignore require-await
+  const crossOriginDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note1") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note1", // Different origin!
+          "content": "Fake note 1",
+        },
+      };
+    } else if (url === "https://example.com/note2") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://example.com/note2", // Same origin
+          "content": "Legitimate note 2",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const collection = new Collection({
+    id: new URL("https://example.com/collection"),
+    items: [
+      new URL("https://different-origin.com/note1"), // Cross-origin
+      new URL("https://example.com/note2"), // Same origin
+    ],
+  });
+
+  const items = [];
+  for await (
+    const item of collection.getItems({
+      documentLoader: crossOriginDocumentLoader,
+      crossOrigin: "trust",
+    })
+  ) {
+    items.push(item);
+  }
+
+  // Should get both items when trust mode is enabled
+  assertEquals(items.length, 2);
+  assertInstanceOf(items[0], Note);
+  assertInstanceOf(items[1], Note);
+  assertEquals((items[0] as Note).content, "Fake note 1");
+  assertEquals((items[1] as Note).content, "Legitimate note 2");
+});
+
+test("FEP-fe34: Embedded objects in arrays from JSON-LD respect cross-origin policy", async () => {
+  // Mock document loader for creating the Collection object from JSON-LD
+  // deno-lint-ignore require-await
+  const collectionDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/collection") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Collection",
+          "@id": "https://example.com/collection",
+          "items": [
+            {
+              "@type": "Note",
+              "@id": "https://example.com/trusted-note", // Same origin
+              "content": "Trusted embedded note from JSON-LD",
+            },
+            {
+              "@type": "Note",
+              "@id": "https://different-origin.com/untrusted-note", // Different origin!
+              "content": "Untrusted embedded note from JSON-LD",
+            },
+          ],
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  // Create collection from JSON-LD (embedded objects won't be trusted)
+  const collection = await Collection.fromJsonLd(
+    await collectionDocumentLoader("https://example.com/collection").then((r) =>
+      r.document
+    ),
+    { documentLoader: collectionDocumentLoader },
+  );
+
+  // Mock document loader for fetching objects
+  // deno-lint-ignore require-await
+  const itemDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/trusted-note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://example.com/trusted-note",
+          "content": "Trusted note from origin",
+        },
+      };
+    } else if (url === "https://different-origin.com/untrusted-note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://different-origin.com/untrusted-note",
+          "content": "Legitimate note from actual origin",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const items = [];
+  for await (
+    const item of collection.getItems({ documentLoader: itemDocumentLoader })
+  ) {
+    items.push(item);
+  }
+
+  // Should get both items
+  assertEquals(items.length, 2);
+
+  // First item (same origin) - should use embedded object since it's same-origin as parent
+  assertInstanceOf(items[0], Note);
+  assertEquals(
+    (items[0] as Note).content,
+    "Trusted embedded note from JSON-LD",
+  );
+
+  // Second item (cross-origin) - should be fetched from origin, not embedded version
+  assertInstanceOf(items[1], Note);
+  assertEquals(
+    (items[1] as Note).content,
+    "Legitimate note from actual origin",
   );
 });
 

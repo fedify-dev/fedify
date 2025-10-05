@@ -10,6 +10,65 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Implemented [FEP-fe34] origin-based security model to protect against
+    content spoofing attacks and ensure secure federation practices.  The
+    security model enforces same-origin policy for ActivityPub objects and
+    their properties, preventing malicious actors from impersonating content
+    from other servers.  [[#440]]
+
+     -  Added `crossOrigin` option to Activity Vocabulary property accessors
+        (`get*()` methods) with three security levels: `"ignore"` (default,
+        logs warning and returns `null`), `"throw"` (throws error), and
+        `"trust"` (bypasses checks).
+     -  Added `LookupObjectOptions.crossOrigin` option to `lookupObject()`
+        function and `Context.lookupObject()` method for controlling
+        cross-origin validation.
+     -  Embedded objects are now validated against their parent object's origin
+        and only trusted when they share the same origin or are explicitly
+        marked as trusted.
+     -  Property hydration now respects origin-based security, automatically
+        performing remote fetches when embedded objects have different origins.
+     -  Internal trust tracking system maintains security context throughout
+        object lifecycles (construction, cloning, and property access).
+
+ -  Added `withIdempotency()` method to configure activity idempotency
+    strategies for inbox processing.  This addresses issue [#441] where
+    activities with the same ID sent to different inboxes were incorrectly
+    deduplicated globally instead of per-inbox.  [[#441]]
+
+     -  Added `IdempotencyStrategy` type.
+     -  Added `IdempotencyKeyCallback` type.
+     -  Added `InboxListenerSetters.withIdempotency()` method.
+     -  By default, `"per-origin"` strategy is used for backward compatibility.
+        This will change to `"per-inbox"` in Fedify 2.0.  We recommend
+        explicitly setting the strategy to avoid unexpected behavior changes.
+
+ -  Fixed handling of ActivityPub objects containing relative URLs.  The
+    Activity Vocabulary classes now automatically resolve relative URLs by
+    inferring the base URL from the object's `@id` or document URL, eliminating
+    the need for manual `baseUrl` specification in most cases.  This improves
+    interoperability with ActivityPub servers that emit relative URLs in
+    properties like `icon.url` and `image.url`.  [[#411], [#443] by Jiwon Kwon]
+
+ -  Added TypeScript support for all [RFC 6570] URI Template expression types
+    in dispatcher path parameters.  Previously, only simple string expansion
+    (`{identifier}`) was supported in TypeScript types, while the runtime
+    already supported all RFC 6570 expressions.  Now TypeScript accepts all
+    expression types including `{+identifier}` (reserved string expansion,
+    recommended for URI identifiers), `{#identifier}` (fragment expansion),
+    `{.identifier}` (label expansion), `{/identifier}` (path segments),
+    `{;identifier}` (path-style parameters), `{?identifier}` (query component),
+    and `{&identifier}` (query continuation).  [[#426], [#446] by Jiwon Kwon]
+
+     -  Added `Rfc6570Expression<TParam>` type helper.
+     -  Updated all dispatcher path type parameters to accept RFC 6570
+        expressions: `setActorDispatcher()`, `setObjectDispatcher()`,
+        `setInboxDispatcher()`, `setOutboxDispatcher()`,
+        `setFollowingDispatcher()`, `setFollowersDispatcher()`,
+        `setLikedDispatcher()`, `setFeaturedDispatcher()`,
+        `setFeaturedTagsDispatcher()`, `setInboxListeners()`,
+        `setCollectionDispatcher()`, and `setOrderedCollectionDispatcher()`.
+
  -  Added inverse properties for collections to Vocabulary API.
     [[FEP-5711], [#373], [#381] by Jiwon Kwon]
 
@@ -66,7 +125,9 @@ To be released.
     Node.js's `--experimental-require-module` flag and resolves dual package
     hazard issues.  [[#429], [#431]]
 
+[FEP-fe34]: https://w3id.org/fep/fe34
 [FEP-5711]: https://w3id.org/fep/5711
+[RFC 6570]: https://tools.ietf.org/html/rfc6570
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf
 [RFC 7033 Section 4.4.4.3]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.4.4.3
 [#119]: https://github.com/fedify-dev/fedify/issues/119
@@ -78,7 +139,14 @@ To be released.
 [#402]: https://github.com/fedify-dev/fedify/issues/402
 [#404]: https://github.com/fedify-dev/fedify/pull/404
 [#407]: https://github.com/fedify-dev/fedify/pull/407
+[#411]: https://github.com/fedify-dev/fedify/issues/411
+[#426]: https://github.com/fedify-dev/fedify/issues/426
 [#429]: https://github.com/fedify-dev/fedify/issues/429
+[#431]: https://github.com/fedify-dev/fedify/pull/431
+[#440]: https://github.com/fedify-dev/fedify/issues/440
+[#441]: https://github.com/fedify-dev/fedify/issues/441
+[#443]: https://github.com/fedify-dev/fedify/pull/443
+[#446]: https://github.com/fedify-dev/fedify/pull/446
 
 ### @fedify/cli
 
@@ -221,7 +289,7 @@ Released on September 17, 2025.
 Version 1.8.10
 --------------
 
-Released on Steptember 17, 2025.
+Released on September 17, 2025.
 
 ### @fedify/fedify
 
@@ -5188,4 +5256,7 @@ Version 0.1.0
 Initial release.  Released on March 8, 2024.
 
 <!-- cSpell: ignore Dogeon Fabien Wressell Emelia Fróði Karlsson -->
-<!-- cSpell: ignore Hana Heesun Kyunghee Jiyu Revath Kumar -->
+<!-- cSpell: ignore Hana Heesun Kyunghee Jiyu Revath Kumar Jaeyeol -->
+<!-- cSpell: ignore Jiwon Kwon Hyeonseo Chanhaeng Hasang Hyunchae KeunHyeong -->
+<!-- cSpell: ignore Jang Hanarae ByeongJun Subin -->
+<!-- cSpell: ignore Wayst Konsole Ghostty Aplc -->

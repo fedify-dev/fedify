@@ -115,6 +115,8 @@ export async function* generateConstructor(
   }
   for (const property of type.properties) {
     const fieldName = await getFieldName(property.uri);
+    const trustFieldName = await getFieldName(property.uri, "#_trust");
+    const allScalarTypes = areAllScalarTypes(property.range, types);
     if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
         property.range,
@@ -134,6 +136,9 @@ export async function* generateConstructor(
           if (${typeGuards}) {
             // @ts-ignore: type is checked above.
             this.${fieldName} = [values.${property.singularName}];
+      `;
+      if (!allScalarTypes) yield `this.${trustFieldName}.add(0);`;
+      yield `
           } else {
             throw new TypeError(
               "The ${property.singularName} must be of type " +
@@ -171,6 +176,15 @@ export async function* generateConstructor(
               values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
             this.${fieldName} = values.${property.pluralName};
+      `;
+      if (!allScalarTypes) {
+        yield `
+            for (let i = 0; i < values.${property.pluralName}.length; i++) {
+              this.${trustFieldName}.add(i);
+            }
+        `;
+      }
+      yield `
           } else {
             throw new TypeError(
               "The ${property.pluralName} must be an array of type " +
@@ -229,7 +243,12 @@ export async function* generateCloner(
   }
   for (const property of type.properties) {
     const fieldName = await getFieldName(property.uri);
+    const trustFieldName = await getFieldName(property.uri, "#_trust");
+    const allScalarTypes = areAllScalarTypes(property.range, types);
     yield `clone.${fieldName} = this.${fieldName};`;
+    if (!allScalarTypes) {
+      yield `clone.${trustFieldName} = new Set(this.${trustFieldName});`;
+    }
     if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
         property.range,
@@ -249,6 +268,11 @@ export async function* generateCloner(
           if (${typeGuards}) {
             // @ts-ignore: type is checked above.
             clone.${fieldName} = [values.${property.singularName}];
+      `;
+      if (!allScalarTypes) {
+        yield `clone.${trustFieldName} = new Set([0]);`;
+      }
+      yield `
           } else {
             throw new TypeError(
               "The ${property.singularName} must be of type " +
@@ -286,6 +310,16 @@ export async function* generateCloner(
               values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
             clone.${fieldName} = values.${property.pluralName};
+      `;
+      if (!allScalarTypes) {
+        yield `
+            clone.${trustFieldName} = new Set();
+            for (let i = 0; i < values.${property.pluralName}.length; i++) {
+              clone.${trustFieldName}.add(i);
+            }
+        `;
+      }
+      yield `
           } else {
             throw new TypeError(
               "The ${property.pluralName} must be an array of type " +

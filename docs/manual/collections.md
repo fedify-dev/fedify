@@ -47,6 +47,13 @@ Each actor has its own outbox collection, so the URI pattern of the outbox
 dispatcher should include the actor's `{identifier}`.  The URI pattern syntax
 follows the [URI Template] specification.
 
+> [!NOTE]
+> The URI Template syntax supports different expansion types like `{identifier}`
+> (simple expansion) and `{+identifier}` (reserved expansion).  If your
+> identifiers contain URIs or special characters, you may need to use
+> `{+identifier}` to avoid double-encoding issues.  See the
+> [*URI Template* guide](./uri-template.md) for details.
+
 Since the outbox is a collection of activities, the outbox dispatcher should
 return an array of activities.  The following example shows how to construct
 an outbox collection:
@@ -1438,14 +1445,14 @@ federation
     async (ctx, values, cursor) => {
       // If a whole collection is requested, return null to use pagination
       if (cursor == null) return null;
-      
+
       // Work with the database to find bookmarked posts
       const { posts, nextCursor } = await getBookmarkedPostsByUserId(
         values.identifier,
         cursor === "" ? null : cursor,
         10
       );
-      
+
       // Convert posts to Article objects
       const items = posts.map(post =>
         new Article({
@@ -1454,7 +1461,7 @@ federation
           content: post.content,
         })
       );
-      
+
       return { items, nextCursor };
     }
   )
@@ -1513,13 +1520,13 @@ federation
     async (ctx, values, cursor) => {
       // Implementation is the same as regular collections
       if (cursor == null) return null;
-      
+
       const { posts, nextCursor } = await getBookmarkedPostsByUserId(
         values.identifier,
         cursor === "" ? null : cursor,
         10
       );
-      
+
       const items = posts.map(post =>
         new Article({
           id: new URL(`/posts/${post.id}`, ctx.url),
@@ -1527,7 +1534,7 @@ federation
           content: post.content,
         })
       );
-      
+
       return { items, nextCursor };
     }
   )
@@ -1578,12 +1585,12 @@ federation
         values.category,
         cursor === "" ? null : cursor
       );
-      
+
       const items = posts.map(post => new Note({
         id: new URL(`/posts/${post.id}`, ctx.url),
         content: post.content,
       }));
-      
+
       return { items, nextCursor };
     }
   )
@@ -1603,9 +1610,9 @@ const ctx = null as unknown as Context<void>;
 ctx.getCollectionUri("bookmarks", { identifier: "alice" })
 
 // For a collection with multiple parameters:
-ctx.getCollectionUri("category-posts", { 
-  identifier: "alice", 
-  category: "technology" 
+ctx.getCollectionUri("category-posts", {
+  identifier: "alice",
+  category: "technology"
 })
 ~~~~
 
@@ -1654,12 +1661,12 @@ federation
     "/users/{identifier}/private-bookmarks",
     async (ctx, values, cursor) => {
       if (cursor == null) return null;
-      
+
       const { posts, nextCursor } = await getBookmarkedPostsByUserId(
         values.identifier,
         cursor === "" ? null : cursor
       );
-      
+
       const items = posts.map(post =>
         new Article({
           id: new URL(`/posts/${post.id}`, ctx.url),
@@ -1667,7 +1674,7 @@ federation
           content: post.content,
         })
       );
-      
+
       return { items, nextCursor };
     }
   )
@@ -1675,7 +1682,7 @@ federation
   .authorize(async (ctx, values, signedKey, signedKeyOwner) => {
     // Only allow access if the viewer is the owner of the bookmarks
     if (signedKeyOwner == null) return false;
-    
+
     const viewerId = await getActorIdentifier(signedKeyOwner.id);
     return await canAccessBookmarks(viewerId, values.identifier);
   });

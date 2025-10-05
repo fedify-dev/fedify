@@ -39,7 +39,11 @@ import type {
 } from "./callback.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
-import type { ConstructorWithTypeId } from "./federation.ts";
+import type {
+  ConstructorWithTypeId,
+  IdempotencyKeyCallback,
+  IdempotencyStrategy,
+} from "./federation.ts";
 import { type InboxListenerSet, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
@@ -551,6 +555,9 @@ export interface InboxHandlerParameters<TContextData> {
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
+  idempotencyStrategy?:
+    | IdempotencyStrategy
+    | IdempotencyKeyCallback<TContextData>;
   tracerProvider?: TracerProvider;
 }
 
@@ -599,7 +606,10 @@ export async function handleInbox<TContextData>(
  */
 async function handleInboxInternal<TContextData>(
   request: Request,
-  {
+  parameters: InboxHandlerParameters<TContextData>,
+  span: Span,
+): Promise<Response> {
+  const {
     recipient,
     context: ctx,
     inboxContextFactory,
@@ -613,9 +623,7 @@ async function handleInboxInternal<TContextData>(
     signatureTimeWindow,
     skipSignatureVerification,
     tracerProvider,
-  }: InboxHandlerParameters<TContextData>,
-  span: Span,
-): Promise<Response> {
+  } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
   if (actorDispatcher == null) {
     logger.error("Actor dispatcher is not set.", { recipient });
@@ -822,6 +830,7 @@ async function handleInboxInternal<TContextData>(
     queue,
     span,
     tracerProvider,
+    idempotencyStrategy: parameters.idempotencyStrategy,
   });
   if (routeResult === "alreadyProcessed") {
     return new Response(
@@ -862,14 +871,14 @@ async function handleInboxInternal<TContextData>(
 /**
  * Callbacks for handling a custom collection.
  * @template TItem The type of items in the collection.
- * @template TParams The parameter names of the requested URL.
+ * @template TParam The parameter names of the requested URL.
  * @template TContext The type of the context. {@link Context} or {@link RequestContext}.
  * @template TContextData The context data to pass to the `TContext`.
  * @since 1.8.0
  */
 export interface CustomCollectionCallbacks<
   TItem,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends Context<TContextData>,
   TContextData,
 > {
@@ -878,7 +887,7 @@ export interface CustomCollectionCallbacks<
    */
   dispatcher: CustomCollectionDispatcher<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >;
@@ -886,48 +895,48 @@ export interface CustomCollectionCallbacks<
   /**
    * A callback that counts the number of items in a custom collection.
    */
-  counter?: CustomCollectionCounter<TParams, TContextData>;
+  counter?: CustomCollectionCounter<TParam, TContextData>;
 
   /**
    * A callback that returns the first cursor for a custom collection.
    */
-  firstCursor?: CustomCollectionCursor<TParams, TContext, TContextData>;
+  firstCursor?: CustomCollectionCursor<TParam, TContext, TContextData>;
 
   /**
    * A callback that returns the last cursor for a custom collection.
    */
-  lastCursor?: CustomCollectionCursor<TParams, TContext, TContextData>;
+  lastCursor?: CustomCollectionCursor<TParam, TContext, TContextData>;
 
   /**
    * A callback that determines if a request is authorized to access the custom collection.
    */
   authorizePredicate?: ObjectAuthorizePredicate<
     TContextData,
-    keyof TParams & string
+    TParam
   >;
 }
 
 /**
  * Parameters for handling a custom collection.
  * @template TItem The type of items in the collection.
- * @template TParams The parameter names of the requested URL.
+ * @template TParam The parameter names of the requested URL.
  * @template TContext The type of the context, extending {@link RequestContext}.
  * @template TContextData The context data to pass to the `TContext`.
  * @since 1.8.0
  */
 export interface CustomCollectionHandlerParameters<
   TItem,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends RequestContext<TContextData>,
   TContextData,
 > extends ErrorHandlers {
   name: string;
-  values: TParams;
+  values: Record<TParam, string>;
   filterPredicate?: (item: TItem) => boolean;
   context: TContext;
   collectionCallbacks?: CustomCollectionCallbacks<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >;
@@ -937,7 +946,7 @@ export interface CustomCollectionHandlerParameters<
 /**
  * Handles a custom collection request.
  * @template TItem The type of items in the collection.
- * @template TParams The parameter names of the requested URL.
+ * @template TParam The parameter names of the requested URL.
  * @template TContext The type of the context, extending {@link RequestContext}.
  * @template TContextData The context data to pass to the `TContext`.
  * @param request The HTTP request.
@@ -947,21 +956,21 @@ export interface CustomCollectionHandlerParameters<
  */
 export const handleCustomCollection: <
   TItem extends URL | Object | Link | Recipient,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends RequestContext<TContextData>,
   TContextData,
 >(
   request: Request,
   handleParams: CustomCollectionHandlerParameters<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >,
 ) => Promise<Response> = exceptWrapper(_handleCustomCollection);
 async function _handleCustomCollection<
   TItem extends URL | Object | Link | Recipient,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends RequestContext<TContextData>,
   TContextData,
 >(
@@ -975,7 +984,7 @@ async function _handleCustomCollection<
     filterPredicate,
   }: CustomCollectionHandlerParameters<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >,
@@ -1001,7 +1010,7 @@ async function _handleCustomCollection<
 /**
  * Handles an ordered collection request.
  * @template TItem The type of items in the collection.
- * @template TParams The parameter names of the requested URL.
+ * @template TParam The parameter names of the requested URL.
  * @template TContext The type of the context, extending {@link RequestContext}.
  * @template TContextData The context data to pass to the `TContext`.
  * @param request The HTTP request.
@@ -1011,21 +1020,21 @@ async function _handleCustomCollection<
  */
 export const handleOrderedCollection: <
   TItem extends URL | Object | Link | Recipient,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends RequestContext<TContextData>,
   TContextData,
 >(
   request: Request,
   handleParams: CustomCollectionHandlerParameters<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >,
 ) => Promise<Response> = exceptWrapper(_handleOrderedCollection);
 async function _handleOrderedCollection<
   TItem extends URL | Object | Link | Recipient,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContext extends RequestContext<TContextData>,
   TContextData,
 >(
@@ -1039,7 +1048,7 @@ async function _handleOrderedCollection<
     filterPredicate,
   }: CustomCollectionHandlerParameters<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >,
@@ -1067,7 +1076,7 @@ async function _handleOrderedCollection<
  * The main flow is on `getCollection`, `dispatch`.
  *
  * @template TItem The type of items in the collection.
- * @template TParams The parameter names of the requested URL.
+ * @template TParam The parameter names of the requested URL.
  * @template TContext The type of the context. {@link Context} or {@link RequestContext}.
  * @template TContextData The context data to pass to the `TContext`.
  * @template TCollection The type of the collection, extending {@link Collection}.
@@ -1076,7 +1085,7 @@ async function _handleOrderedCollection<
  */
 class CustomCollectionHandler<
   TItem extends URL | Object | Link | Recipient,
-  TParams extends Record<string, string>,
+  TParam extends string,
   TContextData,
   TContext extends RequestContext<TContextData>,
   TCollection extends Collection,
@@ -1106,7 +1115,7 @@ class CustomCollectionHandler<
    */
   #dispatcher: CustomCollectionDispatcher<
     TItem,
-    TParams,
+    TParam,
     TContext,
     TContextData
   >;
@@ -1114,22 +1123,22 @@ class CustomCollectionHandler<
 
   /**
    * Creates a new CustomCollection instance.
-   * @param {string} name The name of the collection.
-   * @param {TParams} values The parameter values for the collection.
-   * @param {TContext} context The request context.
-   * @param {CustomCollectionCallbacks} callbacks The collection callbacks.
-   * @param {TracerProvider} tracerProvider The tracer provider for telemetry.
-   * @param {ConstructorWithTypeId<TCollection>} Collection The Collection constructor.
-   * @param {ConstructorWithTypeId<TCollectionPage>} CollectionPage The CollectionPage constructor.
-   * @param {(item: TItem) => boolean} filterPredicate Optional filter predicate for items.
+   * @param name The name of the collection.
+   * @param values The parameter values for the collection.
+   * @param context The request context.
+   * @param callbacks The collection callbacks.
+   * @param tracerProvider The tracer provider for telemetry.
+   * @param Collection The Collection constructor.
+   * @param CollectionPage The CollectionPage constructor.
+   * @param filterPredicate Optional filter predicate for items.
    */
   constructor(
     private readonly name: string,
-    private readonly values: TParams,
+    private readonly values: Record<TParam, string>,
     private readonly context: TContext,
     private readonly callbacks: CustomCollectionCallbacks<
       TItem,
-      TParams,
+      TParam,
       TContext,
       TContextData
     >,
@@ -1277,7 +1286,7 @@ class CustomCollectionHandler<
   /**
    * Creates a function to wrap the dispatcher so tracing can be applied.
    * @param params Parameters including cursor and total items.
-   * @returns {(span: Span) => Promise<PageItems<TItem>>} A function that handles the span operation.
+   * @returns A function that handles the span operation.
    */
   spanPages: (params: {
     totalItems?: number | null;
@@ -1305,8 +1314,8 @@ class CustomCollectionHandler<
 
   /**
    * Dispatches the collection request to get items.
-   * @param {string | null} cursor The cursor for pagination, or null for the first page.
-   * @returns {Promise<PageItems<TItem>>} A promise that resolves to the page items.
+   * @param cursor The cursor for pagination, or null for the first page.
+   * @returns A promise that resolves to the page items.
    */
   async dispatch(
     cursor: string | null = null,
@@ -1320,8 +1329,8 @@ class CustomCollectionHandler<
 
   /**
    * Filters the items in the collection.
-   * @param {TItem[]} items The items to filter.
-   * @returns {(Object | Link | URL)[]} The filtered items.
+   * @param items The items to filter.
+   * @returns The filtered items.
    */
   filterItems(items: TItem[]): (Object | Link | URL)[] {
     return filterCollectionItems(items, this.name, this.filterPredicate);
@@ -1329,7 +1338,7 @@ class CustomCollectionHandler<
 
   /**
    * Appends a cursor to the URL if it exists.
-   * @param {string | null | undefined} cursor The cursor to append, or null/undefined.
+   * @param cursor The cursor to append, or null/undefined.
    * @returns The URL with cursor appended, or null if cursor is null/undefined.
    */
   appendToUrl<Cursor extends string | null | undefined>(
@@ -1340,8 +1349,7 @@ class CustomCollectionHandler<
 
   /**
    * Gets the stored collection or collection page.
-   * @returns {Promise<TCollection | TCollectionPage>} A promise that resolves to
-      the collection or collection page.
+   * @returns A promise that resolves to the collection or collection page.
    */
   get collection(): Promise<TCollection | TCollectionPage> {
     if (this.#collection === null) {
@@ -1352,8 +1360,8 @@ class CustomCollectionHandler<
 
   /**
    * Gets the total number of items in the collection.
-   * @returns {Promise<number | null>} A promise that
-      resolves to the total items count, or null if not available.
+   * @returns A promise that resolves to the total items count,
+   *          or null if not available.
    */
   get totalItems(): Promise<number | null> {
     if (this.#totalItems === undefined) {
@@ -1376,8 +1384,8 @@ class CustomCollectionHandler<
 
   /**
    * Gets the first cursor for pagination.
-   * @returns {Promise<string | null>} A promise that resolves to the first cursor,
-      or null if not available.
+   * @returns A promise that resolves to the first cursor,
+   *          or null if not available.
    */
   get firstCursor(): Promise<string | null> {
     const cursor = this.callbacks.firstCursor?.(this.context, this.values);
@@ -1396,6 +1404,7 @@ class CustomCollectionHandler<
     TYPE: "activitypub.collection.type",
   } as const;
 }
+
 /** Type for `CustomCollection.TotalItems`.*/
 type TotalItems = number | bigint | null | undefined;
 

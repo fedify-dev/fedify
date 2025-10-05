@@ -495,6 +495,94 @@ corresponding TypeScript types:
 [`CryptoKey`]: https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey
 
 
+Origin-based security model
+---------------------------
+
+*This section is applicable since Fedify 1.9.0.*
+
+Fedify implements an origin-based security model following [FEP-fe34] to protect
+against content spoofing attacks and maintain secure federation practices.
+This security model ensures that objects and their properties respect origin
+boundaries, preventing malicious actors from impersonating content from other
+servers.
+
+[FEP-fe34]: https://w3id.org/fep/fe34
+
+### Same-origin policy for properties
+
+When accessing properties of ActivityPub objects, Fedify enforces same-origin
+policy rules.  Even if an object appears to be embedded in the JSON-LD
+representation, property accessors will automatically perform hydration (remote
+fetching) if the embedded object's `@id` has a different origin than its parent
+object.
+
+For example, consider this JSON-LD representation:
+
+~~~~ json
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "type": "Create",
+  "id": "https://example.com/activities/123",
+  "actor": "https://example.com/users/alice",
+  "object": {
+    "type": "Note",
+    "id": "https://different-origin.com/notes/456",
+    "content": "This is from a different origin"
+  }
+}
+~~~~
+
+In this case, when you access the `object` property of the `Create` activity,
+Fedify will not trust the embedded `Note` object because its `@id` has a
+different origin (`different-origin.com`) than the parent activity's origin
+(`example.com`).  Instead, it will fetch the `Note` object directly from
+`https://different-origin.com/notes/456` to verify its authenticity.
+
+### Controlling origin checks
+
+You can control this behavior using the `crossOrigin` option when calling
+property accessors:
+
+~~~~ typescript twoslash
+import { Create } from "@fedify/fedify";
+const create = {} as unknown as Create;
+// ---cut-before---
+// Default behavior: ignore untrusted embedded objects (recommended)
+const objectDefault = await create.getObject();
+
+// Throw an error when encountering cross-origin objects
+const objectStrict = await create.getObject({ crossOrigin: "throw" });
+
+// Bypass origin checks (not recommended, potential security risk)
+const objectBypass = await create.getObject({ crossOrigin: "trust" });
+~~~~
+
+The `crossOrigin` option accepts the following values:
+
+`"ignore"` (default)
+:   Ignore untrusted embedded objects and fetch from origin
+
+`"throw"`
+:   Throw an error when encountering cross-origin embedded objects
+
+`"trust"`
+:   Trust embedded objects regardless of origin (⚠️ security risk)
+
+> [!WARNING]
+> Using `crossOrigin: "trust"` can expose your application to security
+> vulnerabilities, including content spoofing attacks.  Only use this option
+> if you fully understand the security implications and have implemented
+> additional validation measures.
+
+### Trust tracking
+
+Internally, Fedify maintains trust information for each property value.  Objects
+that are constructed locally, fetched directly from their authoritative source,
+or explicitly validated are marked as trusted.  This trust information is used
+to determine whether property accessors need to perform additional validation
+or fetching.
+
+
 Extending the vocabulary
 ------------------------
 

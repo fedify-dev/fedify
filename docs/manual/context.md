@@ -412,6 +412,44 @@ const note = await ctx.lookupObject(
 > `DocumentLoader`*](#getting-an-authenticated-documentloader)
 > section for details.
 
+> [!CAUTION]
+> For security reasons, the `~Context.lookupObject()` method implements
+> origin-based validation following [FEP-fe34].  If the fetched JSON-LD
+> document contains an `@id` that has a different origin than the requested
+> URL, the method will return `null` by default to prevent content spoofing
+> attacks.
+>
+> For example, if you request `https://example.com/notes/123` but the fetched
+> document has `@id: "https://malicious.com/notes/456"`, the method will
+> refuse to return the object and log a warning instead.
+>
+> You can control this behavior using the `crossOrigin` option:
+>
+> ~~~~ typescript twoslash
+> import { type Context } from "@fedify/fedify";
+> const ctx = null as unknown as Context<void>;
+> // ---cut-before---
+> // Default behavior: return null for cross-origin objects (recommended)
+> const objectDefault = await ctx.lookupObject("https://example.com/notes/123");
+>
+> // Throw an error when encountering cross-origin objects
+> const objectStrict = await ctx.lookupObject(
+>   "https://example.com/notes/123",
+>   { crossOrigin: "throw" }
+> );
+>
+> // Bypass origin checks (not recommended, potential security risk)
+> const objectBypass = await ctx.lookupObject(
+>   "https://example.com/notes/123",
+>   { crossOrigin: "trust" }
+> );
+> ~~~~
+>
+> Only use `crossOrigin: "trust"` if you fully understand the security
+> implications and have implemented additional validation measures.
+
+[FEP-fe34]: https://w3id.org/fep/fe34
+
 
 WebFinger lookups
 -----------------

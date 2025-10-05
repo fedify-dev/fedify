@@ -26,9 +26,12 @@ export async function generateField(
       getTypeNames(property.range, types, true)
     })[] = [];\n`;
   } else {
-    return `${fieldName}: (${
-      getTypeNames(property.range, types)
-    } | URL)[] = [];\n`;
+    const typeNames = getTypeNames(property.range, types);
+    const trustFieldName = await getFieldName(property.uri, `${prefix}_trust`);
+    return `
+      ${fieldName}: (${typeNames} | URL)[] = [];
+      ${trustFieldName}: Set<number> = new Set();
+    `;
   }
 }
 

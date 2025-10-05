@@ -13,6 +13,10 @@ import { getTypeId } from "../vocab/type.ts";
 import { Activity } from "../vocab/vocab.ts";
 import type { InboxErrorHandler, InboxListener } from "./callback.ts";
 import type { Context, InboxContext } from "./context.ts";
+import type {
+  IdempotencyKeyCallback,
+  IdempotencyStrategy,
+} from "./federation.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage } from "./queue.ts";
@@ -96,6 +100,9 @@ export interface RouteActivityParameters<TContextData> {
   queue?: MessageQueue;
   span: Span;
   tracerProvider?: TracerProvider;
+  idempotencyStrategy?:
+    | IdempotencyStrategy
+    | IdempotencyKeyCallback<TContextData>;
 }
 
 export type RouteActivityResult =
@@ -105,6 +112,8 @@ export type RouteActivityResult =
   | "unsupportedActivity"
   | "error"
   | "success";
+
+let warnedAboutDefaultIdempotency = false;
 
 export async function routeActivity<TContextData>(
   {
@@ -120,14 +129,69 @@ export async function routeActivity<TContextData>(
     queue,
     span,
     tracerProvider,
+    idempotencyStrategy,
   }: RouteActivityParameters<TContextData>,
 ): Promise<RouteActivityResult> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
-  const cacheKey = activity.id == null ? null : [
-    ...kvPrefixes.activityIdempotence,
-    ctx.origin,
-    activity.id.href,
-  ] satisfies KvKey;
+
+  // Generate idempotency key based on strategy
+  let cacheKey: KvKey | null = null;
+  if (activity.id != null) {
+    const inboxContext = inboxContextFactory(
+      recipient,
+      json,
+      activity.id?.href,
+      getTypeId(activity).href,
+    );
+
+    // Default to "per-origin" for backward compatibility if not specified
+    const strategy = idempotencyStrategy ?? "per-origin";
+
+    // Log deprecation warning if using default without explicit configuration
+    if (idempotencyStrategy === undefined && !warnedAboutDefaultIdempotency) {
+      logger.warn(
+        "Using default idempotency strategy 'per-origin'. " +
+          "This default will change to 'per-inbox' in Fedify 2.0. " +
+          "Please explicitly set the idempotency strategy using .withIdempotency().",
+      );
+      warnedAboutDefaultIdempotency = true;
+    }
+
+    let keyString: string | null;
+    if (typeof strategy === "function") {
+      // Custom callback strategy
+      const result = await strategy(inboxContext, activity);
+      keyString = result;
+    } else {
+      // Preset strategies
+      switch (strategy) {
+        case "global":
+          // Global deduplication across all inboxes and inbox origins
+          keyString = activity.id.href;
+          break;
+        case "per-origin":
+          // Current behavior: deduplicate per inbox origin
+          keyString = `${ctx.origin}\n${activity.id.href}`;
+          break;
+        case "per-inbox":
+          // Standard ActivityPub behavior: deduplicate per inbox
+          keyString = `${ctx.origin}\n${activity.id.href}\n${
+            recipient == null ? "sharedInbox" : `inbox\n${recipient}`
+          }`;
+          break;
+        default:
+          // Should never happen due to TypeScript, but handle just in case
+          keyString = `${ctx.origin}\n${activity.id.href}`;
+      }
+    }
+
+    if (keyString != null) {
+      cacheKey = [
+        ...kvPrefixes.activityIdempotence,
+        keyString,
+      ] satisfies KvKey;
+    }
+  }
   if (cacheKey != null) {
     const cached = await kv.get(cacheKey);
     if (cached === true) {

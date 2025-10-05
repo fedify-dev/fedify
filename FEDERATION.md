@@ -31,7 +31,7 @@ Supported FEPs
  -  [FEP-8b32][]: Object Integrity Proofs
  -  [FEP-521a][]: Representing actor's public keys
  -  [FEP-5feb][]: Search indexing consent for actors
- -  [FEP-c7d3][]: Ownership
+ -  [FEP-fe34][]: Origin-based security model
  -  [FEP-c0e0][]: Emoji reactions
  -  [FEP-e232][]: Object Links
 
@@ -42,7 +42,7 @@ Supported FEPs
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-521a]: https://w3id.org/fep/521a
 [FEP-5feb]: https://w3id.org/fep/5feb
-[FEP-c7d3]: https://w3id.org/fep/c7d3
+[FEP-fe34]: https://w3id.org/fep/fe34
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [FEP-e232]: https://w3id.org/fep/e232
 

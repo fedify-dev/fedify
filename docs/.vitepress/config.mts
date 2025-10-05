@@ -70,6 +70,7 @@ const MANUAL = {
     { text: "Access control", link: "/manual/access-control.md" },
     { text: "WebFinger", link: "/manual/webfinger.md" },
     { text: "NodeInfo", link: "/manual/nodeinfo.md" },
+    { text: "URI Template", link: "/manual/uri-template.md" },
     { text: "Pragmatics", link: "/manual/pragmatics.md" },
     { text: "Key–value store", link: "/manual/kv.md" },
     { text: "Message queue", link: "/manual/mq.md" },

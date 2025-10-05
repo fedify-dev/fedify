@@ -1,6 +1,10 @@
 name: build
 on: [push, pull_request_target]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -191,7 +195,7 @@ jobs:
         cache: pnpm
     - uses: oven-sh/setup-bun@v1
       with:
-        bun-version: latest
+        bun-version: 1.2.22
     - run: pnpm install
     - run: pnpm run --recursive test:bun
 
