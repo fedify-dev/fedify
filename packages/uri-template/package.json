@@ -16,7 +16,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
-    "directory": "packages/url-template"
+    "directory": "packages/uri-template"
   },
   "license": "MIT",
   "bugs": {
