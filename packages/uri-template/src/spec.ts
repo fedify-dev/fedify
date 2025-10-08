@@ -147,21 +147,16 @@ export function encodeComponentIdempotent(
 
 // Strict percent-decoder: rejects bad triplets and double-decoding
 export function strictPercentDecode(s: string): string {
-  // we allow %XX and decode exactly once; malformed -> throw
-  // Note: we don't try to detect "double encoding" like %252F automatically,
-  // that is up to calling policy to interpret; here we just do a single decode pass.
-  const bytes: number[] = [];
+  // Validate all percent sequences first
   for (let i = 0; i < s.length;) {
-    const c = s[i];
-    if (c === "%") {
-      if (!looksLikePctTriplet(s, i)) throw new Error("Bad percent sequence");
-      const byte = parseInt(s.slice(i + 1, i + 3), 16);
-      bytes.push(byte);
+    if (s[i] === "%") {
+      if (!looksLikePctTriplet(s, i)) {
+        throw new Error("Bad percent sequence");
+      }
       i += 3;
     } else {
-      bytes.push(c.codePointAt(0)!);
-      i += 1;
+      i++;
     }
   }
-  return new TextDecoder().decode(new Uint8Array(bytes));
+  return decodeURIComponent(s);
 }
