@@ -1,4 +1,4 @@
-import type { TemplateAST, VarSpec } from "./ast.ts";
+import type { TemplateAst, VarSpec } from "./ast.ts";
 import {
   looksLikePctTriplet,
   OP,
@@ -74,7 +74,7 @@ function advanceOne(url: string, i: number): number {
  *   ambiguous or lossy normalization early.
  */
 export function match(
-  ast: TemplateAST,
+  ast: TemplateAst,
   url: string,
   opts?: MatchOptions,
 ): null | { vars: VarsOut } {
@@ -99,7 +99,7 @@ export function match(
   const nextIs = (s: string) => url.slice(i, i + s.length) === s;
 
   for (const node of ast.nodes) {
-    if (node.kind === "Literal") {
+    if (node.kind === "literal") {
       if (!readLiteral(node.value)) return null;
       continue;
     }
@@ -215,11 +215,11 @@ export function match(
       const nodeIndex = ast.nodes.indexOf(node);
       for (let k = nodeIndex + 1; k < ast.nodes.length; k++) {
         const n = ast.nodes[k];
-        if (n.kind === "Literal" && n.value.length > 0) {
+        if (n.kind === "literal" && n.value.length > 0) {
           nextLiteral = n.value;
           break;
         }
-        if (n.kind === "Expression" && OP[n.op].first) {
+        if (n.kind === "expression" && OP[n.op].first) {
           nextLiteral = OP[n.op].first!;
           break;
         }

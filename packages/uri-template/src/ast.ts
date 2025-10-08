@@ -26,14 +26,14 @@ export interface VarSpec {
 export type Node = Literal | Expression;
 
 export interface Literal {
-  kind: "Literal";
+  kind: "literal";
   value: string; // as-is literal (template text)
   start?: number; // optional raw slice for debugging
   end?: number;
 }
 
 export interface Expression {
-  kind: "Expression";
+  kind: "expression";
   op: Operator;
   vars: VarSpec[];
   start?: number;
@@ -44,6 +44,6 @@ export interface Expression {
  * Template AST root. Expansion and matching both consume this structure.
  * @note Literals are kept as-is to avoid re-encoding surprises.
  */
-export interface TemplateAST {
+export interface TemplateAst {
   nodes: Node[];
 }

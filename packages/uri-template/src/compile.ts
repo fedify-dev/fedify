@@ -1,7 +1,7 @@
-import type { TemplateAST } from "./ast.ts";
-import { parse } from "./parser.ts";
+import type { TemplateAst } from "./ast.ts";
 import { expand, type Vars } from "./expand.ts";
 import { type EncodingPolicy, match, type MatchOptions } from "./match.ts";
+import { parse } from "./parser.ts";
 
 /**
  * Options that control how a compiled template behaves during matching.
@@ -20,7 +20,7 @@ export interface CompileOptions {
 }
 
 export interface CompiledTemplate<V = Record<string, unknown>> {
-  ast(): TemplateAST;
+  ast(): TemplateAst;
   expand(vars: V & Vars): string;
   match(url: string, opts?: MatchOptions): null | { vars: V };
 }

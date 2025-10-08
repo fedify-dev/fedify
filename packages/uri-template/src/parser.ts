@@ -1,10 +1,5 @@
-import type { Expression, Node, TemplateAST, VarSpec } from "./ast.ts";
-
-export class ParseError extends Error {
-  constructor(message: string, public index: number) {
-    super(`${message} at ${index}`);
-  }
-}
+import type { Expression, Node, TemplateAst, VarSpec } from "./ast.ts";
+import { ParseError } from "./error.ts";
 
 /**
  * Parse a RFC 6570 template into an AST.
@@ -16,13 +11,13 @@ export class ParseError extends Error {
  * We avoid regex for correctness and slice the source directly to keep
  * raw segments intact for later matching.
  */
-export function parse(template: string): TemplateAST {
+export function parse(template: string): TemplateAst {
   const nodes: Node[] = [];
   let i = 0;
   const pushLiteral = (start: number, end: number) => {
     if (end > start) {
       nodes.push({
-        kind: "Literal",
+        kind: "literal",
         value: template.slice(start, end),
         start,
         end,
@@ -103,7 +98,7 @@ export function parse(template: string): TemplateAST {
 
     nodes.push(
       {
-        kind: "Expression",
+        kind: "expression",
         op: opChar,
         vars,
         start: exprStart,

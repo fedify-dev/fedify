@@ -1,12 +1,11 @@
-import type { Expression, Operator, TemplateAST, VarSpec } from "./ast.ts";
+import type { Expression, Operator, TemplateAst, VarSpec } from "./ast.ts";
 import { encodeComponentIdempotent, OP } from "./spec.ts";
 
 type Scalar = string | number | boolean;
-type Dict = Record<string, Scalar | undefined>;
 type List = (Scalar | undefined)[];
 type MapLike = Record<string, Scalar | undefined>;
 
-export type VarsValue = Scalar | List | MapLike | undefined;
+type VarsValue = Scalar | List | MapLike | undefined;
 export type Vars = Record<string, VarsValue>;
 
 function emitNamed(
@@ -106,11 +105,11 @@ function expandVar(
  *   - `undefined` -> `omit` (all operators)
  * - Label "." emits the dot even if empty ("X{.y}" with y="" -> "X.")
  */
-export function expand(ast: TemplateAST, vars: Vars): string {
+export function expand(ast: TemplateAst, vars: Vars): string {
   let out = "";
   for (const node of ast.nodes) {
     // no need to encode literals, append as-is
-    if (node.kind === "Literal") {
+    if (node.kind === "literal") {
       out += node.value;
     } else {
       const spec = OP[node.op];

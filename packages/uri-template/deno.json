@@ -5,9 +5,6 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.0"
-  },
   "exclude": [
     "dist",
     "node_modules"
