@@ -95,6 +95,9 @@ function advanceOne(url: string, i: number): number {
  *
  * @example
  * ```typescript
+ * import { parse } from "./parser.ts";
+ * import { match } from "./match.ts";
+ *
  * const ast = parse("/repos{/owner,repo}{?q,lang}");
  * const result = match(ast, "/repos/alice/hello%2Fworld?q=a%20b&lang=en", { encoding: "opaque" });
  * // Returns: { vars: { owner: "alice", repo: "hello%2Fworld", q: "a%20b", lang: "en" } }
@@ -102,6 +105,9 @@ function advanceOne(url: string, i: number): number {
  *
  * @example
  * ```typescript
+ * import { parse } from "./parser.ts";
+ * import { match } from "./match.ts";
+ *
  * const ast = parse("/files{/path}");
  * const result = match(ast, "/files/a%2Fb", { encoding: "cooked" });
  * // Returns: { vars: { path: "a/b" } }

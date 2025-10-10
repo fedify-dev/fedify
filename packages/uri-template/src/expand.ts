@@ -141,6 +141,9 @@ function expandVar(
  *
  * @example
  * ```typescript
+ * import { parse } from "./parser.ts";
+ * import { expand } from "./expand.ts";
+ *
  * const ast = parse("{+x,hello,y}");
  * const url = expand(ast, { x: "1024", hello: "Hello World!", y: "768" });
  * // Returns: "1024,Hello%20World!,768"
@@ -148,6 +151,9 @@ function expandVar(
  *
  * @example
  * ```typescript
+ * import { parse } from "./parser.ts";
+ * import { expand } from "./expand.ts";
+ *
  * const ast = parse("{+path}/here");
  * const url = expand(ast, { path: "/foo/bar" });
  * // Returns: "/foo/bar/here"
