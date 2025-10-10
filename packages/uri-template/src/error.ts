@@ -6,7 +6,7 @@ export class ParseError extends Error {
    * The error name, always "RFC6570ParseError".
    */
   override name: "RFC6570ParseError" = "RFC6570ParseError" as const;
-  
+
   /**
    * The index in the template string where the error occurred.
    */
@@ -14,7 +14,7 @@ export class ParseError extends Error {
 
   /**
    * Create a new ParseError.
-   * 
+   *
    * @param message - The error message
    * @param index - The index in the template string where the error occurred
    */

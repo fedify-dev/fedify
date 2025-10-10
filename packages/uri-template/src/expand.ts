@@ -24,7 +24,7 @@ type VarsValue = Scalar | List | MapLike | undefined;
 /**
  * A collection of variables for template expansion.
  * Maps variable names to their values.
- * 
+ *
  * @example
  * ```typescript
  * const vars: Vars = {
@@ -126,11 +126,11 @@ function expandVar(
 
 /**
  * Expand a parsed template with variables according to RFC 6570 (Level 1-4).
- * 
+ *
  * @param ast - The parsed template AST to expand
  * @param vars - Variables to substitute into the template
  * @returns The expanded URL string
- * 
+ *
  * @remarks
  * - Idempotent percent encoding (existing `%XX` kept)
  * - Operator-specific empty/undefined rules:
@@ -138,14 +138,14 @@ function expandVar(
  *   - "?" "&" empty -> "key=" ("?x=")
  *   - `undefined` -> `omit` (all operators)
  * - Label "." emits the dot even if empty ("X{.y}" with y="" -> "X.")
- * 
+ *
  * @example
  * ```typescript
  * const ast = parse("{+x,hello,y}");
  * const url = expand(ast, { x: "1024", hello: "Hello World!", y: "768" });
  * // Returns: "1024,Hello%20World!,768"
  * ```
- * 
+ *
  * @example
  * ```typescript
  * const ast = parse("{+path}/here");

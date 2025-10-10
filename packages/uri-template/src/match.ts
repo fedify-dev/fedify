@@ -37,7 +37,7 @@ export type EncodingPolicy = "opaque" | "cooked" | "lossless";
 
 /**
  * Options for matching URLs against templates.
- * 
+ *
  * @remarks
  * These options control how percent-encoded sequences are handled during matching.
  */
@@ -46,7 +46,7 @@ export interface MatchOptions {
    * The encoding policy for variable values (default: "opaque").
    */
   encoding?: EncodingPolicy;
-  
+
   /**
    * If true (default), malformed percent triplets cause matching to fail.
    * If false, allows more lenient parsing but may lead to ambiguity.
@@ -78,12 +78,12 @@ function advanceOne(url: string, i: number): number {
 
 /**
  * Match a URL string against a compiled template and extract variables.
- * 
+ *
  * @param ast - The parsed template AST to match against
  * @param url - The URL string to match
  * @param opts - Optional matching options
  * @returns An object with extracted variables if matched, null otherwise
- * 
+ *
  * Encoding policies:
  * - "opaque"  -> return raw percent-encoded slices (byte-for-byte round-trip)
  * - "cooked"  -> decode %XX exactly once
@@ -92,14 +92,14 @@ function advanceOne(url: string, i: number): number {
  * Strictness:
  * - strict=true rejects bad percent triplets (e.g. "%GZ"), preventing
  *   ambiguous or lossy normalization early.
- * 
+ *
  * @example
  * ```typescript
  * const ast = parse("/repos{/owner,repo}{?q,lang}");
  * const result = match(ast, "/repos/alice/hello%2Fworld?q=a%20b&lang=en", { encoding: "opaque" });
  * // Returns: { vars: { owner: "alice", repo: "hello%2Fworld", q: "a%20b", lang: "en" } }
  * ```
- * 
+ *
  * @example
  * ```typescript
  * const ast = parse("/files{/path}");

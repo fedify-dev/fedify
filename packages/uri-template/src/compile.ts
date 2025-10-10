@@ -21,16 +21,16 @@ export interface CompileOptions {
 
 /**
  * A compiled URI template that can efficiently expand and match URLs.
- * 
+ *
  * @typeParam V - The type of variables expected by this template
- * 
+ *
  * @example
  * ```typescript
  * const t = compile("{+path}/here");
  * const url = t.expand({ path: "/foo/bar" }); // "/foo/bar/here"
  * const match = t.match("/foo/bar/here"); // { vars: { path: "/foo/bar" } }
  * ```
- * 
+ *
  * @example
  * ```typescript
  * const t = compile("/repos{/owner,repo}{?q,lang}");
@@ -42,22 +42,22 @@ export interface CompiledTemplate<V = Record<string, unknown>> {
   /**
    * Get the parsed AST of this template.
    * Useful for diagnostics and introspection.
-   * 
+   *
    * @returns The parsed template AST
    */
   ast(): TemplateAst;
-  
+
   /**
    * Expand the template with the given variables according to RFC 6570.
-   * 
+   *
    * @param vars - Variables to substitute into the template
    * @returns The expanded URL string
    */
   expand(vars: V & Vars): string;
-  
+
   /**
    * Match a URL against this template and extract variables.
-   * 
+   *
    * @param url - The URL to match against the template
    * @param opts - Optional matching options
    * @returns An object with extracted variables if matched, null otherwise
