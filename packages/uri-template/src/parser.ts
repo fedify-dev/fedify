@@ -2,14 +2,32 @@ import type { Expression, Node, TemplateAst, VarSpec } from "./ast.ts";
 import { ParseError } from "./error.ts";
 
 /**
- * Parse a RFC 6570 template into an AST.
- * Parser guarentees:
- * - Balanced braces: every '{' has a matching '}' or throws ParseError.
- * - Operator is one of "", "+", "#", ".", "/", ";", "?", "&".
- * - VarSpec list: "name[:prefix][*]" items separated by ','.
- *
+ * Parse a RFC 6570 URI template string into an AST.
+ * 
+ * @param template - The URI template string to parse
+ * @returns The parsed template AST
+ * @throws {ParseError} If the template syntax is invalid
+ * 
+ * @remarks
+ * Parser guarantees:
+ * - Balanced braces: every '{' has a matching '}' or throws ParseError
+ * - Operator is one of "", "+", "#", ".", "/", ";", "?", "&"
+ * - VarSpec list: "name[:prefix][*]" items separated by ','
+ * 
  * We avoid regex for correctness and slice the source directly to keep
  * raw segments intact for later matching.
+ * 
+ * @example
+ * ```typescript
+ * const ast = parse("{+path}/here");
+ * // Returns AST with expression (op: "+", vars: [{name: "path"}]) and literal ("/here") nodes
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * const ast = parse("/repos{/owner,repo}{?q,lang}");
+ * // Returns AST with literal and two expression nodes
+ * ```
  */
 export function parse(template: string): TemplateAst {
   const nodes: Node[] = [];

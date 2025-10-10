@@ -1,11 +1,39 @@
 import type { Expression, Operator, TemplateAst, VarSpec } from "./ast.ts";
 import { encodeComponentIdempotent, OP } from "./spec.ts";
 
+/**
+ * A scalar value that can be used in template expansion.
+ */
 type Scalar = string | number | boolean;
+
+/**
+ * A list of scalar values that can be used in template expansion.
+ */
 type List = (Scalar | undefined)[];
+
+/**
+ * A map-like object with scalar values.
+ */
 type MapLike = Record<string, Scalar | undefined>;
 
+/**
+ * Valid value types for template variables.
+ */
 type VarsValue = Scalar | List | MapLike | undefined;
+
+/**
+ * A collection of variables for template expansion.
+ * Maps variable names to their values.
+ * 
+ * @example
+ * ```typescript
+ * const vars: Vars = {
+ *   var: "value",
+ *   list: ["red", "green", "blue"],
+ *   keys: { semi: ";", dot: ".", comma: "," }
+ * };
+ * ```
+ */
 export type Vars = Record<string, VarsValue>;
 
 function emitNamed(
@@ -97,13 +125,33 @@ function expandVar(
 }
 
 /**
- * Expand a parsed template with variables (RFC 6570 L1–L4).
- * - Idempotent percent encoding (existing `%XX` kept).
+ * Expand a parsed template with variables according to RFC 6570 (Level 1-4).
+ * 
+ * @param ast - The parsed template AST to expand
+ * @param vars - Variables to substitute into the template
+ * @returns The expanded URL string
+ * 
+ * @remarks
+ * - Idempotent percent encoding (existing `%XX` kept)
  * - Operator-specific empty/undefined rules:
  *   - ";"  empty -> `nameOnly` (";x")
  *   - "?" "&" empty -> "key=" ("?x=")
  *   - `undefined` -> `omit` (all operators)
  * - Label "." emits the dot even if empty ("X{.y}" with y="" -> "X.")
+ * 
+ * @example
+ * ```typescript
+ * const ast = parse("{+x,hello,y}");
+ * const url = expand(ast, { x: "1024", hello: "Hello World!", y: "768" });
+ * // Returns: "1024,Hello%20World!,768"
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * const ast = parse("{+path}/here");
+ * const url = expand(ast, { path: "/foo/bar" });
+ * // Returns: "/foo/bar/here"
+ * ```
  */
 export function expand(ast: TemplateAst, vars: Vars): string {
   let out = "";
