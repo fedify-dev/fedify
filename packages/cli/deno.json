@@ -9,7 +9,6 @@
     "@cliffy/prompt": "jsr:@cliffy/prompt@1.0.0-rc.4",
     "@cliffy/table": "jsr:@cliffy/table@1.0.0-rc.4",
     "@cross/dir": "jsr:@cross/dir@^1.1.0",
-    "@david/dax": "jsr:@david/dax@^0.41.0",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.2.0",
     "@jimp/core": "npm:@jimp/core@^1.6.0",
     "@jimp/wasm-webp": "npm:@jimp/wasm-webp@^1.6.0",

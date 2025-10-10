@@ -167,6 +167,63 @@ A patch set should include the following:
 Feature pull requests should target the *main* branch for non-breaking changes,
 or the *next* branch for breaking changes.
 
+### Adding a new package
+
+When adding a new package to the monorepo, the following files must be updated:
+
+**Required updates:**
+
+ 1. *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
+    structure list.
+ 2. *README.md*: Add the package to the "Packages" section table.
+ 3. *.github/workflows/build.yaml*: Update the PR comment in the `publish` job
+    (around the `thollander/actions-comment-pull-request` action).
+ 4. Root *deno.json*: Add the package path to the `workspace` array.
+ 5. *pnpm-workspace.yaml*: Add the package path to the `packages` array.
+
+**Conditional updates:**
+
+ -  If the package is a web framework integration: Update
+    *docs/manual/integration.md*.
+ -  If the package implements `KvStore`: Update *docs/manual/kv.md*.
+ -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*.
+ -  If the package is published to JSR: Add JSR link to the `REFERENCES` data
+    in *docs/.vitepress/config.mts* (note: only JSR links are added here,
+    not npm links).
+
+**Optional updates:**
+
+ -  If special dependencies are needed: Add to `imports` in root *deno.json*.
+ -  If using pnpm catalog for dependency management: Add to `catalog` in
+    *pnpm-workspace.yaml*.
+
+### Dependency management
+
+Fedify uses two package managers:
+
+ -  **Deno**: For Deno-based packages.  The lockfile is *deno.lock*.
+ -  **pnpm**: For Node.js-based packages.  The lockfile is *pnpm-lock.yaml*.
+
+Both lockfiles are committed to the repository to ensure reproducible builds and
+consistent dependency resolution across all environments.  When you add, update,
+or remove dependencies, you must commit the updated lockfile(s) along with your
+changes.
+
+To update the Deno lockfile, run:
+
+~~~~ bash
+deno task install
+~~~~
+
+To update the pnpm lockfile, run:
+
+~~~~ bash
+pnpm install
+~~~~
+
+When reviewing pull requests, please check that lockfile changes are included
+for any dependency-related changes.
+
 ### Pull request builds
 
 Each pull request is automatically built and published to the JSR and npm
@@ -197,6 +254,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.
  -  *packages/h3/*: h3 framework integration (@fedify/h3) for Fedify.
  -  *packages/hono/*: Hono integration (@fedify/hono) for Fedify.
+ -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
  -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.

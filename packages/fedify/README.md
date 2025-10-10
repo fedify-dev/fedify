@@ -101,6 +101,7 @@ Here is the list of packages:
 | [@fedify/express](/packages/express/)     | [JSR][jsr:@fedify/express]   | [npm][npm:@fedify/express]   | Express integration                     |
 | [@fedify/h3](/packages/h3/)               | [JSR][jsr:@fedify/h3]        | [npm][npm:@fedify/h3]        | H3 integration                          |
 | [@fedify/hono](/packages/hono/)           | [JSR][jsr:@fedify/hono]      | [npm][npm:@fedify/hono]      | Hono integration                        |
+| [@fedify/koa](/packages/koa/)             | [JSR][jsr:@fedify/koa]       | [npm][npm:@fedify/koa]       | Koa integration                         |
 | [@fedify/nestjs](/packages/nestjs/)       |                              | [npm][npm:@fedify/nestjs]    | NestJS integration                      |
 | [@fedify/next](/packages/next/)           |                              | [npm][npm:@fedify/next]      | Next.js integration                     |
 | [@fedify/postgres](/packages/postgres/)   | [JSR][jsr:@fedify/postgres]  | [npm][npm:@fedify/postgres]  | PostgreSQL driver                       |
@@ -123,6 +124,8 @@ Here is the list of packages:
 [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3
 [jsr:@fedify/hono]: https://jsr.io/@fedify/hono
 [npm:@fedify/hono]: https://www.npmjs.com/package/@fedify/hono
+[jsr:@fedify/koa]: https://jsr.io/@fedify/koa
+[npm:@fedify/koa]: https://www.npmjs.com/package/@fedify/koa
 [npm:@fedify/nestjs]: https://www.npmjs.com/package/@fedify/nestjs
 [npm:@fedify/next]: https://www.npmjs.com/package/@fedify/next
 [jsr:@fedify/postgres]: https://jsr.io/@fedify/postgres

@@ -1,0 +1,38 @@
+{
+  "name": "fedify-koa-example",
+  "version": "1.0.0",
+  "description": "Fedify Koa Example",
+  "private": true,
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "test": "true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git"
+  },
+  "keywords": [
+    "Fedify",
+    "Koa"
+  ],
+  "author": "Hong Minhee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "homepage": "https://github.com/fedify-dev/fedify/tree/main/examples/koa#readme",
+  "devDependencies": {
+    "@types/koa": "catalog:",
+    "@types/node": "^22.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@fedify/koa": "workspace:",
+    "@fedify/fedify": "workspace:",
+    "@logtape/logtape": "catalog:",
+    "koa": "catalog:"
+  }
+}

@@ -1,0 +1,83 @@
+name: Check stale assigned issues
+
+on:
+  schedule:
+  - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  issues: write
+
+jobs:
+  check-assignees:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/github-script@v7
+      with:
+        script: |
+          const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+          const now = Date.now();
+
+          // Get all open issues
+          const issues = await github.paginate(github.rest.issues.listForRepo, {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            per_page: 100
+          });
+
+          for (const issue of issues) {
+            // Skip issues without assignees or pull requests
+            if (!issue.assignees.length || issue.pull_request) continue;
+
+            // Get comments
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number
+            });
+
+            // Find last comment by any assignee
+            const lastAssigneeComment = comments.data
+              .filter(c => issue.assignees.some(a => a.login === c.user.login))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            // Determine last activity time
+            const issueCreatedAt = new Date(issue.created_at);
+            const lastActivity = lastAssigneeComment
+              ? new Date(lastAssigneeComment.created_at)
+              : issueCreatedAt;
+
+            // Check for linked pull requests
+            const timelineEvents = await github.rest.issues.listEventsForTimeline({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number
+            });
+
+            const hasLinkedPR = timelineEvents.data.some(
+              e => e.event === 'cross-referenced' && e.source?.issue?.pull_request
+            );
+
+            // Check if issue is stale (no activity for over two weeks and no linked PR)
+            if (!hasLinkedPR && now - lastActivity.getTime() > TWO_WEEKS) {
+              // Check if we already posted a reminder recently
+              const recentComments = comments.data.filter(
+                c => c.user.type === 'Bot' &&
+                     c.body.includes('has been assigned for over two weeks') &&
+                     now - new Date(c.created_at).getTime() < TWO_WEEKS
+              );
+
+              // Only post if we haven't posted a reminder in the last two weeks
+              if (recentComments.length === 0) {
+                const assigneeLogins = issue.assignees.map(a => `@${a.login}`).join(' ');
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `${assigneeLogins} This issue has been assigned for over two weeks without updates. Please provide a status update, or unassign yourself if you're unable to continue working on it.`
+                });
+                console.log(`Posted reminder for issue #${issue.number}`);
+              }
+            }
+          }

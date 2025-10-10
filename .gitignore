@@ -1,9 +1,9 @@
 .claude/settings.local.json
 .DS_Store
+.pnpm-store/
 dist/
-deno.lock
 node_modules/
+package-lock.json
 repomix-output.xml
 t.ts
 t2.ts
-.pnpm-store/

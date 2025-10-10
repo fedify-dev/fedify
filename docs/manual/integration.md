@@ -17,7 +17,7 @@ How it works
 Usually, Fedify behaves as a middleware that wraps around the web framework's
 request handler.  The middleware intercepts the incoming HTTP requests and
 dispatches them to the appropriate handler based on the request path and
-the `Accept` header (i.e., [content negotiation]).  Basically, this architecture
+the [`Accept`] header (i.e., [content negotiation]).  Basically, this architecture
 allows Fedify and your web framework to coexist in the same domain and port.
 
 For example, if you make a request to */.well-known/webfinger* Fedify will
@@ -66,6 +66,7 @@ sequenceDiagram
 > the communication between the two services (using a message queue or RPC,
 > for example), which is non-trivial.
 
+[`Accept`]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
 [content negotiation]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
 
@@ -118,6 +119,63 @@ app.use(integrateFederation(federation, (req) => "context data goes here"));  //
 ~~~~
 
 [Express]: https://expressjs.com/
+
+
+Koa
+---
+
+*This API is available since Fedify 1.9.0.*
+
+[Koa] is a lightweight, expressive, and modern web framework for Node.js,
+designed by the team behind Express.  It uses async functions and provides
+a more elegant middleware architecture.  The *@fedify/koa* package provides
+a middleware to integrate Fedify with Koa:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/koa
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/koa
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/koa
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/koa
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/koa
+~~~~
+
+:::
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import Koa from "koa";
+import { createMiddleware } from "@fedify/koa";
+import { createFederation } from "@fedify/fedify";
+
+export const federation = createFederation<string>({
+  // Omitted for brevity; see the related section for details.
+});
+
+export const app = new Koa();
+
+app.proxy = true;  // trust proxy headers
+
+app.use(createMiddleware(federation, (ctx) => "context data goes here"));  // [!code highlight]
+~~~~
+
+> [!NOTE]
+> The `@fedify/koa` package supports both Koa v2.x and v3.x.
+
+[Koa]: https://koajs.com/
 
 
 Hono
@@ -673,9 +731,9 @@ As you can see in the comment, you can handle other requests besides
 federation requests in the middleware.  If you handle only federation requests
 in the middleware, you can omit the function argument of `fedifyWith()`.
 The `config` object is necessary to let Next.js know that the middleware
-should process requests with the `Accept` header matching the federation
+should process requests with the [`Accept`] header matching the federation
 accept regex.  This is because Next.js middleware processes only requests
-with the `Accept` header matching the regex by default.  More details can be
+with the [`Accept`] header matching the regex by default.  More details can be
 found in the Next.js official documentation [`config` in `middleware.js`].
 
 [Next.js]: https://nextjs.org/

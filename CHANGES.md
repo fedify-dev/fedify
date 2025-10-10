@@ -209,6 +209,21 @@ To be released.
  -  Added CommonJS support alongside ESM for better compatibility with
     CommonJS-based Node.js applications.  [[#429], [#431]]
 
+### @fedify/koa
+
+ -  Created [Koa] integration as the *@fedify/koa* package.  [[#454], [#455]]
+
+     -  Added `createMiddleware()` function for integrating Fedify into Koa
+        applications.
+     -  Supports both Koa v2.x and v3.x via peer dependencies.
+     -  Converts between Koa's context-based API and Web Standards
+        Request/Response.
+     -  Builds for both npm (ESM/CJS) and JSR distribution.
+
+[Koa]: https://koajs.com/
+[#454]: https://github.com/fedify-dev/fedify/issues/454
+[#455]: https://github.com/fedify-dev/fedify/pull/455
+
 ### @fedify/next
 
  -  Created [Next.js] integration as the *@fedify/next* package.
