@@ -34,7 +34,7 @@
     ".": {
       "types": {
         "require": "./dist/index.d.cts",
-        "default": "./dist/index.d.ts",
+        "default": "./dist/index.d.ts"
       },
       "default": {
         "require": "./dist/index.cjs",
