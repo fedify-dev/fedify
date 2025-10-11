@@ -2,8 +2,8 @@
 import { or } from "@optique/core";
 import { run } from "@optique/run";
 import { inboxCommand, runInbox } from "./inbox.tsx";
-import { lookupCommand, runLookup } from "./lookup.ts";
 import { initCommand, runInit } from "./init/mod.ts";
+import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
@@ -38,7 +38,7 @@ async function main() {
     runNodeInfo(result);
   }
   if (result.command === "tunnel") {
-    runTunnel(result);
+    await runTunnel(result);
   }
 }
 
