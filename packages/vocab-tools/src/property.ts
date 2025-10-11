@@ -1,8 +1,8 @@
 import { pascalCase } from "es-toolkit";
-import metadata from "../../deno.json" with { type: "json" };
+import metadata from "../deno.json" with { type: "json" };
 import { getFieldName } from "./field.ts";
-import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import type { PropertySchema, TypeSchema } from "./schema.ts";
+import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import { areAllScalarTypes, getTypeNames } from "./type.ts";
 
 function emitOverride(

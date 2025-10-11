@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: OrderedCollectionPage
 compactName: OrderedCollectionPage
 uri: "https://www.w3.org/ns/activitystreams#OrderedCollectionPage"

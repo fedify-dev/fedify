@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Article
 compactName: Article
 uri: "https://www.w3.org/ns/activitystreams#Article"

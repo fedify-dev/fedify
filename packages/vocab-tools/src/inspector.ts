@@ -1,6 +1,6 @@
 import { getFieldName } from "./field.ts";
-import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import type { TypeSchema } from "./schema.ts";
+import { hasSingularAccessor, isNonFunctionalProperty } from "./schema.ts";
 import { emitOverride } from "./type.ts";
 
 export async function* generateInspector(

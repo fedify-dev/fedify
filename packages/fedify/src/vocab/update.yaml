@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Update
 compactName: Update
 uri: "https://www.w3.org/ns/activitystreams#Update"

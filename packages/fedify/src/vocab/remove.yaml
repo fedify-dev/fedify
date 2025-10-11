@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Remove
 compactName: Remove
 uri: "https://www.w3.org/ns/activitystreams#Remove"

@@ -1,5 +1,11 @@
 import { decodeMultibase, LanguageString } from "@fedify/vocab-runtime";
 import {
+  areAllScalarTypes,
+  loadSchemaFiles,
+  type PropertySchema,
+  type TypeSchema,
+} from "@fedify/vocab-tools";
+import {
   assert,
   assertEquals,
   assertFalse,
@@ -9,12 +15,6 @@ import {
   assertThrows,
 } from "@std/assert";
 import { pascalCase } from "es-toolkit";
-import {
-  loadSchemaFiles,
-  type PropertySchema,
-  type TypeSchema,
-} from "../codegen/schema.ts";
-import { areAllScalarTypes } from "../codegen/type.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { ed25519PublicKey, rsaPublicKey1 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";

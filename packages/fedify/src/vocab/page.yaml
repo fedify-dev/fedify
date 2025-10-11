@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Page
 compactName: Page
 uri: "https://www.w3.org/ns/activitystreams#Page"

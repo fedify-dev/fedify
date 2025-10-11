@@ -1,0 +1,26 @@
+{
+  "name": "@fedify/vocab-tools",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "imports": {
+    "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
+    "yaml": "npm:yaml@^2.8.1"
+  },
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/schema.yaml"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test -A"
+  }
+}

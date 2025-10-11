@@ -81,7 +81,7 @@ export default [
           { recursive: true },
         );
         await cp(
-          join("src", "codegen", "schema.yaml"),
+          join("..", "vocab-tools", "src", "schema.yaml"),
           join(ctx.options.outDir, "vocab", "schema.yaml"),
           { force: true },
         );

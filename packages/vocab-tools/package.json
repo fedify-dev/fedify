@@ -1,0 +1,50 @@
+{
+  "name": "@fedify/vocab-tools",
+  "version": "2.0.0",
+  "description": "Code generator for Activity Vocabulary APIs",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && cd dist/ && node --test"
+  },
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse"
+  ],
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
+    "byte-encodings": "catalog:",
+    "es-toolkit": "^1.39.10",
+    "yaml": "^2.8.1"
+  }
+}

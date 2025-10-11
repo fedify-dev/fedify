@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Organization
 compactName: Organization
 uri: "https://www.w3.org/ns/activitystreams#Organization"

@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Export
 uri: "https://w3id.org/fep/9091#Export"
 extends: "https://www.w3.org/ns/did#Service"

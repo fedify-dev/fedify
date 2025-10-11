@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: DidService
 uri: "https://www.w3.org/ns/did#Service"
 entity: true

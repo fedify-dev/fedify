@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: DataIntegrityProof
 uri: "https://w3id.org/security#DataIntegrityProof"
 entity: true

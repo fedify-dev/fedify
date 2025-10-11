@@ -1996,7 +1996,7 @@ proofs?: (DataIntegrityProof | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -2233,7 +2233,7 @@ proofs?: (DataIntegrityProof | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -2583,7 +2583,7 @@ proofs?: (DataIntegrityProof | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -2924,7 +2924,7 @@ get contents(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -3198,7 +3198,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -3424,7 +3424,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -3738,7 +3738,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -4052,7 +4052,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -4373,7 +4373,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -4694,7 +4694,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -5026,7 +5026,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -5242,7 +5242,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -5464,7 +5464,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -5686,7 +5686,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -5942,7 +5942,7 @@ get summaries(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -6205,7 +6205,7 @@ get urls(): ((URL | Link))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -6517,7 +6517,7 @@ get urls(): ((URL | Link))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -6829,7 +6829,7 @@ get urls(): ((URL | Link))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -7141,7 +7141,7 @@ get urls(): ((URL | Link))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -7517,7 +7517,7 @@ get urls(): ((URL | Link))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -9094,7 +9094,7 @@ get urls(): ((URL | Link))[] {
   ): Promise<Object> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -11369,7 +11369,7 @@ proofs?: (DataIntegrityProof | URL)[];}
   ): Promise<Emoji> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -11802,7 +11802,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   ): Promise<ChatMessage> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -12597,7 +12597,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -12947,7 +12947,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -13261,7 +13261,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -13581,7 +13581,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -13895,7 +13895,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -14211,7 +14211,7 @@ instruments?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -14698,7 +14698,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Activity> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -15506,7 +15506,7 @@ instruments?: (Object | URL)[];}
   ): Promise<EmojiReact> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -16005,7 +16005,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   ): Promise<PropertyValue> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -16544,7 +16544,7 @@ get endpoints(): (URL)[] {
   ): Promise<DidService> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -16890,7 +16890,7 @@ endpoints?: (URL)[];}
   ): Promise<Export> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -17307,7 +17307,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -17704,7 +17704,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
   ): Promise<DataIntegrityProof> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -18230,7 +18230,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -18650,7 +18650,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   ): Promise<CryptographicKey> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -19094,7 +19094,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -19521,7 +19521,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   ): Promise<Multikey> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -19970,7 +19970,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Accept> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -20306,7 +20306,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Add> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -20637,7 +20637,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Announce> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -21800,7 +21800,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -22108,7 +22108,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -22443,7 +22443,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -22679,7 +22679,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -22912,7 +22912,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -23131,7 +23131,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -23353,7 +23353,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -23573,7 +23573,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -23791,7 +23791,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -24009,7 +24009,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -24301,7 +24301,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -24551,7 +24551,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -24903,7 +24903,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -26146,7 +26146,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
   ): Promise<Application> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -27554,7 +27554,7 @@ instruments?: (Object | URL)[];}
   ): Promise<IntransitiveActivity> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -27897,7 +27897,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Arrive> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -28325,7 +28325,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   ): Promise<Article> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -28853,7 +28853,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   ): Promise<Document> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -29272,7 +29272,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   ): Promise<Audio> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -29602,7 +29602,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Ignore> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -29938,7 +29938,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Block> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -30578,7 +30578,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -30794,7 +30794,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -31010,7 +31010,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -31226,7 +31226,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -31453,7 +31453,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -31668,7 +31668,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -31883,7 +31883,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -32098,7 +32098,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -32313,7 +32313,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -32528,7 +32528,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -32743,7 +32743,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -32958,7 +32958,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -33733,7 +33733,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   ): Promise<Collection> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -34716,7 +34716,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -34932,7 +34932,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -35146,7 +35146,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -35568,7 +35568,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   ): Promise<CollectionPage> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -36050,7 +36050,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Create> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -36380,7 +36380,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Delete> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -36708,7 +36708,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Dislike> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -37498,7 +37498,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
   ): Promise<Endpoints> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -38141,7 +38141,7 @@ proofs?: (DataIntegrityProof | URL)[];}
   ): Promise<Event> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -38472,7 +38472,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Flag> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -38804,7 +38804,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Follow> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -39967,7 +39967,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -40275,7 +40275,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -40610,7 +40610,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -40846,7 +40846,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -41079,7 +41079,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -41298,7 +41298,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -41520,7 +41520,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -41740,7 +41740,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -41958,7 +41958,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -42176,7 +42176,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -42468,7 +42468,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -42718,7 +42718,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -43070,7 +43070,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -44313,7 +44313,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
   ): Promise<Group> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -46114,7 +46114,7 @@ get names(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -46687,7 +46687,7 @@ get names(): ((string | LanguageString))[] {
   ): Promise<Link> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -47348,7 +47348,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   ): Promise<Hashtag> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -47681,7 +47681,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   ): Promise<Image> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -48012,7 +48012,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Offer> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -48346,7 +48346,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Invite> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -48676,7 +48676,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Join> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -49006,7 +49006,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Leave> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -49336,7 +49336,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Like> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -49664,7 +49664,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Listen> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -49958,7 +49958,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   ): Promise<Mention> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -50289,7 +50289,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Move> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -50719,7 +50719,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   ): Promise<Note> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -51037,7 +51037,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -51402,7 +51402,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   ): Promise<OrderedCollection> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -51770,7 +51770,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -52184,7 +52184,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   ): Promise<OrderedCollectionPage> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -53447,7 +53447,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -53755,7 +53755,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -54090,7 +54090,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -54326,7 +54326,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -54559,7 +54559,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -54778,7 +54778,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -55000,7 +55000,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -55220,7 +55220,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -55438,7 +55438,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -55656,7 +55656,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -55948,7 +55948,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -56198,7 +56198,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -56550,7 +56550,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -57793,7 +57793,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
   ): Promise<Organization> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -59203,7 +59203,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   ): Promise<Page> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -60366,7 +60366,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -60674,7 +60674,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -61009,7 +61009,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -61245,7 +61245,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -61478,7 +61478,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -61697,7 +61697,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -61919,7 +61919,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -62139,7 +62139,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -62357,7 +62357,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -62575,7 +62575,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -62867,7 +62867,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -63117,7 +63117,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -63469,7 +63469,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -64712,7 +64712,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
   ): Promise<Person> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -66578,7 +66578,7 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
   ): Promise<Place> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -67077,7 +67077,7 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -67430,7 +67430,7 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
   ): Promise<Profile> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -67896,7 +67896,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -68115,7 +68115,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -68557,7 +68557,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
   ): Promise<Question> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -69119,7 +69119,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Read> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -69449,7 +69449,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Reject> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -69892,7 +69892,7 @@ relationships?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -70110,7 +70110,7 @@ relationships?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -70420,7 +70420,7 @@ relationships?: (Object | URL)[];}
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -70941,7 +70941,7 @@ relationships?: (Object | URL)[];}
   ): Promise<Relationship> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -71433,7 +71433,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Remove> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -72596,7 +72596,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -72904,7 +72904,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -73239,7 +73239,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -73475,7 +73475,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -73708,7 +73708,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -73927,7 +73927,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -74149,7 +74149,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -74369,7 +74369,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -74587,7 +74587,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -74805,7 +74805,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -75097,7 +75097,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -75347,7 +75347,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -75699,7 +75699,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const tracer = tracerProvider.getTracer(
-        \\"@fedify/fedify\\",
+        \\"@fedify/vocab-tools\\",
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
@@ -76942,7 +76942,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
   ): Promise<Service> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -78561,7 +78561,7 @@ get contents(): ((string | LanguageString))[] {
   ): Promise<Source> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -78986,7 +78986,7 @@ instruments?: (Object | URL)[];}
   ): Promise<TentativeAccept> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -79316,7 +79316,7 @@ instruments?: (Object | URL)[];}
   ): Promise<TentativeReject> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -79728,7 +79728,7 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
   ): Promise<Tombstone> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -80099,7 +80099,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Travel> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -80434,7 +80434,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Undo> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -80767,7 +80767,7 @@ instruments?: (Object | URL)[];}
   ): Promise<Update> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -81100,7 +81100,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   ): Promise<Video> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(
@@ -81429,7 +81429,7 @@ instruments?: (Object | URL)[];}
   ): Promise<View> {
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
-      \\"@fedify/fedify\\",
+      \\"@fedify/vocab-tools\\",
       \\"0.0.0\\",
     );
     return await tracer.startActiveSpan(

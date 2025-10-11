@@ -1,9 +1,8 @@
 import { type Schema as JsonSchema, Validator } from "@cfworker/json-schema";
-import { fromFileUrl } from "@std/path";
-import * as url from "@std/url";
-import { parse } from "@std/yaml";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, posix as url } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 import { readDirRecursive } from "./fs.ts";
 
 /**
@@ -251,14 +250,14 @@ export class SchemaError extends Error {
 }
 
 async function loadSchemaValidator(): Promise<Validator> {
-  const thisFile = new URL(import.meta.url);
-  const schemaFile = url.join(url.dirname(thisFile), "schema.yaml");
+  const thisFile = import.meta.url;
+  const schemaFile = new URL(url.join(url.dirname(thisFile), "schema.yaml"));
   let content: string;
   if (schemaFile.protocol !== "file:") {
     const response = await fetch(schemaFile);
     content = await response.text();
   } else {
-    content = await readFile(fromFileUrl(schemaFile), { encoding: "utf-8" });
+    content = await readFile(fileURLToPath(schemaFile), { encoding: "utf-8" });
   }
   const schemaObject = parse(content);
   return new Validator(schemaObject as JsonSchema);

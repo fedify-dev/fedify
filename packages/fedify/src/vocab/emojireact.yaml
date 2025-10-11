@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: EmojiReact
 compactName: EmojiReact
 uri: "http://litepub.social/ns#EmojiReact"

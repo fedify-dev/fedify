@@ -1,7 +1,7 @@
-import metadata from "../../deno.json" with { type: "json" };
+import metadata from "../deno.json" with { type: "json" };
 import { generateField, getFieldName } from "./field.ts";
-import { isNonFunctionalProperty } from "./schema.ts";
 import type { TypeSchema } from "./schema.ts";
+import { isNonFunctionalProperty } from "./schema.ts";
 import {
   areAllScalarTypes,
   emitOverride,

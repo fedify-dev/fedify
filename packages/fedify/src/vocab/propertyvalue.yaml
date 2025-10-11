@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: PropertyValue
 compactName: PropertyValue
 # The below URI intentionally lacks a path slash due to Mastodon's mistake:

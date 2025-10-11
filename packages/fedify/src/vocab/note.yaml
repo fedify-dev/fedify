@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Note
 compactName: Note
 uri: "https://www.w3.org/ns/activitystreams#Note"

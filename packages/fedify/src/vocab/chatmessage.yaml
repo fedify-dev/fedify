@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: ChatMessage
 compactName: ChatMessage
 uri: "http://litepub.social/ns#ChatMessage"

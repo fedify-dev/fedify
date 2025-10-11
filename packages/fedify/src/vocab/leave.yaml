@@ -1,4 +1,4 @@
-$schema: ../codegen/schema.yaml
+$schema: ../../../vocab-tools/schema.yaml
 name: Leave
 compactName: Leave
 uri: "https://www.w3.org/ns/activitystreams#Leave"
