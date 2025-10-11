@@ -1,0 +1,64 @@
+{
+  "name": "@fedify/uri-template",
+  "version": "1.9.0",
+  "description": "URI Template (RFC 6570) utilities for Fedify",
+  "keywords": [
+    "Fedify",
+    "URI",
+    "template",
+    "RFC6570"
+  ],
+  "author": {
+    "name": "Lee ByeongJun",
+    "email": "lbj199874@gmail.com"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/uri-template"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "module": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "require": "./dist/index.d.cts",
+        "default": "./dist/index.d.ts"
+      },
+      "default": {
+        "require": "./dist/index.cjs",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && cd dist/ && node --test"
+  }
+}
