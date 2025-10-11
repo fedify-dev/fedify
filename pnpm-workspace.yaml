@@ -55,4 +55,4 @@ catalog:
   next: ^15.4.6
   postgres: ^3.4.7
   tsdown: ^0.12.9
-  typescript: ^5.9.2
+  typescript: ^5.9.3

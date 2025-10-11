@@ -1,0 +1,48 @@
+{
+  "name": "@fedify/relay",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": {},
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.13"
+  },
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "exclude": [
+    "dist/",
+    "node_modules/"
+  ],
+  "tasks": {
+    "codegen": "deno task -f @fedify/fedify codegen",
+    "check": {
+      "command": "deno task codegen && deno fmt --check && deno lint && deno check src/**/*.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "run": {
+      "command": "deno run --allow-all src/mod.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    },
+    "runi": "deno run --allow-all src/mod.ts",
+    "pack": {
+      "command": "deno run -A scripts/pack.ts",
+      "dependencies": [
+        "codegen"
+      ]
+    }
+  },
+  "fmt": {
+    "exclude": [
+      "src/init/templates/**"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      "src/init/templates/**"
+    ]
+  }
+}

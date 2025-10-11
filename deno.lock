@@ -4666,6 +4666,11 @@
           "npm:koa@2"
         ]
       },
+      "packages/relay": {
+        "dependencies": [
+          "jsr:@std/assert@^1.0.13"
+        ]
+      },
       "packages/sqlite": {
         "packageJson": {
           "dependencies": [

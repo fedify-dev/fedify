@@ -15,6 +15,7 @@
     "./packages/sveltekit",
     "./packages/testing",
     "./packages/vocab-runtime",
+    "./packages/relay",
     "./examples/blog",
     "./examples/hono-sample"
   ],
