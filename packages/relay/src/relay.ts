@@ -12,6 +12,7 @@ import {
   Accept,
   type Actor,
   Announce,
+  Application,
   Create,
   Delete,
   Follow,
@@ -28,7 +29,6 @@ import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,
 } from "@fedify/vocab-runtime";
-import { Application } from "../../fedify/src/vocab/vocab.ts";
 
 const RELAY_SERVER_ACTOR = "relay";
 
