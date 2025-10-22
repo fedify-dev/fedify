@@ -181,6 +181,9 @@ export const getNextInitCommand = (
   "--app",
   "--biome",
   "--skip-install",
+  "--tailwind",
+  "--src-dir",
+  "--webpack",
 ];
 
 const createNextAppCommand = (pm: PackageManager): string[] =>
