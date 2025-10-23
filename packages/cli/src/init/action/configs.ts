@@ -1,4 +1,7 @@
+import { concat, filter, keys, map, pipe, toArray } from "@fxts/core/index.js";
+import { uniq } from "es-toolkit";
 import { join as joinPath } from "node:path";
+import { merge } from "../../utils.ts";
 import biome from "../json/biome.json" with { type: "json" };
 import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
   type: "json",
@@ -16,11 +19,12 @@ import type { InitCommandData } from "../types.ts";
  * @returns Configuration object with path and Deno-specific settings
  */
 export const loadDenoConfig = (
-  { kv, mq, initializer, dir }: InitCommandData,
+  { kv, mq, initializer, dir, testMode }: InitCommandData,
 ) => ({
   path: joinPath(dir, "deno.json"),
   data: {
     compilerOptions: initializer.compilerOptions,
+    ...(testMode ? { links: getLinks({ kv, mq, initializer }) } : {}),
   },
   unstable: [
     "temporal",
@@ -29,6 +33,29 @@ export const loadDenoConfig = (
   ],
   tasks: initializer.tasks,
 });
+
+const getLinks = <
+  T extends Pick<InitCommandData, "kv" | "mq" | "initializer">,
+>({ kv, mq, initializer }: T) =>
+  pipe(
+    { "@fedify/fedify": "" },
+    merge(initializer.dependencies),
+    merge(kv.dependencies),
+    merge(mq.dependencies),
+    keys,
+    filter((dep) => dep.includes("@fedify/")),
+    map((dep) => dep.replace("@fedify/", "")),
+    map((dep) => joinPath(PACKAGES_PATH, dep)),
+    toArray,
+  );
+
+const PACKAGES_PATH = joinPath(
+  import.meta.dirname!, // action
+  "..", // init
+  "..", // src
+  "..", // cli
+  "..", // packages
+);
 
 /**
  * Loads TypeScript configuration object for Node.js/Bun projects.

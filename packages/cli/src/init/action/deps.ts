@@ -1,4 +1,14 @@
-import { entries, map, pipe, toArray } from "@fxts/core";
+import {
+  always,
+  entries,
+  filter,
+  fromEntries,
+  map,
+  pipe,
+  tap,
+  toArray,
+  when,
+} from "@fxts/core";
 import { merge } from "../../utils.ts";
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
@@ -13,7 +23,7 @@ type Deps = Record<string, string>;
  * @returns A record of dependencies with their versions
  */
 export const getDependencies = (
-  { initializer, kv, mq }: InitCommandData,
+  { initializer, kv, mq, testMode }: InitCommandData,
 ): Deps =>
   pipe(
     {
@@ -23,6 +33,15 @@ export const getDependencies = (
     merge(initializer.dependencies),
     merge(kv.dependencies),
     merge(mq.dependencies),
+    when(always(testMode), removeFedifyDeps),
+  );
+
+const removeFedifyDeps = (deps: Deps): Deps =>
+  pipe(
+    deps,
+    entries,
+    filter(([name]) => !name.includes("@fedify")),
+    fromEntries,
   );
 
 /** Gathers all devDependencies required for the project based on the initializer,
