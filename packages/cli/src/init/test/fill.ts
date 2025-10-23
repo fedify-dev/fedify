@@ -22,7 +22,7 @@ export const fillEmptyOptions = <T extends TestInitCommand>(
     fillKVStore,
     fillMessageQueue,
     fillRunMode,
-  );
+  ) as DefineAllOptions<T>;
 
 const fillOption = <
   K extends MultipleOption,
@@ -54,8 +54,8 @@ const fillKVStore = fillOption("kvStore", KV_STORE);
 const fillMessageQueue = fillOption("messageQueue", MESSAGE_QUEUE);
 
 const fillRunMode = <T extends TestInitCommand>(
-  options: T,
-): T => ({
+  options: DefineAllOptions<T>,
+): DefineAllOptions<T> => ({
   ...options,
   ...(options.hydRun || options.dryRun ? {} : { hydRun: true, dryRun: true }),
 });
