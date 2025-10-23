@@ -38,12 +38,9 @@ const webFrameworks: WebFrameworks = {
         "src/app.tsx": pipe(
           "hono/app.tsx",
           readTemplate,
-          replace(
-            /\/\* hono \*\//,
-            pm === "deno" ? "@hono/hono" : "hono",
-          ),
-        )
-          .replace(/\/\* logger \*\//, projectName),
+          replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
+          replace(/\/\* logger \*\//, projectName),
+        ),
         "src/index.ts": readTemplate(`hono/index/${pm}.ts`),
       },
       compilerOptions: pm === "deno" ? undefined : {
