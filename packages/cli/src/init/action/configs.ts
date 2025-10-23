@@ -24,14 +24,16 @@ export const loadDenoConfig = (
   path: joinPath(dir, "deno.json"),
   data: {
     compilerOptions: initializer.compilerOptions,
+    unstable: pipe(
+      ["temporal"],
+      concat(kv.denoUnstable ?? []),
+      concat(mq.denoUnstable ?? []),
+      toArray,
+      uniq,
+    ),
+    tasks: initializer.tasks,
     ...(testMode ? { links: getLinks({ kv, mq, initializer }) } : {}),
   },
-  unstable: [
-    "temporal",
-    ...kv.denoUnstable ?? [],
-    ...mq.denoUnstable ?? [],
-  ],
-  tasks: initializer.tasks,
 });
 
 const getLinks = <
