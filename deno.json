@@ -15,6 +15,7 @@
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
+    "./packages/uri-template",
     "./examples/blog",
     "./examples/hono-sample"
   ],
