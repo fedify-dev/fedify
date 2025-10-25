@@ -829,6 +829,19 @@ about the specified objects to a given path, run the command below:
 fedify lookup -o actors.json @fedify@hollo.social @hongminhee@fosstodon.org
 ~~~~
 
+### `-T`/`--timeout`: Request timeout
+
+*This option is available since Fedify 1.9.0.*
+
+You can specify the request timeout duration by using the `-T`/`--timeout`
+option. The duration should be an integer in seconds.  By default, there is no
+timeout.  For example, to set the request timeout to 10 seconds, run the below
+command:
+
+~~~~ sh
+fedify lookup --timeout 10 @fedify@hollo.social
+~~~~
+
 
 `fedify inbox`: Ephemeral inbox server
 --------------------------------------

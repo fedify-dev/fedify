@@ -1,11 +1,13 @@
 {
-  "name": "@fedify/postgres",
+  "name": "@fedify/fastify",
   "version": "1.10.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts",
-    "./kv": "./src/kv.ts",
-    "./mq": "./src/mq.ts"
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "fastify": "npm:fastify@^5.2.0",
+    "fastify-plugin": "npm:fastify-plugin@^5.0.1"
   },
   "exclude": [
     "dist",
@@ -13,6 +15,6 @@
   ],
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts",
-    "test": "deno test --allow-net --allow-env"
+    "test": "deno test --allow-all"
   }
 }

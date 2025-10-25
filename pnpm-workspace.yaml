@@ -10,6 +10,7 @@ packages:
 - packages/nestjs
 - packages/next
 - packages/h3
+- packages/fastify
 - packages/postgres
 - packages/redis
 - packages/sqlite
@@ -21,6 +22,7 @@ packages:
 - examples/express
 - examples/koa
 - examples/next-integration
+- examples/fastify
 - examples/next14-app-router
 - examples/next15-app-router
 - examples/sveltekit-sample
@@ -43,6 +45,8 @@ catalog:
   elysia: ^1.3.8
   es-toolkit: ^1.30.0
   express: ^4.0.0
+  fastify: ^5.2.0
+  fastify-plugin: ^5.0.1
   h3: ^1.15.0
   hono: ^4.0.0
   ioredis: ^5.6.1

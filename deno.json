@@ -6,6 +6,7 @@
     "./packages/cfworkers",
     "./packages/denokv",
     "./packages/express",
+    "./packages/fastify",
     "./packages/h3",
     "./packages/hono",
     "./packages/koa",

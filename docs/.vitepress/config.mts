@@ -91,6 +91,7 @@ const REFERENCES = {
     { text: "@fedify/cfworkers", link: "https://jsr.io/@fedify/cfworkers/doc" },
     { text: "@fedify/denokv", link: "https://jsr.io/@fedify/denokv/doc" },
     { text: "@fedify/express", link: "https://jsr.io/@fedify/express/doc" },
+    { text: "@fedify/fastify", link: "https://jsr.io/@fedify/fastify/doc" },
     { text: "@fedify/h3", link: "https://jsr.io/@fedify/h3/doc" },
     { text: "@fedify/hono", link: "https://jsr.io/@fedify/hono/doc" },
     { text: "@fedify/koa", link: "https://jsr.io/@fedify/koa/doc" },

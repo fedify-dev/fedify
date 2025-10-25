@@ -1,0 +1,19 @@
+{
+  "name": "@fedify/fastify-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
+  },
+  "dependencies": {
+    "@fedify/fastify": "workspace:",
+    "@fedify/fedify": "workspace:",
+    "fastify": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "^4.19.0"
+  }
+}

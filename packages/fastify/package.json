@@ -1,24 +1,19 @@
 {
-  "name": "@fedify/nestjs",
+  "name": "@fedify/fastify",
   "version": "1.10.0",
-  "description": "Integrate Fedify with Nest.js",
+  "description": "Integrate Fedify with Fastify",
   "keywords": [
     "Fedify",
-    "Nest",
-    "Nest.js"
+    "Fastify"
   ],
-  "author": {
-    "name": "Jaeyeol Lee",
-    "email": "jaeyeol.lee@hey.com",
-    "url": "https://kodingwarrior.github.io/"
-  },
+  "license": "MIT",
+  "author": "An Nyeong <me@annyeong.me>",
   "homepage": "https://fedify.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
-    "directory": "packages/nestjs"
+    "directory": "packages/fastify"
   },
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
   },
@@ -26,18 +21,20 @@
     "https://opencollective.com/fedify",
     "https://github.com/sponsors/dahlia"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "require": {
+      "import": {
         "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
         "default": "./dist/index.js"
       },
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
+      "require": {
+        "types": "./dist/index.d.cts",
+        "import": "./dist/index.cjs",
+        "default": "./dist/index.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -46,13 +43,14 @@
     "dist/",
     "package.json"
   ],
+  "dependencies": {
+    "fastify-plugin": "catalog:"
+  },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^",
-    "@nestjs/common": "catalog:",
-    "express": "catalog:"
+    "@fedify/fedify": "workspace:",
+    "fastify": "catalog:"
   },
   "devDependencies": {
-    "@types/express": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
@@ -60,6 +58,7 @@
   "scripts": {
     "build": "tsdown",
     "prepack": "tsdown",
-    "prepublish": "tsdown"
+    "prepublish": "tsdown",
+    "test": "tsdown && node --experimental-transform-types --test"
   }
 }

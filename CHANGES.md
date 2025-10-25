@@ -3,10 +3,16 @@
 Fedify changelog
 ================
 
+Version 1.10.0
+--------------
+
+To be released.
+
+
 Version 1.9.0
 -------------
 
-To be released.
+Released on October 14, 2025.
 
 ### @fedify/fedify
 
@@ -163,10 +169,11 @@ To be released.
  -  Added `-T`/`--timeout` option to `fedify lookup` command. This option allows
     users to specify timeout in seconds for network requests to prevent
     hanging on slow or unresponsive servers.
-    [[#258] by Hyunchae Kim]
+    [[#258], [#372] by Hyunchae Kim]
 
 [#353]: https://github.com/fedify-dev/fedify/issues/353
 [#365]: https://github.com/fedify-dev/fedify/pull/365
+[#372]: https://github.com/fedify-dev/fedify/pull/372
 
 ### @fedify/amqp
 
@@ -194,6 +201,21 @@ To be released.
 
  -  Added CommonJS support alongside ESM for better compatibility with
     CommonJS-based Node.js applications.  [[#429], [#431]]
+
+### @fedify/fastify
+
+ -  Created [Fastify] integration as the *@fedify/fastify* package.
+    [[#151], [#450] by An Subin]
+
+     -  Added `fedifyPlugin()` function for integrating Fedify into Fastify
+        applications.
+     -  Converts between Fastify's request/reply API and Web Standards
+        `Request`/`Response`.
+     -  Supports both ESM and CommonJS for broad Node.js compatibility.
+
+[Fastify]: https://fastify.dev/
+[#151]: https://github.com/fedify-dev/fedify/issues/151
+[#450]: https://github.com/fedify-dev/fedify/pull/450
 
 ### @fedify/h3
 
@@ -274,6 +296,23 @@ To be released.
 
  -  Added CommonJS support alongside ESM for better compatibility with
     CommonJS-based Node.js applications.  [[#429], [#431]]
+
+
+Version 1.8.13
+--------------
+
+Released on October 10, 2025.
+
+### @fedify/fedify
+
+ -  Fixed inconsistent encoding/decoding of URI template identifiers with
+    special characters.  Updated *uri-template-router* to version 1.0.0,
+    which properly decodes percent-encoded characters in URI template variables
+    according to RFC 6570.  This resolves issues where identifiers containing
+    URIs (e.g., `https%3A%2F%2Fexample.com`) were being inconsistently decoded
+    in dispatcher callbacks and double-encoded in collection URLs.  [[#416]]
+
+[#416]: https://github.com/fedify-dev/fedify/issues/416
 
 
 Version 1.8.12

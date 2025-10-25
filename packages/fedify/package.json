@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fedify",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "An ActivityPub server framework",
   "keywords": [
     "ActivityPub",
@@ -165,7 +165,7 @@
     "multicodec": "^3.2.1",
     "pkijs": "^3.2.4",
     "structured-field-values": "^2.0.4",
-    "uri-template-router": "^0.0.17",
+    "uri-template-router": "^1.0.0",
     "url-template": "^3.1.1",
     "urlpattern-polyfill": "^10.1.0"
   },

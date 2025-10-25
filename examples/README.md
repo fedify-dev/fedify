@@ -16,6 +16,7 @@ added in the future.[^1]
   -  [Hollo: a federated single-user microblogging
      software](https://github.com/fedify-dev/hollo)
   -  [Hono integration sample](./hono-sample/)
+  -  [Fastify integration example](./fastify/)
   -  [Fedify–Express integration example](./express/)
   -  [Fedify–Next.js integration example using `@fedify/next`](./next-integration/)
   -  [Fedify–Next.js 14 integration example](./next14-app-router/)

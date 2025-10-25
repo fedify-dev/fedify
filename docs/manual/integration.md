@@ -121,6 +121,59 @@ app.use(integrateFederation(federation, (req) => "context data goes here"));  //
 [Express]: https://expressjs.com/
 
 
+Fastify
+-------
+
+*This API is available since Fedify 1.9.0.*
+
+[Fastify] is a fast and low overhead web framework for Node.js, with
+a powerful plugin architecture and sensible defaults.  The *@fedify/fastify*
+package provides a plugin to integrate Fedify with Fastify:
+
+::: code-group
+
+~~~~ sh [npm]
+npm add @fedify/fastify
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/fastify
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/fastify
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/fastify
+~~~~
+
+:::
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import Fastify from "fastify";
+import { fedifyPlugin } from "@fedify/fastify";
+import { createFederation } from "@fedify/fedify";
+
+export const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+
+const fastify = Fastify({ logger: true });
+
+// Register the Fedify plugin:
+await fastify.register(fedifyPlugin, {  // [!code highlight]
+  federation,  // [!code highlight]
+  contextDataFactory: () => undefined,  // [!code highlight]
+});  // [!code highlight]
+
+fastify.listen({ port: 3000 });
+~~~~
+
+[Fastify]: https://fastify.dev/
+
+
 Koa
 ---
 
