@@ -7,6 +7,7 @@ import {
   getNextInitCommand,
   getNitroInitCommand,
   PACKAGE_VERSION,
+  packageManagerToRuntime,
   readTemplate,
 } from "./lib.ts";
 import type { WebFrameworks } from "./types.ts";
@@ -21,15 +22,21 @@ const webFrameworks: WebFrameworks = {
           "@std/dotenv": "^0.225.2",
           "@hono/hono": "^4.5.0",
           "@hongminhee/x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
         }
         : pm === "bun"
-        ? { hono: "^4.5.0", "x-forwarded-fetch": "^0.2.0" }
+        ? {
+          hono: "^4.5.0",
+          "x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
+        }
         : {
           "@dotenvx/dotenvx": "^1.14.1",
           hono: "^4.5.0",
           "@hono/node-server": "^1.12.0",
           tsx: "^4.17.0",
           "x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
         },
       devDependencies: pm === "bun" ? { "@types/bun": "^1.1.6" } : {},
       federationFile: message`src/federation.ts`,
@@ -41,7 +48,9 @@ const webFrameworks: WebFrameworks = {
           replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
           replace(/\/\* logger \*\//, projectName),
         ),
-        "src/index.ts": readTemplate(`hono/index/${pm}.ts`),
+        "src/index.ts": readTemplate(
+          `hono/index/${packageManagerToRuntime(pm)}.ts`,
+        ),
       },
       compilerOptions: pm === "deno" ? undefined : {
         "lib": ["ESNext", "DOM"],
