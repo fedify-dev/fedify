@@ -135,7 +135,7 @@ export const joinDepsVer = <
 /**
  * Joins package names with their versions for installation dependencies.
  * For Deno, it prefixes packages with 'jsr:'
- * unless they already start with 'npm:'.
+ * unless they already start with 'npm:' or 'jsr:'.
  *
  * @param data - Package manager and dependencies to be joined with versions
  * @returns \{ name: `${registry}:${package}@${version}` } for deno
@@ -147,7 +147,7 @@ export const joinDepsReg = (pm: PackageManager) => //
     entries,
     map(([name, version]): [string, string] => [
       name,
-      `${getPackageName(pm, name)}@${getPackageVersion(pm, version)}`,
+      `${name}@${getPackageVersion(pm, version)}`,
     ]),
     fromEntries,
   );
@@ -156,10 +156,8 @@ const getPackageName = (pm: PackageManager, name: string) =>
   pm !== "deno"
     ? name.startsWith("npm:") ? name.substring(4) : name
     : name.startsWith("npm:")
-    ? name.substring(4)
-    : !name.startsWith("npm:")
-    ? `jsr:${name}`
-    : name;
+    ? name
+    : `jsr:${name}`;
 
 const getPackageVersion = (pm: PackageManager, version: string) =>
   pm !== "deno" && version.includes("+")
