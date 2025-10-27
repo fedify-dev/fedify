@@ -1,13 +1,13 @@
-import { message, text } from "@optique/core";
-import { print, printError } from "@optique/run";
+import { text } from "@optique/core";
 import { flow } from "es-toolkit";
-import { colors, type RequiredNotNull } from "../../utils.ts";
+import {
+  colors,
+  printErrorMessage,
+  printMessage,
+  type RequiredNotNull,
+} from "../../utils.ts";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
-
-type PrintMessage = (...args: Parameters<typeof message>) => void;
-const printMessage: PrintMessage = flow(message, print);
-const printErrorMessage: PrintMessage = flow(message, printError);
 
 export function drawDinosaur() {
   const d = flow(colors.bgBlue, colors.black);
@@ -84,15 +84,14 @@ export const noticeEnvKeyValue = ([key, value]: [string, string]) => {
   printMessage`${text(`  ${key}='${value}'`)}`;
 };
 
-export function noticeHowToRun(
+export const noticeHowToRun = (
   { initializer: { instruction, federationFile } }: InitCommandData,
-) {
-  print(message`
+) =>
+  printMessage`
 ${instruction}
     
 Start by editing the ${federationFile} file to define your federation!
-`);
-}
+`;
 
 export function noticeErrorWhileAddDeps(command: string[]) {
   return (error: unknown) => {
