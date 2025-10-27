@@ -6,7 +6,7 @@ export const isDry = ({ dryRun }: InitCommandData) => dryRun;
 export const hasCommand = (data: InitCommandData) => !!data.initializer.command;
 
 export const isDeno = (
-  { packageManager }: InitCommandData,
+  { packageManager }: Pick<InitCommandData, "packageManager">,
 ) => packageManager === "deno";
 
 export const joinDir =
