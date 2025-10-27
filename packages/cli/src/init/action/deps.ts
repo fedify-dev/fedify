@@ -83,7 +83,10 @@ const convertFedifyToLocal = (name: string): string =>
  * @returns A record of devDependencies with their versions
  */
 export const getDevDependencies = (
-  { initializer, kv, mq }: Pick<InitCommandData, "initializer" | "kv" | "mq">,
+  { initializer, kv, mq, packageManager }: Pick<
+    InitCommandData,
+    "initializer" | "kv" | "mq" | "packageManager"
+  >,
 ): Deps =>
   pipe(
     {
@@ -92,6 +95,7 @@ export const getDevDependencies = (
     merge(initializer.devDependencies),
     merge(kv.devDependencies),
     merge(mq.devDependencies),
+    normalizePackageNames(packageManager),
   );
 
 /**
