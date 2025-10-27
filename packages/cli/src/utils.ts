@@ -79,11 +79,15 @@ export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
       stderr += data.toString();
     });
 
-    child.on("close", () => {
-      resolve({
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-      });
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+        });
+      } else {
+        reject(new Error(`Command exited with code ${code}: ${stderr.trim()}`));
+      }
     });
 
     child.on("error", (error) => {

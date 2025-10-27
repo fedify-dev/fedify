@@ -1,9 +1,10 @@
-import { map, pipe, toArray, toAsync } from "@fxts/core";
+import { filter, map, pipe, toArray, toAsync } from "@fxts/core";
 import { message } from "@optique/core";
-import { print, printError } from "@optique/run";
+import { print } from "@optique/run";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type GeneratedType, product, runSubCommand } from "../../utils.ts";
+import { kvStores, messageQueues } from "../lib.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
@@ -38,9 +39,8 @@ async (
     await saveOutputs(testDir, result);
     print(message`Pass: ${testDir}`);
     return testDir;
-  } catch (error) {
-    console.error(`Error while init ${testDir}:`, error);
-    printError(message`Fail: ${testDir}`);
+  } catch (_error) {
+    print(message`Fail: ${testDir}`);
     return "";
   }
 };
