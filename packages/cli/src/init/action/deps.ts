@@ -5,13 +5,15 @@ import {
   fromEntries,
   map,
   pipe,
-  tap,
   toArray,
   when,
 } from "@fxts/core";
-import { merge } from "../../utils.ts";
+import { join as joinPath } from "node:path";
+import { merge, replace } from "../../utils.ts";
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
+import { PACKAGES_PATH } from "./const.ts";
+import { isDeno } from "./utils.ts";
 
 type Deps = Record<string, string>;
 
@@ -19,11 +21,15 @@ type Deps = Record<string, string>;
  * Gathers all dependencies required for the project based on the initializer,
  * key-value store, and message queue configurations.
  *
- * @param data - Web Framework initializer, key-value store and message queue descriptions
+ * @param data - Web Framework initializer, key-value store and
+ *               message queue descriptions
  * @returns A record of dependencies with their versions
  */
 export const getDependencies = (
-  { initializer, kv, mq, testMode }: InitCommandData,
+  { initializer, kv, mq, testMode, packageManager }: Pick<
+    InitCommandData,
+    "initializer" | "kv" | "mq" | "packageManager" | "testMode"
+  >,
 ): Deps =>
   pipe(
     {
@@ -33,7 +39,10 @@ export const getDependencies = (
     merge(initializer.dependencies),
     merge(kv.dependencies),
     merge(mq.dependencies),
-    when(always(testMode), removeFedifyDeps),
+    when(
+      always(testMode),
+      isDeno({ packageManager }) ? removeFedifyDeps : addLocalFedifyDeps,
+    ),
   );
 
 const removeFedifyDeps = (deps: Deps): Deps =>
@@ -44,14 +53,36 @@ const removeFedifyDeps = (deps: Deps): Deps =>
     fromEntries,
   );
 
-/** Gathers all devDependencies required for the project based on the initializer,
- * key-value store, and message queue configurations, including Biome for linting/formatting.
+const addLocalFedifyDeps = (deps: Deps): Deps =>
+  pipe(
+    deps,
+    entries,
+    map(when(
+      ([name]) => name.includes("@fedify/"),
+      (
+        [name, _version],
+      ): [string, string] => [name, convertFedifyToLocal(name)],
+    )),
+    fromEntries,
+  );
+
+const convertFedifyToLocal = (name: string): string =>
+  pipe(
+    name,
+    replace("@fedify/", ""),
+    (pkg) => joinPath(PACKAGES_PATH, pkg),
+  );
+
+/** Gathers all devDependencies required for the project based on the
+ * initializer, key-value store, and message queue configurations,
+ * including Biome for linting/formatting.
  *
- * @param data - Web Framework initializer, key-value store and message queue descriptions
+ * @param data - Web Framework initializer, key-value store
+ *               and message queue descriptions
  * @returns A record of devDependencies with their versions
  */
 export const getDevDependencies = (
-  { initializer, kv, mq }: InitCommandData,
+  { initializer, kv, mq }: Pick<InitCommandData, "initializer" | "kv" | "mq">,
 ): Deps =>
   pipe(
     {
@@ -63,11 +94,12 @@ export const getDevDependencies = (
   );
 
 /**
- * Generates the command-line arguments needed to add dependencies or devDependencies
- * using the specified package manager.
+ * Generates the command-line arguments needed to add dependencies
+ * or devDependencies using the specified package manager.
  * If it is devDependencies, the '-D' flag is included.
  *
- * @param param0 - Object containing the package manager and a boolean indicating if dev dependencies are to be added
+ * @param param0 - Object containing the package manager and a boolean
+ *                 indicating if dev dependencies are to be added
  * @yields The command-line arguments as strings
  */
 export function* getAddDepsArgs<
@@ -80,10 +112,12 @@ export function* getAddDepsArgs<
 
 /**
  * Joins package names with their versions for installation commands.
- * For Deno, it prefixes packages with 'jsr:' unless they already start with 'npm:'.
+ * For Deno, it prefixes packages with 'jsr:'
+ * unless they already start with 'npm:'.
  *
  * @param data - Package manager and dependencies to be joined with versions
- * @returns `${registry}:${package}@${version}`[] for deno or `${package}@${version}`[] for others
+ * @returns `${registry}:${package}@${version}`[] for deno or
+ *          `${package}@${version}`[] for others
  */
 export const joinDepsVer = <
   T extends { packageManager: PackageManager; dependencies: Deps },
@@ -95,6 +129,26 @@ export const joinDepsVer = <
       `${getPackageName(pm, name)}@${getPackageVersion(pm, version)}`
     ),
     toArray,
+  );
+
+/**
+ * Joins package names with their versions for installation dependencies.
+ * For Deno, it prefixes packages with 'jsr:'
+ * unless they already start with 'npm:'.
+ *
+ * @param data - Package manager and dependencies to be joined with versions
+ * @returns \{ name: `${registry}:${package}@${version}` } for deno
+ */
+export const joinDepsReg = (pm: PackageManager) => //
+(dependencies: Deps): Deps =>
+  pipe(
+    dependencies,
+    entries,
+    map(([name, version]): [string, string] => [
+      name,
+      `${getPackageName(pm, name)}@${getPackageVersion(pm, version)}`,
+    ]),
+    fromEntries,
   );
 
 const getPackageName = (pm: PackageManager, name: string) =>
