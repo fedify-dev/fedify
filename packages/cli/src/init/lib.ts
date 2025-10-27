@@ -202,3 +202,7 @@ const createNitroAppCommand = (pm: PackageManager): string[] =>
     : pm === "npm"
     ? ["npx"]
     : [pm, "dlx"];
+
+export const isTest: <
+  T extends { testMode: boolean },
+>({ testMode }: T) => boolean = ({ testMode }) => testMode;
