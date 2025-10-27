@@ -174,21 +174,11 @@ export const isDirectoryEmpty = async (
 
 export const getNextInitCommand = (
   pm: PackageManager,
-): string[] => [
-  ...createNextAppCommand(pm),
-  ".",
-  "--ts",
-  "--app",
-  "--biome",
-  "--skip-install",
-  "--tailwind",
-  "--src-dir",
-  "--webpack",
-];
+): string[] => [...createNextAppCommand(pm), ".", "--yes"];
 
 const createNextAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"
-    ? ["deno", "run", "-A", "npm:create-next-app@latest"]
+    ? ["deno", "-Ar", "npm:create-next-app@latest"]
     : pm === "bun"
     ? ["bun", "create", "next-app"]
     : pm === "npm"
