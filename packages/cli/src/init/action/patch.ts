@@ -1,4 +1,12 @@
-import { apply, entries, forEach, pipe, pipeLazy, tap } from "@fxts/core";
+import {
+  always,
+  apply,
+  entries,
+  forEach,
+  pipe,
+  pipeLazy,
+  tap,
+} from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
 import { formatJson, merge, set } from "../../utils.ts";
@@ -202,11 +210,6 @@ const appendText = (prev: string, data: string) =>
  * @returns The file content as string, or empty string if file doesn't exist
  * @throws Error if file access fails for reasons other than file not existing
  */
-async function readFileIfExists(path: string): Promise<string> {
-  try {
-    return await readFile(path, "utf8");
-  } catch (e) {
-    throwUnlessNotExists(e);
-    return "";
-  }
-}
+const readFileIfExists = (path: string): Promise<string> =>
+  readFile(path, "utf8")
+    .catch(pipeLazy(tap(throwUnlessNotExists), always("")));
