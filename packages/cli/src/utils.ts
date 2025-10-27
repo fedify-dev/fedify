@@ -61,6 +61,21 @@ export const isNotFoundError = (e: unknown): e is { code: "ENOENT" } =>
   "code" in e &&
   e.code === "ENOENT";
 
+export class CommandError extends Error {
+  public commandLine: string;
+  constructor(
+    message: string,
+    public stdout: string,
+    public stderr: string,
+    public code: number,
+    public command: string[],
+  ) {
+    super(message);
+    this.name = "CommandError";
+    this.commandLine = command.join(" ");
+  }
+}
+
 export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
   command: string[],
   options: Opt,
@@ -88,7 +103,17 @@ export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
           stderr: stderr.trim(),
         });
       } else {
-        reject(new Error(`Command exited with code ${code}: ${stderr.trim()}`));
+        reject(
+          new CommandError(
+            `Command exited with code ${code ?? "unknown"}${
+              stderr ? `:\n${stderr}` : ""
+            }${stdout ? `\nstdout:\n${stdout}` : ""}`,
+            stdout.trim(),
+            stderr.trim(),
+            code ?? -1,
+            command,
+          ),
+        );
       }
     });
 
