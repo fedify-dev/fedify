@@ -81,6 +81,7 @@ export const getAlias = (imports: Record<string, string>) =>
     join(", "),
   );
 
+const ENV_REG_EXP = /process\.env\.(\w+)/g;
 /**
  * Converts Node.js environment variable access to Deno-compatible syntax when needed.
  * Transforms `process.env.VAR_NAME` to `Deno.env.get("VAR_NAME")` for Deno projects.
@@ -90,6 +91,6 @@ export const getAlias = (imports: Record<string, string>) =>
  * @returns The converted object string with appropriate environment variable access syntax
  */
 export const convertEnv = (obj: string, pm: PackageManager) =>
-  pm === "deno" && /process\.env\.(\w+)/.test(obj)
-    ? obj.replaceAll(/process\.env\.(\w+)/, (_, g1) => `Deno.env.get("${g1}")`)
+  pm === "deno" && ENV_REG_EXP.test(obj)
+    ? obj.replaceAll(ENV_REG_EXP, (_, g1) => `Deno.env.get("${g1}")`)
     : obj;
