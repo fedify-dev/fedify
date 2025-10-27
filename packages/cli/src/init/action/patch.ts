@@ -181,13 +181,35 @@ async function patchContent(
  * Merges new JSON data with existing JSON content and formats the result.
  * Parses existing JSON content (if any) and deep merges it with new data,
  * then formats the result for consistent output.
+ * Supports JSONC (JSON with Comments) by removing comments before parsing.
  *
  * @param prev - The previous JSON content as string
  * @param data - The new data object to merge
  * @returns Formatted JSON string with merged content
  */
 const mergeJson = (prev: string, data: object): string =>
-  pipe(prev ? JSON.parse(prev) : {}, merge(data), formatJson);
+  pipe(
+    prev ? JSON.parse(removeJsonComments(prev)) : {},
+    merge(data),
+    formatJson,
+  );
+
+/**
+ * Removes single-line (//) and multi-line (/* *\/) comments from JSON string.
+ * This allows parsing JSONC (JSON with Comments) files.
+ *
+ * @param jsonString - The JSON string potentially containing comments
+ * @returns JSON string with comments removed
+ */
+const removeJsonComments = (jsonString: string): string => {
+  // Remove single-line comments
+  let result = jsonString.replace(/\/\/.*$/gm, "");
+  // Remove multi-line comments
+  result = result.replace(/\/\*[\s\S]*?\*\//g, "");
+  // Remove trailing commas (common in JSONC)
+  result = result.replace(/,(\s*[}\]])/g, "$1");
+  return result;
+};
 
 /**
  * Appends new text content to existing text content line by line.
