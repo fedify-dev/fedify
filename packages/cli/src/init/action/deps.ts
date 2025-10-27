@@ -43,6 +43,7 @@ export const getDependencies = (
       always(testMode),
       isDeno({ packageManager }) ? removeFedifyDeps : addLocalFedifyDeps,
     ),
+    normalizePackageNames(packageManager),
   );
 
 const removeFedifyDeps = (deps: Deps): Deps =>
@@ -153,7 +154,7 @@ export const joinDepsReg = (pm: PackageManager) => //
 
 const getPackageName = (pm: PackageManager, name: string) =>
   pm !== "deno"
-    ? name
+    ? name.startsWith("npm:") ? name.substring(4) : name
     : name.startsWith("npm:")
     ? name.substring(4)
     : !name.startsWith("npm:")
@@ -164,3 +165,14 @@ const getPackageVersion = (pm: PackageManager, version: string) =>
   pm !== "deno" && version.includes("+")
     ? version.substring(0, version.indexOf("+"))
     : version;
+
+const normalizePackageNames = (pm: PackageManager) => (deps: Deps): Deps =>
+  pipe(
+    deps,
+    entries,
+    map(([name, version]): [string, string] => [
+      getPackageName(pm, name),
+      version,
+    ]),
+    fromEntries,
+  );
