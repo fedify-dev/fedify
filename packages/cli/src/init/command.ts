@@ -3,6 +3,7 @@ import {
   choice,
   command,
   constant,
+  flag,
   type InferValue,
   message,
   multiple,
@@ -54,12 +55,12 @@ const messageQueue = optional(option(
     description: message`The message queue to use for background tasks.`,
   },
 ));
-const testMode = optional(option(
+const testMode = flag(
   "--test-mode",
   {
     description: message`The test mode to use for testing purposes.`,
   },
-));
+);
 
 export const initCommand = command(
   "init",
