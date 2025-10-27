@@ -1,7 +1,9 @@
 import { isObject } from "@fxts/core";
+import { message } from "@optique/core";
+import { print, printError } from "@optique/run";
 import { Chalk } from "chalk";
 import { highlight } from "cli-highlight";
-import { toMerged } from "es-toolkit";
+import { flow, toMerged } from "es-toolkit";
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
@@ -182,3 +184,7 @@ export function* product<T extends Iterable<unknown>[]>(
 
 export type GeneratedType<T extends Generator> = T extends
   Generator<unknown, infer R, unknown> ? R : never;
+
+type PrintMessage = (...args: Parameters<typeof message>) => void;
+export const printMessage: PrintMessage = flow(message, print);
+export const printErrorMessage: PrintMessage = flow(message, printError);
