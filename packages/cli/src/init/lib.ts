@@ -172,6 +172,16 @@ export const isDirectoryEmpty = async (
   }
 };
 
+/**
+ * Converts a package manager to its corresponding runtime.
+ * @param pm - The package manager (deno, bun, npm, yarn, pnpm)
+ * @returns The runtime name (deno, bun, or node)
+ */
+export const packageManagerToRuntime = (
+  pm: PackageManager,
+): "deno" | "bun" | "node" =>
+  pm === "deno" ? "deno" : pm === "bun" ? "bun" : "node";
+
 export const getNextInitCommand = (
   pm: PackageManager,
 ): string[] => [...createNextAppCommand(pm), ".", "--yes"];
