@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fedify",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
