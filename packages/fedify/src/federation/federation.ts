@@ -1234,6 +1234,13 @@ export interface FederationFetchOptions<TContextData> {
    * @since 0.7.0
    */
   onUnauthorized?: (request: Request) => Response | Promise<Response>;
+
+  /**
+   * Whether to require HTTP Signatures for all incoming activities.
+   * By default, this is `false`
+   * @since 2.0.0
+   */
+  requireHttpSignature?: boolean;
 }
 
 /**
