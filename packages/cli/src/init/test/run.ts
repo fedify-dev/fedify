@@ -1,6 +1,7 @@
 import { map, pipe } from "@fxts/core";
 import { join } from "node:path";
 import { createTestApp, generateTestCases } from "./create.ts";
+import { runServerAndReadUser } from "./read.ts";
 import type { InitTestData } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
@@ -16,6 +17,7 @@ export const runTests =
       generateTestCases,
       map(createTestApp(join(testDirPrefix, getMid(dryRun, hydRun, dry)), dry)),
       Array.fromAsync<string>,
+      runServerAndReadUser,
     );
 
 const getMid = (dryRun: boolean, hydRun: boolean, dry: boolean) =>
