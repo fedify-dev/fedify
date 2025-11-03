@@ -1,6 +1,4 @@
 import { filter, isEmpty, map, pipe, toArray } from "@fxts/core";
-import { message } from "@optique/core";
-import { print } from "@optique/run";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
@@ -8,6 +6,7 @@ import {
   CommandError,
   type GeneratedType,
   printErrorMessage,
+  printMessage,
   product,
   runSubCommand,
 } from "../../utils.ts";
@@ -45,7 +44,7 @@ async (
     );
 
     await saveOutputs(testDir, result);
-    print(message`Pass: ${testDir}`);
+    printMessage`Pass: ${testDir}`;
     return testDir;
   } catch (error) {
     if (error instanceof CommandError) {
@@ -59,7 +58,7 @@ async (
         : String(error);
       await saveOutputs(testDir, { stdout: "", stderr: errorMessage });
     }
-    print(message`Fail: ${testDir}`);
+    printMessage`Fail: ${testDir}`;
     return "";
   }
 };
