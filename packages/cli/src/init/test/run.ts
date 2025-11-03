@@ -1,14 +1,18 @@
-import { map, pipe, toArray } from "@fxts/core";
+import { filter, isEmpty, map, pipe, toArray } from "@fxts/core";
 import { message } from "@optique/core";
 import { print } from "@optique/run";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import process from "node:process";
 import {
   CommandError,
   type GeneratedType,
+  printErrorMessage,
   product,
   runSubCommand,
 } from "../../utils.ts";
+import packageManagers from "../json/pm.json" with { type: "json" };
+import type { PackageManager } from "../types.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
@@ -89,16 +93,41 @@ function* genInitCommand(
 
 const generateTestCases = <T extends Pick<InitTestData, MultipleOption>>(
   { webFramework, packageManager, kvStore, messageQueue }: T,
-) => product(webFramework, packageManager, kvStore, messageQueue);
+) => {
+  const pms = filterPackageManager(packageManager);
+  exitIfCasesEmpty([webFramework, pms, kvStore, messageQueue]);
+
+  return product(webFramework, pms, kvStore, messageQueue);
+};
+
+const filterPackageManager = (pm: PackageManager[]) =>
+  pipe(
+    pm,
+    filter(
+      (pm) =>
+        BANNED_PMS.includes(pm)
+          ? printErrorMessage`${packageManagers[pm]["label"]} is not \
+supported in test mode yet because ${packageManagers[pm]["label"]} don't \
+support local file dependencies properly.`
+          : true,
+    ),
+    toArray,
+  );
+
+const BANNED_PMS: PackageManager[] = ["bun", "yarn"];
+
+const exitIfCasesEmpty = (cases: string[][]): never | void => {
+  if (cases.some(isEmpty)) {
+    printErrorMessage`No test cases to run. Exiting.`;
+    process.exit(1);
+  }
+};
 
 const saveOutputs = async (
   dirPath: string,
-  {
-    stdout,
-    stderr,
-  }: { stdout: string; stderr: string },
+  { stdout, stderr }: { stdout: string; stderr: string },
 ): Promise<void> => {
   await mkdir(dirPath, { recursive: true });
-  stdout && await writeFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
-  stderr && await writeFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
+  if (stdout) await writeFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
+  if (stderr) await writeFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
 };
