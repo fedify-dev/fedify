@@ -36,7 +36,7 @@ export interface WebFrameworkInitializer {
   command?: string[];
   dependencies?: object;
   devDependencies?: object;
-  federationFile: Message;
+  federationFile: string;
   loggingFile: string;
   files?: Record<string, string>;
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;

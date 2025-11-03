@@ -90,7 +90,7 @@ export const noticeHowToRun = (
   printMessage`
 ${instruction}
     
-Start by editing the ${federationFile} file to define your federation!
+Start by editing the ${text(federationFile)} file to define your federation!
 `;
 
 export function noticeErrorWhileAddDeps(command: string[]) {
