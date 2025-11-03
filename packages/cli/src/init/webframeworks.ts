@@ -75,7 +75,8 @@ const webFrameworks: WebFrameworks = {
           ? "bun run ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 8000),
+      port: 8000,
     }),
   },
   express: {
@@ -118,7 +119,8 @@ const webFrameworks: WebFrameworks = {
           ? "bun run ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 8000),
+      port: 8000,
     }),
   },
   nitro: {
@@ -136,7 +138,8 @@ const webFrameworks: WebFrameworks = {
         "server/error.ts": readTemplate("nitro/server/error.ts"),
         "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 3000),
+      port: 3000,
     }),
   },
   next: {
@@ -150,7 +153,8 @@ const webFrameworks: WebFrameworks = {
       federationFile: "federation/index.ts",
       loggingFile: "logging.ts",
       files: { "middleware.ts": readTemplate("next/middleware.ts") },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 3000),
+      port: 3000,
     }),
   },
 } as const;
