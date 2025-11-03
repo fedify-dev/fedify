@@ -116,27 +116,6 @@ export function* getAddDepsArgs<
 }
 
 /**
- * Joins package names with their versions for installation commands.
- * For Deno, it prefixes packages with 'jsr:'
- * unless they already start with 'npm:'.
- *
- * @param data - Package manager and dependencies to be joined with versions
- * @returns `${registry}:${package}@${version}`[] for deno or
- *          `${package}@${version}`[] for others
- */
-export const joinDepsVer = <
-  T extends { packageManager: PackageManager; dependencies: Deps },
->({ packageManager: pm, dependencies }: T): string[] =>
-  pipe(
-    dependencies,
-    entries,
-    map(([name, version]) =>
-      `${getPackageName(pm, name)}@${getPackageVersion(pm, version)}`
-    ),
-    toArray,
-  );
-
-/**
  * Joins package names with their versions for installation dependencies.
  * For Deno, it prefixes packages with 'jsr:'
  * unless they already start with 'npm:' or 'jsr:'.
@@ -156,13 +135,6 @@ export const joinDepsReg = (pm: PackageManager) => //
     fromEntries,
   );
 
-const getPackageName = (pm: PackageManager, name: string) =>
-  pm !== "deno"
-    ? name.startsWith("npm:") ? name.substring(4) : name
-    : name.startsWith("npm:")
-    ? name
-    : `jsr:${name}`;
-
 const getPackageVersion = (pm: PackageManager, version: string) =>
   pm !== "deno" && version.includes("+")
     ? version.substring(0, version.indexOf("+"))
@@ -178,3 +150,13 @@ const normalizePackageNames = (pm: PackageManager) => (deps: Deps): Deps =>
     ]),
     fromEntries,
   );
+
+const getPackageName = (pm: PackageManager, name: string) =>
+  pm !== "deno"
+    ? name.startsWith("npm:")
+      ? name.replace("npm:", "") // not deno, have npm: prefix, remove it
+      : name // not deno, no prefix, keep it
+    : name.startsWith("npm:")
+    ? name // deno, have npm: prefix, keep it
+    : `jsr:${name}` // deno, no prefix, add jsr: prefix
+;
