@@ -134,6 +134,12 @@ export const replace = (
 ) =>
 (text: string): string => text.replace(pattern, replacement as string);
 
+export const replaceAll = (
+  pattern: string | RegExp,
+  replacement: string | ((substring: string, ...args: unknown[]) => string),
+) =>
+(text: string): string => text.replaceAll(pattern, replacement as string);
+
 export const getOsType = () => process.platform;
 
 export async function writeTextFile(

@@ -1,7 +1,7 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
-import { formatJson, merge, set } from "../../utils.ts";
+import { formatJson, merge, replaceAll, set } from "../../utils.ts";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import {
@@ -194,15 +194,12 @@ const mergeJson = (prev: string, data: object): string =>
  * @param jsonString - The JSON string potentially containing comments
  * @returns JSON string with comments removed
  */
-const removeJsonComments = (jsonString: string): string => {
-  // Remove single-line comments
-  let result = jsonString.replace(/\/\/.*$/gm, "");
-  // Remove multi-line comments
-  result = result.replace(/\/\*[\s\S]*?\*\//g, "");
-  // Remove trailing commas (common in JSONC)
-  result = result.replace(/,(\s*[}\]])/g, "$1");
-  return result;
-};
+const removeJsonComments = (jsonString: string): string =>
+  pipe(
+    jsonString,
+    replaceAll(/\/\/.*$/gm, ""),
+    replaceAll(/\/\*[\s\S]*?\*\//g, ""),
+  );
 
 /**
  * Appends new text content to existing text content line by line.
