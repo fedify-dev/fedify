@@ -42,12 +42,12 @@ export interface WebFrameworkInitializer {
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   tasks?: Record<string, string>;
   instruction: Message;
-  port: number;
 }
 
 export interface WebFrameworkDescription {
   label: string;
   packageManagers: readonly PackageManager[];
+  defaultPort: number;
   init(
     projectName: string,
     pm: PackageManager,
