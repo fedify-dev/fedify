@@ -76,8 +76,8 @@ const webFrameworks: WebFrameworks = {
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
       instruction: getInstruction(pm, 8000),
-      port: 8000,
     }),
+    defaultPort: 8000,
   },
   express: {
     label: "Express",
@@ -120,8 +120,8 @@ const webFrameworks: WebFrameworks = {
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
       instruction: getInstruction(pm, 8000),
-      port: 8000,
     }),
+    defaultPort: 8000,
   },
   nitro: {
     label: "Nitro",
@@ -139,8 +139,8 @@ const webFrameworks: WebFrameworks = {
         "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
       },
       instruction: getInstruction(pm, 3000),
-      port: 3000,
     }),
+    defaultPort: 3000,
   },
   next: {
     label: "Next.js",
@@ -154,8 +154,8 @@ const webFrameworks: WebFrameworks = {
       loggingFile: "logging.ts",
       files: { "middleware.ts": readTemplate("next/middleware.ts") },
       instruction: getInstruction(pm, 3000),
-      port: 3000,
     }),
+    defaultPort: 3000,
   },
 } as const;
 export default webFrameworks;
