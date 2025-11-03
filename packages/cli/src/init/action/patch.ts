@@ -1,12 +1,4 @@
-import {
-  always,
-  apply,
-  entries,
-  forEach,
-  pipe,
-  pipeLazy,
-  tap,
-} from "@fxts/core";
+import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
 import { formatJson, merge, set } from "../../utils.ts";
@@ -148,13 +140,14 @@ const processAllFiles = (
   pipe(
     files,
     entries,
-    forEach(
+    map(
       pipeLazy(
         joinDir(dir),
         apply(patchContent),
         apply(process),
       ),
     ),
+    Array.fromAsync,
   );
 
 /**
