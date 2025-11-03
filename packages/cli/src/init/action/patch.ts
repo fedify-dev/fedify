@@ -80,7 +80,9 @@ const getJsons = <
       [devToolConfigs["vscExtDeno"].path]: devToolConfigs["vscExtDeno"].data,
     }
     : {
-      "tsconfig.json": loadTsConfig(data).data,
+      ...(data.initializer.compilerOptions
+        ? { "tsconfig.json": loadTsConfig(data).data }
+        : {}),
       "package.json": loadPackageJson(data).data,
       [devToolConfigs["biome"].path]: devToolConfigs["biome"].data,
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
