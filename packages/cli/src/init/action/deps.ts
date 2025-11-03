@@ -128,7 +128,7 @@ export const joinDepsReg = (pm: PackageManager) => //
     dependencies,
     entries,
     map(([name, version]): [string, string] => [
-      name,
+      name.substring(4),
       `${name}@${getPackageVersion(pm, version)}`,
     ]),
     fromEntries,
