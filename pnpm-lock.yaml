@@ -880,12 +880,6 @@ importers:
       '@std/path':
         specifier: 'catalog:'
         version: '@jsr/std__path@1.1.2'
-      '@std/url':
-        specifier: jsr:1.0.0-rc.3
-        version: '@jsr/std__url@1.0.0-rc.3'
-      '@std/yaml':
-        specifier: jsr:^1.0.6
-        version: '@jsr/std__yaml@1.0.8'
       '@types/node':
         specifier: ^24.2.1
         version: 24.3.0
@@ -2614,17 +2608,8 @@ packages:
   '@jsr/std__internal@1.0.8':
     resolution: {integrity: sha512-C0HSkIOA4gZPhLT2YXBXYF51YTpWXWHYUgzs3PhRCVbeVpbJ3Iomghu/ylIG+SsIDGDwxUkSCvfOOveRNS/mKg==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.8.tgz}
 
-  '@jsr/std__path@1.1.0':
-    resolution: {integrity: sha512-rnxGg/nJGfDbJO+xIJ9YEzLD7dCzjr3NHShf4dbnlt44WEYNwMjg+TcDO6F2NPHBnn/6iUFwbnNzysrZvyD1Og==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.0.tgz}
-
   '@jsr/std__path@1.1.2':
     resolution: {integrity: sha512-5hkOR1s5M7am02Bn9KS+SNMNwUSivz7t7/w2HBhFIfO7Eh8+mWilaZ+1tdanV9aaSHr4c99Zo4Da+cCSuzUOdA==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.2.tgz}
-
-  '@jsr/std__url@1.0.0-rc.3':
-    resolution: {integrity: sha512-LdgttuY43p/yqvnwN6U5OZsnG4uTpu+xH4mzuH2qrHW6Jn1L+ToRL7WlCHSK2cp4of3Oit8QIwGyx1k1ay1LJQ==, tarball: https://npm.jsr.io/~/11/@jsr/std__url/1.0.0-rc.3.tgz}
-
-  '@jsr/std__yaml@1.0.8':
-    resolution: {integrity: sha512-iLe84pvIEtG7EFKxP5fIQn7CFQle7gzkb6KSPqf9zkyR2NVViSJjK8xbXg82SUEFSmpdY18qCGpVEnTG3oRMVg==, tarball: https://npm.jsr.io/~/11/@jsr/std__yaml/1.0.8.tgz}
 
   '@logtape/file@1.1.1':
     resolution: {integrity: sha512-WZb1VfAR/7dbJqv0IseGZ7SzBzzoBDoZipIADIQj+X1/cXKuwdbdILQshKwttHMQuOOE5LxWibaCo/WHfHiaOQ==}
@@ -9797,17 +9782,9 @@ snapshots:
 
   '@jsr/std__internal@1.0.8': {}
 
-  '@jsr/std__path@1.1.0': {}
-
   '@jsr/std__path@1.1.2':
     dependencies:
       '@jsr/std__internal': 1.0.10
-
-  '@jsr/std__url@1.0.0-rc.3':
-    dependencies:
-      '@jsr/std__path': 1.1.0
-
-  '@jsr/std__yaml@1.0.8': {}
 
   '@logtape/file@1.1.1(@logtape/logtape@1.1.1)':
     dependencies:
@@ -13010,7 +12987,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.5.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.5.1))
     transitivePeerDependencies:
       - supports-color
 
