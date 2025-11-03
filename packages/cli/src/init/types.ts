@@ -42,6 +42,7 @@ export interface WebFrameworkInitializer {
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   tasks?: Record<string, string>;
   instruction: Message;
+  port: number;
 }
 
 export interface WebFrameworkDescription {

@@ -110,7 +110,8 @@ export const readTemplate: (templatePath: string) => string = (
 
 export const getInstruction: (
   packageManager: PackageManager,
-) => Message = (pm) =>
+  port: number,
+) => Message = (pm, port) =>
   message`
 To start the server, run the following command:
 
@@ -118,7 +119,7 @@ To start the server, run the following command:
 
 Then, try look up an actor from your server:
 
-  ${commandLine("fedify lookup http://localhost:8000/users/john")}
+  ${commandLine(`fedify lookup http://localhost:${port}/users/john`)}
 
 `;
 
