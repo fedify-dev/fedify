@@ -123,7 +123,7 @@ Then, try look up an actor from your server:
 
 `;
 
-const getDevCommand = (pm: PackageManager) =>
+export const getDevCommand = (pm: PackageManager) =>
   pm === "deno" ? "deno task dev" : pm === "bun" ? "bun dev" : `${pm} run dev`;
 
 async function isCommandAvailable(
