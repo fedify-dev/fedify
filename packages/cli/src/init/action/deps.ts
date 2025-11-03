@@ -5,7 +5,6 @@ import {
   fromEntries,
   map,
   pipe,
-  toArray,
   when,
 } from "@fxts/core";
 import { join as joinPath } from "node:path";
