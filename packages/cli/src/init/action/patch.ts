@@ -53,7 +53,7 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 const getFiles = <
   T extends InitCommandData,
 >(data: T) => ({
-  [data.initializer.federationFile.toString()]: loadFederation({
+  [data.initializer.federationFile]: loadFederation({
     imports: getImports(data),
     ...data,
   }),
