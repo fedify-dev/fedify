@@ -1,7 +1,6 @@
-import { message } from "@optique/core";
-import { print } from "@optique/run";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { printMessage } from "../../utils.ts";
 
 export const genRunId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -17,6 +16,6 @@ export const emptyTestDir = <
 export const logTestDir = <
   T extends { runId: string; testDirPrefix: string },
 >({ runId, testDirPrefix }: T) =>
-  print(message`Test run completed.
+  printMessage`Test run completed.
 Run ID: ${runId}
-Path: ${testDirPrefix}`);
+Path: ${testDirPrefix}`;
