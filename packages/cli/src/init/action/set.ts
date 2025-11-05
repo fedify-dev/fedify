@@ -11,7 +11,6 @@ import type {
   KvStoreDescription,
   MessageQueue,
   MessageQueueDescription,
-  PackageManager,
 } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
