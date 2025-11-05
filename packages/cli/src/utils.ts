@@ -140,9 +140,7 @@ const runSingularCommand = (
       } else {
         reject(
           new CommandError(
-            `Command exited with code ${code ?? "unknown"}${
-              stderr ? `:\n${stderr}` : ""
-            }${stdout ? `\nstdout:\n${stdout}` : ""}`,
+            `Command exited with code ${code ?? "unknown"}`,
             stdout.trim(),
             stderr.trim(),
             code ?? -1,
