@@ -55,7 +55,7 @@ const messageQueue = optional(option(
     description: message`The message queue to use for background tasks.`,
   },
 ));
-const testMode = flag(
+const testMode = option(
   "--test-mode",
   {
     description: message`The test mode to use for testing purposes.`,
