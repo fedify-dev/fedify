@@ -3,7 +3,7 @@ import { optionNames } from "@optique/core";
 import { join } from "node:path";
 import { printMessage } from "../../utils.ts";
 import { createTestApp, generateTestCases } from "./create.ts";
-import runServerAndReadUser from "./read.ts";
+import runServerAndReadUser from "./lookup.ts";
 import type { InitTestData } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
