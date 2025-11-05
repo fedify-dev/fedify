@@ -1,9 +1,7 @@
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { integrateHandler } from "@fedify/fresh";
-import { define, type State } from "../utils.ts";
 
 // Create the federation instance
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 
@@ -12,7 +10,7 @@ federation
   .setNodeInfoDispatcher("/nodeinfo/2.1", () => {
     return {
       software: {
-        name: "your-software-name", // Lowercase, digits, and hyphens only.
+        name: "fresh-example", // Lowercase, digits, and hyphens only.
         version: "1.0.0",
         homepage: new URL("https://your-software.com/"),
       },
@@ -26,8 +24,3 @@ federation
       },
     };
   });
-
-// Export the middleware
-export default define.middleware(
-  integrateHandler<void, State>(federation, () => undefined),
-);
