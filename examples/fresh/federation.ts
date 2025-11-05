@@ -5,7 +5,7 @@ export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 
-//federation example
+// Set up a NodeInfo dispatcher for the federation instance
 federation
   .setNodeInfoDispatcher("/nodeinfo/2.1", () => {
     return {
