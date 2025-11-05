@@ -23,7 +23,8 @@ import { joinDir, stringifyEnvs } from "./utils.ts";
  * Handles both dry-run mode (recommending files) and actual file creation.
  * Orchestrates the entire file generation and writing process.
  *
- * @param data - The initialization command data containing project configuration
+ * @param data - The initialization command data containing project
+ *               configuration
  * @returns A processed data object with files and JSONs ready for creation
  */
 export const patchFiles = (data: InitCommandData) =>
@@ -44,8 +45,9 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 
 /**
  * Generates text-based files (TypeScript, environment files) for the project.
- * Creates federation configuration, logging setup, environment variables, and framework-specific files
- * by processing templates and combining them with project-specific data.
+ * Creates federation configuration, logging setup, environment variables, and
+ * framework-specific files by processing templates and combining them with
+ * project-specific data.
  *
  * @param data - The initialization command data
  * @returns A record of file paths to their string content
@@ -64,8 +66,9 @@ const getFiles = <
 
 /**
  * Generates JSON configuration files based on the package manager type.
- * Creates different sets of configuration files for Deno vs Node.js/Bun environments,
- * including compiler configs, package manifests, and development tool configurations.
+ * Creates different sets of configuration files for Deno vs other environments,
+ * including compiler configs, package manifests, and development
+ * tool configurations.
  *
  * @param data - The initialization command data
  * @returns A record of file paths to their JSON object content
@@ -90,9 +93,10 @@ const getJsons = <
     };
 
 /**
- * Handles dry-run mode by recommending files to be created without actually creating them.
- * Displays what files would be created and shows their content for user review.
- * This allows users to preview the initialization process before committing to it.
+ * Handles dry-run mode by recommending files to be created without actually
+ * creating them.
+ * Displays what files would be created and shows their content for user review,
+ * so users can preview the initialization process before committing to it.
  *
  * @param data - The initialization command data with files and JSONs prepared
  * @returns The processed data with recommendations displayed
@@ -108,7 +112,7 @@ const recommendFiles = (data: InitCommandWithFiles) =>
   );
 
 /**
- * Actually creates files on the filesystem during normal (non-dry-run) execution.
+ * Actually creates files on the filesystem during normal execution.
  * Merges text files and JSON files together and writes them to disk.
  * This performs the actual file system operations to initialize the project.
  *
@@ -128,8 +132,8 @@ interface InitCommandWithFiles extends InitCommandData {
 }
 
 /**
- * Higher-order function that processes all files with a given processing function.
- * Takes a processing function (either display or create) and applies it to all files
+ * Processes all files with a given processing function.
+ * Takes a processor (either display or create) and applies it to all files
  * in the target directory, handling path resolution and content patching.
  *
  * @param process - Function to process each file (either display or create)
@@ -153,9 +157,9 @@ const processAllFiles = (
   );
 
 /**
- * Patches file content by either merging JSON objects or appending text content.
- * Handles existing files by reading their current content and intelligently combining
- * it with new content based on the content type (JSON vs text).
+ * Patches file content by either merging JSON or appending text content.
+ * Handles existing files by reading their current content and intelligently
+ * combining it with new content based on the content type (JSON vs text).
  *
  * @param path - The file path to patch
  * @param content - The new content (either string or object)
