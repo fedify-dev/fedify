@@ -800,6 +800,20 @@ deno add jsr:@fedify/fresh
 > });
 > ~~~~
 
+> [!WARNING]
+> Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable` to `compilerOptions.libs` field of `deno.json`.
+> ~~~~json
+>  "compilerOptions": {
+>    "lib": [
+>      "dom",
+>      "dom.asynciterable",
+>      "dom.iterable",
+>      "deno.ns",
+>      "deno.unstable"
+>    ],
+> ...
+> ~~~~
+
 Put the following code in your *routes/_middleware.ts* file:
 
 ~~~~ typescript [_middelware.ts]
