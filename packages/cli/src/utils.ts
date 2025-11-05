@@ -76,18 +76,53 @@ export class CommandError extends Error {
   }
 }
 
-export const runSubCommand = <Opt extends Parameters<typeof spawn>[2]>(
+export const runSubCommand = async <Opt extends Parameters<typeof spawn>[2]>(
   command: string[],
   options: Opt,
 ): Promise<{
   stdout: string;
   stderr: string;
-}> =>
-  new Promise((resolve, reject) => {
-    const child = spawn(command[0], command.slice(1), options);
+}> => {
+  const commands = // split by "&&"
+    command.reduce<string[][]>((acc, cur) => {
+      if (cur === "&&") {
+        acc.push([]);
+      } else {
+        if (acc.length === 0) acc.push([]);
+        acc[acc.length - 1].push(cur);
+      }
+      return acc;
+    }, []);
 
+  const results = { stdout: "", stderr: "" };
+
+  for (const cmd of commands) {
+    try {
+      const result = await runSingularCommand(cmd, options);
+      results.stdout += (results.stdout ? "\n" : "") + result.stdout;
+      results.stderr += (results.stderr ? "\n" : "") + result.stderr;
+    } catch (e) {
+      if (e instanceof CommandError) {
+        results.stdout += (results.stdout ? "\n" : "") + e.stdout;
+        results.stderr += (results.stderr ? "\n" : "") + e.stderr;
+      }
+      throw e;
+    }
+  }
+  return results;
+};
+
+const runSingularCommand = (
+  command: string[],
+  options: Parameters<typeof spawn>[2],
+) =>
+  new Promise<{
+    stdout: string;
+    stderr: string;
+  }>((resolve, reject) => {
     let stdout = "";
     let stderr = "";
+    const child = spawn(command[0], command.slice(1), options);
 
     child.stdout?.on("data", (data) => {
       stdout += data.toString();
