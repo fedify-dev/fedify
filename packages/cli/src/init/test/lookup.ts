@@ -62,9 +62,15 @@ async function testApp(dir: string): Promise<boolean> {
     sendLookup(port),
   );
 
-  printMessage`    Lookup ${result ? "successful" : ("failed")} for ${
+  printMessage`    Lookup ${result ? "successful" : "failed"} for ${
     values([wf, pm, kv, mq])
-  }!\n`;
+  }!`;
+  if (!result) {
+    printMessage`    Check out these files for more details:
+      ${join(dir, "out.txt")}
+      ${join(dir, "err.txt")}\n`;
+  }
+  printMessage`\n`;
 
   return result;
 }
