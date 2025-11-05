@@ -1,3 +1,4 @@
+import { values } from "@optique/core";
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { join, sep } from "node:path";
@@ -24,33 +25,46 @@ const CWD = process.cwd();
 export default async function runServerAndReadUser(
   dirs: string[],
 ): Promise<void> {
-  printMessage`Testing ${String(dirs.length)} app(s)...`;
+  const filtered = dirs.filter(Boolean);
+  if (filtered.length === 0) {
+    printErrorMessage`\nNo valid directories to test.`;
+    return;
+  }
 
-  const results = await Array.fromAsync(dirs, testApp);
+  printMessage`\nLookup Test start for ${String(filtered.length)} app(s)!`;
+
+  const results = await Array.fromAsync(filtered, testApp);
 
   const successCount = results.filter(Boolean).length;
   const failCount = results.length - successCount;
 
-  printMessage`Test Results:
+  printMessage`Lookup Test Results:
   Total: ${String(results.length)}
   Passed: ${String(successCount)}
-  Failed: ${String(failCount)}`;
+  Failed: ${String(failCount)}\n\n`;
 }
 
 /**
  * Run the dev server and test with lookup command.
  */
 async function testApp(dir: string): Promise<boolean> {
-  const [wf, pm] = dir.split(sep).slice(-4) as //
+  const [wf, pm, kv, mq] = dir.split(sep).slice(-4) as //
   [WebFramework, PackageManager, KvStore, MessageQueue];
 
-  printMessage`Testing ${dir}...`;
+  printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
 
   const devCommand = getDevCommand(pm);
-  const port = webFrameworks[wf].defaultPort;
-  const result = await serverClosure(dir, devCommand, sendLookup(port));
 
-  printMessage`Lookup ${result ? "successful" : "failed"} for ${dir}`;
+  const port = webFrameworks[wf].defaultPort;
+  const result = await serverClosure(
+    dir,
+    devCommand,
+    sendLookup(port),
+  );
+
+  printMessage`    Lookup ${result ? "successful" : ("failed")} for ${
+    values([wf, pm, kv, mq])
+  }!\n`;
 
   return result;
 }
@@ -59,15 +73,17 @@ const sendLookup = (port: number) => async () => {
   const serverUrl = `http://localhost:${port}`;
   const lookupTarget = `${serverUrl}/users/${HANDLE}`;
   // Wait for server to be ready
-  printMessage`Waiting for server to start at ${serverUrl}...`;
+  printMessage`    Waiting for server to start at ${serverUrl}...`;
+
   const isReady = await waitForServer(serverUrl, STARTUP_TIMEOUT);
 
   if (!isReady) {
-    printErrorMessage`Server did not start within ${String(STARTUP_TIMEOUT)}ms`;
+    printErrorMessage`Server did not start within \
+${String(STARTUP_TIMEOUT)}ms`;
     return false;
   }
 
-  printMessage`Server is ready. Running lookup command...`;
+  printMessage`    Server is ready. Running lookup command...`;
 
   // Run lookup command from original directory
   try {
@@ -79,7 +95,7 @@ const sendLookup = (port: number) => async () => {
     return true;
   } catch (error) {
     if (error instanceof Error) {
-      printErrorMessage`Error: ${error.message}`;
+      printErrorMessage`${error.message}`;
     }
   }
   return false;

@@ -1,6 +1,7 @@
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
+import { values } from "@optique/core";
 import { appendFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import process from "node:process";
 import {
   CommandError,
@@ -19,6 +20,7 @@ async (
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): Promise<string> => {
   const testDir = join(testDirPrefix, ...options);
+  const vals = values(testDir.split(sep).slice(-4));
   try {
     const result = await runSubCommand(
       toArray(genInitCommand(testDir, dry, options)),
@@ -29,7 +31,7 @@ async (
     );
 
     await saveOutputs(testDir, result);
-    printMessage`Pass: ${testDir}`;
+    printMessage`  Pass: ${vals}`;
     return testDir;
   } catch (error) {
     if (error instanceof CommandError) {
@@ -43,7 +45,7 @@ async (
         : String(error);
       await saveOutputs(testDir, { stdout: "", stderr: errorMessage });
     }
-    printMessage`Fail: ${testDir}`;
+    printMessage`  Fail: ${vals}`;
     return "";
   }
 };
