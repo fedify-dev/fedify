@@ -45,20 +45,8 @@ const setProjectName = set(
 );
 
 const setInitializer = set("initializer", <
-  T extends {
-    webFramework: keyof typeof webFrameworks;
-    projectName: string;
-    packageManager: PackageManager;
-  },
->({
-  webFramework,
-  projectName,
-  packageManager,
-}: T) =>
-  webFrameworks[webFramework].init(
-    projectName,
-    packageManager,
-  ));
+  T extends InitCommandOptions & { projectName: string },
+>(data: T) => webFrameworks[data.webFramework].init(data));
 
 const setKv = set("kv", <
   T extends { kvStore: KvStore },
