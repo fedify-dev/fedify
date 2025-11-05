@@ -5119,6 +5119,11 @@
           ]
         }
       },
+      "packages/fresh": {
+        "dependencies": [
+          "jsr:@fresh/core@^2.1.4"
+        ]
+      },
       "packages/hono": {
         "dependencies": [
           "jsr:@std/assert@^1.0.13"
