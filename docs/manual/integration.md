@@ -802,7 +802,7 @@ deno add jsr:@fedify/fresh
 
 Put the following code in your *routes/_middleware.ts* file:
 
-~~~~ typescript
+~~~~ typescript [_middelware.ts]
 import { createFederation } from "@fedify/fedify";
 import { integrateHandler } from "@fedify/fresh";
 import { define } from "../utils.ts";
@@ -817,22 +817,21 @@ export default define.middleware(
 );
 ~~~~
 
-Or you can use `app.use()` to register the middleware:
+Or you can use `app.use()` in your `main.ts` to register the middleware globally:
 
-~~~~ typescript
+~~~~ typescript [main.ts]
+import { App } from "fresh";
 import { createFederation } from "@fedify/fedify";
 import { integrateHandler } from "@fedify/fresh";
 import { define } from "./utils.ts";
-
+const app = new App();
 const federation = createFederation<void>({
   // Omitted for brevity; see the related section for details.
 });
-
 // This is the entry point to the Fedify middleware from the Fresh framework:
 const fedifyMiddleware = define.middleware(
   integrateHandler(federation, () => undefined),
 );
-
 app.use(fedifyMiddleware);
 ~~~~
 
