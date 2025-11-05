@@ -126,7 +126,7 @@ const webFrameworks: WebFrameworks = {
   nitro: {
     label: "Nitro",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ packageManager: pm }) => ({
+    init: ({ packageManager: pm, testMode }) => ({
       command: getNitroInitCommand(pm),
       dependencies: { "@fedify/h3": PACKAGE_VERSION },
       federationFile: "server/federation.ts",
@@ -137,6 +137,9 @@ const webFrameworks: WebFrameworks = {
         ),
         "server/error.ts": readTemplate("nitro/server/error.ts"),
         "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
+        ...(
+          testMode ? { ".env": readTemplate("nitro/.env.test") } : {}
+        ),
       },
       instruction: getInstruction(pm, 3000),
     }),

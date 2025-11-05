@@ -5,7 +5,7 @@ export default defineNitroConfig({
   errorHandler: "~/error",
   esbuild: {
     options: {
-      target: "es2020",
+      target: "esnext",
     },
   },
   compatibilityDate: "latest",
