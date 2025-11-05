@@ -203,6 +203,10 @@ export const getNitroInitCommand = (
   pm === "deno" ? "npm:giget@latest" : "giget@latest",
   "nitro",
   ".",
+  "&&",
+  "rm",
+  "nitro.config.ts", // Remove default nitro config file
+  // This file will be created from template
 ];
 
 const createNitroAppCommand = (pm: PackageManager): string[] =>
