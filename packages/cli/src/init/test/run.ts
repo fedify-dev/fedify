@@ -1,7 +1,7 @@
 import { map, pipe } from "@fxts/core";
 import { join } from "node:path";
 import { createTestApp, generateTestCases } from "./create.ts";
-import { runServerAndReadUser } from "./read.ts";
+import runServerAndReadUser from "./read.ts";
 import type { InitTestData } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
