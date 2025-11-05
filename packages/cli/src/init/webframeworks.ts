@@ -15,7 +15,7 @@ const webFrameworks: WebFrameworks = {
   hono: {
     label: "Hono",
     packageManagers: PACKAGE_MANAGER,
-    init: (projectName, pm) => ({
+    init: ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
           "@std/dotenv": "^0.225.2",
@@ -82,7 +82,7 @@ const webFrameworks: WebFrameworks = {
   express: {
     label: "Express",
     packageManagers: ["bun", "npm", "yarn", "pnpm"] as const,
-    init: (projectName, pm) => ({
+    init: ({ projectName, packageManager: pm }) => ({
       dependencies: {
         express: "^4.19.2",
         "@fedify/express": PACKAGE_VERSION,
@@ -126,7 +126,7 @@ const webFrameworks: WebFrameworks = {
   nitro: {
     label: "Nitro",
     packageManagers: PACKAGE_MANAGER,
-    init: (_, pm) => ({
+    init: ({ packageManager: pm }) => ({
       command: getNitroInitCommand(pm),
       dependencies: { "@fedify/h3": PACKAGE_VERSION },
       federationFile: "server/federation.ts",
@@ -145,7 +145,7 @@ const webFrameworks: WebFrameworks = {
   next: {
     label: "Next.js",
     packageManagers: PACKAGE_MANAGER,
-    init: (_, pm) => ({
+    init: ({ packageManager: pm }) => ({
       label: "Next.js",
       command: getNextInitCommand(pm),
       dependencies: { "@fedify/next": PACKAGE_VERSION },

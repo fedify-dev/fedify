@@ -49,8 +49,7 @@ export interface WebFrameworkDescription {
   packageManagers: readonly PackageManager[];
   defaultPort: number;
   init(
-    projectName: string,
-    pm: PackageManager,
+    data: InitCommandOptions & { projectName: string },
   ): WebFrameworkInitializer;
 }
 
