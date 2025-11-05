@@ -1,5 +1,5 @@
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
-import { mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
 import {
@@ -109,6 +109,6 @@ const saveOutputs = async (
   { stdout, stderr }: { stdout: string; stderr: string },
 ): Promise<void> => {
   await mkdir(dirPath, { recursive: true });
-  if (stdout) await writeFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
-  if (stderr) await writeFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
+  if (stdout) await appendFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
+  if (stderr) await appendFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
 };
