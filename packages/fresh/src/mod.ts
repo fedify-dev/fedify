@@ -2,8 +2,8 @@ import type { Federation, FederationFetchOptions } from "@fedify/fedify";
 import type { Context, Middleware } from "fresh";
 
 /**
- * Creates federation fetch options for Fresh 2.0 context.
- * Handles 404 and 406 responses by delegating to Fresh's routing system.
+ * Creates federation fetch options for a Fresh context, which configures how
+ * `federation.fetch` delegates to Fresh's routing system.
  */
 export function integrateFetchOptions<TState>(
   ctx: Context<TState>,
