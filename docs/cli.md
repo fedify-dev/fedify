@@ -120,10 +120,8 @@ fedify init my-fedify-project
 The above command will start the interactive prompt to initialize a new Fedify
 project.  It will ask you a few questions to set up the project:
 
- -  JavaScript runtime: [Deno], [Bun], or [Node.js]
- -  Package manager (if Node.js): [npm], [pnpm], or [Yarn]
- -  Web framework: Bare-bones, [Fresh] (if Deno), [Hono], [Express] (unless
-    Deno), or [Nitro] (unless Deno)
+ -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
+ -  Web framework: [Hono], [Express], [Nitro], or [Next.js] 
  -  key–value store: In-memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
  -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
@@ -138,6 +136,7 @@ interactive prompts:
 [Hono]: https://hono.dev/
 [Express]: https://expressjs.com/
 [Nitro]: https://nitro.unjs.io/
+[Next.js]: https://nextjs.org/
 [Redis]: https://redis.io/
 [PostgreSQL]: https://www.postgresql.org/
 [AMQP]: https://www.amqp.org/
