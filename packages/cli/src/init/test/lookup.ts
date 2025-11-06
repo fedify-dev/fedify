@@ -18,6 +18,7 @@ import webFrameworks from "../webframeworks.ts";
 const HANDLE = "john";
 const STARTUP_TIMEOUT = 30000; // 30 seconds
 const CWD = process.cwd();
+const BANNED_WFS: WebFramework[] = ["next"];
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -27,11 +28,12 @@ const CWD = process.cwd();
 export default async function runServerAndReadUser(
   dirs: string[],
 ): Promise<void> {
-  const filtered = dirs.filter(Boolean);
-  if (filtered.length === 0) {
+  const valid = dirs.filter(Boolean);
+  if (valid.length === 0) {
     printErrorMessage`\nNo directories to lookup test.`;
     return;
   }
+  const filtered = filterWebFrameworks(valid);
 
   printMessage`\nLookup Test start for ${String(filtered.length)} app(s)!`;
 
@@ -44,6 +46,25 @@ export default async function runServerAndReadUser(
   Total: ${String(results.length)}
   Passed: ${String(successCount)}
   Failed: ${String(failCount)}\n\n`;
+}
+
+function filterWebFrameworks(
+  dirs: string[],
+): string[] {
+  const wfs = new Set<WebFramework>(
+    dirs.map((dir) => dir.split(sep).slice(-4, -3)[0] as WebFramework),
+  );
+  const hasBanned = BANNED_WFS.filter((wf) => wfs.has(wf));
+  if (!hasBanned) {
+    return dirs;
+  }
+  const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
+  printErrorMessage`\n${
+    values(bannedLabels)
+  } is not supported in test mode yet.`;
+  return dirs.filter((dir) =>
+    !BANNED_WFS.includes(dir.split(sep).slice(-4, -3)[0] as WebFramework)
+  );
 }
 
 /**
