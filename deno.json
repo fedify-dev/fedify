@@ -10,6 +10,7 @@
     "./packages/h3",
     "./packages/hono",
     "./packages/koa",
+    "./packages/lint",
     "./packages/postgres",
     "./packages/redis",
     "./packages/relay",
