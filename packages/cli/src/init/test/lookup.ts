@@ -27,7 +27,7 @@ export default async function runServerAndReadUser(
 ): Promise<void> {
   const filtered = dirs.filter(Boolean);
   if (filtered.length === 0) {
-    printErrorMessage`\nNo valid directories to test.`;
+    printErrorMessage`\nNo directories to lookup test.`;
     return;
   }
 
@@ -140,6 +140,7 @@ async function serverClosure<T>(
   const serverProcess = spawn(devCommand[0], devCommand.slice(1), {
     cwd: dir,
     stdio: ["ignore", "pipe", "pipe"],
+    detached: true, // Create a new process group
   });
 
   // Append stdout and stderr to files
@@ -152,8 +153,13 @@ async function serverClosure<T>(
   try {
     return await callback();
   } finally {
-    // Clean up: kill the server process
-    serverProcess.kill("SIGTERM");
+    if (serverProcess.pid) {
+      try {
+        process.kill(-serverProcess.pid, "SIGKILL");
+      } catch {
+        serverProcess.kill("SIGKILL");
+      }
+    }
 
     // Close file streams
     outStream.end();
