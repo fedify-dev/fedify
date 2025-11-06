@@ -84,7 +84,7 @@ const webFrameworks: WebFrameworks = {
     packageManagers: ["bun", "npm", "yarn", "pnpm"] as const,
     init: ({ projectName, packageManager: pm }) => ({
       dependencies: {
-        express: "^4.19.2",
+        "npm:express": "^4.19.2",
         "@fedify/express": PACKAGE_VERSION,
         ...(pm !== "deno" && pm !== "bun"
           ? { "@dotenvx/dotenvx": "^1.14.1", tsx: "^4.17.0" }
@@ -114,9 +114,13 @@ const webFrameworks: WebFrameworks = {
       tasks: {
         "dev": pm === "bun"
           ? "bun run --hot ./src/index.ts"
+          : pm === "deno"
+          ? "deno run --allow-net --allow-env --allow-sys --watch ./src/index.ts"
           : "dotenvx run -- tsx watch ./src/index.ts",
         "prod": pm === "bun"
           ? "bun run ./src/index.ts"
+          : pm === "deno"
+          ? "deno run --allow-net --allow-env --allow-sys ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
       instruction: getInstruction(pm, 8000),
