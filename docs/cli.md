@@ -229,6 +229,15 @@ different configurations before making a decision.
 
 *This command is available since Fedify 2.0.0.*
 
+> [!WARNING]
+> `bun`, `yarn` runtime and `Next.js` web framework are not supported in this 
+> command yet.
+
+> [!NOTE]
+> You need to install and run Redis server, PostgreSQL server, or RabbitMQ
+> server locally to test those integrations.
+
+
 The `fedify test-init` command is used to test the `fedify init` command.
 It creates a temporary Fedify project with various combinations of options and
 tests the server using `lookup` command.  This command is for contributors who make integration with various frameworks.
