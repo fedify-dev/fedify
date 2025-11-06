@@ -1,8 +1,10 @@
 import { values } from "@optique/core";
+import type { ChildProcessByStdio } from "node:child_process";
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { join, sep } from "node:path";
 import process from "node:process";
+import type Stream from "node:stream";
 import { printErrorMessage, printMessage, runSubCommand } from "../../utils.ts";
 import { getDevCommand } from "../lib.ts";
 import type {
@@ -53,13 +55,10 @@ async function testApp(dir: string): Promise<boolean> {
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
 
-  const devCommand = getDevCommand(pm);
-
-  const port = webFrameworks[wf].defaultPort;
   const result = await serverClosure(
     dir,
-    devCommand,
-    sendLookup(port),
+    getDevCommand(pm),
+    sendLookup,
   );
 
   printMessage`    Lookup ${result ? "successful" : "failed"} for ${
@@ -75,7 +74,7 @@ async function testApp(dir: string): Promise<boolean> {
   return result;
 }
 
-const sendLookup = (port: number) => async () => {
+const sendLookup = async (port: number) => {
   const serverUrl = `http://localhost:${port}`;
   const lookupTarget = `${serverUrl}/users/${HANDLE}`;
   // Wait for server to be ready
@@ -133,7 +132,7 @@ async function waitForServer(url: string, timeout: number): Promise<boolean> {
 async function serverClosure<T>(
   dir: string,
   cmd: string,
-  callback: () => Promise<T>,
+  callback: (port: number) => Promise<T>,
 ): Promise<Awaited<T>> {
   // Start the dev server using Node.js spawn
   const devCommand = cmd.split(" ");
@@ -144,25 +143,90 @@ async function serverClosure<T>(
   });
 
   // Append stdout and stderr to files
-  const outStream = createWriteStream(join(dir, "out.txt"), { flags: "a" });
-  const errStream = createWriteStream(join(dir, "err.txt"), { flags: "a" });
+  const stdout = createWriteStream(join(dir, "out.txt"), { flags: "a" });
+  const stderr = createWriteStream(join(dir, "err.txt"), { flags: "a" });
 
-  serverProcess.stdout?.pipe(outStream);
-  serverProcess.stderr?.pipe(errStream);
+  serverProcess.stdout?.pipe(stdout);
+  serverProcess.stderr?.pipe(stderr);
 
   try {
-    return await callback();
+    const port = await determinePort(serverProcess);
+    return await callback(port);
   } finally {
-    if (serverProcess.pid) {
-      try {
-        process.kill(-serverProcess.pid, "SIGKILL");
-      } catch {
-        serverProcess.kill("SIGKILL");
-      }
-    }
+    try {
+      process.kill(-serverProcess.pid!, "SIGKILL");
+    } catch {
+      serverProcess.kill("SIGKILL");
 
-    // Close file streams
-    outStream.end();
-    errStream.end();
+      // Close file streams
+      stdout.end();
+      stderr.end();
+    }
   }
+}
+
+function determinePort(
+  server: ChildProcessByStdio<null, Stream.Readable, Stream.Readable>,
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout: Could not determine port from server output"),
+      );
+    }, STARTUP_TIMEOUT);
+
+    let stdoutData = "";
+    let stderrData = "";
+
+    // Common patterns for port detection
+    const portPatterns = [
+      /listening on.*:(\d+)/i,
+      /server.*:(\d+)/i,
+      /port\s*:?\s*(\d+)/i,
+      /localhost:(\d+)/i,
+      /0\.0\.0\.0:(\d+)/i,
+      /127\.0\.0\.1:(\d+)/i,
+      /https?:\/\/[^:]+:(\d+)/i,
+    ];
+
+    const checkForPort = (data: string) => {
+      for (const pattern of portPatterns) {
+        const match = data.match(pattern);
+        if (match && match[1]) {
+          const port = Number.parseInt(match[1], 10);
+          if (port > 0 && port < 65536) {
+            clearTimeout(timeout);
+            return port;
+          }
+        }
+      }
+      return null;
+    };
+
+    server.stdout.on("data", (chunk) => {
+      stdoutData += chunk.toString();
+      const port = checkForPort(stdoutData);
+      if (port) resolve(port);
+    });
+
+    server.stderr.on("data", (chunk) => {
+      stderrData += chunk.toString();
+      const port = checkForPort(stderrData);
+      if (port) resolve(port);
+    });
+
+    server.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    server.on("exit", (code) => {
+      clearTimeout(timeout);
+      reject(
+        new Error(
+          `Server exited with code ${code} before port could be determined`,
+        ),
+      );
+    });
+  });
 }
