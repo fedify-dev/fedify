@@ -81,7 +81,7 @@ const webFrameworks: WebFrameworks = {
   },
   express: {
     label: "Express",
-    packageManagers: ["bun", "npm", "yarn", "pnpm"] as const,
+    packageManagers: PACKAGE_MANAGER,
     init: ({ projectName, packageManager: pm }) => ({
       dependencies: {
         "npm:express": "^4.19.2",
