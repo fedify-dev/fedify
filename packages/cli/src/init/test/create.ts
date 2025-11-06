@@ -12,10 +12,19 @@ import {
   runSubCommand,
 } from "../../utils.ts";
 import packageManagers from "../json/pm.json" with { type: "json" };
-import type { PackageManager } from "../types.ts";
+import { kvStores, messageQueues } from "../lib.ts";
+import type {
+  KvStore,
+  MessageQueue,
+  PackageManager,
+  WebFramework,
+} from "../types.ts";
+import webFrameworks from "../webframeworks.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
 
-export const createTestApp = (testDirPrefix: string, dry: boolean) =>
+const BANNED_PMS: PackageManager[] = ["bun", "yarn"];
+
+const createTestApp = (testDirPrefix: string, dry: boolean) =>
 async (
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): Promise<string> => {
@@ -49,6 +58,8 @@ async (
     return "";
   }
 };
+
+export default createTestApp;
 
 function* genInitCommand(
   testDir: string,
@@ -97,8 +108,6 @@ support local file dependencies properly.`
     toArray,
   );
 
-const BANNED_PMS: PackageManager[] = ["bun", "yarn"];
-
 const exitIfCasesEmpty = (cases: string[][]): never | void => {
   if (cases.some(isEmpty)) {
     printErrorMessage`No test cases to run. Exiting.`;
@@ -114,3 +123,15 @@ const saveOutputs = async (
   if (stdout) await appendFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
   if (stderr) await appendFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
 };
+
+export function filterOptions(
+  options: GeneratedType<ReturnType<typeof generateTestCases>>,
+): boolean {
+  const [wf, pm, kv, mq] = options as //
+  [WebFramework, PackageManager, KvStore, MessageQueue];
+  return [
+    webFrameworks[wf].packageManagers,
+    kvStores[kv].packageManagers,
+    messageQueues[mq].packageManagers,
+  ].every((pms) => pms.includes(pm));
+}
