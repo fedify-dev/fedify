@@ -225,6 +225,64 @@ This option works with all other initialization options, allowing you to preview
 different configurations before making a decision.
 
 
+`fedify test-init`: Testing ActivityPub initialization
+------------------------------------------------------
+
+*This command is available since Fedify 2.0.0.*
+
+The `fedify test-init` command is used to test the `fedify init` command.
+It creates a temporary Fedify project with various combinations of options and
+tests the server using `lookup` command.  This command is for contributors who make integration with various frameworks.
+
+~~~~ sh
+fedify test-init
+~~~~
+
+The above command will start testing the `fedify init` command with various 
+combinations of options and configurations. It will create temporary 
+directories for each test case, initialize a Fedify project with the specified 
+options, start the server, and run the `fedify lookup` command to verify that 
+the server is functioning correctly.
+
+If you want to test a specific combination of options, you can specify them
+with `fedify init` options. For example, the below command tests the `fedify
+init` command with Deno runtime and Hono web framework:
+
+~~~~ sh
+fedify test-init -r deno -w hono
+~~~~
+
+If you do not specify some options, it will test all the available options for 
+those. So the above command will test all combinations of key–value stores and 
+message queues with Deno runtime and Hono web framework.
+
+You can also specify several options in a single category. For example, the below command tests the `fedify init` command with both Redis and PostgreSQL as key–value stores:
+
+~~~~ sh
+fedify test-init -k redis -k postgres
+~~~~
+
+### `-h`/`--hyd-run`: Create temporary project and `lookup` an object
+
+If you want to test except `--dry-run` option, you can use the `-h`/`--hyd-run` option. This will create a temporary project and run the `lookup` command on it.
+
+~~~~ sh
+fedify test-init -h
+~~~~
+
+### `-d`/`--dry-run`: Preview without creating files
+
+If you want to test dry-run only, you can use the `-d`/`--dry-run` option. 
+This will save outputs and errors to text files instead of creating a 
+temporary project.
+
+~~~~ sh
+fedify test-init -d
+~~~~
+
+If you did not specify `-h` or `-d` option, it will run both options by 
+default.
+
 `fedify lookup`: Looking up an ActivityPub object
 -------------------------------------------------
 
