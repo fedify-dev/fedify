@@ -3,7 +3,6 @@ import {
   choice,
   command,
   constant,
-  flag,
   type InferValue,
   message,
   multiple,
