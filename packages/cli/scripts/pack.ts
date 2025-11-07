@@ -26,7 +26,7 @@ async function compile(os: OS, arch: Arch, into: string): Promise<void> {
   }
   await $`deno compile --allow-all --include=${
     join("src", "init", "templates")
-  } --target=${target} --output=${into} ${
+  } --node-modules-dir=none --target=${target} --output=${into} ${
     join(dirname(import.meta.dirname!), "src", "mod.ts")
   }`;
 }
