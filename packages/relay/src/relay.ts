@@ -538,8 +538,9 @@ export class LitePubRelay implements Relay {
           actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
           object: create.objectId,
           to: PUBLIC_COLLECTION,
+          published: Temporal.Now.instant(),
         });
-        // FIXME: put published in Announce activity context/  e.g.   "published": "2024-10-18T14:06:37.736295Z",
+
         await ctx.sendActivity(
           { identifier: RELAY_SERVER_ACTOR },
           "followers",
@@ -547,7 +548,6 @@ export class LitePubRelay implements Relay {
           {
             excludeBaseUris,
             preferSharedInbox: true,
-            //published: new Date().toISOString(),
           },
         );
       })
