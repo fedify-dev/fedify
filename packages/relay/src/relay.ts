@@ -62,6 +62,10 @@ export interface Relay {
   setSubscriptionHandler(handler: SubscriptionRequestHandler): this;
 }
 
+type LitePubRelayFollower = {
+  actor: string;
+  state: string;
+};
 /**
  * A Mastodon-compatible ActivityPub relay implementation.
  * This relay follows Mastodon's relay protocol for maximum compatibility
@@ -424,23 +428,29 @@ export class LitePubRelay implements Relay {
           recipient.preferredUsername == null ||
           recipient.inboxId == null
         ) return;
-        let approved = false;
 
+        // Check if this is a follow from a client or if we already have a pending state
+        const existingFollow = await options.kv.get<LitePubRelayFollower>([
+          "follower",
+          recipient.id.href,
+        ]);
+        if (existingFollow?.state === "pending") return;
+
+        let subscriptionApproved = false;
+
+        // Receive follow request from the relay client.
         if (this.#subscriptionHandler) {
-          approved = await this.#subscriptionHandler(
+          subscriptionApproved = await this.#subscriptionHandler(
             ctx,
             recipient,
           );
         }
 
-        if (approved) {
-          const followers = await options.kv.get<string[]>(["followers"]) ?? [];
-          followers.push(follow.id.href);
-          await options.kv.set(["followers"], followers);
-
+        if (subscriptionApproved) {
+          // Add state pending
           await options.kv.set(
-            ["follower", follow.id.href],
-            await recipient.toJsonLd(),
+            ["follower", recipient.id.href],
+            { "actor": await recipient.toJsonLd(), "state": "pending" },
           );
 
           await ctx.sendActivity(
@@ -450,6 +460,17 @@ export class LitePubRelay implements Relay {
               id: new URL(`#accepts`, relayActorUri),
               actor: relayActorUri,
               object: follow,
+            }),
+          );
+
+          // Send reciprocal follow
+          await ctx.sendActivity(
+            { identifier: RELAY_SERVER_ACTOR },
+            recipient,
+            new Follow({
+              actor: relayActorUri,
+              object: recipient.id,
+              to: recipient.id,
             }),
           );
         } else {
@@ -464,6 +485,28 @@ export class LitePubRelay implements Relay {
           );
         }
       })
+      .on(Accept, async (ctx, accept) => {
+        const follow = await accept.getObject();
+        if (!(follow instanceof Follow)) return;
+        const following = await accept.getActor();
+        if (!isActor(following)) return;
+        const follower = follow.actorId;
+        if (follower == null) return;
+        const parsed = ctx.parseUri(follower);
+        if (parsed == null || parsed.type !== "actor") return;
+
+        // Get follower from kv store
+        const followerData = await options.kv.get(["follower", follower.href]);
+        if (followerData == null) return;
+        // Update follower state
+        const updatedFollowerData = { ...followerData, status: "accepted" };
+        await options.kv.set(["follower", follower.href], updatedFollowerData);
+
+        // Update followers list
+        const followers = await options.kv.get<string[]>(["followers"]) ?? [];
+        followers.push(follower.href);
+        await options.kv.set(["followers"], followers);
+      })
       .on(Undo, async (ctx, undo) => {
         const activity = await undo.getObject(ctx);
         if (activity instanceof Follow) {
@@ -471,12 +514,14 @@ export class LitePubRelay implements Relay {
             activity.id == null ||
             activity.actorId == null
           ) return;
-          const activityId = activity.id.href;
           const followers = await options.kv.get<string[]>(["followers"]) ??
-            [];
-          const updatedFollowers = followers.filter((id) => id !== activityId);
+            []; // actor ids
+
+          const updatedFollowers = followers.filter((id) =>
+            id !== activity.actorId?.href
+          );
           await options.kv.set(["followers"], updatedFollowers);
-          options.kv.delete(["follower", activityId]);
+          options.kv.delete(["follower", activity.actorId?.href]);
         } else {
           console.warn(
             "Unsupported object type ({type}) for Undo activity: {object}",
@@ -494,7 +539,7 @@ export class LitePubRelay implements Relay {
           object: create.objectId,
           to: PUBLIC_COLLECTION,
         });
-
+        // FIXME: put published in Announce activity context/  e.g.   "published": "2024-10-18T14:06:37.736295Z",
         await ctx.sendActivity(
           { identifier: RELAY_SERVER_ACTOR },
           "followers",
@@ -502,6 +547,7 @@ export class LitePubRelay implements Relay {
           {
             excludeBaseUris,
             preferSharedInbox: true,
+            //published: new Date().toISOString(),
           },
         );
       })
