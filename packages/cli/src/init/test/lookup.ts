@@ -1,3 +1,4 @@
+import { isEmpty } from "@fxts/core/index.js";
 import { values } from "@optique/core";
 import type { ChildProcessByStdio } from "node:child_process";
 import { spawn } from "node:child_process";
@@ -55,7 +56,7 @@ function filterWebFrameworks(
     dirs.map((dir) => dir.split(sep).slice(-4, -3)[0] as WebFramework),
   );
   const hasBanned = BANNED_WFS.filter((wf) => wfs.has(wf));
-  if (!hasBanned) {
+  if (isEmpty(hasBanned)) {
     return dirs;
   }
   const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
