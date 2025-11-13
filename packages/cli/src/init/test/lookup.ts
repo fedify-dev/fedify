@@ -87,7 +87,7 @@ async function testApp(dir: string): Promise<boolean> {
   }!`;
   if (!result) {
     printMessage`    Check out these files for more details:
-      ${join(dir, "out.txt")}
+      ${join(dir, "out.txt")} and 
       ${join(dir, "err.txt")}\n`;
   }
   printMessage`\n`;
@@ -204,9 +204,9 @@ function determinePort(
       /listening on.*:(\d+)/i,
       /server.*:(\d+)/i,
       /port\s*:?\s*(\d+)/i,
-      /localhost:(\d+)/i,
-      /0\.0\.0\.0:(\d+)/i,
-      /127\.0\.0\.1:(\d+)/i,
+      /https?:localhost:(\d+)/i,
+      /https?:0\.0\.0\.0:(\d+)/i,
+      /https?:127\.0\.0\.1:(\d+)/i,
       /https?:\/\/[^:]+:(\d+)/i,
     ];
 
