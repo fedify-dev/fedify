@@ -1,9 +1,9 @@
-import { filter, map, pipe, tap } from "@fxts/core";
+import { always, filter, map, pipe, tap, unless } from "@fxts/core";
 import { optionNames } from "@optique/core";
 import { join } from "node:path";
 import { printMessage } from "../../utils.ts";
 import createTestApp, { filterOptions, generateTestCases } from "./create.ts";
-import runServerAndReadUser from "./lookup.ts";
+import runServerAndLookupUser from "./lookup.ts";
 import type { InitTestData } from "./types.ts";
 
 export const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) =>
@@ -21,7 +21,7 @@ export const runTests =
       filter(filterOptions),
       map(createTestApp(join(testDirPrefix, getMid(dryRun, hydRun, dry)), dry)),
       Array.fromAsync<string>,
-      runServerAndReadUser,
+      unless(always(dry), runServerAndLookupUser),
     );
 
 const printStartMessage: <T>(t: T) => T = tap(

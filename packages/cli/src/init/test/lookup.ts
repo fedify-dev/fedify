@@ -25,7 +25,7 @@ const BANNED_WFS: WebFramework[] = ["next"];
  *
  * @param dirs - Array of paths to generated app directories
  */
-export default async function runServerAndReadUser(
+export default async function runServerAndLookupUser(
   dirs: string[],
 ): Promise<void> {
   const valid = dirs.filter(Boolean);
