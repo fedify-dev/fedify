@@ -234,13 +234,14 @@ different configurations before making a decision.
 > command yet.
 
 > [!NOTE]
-> You need to install and run Redis server, PostgreSQL server, or RabbitMQ
-> server locally to test those integrations.
+> You need to install and run [Redis server], [PostgreSQL server], and AMQP
+> server (e.g., [RabbitMQ server])locally to test those integrations.
 
 
 The `fedify test-init` command is used to test the `fedify init` command.
 It creates a temporary Fedify project with various combinations of options and
-tests the server using `lookup` command.  This command is for contributors who make integration with various frameworks.
+tests the server using `lookup` command.  This command is for contributors who
+make integration with various frameworks.
 
 ~~~~ sh
 fedify test-init
@@ -264,11 +265,18 @@ If you do not specify some options, it will test all the available options for
 those. So the above command will test all combinations of key–value stores and 
 message queues with Deno runtime and Hono web framework.
 
-You can also specify several options in a single category. For example, the below command tests the `fedify init` command with both Redis and PostgreSQL as key–value stores:
+You can also specify several options in a single category. For example, the
+below command tests the `fedify init` command with both Redis and PostgreSQL as
+key–value stores:
 
 ~~~~ sh
 fedify test-init -k redis -k postgres
 ~~~~
+
+
+[Redis server]: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/
+[PostgreSQL server]: https://www.postgresql.org/download/
+[RabbitMQ server]: https://www.rabbitmq.com/docs/download
 
 ### `-h`/`--hyd-run`: Create temporary project and `lookup` an object
 
