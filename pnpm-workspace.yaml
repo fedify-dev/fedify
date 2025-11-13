@@ -14,6 +14,7 @@ packages:
 - packages/next
 - packages/postgres
 - packages/redis
+- packages/relay
 - packages/sqlite
 - packages/sveltekit
 - packages/testing
