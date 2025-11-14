@@ -320,7 +320,7 @@ describe("MastodonRelay", () => {
     // Verify storage
     const storedFollowers = await kv.get<string[]>(["followers"]);
     ok(storedFollowers);
-    strictEqual(storedFollowers.length, 1);
+    strictEqual(storedFollowers?.length, 1);
     strictEqual(storedFollowers[0], followActivityId);
 
     const storedActor = await kv.get(["follower", followActivityId]);
@@ -458,7 +458,7 @@ describe("LitePubRelay", () => {
       kv: new MemoryKvStore(),
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     };
 
     const relay = new LitePubRelay(options);
@@ -496,7 +496,7 @@ describe("LitePubRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
     const request = new Request("https://relay.example.com/users/relay", {
@@ -571,7 +571,7 @@ describe("LitePubRelay", () => {
   test("followers collection returns populated list", async () => {
     const kv = new MemoryKvStore();
 
-    // Pre-populate followers
+    // Pre-populate followers with LitePub structure (actor + state)
     const follower1 = new Person({
       id: new URL("https://remote1.example.com/users/alice"),
       preferredUsername: "alice",
@@ -584,12 +584,19 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://remote2.example.com/users/bob/inbox"),
     });
 
-    const followActivity1Id = "https://remote1.example.com/activities/follow/1";
-    const followActivity2Id = "https://remote2.example.com/activities/follow/2";
+    const follower1Id = "https://remote1.example.com/users/alice";
+    const follower2Id = "https://remote2.example.com/users/bob";
 
-    await kv.set(["followers"], [followActivity1Id, followActivity2Id]);
-    await kv.set(["follower", followActivity1Id], follower1.toJsonLd());
-    await kv.set(["follower", followActivity2Id], follower2.toJsonLd());
+    // LitePub stores actor IDs in followers list and uses LitePubRelayFollower structure
+    await kv.set(["followers"], [follower1Id, follower2Id]);
+    await kv.set(["follower", follower1Id], {
+      actor: await follower1.toJsonLd(),
+      state: "accepted",
+    });
+    await kv.set(["follower", follower2Id], {
+      actor: await follower2.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = new LitePubRelay({
       kv,
@@ -675,70 +682,91 @@ describe("LitePubRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
     relay.setSubscriptionHandler(async (_ctx, _actor) => {
       return await Promise.resolve(true);
     });
 
-    // Manually simulate what happens when a Follow is approved
-    const followActivityId = "https://remote.example.com/activities/follow/1";
+    // Manually simulate what happens when a Follow is approved in LitePub
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    // Simulate the relay's internal logic
+    const followerId = follower.id!.href;
+
+    // Simulate the relay's internal logic - LitePub stores with actor ID and state
+    // First, Follow is received and stored with "pending" state (not added to followers list yet)
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "pending",
+    });
+
+    // Then, Accept is received from the follower and state changes to "accepted"
+    const followerData = await kv.get<{ actor: unknown; state: string }>([
+      "follower",
+      followerId,
+    ]);
+    if (followerData) {
+      const updatedFollowerData = { ...followerData, state: "accepted" };
+      await kv.set(["follower", followerId], updatedFollowerData);
+    }
+
+    // Now add to followers list
     const followers = (await kv.get<string[]>(["followers"])) ?? [];
-    followers.push(followActivityId);
+    followers.push(followerId);
     await kv.set(["followers"], followers);
-    await kv.set(["follower", followActivityId], follower.toJsonLd());
 
     // Verify storage
     const storedFollowers = await kv.get<string[]>(["followers"]);
     ok(storedFollowers);
     strictEqual(storedFollowers.length, 1);
-    strictEqual(storedFollowers[0], followActivityId);
+    strictEqual(storedFollowers[0], followerId);
 
-    const storedActor = await kv.get(["follower", followActivityId]);
-    ok(storedActor);
+    const storedFollowerData = await kv.get(["follower", followerId]);
+    ok(storedFollowerData);
   });
 
   test("removes follower from KV when Undo Follow is received", async () => {
     const kv = new MemoryKvStore();
 
-    // Pre-populate with a follower
-    const followActivityId = "https://remote.example.com/activities/follow/1";
+    // Pre-populate with a follower (LitePub uses actor ID as key)
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    await kv.set(["followers"], [followActivityId]);
-    await kv.set(["follower", followActivityId], follower.toJsonLd());
+    const followerId = follower.id!.href;
+
+    await kv.set(["followers"], [followerId]);
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     const _relay = new LitePubRelay({
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
-    // Simulate the Undo Follow logic
+    // Simulate the Undo Follow logic (uses actor ID)
     const followers = (await kv.get<string[]>(["followers"])) ?? [];
-    const updatedFollowers = followers.filter((id) => id !== followActivityId);
+    const updatedFollowers = followers.filter((id) => id !== followerId);
     await kv.set(["followers"], updatedFollowers);
-    await kv.delete(["follower", followActivityId]);
+    await kv.delete(["follower", followerId]);
 
     // Verify removal
     const storedFollowers = await kv.get<string[]>(["followers"]);
     ok(storedFollowers);
     strictEqual(storedFollowers.length, 0);
 
-    const storedActor = await kv.get(["follower", followActivityId]);
+    const storedActor = await kv.get(["follower", followerId]);
     strictEqual(storedActor, undefined);
   });
 
@@ -748,7 +776,7 @@ describe("LitePubRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
     relay.setSubscriptionHandler(async (_ctx, _actor) => {
@@ -797,31 +825,33 @@ describe("LitePubRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
-      federation: new MockFederation<void>({ contextData: undefined }),
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
     relay.setSubscriptionHandler(async (_ctx, _actor) =>
       await Promise.resolve(true)
     );
 
-    // Simulate multiple Follow activities
-    const followIds = [
-      "https://remote1.example.com/activities/follow/1",
-      "https://remote2.example.com/activities/follow/2",
-      "https://remote3.example.com/activities/follow/3",
+    // Simulate multiple Follow activities (LitePub uses actor IDs as keys)
+    const actorIds = [
+      "https://remote1.example.com/users/user1",
+      "https://remote2.example.com/users/user2",
+      "https://remote3.example.com/users/user3",
     ];
 
     const followers: string[] = [];
-    for (const followId of followIds) {
-      followers.push(followId);
+    for (let i = 0; i < actorIds.length; i++) {
+      const actorId = actorIds[i];
+      followers.push(actorId);
       const actor = new Person({
-        id: new URL(followId.replace("/activities/follow/", "/users/user")),
-        preferredUsername: `user${followers.length}`,
-        inbox: new URL(
-          followId.replace("/activities/follow/", "/users/user") + "/inbox",
-        ),
+        id: new URL(actorId),
+        preferredUsername: `user${i + 1}`,
+        inbox: new URL(`${actorId}/inbox`),
       });
-      await kv.set(["follower", followId], actor.toJsonLd());
+      await kv.set(["follower", actorId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
     await kv.set(["followers"], followers);
 

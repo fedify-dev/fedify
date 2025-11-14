@@ -397,14 +397,17 @@ export class LitePubRelay implements Relay {
       async (_ctx, identifier) => {
         if (identifier !== RELAY_SERVER_ACTOR) return null;
 
-        const activityIds = await options.kv.get<string[]>(["followers"]) ??
+        const followers = await options.kv.get<string[]>(["followers"]) ??
           [];
 
         const actors: Actor[] = [];
-        for (const activityId of activityIds) {
-          const actorJson = await options.kv.get(["follower", activityId]);
-
-          const actor = await Object.fromJsonLd(actorJson);
+        for (const followerId of followers) {
+          const follower = await options.kv.get<LitePubRelayFollower>([
+            "follower",
+            followerId,
+          ]);
+          if (!follower) continue;
+          const actor = await Object.fromJsonLd(follower.actor);
           if (!isActor(actor)) continue;
 
           actors.push(actor);
