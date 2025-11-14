@@ -1235,6 +1235,7 @@ export class FederationImpl<TContextData>
       onNotAcceptable,
       onUnauthorized,
       contextData,
+      requireHttpSignature,
       span,
       tracer,
     }: FederationFetchOptions<TContextData> & { span: Span; tracer: Tracer },
@@ -1363,6 +1364,7 @@ export class FederationImpl<TContextData>
           onNotFound,
           signatureTimeWindow: this.signatureTimeWindow,
           skipSignatureVerification: this.skipSignatureVerification,
+          requireHttpSignature,
           tracerProvider: this.tracerProvider,
           idempotencyStrategy: this.idempotencyStrategy,
         });

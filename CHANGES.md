@@ -81,6 +81,8 @@ To be released.
     `[string | URL | URLPattern, Temporal.Duration | Temporal.DurationLike][]`
     (was `[string | URL | URLPattern, Temporal.Duration][]`).
 
+ - Adds the `-A`/`--authorized-fetch` flag to the `fedify inbox` command. [[#229], [#472] By Lee ByeongJun]
+
  -  The `@fedify/fedify/x/*` modules are removed.  Also, there are no Fresh
     integration for now. [[#391] by Chanhaeng Lee]
 
@@ -90,6 +92,7 @@ To be released.
      -  Removed `@fedify/fedify/x/sveltekit` in favor of `@fedify/sveltekit`.
      -  Removed `@fedify/fedify/x/fresh` (Fresh integration). [[#466]]
 
+[#229]: https://github.com/fedify-dev/fedify/issues/229
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
