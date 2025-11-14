@@ -4,13 +4,13 @@ import { describe, test } from "node:test";
 import { MemoryKvStore } from "@fedify/fedify";
 import { Follow, Person } from "@fedify/fedify/vocab";
 import { signRequest } from "@fedify/fedify/sig";
-import { LitePubRelay, MastodonRelay, type RelayOptions } from "./relay.ts";
+import { LitePubRelay, MastodonRelay, type RelayOptions } from "@fedify/relay";
+import { createFederation } from "@fedify/testing";
 import {
   exportSpki,
   getDocumentLoader,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
-import { createFederation } from "@fedify/testing";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {

@@ -21,15 +21,8 @@
         "codegen"
       ]
     },
-    "run": {
-      "command": "deno run --allow-all src/mod.ts",
-      "dependencies": [
-        "codegen"
-      ]
-    },
-    "runi": "deno run --allow-all src/mod.ts",
-    "pack": {
-      "command": "deno run -A scripts/pack.ts",
+    "test": {
+      "command": "deno test --allow-env",
       "dependencies": [
         "codegen"
       ]
