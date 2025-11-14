@@ -11,12 +11,15 @@ import {
 import {
   Accept,
   type Actor,
+  Announce,
+  Application,
   Create,
   Delete,
   Follow,
   isActor,
   Move,
   Object,
+  PUBLIC_COLLECTION,
   Reject,
   Service,
   Undo,
@@ -59,6 +62,10 @@ export interface Relay {
   setSubscriptionHandler(handler: SubscriptionRequestHandler): this;
 }
 
+type LitePubRelayFollower = {
+  actor: string;
+  state: string;
+};
 /**
  * A Mastodon-compatible ActivityPub relay implementation.
  * This relay follows Mastodon's relay protocol for maximum compatibility
@@ -322,9 +329,294 @@ export class LitePubRelay implements Relay {
 
   constructor(options: RelayOptions) {
     this.#options = options;
-    this.#federation = createFederation<void>({
+    this.#federation = options.federation ?? createFederation<void>({
       kv: options.kv,
+      queue: options.queue,
+      documentLoaderFactory: options.documentLoaderFactory,
+      authenticatedDocumentLoaderFactory:
+        options.authenticatedDocumentLoaderFactory,
     });
+
+    this.#federation.setActorDispatcher(
+      "/users/{identifier}",
+      async (ctx, identifier) => {
+        if (identifier !== RELAY_SERVER_ACTOR) return null;
+        const keys = await ctx.getActorKeyPairs(identifier);
+        return new Application({
+          id: ctx.getActorUri(identifier),
+          preferredUsername: identifier,
+          name: "ActivityPub Relay",
+          summary: "LitePub-compatible ActivityPub relay server",
+          inbox: ctx.getInboxUri(), // This should be sharedInboxUri
+          followers: ctx.getFollowersUri(identifier),
+          url: ctx.getActorUri(identifier),
+          publicKey: keys[0].cryptographicKey,
+          assertionMethods: keys.map((k) => k.multikey),
+        });
+      },
+    )
+      .setKeyPairsDispatcher(
+        async (_ctx, identifier) => {
+          if (identifier !== RELAY_SERVER_ACTOR) return [];
+
+          const rsaPairJson = await options.kv.get<
+            { privateKey: JsonWebKey; publicKey: JsonWebKey }
+          >(["keypair", "rsa", identifier]);
+          const ed25519PairJson = await options.kv.get<
+            { privateKey: JsonWebKey; publicKey: JsonWebKey }
+          >(["keypair", "ed25519", identifier]);
+          if (rsaPairJson == null || ed25519PairJson == null) {
+            const rsaPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+            const ed25519Pair = await generateCryptoKeyPair("Ed25519");
+            await options.kv.set(["keypair", "rsa", identifier], {
+              privateKey: await exportJwk(rsaPair.privateKey),
+              publicKey: await exportJwk(rsaPair.publicKey),
+            });
+            await options.kv.set(["keypair", "ed25519", identifier], {
+              privateKey: await exportJwk(ed25519Pair.privateKey),
+              publicKey: await exportJwk(ed25519Pair.publicKey),
+            });
+
+            return [rsaPair, ed25519Pair];
+          }
+
+          const rsaPair: CryptoKeyPair = {
+            privateKey: await importJwk(rsaPairJson.privateKey, "private"),
+            publicKey: await importJwk(rsaPairJson.publicKey, "public"),
+          };
+          const ed25519Pair: CryptoKeyPair = {
+            privateKey: await importJwk(ed25519PairJson.privateKey, "private"),
+            publicKey: await importJwk(ed25519PairJson.publicKey, "public"),
+          };
+          return [rsaPair, ed25519Pair];
+        },
+      );
+
+    this.#federation.setFollowersDispatcher(
+      "/users/{identifier}/followers",
+      async (_ctx, identifier) => {
+        if (identifier !== RELAY_SERVER_ACTOR) return null;
+
+        const followers = await options.kv.get<string[]>(["followers"]) ??
+          [];
+
+        const actors: Actor[] = [];
+        for (const followerId of followers) {
+          const follower = await options.kv.get<LitePubRelayFollower>([
+            "follower",
+            followerId,
+          ]);
+          if (!follower) continue;
+          const actor = await Object.fromJsonLd(follower.actor);
+          if (!isActor(actor)) continue;
+
+          actors.push(actor);
+        }
+        return { items: actors };
+      },
+    );
+
+    this.#federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Follow, async (ctx, follow) => {
+        if (follow.id == null || follow.objectId == null) return;
+        const parsed = ctx.parseUri(follow.objectId);
+        const isPublicFollow = follow.objectId.href ===
+          "https://www.w3.org/ns/activitystreams#Public";
+        if (!isPublicFollow && parsed?.type !== "actor") return;
+
+        const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
+        const recipient = await follow.getActor(ctx);
+        if (
+          recipient == null || recipient.id == null ||
+          recipient.preferredUsername == null ||
+          recipient.inboxId == null
+        ) return;
+
+        // Check if this is a follow from a client or if we already have a pending state
+        const existingFollow = await options.kv.get<LitePubRelayFollower>([
+          "follower",
+          recipient.id.href,
+        ]);
+        if (existingFollow?.state === "pending") return;
+
+        let subscriptionApproved = false;
+
+        // Receive follow request from the relay client.
+        if (this.#subscriptionHandler) {
+          subscriptionApproved = await this.#subscriptionHandler(
+            ctx,
+            recipient,
+          );
+        }
+
+        if (subscriptionApproved) {
+          // Add state pending
+          await options.kv.set(
+            ["follower", recipient.id.href],
+            { "actor": await recipient.toJsonLd(), "state": "pending" },
+          );
+
+          await ctx.sendActivity(
+            { identifier: RELAY_SERVER_ACTOR },
+            recipient,
+            new Accept({
+              id: new URL(`#accepts`, relayActorUri),
+              actor: relayActorUri,
+              object: follow,
+            }),
+          );
+
+          // Send reciprocal follow
+          await ctx.sendActivity(
+            { identifier: RELAY_SERVER_ACTOR },
+            recipient,
+            new Follow({
+              actor: relayActorUri,
+              object: recipient.id,
+              to: recipient.id,
+            }),
+          );
+        } else {
+          await ctx.sendActivity(
+            { identifier: RELAY_SERVER_ACTOR },
+            recipient,
+            new Reject({
+              id: new URL(`#rejects`, relayActorUri),
+              actor: relayActorUri,
+              object: follow,
+            }),
+          );
+        }
+      })
+      .on(Accept, async (ctx, accept) => {
+        const follow = await accept.getObject();
+        if (!(follow instanceof Follow)) return;
+        const following = await accept.getActor();
+        if (!isActor(following)) return;
+        const follower = follow.actorId;
+        if (follower == null) return;
+        const parsed = ctx.parseUri(follower);
+        if (parsed == null || parsed.type !== "actor") return;
+
+        // Get follower from kv store
+        const followerData = await options.kv.get(["follower", follower.href]);
+        if (followerData == null) return;
+        // Update follower state
+        const updatedFollowerData = { ...followerData, status: "accepted" };
+        await options.kv.set(["follower", follower.href], updatedFollowerData);
+
+        // Update followers list
+        const followers = await options.kv.get<string[]>(["followers"]) ?? [];
+        followers.push(follower.href);
+        await options.kv.set(["followers"], followers);
+      })
+      .on(Undo, async (ctx, undo) => {
+        const activity = await undo.getObject(ctx);
+        if (activity instanceof Follow) {
+          if (
+            activity.id == null ||
+            activity.actorId == null
+          ) return;
+          const followers = await options.kv.get<string[]>(["followers"]) ??
+            []; // actor ids
+
+          const updatedFollowers = followers.filter((id) =>
+            id !== activity.actorId?.href
+          );
+          await options.kv.set(["followers"], updatedFollowers);
+          options.kv.delete(["follower", activity.actorId?.href]);
+        } else {
+          console.warn(
+            "Unsupported object type ({type}) for Undo activity: {object}",
+            { type: activity?.constructor.name, object: activity },
+          );
+        }
+      })
+      .on(Create, async (ctx, create) => {
+        const sender = await create.getActor(ctx);
+        const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+        const announce = new Announce({
+          id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+          actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+          object: create.objectId,
+          to: PUBLIC_COLLECTION,
+          published: Temporal.Now.instant(),
+        });
+
+        await ctx.sendActivity(
+          { identifier: RELAY_SERVER_ACTOR },
+          "followers",
+          announce,
+          {
+            excludeBaseUris,
+            preferSharedInbox: true,
+          },
+        );
+      })
+      .on(Update, async (ctx, update) => {
+        const sender = await update.getActor(ctx);
+        const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+        const announce = new Announce({
+          id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+          actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+          object: update.objectId,
+          to: PUBLIC_COLLECTION,
+        });
+
+        await ctx.sendActivity(
+          { identifier: RELAY_SERVER_ACTOR },
+          "followers",
+          announce,
+          {
+            excludeBaseUris,
+            preferSharedInbox: true,
+          },
+        );
+      })
+      .on(Move, async (ctx, move) => {
+        const sender = await move.getActor(ctx);
+        const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+        const announce = new Announce({
+          id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+          actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+          object: move.objectId,
+          to: PUBLIC_COLLECTION,
+        });
+
+        await ctx.sendActivity(
+          { identifier: RELAY_SERVER_ACTOR },
+          "followers",
+          announce,
+          {
+            excludeBaseUris,
+            preferSharedInbox: true,
+          },
+        );
+      })
+      .on(Delete, async (ctx, deleteActivity) => {
+        const sender = await deleteActivity.getActor(ctx);
+        const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+        const announce = new Announce({
+          id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+          actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+          object: deleteActivity.objectId,
+          to: PUBLIC_COLLECTION,
+        });
+
+        await ctx.sendActivity(
+          { identifier: RELAY_SERVER_ACTOR },
+          "followers",
+          announce,
+          {
+            excludeBaseUris,
+            preferSharedInbox: true,
+          },
+        );
+      });
   }
 
   get domain(): string {

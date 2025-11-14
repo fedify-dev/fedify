@@ -59,6 +59,7 @@
     "npm:@sveltejs/kit@2": "2.48.4_@opentelemetry+api@1.9.0_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.43.2___acorn@8.15.0__vite@7.1.12___@types+node@22.18.13___tsx@4.20.6___yaml@2.8.1___picomatch@4.0.3__@types+node@22.18.13__tsx@4.20.6__yaml@2.8.1_svelte@5.43.2__acorn@8.15.0_vite@7.1.12__@types+node@22.18.13__tsx@4.20.6__yaml@2.8.1__picomatch@4.0.3_acorn@8.15.0_@types+node@22.18.13_tsx@4.20.6_yaml@2.8.1",
     "npm:@types/amqplib@*": "0.10.8",
     "npm:@types/amqplib@~0.10.7": "0.10.8",
+    "npm:@types/node@*": "24.2.0",
     "npm:@types/node@^22.16.0": "22.18.13",
     "npm:@types/node@^24.2.1": "24.9.2",
     "npm:amqplib@~0.10.8": "0.10.9",

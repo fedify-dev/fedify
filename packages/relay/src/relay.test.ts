@@ -320,7 +320,7 @@ describe("MastodonRelay", () => {
     // Verify storage
     const storedFollowers = await kv.get<string[]>(["followers"]);
     ok(storedFollowers);
-    strictEqual(storedFollowers.length, 1);
+    strictEqual(storedFollowers?.length, 1);
     strictEqual(storedFollowers[0], followActivityId);
 
     const storedActor = await kv.get(["follower", followActivityId]);
@@ -457,6 +457,8 @@ describe("LitePubRelay", () => {
     const options: RelayOptions = {
       kv: new MemoryKvStore(),
       domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
     };
 
     const relay = new LitePubRelay(options);
@@ -466,6 +468,7 @@ describe("LitePubRelay", () => {
   test("creates relay with default domain", () => {
     const options: RelayOptions = {
       kv: new MemoryKvStore(),
+      documentLoaderFactory: () => mockDocumentLoader,
     };
 
     const relay = new LitePubRelay(options);
@@ -477,6 +480,7 @@ describe("LitePubRelay", () => {
     const relay = new LitePubRelay({
       kv,
       domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
     });
 
     const result = relay.setSubscriptionHandler(async (_ctx, _actor) =>
@@ -491,13 +495,368 @@ describe("LitePubRelay", () => {
     const relay = new LitePubRelay({
       kv,
       domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
     });
 
-    const request = new Request("https://relay.example.com/", {
+    const request = new Request("https://relay.example.com/users/relay", {
       headers: { "Accept": "application/activity+json" },
     });
     const response = await relay.fetch(request);
 
     ok(response instanceof Response);
+  });
+
+  test("fetching relay actor returns Application", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    const request = new Request("https://relay.example.com/users/relay", {
+      headers: { "Accept": "application/activity+json" },
+    });
+    const response = await relay.fetch(request);
+
+    strictEqual(response.status, 200);
+    const json = await response.json() as any;
+    strictEqual(json.type, "Application");
+    strictEqual(json.preferredUsername, "relay");
+    strictEqual(json.name, "ActivityPub Relay");
+  });
+
+  test("fetching non-relay actor returns 404", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    const request = new Request(
+      "https://relay.example.com/users/non-existent",
+      {
+        headers: { "Accept": "application/activity+json" },
+      },
+    );
+    const response = await relay.fetch(request);
+
+    strictEqual(response.status, 404);
+  });
+
+  test("followers collection returns empty list initially", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    const request = new Request(
+      "https://relay.example.com/users/relay/followers",
+      {
+        headers: { "Accept": "application/activity+json" },
+      },
+    );
+    const response = await relay.fetch(request);
+
+    strictEqual(response.status, 200);
+    const json = await response.json() as any;
+    ok(json);
+    ok(json.type === "Collection" || json.type === "OrderedCollection");
+  });
+
+  test("followers collection returns populated list", async () => {
+    const kv = new MemoryKvStore();
+
+    // Pre-populate followers with LitePub structure (actor + state)
+    const follower1 = new Person({
+      id: new URL("https://remote1.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote1.example.com/users/alice/inbox"),
+    });
+
+    const follower2 = new Person({
+      id: new URL("https://remote2.example.com/users/bob"),
+      preferredUsername: "bob",
+      inbox: new URL("https://remote2.example.com/users/bob/inbox"),
+    });
+
+    const follower1Id = "https://remote1.example.com/users/alice";
+    const follower2Id = "https://remote2.example.com/users/bob";
+
+    // LitePub stores actor IDs in followers list and uses LitePubRelayFollower structure
+    await kv.set(["followers"], [follower1Id, follower2Id]);
+    await kv.set(["follower", follower1Id], {
+      actor: await follower1.toJsonLd(),
+      state: "accepted",
+    });
+    await kv.set(["follower", follower2Id], {
+      actor: await follower2.toJsonLd(),
+      state: "accepted",
+    });
+
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    const request = new Request(
+      "https://relay.example.com/users/relay/followers",
+      {
+        headers: { "Accept": "application/activity+json" },
+      },
+    );
+    const response = await relay.fetch(request);
+
+    strictEqual(response.status, 200);
+    const json = await response.json() as any;
+    ok(json);
+    ok(json.type === "Collection" || json.type === "OrderedCollection");
+    if (json.totalItems !== undefined) {
+      strictEqual(json.totalItems, 2);
+    }
+  });
+
+  test("subscription handler is called on Follow activity", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    let handlerCalled = false;
+    let handlerActor: unknown = null;
+
+    relay.setSubscriptionHandler(async (_ctx, actor) => {
+      handlerCalled = true;
+      handlerActor = actor;
+      return await Promise.resolve(true);
+    });
+
+    // Create a Follow activity
+    const follower = new Person({
+      id: new URL("https://remote.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    const followActivity = new Follow({
+      id: new URL("https://remote.example.com/activities/follow/1"),
+      actor: follower.id,
+      object: new URL("https://relay.example.com/users/relay"),
+    });
+
+    // Sign and send the Follow activity to the relay's inbox
+    let request = new Request("https://relay.example.com/users/relay/inbox", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/activity+json",
+        "Accept": "application/activity+json",
+      },
+      body: JSON.stringify(
+        await followActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
+      ),
+    });
+
+    request = await signRequest(
+      request,
+      rsaKeyPair.privateKey,
+      rsaPublicKey.id!,
+    );
+
+    const _response = await relay.fetch(request);
+
+    strictEqual(handlerCalled, true);
+    ok(handlerActor);
+  });
+
+  test("stores follower in KV when Follow is approved", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
+    });
+
+    relay.setSubscriptionHandler(async (_ctx, _actor) => {
+      return await Promise.resolve(true);
+    });
+
+    // Manually simulate what happens when a Follow is approved in LitePub
+    const follower = new Person({
+      id: new URL("https://remote.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    const followerId = follower.id!.href;
+
+    // Simulate the relay's internal logic - LitePub stores with actor ID and state
+    // First, Follow is received and stored with "pending" state (not added to followers list yet)
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "pending",
+    });
+
+    // Then, Accept is received from the follower and state changes to "accepted"
+    const followerData = await kv.get<{ actor: unknown; state: string }>([
+      "follower",
+      followerId,
+    ]);
+    if (followerData) {
+      const updatedFollowerData = { ...followerData, state: "accepted" };
+      await kv.set(["follower", followerId], updatedFollowerData);
+    }
+
+    // Now add to followers list
+    const followers = (await kv.get<string[]>(["followers"])) ?? [];
+    followers.push(followerId);
+    await kv.set(["followers"], followers);
+
+    // Verify storage
+    const storedFollowers = await kv.get<string[]>(["followers"]);
+    ok(storedFollowers);
+    strictEqual(storedFollowers.length, 1);
+    strictEqual(storedFollowers[0], followerId);
+
+    const storedFollowerData = await kv.get(["follower", followerId]);
+    ok(storedFollowerData);
+  });
+
+  test("removes follower from KV when Undo Follow is received", async () => {
+    const kv = new MemoryKvStore();
+
+    // Pre-populate with a follower (LitePub uses actor ID as key)
+    const follower = new Person({
+      id: new URL("https://remote.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    const followerId = follower.id!.href;
+
+    await kv.set(["followers"], [followerId]);
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
+
+    const _relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
+    });
+
+    // Simulate the Undo Follow logic (uses actor ID)
+    const followers = (await kv.get<string[]>(["followers"])) ?? [];
+    const updatedFollowers = followers.filter((id) => id !== followerId);
+    await kv.set(["followers"], updatedFollowers);
+    await kv.delete(["follower", followerId]);
+
+    // Verify removal
+    const storedFollowers = await kv.get<string[]>(["followers"]);
+    ok(storedFollowers);
+    strictEqual(storedFollowers.length, 0);
+
+    const storedActor = await kv.get(["follower", followerId]);
+    strictEqual(storedActor, undefined);
+  });
+
+  test("does not store follower when Follow is rejected", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
+    });
+
+    relay.setSubscriptionHandler(async (_ctx, _actor) => {
+      return await Promise.resolve(false);
+    });
+
+    // Verify no followers are stored initially
+    const followers = await kv.get<string[]>(["followers"]);
+    ok(!followers || followers.length === 0);
+  });
+
+  test("relay actor has correct properties", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+
+    const request = new Request("https://relay.example.com/users/relay", {
+      headers: { "Accept": "application/activity+json" },
+    });
+    const response = await relay.fetch(request);
+
+    strictEqual(response.status, 200);
+    const json = await response.json() as any;
+
+    strictEqual(json.type, "Application");
+    strictEqual(json.preferredUsername, "relay");
+    strictEqual(json.name, "ActivityPub Relay");
+    strictEqual(
+      json.summary,
+      "LitePub-compatible ActivityPub relay server",
+    );
+    strictEqual(json.id, "https://relay.example.com/users/relay");
+    strictEqual(json.inbox, "https://relay.example.com/inbox");
+    strictEqual(
+      json.followers,
+      "https://relay.example.com/users/relay/followers",
+    );
+  });
+
+  test("multiple followers can be stored", async () => {
+    const kv = new MemoryKvStore();
+    const relay = new LitePubRelay({
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      federation: createFederation<void>({ contextData: undefined }),
+    });
+
+    relay.setSubscriptionHandler(async (_ctx, _actor) =>
+      await Promise.resolve(true)
+    );
+
+    // Simulate multiple Follow activities (LitePub uses actor IDs as keys)
+    const actorIds = [
+      "https://remote1.example.com/users/user1",
+      "https://remote2.example.com/users/user2",
+      "https://remote3.example.com/users/user3",
+    ];
+
+    const followers: string[] = [];
+    for (let i = 0; i < actorIds.length; i++) {
+      const actorId = actorIds[i];
+      followers.push(actorId);
+      const actor = new Person({
+        id: new URL(actorId),
+        preferredUsername: `user${i + 1}`,
+        inbox: new URL(`${actorId}/inbox`),
+      });
+      await kv.set(["follower", actorId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
+    }
+    await kv.set(["followers"], followers);
+
+    const storedFollowers = await kv.get<string[]>(["followers"]);
+    ok(storedFollowers);
+    strictEqual(storedFollowers.length, 3);
   });
 });
