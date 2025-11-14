@@ -73,7 +73,7 @@ export const initCommand = command(
     packageManager,
     kvStore,
     messageQueue,
-    dryRun: option("-d", "--dry-run", {
+    dryRun: option("--dry-run", {
       description: message`Perform a trial run with no changes made.`,
     }),
     debugOption,
