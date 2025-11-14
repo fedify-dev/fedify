@@ -1,7 +1,7 @@
-import { apply, entries, forEach, pipe, pipeLazy, tap } from "@fxts/core";
+import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
-import { formatJson, merge, set } from "../../utils.ts";
+import { formatJson, merge, replaceAll, set } from "../../utils.ts";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import {
@@ -23,7 +23,8 @@ import { joinDir, stringifyEnvs } from "./utils.ts";
  * Handles both dry-run mode (recommending files) and actual file creation.
  * Orchestrates the entire file generation and writing process.
  *
- * @param data - The initialization command data containing project configuration
+ * @param data - The initialization command data containing project
+ *               configuration
  * @returns A processed data object with files and JSONs ready for creation
  */
 export const patchFiles = (data: InitCommandData) =>
@@ -44,8 +45,9 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 
 /**
  * Generates text-based files (TypeScript, environment files) for the project.
- * Creates federation configuration, logging setup, environment variables, and framework-specific files
- * by processing templates and combining them with project-specific data.
+ * Creates federation configuration, logging setup, environment variables, and
+ * framework-specific files by processing templates and combining them with
+ * project-specific data.
  *
  * @param data - The initialization command data
  * @returns A record of file paths to their string content
@@ -53,7 +55,7 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 const getFiles = <
   T extends InitCommandData,
 >(data: T) => ({
-  [data.initializer.federationFile.toString()]: loadFederation({
+  [data.initializer.federationFile]: loadFederation({
     imports: getImports(data),
     ...data,
   }),
@@ -64,8 +66,9 @@ const getFiles = <
 
 /**
  * Generates JSON configuration files based on the package manager type.
- * Creates different sets of configuration files for Deno vs Node.js/Bun environments,
- * including compiler configs, package manifests, and development tool configurations.
+ * Creates different sets of configuration files for Deno vs other environments,
+ * including compiler configs, package manifests, and development
+ * tool configurations.
  *
  * @param data - The initialization command data
  * @returns A record of file paths to their JSON object content
@@ -80,7 +83,9 @@ const getJsons = <
       [devToolConfigs["vscExtDeno"].path]: devToolConfigs["vscExtDeno"].data,
     }
     : {
-      "tsconfig.json": loadTsConfig(data).data,
+      ...(data.initializer.compilerOptions
+        ? { "tsconfig.json": loadTsConfig(data).data }
+        : {}),
       "package.json": loadPackageJson(data).data,
       [devToolConfigs["biome"].path]: devToolConfigs["biome"].data,
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
@@ -88,9 +93,10 @@ const getJsons = <
     };
 
 /**
- * Handles dry-run mode by recommending files to be created without actually creating them.
- * Displays what files would be created and shows their content for user review.
- * This allows users to preview the initialization process before committing to it.
+ * Handles dry-run mode by recommending files to be created without actually
+ * creating them.
+ * Displays what files would be created and shows their content for user review,
+ * so users can preview the initialization process before committing to it.
  *
  * @param data - The initialization command data with files and JSONs prepared
  * @returns The processed data with recommendations displayed
@@ -106,7 +112,7 @@ const recommendFiles = (data: InitCommandWithFiles) =>
   );
 
 /**
- * Actually creates files on the filesystem during normal (non-dry-run) execution.
+ * Actually creates files on the filesystem during normal execution.
  * Merges text files and JSON files together and writes them to disk.
  * This performs the actual file system operations to initialize the project.
  *
@@ -126,8 +132,8 @@ interface InitCommandWithFiles extends InitCommandData {
 }
 
 /**
- * Higher-order function that processes all files with a given processing function.
- * Takes a processing function (either display or create) and applies it to all files
+ * Processes all files with a given processing function.
+ * Takes a processor (either display or create) and applies it to all files
  * in the target directory, handling path resolution and content patching.
  *
  * @param process - Function to process each file (either display or create)
@@ -140,19 +146,20 @@ const processAllFiles = (
   pipe(
     files,
     entries,
-    forEach(
+    map(
       pipeLazy(
         joinDir(dir),
         apply(patchContent),
         apply(process),
       ),
     ),
+    Array.fromAsync,
   );
 
 /**
- * Patches file content by either merging JSON objects or appending text content.
- * Handles existing files by reading their current content and intelligently combining
- * it with new content based on the content type (JSON vs text).
+ * Patches file content by either merging JSON or appending text content.
+ * Handles existing files by reading their current content and intelligently
+ * combining it with new content based on the content type (JSON vs text).
  *
  * @param path - The file path to patch
  * @param content - The new content (either string or object)
@@ -173,13 +180,32 @@ async function patchContent(
  * Merges new JSON data with existing JSON content and formats the result.
  * Parses existing JSON content (if any) and deep merges it with new data,
  * then formats the result for consistent output.
+ * Supports JSONC (JSON with Comments) by removing comments before parsing.
  *
  * @param prev - The previous JSON content as string
  * @param data - The new data object to merge
  * @returns Formatted JSON string with merged content
  */
 const mergeJson = (prev: string, data: object): string =>
-  pipe(prev ? JSON.parse(prev) : {}, merge(data), formatJson);
+  pipe(
+    prev ? JSON.parse(removeJsonComments(prev)) : {},
+    merge(data),
+    formatJson,
+  );
+
+/**
+ * Removes single-line (//) and multi-line (/* *\/) comments from JSON string.
+ * This allows parsing JSONC (JSON with Comments) files.
+ *
+ * @param jsonString - The JSON string potentially containing comments
+ * @returns JSON string with comments removed
+ */
+const removeJsonComments = (jsonString: string): string =>
+  pipe(
+    jsonString,
+    replaceAll(/\/\/.*$/gm, ""),
+    replaceAll(/\/\*[\s\S]*?\*\//g, ""),
+  );
 
 /**
  * Appends new text content to existing text content line by line.
@@ -202,11 +228,6 @@ const appendText = (prev: string, data: string) =>
  * @returns The file content as string, or empty string if file doesn't exist
  * @throws Error if file access fails for reasons other than file not existing
  */
-async function readFileIfExists(path: string): Promise<string> {
-  try {
-    return await readFile(path, "utf8");
-  } catch (e) {
-    throwUnlessNotExists(e);
-    return "";
-  }
-}
+const readFileIfExists = (path: string): Promise<string> =>
+  readFile(path, "utf8")
+    .catch(pipeLazy(tap(throwUnlessNotExists), always("")));

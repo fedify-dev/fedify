@@ -5,19 +5,20 @@ import {
   constant,
   type InferValue,
   message,
+  multiple,
   object,
   option,
   optional,
   optionNames,
 } from "@optique/core";
 import { path } from "@optique/run";
+import { debugOption } from "../globals.ts";
 import {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { debugOption } from "../globals.ts";
 
 const webFramework = optional(option(
   "-w",
@@ -53,6 +54,12 @@ const messageQueue = optional(option(
     description: message`The message queue to use for background tasks.`,
   },
 ));
+const testMode = option(
+  "--test-mode",
+  {
+    description: message`The test mode to use for testing purposes.`,
+  },
+);
 
 export const initCommand = command(
   "init",
@@ -70,6 +77,7 @@ export const initCommand = command(
       description: message`Perform a trial run with no changes made.`,
     }),
     debugOption,
+    testMode,
   }),
   {
     brief: message`Initialize a new Fedify project directory.`,
@@ -86,3 +94,33 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
 );
 
 export type InitCommand = InferValue<typeof initCommand>;
+
+export const testInitCommand = command(
+  "test-init",
+  object("Initialization options", {
+    command: constant("test-init"),
+    webFramework: multiple(webFramework),
+    packageManager: multiple(packageManager),
+    kvStore: multiple(kvStore),
+    messageQueue: multiple(messageQueue),
+    hydRun: option("-h", "--hyd-run", {
+      description: message`Test with files creations and installations.`,
+    }),
+    dryRun: option("-d", "--dry-run", {
+      description: message`Log outputs without creating files.`,
+    }),
+    debugOption,
+  }),
+  {
+    brief: message`Test an initializing command .`,
+    description: message`Test an initializing command on temporary directories.
+
+Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
+      optionNames(["-p", "--package-manager"])
+    }, ${optionNames(["-k", "--kv-store"])}, and ${
+      optionNames(["-m", "--message-queue"])
+    }), it will test all combinations of the options.`,
+  },
+);
+
+export type TestInitCommand = InferValue<typeof testInitCommand>;

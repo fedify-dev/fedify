@@ -110,7 +110,8 @@ export const readTemplate: (templatePath: string) => string = (
 
 export const getInstruction: (
   packageManager: PackageManager,
-) => Message = (pm) =>
+  port: number,
+) => Message = (pm, port) =>
   message`
 To start the server, run the following command:
 
@@ -118,11 +119,11 @@ To start the server, run the following command:
 
 Then, try look up an actor from your server:
 
-  ${commandLine("fedify lookup http://localhost:8000/users/john")}
+  ${commandLine(`fedify lookup http://localhost:${port}/users/john`)}
 
 `;
 
-const getDevCommand = (pm: PackageManager) =>
+export const getDevCommand = (pm: PackageManager) =>
   pm === "deno" ? "deno task dev" : pm === "bun" ? "bun dev" : `${pm} run dev`;
 
 async function isCommandAvailable(
@@ -172,20 +173,23 @@ export const isDirectoryEmpty = async (
   }
 };
 
+/**
+ * Converts a package manager to its corresponding runtime.
+ * @param pm - The package manager (deno, bun, npm, yarn, pnpm)
+ * @returns The runtime name (deno, bun, or node)
+ */
+export const packageManagerToRuntime = (
+  pm: PackageManager,
+): "deno" | "bun" | "node" =>
+  pm === "deno" ? "deno" : pm === "bun" ? "bun" : "node";
+
 export const getNextInitCommand = (
   pm: PackageManager,
-): string[] => [
-  ...createNextAppCommand(pm),
-  ".",
-  "--ts",
-  "--app",
-  "--biome",
-  "--skip-install",
-];
+): string[] => [...createNextAppCommand(pm), ".", "--yes"];
 
 const createNextAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"
-    ? ["deno", "run", "-A", "npm:create-next-app@latest"]
+    ? ["deno", "-Ar", "npm:create-next-app@latest"]
     : pm === "bun"
     ? ["bun", "create", "next-app"]
     : pm === "npm"
@@ -199,6 +203,10 @@ export const getNitroInitCommand = (
   pm === "deno" ? "npm:giget@latest" : "giget@latest",
   "nitro",
   ".",
+  "&&",
+  "rm",
+  "nitro.config.ts", // Remove default nitro config file
+  // This file will be created from template
 ];
 
 const createNitroAppCommand = (pm: PackageManager): string[] =>
@@ -209,3 +217,7 @@ const createNitroAppCommand = (pm: PackageManager): string[] =>
     : pm === "npm"
     ? ["npx"]
     : [pm, "dlx"];
+
+export const isTest: <
+  T extends { testMode: boolean },
+>({ testMode }: T) => boolean = ({ testMode }) => testMode;
