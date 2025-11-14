@@ -183,6 +183,20 @@ To be released.
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
 
+### @fedify/uri-template
+
+ -  Added `@fedify/uri-template` package, a fully RFC 6570 compliant URI
+    template library for handling ActivityPub URL patterns.
+    [[#418], [#475] by Lee ByeongJun]
+
+     -  Full Level 4 support with all operators and modifiers (explode `*`, 
+        prefix `:n`).
+     -  Support symmetric pattern matching.
+     -  Strict percent-encoding validation and deterministic expansion
+        following RFC rules.
+
+[#418]: https://github.com/fedify-dev/fedify/issues/418
+[#475]: https://github.com/fedify-dev/fedify/pull/475
 
 Version 1.10.0
 --------------

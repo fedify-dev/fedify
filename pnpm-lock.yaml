@@ -1141,6 +1141,18 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/uri-template:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.18.8
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   packages/vocab-runtime:
     dependencies:
       '@logtape/logtape':
