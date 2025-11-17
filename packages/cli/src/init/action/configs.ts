@@ -8,6 +8,7 @@ import {
   toArray,
 } from "@fxts/core/index.js";
 import { uniq } from "es-toolkit";
+import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
 import { merge } from "../../utils.ts";
 import biome from "../json/biome.json" with { type: "json" };
@@ -65,7 +66,8 @@ const getLinks = <
     filter((dep) => dep.includes("@fedify/")),
     map((dep) => dep.replace("@fedify/", "")),
     map((dep) => joinPath(PACKAGES_PATH, dep)),
-    map((absolutePath) => relative(dir, absolutePath)),
+    map((absolutePath) => realpathSync(absolutePath)),
+    map((realAbsolutePath) => relative(realpathSync(dir), realAbsolutePath)),
     toArray,
   );
 
