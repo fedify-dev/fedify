@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
 @fedify/fresh: Integrate Fedify with Fresh 2.x
-============================================
+==============================================
 
 [![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
