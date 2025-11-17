@@ -1,4 +1,4 @@
-import { isEmpty, pipe } from "@fxts/core";
+import { isEmpty, omit, pipe, tap } from "@fxts/core";
 import type { TestInitCommand } from "../command.ts";
 import {
   KV_STORE,
@@ -54,8 +54,14 @@ const fillKVStore = fillOption("kvStore", KV_STORE);
 const fillMessageQueue = fillOption("messageQueue", MESSAGE_QUEUE);
 
 const fillRunMode = <T extends TestInitCommand>(
-  options: DefineAllOptions<T>,
-): DefineAllOptions<T> => ({
-  ...options,
-  ...(options.hydRun || options.dryRun ? {} : { hydRun: true, dryRun: true }),
-});
+  options: T,
+): DefineAllOptions<T> =>
+  pipe(
+    options,
+    (options) => ("noHydRun" in options
+      ? ({ ...omit(["noHydRun"], options), hydRun: !options.noHydRun })
+      : ({ ...options, hydRun: true })),
+    (options) => ("noDryRun" in options
+      ? ({ ...omit(["noDryRun"], options), dryRun: !options.noDryRun })
+      : ({ ...options, dryRun: true })),
+  ) as DefineAllOptions<T>;
