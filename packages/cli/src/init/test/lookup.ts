@@ -62,7 +62,7 @@ function filterWebFrameworks(
   const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
   printErrorMessage`\n${
     values(bannedLabels)
-  } is not supported in test mode yet.`;
+  } is not supported in lookup test yet.`;
   return dirs.filter((dir) =>
     !BANNED_WFS.includes(dir.split(sep).slice(-4, -3)[0] as WebFramework)
   );
