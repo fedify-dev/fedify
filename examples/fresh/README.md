@@ -1,17 +1,42 @@
-# Fresh project
+Fedify–Fresh integration example
+===================================
 
-Your new Fresh project is ready to go. You can follow the Fresh "Getting
-Started" guide here: https://fresh.deno.dev/docs/getting-started
+This is a simple example of how to integrate Fedify into an [Fresh]
+application.
 
-### Usage
+[Fresh]: https://fresh.deno.dev/
 
-Make sure to install Deno:
-https://docs.deno.com/runtime/getting_started/installation
 
-Then start the project in development mode:
+Running the example
+-------------------
 
-```
-deno task dev
-```
+ 1. Clone the repository:
 
-This will watch the project directory and restart as necessary.
+    ~~~~ sh
+    git clone https://github.com/fedify-dev/fedify.git
+    ~~~~
+
+ 2. Build pacakges
+
+    ~~~~ sh
+    cd fedify
+    deno task build
+    ~~~~
+
+ 3. Move to example folder
+
+    ~~~~ sh
+    cd ../../examples/fresh
+    ~~~~
+
+ 4. Start the server:
+
+    ~~~~ sh
+    deno task dev
+    ~~~~
+
+ 5. Check NodeInfo of server
+
+    ~~~~ sh
+    fedify nodeinfo https://localhost:5173
+    ~~~~
