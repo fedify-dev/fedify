@@ -4,12 +4,14 @@ import {
   command,
   constant,
   type InferValue,
+  merge,
   message,
   multiple,
   object,
   option,
   optional,
   optionNames,
+  or,
 } from "@optique/core";
 import { path } from "@optique/run";
 import { debugOption } from "../globals.ts";
@@ -95,22 +97,29 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
 
 export type InitCommand = InferValue<typeof initCommand>;
 
+const noHydRun = object({
+  noHydRun: option("--no-hyd-run", {
+    description: message`Log outputs without creating files.`,
+  }),
+});
+const noDryRun = object({
+  noDryRun: option("--no-dry-run", {
+    description: message`Test with files creations and installations.`,
+  }),
+});
 export const testInitCommand = command(
   "test-init",
-  object("Initialization options", {
-    command: constant("test-init"),
-    webFramework: multiple(webFramework),
-    packageManager: multiple(packageManager),
-    kvStore: multiple(kvStore),
-    messageQueue: multiple(messageQueue),
-    hydRun: option("-h", "--hyd-run", {
-      description: message`Test with files creations and installations.`,
+  merge(
+    object("Initialization options", {
+      command: constant("test-init"),
+      webFramework: multiple(webFramework),
+      packageManager: multiple(packageManager),
+      kvStore: multiple(kvStore),
+      messageQueue: multiple(messageQueue),
+      debugOption,
     }),
-    dryRun: option("-d", "--dry-run", {
-      description: message`Log outputs without creating files.`,
-    }),
-    debugOption,
-  }),
+    optional(or(noHydRun, noDryRun)),
+  ),
   {
     brief: message`Test an initializing command .`,
     description: message`Test an initializing command on temporary directories.
