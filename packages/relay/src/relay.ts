@@ -63,7 +63,7 @@ export interface Relay {
 }
 
 type LitePubRelayFollower = {
-  actor: string;
+  actor: unknown;
   state: string;
 };
 /**
@@ -351,6 +351,7 @@ export class LitePubRelay implements Relay {
           followers: ctx.getFollowersUri(identifier),
           url: ctx.getActorUri(identifier),
           publicKey: keys[0].cryptographicKey,
+          following: ctx.getFollowingUri(identifier),
           assertionMethods: keys.map((k) => k.multikey),
         });
       },
@@ -392,6 +393,16 @@ export class LitePubRelay implements Relay {
         },
       );
 
+    this.#federation.setFollowingDispatcher(
+      "/users/{identifier}/following",
+      (_ctx, _identifier) => {
+        return {
+          items: [],
+        };
+      },
+    )
+      .setCounter((_ctx, _identifier) => 0);
+
     this.#federation.setFollowersDispatcher(
       "/users/{identifier}/followers",
       async (_ctx, identifier) => {
@@ -409,7 +420,6 @@ export class LitePubRelay implements Relay {
           if (!follower) continue;
           const actor = await Object.fromJsonLd(follower.actor);
           if (!isActor(actor)) continue;
-
           actors.push(actor);
         }
         return { items: actors };
@@ -425,18 +435,19 @@ export class LitePubRelay implements Relay {
         if (!isPublicFollow && parsed?.type !== "actor") return;
 
         const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
-        const recipient = await follow.getActor(ctx);
+        const follower = await follow.getActor(ctx);
         if (
-          recipient == null || recipient.id == null ||
-          recipient.preferredUsername == null ||
-          recipient.inboxId == null
+          follower == null || follower.id == null ||
+          follower.preferredUsername == null ||
+          follower.inboxId == null
         ) return;
 
         // Check if this is a follow from a client or if we already have a pending state
         const existingFollow = await options.kv.get<LitePubRelayFollower>([
           "follower",
-          recipient.id.href,
+          follower.id.href,
         ]);
+
         if (existingFollow?.state === "pending") return;
 
         let subscriptionApproved = false;
@@ -445,20 +456,20 @@ export class LitePubRelay implements Relay {
         if (this.#subscriptionHandler) {
           subscriptionApproved = await this.#subscriptionHandler(
             ctx,
-            recipient,
+            follower,
           );
         }
 
         if (subscriptionApproved) {
           // Add state pending
           await options.kv.set(
-            ["follower", recipient.id.href],
-            { "actor": await recipient.toJsonLd(), "state": "pending" },
+            ["follower", follower.id.href],
+            { "actor": await follower.toJsonLd(), "state": "pending" },
           );
 
           await ctx.sendActivity(
             { identifier: RELAY_SERVER_ACTOR },
-            recipient,
+            follower,
             new Accept({
               id: new URL(`#accepts`, relayActorUri),
               actor: relayActorUri,
@@ -469,17 +480,17 @@ export class LitePubRelay implements Relay {
           // Send reciprocal follow
           await ctx.sendActivity(
             { identifier: RELAY_SERVER_ACTOR },
-            recipient,
+            follower,
             new Follow({
               actor: relayActorUri,
-              object: recipient.id,
-              to: recipient.id,
+              object: follower.id,
+              to: follower.id,
             }),
           );
         } else {
           await ctx.sendActivity(
             { identifier: RELAY_SERVER_ACTOR },
-            recipient,
+            follower,
             new Reject({
               id: new URL(`#rejects`, relayActorUri),
               actor: relayActorUri,
@@ -489,29 +500,36 @@ export class LitePubRelay implements Relay {
         }
       })
       .on(Accept, async (ctx, accept) => {
-        const follow = await accept.getObject();
+        const follow = await accept.getObject({ crossOrigin: "trust", ...ctx });
         if (!(follow instanceof Follow)) return;
         const following = await accept.getActor();
-        if (!isActor(following)) return;
+        if (!isActor(following) || !following.id) return;
         const follower = follow.actorId;
         if (follower == null) return;
         const parsed = ctx.parseUri(follower);
         if (parsed == null || parsed.type !== "actor") return;
 
         // Get follower from kv store
-        const followerData = await options.kv.get(["follower", follower.href]);
+        const followerData = await options.kv.get([
+          "follower",
+          following.id.href,
+        ]);
         if (followerData == null) return;
+
         // Update follower state
         const updatedFollowerData = { ...followerData, status: "accepted" };
-        await options.kv.set(["follower", follower.href], updatedFollowerData);
+        await options.kv.set(
+          ["follower", following.id.href],
+          updatedFollowerData,
+        );
 
         // Update followers list
         const followers = await options.kv.get<string[]>(["followers"]) ?? [];
-        followers.push(follower.href);
+        followers.push(following.id.href);
         await options.kv.set(["followers"], followers);
       })
       .on(Undo, async (ctx, undo) => {
-        const activity = await undo.getObject(ctx);
+        const activity = await undo.getObject({ crossOrigin: "trust", ...ctx });
         if (activity instanceof Follow) {
           if (
             activity.id == null ||
@@ -604,6 +622,27 @@ export class LitePubRelay implements Relay {
           id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
           actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
           object: deleteActivity.objectId,
+          to: PUBLIC_COLLECTION,
+        });
+
+        await ctx.sendActivity(
+          { identifier: RELAY_SERVER_ACTOR },
+          "followers",
+          announce,
+          {
+            excludeBaseUris,
+            preferSharedInbox: true,
+          },
+        );
+      })
+      .on(Announce, async (ctx, announceActivity) => {
+        const sender = await announceActivity.getActor(ctx);
+        const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+        const announce = new Announce({
+          id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+          actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+          object: announceActivity.objectId,
           to: PUBLIC_COLLECTION,
         });
 
