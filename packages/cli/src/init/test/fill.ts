@@ -1,4 +1,4 @@
-import { isEmpty, omit, pipe, tap } from "@fxts/core";
+import { isEmpty, omit, pipe } from "@fxts/core";
 import type { TestInitCommand } from "../command.ts";
 import {
   KV_STORE,
