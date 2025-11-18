@@ -17,9 +17,9 @@ const runTestInit = (options: TestInitCommand) =>
     set("testDirPrefix", genTestDirPrefix),
     tap(emptyTestDir),
     fillEmptyOptions,
+    tap(logTestDir),
     tap(when(isDryRun, runTests(true))),
     tap(when(isHydRun, runTests(false))),
-    tap(logTestDir),
   );
 
 const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) => dryRun;
