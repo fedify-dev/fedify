@@ -62,10 +62,11 @@ export interface Relay {
   setSubscriptionHandler(handler: SubscriptionRequestHandler): this;
 }
 
-type LitePubRelayFollower = {
-  actor: unknown;
-  state: string;
-};
+interface LitePubRelayFollower {
+  readonly actor: unknown;
+  readonly state: string;
+}
+
 /**
  * A Mastodon-compatible ActivityPub relay implementation.
  * This relay follows Mastodon's relay protocol for maximum compatibility
