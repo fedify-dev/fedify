@@ -205,9 +205,9 @@ function determinePort(
       /listening on.*:(\d+)/i,
       /server.*:(\d+)/i,
       /port\s*:?\s*(\d+)/i,
-      /https?:localhost:(\d+)/i,
-      /https?:0\.0\.0\.0:(\d+)/i,
-      /https?:127\.0\.0\.1:(\d+)/i,
+      /https?:\/\/localhost:(\d+)/i,
+      /https?:\/\/0\.0\.0\.0:(\d+)/i,
+      /https?:\/\/127\.0\.0\.1:(\d+)/i,
       /https?:\/\/[^:]+:(\d+)/i,
     ];
 
