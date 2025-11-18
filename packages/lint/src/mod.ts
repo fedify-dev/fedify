@@ -1,65 +1,55 @@
-import noDeprecatedHandleProperty from "./rules/no-deprecated-handle-property.ts";
-import noDeprecatedHandleVariable from "./rules/no-deprecated-handle-variable.ts";
-import noDuplicateDispatcher from "./rules/no-duplicate-dispatcher.ts";
-import noDuplicateInboxListeners from "./rules/no-duplicate-inbox-listeners.ts";
-import noMemoryKvStoreInProduction from "./rules/no-memory-kv-store-in-production.ts";
-import noRecursiveContextMethodCalls from "./rules/no-recursive-context-method-calls.ts";
-import requireActivityActor from "./rules/require-activity-actor.ts";
-import requireActivityId from "./rules/require-activity-id.ts";
-import requireActivityTo from "./rules/require-activity-to.ts";
-import requireActorDispatcher from "./rules/require-actor-dispatcher.ts";
-import requireActorId from "./rules/require-actor-id.ts";
-import requireActorReturnValue from "./rules/require-actor-return-value.ts";
-import requireCollectionPropertyWhenDispatcherSet from "./rules/require-collection-property-when-dispatcher-set.ts";
-import requireFollowersCounter from "./rules/require-followers-counter.ts";
-import requireInboxListeners from "./rules/require-inbox-listeners.ts";
-import requireInboxUri from "./rules/require-inbox-uri.ts";
-import requireIntegerTimestamp from "./rules/require-integer-timestamp.ts";
-import requireKeyPublicKey from "./rules/require-key-public-key.ts";
-import requireMatchingActorId from "./rules/require-matching-actor-id.ts";
-import requireMatchingCollectionIds from "./rules/require-matching-collection-ids.ts";
-import requireMatchingInboxPaths from "./rules/require-matching-inbox-paths.ts";
-import requireMessageQueueForInbox from "./rules/require-message-queue-for-inbox.ts";
-import requirePaginationForCollections from "./rules/require-pagination-for-collections.ts";
-import requirePersistentKvStore from "./rules/require-persistent-kv-store.ts";
-import requireSignatureFields from "./rules/require-signature-fields.ts";
-import requireSignatureVerification from "./rules/require-signature-verification.ts";
-import requireTypeGuardForActivityListeners from "./rules/require-type-guard-for-activity-listeners.ts";
-import requireValidUriTemplateVariables from "./rules/require-valid-uri-template-variables.ts";
+import actorAssertionMethodRequired from "./rules/actor-assertion-method-required.ts";
+import actorFeaturedPropertyMismatch from "./rules/actor-featured-property-mismatch.ts";
+import actorFeaturedPropertyRequired from "./rules/actor-featured-property-required.ts";
+import actorFeaturedTagsPropertyMismatch from "./rules/actor-featured-tags-property-mismatch.ts";
+import actorFeaturedTagsPropertyRequired from "./rules/actor-featured-tags-property-required.ts";
+import actorFollowersPropertyMismatch from "./rules/actor-followers-property-mismatch.ts";
+import actorFollowersPropertyRequired from "./rules/actor-followers-property-required.ts";
+import actorFollowingPropertyMismatch from "./rules/actor-following-property-mismatch.ts";
+import actorFollowingPropertyRequired from "./rules/actor-following-property-required.ts";
+import actorIdMismatch from "./rules/actor-id-mismatch.ts";
+import actorIdRequired from "./rules/actor-id-required.ts";
+import actorInboxPropertyMismatch from "./rules/actor-inbox-property-mismatch.ts";
+import actorInboxPropertyRequired from "./rules/actor-inbox-property-required.ts";
+import actorLikedPropertyMismatch from "./rules/actor-liked-property-mismatch.ts";
+import actorLikedPropertyRequired from "./rules/actor-liked-property-required.ts";
+import actorOutboxPropertyMismatch from "./rules/actor-outbox-property-mismatch.ts";
+import actorOutboxPropertyRequired from "./rules/actor-outbox-property-required.ts";
+import actorPublicKeyRequired from "./rules/actor-public-key-required.ts";
+import actorSharedInboxPropertyMismatch from "./rules/actor-shared-inbox-property-mismatch.ts";
+import actorSharedInboxPropertyRequired from "./rules/actor-shared-inbox-property-required.ts";
+import collectionFilteringNotImplemented from "./rules/collection-filtering-not-implemented.ts";
+import ed25519KeyRequiredForProof from "./rules/ed25519-key-required-for-proof.ts";
+import rsaKeyRequiredForHttpSignature from "./rules/rsa-key-required-for-http-signature.ts";
+import rsaKeyRequiredForLdSignature from "./rules/rsa-key-required-for-ld-signature.ts";
 
 const plugin: Deno.lint.Plugin = {
   name: "@fedify/lint",
   rules: {
-    "require-actor-dispatcher": requireActorDispatcher,
-    "require-inbox-listeners": requireInboxListeners,
-    "require-signature-verification": requireSignatureVerification,
-    "require-integer-timestamp": requireIntegerTimestamp,
-    "require-signature-fields": requireSignatureFields,
-    "require-key-public-key": requireKeyPublicKey,
-    "require-matching-actor-id": requireMatchingActorId,
-    "require-matching-collection-ids": requireMatchingCollectionIds,
-    "no-deprecated-handle-variable": noDeprecatedHandleVariable,
-    "no-deprecated-handle-property": noDeprecatedHandleProperty,
-    "no-duplicate-dispatcher": noDuplicateDispatcher,
-    "no-duplicate-inbox-listeners": noDuplicateInboxListeners,
-    "require-valid-uri-template-variables": requireValidUriTemplateVariables,
-    "require-matching-inbox-paths": requireMatchingInboxPaths,
-    "require-actor-return-value": requireActorReturnValue,
-    "no-recursive-context-method-calls": noRecursiveContextMethodCalls,
-    "require-type-guard-for-activity-listeners":
-      requireTypeGuardForActivityListeners,
-    "require-collection-property-when-dispatcher-set":
-      requireCollectionPropertyWhenDispatcherSet,
-    "require-actor-id": requireActorId,
-    "require-activity-actor": requireActivityActor,
-    "require-activity-id": requireActivityId,
-    "require-activity-to": requireActivityTo,
-    "require-inbox-uri": requireInboxUri,
-    "no-memory-kv-store-in-production": noMemoryKvStoreInProduction,
-    "require-message-queue-for-inbox": requireMessageQueueForInbox,
-    "require-persistent-kv-store": requirePersistentKvStore,
-    "require-pagination-for-collections": requirePaginationForCollections,
-    "require-followers-counter": requireFollowersCounter,
+    "actor-id-required": actorIdRequired,
+    "actor-id-mismatch": actorIdMismatch,
+    "actor-following-property-required": actorFollowingPropertyRequired,
+    "actor-following-property-mismatch": actorFollowingPropertyMismatch,
+    "actor-followers-property-required": actorFollowersPropertyRequired,
+    "actor-followers-property-mismatch": actorFollowersPropertyMismatch,
+    "actor-outbox-property-required": actorOutboxPropertyRequired,
+    "actor-outbox-property-mismatch": actorOutboxPropertyMismatch,
+    "actor-liked-property-required": actorLikedPropertyRequired,
+    "actor-liked-property-mismatch": actorLikedPropertyMismatch,
+    "actor-featured-property-required": actorFeaturedPropertyRequired,
+    "actor-featured-property-mismatch": actorFeaturedPropertyMismatch,
+    "actor-featured-tags-property-required": actorFeaturedTagsPropertyRequired,
+    "actor-featured-tags-property-mismatch": actorFeaturedTagsPropertyMismatch,
+    "collection-filtering-not-implemented": collectionFilteringNotImplemented,
+    "actor-inbox-property-required": actorInboxPropertyRequired,
+    "actor-inbox-property-mismatch": actorInboxPropertyMismatch,
+    "actor-shared-inbox-property-required": actorSharedInboxPropertyRequired,
+    "actor-shared-inbox-property-mismatch": actorSharedInboxPropertyMismatch,
+    "actor-public-key-required": actorPublicKeyRequired,
+    "actor-assertion-method-required": actorAssertionMethodRequired,
+    "rsa-key-required-for-http-signature": rsaKeyRequiredForHttpSignature,
+    "rsa-key-required-for-ld-signature": rsaKeyRequiredForLdSignature,
+    "ed25519-key-required-for-proof": ed25519KeyRequiredForProof,
   },
 };
 
