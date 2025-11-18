@@ -1,5 +1,5 @@
 {
-  "name": "@fedify/fedify",
+  "name": "@fedify/lint",
   "version": "2.0.0",
   "license": "MIT",
   "exports": {
