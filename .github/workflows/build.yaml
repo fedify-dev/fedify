@@ -438,6 +438,7 @@ jobs:
           | @fedify/next      | ${{ steps.versioning.outputs.version }} |                              | [npm][npm:@fedify/next]      |
           | @fedify/postgres  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/postgres]  | [npm][npm:@fedify/postgres]  |
           | @fedify/redis     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/redis]     | [npm][npm:@fedify/redis]     |
+          | @fedify/relay     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/relay]     | [npm][npm:@fedify/relay]     |
           | @fedify/sqlite    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/sqlite]    | [npm][npm:@fedify/sqlite]    |
           | @fedify/sveltekit | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/sveltekit] | [npm][npm:@fedify/sveltekit] |
           | @fedify/testing   | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/testing]   | [npm][npm:@fedify/testing]   |
@@ -466,6 +467,8 @@ jobs:
           [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/redis]: https://jsr.io/@fedify/redis@${{ steps.versioning.outputs.version }}
           [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis/v/${{ steps.versioning.outputs.short_version }}
+          [jsr:@fedify/relay]: https://jsr.io/@fedify/relay@${{ steps.versioning.outputs.version }}
+          [npm:@fedify/relay]: https://www.npmjs.com/package/@fedify/relay/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/sqlite]: https://jsr.io/@fedify/sqlite@${{ steps.versioning.outputs.version }}
           [npm:@fedify/sqlite]: https://www.npmjs.com/package/@fedify/sqlite/v/${{ steps.versioning.outputs.short_version }}
           [jsr:@fedify/sveltekit]: https://jsr.io/@fedify/sveltekit@${{ steps.versioning.outputs.version }}

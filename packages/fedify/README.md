@@ -106,6 +106,7 @@ Here is the list of packages:
 | [@fedify/next](/packages/next/)           |                              | [npm][npm:@fedify/next]      | Next.js integration                     |
 | [@fedify/postgres](/packages/postgres/)   | [JSR][jsr:@fedify/postgres]  | [npm][npm:@fedify/postgres]  | PostgreSQL driver                       |
 | [@fedify/redis](/packages/redis/)         | [JSR][jsr:@fedify/redis]     | [npm][npm:@fedify/redis]     | Redis driver                            |
+| [@fedify/relay](/packages/relay/)         | [JSR][jsr:@fedify/relay]     | [npm][npm:@fedify/relay]     | ActivityPub relay support               |
 | [@fedify/sqlite](/packages/sqlite/)       | [JSR][jsr:@fedify/sqlite]    | [npm][npm:@fedify/sqlite]    | SQLite driver                           |
 | [@fedify/sveltekit](/packages/sveltekit/) | [JSR][jsr:@fedify/sveltekit] | [npm][npm:@fedify/sveltekit] | SvelteKit integration                   |
 | [@fedify/testing](/packages/testing/)     | [JSR][jsr:@fedify/testing]   | [npm][npm:@fedify/testing]   | Testing utilities                       |
@@ -132,6 +133,8 @@ Here is the list of packages:
 [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres
 [jsr:@fedify/redis]: https://jsr.io/@fedify/redis
 [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis
+[jsr:@fedify/relay]: https://jsr.io/@fedify/relay
+[npm:@fedify/relay]: https://www.npmjs.com/package/@fedify/relay
 [jsr:@fedify/sqlite]: https://jsr.io/@fedify/sqlite
 [npm:@fedify/sqlite]: https://www.npmjs.com/package/@fedify/sqlite
 [jsr:@fedify/sveltekit]: https://jsr.io/@fedify/sveltekit
