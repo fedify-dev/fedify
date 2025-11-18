@@ -396,13 +396,26 @@ export class LitePubRelay implements Relay {
 
     this.#federation.setFollowingDispatcher(
       "/users/{identifier}/following",
-      (_ctx, _identifier) => {
-        return {
-          items: [],
-        };
+      async (_ctx, identifier) => {
+        if (identifier !== RELAY_SERVER_ACTOR) return null;
+
+        const followers = await options.kv.get<string[]>(["followers"]) ??
+          [];
+
+        const actors: Actor[] = [];
+        for (const followerId of followers) {
+          const follower = await options.kv.get<LitePubRelayFollower>([
+            "follower",
+            followerId,
+          ]);
+          if (!follower) continue;
+          const actor = await Object.fromJsonLd(follower.actor);
+          if (!isActor(actor)) continue;
+          actors.push(actor);
+        }
+        return { items: actors };
       },
-    )
-      .setCounter((_ctx, _identifier) => 0);
+    );
 
     this.#federation.setFollowersDispatcher(
       "/users/{identifier}/followers",
@@ -525,7 +538,7 @@ export class LitePubRelay implements Relay {
         if (followerData == null) return;
 
         // Update follower state
-        const updatedFollowerData = { ...followerData, status: "accepted" };
+        const updatedFollowerData = { ...followerData, state: "accepted" };
         await options.kv.set(
           ["follower", following.id.href],
           updatedFollowerData,
