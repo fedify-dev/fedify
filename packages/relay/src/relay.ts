@@ -173,18 +173,18 @@ export class MastodonRelay implements Relay {
         if (!isPublicFollow && parsed?.type !== "actor") return;
 
         const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
-        const recipient = await follow.getActor(ctx);
+        const follower = await follow.getActor(ctx);
         if (
-          recipient == null || recipient.id == null ||
-          recipient.preferredUsername == null ||
-          recipient.inboxId == null
+          follower == null || follower.id == null ||
+          follower.preferredUsername == null ||
+          follower.inboxId == null
         ) return;
         let approved = false;
 
         if (this.#subscriptionHandler) {
           approved = await this.#subscriptionHandler(
             ctx,
-            recipient,
+            follower,
           );
         }
 
@@ -195,12 +195,12 @@ export class MastodonRelay implements Relay {
 
           await options.kv.set(
             ["follower", follow.id.href],
-            await recipient.toJsonLd(),
+            await follower.toJsonLd(),
           );
 
           await ctx.sendActivity(
             { identifier: RELAY_SERVER_ACTOR },
-            recipient,
+            follower,
             new Accept({
               id: new URL(`#accepts`, relayActorUri),
               actor: relayActorUri,
@@ -210,7 +210,7 @@ export class MastodonRelay implements Relay {
         } else {
           await ctx.sendActivity(
             { identifier: RELAY_SERVER_ACTOR },
-            recipient,
+            follower,
             new Reject({
               id: new URL(`#rejects`, relayActorUri),
               actor: relayActorUri,
@@ -349,9 +349,10 @@ export class LitePubRelay implements Relay {
           summary: "LitePub-compatible ActivityPub relay server",
           inbox: ctx.getInboxUri(), // This should be sharedInboxUri
           followers: ctx.getFollowersUri(identifier),
+          following: ctx.getFollowingUri(identifier), // LitePub Relay should implement following dispatcher
           url: ctx.getActorUri(identifier),
           publicKey: keys[0].cryptographicKey,
-          following: ctx.getFollowingUri(identifier),
+
           assertionMethods: keys.map((k) => k.multikey),
         });
       },
@@ -448,6 +449,7 @@ export class LitePubRelay implements Relay {
           follower.id.href,
         ]);
 
+        // "pending" follower means this follower client requested subscription already.
         if (existingFollow?.state === "pending") return;
 
         let subscriptionApproved = false;
@@ -500,12 +502,18 @@ export class LitePubRelay implements Relay {
         }
       })
       .on(Accept, async (ctx, accept) => {
-        const follow = await accept.getObject({ crossOrigin: "trust", ...ctx });
+        // Validate follow activity from accept activity
+        const follow = await accept.getObject({
+          crossOrigin: "trust",
+          ...ctx,
+        });
         if (!(follow instanceof Follow)) return;
-        const following = await accept.getActor();
-        if (!isActor(following) || !following.id) return;
         const follower = follow.actorId;
         if (follower == null) return;
+
+        // Validate following - accept activity sender
+        const following = await accept.getActor();
+        if (!isActor(following) || !following.id) return;
         const parsed = ctx.parseUri(follower);
         if (parsed == null || parsed.type !== "actor") return;
 
