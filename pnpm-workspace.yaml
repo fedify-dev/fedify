@@ -33,7 +33,7 @@ packages:
 
 catalog:
   "@cloudflare/workers-types": ^4.20250529.0
-  "@fxts/core": ^1.15.0
+  "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^1.2.2
   "@logtape/logtape": ^1.2.2

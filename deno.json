@@ -24,6 +24,7 @@
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
     "@david/dax": "jsr:@david/dax@^0.43.2",
+    "@fxts/core": "npm:@fxts/core@^1.20.0",
     "@js-temporal/polyfill": "npm:@js-temporal/polyfill@^0.5.1",
     "@logtape/file": "jsr:@logtape/file@^1.2.2",
     "@logtape/logtape": "jsr:@logtape/logtape@^1.2.2",
