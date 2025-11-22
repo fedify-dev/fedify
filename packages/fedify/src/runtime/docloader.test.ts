@@ -6,6 +6,7 @@ import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { test } from "../testing/mod.ts";
+import { createTestTracerProvider } from "../testing/otel.ts";
 import preloadedContexts from "./contexts.ts";
 import {
   type DocumentLoader,
@@ -714,4 +715,94 @@ test("getUserAgent()", () => {
       `MyApp/1.0.0 (Fedify/${metadata.version}; Node.js/${process.versions.node}; +https://example.com/)`,
     );
   }
+});
+
+test("getDocumentLoader() records OpenTelemetry span", async (t) => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  fetchMock.spyGlobal();
+
+  await t.step("successful fetch", async () => {
+    fetchMock.get("https://example.com/doc", {
+      status: 200,
+      headers: { "Content-Type": "application/activity+json" },
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+      }),
+    });
+
+    const loader = getDocumentLoader();
+    // We need to temporarily set the tracer provider on the global trace
+    const { trace } = await import("@opentelemetry/api");
+    const originalProvider = trace.getTracerProvider();
+    trace.setGlobalTracerProvider(tracerProvider);
+
+    try {
+      const result = await loader("https://example.com/doc");
+      assertEquals(result.documentUrl, "https://example.com/doc");
+
+      // Check that the span was recorded
+      const spans = exporter.getSpans("docloader.fetch");
+      assertEquals(spans.length, 1);
+      const span = spans[0];
+
+      // Check span attributes
+      assertEquals(span.attributes["url.full"], "https://example.com/doc");
+      assertEquals(span.attributes["http.response.status_code"], 200);
+      assertEquals(
+        span.attributes["docloader.document_url"],
+        "https://example.com/doc",
+      );
+    } finally {
+      trace.setGlobalTracerProvider(originalProvider);
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("redirect", async () => {
+    fetchMock.spyGlobal();
+    fetchMock.get("https://example.com/doc", {
+      status: 302,
+      headers: { "Location": "https://example.com/new-doc" },
+    });
+    fetchMock.get("https://example.com/new-doc", {
+      status: 200,
+      headers: { "Content-Type": "application/activity+json" },
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+      }),
+    });
+
+    const loader = getDocumentLoader();
+    const { trace } = await import("@opentelemetry/api");
+    const originalProvider = trace.getTracerProvider();
+    trace.setGlobalTracerProvider(tracerProvider);
+
+    try {
+      const result = await loader("https://example.com/doc");
+      assertEquals(result.documentUrl, "https://example.com/new-doc");
+
+      // Check that both spans were recorded (original + redirect)
+      const spans = exporter.getSpans("docloader.fetch");
+      assertEquals(spans.length, 2);
+
+      // Check the redirect span (last span is the original request that redirected)
+      const redirectSpan = spans[spans.length - 1];
+      assertEquals(
+        redirectSpan.attributes["url.full"],
+        "https://example.com/doc",
+      );
+      assertEquals(redirectSpan.attributes["http.response.status_code"], 302);
+      assertEquals(
+        redirectSpan.attributes["http.redirect.url"],
+        "https://example.com/new-doc",
+      );
+    } finally {
+      trace.setGlobalTracerProvider(originalProvider);
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
 });

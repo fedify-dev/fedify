@@ -132,9 +132,18 @@ export async function lookupObject(
               result.replyTargetIds.map((id) => id.href),
             );
           }
+
+          // Record the fetched object details
+          span.addEvent("activitypub.object.fetched", {
+            "activitypub.object.type": getTypeId(result).href,
+            "activitypub.object.json": JSON.stringify(
+              await result.toJsonLd(options),
+            ),
+          });
         }
         return result;
       } catch (error) {
+        span.recordException(error as Error);
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
