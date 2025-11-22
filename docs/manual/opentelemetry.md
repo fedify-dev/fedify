@@ -312,13 +312,13 @@ interface ActivityRecord {
   direction: "inbound" | "outbound";
   activity: unknown;
   timestamp: Date;
-  verified: boolean;
+  verified?: boolean;
 }
 
 export class FedifyDebugExporter implements SpanExporter {
   private activities: ActivityRecord[] = [];
 
-  export(spans: ReadableSpan[], resultCallback: (result) => void): void {
+  export(spans: ReadableSpan[], resultCallback: (result: { code: ExportResultCode }) => void): void {
     for (const span of spans) {
       // Capture inbound activities
       if (span.name === "activitypub.inbox") {
@@ -349,7 +349,6 @@ export class FedifyDebugExporter implements SpanExporter {
               event.attributes["activitypub.activity.json"] as string
             ),
             timestamp: new Date(span.startTime[0] * 1000),
-            verified: true,
           });
         }
       }
