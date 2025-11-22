@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "manual",
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check",
     "dev": "vite",
@@ -19,10 +20,10 @@
   ],
   "imports": {
     "@/": "./",
-    "fresh": "jsr:@fresh/core@^2.1.4",
+    "fresh": "jsr:@fresh/core@^2.2.0",
     "preact": "npm:preact@^10.27.2",
-    "@preact/signals": "npm:@preact/signals@^2.3.2",
-    "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@^1.0.7",
+    "@preact/signals": "npm:@preact/signals@^2.5.0",
+    "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@^1.0.8",
     "vite": "npm:vite@^7.1.3"
   },
   "compilerOptions": {
@@ -30,8 +31,7 @@
       "dom",
       "dom.asynciterable",
       "dom.iterable",
-      "deno.ns",
-      "deno.unstable"
+      "deno.ns"
     ],
     "jsx": "precompile",
     "jsxImportSource": "preact",

@@ -6,6 +6,8 @@
     "jsr:@david/path@0.2": "0.2.0",
     "jsr:@david/which@~0.4.1": "0.4.1",
     "jsr:@es-toolkit/es-toolkit@^1.39.5": "1.42.0",
+    "jsr:@fresh/build-id@1": "1.0.1",
+    "jsr:@fresh/core@^2.2.0": "2.2.0",
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
     "jsr:@hono/hono@^4.8.3": "4.10.6",
     "jsr:@logtape/file@^1.1.1": "1.2.0",
@@ -16,12 +18,18 @@
     "jsr:@optique/core@~0.6.2": "0.6.2",
     "jsr:@optique/run@~0.6.1": "0.6.2",
     "jsr:@std/bytes@^1.0.5": "1.0.6",
+    "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/fmt@1": "1.0.8",
+    "jsr:@std/fmt@^1.0.8": "1.0.8",
     "jsr:@std/fs@1": "1.0.20",
+    "jsr:@std/fs@^1.0.19": "1.0.20",
+    "jsr:@std/html@^1.0.5": "1.0.5",
+    "jsr:@std/http@^1.0.21": "1.0.22",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/io@0.225": "0.225.2",
     "jsr:@std/path@1": "1.1.3",
     "jsr:@std/path@^1.0.6": "1.1.3",
+    "jsr:@std/path@^1.1.2": "1.1.3",
     "jsr:@std/path@^1.1.3": "1.1.3",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@cfworker/json-schema@^4.1.1": "4.1.1",
@@ -39,7 +47,8 @@
     "npm:@optique/core@~0.6.1": "0.6.2",
     "npm:@optique/run@~0.6.1": "0.6.2",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
-    "npm:@preact/signals@^2.3.2": "2.5.1_preact@10.19.6",
+    "npm:@preact/signals@^2.2.1": "2.5.1_preact@10.27.2",
+    "npm:@preact/signals@^2.5.0": "2.5.1_preact@10.27.2",
     "npm:@sveltejs/kit@2": "2.49.0_@opentelemetry+api@1.9.0_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.43.14___acorn@8.15.0__vite@7.2.4___@types+node@22.19.1___tsx@4.20.6___yaml@2.8.1___picomatch@4.0.3__@types+node@22.19.1__tsx@4.20.6__yaml@2.8.1_svelte@5.43.14__acorn@8.15.0_vite@7.2.4__@types+node@22.19.1__tsx@4.20.6__yaml@2.8.1__picomatch@4.0.3_acorn@8.15.0_@types+node@22.19.1_tsx@4.20.6_yaml@2.8.1",
     "npm:@types/amqplib@~0.10.7": "0.10.8",
     "npm:@types/node@^22.16.0": "22.19.1",
@@ -80,7 +89,7 @@
     "npm:pkijs@^3.2.4": "3.3.3",
     "npm:pkijs@^3.2.5": "3.3.3",
     "npm:postgres@^3.4.7": "3.4.7",
-    "npm:preact@10.19.6": "10.19.6",
+    "npm:preact-render-to-string@^6.6.3": "6.6.3_preact@10.27.2",
     "npm:preact@^10.27.2": "10.27.2",
     "npm:shiki@^1.6.4": "1.29.2",
     "npm:srvx@~0.8.7": "0.8.16",
@@ -104,8 +113,8 @@
         "jsr:@david/console-static-text",
         "jsr:@david/path",
         "jsr:@david/which",
-        "jsr:@std/fmt",
-        "jsr:@std/fs",
+        "jsr:@std/fmt@1",
+        "jsr:@std/fs@1",
         "jsr:@std/io",
         "jsr:@std/path@1"
       ]
@@ -113,7 +122,7 @@
     "@david/path@0.2.0": {
       "integrity": "f2d7aa7f02ce5a55e27c09f9f1381794acb09d328f8d3c8a2e3ab3ffc294dccd",
       "dependencies": [
-        "jsr:@std/fs",
+        "jsr:@std/fs@1",
         "jsr:@std/path@1"
       ]
     },
@@ -122,6 +131,27 @@
     },
     "@es-toolkit/es-toolkit@1.42.0": {
       "integrity": "66b3c799dda4bf99a46ba91bcf6072dbe0ebdb8fab5482fdba15d3e96128bebe"
+    },
+    "@fresh/build-id@1.0.1": {
+      "integrity": "12a2ec25fd52ae9ec68c26848a5696cd1c9b537f7c983c7e56e4fb1e7e816c20",
+      "dependencies": [
+        "jsr:@std/encoding"
+      ]
+    },
+    "@fresh/core@2.2.0": {
+      "integrity": "b3c00f82288a2c4c8ec85e4abb67b080b366ec5971860f2f2898eb281ea1a80f",
+      "dependencies": [
+        "jsr:@fresh/build-id",
+        "jsr:@std/fmt@^1.0.8",
+        "jsr:@std/fs@^1.0.19",
+        "jsr:@std/html",
+        "jsr:@std/http",
+        "jsr:@std/path@^1.1.2",
+        "npm:@opentelemetry/api",
+        "npm:@preact/signals@^2.2.1",
+        "npm:preact",
+        "npm:preact-render-to-string"
+      ]
     },
     "@hongminhee/localtunnel@0.3.0": {
       "integrity": "4ad858acd963b5fad45b188d54cf751ac8fbe0aae495e1d3ce607e3730270ff4",
@@ -153,6 +183,9 @@
     "@std/bytes@1.0.6": {
       "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
     },
+    "@std/encoding@1.0.10": {
+      "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
+    },
     "@std/fmt@1.0.8": {
       "integrity": "71e1fc498787e4434d213647a6e43e794af4fd393ef8f52062246e06f7e372b7"
     },
@@ -162,6 +195,12 @@
         "jsr:@std/internal",
         "jsr:@std/path@^1.1.3"
       ]
+    },
+    "@std/html@1.0.5": {
+      "integrity": "4e2d693f474cae8c16a920fa5e15a3b72267b94b84667f11a50c6dd1cb18d35e"
+    },
+    "@std/http@1.0.22": {
+      "integrity": "53f0bb70e23a2eec3e17c4240a85bb23d185b2e20635adb37ce0f03cc4ca012a"
     },
     "@std/internal@1.0.12": {
       "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
@@ -1212,11 +1251,11 @@
     "@preact/signals-core@1.12.1": {
       "integrity": "sha512-BwbTXpj+9QutoZLQvbttRg5x3l5468qaV2kufh+51yha1c53ep5dY4kTuZR35+3pAZxpfQerGJiQqg34ZNZ6uA=="
     },
-    "@preact/signals@2.5.1_preact@10.19.6": {
+    "@preact/signals@2.5.1_preact@10.27.2": {
       "integrity": "sha512-VPjk5YFt7i11Fi4UK0tzaEe5xLwfhUxXL3l89ocxQ5aPz7bRo8M5+N73LjBMPklyXKYKz6YsNo4Smp8n6nplng==",
       "dependencies": [
         "@preact/signals-core",
-        "preact@10.19.6"
+        "preact"
       ]
     },
     "@quansync/fs@0.1.5": {
@@ -3089,8 +3128,11 @@
     "postgres@3.4.7": {
       "integrity": "sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw=="
     },
-    "preact@10.19.6": {
-      "integrity": "sha512-gympg+T2Z1fG1unB8NH29yHJwnEaCH37Z32diPDku316OTnRPeMbiRV9kTrfZpocXjdfnWuFUl/Mj4BHaf6gnw=="
+    "preact-render-to-string@6.6.3_preact@10.27.2": {
+      "integrity": "sha512-7oHG7jzjriqsFPkSPiPnzrQ0GcxFm6wOkYWNdStK5Ks9YlWSQQXKGBRAX4nKDdqX7HAQuRvI4pZNZMycK4WwDw==",
+      "dependencies": [
+        "preact"
+      ]
     },
     "preact@10.27.2": {
       "integrity": "sha512-5SYSgFKSyhCbk6SrXyMpqjb5+MQBgfvEKE/OC+PujcY34sOpqtr+0AZQtPYx5IA6VxynQ7rUPCtKzyovpj9Bpg=="
@@ -4075,15 +4117,14 @@
       "npm:ioredis@^5.6.1",
       "npm:json-preserve-indent@^1.1.3",
       "npm:postgres@^3.4.7",
-      "npm:preact@10.19.6",
       "npm:tsdown@~0.12.9"
     ],
     "members": {
       "examples/fresh": {
         "dependencies": [
-          "jsr:@fresh/core@^2.1.4",
-          "jsr:@fresh/plugin-vite@^1.0.7",
-          "npm:@preact/signals@^2.3.2",
+          "jsr:@fresh/core@^2.2.0",
+          "jsr:@fresh/plugin-vite@^1.0.8",
+          "npm:@preact/signals@^2.5.0",
           "npm:preact@^10.27.2",
           "npm:vite@^7.1.3"
         ]
@@ -4218,7 +4259,7 @@
       },
       "packages/fresh": {
         "dependencies": [
-          "jsr:@fresh/core@^2.1.4"
+          "jsr:@fresh/core@^2.2.0"
         ]
       },
       "packages/hono": {
