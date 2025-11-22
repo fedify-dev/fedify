@@ -37,11 +37,7 @@ html {
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
 }
-.transition-colors {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
+
 .my-6 {
   margin-bottom: 1.5rem;
   margin-top: 1.5rem;
@@ -131,14 +127,4 @@ html {
 }
 .min-h-screen {
   min-height: 100vh;
-}
-
-.fresh-gradient {
-  background-color: rgb(134, 239, 172);
-  background-image: linear-gradient(
-    to right bottom,
-    rgb(219, 234, 254),
-    rgb(187, 247, 208),
-    rgb(254, 249, 195)
-  );
 }
