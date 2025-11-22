@@ -295,11 +295,12 @@ jobs:
         deno-version: 2.5.6  # Keep in sync with mise.toml
     - uses: pnpm/action-setup@v4
       with:
-        version: 10
+        version: latest
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
         cache: pnpm
+    - run: sudo npm install -g npm@latest && npm --version
     - if: github.event_name == 'push' && github.ref_type == 'branch'
       run: |
         jq \
@@ -384,7 +385,6 @@ jobs:
         JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
     - run: |
         set -ex
-        npm config set //registry.npmjs.org/:_authToken "$NPM_AUTH_TOKEN"
         for pkg in fedify-*.tgz; do
           if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
             npm publish --logs-dir=. --provenance --access public "$pkg" \
@@ -408,7 +408,6 @@ jobs:
           fi
         done
       env:
-        NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
     - if: github.event_name == 'pull_request_target'
       uses: thollander/actions-comment-pull-request@v3

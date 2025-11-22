@@ -24,7 +24,7 @@
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
     "json-canon": "npm:json-canon@^1.0.1",
-    "jsonld": "npm:jsonld@^8.3.2",
+    "jsonld": "npm:jsonld@^9.0.0",
     "multicodec": "npm:multicodec@^3.2.1",
     "pkijs": "npm:pkijs@^3.2.4",
     "structured-field-values": "npm:structured-field-values@^2.0.4",

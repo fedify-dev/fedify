@@ -79,7 +79,12 @@
         "codegen"
       ]
     },
-    "install": "deno run --allow-read --allow-env --allow-run scripts/install.ts && pnpm install",
+    "install": {
+      "command": "deno run --allow-read --allow-env --allow-run scripts/install.ts && pnpm install",
+      "dependencies": [
+        "codegen"
+      ]
+    },
     "test": {
       "command": "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel",
       "dependencies": [
