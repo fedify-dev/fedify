@@ -174,9 +174,9 @@ spans:
 | `activitypub.outbox`                                | Consumer    | Dequeues the ActivityPub activity to send.    |
 | `activitypub.outbox`                                | Producer    | Enqueues the ActivityPub activity to send.    |
 | `activitypub.parse_object`                          | Internal    | Parses the Activity Streams object.           |
+| `activitypub.fetch_document`                        | Client      | Fetches a remote JSON-LD document.            |
 | `activitypub.send_activity`                         | Client      | Sends the ActivityPub activity.               |
 | `activitypub.verify_key_ownership`                  | Internal    | Verifies actor ownership of a key.            |
-| `docloader.fetch`                                   | Client      | Fetches a remote JSON-LD document.            |
 | `http_signatures.sign`                              | Internal    | Signs the HTTP request.                       |
 | `http_signatures.verify`                            | Internal    | Verifies the HTTP request signature.          |
 | `ld_signatures.sign`                                | Internal    | Makes the Linked Data signature.              |

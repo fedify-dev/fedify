@@ -360,7 +360,7 @@ export function getDocumentLoader(
     }
 
     return await tracer.startActiveSpan(
-      "docloader.fetch",
+      "activitypub.fetch_document",
       {
         kind: SpanKind.CLIENT,
         attributes: {

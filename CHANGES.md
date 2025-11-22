@@ -30,7 +30,7 @@ To be released.
  -  Added OpenTelemetry spans for previously uninstrumented operations:
     [[#323]]
 
-     -  Added `docloader.fetch` span for document loader operations,
+     -  Added `activitypub.fetch_document` span for document loader operations,
         tracking URL fetching, HTTP redirects, and final document URLs.
      -  Added `activitypub.verify_key_ownership` span for cryptographic
         key ownership verification, recording actor ID, key ID, verification
