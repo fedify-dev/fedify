@@ -1064,6 +1064,9 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
     devDependencies:
       '@fedify/testing':
         specifier: workspace:^

@@ -8,11 +8,12 @@ import {
   type MessageQueue,
 } from "@fedify/fedify";
 import { type Actor, Application, isActor, Object } from "@fedify/fedify/vocab";
-import { LitePubRelay, MastodonRelay } from "@fedify/relay";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,
 } from "@fedify/vocab-runtime";
+import { LitePubRelay } from "./litepub.ts";
+import { MastodonRelay } from "./mastodon.ts";
 
 export const RELAY_SERVER_ACTOR = "relay";
 
