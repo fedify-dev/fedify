@@ -47,6 +47,9 @@
     "dist/",
     "package.json"
   ],
+  "dependencies": {
+    "@js-temporal/polyfill": "catalog:"
+  },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"
   },
