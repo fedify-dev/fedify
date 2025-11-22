@@ -8,7 +8,7 @@ import {
   type MessageQueue,
 } from "@fedify/fedify";
 import { type Actor, Application, isActor, Object } from "@fedify/fedify/vocab";
-import { MastodonRelay } from "@fedify/relay";
+import { LitePubRelay, MastodonRelay } from "@fedify/relay";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,
@@ -36,17 +36,7 @@ export interface RelayOptions {
   subscriptionHandler?: SubscriptionRequestHandler;
 }
 
-/**
- * Base interface for ActivityPub relay implementations.
- */
-export interface OldRelay {
-  readonly domain: string;
-
-  fetch(request: Request): Promise<Response>;
-  setSubscriptionHandler(handler: SubscriptionRequestHandler): this;
-}
-
-export interface Follower {
+export interface LitePubFollower {
   readonly actor: unknown;
   readonly state: string;
 }
@@ -119,7 +109,7 @@ relayBuilder.setFollowersDispatcher(
 
     const actors: Actor[] = [];
     for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<Follower>([
+      const follower = await ctx.data.kv.get<LitePubFollower>([
         "follower",
         followerId,
       ]);
@@ -142,7 +132,7 @@ relayBuilder.setFollowingDispatcher(
 
     const actors: Actor[] = [];
     for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<Follower>([
+      const follower = await ctx.data.kv.get<LitePubFollower>([
         "follower",
         followerId,
       ]);
@@ -158,10 +148,12 @@ relayBuilder.setFollowingDispatcher(
 export function createRelay(
   type: string,
   options: RelayOptions,
-): MastodonRelay {
+): MastodonRelay | LitePubRelay {
   switch (type) {
     case "mastodon":
       return new MastodonRelay(options, relayBuilder);
+    case "litepub":
+      return new LitePubRelay(options, relayBuilder);
     default:
       throw new Error(`Unsupported relay type: ${type}`);
   }
