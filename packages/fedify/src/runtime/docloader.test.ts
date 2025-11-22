@@ -742,7 +742,7 @@ test("getDocumentLoader() records OpenTelemetry span", async (t) => {
       assertEquals(result.documentUrl, "https://example.com/doc");
 
       // Check that the span was recorded
-      const spans = exporter.getSpans("docloader.fetch");
+      const spans = exporter.getSpans("activitypub.fetch_document");
       assertEquals(spans.length, 1);
       const span = spans[0];
 
@@ -785,7 +785,7 @@ test("getDocumentLoader() records OpenTelemetry span", async (t) => {
       assertEquals(result.documentUrl, "https://example.com/new-doc");
 
       // Check that both spans were recorded (original + redirect)
-      const spans = exporter.getSpans("docloader.fetch");
+      const spans = exporter.getSpans("activitypub.fetch_document");
       assertEquals(spans.length, 2);
 
       // Check the redirect span (last span is the original request that redirected)
