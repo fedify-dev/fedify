@@ -72,12 +72,12 @@ export class MastodonRelay {
           if (approved) {
             const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
               [];
-            followers.push(follow.id.href);
+            followers.push(follower.id.href);
             await ctx.data.kv.set(["followers"], followers);
 
             await ctx.data.kv.set(
-              ["follower", follow.id.href],
-              await follower.toJsonLd(),
+              ["follower", follower.id.href],
+              { "actor": await follower.toJsonLd(), "state": "accepted" },
             );
 
             await ctx.sendActivity(
