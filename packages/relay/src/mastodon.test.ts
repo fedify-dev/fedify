@@ -404,7 +404,7 @@ describe("MastodonRelay", () => {
     strictEqual(followers.length, 1);
     strictEqual(
       followers[0],
-      "https://remote.example.com/activities/follow/1",
+      "https://remote.example.com/users/alice",
     );
   });
 
