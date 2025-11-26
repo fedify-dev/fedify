@@ -17,7 +17,7 @@ import {
   type LitePubFollower,
   RELAY_SERVER_ACTOR,
   type RelayOptions,
-} from "@fedify/relay";
+} from "./relay.ts";
 
 /**
  * A LitePub-compatible ActivityPub relay implementation.
