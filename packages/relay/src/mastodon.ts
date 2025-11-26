@@ -9,7 +9,7 @@ import {
   Undo,
   Update,
 } from "@fedify/fedify";
-import { RELAY_SERVER_ACTOR, type RelayOptions } from "@fedify/relay";
+import { RELAY_SERVER_ACTOR, type RelayOptions } from "./relay.ts";
 import type { FederationBuilder } from "@fedify/fedify/federation";
 
 /**
