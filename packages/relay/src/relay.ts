@@ -37,7 +37,7 @@ export interface RelayOptions {
   subscriptionHandler?: SubscriptionRequestHandler;
 }
 
-export interface LitePubFollower {
+export interface RelayFollower {
   readonly actor: unknown;
   readonly state: string;
 }
@@ -110,7 +110,7 @@ relayBuilder.setFollowersDispatcher(
 
     const actors: Actor[] = [];
     for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<LitePubFollower>([
+      const follower = await ctx.data.kv.get<RelayFollower>([
         "follower",
         followerId,
       ]);
@@ -133,7 +133,7 @@ relayBuilder.setFollowingDispatcher(
 
     const actors: Actor[] = [];
     for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<LitePubFollower>([
+      const follower = await ctx.data.kv.get<RelayFollower>([
         "follower",
         followerId,
       ]);

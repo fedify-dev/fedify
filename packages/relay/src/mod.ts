@@ -11,8 +11,8 @@
 // Export relay functionality here
 export {
   createRelay,
-  type LitePubFollower,
   RELAY_SERVER_ACTOR,
+  type RelayFollower,
   type RelayOptions,
   type SubscriptionRequestHandler,
 } from "./relay.ts";

@@ -14,8 +14,8 @@ import {
   Update,
 } from "@fedify/fedify";
 import {
-  type LitePubFollower,
   RELAY_SERVER_ACTOR,
+  type RelayFollower,
   type RelayOptions,
 } from "./relay.ts";
 
@@ -69,7 +69,7 @@ export class LitePubRelay {
           ) return;
 
           // Check if this is a follow from a client or if we already have a pending state
-          const existingFollow = await ctx.data.kv.get<LitePubFollower>([
+          const existingFollow = await ctx.data.kv.get<RelayFollower>([
             "follower",
             follower.id.href,
           ]);
