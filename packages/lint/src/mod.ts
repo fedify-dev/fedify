@@ -61,15 +61,10 @@ import actorSharedInboxPropertyRequired, {
 import collectionFilteringNotImplemented, {
   COLLECTION_FILTERING_NOT_IMPLEMENTED,
 } from "./rules/collection-filtering-not-implemented.ts";
-import ed25519KeyRequiredForProof, {
-  ED25519_KEY_REQUIRED_FOR_PROOF,
-} from "./rules/ed25519-key-required-for-proof.ts";
-import rsaKeyRequiredForHttpSignature, {
-  RSA_KEY_REQUIRED_FOR_HTTP_SIGNATURE,
-} from "./rules/rsa-key-required-for-http-signature.ts";
-import rsaKeyRequiredForLdSignature, {
-  RSA_KEY_REQUIRED_FOR_LD_SIGNATURE,
-} from "./rules/rsa-key-required-for-ld-signature.ts";
+import ed25519KeyRequired, {
+  ED25519_KEY_REQUIRED,
+} from "./rules/ed25519-key-required.ts";
+import rsaKeyRequired, { RSA_KEY_REQUIRED } from "./rules/rsa-key-required.ts";
 
 const plugin: Deno.lint.Plugin = {
   name: "@fedify/lint",
@@ -95,9 +90,8 @@ const plugin: Deno.lint.Plugin = {
     [ACTOR_SHARED_INBOX_PROPERTY_MISMATCH]: actorSharedInboxPropertyMismatch,
     [ACTOR_PUBLIC_KEY_REQUIRED]: actorPublicKeyRequired,
     [ACTOR_ASSERTION_METHOD_REQUIRED]: actorAssertionMethodRequired,
-    [RSA_KEY_REQUIRED_FOR_HTTP_SIGNATURE]: rsaKeyRequiredForHttpSignature,
-    [RSA_KEY_REQUIRED_FOR_LD_SIGNATURE]: rsaKeyRequiredForLdSignature,
-    [ED25519_KEY_REQUIRED_FOR_PROOF]: ed25519KeyRequiredForProof,
+    [RSA_KEY_REQUIRED]: rsaKeyRequired,
+    [ED25519_KEY_REQUIRED]: ed25519KeyRequired,
   },
 };
 
