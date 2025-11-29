@@ -374,11 +374,22 @@ jobs:
     - run: |
         set -ex
         deno task -f @fedify/fedify codegen
+        publish_cmd="deno publish --allow-dirty"
         if [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
-          deno publish --allow-dirty --no-provenance --token "$JSR_TOKEN"
-        else
-          deno publish --allow-dirty
+          publish_cmd="$publish_cmd --no-provenance --token $JSR_TOKEN"
         fi
+        max_attempts=5
+        attempt=1
+        until $publish_cmd; do
+          exit_code=$?
+          if [[ $attempt -ge $max_attempts ]]; then
+            echo "deno publish failed after $max_attempts attempts"
+            exit $exit_code
+          fi
+          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
+          sleep 30
+          ((attempt++))
+        done
       env:
         JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
     - run: |
