@@ -16,7 +16,6 @@ const ALIASES = [
 ];
 
 test("Test webFingerCommand", () => {
-  // Resources only
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   assert.deepEqual(
     parse(webFingerCommand, argsWithResourcesOnly),
@@ -32,7 +31,7 @@ test("Test webFingerCommand", () => {
       },
     },
   );
-  // With options
+
   const maxRedirection = 10;
   assert.deepEqual(
     parse(webFingerCommand, [
@@ -56,13 +55,13 @@ test("Test webFingerCommand", () => {
       },
     },
   );
-  // Wrong option
+
   const wrongOptionResult = parse(webFingerCommand, [
     ...argsWithResourcesOnly,
     "-Q",
   ]);
   assert.ok(!wrongOptionResult.success);
-  // Wrong option value
+
   const wrongOptionValueResult = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
@@ -70,10 +69,45 @@ test("Test webFingerCommand", () => {
   assert.ok(!wrongOptionValueResult.success);
 });
 
+// ------------------ MOCKED TEST (Fix for Issue #480) ------------------
+
 test("Test lookupSingleWebFinger", async () => {
-  const aliases = (await Array.fromAsync(
-    RESOURCES,
-    (resource) => lookupSingleWebFinger({ resource }),
-  )).map((w) => w?.aliases?.[0]);
-  assert.deepEqual(aliases, ALIASES);
+  const originalFetch = globalThis.fetch;
+
+  const mockResponses = {
+    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub": {
+      subject: "acct:hongminhee@hackers.pub",
+      aliases: [ALIASES[0]],
+      links: [{ rel: "self", type: "application/activity+json", href: ALIASES[0] }]
+    },
+    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social": {
+      subject: "acct:fedify@hollo.social",
+      aliases: [ALIASES[1]],
+      links: [{ rel: "self", type: "application/activity+json", href: ALIASES[1] }]
+    }
+  };
+
+  globalThis.fetch = async (input: any) => {
+    const url = input.toString();
+    const response = mockResponses[url as keyof typeof mockResponses];
+
+    if (response) {
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "Content-Type": "application/jrd+json" }
+      });
+    }
+
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const aliases = (await Array.fromAsync(
+      RESOURCES,
+      (resource) => lookupSingleWebFinger({ resource }),
+    )).map((w) => w?.aliases?.[0]);
+    assert.deepEqual(aliases, ALIASES);
+  } finally {
+    globalThis.fetch = originalFetch; // Restore always
+  }
 });
