@@ -17,6 +17,7 @@ const ALIASES = [
 
 test("Test webFingerCommand", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
+
   assert.deepEqual(
     parse(webFingerCommand, argsWithResourcesOnly),
     {
@@ -33,6 +34,7 @@ test("Test webFingerCommand", () => {
   );
 
   const maxRedirection = 10;
+
   assert.deepEqual(
     parse(webFingerCommand, [
       ...argsWithResourcesOnly,
@@ -60,21 +62,25 @@ test("Test webFingerCommand", () => {
     ...argsWithResourcesOnly,
     "-Q",
   ]);
+
   assert.ok(!wrongOptionResult.success);
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
+
   assert.ok(!wrongOptionValueResult.success);
 });
 
-// ------------------ MOCKED TEST (Fix for Issue #480) ------------------
+// ---------------------------------------------------------------------
+// Mocked WebFinger test (Fix for Issue #480)
+// ---------------------------------------------------------------------
 
 test("Test lookupSingleWebFinger", async () => {
   const originalFetch = globalThis.fetch;
 
-  const mockResponses = {
+  const mockResponses: Record<string, unknown> = {
     "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
       {
         subject: "acct:hongminhee@hackers.pub",
@@ -102,14 +108,16 @@ test("Test lookupSingleWebFinger", async () => {
       },
   };
 
-  globalThis.fetch = async (input: any) => {
+  globalThis.fetch = async (input: Request | string | URL) => {
     const url = input.toString();
-    const response = mockResponses[url as keyof typeof mockResponses];
+    const response = mockResponses[url];
 
     if (response) {
       return new Response(JSON.stringify(response), {
         status: 200,
-        headers: { "Content-Type": "application/jrd+json" },
+        headers: {
+          "Content-Type": "application/jrd+json",
+        },
       });
     }
 
@@ -120,7 +128,8 @@ test("Test lookupSingleWebFinger", async () => {
     const aliases = (await Array.fromAsync(
       RESOURCES,
       (resource) => lookupSingleWebFinger({ resource }),
-    )).map((w) => w?.aliases?.[0]);
+    )).map((item) => item?.aliases?.[0]);
+
     assert.deepEqual(aliases, ALIASES);
   } finally {
     globalThis.fetch = originalFetch;
