@@ -15,7 +15,7 @@ const ALIASES = [
   "https://hollo.social/@fedify",
 ];
 
-test("Test webFingerCommand", () => {
+test("Test webFingerCommand", (): void => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
 
   assert.deepEqual(
@@ -62,63 +62,63 @@ test("Test webFingerCommand", () => {
     ...argsWithResourcesOnly,
     "-Q",
   ]);
-
   assert.ok(!wrongOptionResult.success);
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
-
   assert.ok(!wrongOptionValueResult.success);
 });
 
 // ---------------------------------------------------------------------
-// Mocked WebFinger test (Fix for Issue #480)
+// Mocked test (Fix for Issue #480)
 // ---------------------------------------------------------------------
 
-test("Test lookupSingleWebFinger", async () => {
+test("Test lookupSingleWebFinger", async (): Promise<void> => {
   const originalFetch = globalThis.fetch;
 
   const mockResponses: Record<string, unknown> = {
-    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
-      {
-        subject: "acct:hongminhee@hackers.pub",
-        aliases: [ALIASES[0]],
-        links: [
-          {
-            rel: "self",
-            type: "application/activity+json",
-            href: ALIASES[0],
-          },
-        ],
-      },
-
-    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social":
-      {
-        subject: "acct:fedify@hollo.social",
-        aliases: [ALIASES[1]],
-        links: [
-          {
-            rel: "self",
-            type: "application/activity+json",
-            href: ALIASES[1],
-          },
-        ],
-      },
+    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub": {
+      subject: "acct:hongminhee@hackers.pub",
+      aliases: [ALIASES[0]],
+      links: [
+        {
+          rel: "self",
+          type: "application/activity+json",
+          href: ALIASES[0],
+        },
+      ],
+    },
+    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social": {
+      subject: "acct:fedify@hollo.social",
+      aliases: [ALIASES[1]],
+      links: [
+        {
+          rel: "self",
+          type: "application/activity+json",
+          href: ALIASES[1],
+        },
+      ],
+    },
   };
 
-  globalThis.fetch = async (input: Request | string | URL) => {
-    const url = input.toString();
+  globalThis.fetch = async (
+    input: unknown,
+  ): Promise<Response> => {
+    const url = String(input);
     const response = mockResponses[url];
 
     if (response) {
-      return new Response(JSON.stringify(response), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/jrd+json",
+      return new Response(
+        JSON.stringify(response),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/jrd+json",
+          },
         },
-      });
+      );
     }
 
     throw new Error(`Unexpected URL: ${url}`);
@@ -127,7 +127,8 @@ test("Test lookupSingleWebFinger", async () => {
   try {
     const aliases = (await Array.fromAsync(
       RESOURCES,
-      (resource) => lookupSingleWebFinger({ resource }),
+      (resource) =>
+        lookupSingleWebFinger({ resource }),
     )).map((item) => item?.aliases?.[0]);
 
     assert.deepEqual(aliases, ALIASES);
