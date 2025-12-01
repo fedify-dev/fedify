@@ -75,17 +75,31 @@ test("Test lookupSingleWebFinger", async () => {
   const originalFetch = globalThis.fetch;
 
   const mockResponses = {
-    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub": {
-      subject: "acct:hongminhee@hackers.pub",
-      aliases: [ALIASES[0]],
-      links: [{ rel: "self", type: "application/activity+json", href: ALIASES[0] }]
-    },
-    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social": {
-      subject: "acct:fedify@hollo.social",
-      aliases: [ALIASES[1]],
-      links: [{ rel: "self", type: "application/activity+json", href: ALIASES[1] }]
-    }
-  };
+  "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub": {
+    subject: "acct:hongminhee@hackers.pub",
+    aliases: [ALIASES[0]],
+    links: [
+      {
+        rel: "self",
+        type: "application/activity+json",
+        href: ALIASES[0],
+      },
+    ],
+  },
+
+  "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social": {
+    subject: "acct:fedify@hollo.social",
+    aliases: [ALIASES[1]],
+    links: [
+      {
+        rel: "self",
+        type: "application/activity+json",
+        href: ALIASES[1],
+      },
+    ],
+  },
+};
+
 
   globalThis.fetch = async (input: any) => {
     const url = input.toString();
