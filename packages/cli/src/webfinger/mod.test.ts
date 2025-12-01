@@ -15,9 +15,8 @@ const ALIASES = [
   "https://hollo.social/@fedify",
 ];
 
-test("Test webFingerCommand", (): void => {
+test("Test webFingerCommand", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-
   assert.deepEqual(
     parse(webFingerCommand, argsWithResourcesOnly),
     {
@@ -30,11 +29,10 @@ test("Test webFingerCommand", (): void => {
         maxRedirection: 5,
         userAgent: undefined,
       },
-    },
+    }
   );
 
   const maxRedirection = 10;
-
   assert.deepEqual(
     parse(webFingerCommand, [
       ...argsWithResourcesOnly,
@@ -55,25 +53,20 @@ test("Test webFingerCommand", (): void => {
         maxRedirection,
         userAgent: USER_AGENT,
       },
-    },
+    }
   );
 
-  const wrongOptionResult = parse(webFingerCommand, [
-    ...argsWithResourcesOnly,
-    "-Q",
-  ]);
+  const wrongOptionResult = parse(webFingerCommand, [...argsWithResourcesOnly, "-Q"]);
   assert.ok(!wrongOptionResult.success);
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
-    [...argsWithResourcesOnly, "--max-redirection", "-10"],
+    [...argsWithResourcesOnly, "--max-redirection", "-10"]
   );
   assert.ok(!wrongOptionValueResult.success);
 });
 
-// ---------------------------------------------------------------------
-// Mocked test (Fix for Issue #480)
-// ---------------------------------------------------------------------
+// ------------------ MOCKED TEST (Fix for Issue #480) ------------------
 
 test("Test lookupSingleWebFinger", async (): Promise<void> => {
   const originalFetch = globalThis.fetch;
@@ -103,34 +96,24 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
     },
   };
 
-  globalThis.fetch = async (
-    input: unknown,
-  ): Promise<Response> => {
+  globalThis.fetch = async (input: unknown): Promise<Response> => {
     const url = String(input);
     const response = mockResponses[url];
-
     if (response) {
-      return new Response(
-        JSON.stringify(response),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/jrd+json",
-          },
-        },
-      );
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "Content-Type": "application/jrd+json" },
+      });
     }
-
     throw new Error(`Unexpected URL: ${url}`);
   };
 
   try {
-    const aliases = (await Array.fromAsync(
-      RESOURCES,
-      (resource) =>
-        lookupSingleWebFinger({ resource }),
-    )).map((item) => item?.aliases?.[0]);
-
+    const aliases = (
+      await Promise.all(
+        RESOURCES.map((resource) => lookupSingleWebFinger({ resource }))
+      )
+    ).map((w) => w?.aliases?.[0]);
     assert.deepEqual(aliases, ALIASES);
   } finally {
     globalThis.fetch = originalFetch;
