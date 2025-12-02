@@ -13,11 +13,11 @@ catalogs:
       specifier: ^0.5.1
       version: 0.5.1
     '@logtape/file':
-      specifier: ^1.1.1
-      version: 1.1.1
+      specifier: ^1.2.2
+      version: 1.2.2
     '@logtape/logtape':
-      specifier: ^1.1.1
-      version: 1.1.1
+      specifier: ^1.2.2
+      version: 1.2.2
     '@nestjs/common':
       specifier: ^11.0.1
       version: 11.1.4
@@ -158,10 +158,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 1.1.1(@logtape/logtape@1.1.1)
+        version: 1.2.2(@logtape/logtape@1.2.2)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.4(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -304,7 +304,7 @@ importers:
         version: link:../../packages/fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       express:
         specifier: 'catalog:'
         version: 4.21.2
@@ -351,7 +351,7 @@ importers:
         version: link:../../packages/koa
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       koa:
         specifier: 'catalog:'
         version: 2.16.2
@@ -425,7 +425,7 @@ importers:
         version: link:../../packages/fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       next:
         specifier: ^14.0.0
         version: 14.2.30(@opentelemetry/api@1.9.0)(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
@@ -702,7 +702,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       '@multiformats/base-x':
         specifier: ^4.0.1
         version: 4.0.1
@@ -894,7 +894,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -919,7 +919,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       ioredis:
         specifier: 'catalog:'
         version: 5.6.1
@@ -947,7 +947,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.1.1
+        version: 1.2.2
       es-toolkit:
         specifier: ^1.31.0
         version: 1.39.5
@@ -2131,13 +2131,13 @@ packages:
   '@jsr/std__yaml@1.0.8':
     resolution: {integrity: sha512-iLe84pvIEtG7EFKxP5fIQn7CFQle7gzkb6KSPqf9zkyR2NVViSJjK8xbXg82SUEFSmpdY18qCGpVEnTG3oRMVg==, tarball: https://npm.jsr.io/~/11/@jsr/std__yaml/1.0.8.tgz}
 
-  '@logtape/file@1.1.1':
-    resolution: {integrity: sha512-WZb1VfAR/7dbJqv0IseGZ7SzBzzoBDoZipIADIQj+X1/cXKuwdbdILQshKwttHMQuOOE5LxWibaCo/WHfHiaOQ==}
+  '@logtape/file@1.2.2':
+    resolution: {integrity: sha512-WyWCOQr/g3rizEwrxybem0ASq+PvLIAfSPErUv5MlkqkHhnjGFG6esfh2cezOQtjaR3oGm/1FgI9+nuyjTpisg==}
     peerDependencies:
-      '@logtape/logtape': ^1.1.1
+      '@logtape/logtape': ^1.2.2
 
-  '@logtape/logtape@1.1.1':
-    resolution: {integrity: sha512-/zpMuB2BZnL3LnBsy6PfFJp/4qP/60U9hE5j6eFwk25wBVtLpd7/bF3B1j7cnMD37R02fFyDyyHEmRSOz6+Qfg==}
+  '@logtape/logtape@1.2.2':
+    resolution: {integrity: sha512-yx4uj7NUXo5pOk2lljtAf7UN9oDBw9xfxSDC4jxdbfnGDGmq4iJhenWBbU9XV8ilm8AUUMYXq2nk+qvz8E21DA==}
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -8472,11 +8472,11 @@ snapshots:
 
   '@jsr/std__yaml@1.0.8': {}
 
-  '@logtape/file@1.1.1(@logtape/logtape@1.1.1)':
+  '@logtape/file@1.2.2(@logtape/logtape@1.2.2)':
     dependencies:
-      '@logtape/logtape': 1.1.1
+      '@logtape/logtape': 1.2.2
 
-  '@logtape/logtape@1.1.1': {}
+  '@logtape/logtape@1.2.2': {}
 
   '@lukeed/csprng@1.1.0': {}
 

@@ -30,8 +30,8 @@ packages:
 catalog:
   "@cloudflare/workers-types": ^4.20250529.0
   "@js-temporal/polyfill": ^0.5.1
-  "@logtape/file": ^1.1.1
-  "@logtape/logtape": ^1.1.1
+  "@logtape/file": ^1.2.2
+  "@logtape/logtape": ^1.2.2
   "@std/assert": "jsr:^1.0.13"
   "@std/async": "jsr:^1.0.13"
   "@std/path": "jsr:^1.0.6"
