@@ -10,7 +10,6 @@ const RESOURCES = [
   "@hongminhee@hackers.pub",
   "@fedify@hollo.social",
 ];
-
 const ALIASES = [
   "https://hackers.pub/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
   "https://hollo.social/@fedify",
@@ -18,37 +17,29 @@ const ALIASES = [
 
 test("Test webFingerCommand", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-
-  assert.deepEqual(
-    parse(webFingerCommand, argsWithResourcesOnly),
-    {
-      success: true,
-      value: {
-        debug: false,
-        command: COMMAND,
-        resources: RESOURCES,
-        allowPrivateAddresses: undefined,
-        maxRedirection: 5,
-        userAgent: undefined,
-      },
+  assert.deepEqual(parse(webFingerCommand, argsWithResourcesOnly), {
+    success: true,
+    value: {
+      debug: false,
+      command: COMMAND,
+      resources: RESOURCES,
+      allowPrivateAddresses: undefined,
+      maxRedirection: 5,
+      userAgent: undefined,
     },
-  );
+  });
 
   const maxRedirection = 10;
-
   assert.deepEqual(
-    parse(
-      webFingerCommand,
-      [
-        ...argsWithResourcesOnly,
-        "-d",
-        "-u",
-        USER_AGENT,
-        "--max-redirection",
-        String(maxRedirection),
-        "--allow-private-address",
-      ],
-    ),
+    parse(webFingerCommand, [
+      ...argsWithResourcesOnly,
+      "-d",
+      "-u",
+      USER_AGENT,
+      "--max-redirection",
+      String(maxRedirection),
+      "--allow-private-address",
+    ]),
     {
       success: true,
       value: {
@@ -70,21 +61,19 @@ test("Test webFingerCommand", () => {
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
-    [
-      ...argsWithResourcesOnly,
-      "--max-redirection",
-      "-10",
-    ],
+    [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
   assert.ok(!wrongOptionValueResult.success);
 });
 
-// ------------------ Mocked Test for Issue #480 ------------------
+// ----------------------------------------------------------------------
+// FIX FOR ISSUE #480 – MOCK FETCH TO REMOVE EXTERNAL DEPENDENCY
+// ----------------------------------------------------------------------
 
-test("Test lookupSingleWebFinger", async () => {
+test("Test lookupSingleWebFinger", async (): Promise<void> => {
   const originalFetch = globalThis.fetch;
 
-  const mockResponses = {
+  const mockResponses: Record<string, unknown> = {
     "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
       {
         subject: "acct:hongminhee@hackers.pub",
@@ -97,6 +86,7 @@ test("Test lookupSingleWebFinger", async () => {
           },
         ],
       },
+
     "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social":
       {
         subject: "acct:fedify@hollo.social",
@@ -109,29 +99,33 @@ test("Test lookupSingleWebFinger", async () => {
           },
         ],
       },
-  } as const;
+  };
 
-  // LINT-PASSING fetch mock (sync, no async violation)
-  globalThis.fetch = (input: unknown): Response => {
+  // Correct async fetch mock returning Promise<Response>
+  globalThis.fetch = async (
+    input: RequestInfo | URL,
+  ): Promise<Response> => {
+    await Promise.resolve();
+
     const url = String(input);
-    const response = mockResponses[url as keyof typeof mockResponses];
+    const responseData = mockResponses[url];
 
-    if (response) {
-      return new Response(
-        JSON.stringify(response),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/jrd+json" },
+    if (responseData) {
+      return new Response(JSON.stringify(responseData), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/jrd+json",
         },
-      );
+      });
     }
 
     throw new Error(`Unexpected URL: ${url}`);
   };
 
   try {
-    const results = await Promise.all(
-      RESOURCES.map((resource) => lookupSingleWebFinger({ resource })),
+    const results = await Array.fromAsync(
+      RESOURCES,
+      (resource) => lookupSingleWebFinger({ resource }),
     );
 
     const aliases = results.map((w) => w?.aliases?.[0]);
