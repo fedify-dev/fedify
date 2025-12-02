@@ -29,7 +29,7 @@ test("Test webFingerCommand", () => {
         maxRedirection: 5,
         userAgent: undefined,
       },
-    }
+    },
   );
 
   const maxRedirection = 10;
@@ -53,15 +53,18 @@ test("Test webFingerCommand", () => {
         maxRedirection,
         userAgent: USER_AGENT,
       },
-    }
+    },
   );
 
-  const wrongOptionResult = parse(webFingerCommand, [...argsWithResourcesOnly, "-Q"]);
+  const wrongOptionResult = parse(webFingerCommand, [
+    ...argsWithResourcesOnly,
+    "-Q",
+  ]);
   assert.ok(!wrongOptionResult.success);
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
-    [...argsWithResourcesOnly, "--max-redirection", "-10"]
+    [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
   assert.ok(!wrongOptionValueResult.success);
 });
@@ -72,28 +75,30 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
   const originalFetch = globalThis.fetch;
 
   const mockResponses: Record<string, unknown> = {
-    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub": {
-      subject: "acct:hongminhee@hackers.pub",
-      aliases: [ALIASES[0]],
-      links: [
-        {
-          rel: "self",
-          type: "application/activity+json",
-          href: ALIASES[0],
-        },
-      ],
-    },
-    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social": {
-      subject: "acct:fedify@hollo.social",
-      aliases: [ALIASES[1]],
-      links: [
-        {
-          rel: "self",
-          type: "application/activity+json",
-          href: ALIASES[1],
-        },
-      ],
-    },
+    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
+      {
+        subject: "acct:hongminhee@hackers.pub",
+        aliases: [ALIASES[0]],
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: ALIASES[0],
+          },
+        ],
+      },
+    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social":
+      {
+        subject: "acct:fedify@hollo.social",
+        aliases: [ALIASES[1]],
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: ALIASES[1],
+          },
+        ],
+      },
   };
 
   globalThis.fetch = async (input: unknown): Promise<Response> => {
@@ -111,7 +116,7 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
   try {
     const aliases = (
       await Promise.all(
-        RESOURCES.map((resource) => lookupSingleWebFinger({ resource }))
+        RESOURCES.map((resource) => lookupSingleWebFinger({ resource })),
       )
     ).map((w) => w?.aliases?.[0]);
     assert.deepEqual(aliases, ALIASES);
