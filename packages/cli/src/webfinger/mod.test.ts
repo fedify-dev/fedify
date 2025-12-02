@@ -10,6 +10,7 @@ const RESOURCES = [
   "@hongminhee@hackers.pub",
   "@fedify@hollo.social",
 ];
+
 const ALIASES = [
   "https://hackers.pub/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
   "https://hollo.social/@fedify",
@@ -17,6 +18,7 @@ const ALIASES = [
 
 test("Test webFingerCommand", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
+
   assert.deepEqual(
     parse(webFingerCommand, argsWithResourcesOnly),
     {
@@ -33,16 +35,20 @@ test("Test webFingerCommand", () => {
   );
 
   const maxRedirection = 10;
+
   assert.deepEqual(
-    parse(webFingerCommand, [
-      ...argsWithResourcesOnly,
-      "-d",
-      "-u",
-      USER_AGENT,
-      "--max-redirection",
-      String(maxRedirection),
-      "--allow-private-address",
-    ]),
+    parse(
+      webFingerCommand,
+      [
+        ...argsWithResourcesOnly,
+        "-d",
+        "-u",
+        USER_AGENT,
+        "--max-redirection",
+        String(maxRedirection),
+        "--allow-private-address",
+      ],
+    ),
     {
       success: true,
       value: {
@@ -64,17 +70,21 @@ test("Test webFingerCommand", () => {
 
   const wrongOptionValueResult = parse(
     webFingerCommand,
-    [...argsWithResourcesOnly, "--max-redirection", "-10"],
+    [
+      ...argsWithResourcesOnly,
+      "--max-redirection",
+      "-10",
+    ],
   );
   assert.ok(!wrongOptionValueResult.success);
 });
 
-// ------------------ MOCKED TEST (Fix for Issue #480) ------------------
+// ------------------ Mocked Test for Issue #480 ------------------
 
-test("Test lookupSingleWebFinger", async (): Promise<void> => {
+test("Test lookupSingleWebFinger", async () => {
   const originalFetch = globalThis.fetch;
 
-  const mockResponses: Record<string, unknown> = {
+  const mockResponses = {
     "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
       {
         subject: "acct:hongminhee@hackers.pub",
@@ -99,26 +109,32 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
           },
         ],
       },
-  };
+  } as const;
 
-  globalThis.fetch = async (input: unknown): Promise<Response> => {
+  // LINT-PASSING fetch mock (sync, no async violation)
+  globalThis.fetch = (input: unknown): Response => {
     const url = String(input);
-    const response = mockResponses[url];
+    const response = mockResponses[url as keyof typeof mockResponses];
+
     if (response) {
-      return new Response(JSON.stringify(response), {
-        status: 200,
-        headers: { "Content-Type": "application/jrd+json" },
-      });
+      return new Response(
+        JSON.stringify(response),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/jrd+json" },
+        },
+      );
     }
+
     throw new Error(`Unexpected URL: ${url}`);
   };
 
   try {
-    const aliases = (
-      await Promise.all(
-        RESOURCES.map((resource) => lookupSingleWebFinger({ resource })),
-      )
-    ).map((w) => w?.aliases?.[0]);
+    const results = await Promise.all(
+      RESOURCES.map((resource) => lookupSingleWebFinger({ resource })),
+    );
+
+    const aliases = results.map((w) => w?.aliases?.[0]);
     assert.deepEqual(aliases, ALIASES);
   } finally {
     globalThis.fetch = originalFetch;
