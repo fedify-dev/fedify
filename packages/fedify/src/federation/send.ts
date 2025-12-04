@@ -1,5 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import {
+  type Span,
   SpanKind,
   SpanStatusCode,
   trace,
@@ -175,7 +176,7 @@ export function sendActivity(
         span.setAttribute("activitypub.activity.type", options.activityType);
       }
       try {
-        await sendActivityInternal({ ...options, tracerProvider });
+        await sendActivityInternal({ ...options, tracerProvider }, span);
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
@@ -196,6 +197,7 @@ async function sendActivityInternal(
     specDeterminer,
     tracerProvider,
   }: SendActivityParameters,
+  span: Span,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   headers = new Headers(headers);
@@ -266,4 +268,11 @@ async function sendActivityInternal(
         `(${response.status} ${response.statusText}):\n${error}`,
     );
   }
+
+  // Record the sent activity with delivery details
+  span.addEvent("activitypub.activity.sent", {
+    "activitypub.activity.json": JSON.stringify(activity),
+    "activitypub.inbox.url": inbox.href,
+    "activitypub.activity.id": activityId ?? "",
+  });
 }

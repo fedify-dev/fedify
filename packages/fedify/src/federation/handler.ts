@@ -795,6 +795,16 @@ async function handleInboxInternal<TContextData>(
     span.setAttribute("activitypub.activity.id", activity.id.href);
   }
   span.setAttribute("activitypub.activity.type", getTypeId(activity).href);
+
+  // Record the received activity with verification details
+  span.addEvent("activitypub.activity.received", {
+    "activitypub.activity.json": JSON.stringify(json),
+    "activitypub.activity.verified": activity != null,
+    "ld_signatures.verified": ldSigVerified,
+    "http_signatures.verified": httpSigKey != null,
+    "http_signatures.key_id": httpSigKey?.id?.href ?? "",
+  });
+
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {

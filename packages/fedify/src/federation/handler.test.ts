@@ -11,6 +11,7 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
+import { createTestTracerProvider } from "../testing/otel.ts";
 import {
   type Activity,
   Create,
@@ -1953,4 +1954,117 @@ test("handleCustomCollection()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(onNotAcceptableCalled, null);
   assertEquals(onUnauthorizedCalled, null);
+});
+
+test("handleInbox() records OpenTelemetry span events", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({ kv, tracerProvider });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activity"),
+    actor: new URL("https://example.com/users/someone"),
+    object: new Note({
+      id: new URL("https://example.com/note"),
+      content: "Hello, world!",
+    }),
+  });
+
+  const request = new Request("https://example.com/users/someone/inbox", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/activity+json",
+    },
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+
+  const signed = await signRequest(
+    request,
+    rsaPrivateKey3,
+    new URL("https://example.com/users/someone#main-key"),
+  );
+
+  const context = createRequestContext<void>({
+    federation,
+    request: signed,
+    url: new URL(signed.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+
+  const actorDispatcher: ActorDispatcher<void> = (ctx, handle) => {
+    if (handle !== "someone") return null;
+    return new Person({
+      id: ctx.getActorUri(handle),
+      name: "Someone",
+      inbox: new URL("https://example.com/users/someone/inbox"),
+      publicKey: rsaPublicKey2,
+    });
+  };
+
+  const listeners = new InboxListenerSet<void>();
+  let receivedActivity: Activity | null = null;
+  listeners.add(Create, (_ctx, activity) => {
+    receivedActivity = activity;
+  });
+
+  const response = await handleInbox(signed, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...context, clone: undefined });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["activityIdempotence"],
+      publicKey: ["publicKey"],
+    },
+    actorDispatcher,
+    inboxListeners: listeners,
+    inboxErrorHandler: undefined,
+    onNotFound: (_request) => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: false,
+    skipSignatureVerification: true,
+    tracerProvider,
+  });
+
+  assertEquals(response.status, 202);
+  assert(receivedActivity != null);
+
+  // Check that the span was recorded
+  const spans = exporter.getSpans("activitypub.inbox");
+  assertEquals(spans.length, 1);
+  const span = spans[0];
+
+  // Check span attributes
+  assertEquals(span.attributes["fedify.inbox.recipient"], "someone");
+  assertEquals(
+    span.attributes["activitypub.activity.id"],
+    "https://example.com/activity",
+  );
+
+  // Check that the activity.received event was recorded
+  const events = exporter.getEvents(
+    "activitypub.inbox",
+    "activitypub.activity.received",
+  );
+  assertEquals(events.length, 1);
+  const event = events[0];
+
+  // Verify event attributes
+  assert(event.attributes != null);
+  assertEquals(event.attributes["activitypub.activity.verified"], true);
+  assertEquals(event.attributes["http_signatures.verified"], false);
+  assert(typeof event.attributes["activitypub.activity.json"] === "string");
+
+  // Verify the JSON contains the activity
+  const recordedActivity = JSON.parse(
+    event.attributes["activitypub.activity.json"] as string,
+  );
+  assertEquals(recordedActivity.id, "https://example.com/activity");
+  assertEquals(recordedActivity.type, "Create");
 });

@@ -1,4 +1,10 @@
-import { trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  SpanKind,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
+import metadata from "../../deno.json" with { type: "json" };
 import {
   type DocumentLoader,
   getDocumentLoader,
@@ -46,15 +52,56 @@ export async function doesActorOwnKey(
   key: CryptographicKey,
   options: DoesActorOwnKeyOptions,
 ): Promise<boolean> {
-  if (key.ownerId != null) {
-    return key.ownerId.href === activity.actorId?.href;
-  }
-  const actor = await activity.getActor(options);
-  if (actor == null || !isActor(actor)) return false;
-  for (const publicKeyId of actor.publicKeyIds) {
-    if (key.id != null && publicKeyId.href === key.id.href) return true;
-  }
-  return false;
+  const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+  return await tracer.startActiveSpan(
+    "activitypub.verify_key_ownership",
+    {
+      kind: SpanKind.INTERNAL,
+      attributes: {
+        "activitypub.actor.id": activity.actorId?.href ?? "",
+        "activitypub.key.id": key.id?.href ?? "",
+      },
+    },
+    async (span) => {
+      try {
+        if (key.ownerId != null) {
+          const owns = key.ownerId.href === activity.actorId?.href;
+          span.setAttribute("activitypub.key_ownership.verified", owns);
+          span.setAttribute("activitypub.key_ownership.method", "owner_id");
+          return owns;
+        }
+        const actor = await activity.getActor(options);
+        if (actor == null || !isActor(actor)) {
+          span.setAttribute("activitypub.key_ownership.verified", false);
+          span.setAttribute("activitypub.key_ownership.method", "actor_fetch");
+          return false;
+        }
+        for (const publicKeyId of actor.publicKeyIds) {
+          if (key.id != null && publicKeyId.href === key.id.href) {
+            span.setAttribute("activitypub.key_ownership.verified", true);
+            span.setAttribute(
+              "activitypub.key_ownership.method",
+              "actor_fetch",
+            );
+            return true;
+          }
+        }
+        span.setAttribute("activitypub.key_ownership.verified", false);
+        span.setAttribute("activitypub.key_ownership.method", "actor_fetch");
+        return false;
+      } catch (error) {
+        span.recordException(error as Error);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: String(error),
+        });
+        throw error;
+      } finally {
+        span.end();
+      }
+    },
+  );
 }
 
 /**

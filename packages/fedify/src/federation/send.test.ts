@@ -16,6 +16,7 @@ import {
   rsaPublicKey2,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
+import { createTestTracerProvider } from "../testing/otel.ts";
 import type { Actor } from "../vocab/actor.ts";
 import {
   Activity,
@@ -256,4 +257,78 @@ test("sendActivity()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("sendActivity() records OpenTelemetry span events", async (t) => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  fetchMock.spyGlobal();
+
+  await t.step("successful send", async () => {
+    fetchMock.get("https://example.com/", { status: 404 });
+    fetchMock.post("https://example.com/inbox", { status: 202 });
+
+    const activity = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activity",
+      actor: "https://example.com/person",
+    };
+
+    await sendActivity({
+      activity,
+      activityId: "https://example.com/activity",
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      keys: [{
+        keyId: new URL("https://example.com/person#key"),
+        privateKey: rsaPrivateKey2,
+      }],
+      inbox: new URL("https://example.com/inbox"),
+      tracerProvider,
+    });
+
+    // Check that the span was recorded
+    const spans = exporter.getSpans("activitypub.send_activity");
+    assertEquals(spans.length, 1);
+    const span = spans[0];
+
+    // Check span attributes
+    assertEquals(
+      span.attributes["activitypub.activity.id"],
+      "https://example.com/activity",
+    );
+    assertEquals(
+      span.attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+
+    // Check that the activity.sent event was recorded
+    const events = exporter.getEvents(
+      "activitypub.send_activity",
+      "activitypub.activity.sent",
+    );
+    assertEquals(events.length, 1);
+    const event = events[0];
+
+    // Verify event attributes
+    assert(event.attributes != null);
+    assertEquals(
+      event.attributes["activitypub.inbox.url"],
+      "https://example.com/inbox",
+    );
+    assertEquals(
+      event.attributes["activitypub.activity.id"],
+      "https://example.com/activity",
+    );
+    assert(typeof event.attributes["activitypub.activity.json"] === "string");
+
+    // Verify the JSON contains the activity
+    const recordedActivity = JSON.parse(
+      event.attributes["activitypub.activity.json"] as string,
+    );
+    assertEquals(recordedActivity.id, "https://example.com/activity");
+    assertEquals(recordedActivity.type, "Create");
+
+    exporter.clear();
+    fetchMock.hardReset();
+  });
 });
