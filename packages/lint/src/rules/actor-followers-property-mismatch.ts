@@ -1,5 +1,12 @@
-export const ACTOR_FOLLOWERS_PROPERTY_MISMATCH =
-  "actor-followers-property-mismatch";
+import { properties } from "../lib/const.ts";
+import { createMismatchRule } from "../lib/mismatch-rule-factory.ts";
 
-const actorFollowersPropertyMismatch: Deno.lint.Rule = {};
+export const ACTOR_FOLLOWERS_PROPERTY_MISMATCH =
+  "actor-followers-property-mismatch" as const;
+
+const actorFollowersPropertyMismatch: Deno.lint.Rule = createMismatchRule({
+  propertyPath: properties.followers.name,
+  methodName: properties.followers.getter,
+});
+
 export default actorFollowersPropertyMismatch;

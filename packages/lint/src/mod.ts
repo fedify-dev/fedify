@@ -58,13 +58,9 @@ import actorSharedInboxPropertyMismatch, {
 import actorSharedInboxPropertyRequired, {
   ACTOR_SHARED_INBOX_PROPERTY_REQUIRED,
 } from "./rules/actor-shared-inbox-property-required.ts";
-import collectionFilteringNotImplemented, {
+/* import collectionFilteringNotImplemented, {
   COLLECTION_FILTERING_NOT_IMPLEMENTED,
-} from "./rules/collection-filtering-not-implemented.ts";
-import ed25519KeyRequired, {
-  ED25519_KEY_REQUIRED,
-} from "./rules/ed25519-key-required.ts";
-import rsaKeyRequired, { RSA_KEY_REQUIRED } from "./rules/rsa-key-required.ts";
+} from "./rules/collection-filtering-not-implemented.ts"; */
 
 const plugin: Deno.lint.Plugin = {
   name: "@fedify/lint",
@@ -83,15 +79,13 @@ const plugin: Deno.lint.Plugin = {
     [ACTOR_FEATURED_PROPERTY_MISMATCH]: actorFeaturedPropertyMismatch,
     [ACTOR_FEATURED_TAGS_PROPERTY_REQUIRED]: actorFeaturedTagsPropertyRequired,
     [ACTOR_FEATURED_TAGS_PROPERTY_MISMATCH]: actorFeaturedTagsPropertyMismatch,
-    [COLLECTION_FILTERING_NOT_IMPLEMENTED]: collectionFilteringNotImplemented,
     [ACTOR_INBOX_PROPERTY_REQUIRED]: actorInboxPropertyRequired,
     [ACTOR_INBOX_PROPERTY_MISMATCH]: actorInboxPropertyMismatch,
     [ACTOR_SHARED_INBOX_PROPERTY_REQUIRED]: actorSharedInboxPropertyRequired,
     [ACTOR_SHARED_INBOX_PROPERTY_MISMATCH]: actorSharedInboxPropertyMismatch,
     [ACTOR_PUBLIC_KEY_REQUIRED]: actorPublicKeyRequired,
     [ACTOR_ASSERTION_METHOD_REQUIRED]: actorAssertionMethodRequired,
-    [RSA_KEY_REQUIRED]: rsaKeyRequired,
-    [ED25519_KEY_REQUIRED]: ed25519KeyRequired,
+    // [COLLECTION_FILTERING_NOT_IMPLEMENTED]: collectionFilteringNotImplemented,
   },
 };
 

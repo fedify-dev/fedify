@@ -1,4 +1,6 @@
 import { test } from "node:test";
+import { properties } from "../lib/const.ts";
+import { actorPropertyRequired } from "../lib/messages.ts";
 import { testDenoLint } from "../lib/test.ts";
 import {
   ACTOR_ID_REQUIRED as ruleName,
@@ -24,7 +26,22 @@ test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation ob
   });
 });
 
-test(`${ruleName}: ✅ Good - with \`id\` property`, () => {
+test(`${ruleName}: ✅ Good - with \`id\` property (any value)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return new Person({
+          id: "https://example.com/users/123",
+          name: "John Doe",
+        });
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ✅ Good - with \`id\` property using ctx.getActorUri()`, () => {
   testDenoLint({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -44,7 +61,7 @@ test(`${ruleName}: ✅ Good - object literal with \`id\``, () => {
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return {
-          id: ctx.getActorUri(identifier),
+          id: "https://example.com/users/123",
           name: "John Doe",
         };
       });
@@ -81,8 +98,7 @@ test(`${ruleName}: ❌ Bad - without \`id\` property`, () => {
     `,
     rule,
     ruleName,
-    expectedError:
-      "Actor dispatcher must return an actor with an `id` property. Use `Context.getActorUri(identifier)` to set it.",
+    expectedError: actorPropertyRequired(properties.id.name),
   });
 });
 
@@ -95,29 +111,28 @@ test(`${ruleName}: ❌ Bad - returning empty object`, () => {
     `,
     rule,
     ruleName,
-    expectedError:
-      "Actor dispatcher must return an actor with an `id` property",
+    expectedError: actorPropertyRequired(properties.id.name),
   });
 });
 
-test(`${ruleName}: ❌ Bad - object literal without \`id\``, () => {
+test(`${ruleName}: ✅ Good - multiple properties including \`id\``, () => {
   testDenoLint({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
+        return new Person({
+          id: ctx.getActorUri(identifier),
           name: "John Doe",
-          followers: ctx.getFollowersUri(identifier),
-        };
+          inbox: ctx.getInboxUri(identifier),
+          outbox: ctx.getOutboxUri(identifier),
+        });
       });
     `,
     rule,
     ruleName,
-    expectedError:
-      "Actor dispatcher must return an actor with an `id` property",
   });
 });
 
-test(`${ruleName}: ❌ Bad - BlockStatement without \`id\``, () => {
+test(`${ruleName}: ❌ Bad - variable assignment without \`id\``, () => {
   testDenoLint({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -129,7 +144,21 @@ test(`${ruleName}: ❌ Bad - BlockStatement without \`id\``, () => {
     `,
     rule,
     ruleName,
-    expectedError:
-      "Actor dispatcher must return an actor with an `id` property",
+    expectedError: actorPropertyRequired(properties.id.name),
+  });
+});
+
+test(`${ruleName}: ❌ Bad - object literal without \`id\``, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return {
+          name: "John Doe",
+        };
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id.name),
   });
 });

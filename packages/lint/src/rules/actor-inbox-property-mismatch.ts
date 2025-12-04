@@ -1,4 +1,12 @@
-export const ACTOR_INBOX_PROPERTY_MISMATCH = "actor-inbox-property-mismatch";
+import { properties } from "../lib/const.ts";
+import { createMismatchRule } from "../lib/mismatch-rule-factory.ts";
 
-const actorInboxPropertyMismatch: Deno.lint.Rule = {};
+export const ACTOR_INBOX_PROPERTY_MISMATCH =
+  "actor-inbox-property-mismatch" as const;
+
+const actorInboxPropertyMismatch: Deno.lint.Rule = createMismatchRule({
+  propertyPath: properties.inbox.name,
+  methodName: properties.inbox.getter,
+});
+
 export default actorInboxPropertyMismatch;

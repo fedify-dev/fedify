@@ -5,5 +5,7 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "imports": {}
+  "tasks": {
+    "test": "deno test --allow-all"
+  }
 }
