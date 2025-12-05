@@ -16,23 +16,19 @@ const ALIASES = [
 ];
 
 test("Test webFingerCommand", () => {
-  // Resources only
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  assert.deepEqual(
-    parse(webFingerCommand, argsWithResourcesOnly),
-    {
-      success: true,
-      value: {
-        debug: false,
-        command: COMMAND,
-        resources: RESOURCES,
-        allowPrivateAddresses: undefined,
-        maxRedirection: 5,
-        userAgent: undefined,
-      },
+  assert.deepEqual(parse(webFingerCommand, argsWithResourcesOnly), {
+    success: true,
+    value: {
+      debug: false,
+      command: COMMAND,
+      resources: RESOURCES,
+      allowPrivateAddresses: undefined,
+      maxRedirection: 5,
+      userAgent: undefined,
     },
-  );
-  // With options
+  });
+
   const maxRedirection = 10;
   assert.deepEqual(
     parse(webFingerCommand, [
@@ -56,13 +52,13 @@ test("Test webFingerCommand", () => {
       },
     },
   );
-  // Wrong option
+
   const wrongOptionResult = parse(webFingerCommand, [
     ...argsWithResourcesOnly,
     "-Q",
   ]);
   assert.ok(!wrongOptionResult.success);
-  // Wrong option value
+
   const wrongOptionValueResult = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
@@ -70,10 +66,71 @@ test("Test webFingerCommand", () => {
   assert.ok(!wrongOptionValueResult.success);
 });
 
-test("Test lookupSingleWebFinger", async () => {
-  const aliases = (await Array.fromAsync(
-    RESOURCES,
-    (resource) => lookupSingleWebFinger({ resource }),
-  )).map((w) => w?.aliases?.[0]);
-  assert.deepEqual(aliases, ALIASES);
+// ----------------------------------------------------------------------
+// FIX FOR ISSUE #480 – MOCK FETCH TO REMOVE EXTERNAL DEPENDENCY
+// ----------------------------------------------------------------------
+
+test("Test lookupSingleWebFinger", async (): Promise<void> => {
+  const originalFetch = globalThis.fetch;
+
+  const mockResponses: Record<string, unknown> = {
+    "https://hackers.pub/.well-known/webfinger?resource=acct%3Ahongminhee%40hackers.pub":
+      {
+        subject: "acct:hongminhee@hackers.pub",
+        aliases: [ALIASES[0]],
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: ALIASES[0],
+          },
+        ],
+      },
+
+    "https://hollo.social/.well-known/webfinger?resource=acct%3Afedify%40hollo.social":
+      {
+        subject: "acct:fedify@hollo.social",
+        aliases: [ALIASES[1]],
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: ALIASES[1],
+          },
+        ],
+      },
+  };
+
+  // Correct async fetch mock returning Promise<Response>
+  globalThis.fetch = async (
+    input: RequestInfo | URL,
+  ): Promise<Response> => {
+    await Promise.resolve();
+
+    const url = String(input);
+    const responseData = mockResponses[url];
+
+    if (responseData) {
+      return new Response(JSON.stringify(responseData), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/jrd+json",
+        },
+      });
+    }
+
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const results = await Array.fromAsync(
+      RESOURCES,
+      (resource) => lookupSingleWebFinger({ resource }),
+    );
+
+    const aliases = results.map((w) => w?.aliases?.[0]);
+    assert.deepEqual(aliases, ALIASES);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
