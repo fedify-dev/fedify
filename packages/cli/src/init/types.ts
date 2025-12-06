@@ -36,7 +36,7 @@ export interface WebFrameworkInitializer {
   command?: string[];
   dependencies?: object;
   devDependencies?: object;
-  federationFile: Message;
+  federationFile: string;
   loggingFile: string;
   files?: Record<string, string>;
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
@@ -47,9 +47,9 @@ export interface WebFrameworkInitializer {
 export interface WebFrameworkDescription {
   label: string;
   packageManagers: readonly PackageManager[];
+  defaultPort: number;
   init(
-    projectName: string,
-    pm: PackageManager,
+    data: InitCommandOptions & { projectName: string },
   ): WebFrameworkInitializer;
 }
 

@@ -4,20 +4,23 @@ import {
   command,
   constant,
   type InferValue,
+  merge,
   message,
+  multiple,
   object,
   option,
   optional,
   optionNames,
+  or,
 } from "@optique/core";
 import { path } from "@optique/run";
+import { debugOption } from "../globals.ts";
 import {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { debugOption } from "../globals.ts";
 
 const webFramework = optional(option(
   "-w",
@@ -53,6 +56,12 @@ const messageQueue = optional(option(
     description: message`The message queue to use for background tasks.`,
   },
 ));
+const testMode = option(
+  "--test-mode",
+  {
+    description: message`The test mode to use for testing purposes.`,
+  },
+);
 
 export const initCommand = command(
   "init",
@@ -66,10 +75,11 @@ export const initCommand = command(
     packageManager,
     kvStore,
     messageQueue,
-    dryRun: option("-d", "--dry-run", {
+    dryRun: option("--dry-run", {
       description: message`Perform a trial run with no changes made.`,
     }),
     debugOption,
+    testMode,
   }),
   {
     brief: message`Initialize a new Fedify project directory.`,
@@ -86,3 +96,40 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
 );
 
 export type InitCommand = InferValue<typeof initCommand>;
+
+const noHydRun = object({
+  noHydRun: option("--no-hyd-run", {
+    description: message`Log outputs without creating files.`,
+  }),
+});
+const noDryRun = object({
+  noDryRun: option("--no-dry-run", {
+    description: message`Test with files creations and installations.`,
+  }),
+});
+export const testInitCommand = command(
+  "test-init",
+  merge(
+    object("Initialization options", {
+      command: constant("test-init"),
+      webFramework: multiple(webFramework),
+      packageManager: multiple(packageManager),
+      kvStore: multiple(kvStore),
+      messageQueue: multiple(messageQueue),
+      debugOption,
+    }),
+    optional(or(noHydRun, noDryRun)),
+  ),
+  {
+    brief: message`Test an initializing command .`,
+    description: message`Test an initializing command on temporary directories.
+
+Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
+      optionNames(["-p", "--package-manager"])
+    }, ${optionNames(["-k", "--kv-store"])}, and ${
+      optionNames(["-m", "--message-queue"])
+    }), it will test all combinations of the options.`,
+  },
+);
+
+export type TestInitCommand = InferValue<typeof testInitCommand>;

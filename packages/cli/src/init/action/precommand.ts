@@ -1,4 +1,4 @@
-import { exit, runSubCommand } from "../../utils.ts";
+import { CommandError, exit, runSubCommand } from "../../utils.ts";
 import type { InitCommandData } from "../types.ts";
 
 /**
@@ -15,7 +15,14 @@ const runPrecommand = ({
     cwd: dir,
     stdio: "inherit",
   }).catch((e) => {
-    console.error("Failed to run the precommand:", e);
+    if (e instanceof CommandError) {
+      console.error("Failed to run the precommand.");
+      console.error("Command:", e.commandLine);
+      if (e.stderr) console.error("Error:", e.stderr);
+      if (e.stdout) console.error("Output:", e.stdout);
+    } else {
+      console.error("Failed to run the precommand:", e);
+    }
     exit(1);
   });
 

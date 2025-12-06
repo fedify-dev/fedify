@@ -120,10 +120,8 @@ fedify init my-fedify-project
 The above command will start the interactive prompt to initialize a new Fedify
 project.  It will ask you a few questions to set up the project:
 
- -  JavaScript runtime: [Deno], [Bun], or [Node.js]
- -  Package manager (if Node.js): [npm], [pnpm], or [Yarn]
- -  Web framework: Bare-bones, [Fresh] (if Deno), [Hono], [Express] (unless
-    Deno), or [Nitro] (unless Deno)
+ -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
+ -  Web framework: [Hono], [Express], [Nitro], or [Next.js] 
  -  key–value store: In-memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
  -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
@@ -138,6 +136,7 @@ interactive prompts:
 [Hono]: https://hono.dev/
 [Express]: https://expressjs.com/
 [Nitro]: https://nitro.unjs.io/
+[Next.js]: https://nextjs.org/
 [Redis]: https://redis.io/
 [PostgreSQL]: https://www.postgresql.org/
 [AMQP]: https://www.amqp.org/
@@ -224,6 +223,81 @@ When using `--dry-run`, the command will:
 This option works with all other initialization options, allowing you to preview
 different configurations before making a decision.
 
+
+`fedify test-init`: Testing ActivityPub initialization
+------------------------------------------------------
+
+*This command is available since Fedify 2.0.0.*
+
+> [!WARNING]
+> `bun`, `yarn` runtime and `Next.js` web framework are not supported in this 
+> command yet.
+
+> [!NOTE]
+> You need to install and run [Redis server], [PostgreSQL server], and AMQP
+> server (e.g., [RabbitMQ server])locally to test those integrations.
+
+
+The `fedify test-init` command is used to test the `fedify init` command.
+It creates a temporary Fedify project with various combinations of options and
+tests the server using `lookup` command.  This command is for contributors who
+make integration with various frameworks.
+
+~~~~ sh
+fedify test-init
+~~~~
+
+The above command will start testing the `fedify init` command with various 
+combinations of options and configurations. It will create temporary 
+directories for each test case, initialize a Fedify project with the specified 
+options, start the server, and run the `fedify lookup` command to verify that 
+the server is functioning correctly.
+
+If you want to test a specific combination of options, you can specify them
+with `fedify init` options. For example, the below command tests the `fedify
+init` command with Deno runtime and Hono web framework:
+
+~~~~ sh
+fedify test-init -r deno -w hono
+~~~~
+
+If you do not specify some options, it will test all the available options for 
+those. So the above command will test all combinations of key–value stores and 
+message queues with Deno runtime and Hono web framework.
+
+You can also specify several options in a single category. For example, the
+below command tests the `fedify init` command with both Redis and PostgreSQL as
+key–value stores:
+
+~~~~ sh
+fedify test-init -k redis -k postgres
+~~~~
+
+
+[Redis server]: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/
+[PostgreSQL server]: https://www.postgresql.org/download/
+[RabbitMQ server]: https://www.rabbitmq.com/docs/download
+
+### `-h`/`--hyd-run`: Create temporary project and `lookup` an object
+
+If you want to test except `--dry-run` option, you can use the `-h`/`--hyd-run` option. This will create a temporary project and run the `lookup` command on it.
+
+~~~~ sh
+fedify test-init -h
+~~~~
+
+### `-d`/`--dry-run`: Preview without creating files
+
+If you want to test dry-run only, you can use the `-d`/`--dry-run` option. 
+This will save outputs and errors to text files instead of creating a 
+temporary project.
+
+~~~~ sh
+fedify test-init -d
+~~~~
+
+If you did not specify `-h` or `-d` option, it will run both options by 
+default.
 
 `fedify lookup`: Looking up an ActivityPub object
 -------------------------------------------------
