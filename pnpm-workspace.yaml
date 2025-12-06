@@ -7,7 +7,6 @@ packages:
 - packages/fastify
 - packages/fedify
 - packages/h3
-- packages/h3
 - packages/hono
 - packages/koa
 - packages/nestjs

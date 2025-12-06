@@ -7,6 +7,7 @@
     "./packages/express",
     "./packages/fastify",
     "./packages/fedify",
+    "./packages/fresh",
     "./packages/h3",
     "./packages/hono",
     "./packages/koa",
@@ -18,7 +19,8 @@
     "./packages/testing",
     "./packages/vocab-runtime",
     "./packages/vocab-tools",
-    "./examples/hono-sample"
+    "./examples/hono-sample",
+    "./examples/fresh"
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
@@ -42,7 +44,6 @@
     "ioredis": "npm:ioredis@^5.6.1",
     "json-preserve-indent": "npm:json-preserve-indent@^1.1.3",
     "postgres": "npm:postgres@^3.4.7",
-    "preact": "npm:preact@10.19.6",
     "tsdown": "npm:tsdown@^0.12.9"
   },
   "unstable": [
@@ -68,7 +69,7 @@
       "**/*.md"
     ]
   },
-  "nodeModulesDir": "none",
+  "nodeModulesDir": "auto",
   "tasks": {
     "codegen": "deno task -f @fedify/cli codegen",
     "check-versions": "deno run --allow-read --allow-write scripts/check_versions.ts",
