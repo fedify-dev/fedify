@@ -7,8 +7,6 @@
     "./kv": "./src/kv.ts"
   },
   "imports": {
-    "@fedify/sqlite": "./src/mod.ts",
-    "@fedify/sqlite/": "./src/",
     "#sqlite": "./src/sqlite.node.ts"
   },
   "exclude": [

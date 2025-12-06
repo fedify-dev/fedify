@@ -1,9 +1,9 @@
 import { PlatformDatabase } from "#sqlite";
+import { SqliteKvStore } from "@fedify/sqlite/kv";
 import * as temporal from "@js-temporal/polyfill";
 import { delay } from "@std/async/delay";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SqliteKvStore } from "./kv.ts";
 
 let Temporal: typeof temporal.Temporal;
 if ("Temporal" in globalThis) {
@@ -31,7 +31,7 @@ test("SqliteKvStore.initialize()", async () => {
   try {
     await store.initialize();
     const result = await db.prepare(`
-      SELECT name FROM sqlite_master 
+      SELECT name FROM sqlite_master
       WHERE type='table' AND name=?
     `).get(tableName);
     assert(result !== undefined);
@@ -180,7 +180,7 @@ test("SqliteKvStore.drop()", async () => {
   try {
     await store.drop();
     const result = await db.prepare(`
-      SELECT name FROM sqlite_master 
+      SELECT name FROM sqlite_master
       WHERE type='table' AND name=?
     `).get(tableName);
     // Bun returns null, Node returns undefined

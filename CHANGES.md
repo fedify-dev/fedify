@@ -8,6 +8,15 @@ Version 1.8.15
 
 To be released.
 
+### @fedify/sqlite
+
+ -  Fixed `SyntaxError: Identifier 'Temporal' has already been declared` error
+    that occurred when using `SqliteKvStore` on Node.js or Bun.  The error
+    was caused by duplicate `Temporal` imports during the build process.
+    [[#487]]
+
+[#487]: https://github.com/fedify-dev/fedify/issues/487
+
 
 Version 1.8.14
 --------------
