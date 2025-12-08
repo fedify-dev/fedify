@@ -156,12 +156,11 @@ const extractFirstArgument = (node: ASTNode):
   );
 
 /**
- * Extracts ObjectExpression from NewExpression or direct return.
+ * Extracts ObjectExpression from NewExpression.
  */
 const extractObjectExpression = (
   arg: ASTNode,
 ): ASTNode & { type: "ObjectExpression" } | null => {
-  if (isNodeType("ObjectExpression")(arg)) return arg;
   if (isNodeType("NewExpression")(arg)) return extractFirstArgument(arg);
   return null;
 };
@@ -222,7 +221,7 @@ export const createPropertySearcher =
   (node: unknown): node is
     | Deno.lint.ReturnStatement
     | Deno.lint.BlockStatement
-    | Deno.lint.ObjectExpression => {
+    | Deno.lint.NewExpression => {
     if (!isASTNode(node)) return false;
 
     if (isNodeType("ReturnStatement")(node)) {
@@ -233,9 +232,10 @@ export const createPropertySearcher =
       return node.body.some(createPropertySearcher(propertyChecker));
     }
 
-    // Handle arrow function with direct ObjectExpression body: () => ({...})
-    if (isNodeType("ObjectExpression")(node)) {
-      return checkObjectExpression(propertyChecker)(node);
+    // Handle arrow function with direct NewExpression body: () => new SomeClass({...})
+    if (isNodeType("NewExpression")(node)) {
+      const objExpr = extractFirstArgument(node);
+      return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
     }
 
     return false;

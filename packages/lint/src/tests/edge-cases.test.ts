@@ -183,7 +183,7 @@ test(
   ),
 );
 
-test(`${ruleName}: ❌ Bad - arrow function direct return NewExpression (known limitation)`, () =>
+test(`${ruleName}: ✅ Good - arrow function direct return NewExpression`, () =>
   actorProperties.forEach((name) =>
     testDenoLint({
       code: `
@@ -193,7 +193,6 @@ test(`${ruleName}: ❌ Bad - arrow function direct return NewExpression (known l
       `,
       rule,
       ruleName,
-      expectedError,
     })
   ));
 

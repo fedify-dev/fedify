@@ -175,15 +175,10 @@ const checkConditionalExpression =
         return checkConditionalExpression(propertyChecker)(branch);
       }
 
-      // Pattern: new Person({ property: ctx.method() })
+      // Pattern: new SomeClass({ property: ctx.method() })
       if (isNodeType("NewExpression")(branch)) {
         return branch.arguments.filter(isNodeType("ObjectExpression"))
           .some(checkObjectExpression(propertyChecker));
-      }
-
-      // Pattern: { property: ctx.method() }
-      if (isNodeType("ObjectExpression")(branch)) {
-        return checkObjectExpression(propertyChecker)(branch);
       }
 
       return false;
@@ -205,15 +200,10 @@ const checkReturnStatement =
       return checkConditionalExpression(propertyChecker)(arg);
     }
 
-    // Pattern: new Person({ property: ctx.method() })
+    // Pattern: new SomeClass({ property: ctx.method() })
     if (isNodeType("NewExpression")(arg)) {
       return arg.arguments.filter(isNodeType("ObjectExpression"))
         .some(checkObjectExpression(propertyChecker));
-    }
-
-    // Pattern: { property: ctx.method() }
-    if (isNodeType("ObjectExpression")(arg)) {
-      return checkObjectExpression(propertyChecker)(arg);
     }
 
     return false;
@@ -234,14 +224,8 @@ const checkFunctionBody =
       return node.body.some(checkFunctionBody(propertyChecker));
     }
 
-    // Pattern: arrow function direct return with object literal
-    // e.g., (ctx, identifier) => ({ id: ctx.getActorUri(identifier) })
-    if (isNodeType("ObjectExpression")(node)) {
-      return checkObjectExpression(propertyChecker)(node);
-    }
-
     // Pattern: arrow function direct return with new expression
-    // e.g., (ctx, identifier) => new Person({ id: ctx.getActorUri(identifier) })
+    // e.g., (ctx, identifier) => new SomeClass({ id: ctx.getActorUri(identifier) })
     if (isNodeType("NewExpression")(node)) {
       return node.arguments.filter(isNodeType("ObjectExpression"))
         .some(checkObjectExpression(propertyChecker));
