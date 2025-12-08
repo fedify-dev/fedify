@@ -1,5 +1,6 @@
 import { test } from "node:test";
-import { actorKeyPropertyRequired } from "../lib/messages.ts";
+import { properties } from "../lib/const.ts";
+import { actorPropertyRequired } from "../lib/messages.ts";
 import { testDenoLint } from "../lib/test.ts";
 import {
   ACTOR_PUBLIC_KEY_REQUIRED as ruleName,
@@ -127,7 +128,7 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property mi
     `,
     rule,
     ruleName,
-    expectedError: actorKeyPropertyRequired("publicKey"),
+    expectedError: actorPropertyRequired(properties.publicKey),
   });
 });
 
@@ -145,7 +146,7 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE (separate ca
     `,
     rule,
     ruleName,
-    expectedError: actorKeyPropertyRequired("publicKey"),
+    expectedError: actorPropertyRequired(properties.publicKey),
   });
 });
 
@@ -162,7 +163,7 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property mis
     `,
     rule,
     ruleName,
-    expectedError: actorKeyPropertyRequired("publicKey"),
+    expectedError: actorPropertyRequired(properties.publicKey),
   });
 });
 
@@ -179,6 +180,6 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (separate cal
     `,
     rule,
     ruleName,
-    expectedError: actorKeyPropertyRequired("publicKey"),
+    expectedError: actorPropertyRequired(properties.publicKey),
   });
 });

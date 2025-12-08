@@ -19,30 +19,24 @@ export const COLLECTION_FILTERING_NOT_IMPLEMENTED =
   "collection-filtering-not-implemented";
 
 /**
- * Collection dispatcher methods that support filtering.
- * These are the setXxxDispatcher methods for collections.
+ * The followers dispatcher method that supports filtering.
+ * Only setFollowersDispatcher uses the filter parameter for
+ * followers collection synchronization.
+ * See: https://fedify.dev/manual/collections#filtering-by-server
  */
-const COLLECTION_DISPATCHER_METHODS = [
-  "setFollowersDispatcher",
-  "setFollowingDispatcher",
-  "setOutboxDispatcher",
-  "setLikedDispatcher",
-  "setFeaturedDispatcher",
-  "setFeaturedTagsDispatcher",
-] as const;
+const FOLLOWERS_DISPATCHER_METHOD = "setFollowersDispatcher" as const;
 
 /**
- * Checks if a node is a collection dispatcher call.
+ * Checks if a node is a setFollowersDispatcher call.
  */
-const isCollectionDispatcherCall = (
+const isFollowersDispatcherCall = (
   node: Deno.lint.CallExpression,
 ): node is Deno.lint.CallExpression & CallMemberExpressionWithIdentified =>
   allOf(
     hasMemberExpressionCallee,
     hasIdentifierProperty,
     hasMinArguments(2),
-    (n: Deno.lint.CallExpression & CallMemberExpressionWithIdentified) =>
-      COLLECTION_DISPATCHER_METHODS.some((method) => hasMethodName(method)(n)),
+    hasMethodName(FOLLOWERS_DISPATCHER_METHOD),
   )(node as Deno.lint.CallExpression & CallMemberExpressionWithIdentified);
 
 /**
@@ -57,16 +51,20 @@ const hasFilterParameter = (fn: FunctionNode): boolean => {
 /**
  * Lint rule: collection-filtering-not-implemented
  *
- * Warns when a collection dispatcher doesn't implement filtering.
- * Collection dispatchers should accept a 4th parameter (filter) to support
- * server-side filtering and avoid large response payloads.
+ * Warns when setFollowersDispatcher doesn't implement filtering.
+ * The followers dispatcher should accept a 4th parameter (filter/baseUri) to support
+ * server-side filtering for followers collection synchronization.
+ * See: https://fedify.dev/manual/collections#filtering-by-server
  *
  * @example Good:
  * ```ts
  * federation.setFollowersDispatcher(
  *   "/users/{identifier}/followers",
  *   async (ctx, identifier, cursor, filter) => {
- *     // Implementation with filter support
+ *     // filter is a URL representing the base URI to filter by
+ *     if (filter != null) {
+ *       // Filter followers by server
+ *     }
  *     return { items: [] };
  *   }
  * );
@@ -91,8 +89,8 @@ const collectionFilteringNotImplementedRule: Deno.lint.Rule = {
       VariableDeclarator: federationTracker.VariableDeclarator,
 
       CallExpression(node) {
-        // Check if it's a collection dispatcher call on a federation object
-        if (!isCollectionDispatcherCall(node)) return;
+        // Check if it's a setFollowersDispatcher call on a federation object
+        if (!isFollowersDispatcherCall(node)) return;
         if (!federationTracker.isFederationObject(node.callee.object)) return;
 
         // Get the dispatcher callback (2nd argument)

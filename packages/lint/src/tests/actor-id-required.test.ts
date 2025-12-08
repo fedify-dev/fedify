@@ -83,7 +83,7 @@ test(`${ruleName}: ❌ Bad - without \`id\` property`, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyRequired(properties.id.name),
+    expectedError: actorPropertyRequired(properties.id),
   });
 });
 
@@ -96,7 +96,7 @@ test(`${ruleName}: ❌ Bad - returning empty object`, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyRequired(properties.id.name),
+    expectedError: actorPropertyRequired(properties.id),
   });
 });
 
@@ -129,6 +129,216 @@ test(`${ruleName}: ❌ Bad - variable assignment without \`id\``, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyRequired(properties.id.name),
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+// =============================================================================
+// Edge Cases
+// =============================================================================
+
+const withId = (extra = "") =>
+  `new Person({ id: ctx.getActorUri(identifier), name: "User"${extra} })`;
+const withoutId = () => `new Person({ name: "User" })`;
+
+test(`${ruleName}: ✅ Edge - multiple return statements - all have id`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (identifier === "admin") {
+          return ${withId()};
+        }
+        return identifier === "admin"
+          ? ${withId()}
+          : ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ✅ Edge - multiple return statements - first missing id (known limitation)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (identifier === "admin") {
+          return ${withoutId()};
+        }
+        return ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ❌ Edge - multiple return statements - second missing id`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (identifier === "admin") {
+          return ${withId()};
+        }
+        return ${withoutId()};
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ✅ Edge - if/else with else block (known limitation: else not checked)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (identifier) {
+          return ${withId()};
+        } else {
+          return ${withoutId()};
+        }
+        return ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ✅ Edge - nested if with id`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (identifier) {
+          if (identifier === "admin") {
+            return ${withId()};
+          }
+          return ${withId()};
+        }
+        return ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ✅ Edge - ternary operator with id in both branches`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return identifier ? ${withId()} : ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ❌ Edge - ternary operator without id in consequent`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return identifier ? ${withoutId()} : ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ❌ Edge - ternary operator without id in alternate`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return identifier ? ${withId()} : ${withoutId()};
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ✅ Edge - spread operator with id property after spread`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        const base = { name: "User" };
+        return new Person({ ...base, id: ctx.getActorUri(identifier) });
+      });
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ❌ Edge - spread operator with id in spread source (known limitation)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        const base = { id: ctx.getActorUri(identifier), name: "User" };
+        return new Person({ ...base });
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ❌ Edge - variable assignment then return (known limitation)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        const actor = ${withId()};
+        return actor;
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ❌ Edge - property assignment after construction (known limitation)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        const actor = ${withoutId()};
+        actor.id = ctx.getActorUri(identifier);
+        return actor;
+      });
+    `,
+    rule,
+    ruleName,
+    expectedError: actorPropertyRequired(properties.id),
+  });
+});
+
+test(`${ruleName}: ✅ Edge - arrow function direct return NewExpression`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) =>
+        ${withId()}
+      );
+    `,
+    rule,
+    ruleName,
+  });
+});
+
+test(`${ruleName}: ✅ Edge - return null (no actor)`, () => {
+  testDenoLint({
+    code: `
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        if (!identifier) return null;
+        return ${withId()};
+      });
+    `,
+    rule,
+    ruleName,
   });
 });

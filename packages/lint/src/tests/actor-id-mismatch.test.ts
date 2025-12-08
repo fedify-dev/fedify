@@ -1,10 +1,19 @@
 import { test } from "node:test";
+import { properties } from "../lib/const.ts";
 import { actorPropertyMismatch } from "../lib/messages.ts";
 import { testDenoLint } from "../lib/test.ts";
 import {
   ACTOR_ID_MISMATCH as ruleName,
   default as rule,
 } from "../rules/actor-id-mismatch.ts";
+
+const expectedError = actorPropertyMismatch({
+  path: properties.id.path.join("."),
+  ctxName: "ctx",
+  idName: "identifier",
+  methodName: properties.id.getter,
+  requiresIdentifier: properties.id.requiresIdentifier,
+});
 
 test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`, () => {
   testDenoLint({
@@ -69,7 +78,7 @@ test(`${ruleName}: ❌ Bad - id uses hardcoded string instead of ctx.getActorUri
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
+    expectedError: expectedError,
   });
 });
 
@@ -85,7 +94,7 @@ test(`${ruleName}: ❌ Bad - id uses wrong method (getInboxUri instead of getAct
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
+    expectedError: expectedError,
   });
 });
 
@@ -101,7 +110,7 @@ test(`${ruleName}: ❌ Bad - id uses wrong identifier parameter`, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
+    expectedError: expectedError,
   });
 });
 
@@ -160,7 +169,7 @@ test(`${ruleName} Edge: ❌ spread operator with wrong id after spread`, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
+    expectedError: expectedError,
   });
 });
 
@@ -191,6 +200,6 @@ test(`${ruleName} Edge: ❌ arrow function direct return with wrong id`, () => {
     `,
     rule,
     ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
+    expectedError: expectedError,
   });
 });

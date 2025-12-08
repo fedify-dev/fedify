@@ -1,6 +1,7 @@
 import { properties, type PropertyConfig } from "./const.ts";
 import { actorPropertyMismatch, actorPropertyRequired } from "./messages.ts";
 import { testDenoLint } from "./test.ts";
+import type { MethodCallContext } from "./types.ts";
 
 // =============================================================================
 // Types
@@ -9,7 +10,7 @@ import { testDenoLint } from "./test.ts";
 type PropertyKey = keyof typeof properties;
 
 interface TestConfig {
-  rule: Rule;
+  rule: Deno.lint.Rule;
   ruleName: string;
 }
 
@@ -102,16 +103,19 @@ const createPropertyAssignment = (
 };
 
 /**
- * Generates the expected method call string for error messages.
+ * Creates a MethodCallContext for error message generation.
  */
-const getExpectedMethodCall = (
+const createMethodCallContext = (
   prop: PropertyConfig,
   ctxName = "ctx",
   idName = "identifier",
-): string => {
-  const requiresIdentifier = prop.requiresIdentifier ?? true;
-  return createMethodCall(prop.getter, requiresIdentifier, ctxName, idName);
-};
+): MethodCallContext => ({
+  path: prop.path.join("."),
+  ctxName,
+  idName,
+  methodName: prop.getter,
+  requiresIdentifier: prop.requiresIdentifier ?? true,
+});
 
 const createTestCode = (
   propertyKey: PropertyKey,
@@ -145,7 +149,7 @@ export function createRequiredDispatcherRuleTests(
 ) {
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
-  const expectedError = actorPropertyRequired(prop.name);
+  const expectedError = actorPropertyRequired(prop);
 
   return {
     // ✅ Good - non-Federation object
@@ -288,7 +292,7 @@ export function createRequiredListenerRuleTests(
 ) {
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
-  const expectedError = actorPropertyRequired(prop.name);
+  const expectedError = actorPropertyRequired(prop);
 
   const createLocalPropertyCode = (include: boolean) => {
     if (!include) return "";
@@ -441,7 +445,7 @@ export function createRequiredListenerRuleTests(
  */
 export function createIdRequiredRuleTests(config: TestConfig) {
   const { rule, ruleName } = config;
-  const expectedError = actorPropertyRequired(properties.id.name);
+  const expectedError = actorPropertyRequired(properties.id);
 
   return {
     // ✅ Good - non-Federation object
@@ -550,7 +554,8 @@ export function createKeyRequiredRuleTests(
   config: TestConfig,
 ) {
   const { rule, ruleName } = config;
-  const expectedError = actorPropertyRequired(propertyName);
+  const prop = properties[propertyName];
+  const expectedError = actorPropertyRequired(prop);
 
   const createActorWithKey = (includeProperty: boolean) => {
     const propCode = includeProperty
@@ -705,12 +710,8 @@ export function createMismatchRuleTests(
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
 
-  // Build the expected method call string
-  const expectedMethodCall = getExpectedMethodCall(prop);
-  const expectedError = actorPropertyMismatch(
-    prop.path.join("."),
-    expectedMethodCall,
-  );
+  // Build the expected method call context
+  const expectedError = actorPropertyMismatch(createMethodCallContext(prop));
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
@@ -797,8 +798,7 @@ export function createMismatchRuleTests(
 export function createIdMismatchRuleTests(config: TestConfig) {
   const { rule, ruleName } = config;
   const expectedError = actorPropertyMismatch(
-    properties.id.name,
-    properties.id.getter,
+    createMethodCallContext(properties.id),
   );
 
   return {
@@ -901,7 +901,7 @@ export function createRequiredEdgeCaseTests(
 ) {
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
-  const expectedError = actorPropertyRequired(prop.name);
+  const expectedError = actorPropertyRequired(prop);
 
   const createLocalPropertyCode = () => createPropertyAssignment(prop);
 
@@ -997,12 +997,8 @@ export function createMismatchEdgeCaseTests(
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
 
-  // Build the expected method call string
-  const expectedMethodCall = getExpectedMethodCall(prop);
-  const expectedError = actorPropertyMismatch(
-    prop.path.join("."),
-    expectedMethodCall,
-  );
+  // Build the expected method call context
+  const expectedError = actorPropertyMismatch(createMethodCallContext(prop));
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
@@ -1098,7 +1094,7 @@ export function createMismatchEdgeCaseTests(
  */
 export function createIdRequiredEdgeCaseTests(config: TestConfig) {
   const { rule, ruleName } = config;
-  const expectedError = actorPropertyRequired(properties.id.name);
+  const expectedError = actorPropertyRequired(properties.id);
 
   return {
     // ✅ Ternary with id in both branches
@@ -1179,8 +1175,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig) {
 export function createIdMismatchEdgeCaseTests(config: TestConfig) {
   const { rule, ruleName } = config;
   const expectedError = actorPropertyMismatch(
-    properties.id.name,
-    properties.id.getter,
+    createMethodCallContext(properties.id),
   );
 
   return {
@@ -1264,7 +1259,8 @@ export function createKeyRequiredEdgeCaseTests(
   config: TestConfig,
 ) {
   const { rule, ruleName } = config;
-  const expectedError = actorPropertyRequired(propertyName);
+  const prop = properties[propertyName];
+  const expectedError = actorPropertyRequired(prop);
 
   const createPropertyCode = () =>
     `${propertyName}: ctx.getActorKeyPairs(identifier),`;

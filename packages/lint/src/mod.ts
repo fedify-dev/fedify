@@ -58,9 +58,9 @@ import actorSharedInboxPropertyMismatch, {
 import actorSharedInboxPropertyRequired, {
   ACTOR_SHARED_INBOX_PROPERTY_REQUIRED,
 } from "./rules/actor-shared-inbox-property-required.ts";
-/* import collectionFilteringNotImplemented, {
+import collectionFilteringNotImplemented, {
   COLLECTION_FILTERING_NOT_IMPLEMENTED,
-} from "./rules/collection-filtering-not-implemented.ts"; */
+} from "./rules/collection-filtering-not-implemented.ts";
 
 const plugin: Deno.lint.Plugin = {
   name: "fedify-lint",
@@ -85,7 +85,7 @@ const plugin: Deno.lint.Plugin = {
     [ACTOR_SHARED_INBOX_PROPERTY_MISMATCH]: actorSharedInboxPropertyMismatch,
     [ACTOR_PUBLIC_KEY_REQUIRED]: actorPublicKeyRequired,
     [ACTOR_ASSERTION_METHOD_REQUIRED]: actorAssertionMethodRequired,
-    // [COLLECTION_FILTERING_NOT_IMPLEMENTED]: collectionFilteringNotImplemented,
+    [COLLECTION_FILTERING_NOT_IMPLEMENTED]: collectionFilteringNotImplemented,
   },
 };
 
