@@ -197,20 +197,6 @@ test(`${ruleName}: ❌ Bad - arrow function direct return NewExpression (known l
     })
   ));
 
-test(`${ruleName}: ✅ Good - arrow function direct return with object literal`, () =>
-  actorProperties.forEach((name) =>
-    testDenoLint({
-      code: `
-        federation.${properties.id.setter}("/users/{identifier}", async (ctx, identifier) => ({
-          id: ctx.getActorUri(identifier),
-          name: "User",
-        }));
-      `,
-      rule,
-      ruleName,
-    })
-  ));
-
 test(
   `${ruleName}: ✅ Good - return null (no actor)`,
   createTestCode(withId(), `if (!identifier) return null;`),

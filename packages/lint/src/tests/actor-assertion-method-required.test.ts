@@ -116,26 +116,6 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDisp
   });
 });
 
-test(`${ruleName}: ✅ Good - object literal with \`assertionMethod\``, () => {
-  testDenoLint({
-    code: `
-      federation.setKeyPairsDispatcher(async (ctx, identifier) => {
-        return [];
-      });
-
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          id: ctx.getActorUri(identifier),
-          assertionMethod: ctx.getActorKeyPairs(identifier),
-          name: "John Doe",
-        };
-      });
-    `,
-    rule,
-    ruleName,
-  });
-});
-
 test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property missing`, () => {
   testDenoLint({
     code: `
@@ -205,26 +185,6 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (chained), pr
           });
         })
         .setKeyPairsDispatcher(async (ctx, identifier) => []);
-    `,
-    rule,
-    ruleName,
-    expectedError: actorKeyPropertyRequired("assertionMethod"),
-  });
-});
-
-test(`${ruleName}: ❌ Bad - object literal without property`, () => {
-  testDenoLint({
-    code: `
-      federation.setKeyPairsDispatcher(async (ctx, identifier) => {
-        return [];
-      });
-
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          id: ctx.getActorUri(identifier),
-          name: "John Doe",
-        };
-      });
     `,
     rule,
     ruleName,

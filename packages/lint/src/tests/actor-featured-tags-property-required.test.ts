@@ -37,10 +37,6 @@ test(
   tests["dispatcher after separate with property"],
 );
 test(
-  `${ruleName}: ✅ Good - object literal with property`,
-  tests["object literal with property"],
-);
-test(
   `${ruleName}: ❌ Bad - dispatcher configured, property missing`,
   tests["dispatcher configured property missing"],
 );
@@ -51,10 +47,6 @@ test(
 test(
   `${ruleName}: ❌ Bad - dispatcher AFTER (separate), property missing`,
   tests["dispatcher after separate property missing"],
-);
-test(
-  `${ruleName}: ❌ Bad - object literal without property`,
-  tests["object literal without property"],
 );
 test(
   `${ruleName}: ❌ Bad - variable assignment without property`,

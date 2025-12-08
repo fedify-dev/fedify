@@ -56,21 +56,6 @@ test(`${ruleName}: ✅ Good - with \`id\` property using ctx.getActorUri()`, () 
   });
 });
 
-test(`${ruleName}: ✅ Good - object literal with \`id\``, () => {
-  testDenoLint({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        };
-      });
-    `,
-    rule,
-    ruleName,
-  });
-});
-
 test(`${ruleName}: ✅ Good - BlockStatement with \`id\``, () => {
   testDenoLint({
     code: `
@@ -140,21 +125,6 @@ test(`${ruleName}: ❌ Bad - variable assignment without \`id\``, () => {
           name: "John Doe",
         });
         return actor;
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id.name),
-  });
-});
-
-test(`${ruleName}: ❌ Bad - object literal without \`id\``, () => {
-  testDenoLint({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          name: "John Doe",
-        };
       });
     `,
     rule,

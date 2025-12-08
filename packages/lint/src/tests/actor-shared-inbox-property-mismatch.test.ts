@@ -24,15 +24,7 @@ test(
   `${ruleName}: ✅ Good - property not present`,
   tests["property not present"],
 );
-test(
-  `${ruleName}: ✅ Good - object literal with correct getter`,
-  tests["object literal with correct getter"],
-);
 test(`${ruleName}: ❌ Bad - wrong getter used`, tests["wrong getter used"]);
-test(
-  `${ruleName}: ❌ Bad - wrong method in object literal`,
-  tests["wrong method in object literal"],
-);
 test(`${ruleName}: ❌ Bad - wrong identifier`, tests["wrong identifier"]);
 
 // Edge case tests

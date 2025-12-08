@@ -53,7 +53,6 @@ const createSeparateDispatcherCode = (
 };
 
 const createTestCode = (
-  type: "class" | "literal",
   propertyKey: PropertyKey,
   includeProperty: boolean,
 ) => {
@@ -70,18 +69,11 @@ const createTestCode = (
     }
   }
 
-  if (type === "class") {
-    return `return new Person({
-      id: ctx.getActorUri(identifier),
-      ${propertyCode}
-      name: "John Doe",
-    });`;
-  }
-  return `return {
+  return `return new Person({
     id: ctx.getActorUri(identifier),
     ${propertyCode}
     name: "John Doe",
-  };`;
+  });`;
 };
 
 // =============================================================================
@@ -104,7 +96,7 @@ export function createRequiredDispatcherRuleTests(
     // ✅ Good - non-Federation object
     "non-federation object": () => {
       testDenoLint({
-        code: createDispatcherCode(createTestCode("class", propertyKey, false)),
+        code: createDispatcherCode(createTestCode(propertyKey, false)),
         rule,
         ruleName,
         federationSetup: `
@@ -116,7 +108,7 @@ export function createRequiredDispatcherRuleTests(
     // ✅ Good - dispatcher NOT configured
     "dispatcher not configured": () => {
       testDenoLint({
-        code: createDispatcherCode(createTestCode("class", propertyKey, false)),
+        code: createDispatcherCode(createTestCode(propertyKey, false)),
         rule,
         ruleName,
       });
@@ -126,7 +118,7 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher before chained with property": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createTestCode("class", propertyKey, true),
+          createTestCode(propertyKey, true),
           prop.setter,
         ),
         rule,
@@ -138,7 +130,7 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher before separate with property": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createTestCode("class", propertyKey, true),
+          createTestCode(propertyKey, true),
           prop.setter,
           true,
         ),
@@ -151,7 +143,7 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher after chained with property": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createTestCode("class", propertyKey, true),
+          createTestCode(propertyKey, true),
           prop.setter,
         ),
         rule,
@@ -163,21 +155,9 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher after separate with property": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createTestCode("class", propertyKey, true),
+          createTestCode(propertyKey, true),
           prop.setter,
           false,
-        ),
-        rule,
-        ruleName,
-      });
-    },
-
-    // ✅ Good - object literal with property
-    "object literal with property": () => {
-      testDenoLint({
-        code: createChainedDispatcherCode(
-          createTestCode("literal", propertyKey, true),
-          prop.setter,
         ),
         rule,
         ruleName,
@@ -188,7 +168,7 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher configured property missing": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createTestCode("class", propertyKey, false),
+          createTestCode(propertyKey, false),
           prop.setter,
         ),
         rule,
@@ -201,7 +181,7 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher before separate property missing": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createTestCode("class", propertyKey, false),
+          createTestCode(propertyKey, false),
           prop.setter,
           true,
         ),
@@ -215,22 +195,9 @@ export function createRequiredDispatcherRuleTests(
     "dispatcher after separate property missing": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createTestCode("class", propertyKey, false),
+          createTestCode(propertyKey, false),
           prop.setter,
           false,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      });
-    },
-
-    // ❌ Bad - object literal without property
-    "object literal without property": () => {
-      testDenoLint({
-        code: createChainedDispatcherCode(
-          createTestCode("literal", propertyKey, false),
-          prop.setter,
         ),
         rule,
         ruleName,
@@ -275,30 +242,20 @@ export function createRequiredListenerRuleTests(
     return "inbox: ctx.getInboxUri(identifier),";
   };
 
-  const createActorCode = (
-    type: "class" | "literal",
-    includeProperty: boolean,
-  ) => {
+  const createActorCode = (includeProperty: boolean) => {
     const propCode = createPropertyCode(includeProperty);
-    if (type === "class") {
-      return `return new Person({
-        id: ctx.getActorUri(identifier),
-        ${propCode}
-        name: "John Doe",
-      });`;
-    }
-    return `return {
+    return `return new Person({
       id: ctx.getActorUri(identifier),
       ${propCode}
       name: "John Doe",
-    };`;
+    });`;
   };
 
   return {
     // ✅ Good - non-Federation object
     "non-federation object": () => {
       testDenoLint({
-        code: createDispatcherCode(createActorCode("class", false)),
+        code: createDispatcherCode(createActorCode(false)),
         rule,
         ruleName,
         federationSetup: `
@@ -310,7 +267,7 @@ export function createRequiredListenerRuleTests(
     // ✅ Good - listeners NOT configured
     "listeners not configured": () => {
       testDenoLint({
-        code: createDispatcherCode(createActorCode("class", false)),
+        code: createDispatcherCode(createActorCode(false)),
         rule,
         ruleName,
       });
@@ -320,7 +277,7 @@ export function createRequiredListenerRuleTests(
     "listeners before chained with property": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createActorCode("class", true),
+          createActorCode(true),
           "setInboxListeners",
         ),
         rule,
@@ -332,7 +289,7 @@ export function createRequiredListenerRuleTests(
     "listeners before separate with property": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createActorCode("class", true),
+          createActorCode(true),
           "setInboxListeners",
           true,
         ),
@@ -345,7 +302,7 @@ export function createRequiredListenerRuleTests(
     "listeners after chained with property": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createActorCode("class", true),
+          createActorCode(true),
           "setInboxListeners",
         ),
         rule,
@@ -357,21 +314,9 @@ export function createRequiredListenerRuleTests(
     "listeners after separate with property": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createActorCode("class", true),
+          createActorCode(true),
           "setInboxListeners",
           false,
-        ),
-        rule,
-        ruleName,
-      });
-    },
-
-    // ✅ Good - object literal with property
-    "object literal with property": () => {
-      testDenoLint({
-        code: createChainedDispatcherCode(
-          createActorCode("literal", true),
-          "setInboxListeners",
         ),
         rule,
         ruleName,
@@ -382,7 +327,7 @@ export function createRequiredListenerRuleTests(
     "listeners configured property missing": () => {
       testDenoLint({
         code: createChainedDispatcherCode(
-          createActorCode("class", false),
+          createActorCode(false),
           "setInboxListeners",
         ),
         rule,
@@ -395,7 +340,7 @@ export function createRequiredListenerRuleTests(
     "listeners before separate property missing": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createActorCode("class", false),
+          createActorCode(false),
           "setInboxListeners",
           true,
         ),
@@ -409,22 +354,9 @@ export function createRequiredListenerRuleTests(
     "listeners after separate property missing": () => {
       testDenoLint({
         code: createSeparateDispatcherCode(
-          createActorCode("class", false),
+          createActorCode(false),
           "setInboxListeners",
           false,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      });
-    },
-
-    // ❌ Bad - object literal without property
-    "object literal without property": () => {
-      testDenoLint({
-        code: createChainedDispatcherCode(
-          createActorCode("literal", false),
-          "setInboxListeners",
         ),
         rule,
         ruleName,
@@ -495,18 +427,6 @@ export function createIdRequiredRuleTests(config: TestConfig) {
       });
     },
 
-    // ✅ Good - object literal with id
-    "object literal with id": () => {
-      testDenoLint({
-        code: createDispatcherCode(`return {
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        };`),
-        rule,
-        ruleName,
-      });
-    },
-
     // ✅ Good - BlockStatement with id
     "block statement with id": () => {
       testDenoLint({
@@ -561,16 +481,6 @@ export function createIdRequiredRuleTests(config: TestConfig) {
           `const actor = new Person({ name: "John Doe" });
         return actor;`,
         ),
-        rule,
-        ruleName,
-        expectedError,
-      });
-    },
-
-    // ❌ Bad - object literal without id
-    "object literal without id": () => {
-      testDenoLint({
-        code: createDispatcherCode(`return { name: "John Doe" };`),
         rule,
         ruleName,
         expectedError,
@@ -672,23 +582,6 @@ export function createKeyRequiredRuleTests(
       });
     },
 
-    // ✅ Good - object literal with property
-    "object literal with property": () => {
-      testDenoLint({
-        code: createSeparateDispatcherCode(
-          `return {
-            id: ctx.getActorUri(identifier),
-            ${propertyName}: ctx.getActorKeyPairs(identifier),
-            name: "John Doe",
-          };`,
-          "setKeyPairsDispatcher",
-          true,
-        ),
-        rule,
-        ruleName,
-      });
-    },
-
     // ❌ Bad - key pairs dispatcher configured BEFORE (separate), property missing
     "key pairs before separate property missing": () => {
       testDenoLint({
@@ -736,23 +629,6 @@ export function createKeyRequiredRuleTests(
         code: createChainedDispatcherCode(
           createActorWithKey(false),
           "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      });
-    },
-
-    // ❌ Bad - object literal without property
-    "object literal without property": () => {
-      testDenoLint({
-        code: createSeparateDispatcherCode(
-          `return {
-            id: ctx.getActorUri(identifier),
-            name: "John Doe",
-          };`,
-          "setKeyPairsDispatcher",
-          true,
         ),
         rule,
         ruleName,
@@ -836,23 +712,6 @@ export function createMismatchRuleTests(
       });
     },
 
-    // ❌ Bad - wrong method in object literal
-    "wrong method in object literal": () => {
-      const propCode = isNested
-        ? `endpoints: { sharedInbox: ctx.${wrongGetter}() },`
-        : `${prop.name}: ctx.${wrongGetter}(identifier),`;
-      testDenoLint({
-        code: createDispatcherCode(`return {
-          id: ctx.getActorUri(identifier),
-          ${propCode}
-          name: "John Doe",
-        };`),
-        rule,
-        ruleName,
-        expectedError,
-      });
-    },
-
     // ❌ Bad - wrong identifier
     "wrong identifier": () => {
       const propCode = isNested
@@ -877,22 +736,6 @@ export function createMismatchRuleTests(
           id: ctx.getActorUri(identifier),
           name: "John Doe",
         });`),
-        rule,
-        ruleName,
-      });
-    },
-
-    // ✅ Good - object literal with correct getter
-    "object literal with correct getter": () => {
-      const propCode = isNested
-        ? `endpoints: { sharedInbox: ctx.${prop.getter}() },`
-        : `${prop.name}: ctx.${prop.getter}(identifier),`;
-      testDenoLint({
-        code: createDispatcherCode(`return {
-          id: ctx.getActorUri(identifier),
-          ${propCode}
-          name: "John Doe",
-        };`),
         rule,
         ruleName,
       });

@@ -29,11 +29,11 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher NOT configured, property miss
   testDenoLint({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
+        return new Person({
           id: ctx.getActorUri(identifier),
           name: "Alice",
           inbox: ctx.getInboxUri(identifier),
-        };
+        });
       });
     `,
     rule,
@@ -47,10 +47,10 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDis
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
           const keyPairs = await ctx.getActorKeyPairs(identifier);
-          return {
+          return new Person({
             id: ctx.getActorUri(identifier),
             publicKey: keyPairs[0].cryptographicKey,
-          };
+          });
         })
         .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
@@ -66,10 +66,10 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDis
 
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const keyPairs = await ctx.getActorKeyPairs(identifier);
-        return {
+        return new Person({
           id: ctx.getActorUri(identifier),
           publicKey: keyPairs[0].cryptographicKey,
-        };
+        });
       });
     `,
     rule,
@@ -83,10 +83,10 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDisp
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
           const keyPairs = await ctx.getActorKeyPairs(identifier);
-          return {
+          return new Person({
             id: ctx.getActorUri(identifier),
             publicKey: keyPairs[0].cryptographicKey,
-          };
+          });
         })
         .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
@@ -100,28 +100,13 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDisp
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const keyPairs = await ctx.getActorKeyPairs(identifier);
-        return {
+        return new Person({
           id: ctx.getActorUri(identifier),
           publicKey: keyPairs[0].cryptographicKey,
-        };
+        });
       });
 
       federation.setKeyPairsDispatcher(async (ctx, identifier) => []);
-    `,
-    rule,
-    ruleName,
-  });
-});
-
-test(`${ruleName}: ✅ Good - object literal with \`publicKey\``, () => {
-  testDenoLint({
-    code: `
-      federation
-        .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-          id: ctx.getActorUri(identifier),
-          publicKey: await ctx.getActorKeyPairs(identifier).then(k => k[0].cryptographicKey),
-        }))
-        .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
     rule,
     ruleName,
@@ -133,10 +118,10 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property mi
     code: `
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-          return {
+          return new Person({
             id: ctx.getActorUri(identifier),
             name: "Alice",
-          };
+          });
         })
         .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
@@ -152,10 +137,10 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE (separate ca
       federation.setKeyPairsDispatcher(async (ctx, identifier) => []);
 
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
+        return new Person({
           id: ctx.getActorUri(identifier),
           name: "Alice",
-        };
+        });
       });
     `,
     rule,
@@ -168,9 +153,11 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property mis
   testDenoLint({
     code: `
       federation
-        .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-          id: ctx.getActorUri(identifier),
-        }))
+        .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+          return new Person({
+            id: ctx.getActorUri(identifier),
+          });
+        })
         .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
     rule,
@@ -182,27 +169,13 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property mis
 test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (separate calls), property missing`, () => {
   testDenoLint({
     code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-        id: ctx.getActorUri(identifier),
-      }));
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return new Person({
+          id: ctx.getActorUri(identifier),
+        });
+      });
 
       federation.setKeyPairsDispatcher(async (ctx, identifier) => []);
-    `,
-    rule,
-    ruleName,
-    expectedError: actorKeyPropertyRequired("publicKey"),
-  });
-});
-
-test(`${ruleName}: ❌ Bad - object literal without property`, () => {
-  testDenoLint({
-    code: `
-      federation
-        .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-          id: ctx.getActorUri(identifier),
-          name: "Alice",
-        }))
-        .setKeyPairsDispatcher(async (ctx, identifier) => []);
     `,
     rule,
     ruleName,

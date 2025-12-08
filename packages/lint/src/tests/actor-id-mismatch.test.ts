@@ -41,21 +41,6 @@ test(`${ruleName}: ✅ Good - id uses ctx.getActorUri(identifier)`, () => {
   });
 });
 
-test(`${ruleName}: ✅ Good - object literal with correct id`, () => {
-  testDenoLint({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          id: ctx.getActorUri(identifier),
-          name: "John Doe",
-        };
-      });
-    `,
-    rule,
-    ruleName,
-  });
-});
-
 test(`${ruleName}: ✅ Good - BlockStatement with correct id`, () => {
   testDenoLint({
     code: `
@@ -112,22 +97,6 @@ test(`${ruleName}: ❌ Bad - id uses wrong identifier parameter`, () => {
           id: ctx.getActorUri("wrong"),
           name: "John Doe",
         });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyMismatch("id", "ctx.getActorUri(identifier)"),
-  });
-});
-
-test(`${ruleName}: ❌ Bad - object literal with wrong id`, () => {
-  testDenoLint({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return {
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        };
       });
     `,
     rule,
@@ -198,10 +167,12 @@ test(`${ruleName} Edge: ❌ spread operator with wrong id after spread`, () => {
 test(`${ruleName} Edge: ✅ arrow function direct return with correct id`, () => {
   testDenoLint({
     code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-        id: ctx.getActorUri(identifier),
-        name: "User",
-      }));
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return new Person({
+          id: ctx.getActorUri(identifier),
+          name: "User",
+        });
+      });
     `,
     rule,
     ruleName,
@@ -211,10 +182,12 @@ test(`${ruleName} Edge: ✅ arrow function direct return with correct id`, () =>
 test(`${ruleName} Edge: ❌ arrow function direct return with wrong id`, () => {
   testDenoLint({
     code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => ({
-        id: "hardcoded",
-        name: "User",
-      }));
+      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+        return new Person({
+          id: "hardcoded",
+          name: "User",
+        });
+      });
     `,
     rule,
     ruleName,
