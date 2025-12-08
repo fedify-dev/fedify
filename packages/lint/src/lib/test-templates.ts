@@ -1,13 +1,6 @@
-import { properties } from "./const.ts";
-import {
-  actorKeyPropertyRequired,
-  actorPropertyMismatch,
-  actorPropertyRequired,
-} from "./messages.ts";
+import { properties, type PropertyConfig } from "./const.ts";
+import { actorPropertyMismatch, actorPropertyRequired } from "./messages.ts";
 import { testDenoLint } from "./test.ts";
-
-// deno-lint-ignore no-explicit-any
-type Rule = any;
 
 // =============================================================================
 // Types
@@ -52,21 +45,83 @@ const createSeparateDispatcherCode = (
   return isBefore ? `${dispatcher}\n${actor}` : `${actor}\n${dispatcher}`;
 };
 
+// =============================================================================
+// Property Code Generation Utilities
+// =============================================================================
+
+/**
+ * Generates the method call code for a property.
+ * @param getter The getter method name
+ * @param requiresIdentifier Whether the method requires an identifier parameter
+ * @param ctxName The context variable name (default: "ctx")
+ * @param idName The identifier variable name (default: "identifier")
+ */
+const createMethodCall = (
+  getter: string,
+  requiresIdentifier: boolean,
+  ctxName = "ctx",
+  idName = "identifier",
+): string => {
+  return requiresIdentifier
+    ? `${ctxName}.${getter}(${idName})`
+    : `${ctxName}.${getter}()`;
+};
+
+/**
+ * Generates property assignment code for a given property configuration.
+ * Handles both simple properties and nested properties with wrappers.
+ *
+ * @example
+ * // Simple property: id: ctx.getActorUri(identifier),
+ * // Nested property: endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+ */
+const createPropertyAssignment = (
+  prop: PropertyConfig,
+  options: {
+    getter?: string;
+    ctxName?: string;
+    idName?: string;
+  } = {},
+): string => {
+  const getter = options.getter ?? prop.getter;
+  const ctxName = options.ctxName ?? "ctx";
+  const idName = options.idName ?? "identifier";
+  const requiresIdentifier = prop.requiresIdentifier ?? true;
+
+  const methodCall = createMethodCall(
+    getter,
+    requiresIdentifier,
+    ctxName,
+    idName,
+  );
+
+  if (prop.nested) {
+    return `${prop.nested.parent}: new ${prop.nested.wrapper}({ ${prop.name}: ${methodCall} }),`;
+  }
+  return `${prop.name}: ${methodCall},`;
+};
+
+/**
+ * Generates the expected method call string for error messages.
+ */
+const getExpectedMethodCall = (
+  prop: PropertyConfig,
+  ctxName = "ctx",
+  idName = "identifier",
+): string => {
+  const requiresIdentifier = prop.requiresIdentifier ?? true;
+  return createMethodCall(prop.getter, requiresIdentifier, ctxName, idName);
+};
+
 const createTestCode = (
   propertyKey: PropertyKey,
   includeProperty: boolean,
 ) => {
   const prop = properties[propertyKey];
-  const isNested = prop.name.includes(".");
 
   let propertyCode = "";
   if (includeProperty) {
-    if (isNested) {
-      // endpoints.sharedInbox
-      propertyCode = `endpoints: { sharedInbox: ctx.${prop.getter}() },`;
-    } else {
-      propertyCode = `${prop.name}: ctx.${prop.getter}(identifier),`;
-    }
+    propertyCode = createPropertyAssignment(prop);
   }
 
   return `return new Person({
@@ -234,16 +289,14 @@ export function createRequiredListenerRuleTests(
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
   const expectedError = actorPropertyRequired(prop.name);
-  const isNested = propertyKey === "sharedInbox";
 
-  const createPropertyCode = (include: boolean) => {
+  const createLocalPropertyCode = (include: boolean) => {
     if (!include) return "";
-    if (isNested) return "endpoints: { sharedInbox: ctx.getInboxUri() },";
-    return "inbox: ctx.getInboxUri(identifier),";
+    return createPropertyAssignment(prop);
   };
 
   const createActorCode = (includeProperty: boolean) => {
-    const propCode = createPropertyCode(includeProperty);
+    const propCode = createLocalPropertyCode(includeProperty);
     return `return new Person({
       id: ctx.getActorUri(identifier),
       ${propCode}
@@ -497,7 +550,7 @@ export function createKeyRequiredRuleTests(
   config: TestConfig,
 ) {
   const { rule, ruleName } = config;
-  const expectedError = actorKeyPropertyRequired(propertyName);
+  const expectedError = actorPropertyRequired(propertyName);
 
   const createActorWithKey = (includeProperty: boolean) => {
     const propCode = includeProperty
@@ -651,13 +704,13 @@ export function createMismatchRuleTests(
 ) {
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
-  const isNested = prop.name.includes(".");
 
   // Build the expected method call string
-  const expectedMethodCall = isNested
-    ? `ctx.${prop.getter}()`
-    : `ctx.${prop.getter}(identifier)`;
-  const expectedError = actorPropertyMismatch(prop.name, expectedMethodCall);
+  const expectedMethodCall = getExpectedMethodCall(prop);
+  const expectedError = actorPropertyMismatch(
+    prop.path.join("."),
+    expectedMethodCall,
+  );
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
@@ -665,18 +718,13 @@ export function createMismatchRuleTests(
     .map((p) => p.getter);
   const wrongGetter = wrongGetters[0] || "getWrongUri";
 
-  const createPropertyCode = (getter: string) => {
-    if (isNested) {
-      // endpoints.sharedInbox
-      return `endpoints: { sharedInbox: ctx.${getter}() },`;
-    }
-    return `${prop.name}: ctx.${getter}(identifier),`;
-  };
+  const createLocalPropertyCode = (getter: string) =>
+    createPropertyAssignment(prop, { getter });
 
   const createActorCode = (getter: string) =>
     `return new Person({
     id: ctx.getActorUri(identifier),
-    ${createPropertyCode(getter)}
+    ${createLocalPropertyCode(getter)}
     name: "John Doe",
   });`;
 
@@ -714,9 +762,9 @@ export function createMismatchRuleTests(
 
     // ❌ Bad - wrong identifier
     "wrong identifier": () => {
-      const propCode = isNested
-        ? `endpoints: { sharedInbox: wrongContext.${prop.getter}() },`
-        : `${prop.name}: wrongContext.${prop.getter}(identifier),`;
+      const propCode = createPropertyAssignment(prop, {
+        ctxName: "wrongContext",
+      });
       testDenoLint({
         code: createDispatcherCode(`return new Person({
           id: ctx.getActorUri(identifier),
@@ -854,17 +902,13 @@ export function createRequiredEdgeCaseTests(
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
   const expectedError = actorPropertyRequired(prop.name);
-  const isNested = prop.name.includes(".");
 
-  const createPropertyCode = () => {
-    if (isNested) return "endpoints: { sharedInbox: ctx.getInboxUri() },";
-    return `${prop.name}: ctx.${prop.getter}(identifier),`;
-  };
+  const createLocalPropertyCode = () => createPropertyAssignment(prop);
 
   return {
     // ✅ Ternary with property in both branches
     "ternary with property in both branches": () => {
-      const propCode = createPropertyCode();
+      const propCode = createLocalPropertyCode();
       testDenoLint({
         code: createChainedDispatcherCode(
           `return condition
@@ -879,7 +923,7 @@ export function createRequiredEdgeCaseTests(
 
     // ❌ Ternary missing property in consequent
     "ternary missing property in consequent": () => {
-      const propCode = createPropertyCode();
+      const propCode = createLocalPropertyCode();
       testDenoLint({
         code: createChainedDispatcherCode(
           `return condition
@@ -895,7 +939,7 @@ export function createRequiredEdgeCaseTests(
 
     // ❌ Ternary missing property in alternate
     "ternary missing property in alternate": () => {
-      const propCode = createPropertyCode();
+      const propCode = createLocalPropertyCode();
       testDenoLint({
         code: createChainedDispatcherCode(
           `return condition
@@ -926,7 +970,7 @@ export function createRequiredEdgeCaseTests(
 
     // ✅ Nested ternary with property
     "nested ternary with property": () => {
-      const propCode = createPropertyCode();
+      const propCode = createLocalPropertyCode();
       testDenoLint({
         code: createChainedDispatcherCode(
           `return condition1
@@ -952,13 +996,13 @@ export function createMismatchEdgeCaseTests(
 ) {
   const { rule, ruleName } = config;
   const prop = properties[propertyKey];
-  const isNested = prop.name.includes(".");
 
   // Build the expected method call string
-  const expectedMethodCall = isNested
-    ? `ctx.${prop.getter}()`
-    : `ctx.${prop.getter}(identifier)`;
-  const expectedError = actorPropertyMismatch(prop.name, expectedMethodCall);
+  const expectedMethodCall = getExpectedMethodCall(prop);
+  const expectedError = actorPropertyMismatch(
+    prop.path.join("."),
+    expectedMethodCall,
+  );
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
@@ -966,15 +1010,13 @@ export function createMismatchEdgeCaseTests(
     .map((p) => p.getter);
   const wrongGetter = wrongGetters[0] || "getWrongUri";
 
-  const createPropertyCode = (getter: string) => {
-    if (isNested) return `endpoints: { sharedInbox: ctx.${getter}() },`;
-    return `${prop.name}: ctx.${getter}(identifier),`;
-  };
+  const createLocalPropertyCode = (getter: string) =>
+    createPropertyAssignment(prop, { getter });
 
   return {
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": () => {
-      const propCode = createPropertyCode(prop.getter);
+      const propCode = createLocalPropertyCode(prop.getter);
       testDenoLint({
         code: createDispatcherCode(
           `return condition
@@ -988,8 +1030,8 @@ export function createMismatchEdgeCaseTests(
 
     // ❌ Ternary with wrong getter in consequent
     "ternary with wrong getter in consequent": () => {
-      const correctPropCode = createPropertyCode(prop.getter);
-      const wrongPropCode = createPropertyCode(wrongGetter);
+      const correctPropCode = createLocalPropertyCode(prop.getter);
+      const wrongPropCode = createLocalPropertyCode(wrongGetter);
       testDenoLint({
         code: createDispatcherCode(
           `return condition
@@ -1004,8 +1046,8 @@ export function createMismatchEdgeCaseTests(
 
     // ❌ Ternary with wrong getter in alternate
     "ternary with wrong getter in alternate": () => {
-      const correctPropCode = createPropertyCode(prop.getter);
-      const wrongPropCode = createPropertyCode(wrongGetter);
+      const correctPropCode = createLocalPropertyCode(prop.getter);
+      const wrongPropCode = createLocalPropertyCode(wrongGetter);
       testDenoLint({
         code: createDispatcherCode(
           `return condition
@@ -1020,7 +1062,7 @@ export function createMismatchEdgeCaseTests(
 
     // ❌ Ternary with wrong getter in both
     "ternary with wrong getter in both branches": () => {
-      const wrongPropCode = createPropertyCode(wrongGetter);
+      const wrongPropCode = createLocalPropertyCode(wrongGetter);
       testDenoLint({
         code: createDispatcherCode(
           `return condition
@@ -1035,7 +1077,7 @@ export function createMismatchEdgeCaseTests(
 
     // ✅ Nested ternary with correct getter
     "nested ternary with correct getter": () => {
-      const propCode = createPropertyCode(prop.getter);
+      const propCode = createLocalPropertyCode(prop.getter);
       testDenoLint({
         code: createDispatcherCode(
           `return condition1
@@ -1222,7 +1264,7 @@ export function createKeyRequiredEdgeCaseTests(
   config: TestConfig,
 ) {
   const { rule, ruleName } = config;
-  const expectedError = actorKeyPropertyRequired(propertyName);
+  const expectedError = actorPropertyRequired(propertyName);
 
   const createPropertyCode = () =>
     `${propertyName}: ctx.getActorKeyPairs(identifier),`;

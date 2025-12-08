@@ -10,9 +10,6 @@ export const ACTOR_ID_MISMATCH = "actor-id-mismatch" as const;
  * This is a `*-mismatch` rule that validates the VALUE of the property,
  * not just its existence. For checking property existence, use `actor-id-required`.
  */
-const actorIdMismatch = createMismatchRule({
-  propertyPath: properties.id.name,
-  methodName: properties.id.getter,
-});
+const actorIdMismatch = createMismatchRule(properties.id);
 
 export default actorIdMismatch;

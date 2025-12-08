@@ -88,7 +88,7 @@ const isProperty = (node: ASTNode): node is Deno.lint.Property =>
  * This avoids circular dependency between hasNestedProperty and createNestedPropertyChecker.
  */
 const checkNestedPropertyPath =
-  (path: string[]) => (node: unknown): boolean => {
+  (path: readonly string[]) => (node: unknown): boolean => {
     if (!isASTNode(node) || !hasKeyName(path[0])(node)) return false;
 
     // Base case: single property
@@ -98,16 +98,35 @@ const checkNestedPropertyPath =
 
     // Recursive case: check nested properties
     if (!isProperty(node)) return false;
-    if (!hasObjectExpressionValue(node)) return false;
 
-    const properties = node.value.properties;
+    const value = node.value;
 
-    // Check if any property matches the remaining path
-    return pipe(
-      properties,
-      filter(isASTNode),
-      some(checkNestedPropertyPath(path.slice(1))),
-    );
+    // Handle ObjectExpression: endpoints: { sharedInbox: ... }
+    if (hasObjectExpressionValue(node)) {
+      const properties = node.value.properties;
+      return pipe(
+        properties,
+        filter(isASTNode),
+        some(checkNestedPropertyPath(path.slice(1))),
+      );
+    }
+
+    // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
+    if (isNodeType("NewExpression")(value)) {
+      const args = value.arguments;
+      if (!Array.isArray(args) || args.length === 0) return false;
+      const firstArg = args[0];
+      if (!isASTNode(firstArg) || !isNodeType("ObjectExpression")(firstArg)) {
+        return false;
+      }
+      return pipe(
+        firstArg.properties,
+        filter(isASTNode),
+        some(checkNestedPropertyPath(path.slice(1))),
+      );
+    }
+
+    return false;
   };
 
 /**
@@ -116,7 +135,7 @@ const checkNestedPropertyPath =
  * @returns A predicate function that checks if the nested property exists
  */
 export const createNestedPropertyChecker =
-  (path: string[]) => (node: unknown): boolean =>
+  (path: readonly string[]) => (node: unknown): boolean =>
     checkNestedPropertyPath(path)(node);
 
 /**

@@ -63,7 +63,7 @@ import actorSharedInboxPropertyRequired, {
 } from "./rules/collection-filtering-not-implemented.ts"; */
 
 const plugin: Deno.lint.Plugin = {
-  name: "@fedify/lint",
+  name: "fedify-lint",
   rules: {
     [ACTOR_ID_MISMATCH]: actorIdMismatch,
     [ACTOR_ID_REQUIRED]: actorIdRequired,

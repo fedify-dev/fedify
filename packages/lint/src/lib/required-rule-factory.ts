@@ -1,3 +1,4 @@
+import { actorPropertyRequired } from "./messages.ts";
 import {
   allOf,
   hasIdentifierProperty,
@@ -16,6 +17,7 @@ import type {
   CallMemberExpression,
   CallMemberExpressionWithIdentified,
   FunctionNode,
+  PropertyConfig,
 } from "./types.ts";
 
 /**
@@ -62,31 +64,21 @@ interface ActorDispatcherInfo {
 }
 
 /**
- * Internal configuration for the unified rule factory.
- */
-interface InternalRequiredConfig {
-  propertyName: string;
-  dispatcherMethod: string;
-  errorMessage: string;
-}
-
-/**
- * Creates a required rule with the given configuration.
+ * Creates a required rule with the given property configuration.
  */
 export function createRequiredRule(
-  config: InternalRequiredConfig,
+  config: PropertyConfig,
 ): Deno.lint.Rule {
-  const propertyPath = config.propertyName.split(".");
-  const propertyChecker = propertyPath.length === 1
-    ? createPropertyChecker(propertyPath[0])
-    : createNestedPropertyChecker(propertyPath);
+  const propertyChecker = config.path.length === 1
+    ? createPropertyChecker(config.path[0])
+    : createNestedPropertyChecker(config.path);
   const propertySearcher = createPropertySearcher(propertyChecker);
 
   return {
     create(context) {
       const federationTracker = trackFederationVariables();
       const dispatcherTracker = createDispatcherTracker(
-        config.dispatcherMethod,
+        config.setter,
         federationTracker,
       );
       const actorDispatchers: ActorDispatcherInfo[] = [];
@@ -113,7 +105,7 @@ export function createRequiredRule(
             if (!propertySearcher(dispatcherArg.body)) {
               context.report({
                 node: dispatcherArg,
-                message: config.errorMessage,
+                message: actorPropertyRequired(config),
               });
             }
           }

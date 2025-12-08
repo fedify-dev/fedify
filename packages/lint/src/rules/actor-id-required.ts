@@ -1,5 +1,4 @@
 import { properties } from "../lib/const.ts";
-import { actorPropertyRequired } from "../lib/messages.ts";
 import { createRequiredRule } from "../lib/required-rule-factory.ts";
 
 export const ACTOR_ID_REQUIRED = "actor-id-required" as const;
@@ -11,10 +10,6 @@ export const ACTOR_ID_REQUIRED = "actor-id-required" as const;
  * For checking if the value uses the correct `ctx.getActorUri()` method,
  * use `actor-id-mismatch`.
  */
-const actorIdRequired = createRequiredRule({
-  propertyName: properties.id.name,
-  dispatcherMethod: properties.id.setter,
-  errorMessage: actorPropertyRequired(properties.id.name),
-});
+const actorIdRequired = createRequiredRule(properties.id);
 
 export default actorIdRequired;

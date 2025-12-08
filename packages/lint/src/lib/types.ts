@@ -22,16 +22,34 @@ export type FunctionNode =
   | Deno.lint.FunctionExpression;
 
 /**
- * Configuration for property mismatch rules.
- * These rules check if a property uses the correct `ctx.get*()` method.
+ * Configuration for nested property wrappers.
+ * Used when a property needs to be wrapped in a class instance (e.g., `new Endpoints({...})`).
  */
-export interface MismatchRuleConfig {
-  /** Property path to check. Can be a single property name or an array for nested properties. */
-  propertyPath: string;
-  /** Expected context method name (e.g., "getActorUri", "getInboxUri") */
-  methodName: string;
-  /** Whether the method requires identifier parameter (default: true) */
-  requiresIdentifier?: boolean;
+export interface NestedPropertyConfig {
+  /** Parent property name (e.g., "endpoints") */
+  parent: string;
+  /** Wrapper class name (e.g., "Endpoints") */
+  wrapper: string;
+}
+
+/**
+ * Configuration for an actor property.
+ */
+export interface PropertyConfig {
+  /** Property name (e.g., "id", "sharedInbox") */
+  name: string;
+  /** Full property path for lint rules (e.g., ["id"], ["endpoints", "sharedInbox"]) */
+  path: readonly string[];
+  /** Context method name to get the URI (e.g., "getActorUri", "getInboxUri") */
+  getter: string;
+  /** Dispatcher/Listener method name (e.g., "setActorDispatcher", "setInboxListeners") */
+  setter: string;
+  /** Whether the getter requires an identifier parameter (default: true) */
+  requiresIdentifier: boolean;
+  /** Nested property configuration, if this property is nested inside another */
+  nested?: NestedPropertyConfig;
+  /** Whether this is a key-related property (uses getActorKeyPairs) */
+  isKeyProperty?: boolean;
 }
 
 export type ASTNode =
@@ -42,6 +60,7 @@ export type ASTNode =
  * Context for method call validation.
  */
 export interface MethodCallContext {
+  path: string;
   ctxName: string;
   idName: string;
   methodName: string;

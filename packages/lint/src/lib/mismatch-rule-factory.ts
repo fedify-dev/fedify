@@ -26,7 +26,7 @@ import type {
   ASTNode,
   FunctionNode,
   MethodCallContext,
-  MismatchRuleConfig,
+  PropertyConfig,
 } from "./types.ts";
 import { eq } from "./utils.ts";
 
@@ -96,24 +96,43 @@ const isPropertyWithKeyName = (path: string) =>
  * Creates a property existence checker for the given property path.
  * Only checks if the property exists, not its value.
  */
-const createPropertyExistenceChecker = (propertyPath: string) => {
-  const path = propertyPath.split(".");
-  const checkPropertyExists = (path: string[]) => (node: ASTNode): boolean => {
-    if (!isPropertyWithKeyName(path[0])(node)) return false;
+const createPropertyExistenceChecker = (path: readonly string[]) => {
+  const checkPropertyExists =
+    (path: readonly string[]) => (node: ASTNode): boolean => {
+      if (!isPropertyWithKeyName(path[0])(node)) return false;
 
-    // Base case: last property in path
-    if (path.length === 1) return true;
+      // Base case: last property in path
+      if (path.length === 1) return true;
 
-    // Nested case: check the nested object
-    const value = node.value;
-    if (!isNodeType("ObjectExpression")(value)) return false;
+      // Nested case: check the nested object or NewExpression
+      const value = node.value;
 
-    return pipe(
-      value.properties,
-      filterASTNodes,
-      some(checkPropertyExists(path.slice(1))),
-    );
-  };
+      // Handle ObjectExpression: endpoints: { sharedInbox: ... }
+      if (isNodeType("ObjectExpression")(value)) {
+        return pipe(
+          value.properties,
+          filterASTNodes,
+          some(checkPropertyExists(path.slice(1))),
+        );
+      }
+
+      // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
+      if (isNodeType("NewExpression")(value)) {
+        const args = value.arguments;
+        if (!isArray(args) || args.length === 0) return false;
+        const firstArg = args[0];
+        if (!isASTNode(firstArg) || !isNodeType("ObjectExpression")(firstArg)) {
+          return false;
+        }
+        return pipe(
+          firstArg.properties,
+          filterASTNodes,
+          some(checkPropertyExists(path.slice(1))),
+        );
+      }
+
+      return false;
+    };
 
   return (prop: ASTNode): boolean =>
     allOf(isASTNode, checkPropertyExists(path))(prop);
@@ -121,33 +140,49 @@ const createPropertyExistenceChecker = (propertyPath: string) => {
 
 /**
  * Creates a property value checker for the given property path.
- * Handles both simple properties (e.g., "id") and nested properties (e.g., ["endpoints", "sharedInbox"]).
+ * Handles both simple properties (e.g., ["id"]) and nested properties (e.g., ["endpoints", "sharedInbox"]).
  */
 const createPropertyValueChecker = (
-  propertyPath: string,
+  path: readonly string[],
   ctx: MethodCallContext,
 ) => {
-  const path = propertyPath.split(".");
-  const checkPropertyValue = (path: string[]) => (prop: ASTNode): boolean => {
-    if (!isPropertyWithKeyName(path[0])(prop)) return false;
+  const checkPropertyValue =
+    (path: readonly string[]) => (prop: ASTNode): boolean => {
+      if (!isPropertyWithKeyName(path[0])(prop)) return false;
 
-    // Base case: last property in path
-    const value = prop.value;
-    if (path.length === 1) {
-      return isExpectedMethodCall(value, ctx);
-    }
+      // Base case: last property in path
+      const value = prop.value;
+      if (path.length === 1) {
+        return isExpectedMethodCall(value, ctx);
+      }
 
-    // Nested case: check the nested object
-    if (!isNodeType("ObjectExpression")(value)) {
+      // Nested case: check the nested object or NewExpression
+      // Handle ObjectExpression: endpoints: { sharedInbox: ... }
+      if (isNodeType("ObjectExpression")(value)) {
+        return pipe(
+          value.properties,
+          filterASTNodes,
+          some(checkPropertyValue(path.slice(1))),
+        );
+      }
+
+      // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
+      if (isNodeType("NewExpression")(value)) {
+        const args = value.arguments;
+        if (!isArray(args) || args.length === 0) return false;
+        const firstArg = args[0];
+        if (!isASTNode(firstArg) || !isNodeType("ObjectExpression")(firstArg)) {
+          return false;
+        }
+        return pipe(
+          firstArg.properties,
+          filterASTNodes,
+          some(checkPropertyValue(path.slice(1))),
+        );
+      }
+
       return false;
-    }
-
-    return pipe(
-      value.properties,
-      filterASTNodes,
-      some(checkPropertyValue(path.slice(1))),
-    );
-  };
+    };
 
   return (prop: ASTNode): boolean =>
     allOf(isASTNode, checkPropertyValue(path))(prop);
@@ -259,15 +294,11 @@ const getNameIfIdentifier = (node: Deno.lint.Parameter): string | null =>
 /**
  * Creates a lint rule that checks if a property uses the correct context method.
  *
- * @param config Configuration object containing property path, method name, and identifier requirement
+ * @param config Property configuration containing name, getter, setter, and nested info
  * @returns A Deno lint rule
  */
 export const createMismatchRule = (
-  {
-    propertyPath,
-    methodName,
-    requiresIdentifier = true,
-  }: MismatchRuleConfig,
+  { path, getter, requiresIdentifier = true }: PropertyConfig,
 ): Deno.lint.Rule => {
   return {
     create(context) {
@@ -290,14 +321,15 @@ export const createMismatchRule = (
           if (!ctxName || !idName) return;
 
           const methodCallContext: MethodCallContext = {
+            path: path.join("."),
             ctxName,
             idName,
-            methodName,
+            methodName: getter,
             requiresIdentifier,
           };
 
           // Check if the property exists first
-          const existenceChecker = createPropertyExistenceChecker(propertyPath);
+          const existenceChecker = createPropertyExistenceChecker(path);
           const hasProperty = checkFunctionBody(existenceChecker)(
             dispatcherArg.body,
           );
@@ -307,7 +339,7 @@ export const createMismatchRule = (
 
           // Property exists, now check if the value is correct
           const valueChecker = createPropertyValueChecker(
-            propertyPath,
+            path,
             methodCallContext,
           );
           const hasCorrectValue = checkFunctionBody(valueChecker)(
@@ -315,13 +347,9 @@ export const createMismatchRule = (
           );
 
           if (!hasCorrectValue) {
-            const expectedCall = requiresIdentifier
-              ? `${ctxName}.${methodName}(${idName})`
-              : `${ctxName}.${methodName}()`;
-
             context.report({
               node: dispatcherArg,
-              message: actorPropertyMismatch(propertyPath, expectedCall),
+              message: actorPropertyMismatch(methodCallContext),
             });
           }
         },
