@@ -188,7 +188,11 @@ test(`${ruleName}: ✅ Good - arrow function direct return NewExpression`, () =>
     testDenoLint({
       code: `
         federation.${properties.id.setter}("/users/{identifier}", async (ctx, identifier) =>
-          ${withId()}
+          ${
+        withId(
+          `, ${name}: ctx.${properties[name].getter}(identifier)`,
+        )
+      }
         );
       `,
       rule,
