@@ -36,6 +36,10 @@ type FunctionNode =
 // Federation Variable Tracker
 // ============================================================================
 
+const isCreateFederationCall = (node: CallExpression): boolean =>
+  node.callee.type === "Identifier" &&
+  /^create(Federation|FederationBuilder)$/i.test(node.callee.name);
+
 interface FederationTracker {
   handleVariableDeclarator(node: VariableDeclarator): void;
   isFederationObject(node: Expression): boolean;
@@ -43,10 +47,6 @@ interface FederationTracker {
 
 function createFederationTracker(): FederationTracker {
   const federationVariables = new Set<string>();
-
-  const isCreateFederationCall = (node: CallExpression): boolean =>
-    node.callee.type === "Identifier" &&
-    /^create(Federation|FederationBuilder)$/i.test(node.callee.name);
 
   const isFederationObject = (node: Expression): boolean => {
     switch (node.type) {
