@@ -3,7 +3,11 @@
   "version": "2.0.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./eslint": "./src/eslint.ts"
+  },
+  "imports": {
+    "@typescript-eslint/utils": "npm:@typescript-eslint/utils@^8.0.0"
   },
   "tasks": {
     "test": "deno test --allow-all"

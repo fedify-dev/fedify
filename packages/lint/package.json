@@ -6,7 +6,9 @@
     "Fedify",
     "ActivityPub",
     "Fediverse",
-    "Lint"
+    "Lint",
+    "ESLint",
+    "ESLint Plugin"
   ],
   "author": {
     "name": "Chanhaeng Lee",
@@ -30,17 +32,15 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.ts",
-        "require": "./dist/index.d.cts",
-        "default": "./dist/index.d.ts"
-      },
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "require": "./dist/index.cjs"
+    },
+    "./eslint": {
+      "import": "./dist/eslint.js",
+      "require": "./dist/eslint.cjs"
     },
     "./package.json": "./package.json"
   },
@@ -49,9 +49,20 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^"
+    "@fedify/fedify": "workspace:^",
+    "eslint": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "eslint": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@fxts/core": "catalog:",
+    "@typescript-eslint/utils": "^8.0.0"
   },
   "devDependencies": {
+    "@types/eslint": "^9.0.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
