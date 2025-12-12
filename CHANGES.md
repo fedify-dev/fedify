@@ -138,7 +138,7 @@ To be released.
 ### @fedify/relay
 
  -  Created ActivityPub relay integration as the *@fedify/relay* package.
-    [[#359], [#459], [#471] by Jiwon Kwon]
+    [[#359], [#459], [#471], [#490] by Jiwon Kwon]
 
      -  Added `Relay` interface defining the common contract for relay
         implementations.
@@ -149,10 +149,13 @@ To be released.
      -  Added `SubscriptionRequestHandler` type for custom subscription approval
         logic.
      -  Added `RelayOptions` interface for relay configuration.
+     -  Added `RelayType` type alias to document the type-safe parameter
+     -  Added `createRelay()` factory function as a key public API
 
 [#359]: https://github.com/fedify-dev/fedify/issues/359
 [#459]: https://github.com/fedify-dev/fedify/pull/459
 [#471]: https://github.com/fedify-dev/fedify/pull/471
+[#490]: https://github.com/fedify-dev/fedify/pull/490
 
 ### @fedify/vocab-tools
 
