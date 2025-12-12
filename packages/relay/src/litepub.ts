@@ -218,6 +218,7 @@ export class LitePubRelay implements Relay {
             actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
             object: update.objectId,
             to: PUBLIC_COLLECTION,
+            published: Temporal.Now.instant(),
           });
 
           await ctx.sendActivity(
@@ -239,6 +240,7 @@ export class LitePubRelay implements Relay {
             actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
             object: move.objectId,
             to: PUBLIC_COLLECTION,
+            published: Temporal.Now.instant(),
           });
 
           await ctx.sendActivity(
@@ -260,6 +262,7 @@ export class LitePubRelay implements Relay {
             actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
             object: deleteActivity.objectId,
             to: PUBLIC_COLLECTION,
+            published: Temporal.Now.instant(),
           });
 
           await ctx.sendActivity(
@@ -281,6 +284,7 @@ export class LitePubRelay implements Relay {
             actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
             object: announceActivity.objectId,
             to: PUBLIC_COLLECTION,
+            published: Temporal.Now.instant(),
           });
 
           await ctx.sendActivity(
