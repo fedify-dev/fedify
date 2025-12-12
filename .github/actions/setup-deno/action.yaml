@@ -1,0 +1,9 @@
+name: Setup Deno
+description: Set up Deno with the project's required version
+
+runs:
+  using: composite
+  steps:
+  - uses: denoland/setup-deno@v2
+    with:
+      deno-version: 2.5.6  # Keep in sync with mise.toml
