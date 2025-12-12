@@ -14,6 +14,7 @@ import {
   Update,
 } from "@fedify/fedify";
 import {
+  type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
@@ -26,7 +27,7 @@ import {
  *
  * @since 2.0.0
  */
-export class LitePubRelay {
+export class LitePubRelay implements Relay {
   #federationBuilder: FederationBuilder<RelayOptions>;
   #options: RelayOptions;
   #federation?: Federation<RelayOptions>;
@@ -178,7 +179,7 @@ export class LitePubRelay {
               id !== activity.actorId?.href
             );
             await ctx.data.kv.set(["followers"], updatedFollowers);
-            ctx.data.kv.delete(["follower", activity.actorId?.href]);
+            await ctx.data.kv.delete(["follower", activity.actorId?.href]);
           } else {
             console.warn(
               "Unsupported object type ({type}) for Undo activity: {object}",
