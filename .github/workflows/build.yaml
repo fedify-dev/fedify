@@ -222,6 +222,7 @@ jobs:
       with:
         node-version: lts/*
         cache: pnpm
+    - run: pnpm install
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
 
