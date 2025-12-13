@@ -8,6 +8,15 @@ Version 1.10.0
 
 To be released.
 
+### @fedify/nestjs
+
+ -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
+    [[#492], [#493] by Cho Hasang]
+
+
+[#492]: https://github.com/fedify-dev/fedify/issues/492
+[#493]: https://github.com/fedify-dev/fedify/pull/493
+
 
 Version 1.9.1
 -------------
