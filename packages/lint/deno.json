@@ -3,11 +3,13 @@
   "version": "2.0.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts",
-    "./eslint": "./src/eslint.ts"
+    ".": "./src/mod.ts"
   },
   "imports": {
-    "@typescript-eslint/utils": "npm:@typescript-eslint/utils@^8.0.0"
+    "@types/eslint": "npm:@types/eslint@^9.0.0",
+    "@typescript-eslint/rule-tester": "npm:@typescript-eslint/rule-tester@^8.49.0",
+    "@typescript-eslint/utils": "npm:@typescript-eslint/utils@^8.49.0",
+    "eslint": "npm:eslint@^9.0.0"
   },
   "tasks": {
     "test": "deno test --allow-all"

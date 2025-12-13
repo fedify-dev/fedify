@@ -38,10 +38,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./eslint": {
-      "import": "./dist/eslint.js",
-      "require": "./dist/eslint.cjs"
-    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -50,7 +46,7 @@
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "eslint": ">=8.0.0"
+    "eslint": ">=9.0.0"
   },
   "peerDependenciesMeta": {
     "eslint": {
@@ -71,6 +67,6 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "tsdown && node --experimental-transform-types --test src/tests/eslint/*.test.ts"
+    "test": "node --experimental-transform-types"
   }
 }
