@@ -5,7 +5,7 @@
  * All tests start from the complete valid code and modify only the part
  * necessary to trigger the specific lint rule being tested.
  */
-import { assert, assertEquals } from "jsr:@std/assert";
+import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 import plugin from "../mod.ts";
 
@@ -23,7 +23,7 @@ function lintCode(code: string): Deno.lint.Diagnostic[] {
  */
 function assertNoErrors(code: string, message?: string) {
   const diagnostics = lintCode(code);
-  assertEquals(
+  equal(
     diagnostics.length,
     0,
     message ??
@@ -40,7 +40,7 @@ function assertHasError(code: string, ruleName: string, message?: string) {
   const diagnostics = lintCode(code);
   const ruleId = `${PLUGIN_NAME}/${ruleName}`;
   const matched = diagnostics.some((d) => d.id === ruleId);
-  assert(
+  ok(
     matched,
     message ??
       `Expected error from ${ruleName} but got: ${
@@ -50,10 +50,6 @@ function assertHasError(code: string, ruleName: string, message?: string) {
       }`,
   );
 }
-
-// =============================================================================
-// Complete Valid Code (based on examples/lint/deno/mod.ts)
-// =============================================================================
 
 /**
  * Complete valid code that passes all lint rules.
@@ -141,17 +137,9 @@ federation.setFeaturedTagsDispatcher(
 );
 `;
 
-// =============================================================================
-// Test: Complete Valid Code
-// =============================================================================
-
 test("Integration: ✅ Complete valid code passes all rules", () => {
   assertNoErrors(COMPLETE_VALID_CODE);
 });
-
-// =============================================================================
-// Test: *-required rules (property missing when dispatcher is configured)
-// =============================================================================
 
 test("Integration: ❌ actor-id-required - missing id property", () => {
   const code = COMPLETE_VALID_CODE.replace(
@@ -526,11 +514,11 @@ test("Integration: ❌ Multiple errors - missing id and inbox", () => {
   const diagnostics = lintCode(code);
   const ruleIds = diagnostics.map((d) => d.id);
 
-  assert(
+  ok(
     ruleIds.includes(`${PLUGIN_NAME}/actor-id-required`),
     "Expected actor-id-required error",
   );
-  assert(
+  ok(
     ruleIds.includes(`${PLUGIN_NAME}/actor-inbox-property-required`),
     "Expected actor-inbox-property-required error",
   );

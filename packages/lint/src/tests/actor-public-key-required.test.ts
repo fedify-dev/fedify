@@ -1,14 +1,14 @@
 import { test } from "node:test";
-import { properties } from "../lib/const.ts";
+import { properties, RULE_IDS } from "../lib/const.ts";
 import { actorPropertyRequired } from "../lib/messages.ts";
-import { testDenoLint } from "../lib/test.ts";
-import {
-  ACTOR_PUBLIC_KEY_REQUIRED as ruleName,
-  default as rule,
-} from "../rules/actor-public-key-required.ts";
+import lintTest from "../lib/test.ts";
+import * as rule from "../rules/actor-public-key-required.ts";
 
-test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`, () => {
-  testDenoLint({
+const ruleName = RULE_IDS.actorPublicKeyRequired;
+
+test(
+  `${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -23,11 +23,12 @@ test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation ob
         setActorDispatcher: () => {}
       };
     `,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - key pairs dispatcher NOT configured, property missing (no error)`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - key pairs dispatcher NOT configured, property missing (no error)`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -39,11 +40,12 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher NOT configured, property miss
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDispatcher, property present`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDispatcher, property present`,
+  lintTest({
     code: `
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -57,11 +59,12 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDis
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDispatcher (separate calls), property present`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDispatcher (separate calls), property present`,
+  lintTest({
     code: `
       federation.setKeyPairsDispatcher(async (ctx, identifier) => []);
 
@@ -75,11 +78,12 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured BEFORE setActorDis
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDispatcher, property present`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDispatcher, property present`,
+  lintTest({
     code: `
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -93,11 +97,12 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDisp
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDispatcher (separate calls), property present`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDispatcher (separate calls), property present`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const keyPairs = await ctx.getActorKeyPairs(identifier);
@@ -111,11 +116,12 @@ test(`${ruleName}: ✅ Good - key pairs dispatcher configured AFTER setActorDisp
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property missing`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property missing`,
+  lintTest({
     code: `
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -129,11 +135,12 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE, property mi
     rule,
     ruleName,
     expectedError: actorPropertyRequired(properties.publicKey),
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE (separate calls), property missing`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE (separate calls), property missing`,
+  lintTest({
     code: `
       federation.setKeyPairsDispatcher(async (ctx, identifier) => []);
 
@@ -147,11 +154,12 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured BEFORE (separate ca
     rule,
     ruleName,
     expectedError: actorPropertyRequired(properties.publicKey),
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property missing`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property missing`,
+  lintTest({
     code: `
       federation
         .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -164,11 +172,12 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER, property mis
     rule,
     ruleName,
     expectedError: actorPropertyRequired(properties.publicKey),
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (separate calls), property missing`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (separate calls), property missing`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -181,5 +190,5 @@ test(`${ruleName}: ❌ Bad - key pairs dispatcher configured AFTER (separate cal
     rule,
     ruleName,
     expectedError: actorPropertyRequired(properties.publicKey),
-  });
-});
+  }),
+);

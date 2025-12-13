@@ -1,12 +1,12 @@
 import { test } from "node:test";
+import { RULE_IDS } from "../lib/const.ts";
 import {
   createRequiredEdgeCaseTests,
   createRequiredListenerRuleTests,
 } from "../lib/test-templates.ts";
-import {
-  ACTOR_SHARED_INBOX_PROPERTY_REQUIRED as ruleName,
-  default as rule,
-} from "../rules/actor-shared-inbox-property-required.ts";
+import * as rule from "../rules/actor-shared-inbox-property-required.ts";
+
+const ruleName = RULE_IDS.actorSharedInboxPropertyRequired;
 
 const config = { rule, ruleName };
 

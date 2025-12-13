@@ -1,11 +1,10 @@
 import { test } from "node:test";
-import { properties } from "../lib/const.ts";
+import { properties, RULE_IDS } from "../lib/const.ts";
 import { actorPropertyMismatch } from "../lib/messages.ts";
-import { testDenoLint } from "../lib/test.ts";
-import {
-  ACTOR_ID_MISMATCH as ruleName,
-  default as rule,
-} from "../rules/actor-id-mismatch.ts";
+import lintTest from "../lib/test.ts";
+import * as rule from "../rules/actor-id-mismatch.ts";
+
+const ruleName = RULE_IDS.actorIdMismatch;
 
 const expectedError = actorPropertyMismatch({
   path: properties.id.path.join("."),
@@ -15,8 +14,9 @@ const expectedError = actorPropertyMismatch({
   requiresIdentifier: properties.id.requiresIdentifier,
 });
 
-test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -32,11 +32,12 @@ test(`${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation ob
         setActorDispatcher: () => {}
       };
     `,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - id uses ctx.getActorUri(identifier)`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - id uses ctx.getActorUri(identifier)`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -47,11 +48,12 @@ test(`${ruleName}: ✅ Good - id uses ctx.getActorUri(identifier)`, () => {
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ✅ Good - BlockStatement with correct id`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ✅ Good - BlockStatement with correct id`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const name = "John Doe";
@@ -63,11 +65,12 @@ test(`${ruleName}: ✅ Good - BlockStatement with correct id`, () => {
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - id uses hardcoded string instead of ctx.getActorUri()`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - id uses hardcoded string instead of ctx.getActorUri()`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -79,11 +82,12 @@ test(`${ruleName}: ❌ Bad - id uses hardcoded string instead of ctx.getActorUri
     rule,
     ruleName,
     expectedError: expectedError,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - id uses wrong method (getInboxUri instead of getActorUri)`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - id uses wrong method (getInboxUri instead of getActorUri)`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -95,11 +99,12 @@ test(`${ruleName}: ❌ Bad - id uses wrong method (getInboxUri instead of getAct
     rule,
     ruleName,
     expectedError: expectedError,
-  });
-});
+  }),
+);
 
-test(`${ruleName}: ❌ Bad - id uses wrong identifier parameter`, () => {
-  testDenoLint({
+test(
+  `${ruleName}: ❌ Bad - id uses wrong identifier parameter`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -111,11 +116,12 @@ test(`${ruleName}: ❌ Bad - id uses wrong identifier parameter`, () => {
     rule,
     ruleName,
     expectedError: expectedError,
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ✅ multiple return statements - all correct`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ✅ multiple return statements - all correct`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         if (identifier === "admin") {
@@ -126,11 +132,12 @@ test(`${ruleName} Edge: ✅ multiple return statements - all correct`, () => {
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ⚠️ multiple returns - known limitation`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ⚠️ multiple returns - known limitation`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         if (identifier === "admin") {
@@ -143,11 +150,12 @@ test(`${ruleName} Edge: ⚠️ multiple returns - known limitation`, () => {
     ruleName,
     // Known limitation: Once ANY return has correct id, the rule passes.
     // The first return with wrong id is not caught.
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ✅ spread operator with correct id after spread`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ✅ spread operator with correct id after spread`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const base = { name: "User" };
@@ -156,11 +164,12 @@ test(`${ruleName} Edge: ✅ spread operator with correct id after spread`, () =>
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ❌ spread operator with wrong id after spread`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ❌ spread operator with wrong id after spread`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         const base = { name: "User" };
@@ -170,11 +179,12 @@ test(`${ruleName} Edge: ❌ spread operator with wrong id after spread`, () => {
     rule,
     ruleName,
     expectedError: expectedError,
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ✅ arrow function direct return with correct id`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ✅ arrow function direct return with correct id`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -185,11 +195,12 @@ test(`${ruleName} Edge: ✅ arrow function direct return with correct id`, () =>
     `,
     rule,
     ruleName,
-  });
-});
+  }),
+);
 
-test(`${ruleName} Edge: ❌ arrow function direct return with wrong id`, () => {
-  testDenoLint({
+test(
+  `${ruleName} Edge: ❌ arrow function direct return with wrong id`,
+  lintTest({
     code: `
       federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
         return new Person({
@@ -201,5 +212,5 @@ test(`${ruleName} Edge: ❌ arrow function direct return with wrong id`, () => {
     rule,
     ruleName,
     expectedError: expectedError,
-  });
-});
+  }),
+);

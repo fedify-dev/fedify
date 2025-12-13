@@ -1,12 +1,12 @@
 import { test } from "node:test";
+import { RULE_IDS } from "../lib/const.ts";
 import {
   createRequiredDispatcherRuleTests,
   createRequiredEdgeCaseTests,
 } from "../lib/test-templates.ts";
-import {
-  ACTOR_LIKED_PROPERTY_REQUIRED as ruleName,
-  default as rule,
-} from "../rules/actor-liked-property-required.ts";
+import * as rule from "../rules/actor-liked-property-required.ts";
+
+const ruleName = RULE_IDS.actorLikedPropertyRequired;
 
 const config = { rule, ruleName };
 

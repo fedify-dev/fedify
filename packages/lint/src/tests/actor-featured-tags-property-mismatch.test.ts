@@ -1,12 +1,12 @@
 import { test } from "node:test";
+import { RULE_IDS } from "../lib/const.ts";
 import {
   createMismatchEdgeCaseTests,
   createMismatchRuleTests,
 } from "../lib/test-templates.ts";
-import {
-  ACTOR_FEATURED_TAGS_PROPERTY_MISMATCH as ruleName,
-  default as rule,
-} from "../rules/actor-featured-tags-property-mismatch.ts";
+import * as rule from "../rules/actor-featured-tags-property-mismatch.ts";
+
+const ruleName = RULE_IDS.actorFeaturedTagsPropertyMismatch;
 
 const config = { rule, ruleName };
 

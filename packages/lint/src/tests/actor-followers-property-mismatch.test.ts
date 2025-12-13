@@ -1,12 +1,12 @@
 import { test } from "node:test";
+import { RULE_IDS } from "../lib/const.ts";
 import {
   createMismatchEdgeCaseTests,
   createMismatchRuleTests,
 } from "../lib/test-templates.ts";
-import {
-  ACTOR_FOLLOWERS_PROPERTY_MISMATCH as ruleName,
-  default as rule,
-} from "../rules/actor-followers-property-mismatch.ts";
+import * as rule from "../rules/actor-followers-property-mismatch.ts";
+
+const ruleName = RULE_IDS.actorFollowersPropertyMismatch;
 
 const config = { rule, ruleName };
 
