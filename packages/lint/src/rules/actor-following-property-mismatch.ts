@@ -1,11 +1,12 @@
 import { properties } from "../lib/const.ts";
-import { createMismatchRule } from "../lib/mismatch-rule-factory.ts";
+import {
+  createMismatchRuleDeno,
+  createMismatchRuleEslint,
+} from "../lib/mismatch-rule-factory.ts";
 
-export const ACTOR_FOLLOWING_PROPERTY_MISMATCH =
-  "actor-following-property-mismatch" as const;
-
-const actorFollowingPropertyMismatch: Deno.lint.Rule = createMismatchRule(
+export const deno = createMismatchRuleDeno(
   properties.following,
 );
-
-export default actorFollowingPropertyMismatch;
+export const eslint = createMismatchRuleEslint(
+  properties.following,
+);

@@ -1,16 +1,19 @@
-import { isNil, isObject, isString, negate, pipe, prop } from "@fxts/core";
+import { pipe, prop } from "@fxts/core";
+import type { TSESTree } from "@typescript-eslint/utils";
 import type {
-  ASTNode,
+  CallExpression,
   CallMemberExpression,
   CallMemberExpressionWithIdentified,
+  Expression,
   FunctionNode,
+  Node,
+  SpreadElement,
 } from "./types.ts";
 import { eq } from "./utils.ts";
 
 interface Predicate<T> {
   (value: unknown): value is T;
 }
-
 /**
  * Combines multiple predicates with AND logic.
  */
@@ -27,25 +30,20 @@ export function allOf<T>(
     predicates.every((predicate) => predicate(value));
 }
 
-/**
- * Type guard to check if a value is a valid AST node.
- */
-export const isASTNode = (value: unknown): value is ASTNode =>
-  allOf(isObject, negate(isNil), hasTypeProperty)(value);
-
-const hasTypeProperty = <N>(node: N): node is N & { "type": string } =>
-  pipe(node as { "type": unknown }, prop("type"), isString) as boolean;
+export const anyOf =
+  <T>(...predicates: ((value: T) => boolean)[]) => (value: T): boolean =>
+    predicates.some((predicate) => predicate(value));
 
 /**
  * Checks if a node is of a specific type.
  */
 export const isNodeType =
-  <T extends string>(type: T) =>
-  <N extends ASTNode>(node: N): node is { "type": T } & N =>
+  <T extends TSESTree.AST_NODE_TYPES | string>(type: T) =>
+  (node: Node): node is { "type": T } & Node =>
     pipe(
       node,
       prop("type"),
-      eq<unknown, unknown>(type),
+      eq<string, string>(type),
     ) as boolean;
 
 /**
@@ -60,36 +58,29 @@ export const isNodeName =
     ) as boolean;
 
 /**
- * Checks if a node has a key that is an AST node.
- */
-export const hasASTNodeKey = <N>(node: N): node is N & { "key": ASTNode } =>
-  pipe(node as { "key": ASTNode }, prop("key"), isASTNode);
-
-/**
  * Checks if a node's key is an Identifier.
  */
-export const hasIdentifierKey = <N>(
-  node: N,
-): node is N & { "key": ASTNode & { type: "Identifier" } } =>
-  pipe(
-    node as { "key": ASTNode },
-    prop("key"),
-    allOf(isASTNode, isNodeType("Identifier")),
-  );
+export const hasIdentifierKey = <T extends Deno.lint.Property>(
+  node: T,
+): node is T & { "key": Deno.lint.Identifier } =>
+  pipe(node, prop("key"), isNodeType("Identifier")) as boolean;
 
 /**
  * Checks if a node's callee is a MemberExpression.
  */
 export const hasMemberExpressionCallee = (
-  node: Deno.lint.CallExpression,
+  node: CallExpression,
 ): node is CallMemberExpression => node.callee.type === "MemberExpression";
 
 /**
  * Checks if a node's callee property is an Identifier.
  */
 export const hasIdentifierProperty = (
-  node: CallMemberExpression,
+  node: CallExpression,
 ): node is CallMemberExpressionWithIdentified =>
+  "callee" in node &&
+  "property" in node.callee &&
+  "type" in node.callee.property &&
   node.callee.property.type === "Identifier";
 
 /**
@@ -97,51 +88,61 @@ export const hasIdentifierProperty = (
  */
 export const hasMethodName =
   <T extends string>(methodName: T) =>
-  <N extends CallMemberExpressionWithIdentified>(node: N): node is N & {
+  (node: CallExpression): node is CallExpression & {
     callee: { property: { name: T } };
-  } => node.callee.property.name === methodName;
+  } =>
+    "callee" in node &&
+    "property" in node.callee &&
+    "name" in node.callee.property &&
+    node.callee.property.name === methodName;
 
 /**
  * Checks if a CallExpression has minimum required arguments.
  */
 export const hasMinArguments =
-  (min: number) => (node: Deno.lint.CallExpression): boolean =>
-    node.arguments.length >= min;
-
-/**
- * Checks if an expression is an arrow function.
- */
-export const isArrowFunction = (
-  expr: Deno.lint.Expression | Deno.lint.SpreadElement,
-): expr is Deno.lint.ArrowFunctionExpression =>
-  isNodeType("ArrowFunctionExpression")(expr);
-
-/**
- * Checks if an expression is a function expression.
- */
-export const isFunctionExpression = (
-  expr: Deno.lint.Expression | Deno.lint.SpreadElement,
-): expr is Deno.lint.FunctionExpression =>
-  isNodeType("FunctionExpression")(expr);
+  (min: number) =>
+  <T extends CallExpression>(node: T): node is Extract<T, {
+    arguments: { length: number };
+  }> => node.arguments.length >= min;
 
 /**
  * Checks if an expression is a function (arrow or regular).
  */
 export const isFunction = (
-  expr: Deno.lint.Expression | Deno.lint.SpreadElement,
-): expr is FunctionNode => isArrowFunction(expr) || isFunctionExpression(expr);
+  expr:
+    | Expression
+    | SpreadElement,
+): expr is FunctionNode =>
+  anyOf(
+    isNodeType("ArrowFunctionExpression"),
+    isNodeType("FunctionExpression"),
+  )(expr);
 
 /**
  * Checks if a CallExpression is a setActorDispatcher call with proper structure.
  */
-export const isSetActorDispatcherCall = <N extends Deno.lint.CallExpression>(
-  node: N,
-): node is N & CallMemberExpressionWithIdentified & {
+export const isSetActorDispatcherCall = (
+  node: CallExpression,
+): node is CallMemberExpressionWithIdentified & {
   callee: { property: Deno.lint.Identifier & { name: "setActorDispatcher" } };
 } =>
   allOf(
     hasMemberExpressionCallee,
-    hasIdentifierProperty as (node: unknown) => boolean,
-    hasMethodName("setActorDispatcher") as (node: unknown) => boolean,
+    hasIdentifierProperty,
+    hasMethodName("setActorDispatcher"),
     hasMinArguments(2),
   )(node);
+
+/**
+ * Checks if an object has a specific property key.
+ */
+export const hasProp =
+  <K extends string>(key: K) =>
+  <T>(obj: T): obj is Extract<T, Record<K, unknown>> =>
+    Object.prototype.hasOwnProperty.call(obj, key);
+
+/**
+ * Checks if a function has at least n parameters.
+ */
+export const hasMinParams = (min: number) => (fn: FunctionNode): boolean =>
+  fn.params.length >= min;

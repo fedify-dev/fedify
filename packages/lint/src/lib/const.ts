@@ -1,4 +1,4 @@
-import type { NestedPropertyConfig, PropertyConfig } from "./types.ts";
+import type { PropertyConfig } from "./types.ts";
 
 export const FEDERATION_SETUP = `
 import {
@@ -13,9 +13,6 @@ const federation = createFederation<void>({
   queue: new InProcessMessageQueue(),
 });
 ` as const;
-
-// Re-export types for convenience
-export type { NestedPropertyConfig, PropertyConfig };
 
 /**
  * Mapping of actor property names to their corresponding Context method names
@@ -107,3 +104,35 @@ export const properties = {
     isKeyProperty: true,
   },
 } as const satisfies Record<string, PropertyConfig>;
+
+/**
+ * Rule IDs for all Fedify lint rules
+ */
+export const RULE_IDS = {
+  // Required rules
+  actorIdRequired: "actor-id-required",
+  actorFollowingPropertyRequired: "actor-following-property-required",
+  actorFollowersPropertyRequired: "actor-followers-property-required",
+  actorOutboxPropertyRequired: "actor-outbox-property-required",
+  actorLikedPropertyRequired: "actor-liked-property-required",
+  actorFeaturedPropertyRequired: "actor-featured-property-required",
+  actorFeaturedTagsPropertyRequired: "actor-featured-tags-property-required",
+  actorInboxPropertyRequired: "actor-inbox-property-required",
+  actorSharedInboxPropertyRequired: "actor-shared-inbox-property-required",
+  actorPublicKeyRequired: "actor-public-key-required",
+  actorAssertionMethodRequired: "actor-assertion-method-required",
+
+  // Mismatch rules
+  actorIdMismatch: "actor-id-mismatch",
+  actorFollowingPropertyMismatch: "actor-following-property-mismatch",
+  actorFollowersPropertyMismatch: "actor-followers-property-mismatch",
+  actorOutboxPropertyMismatch: "actor-outbox-property-mismatch",
+  actorLikedPropertyMismatch: "actor-liked-property-mismatch",
+  actorFeaturedPropertyMismatch: "actor-featured-property-mismatch",
+  actorFeaturedTagsPropertyMismatch: "actor-featured-tags-property-mismatch",
+  actorInboxPropertyMismatch: "actor-inbox-property-mismatch",
+  actorSharedInboxPropertyMismatch: "actor-shared-inbox-property-mismatch",
+
+  // Collection rules
+  collectionFilteringNotImplemented: "collection-filtering-not-implemented",
+} as const;

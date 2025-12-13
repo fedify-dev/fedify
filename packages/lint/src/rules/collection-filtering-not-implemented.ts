@@ -1,18 +1,13 @@
+import type { TSESLint } from "@typescript-eslint/utils";
 import {
+  COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR,
   COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR as message,
 } from "../lib/messages.ts";
-import {
-  allOf,
-  hasIdentifierProperty,
-  hasMemberExpressionCallee,
-  hasMethodName,
-  hasMinArguments,
-  isFunction,
-} from "../lib/pred.ts";
+import { hasMinParams, isFunction } from "../lib/pred.ts";
 import { trackFederationVariables } from "../lib/tracker.ts";
 import type {
+  CallExpression,
   CallMemberExpressionWithIdentified,
-  FunctionNode,
 } from "../lib/types.ts";
 
 export const COLLECTION_FILTERING_NOT_IMPLEMENTED =
@@ -24,29 +19,25 @@ export const COLLECTION_FILTERING_NOT_IMPLEMENTED =
  * followers collection synchronization.
  * See: https://fedify.dev/manual/collections#filtering-by-server
  */
-const FOLLOWERS_DISPATCHER_METHOD = "setFollowersDispatcher" as const;
+const FILTER_NEEDED = ["setFollowersDispatcher"];
 
 /**
  * Checks if a node is a setFollowersDispatcher call.
  */
 const isFollowersDispatcherCall = (
-  node: Deno.lint.CallExpression,
-): node is Deno.lint.CallExpression & CallMemberExpressionWithIdentified =>
-  allOf(
-    hasMemberExpressionCallee,
-    hasIdentifierProperty,
-    hasMinArguments(2),
-    hasMethodName(FOLLOWERS_DISPATCHER_METHOD),
-  )(node as Deno.lint.CallExpression & CallMemberExpressionWithIdentified);
+  node: CallExpression,
+): node is CallMemberExpressionWithIdentified =>
+  "callee" in node &&
+  node.callee &&
+  node.callee.type === "MemberExpression" &&
+  node.callee.property.type === "Identifier" &&
+  FILTER_NEEDED.includes(node.callee.property.name);
 
 /**
  * Checks if a function node has the filter parameter (4th parameter).
  * CollectionDispatcher signature: (context, identifier, cursor, filter?) => ...
  */
-const hasFilterParameter = (fn: FunctionNode): boolean => {
-  // Filter is the 4th parameter (index 3)
-  return fn.params.length >= 4;
-};
+const hasFilterParameter = hasMinParams(4);
 
 /**
  * Lint rule: collection-filtering-not-implemented
@@ -81,7 +72,7 @@ const hasFilterParameter = (fn: FunctionNode): boolean => {
  * );
  * ```
  */
-const collectionFilteringNotImplementedRule: Deno.lint.Rule = {
+export const deno: Deno.lint.Rule = {
   create(context) {
     const federationTracker = trackFederationVariables();
 
@@ -109,4 +100,42 @@ const collectionFilteringNotImplementedRule: Deno.lint.Rule = {
   },
 };
 
-export default collectionFilteringNotImplementedRule;
+export const eslint: TSESLint.RuleModule<
+  string,
+  unknown[]
+> = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Ensure followers dispatcher implements filtering",
+    },
+    schema: [],
+    messages: {
+      filterRequired: COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR,
+    },
+  },
+  defaultOptions: [],
+  create(context) {
+    const federationTracker = trackFederationVariables();
+
+    return {
+      VariableDeclarator: federationTracker.VariableDeclarator,
+      CallExpression(node): void {
+        if (!isFollowersDispatcherCall(node)) return;
+        if (!federationTracker.isFederationObject(node.callee.object)) return;
+
+        // Get the dispatcher callback (2nd argument)
+        const dispatcherArg = node.arguments[1];
+        if (!isFunction(dispatcherArg)) return;
+
+        // Check if the callback has the filter parameter (4th parameter)
+        if (!hasFilterParameter(dispatcherArg)) {
+          context.report({
+            node: dispatcherArg,
+            messageId: "filterRequired",
+          });
+        }
+      },
+    };
+  },
+};

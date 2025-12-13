@@ -1,10 +1,12 @@
 import { properties } from "../lib/const.ts";
-import { createRequiredRule } from "../lib/required-rule-factory.ts";
+import {
+  createRequiredRuleDeno,
+  createRequiredRuleEslint,
+} from "../lib/required-rule-factory.ts";
 
-export const ACTOR_PUBLIC_KEY_REQUIRED = "actor-public-key-required";
-
-const actorPublicKeyRequired: Deno.lint.Rule = createRequiredRule(
+export const deno = createRequiredRuleDeno(
   properties.publicKey,
 );
-
-export default actorPublicKeyRequired;
+export const eslint = createRequiredRuleEslint(
+  properties.publicKey,
+);

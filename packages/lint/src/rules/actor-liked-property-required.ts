@@ -1,8 +1,12 @@
 import { properties } from "../lib/const.ts";
-import { createRequiredRule } from "../lib/required-rule-factory.ts";
+import {
+  createRequiredRuleDeno,
+  createRequiredRuleEslint,
+} from "../lib/required-rule-factory.ts";
 
-export const ACTOR_LIKED_PROPERTY_REQUIRED = "actor-liked-property-required";
-
-const actorLikedPropertyRequired = createRequiredRule(properties.liked);
-
-export default actorLikedPropertyRequired;
+export const deno = createRequiredRuleDeno(
+  properties.liked,
+);
+export const eslint = createRequiredRuleEslint(
+  properties.liked,
+);

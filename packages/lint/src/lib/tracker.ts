@@ -1,10 +1,14 @@
+import type { TSESTree } from "@typescript-eslint/utils";
+
 /**
  * Helper to track variable names that store the result of createFederation() or createFederationBuilder() calls
  */
 export function trackFederationVariables() {
   const federationVariables = new Set<string>();
 
-  const isFederationObject = (obj: Deno.lint.Expression): boolean => {
+  const isFederationObject = (
+    obj: Deno.lint.Expression | TSESTree.Expression,
+  ): boolean => {
     switch (obj.type) {
       case "Identifier":
         return federationVariables.has(obj.name);
@@ -23,7 +27,9 @@ export function trackFederationVariables() {
   };
 
   return {
-    VariableDeclarator(node: Deno.lint.VariableDeclarator) {
+    VariableDeclarator(
+      node: Deno.lint.VariableDeclarator | TSESTree.VariableDeclarator,
+    ): void {
       const init = node.init;
       const id = node.id;
 

@@ -1,11 +1,12 @@
 import { properties } from "../lib/const.ts";
-import { createMismatchRule } from "../lib/mismatch-rule-factory.ts";
+import {
+  createMismatchRuleDeno,
+  createMismatchRuleEslint,
+} from "../lib/mismatch-rule-factory.ts";
 
-export const ACTOR_SHARED_INBOX_PROPERTY_MISMATCH =
-  "actor-shared-inbox-property-mismatch" as const;
-
-const actorSharedInboxPropertyMismatch: Deno.lint.Rule = createMismatchRule(
+export const deno = createMismatchRuleDeno(
   properties.sharedInbox,
 );
-
-export default actorSharedInboxPropertyMismatch;
+export const eslint = createMismatchRuleEslint(
+  properties.sharedInbox,
+);

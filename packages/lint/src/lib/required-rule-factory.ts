@@ -1,3 +1,4 @@
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils";
 import { actorPropertyRequired } from "./messages.ts";
 import {
   allOf,
@@ -8,35 +9,32 @@ import {
   isSetActorDispatcherCall,
 } from "./pred.ts";
 import {
-  createNestedPropertyChecker,
   createPropertyChecker,
   createPropertySearcher,
 } from "./property-checker.ts";
 import { trackFederationVariables } from "./tracker.ts";
 import type {
-  CallMemberExpression,
+  CallExpression,
   CallMemberExpressionWithIdentified,
-  FunctionNode,
   PropertyConfig,
 } from "./types.ts";
 
 /**
  * Checks if a CallExpression is a specific dispatcher method call.
  */
-const isDispatcherMethodCall = (methodName: string) =>
-(
-  node: Deno.lint.CallExpression,
-): node is CallMemberExpression =>
-  allOf(
-    hasMemberExpressionCallee,
-    hasIdentifierProperty,
-    hasMethodName(methodName),
-  )(node as CallMemberExpressionWithIdentified);
+const isDispatcherMethodCall =
+  (methodName: string) =>
+  (node: CallExpression): node is CallMemberExpressionWithIdentified =>
+    allOf(
+      hasMemberExpressionCallee,
+      hasIdentifierProperty,
+      hasMethodName(methodName),
+    )(node);
 
 /**
  * Tracks dispatcher method calls on federation objects.
  */
-export const createDispatcherTracker = (
+const createDispatcherTracker = (
   dispatcherMethod: string,
   federationTracker: ReturnType<typeof trackFederationVariables>,
 ) => {
@@ -44,7 +42,9 @@ export const createDispatcherTracker = (
 
   return {
     isDispatcherConfigured: () => dispatcherConfigured,
-    checkDispatcherCall: (node: Deno.lint.CallExpression) => {
+    checkDispatcherCall: (
+      node: CallExpression,
+    ) => {
       if (
         isDispatcherMethodCall(dispatcherMethod)(node) &&
         federationTracker.isFederationObject(node.callee.object)
@@ -58,22 +58,86 @@ export const createDispatcherTracker = (
 /**
  * Stores actor dispatcher info for later validation.
  */
-interface ActorDispatcherInfo {
+interface ActorDispatcherInfoDeno {
   node: Deno.lint.CallExpression;
-  dispatcherArg: FunctionNode;
+  dispatcherArg:
+    | Deno.lint.ArrowFunctionExpression
+    | Deno.lint.FunctionExpression;
+}
+
+function createRequiredRule<
+  Context = Deno.lint.RuleContext | TSESLint.RuleContext<string, unknown[]>,
+  /* CallExpression = Context extends Deno.lint.RuleContext
+    ? Deno.lint.CallExpression
+    : TSESTree.CallExpression, */
+  ActorDispatcherInfo = Context extends Deno.lint.RuleContext
+    ? ActorDispatcherInfoDeno
+    : ActorDispatcherInfoEslint,
+>(
+  config: PropertyConfig,
+  describe: (
+    config: PropertyConfig,
+  ) => Context extends Deno.lint.RuleContext ? {
+      message: string;
+    }
+    : {
+      messageId: string;
+      data: { message: string };
+    },
+) {
+  return (context: Context) => {
+    const federationTracker = trackFederationVariables();
+    const dispatcherTracker = createDispatcherTracker(
+      config.setter,
+      federationTracker,
+    );
+    const actorDispatchers: ActorDispatcherInfo[] = [];
+
+    const propertyChecker = createPropertyChecker(Boolean)(
+      config.path,
+    );
+    const propertySearcher = createPropertySearcher(propertyChecker);
+
+    return {
+      VariableDeclarator: federationTracker.VariableDeclarator,
+
+      CallExpression(node: CallExpression) {
+        dispatcherTracker.checkDispatcherCall(node);
+
+        if (!isSetActorDispatcherCall(node)) return;
+        if (!federationTracker.isFederationObject(node.callee.object)) return;
+
+        const dispatcherArg = node.arguments[1];
+        if (isFunction(dispatcherArg)) {
+          actorDispatchers.push({ node, dispatcherArg } as ActorDispatcherInfo);
+        }
+      },
+
+      "Program:exit"() {
+        if (!dispatcherTracker.isDispatcherConfigured()) return;
+
+        for (
+          const { dispatcherArg }
+            of actorDispatchers as ActorDispatcherInfoDeno[]
+        ) {
+          if (!propertySearcher(dispatcherArg.body)) {
+            (context as { report: (arg: unknown) => void }).report({
+              node: dispatcherArg,
+              ...describe(config),
+            });
+          }
+        }
+      },
+    };
+  };
 }
 
 /**
  * Creates a required rule with the given property configuration.
  */
-export function createRequiredRule(
+export function createRequiredRuleDeno(
   config: PropertyConfig,
 ): Deno.lint.Rule {
-  const propertyChecker = config.path.length === 1
-    ? createPropertyChecker(config.path[0])
-    : createNestedPropertyChecker(config.path);
-  const propertySearcher = createPropertySearcher(propertyChecker);
-
   return {
     create(context) {
       const federationTracker = trackFederationVariables();
@@ -81,7 +145,7 @@ export function createRequiredRule(
         config.setter,
         federationTracker,
       );
-      const actorDispatchers: ActorDispatcherInfo[] = [];
+      const actorDispatchers: ActorDispatcherInfoDeno[] = [];
 
       return {
         VariableDeclarator: federationTracker.VariableDeclarator,
@@ -101,11 +165,86 @@ export function createRequiredRule(
         "Program:exit"() {
           if (!dispatcherTracker.isDispatcherConfigured()) return;
 
+          const propertyChecker = createPropertyChecker(Boolean)(config.path);
+          const propertySearcher = createPropertySearcher(propertyChecker);
+
           for (const { dispatcherArg } of actorDispatchers) {
             if (!propertySearcher(dispatcherArg.body)) {
               context.report({
                 node: dispatcherArg,
                 message: actorPropertyRequired(config),
+              });
+            }
+          }
+        },
+      };
+    },
+  };
+}
+
+interface ActorDispatcherInfoEslint {
+  node: TSESTree.CallExpression;
+  dispatcherArg:
+    | TSESTree.ArrowFunctionExpression
+    | TSESTree.FunctionExpression;
+}
+
+/**
+ * Creates a required ESLint rule with the given property configuration.
+ */
+
+export function createRequiredRuleEslint(
+  config: PropertyConfig,
+): TSESLint.RuleModule<string, unknown[]> {
+  return {
+    meta: {
+      type: "suggestion",
+      docs: {
+        description: `Ensure actor dispatcher returns ${
+          config.path.join(".")
+        } property`,
+      },
+      schema: [],
+      messages: {
+        required: "{{ message }}",
+      },
+    },
+    defaultOptions: [],
+    create(context: TSESLint.RuleContext<string, unknown[]>) {
+      const federationTracker = trackFederationVariables();
+      const dispatcherTracker = createDispatcherTracker(
+        config.setter,
+        federationTracker,
+      );
+      const actorDispatchers: ActorDispatcherInfoEslint[] = [];
+
+      return {
+        VariableDeclarator: federationTracker.VariableDeclarator,
+
+        CallExpression(node): void {
+          dispatcherTracker.checkDispatcherCall(node);
+
+          if (!isSetActorDispatcherCall(node)) return;
+          if (!federationTracker.isFederationObject(node.callee.object)) return;
+
+          const dispatcherArg = node.arguments[1];
+          if (isFunction(dispatcherArg)) {
+            actorDispatchers.push({ node, dispatcherArg });
+          }
+        },
+
+        "Program:exit"(): void {
+          if (!dispatcherTracker.isDispatcherConfigured()) return;
+
+          const propertyChecker = createPropertyChecker(Boolean)(config.path);
+          const propertySearcher = createPropertySearcher(propertyChecker);
+
+          for (const { dispatcherArg } of actorDispatchers) {
+            if (!propertySearcher(dispatcherArg.body)) {
+              context.report({
+                node: dispatcherArg,
+                messageId: "required",
+                data: { message: actorPropertyRequired(config) },
               });
             }
           }

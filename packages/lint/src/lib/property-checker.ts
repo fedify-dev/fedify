@@ -1,261 +1,193 @@
-import { filter, pipe, pipeLazy, prop, some } from "@fxts/core";
 import {
-  allOf,
-  hasASTNodeKey,
-  hasIdentifierKey,
-  isASTNode,
-  isNodeType,
-} from "./pred.ts";
-import type { ASTNode } from "./types.ts";
+  isEmpty,
+  isNil,
+  isObject,
+  pipe,
+  pipeLazy,
+  prop,
+  some,
+  when,
+} from "@fxts/core";
+import { allOf, isNodeType } from "./pred.ts";
+import type {
+  AssignmentPattern,
+  BlockStatement,
+  Expression,
+  NewExpression,
+  Node,
+  Property,
+  PropertyChecker,
+  ReturnStatement,
+  SpreadElement,
+  Statement,
+  TSEmptyBodyFunctionExpression,
+  WithIdentifierKey,
+} from "./types.ts";
 import { eq } from "./utils.ts";
-
-/**
- * Checks if a node's key name matches the given property name.
- */
-const keyNameMatches =
-  <T extends string>(propertyName: T) =>
-  <N>(node: N): node is N & { "key": ASTNode & { "name": T } } =>
-    pipe(
-      node as { "key": { "name": string } },
-      prop("key"),
-      allOf(
-        isASTNode,
-        pipeLazy(
-          prop("name"),
-          eq(propertyName),
-        ) as (value: { name: string }) => boolean,
-      ),
-    ) as boolean;
 
 /**
  * Checks if a node has a key with a specific name.
  */
 const hasKeyName =
   <T extends string>(propertyName: T) =>
-  <N>(node: N): node is N & { "key": ASTNode & { "name": T } } =>
-    allOf(
-      hasASTNodeKey,
-      hasIdentifierKey,
-      keyNameMatches(propertyName),
-    )(node as { "key": ASTNode & { "name": T } });
+  (node: Property): node is Property & WithIdentifierKey<T> =>
+    pipe(
+      node,
+      prop("key"),
+      allOf(
+        isNodeType("Identifier"),
+        pipeLazy(prop("name"), eq(propertyName)) as (node: Node) => boolean,
+      ),
+    ) as boolean;
 
 /**
  * Checks if a node is a Property with an Identifier key of a specific name.
  */
-const isPropertyWithName =
-  <T extends string>(propertyName: T) =>
-  <N extends ASTNode>(node: N): node is N & {
-    "type": "Property";
-    "key": ASTNode & { "name": T };
-  } =>
-    allOf(
-      isNodeType("Property"),
-      hasKeyName(propertyName),
-    )(node);
-
-/**
- * Creates a predicate function that checks if a property has a specific name.
- * @param propertyName The name of the property to check for
- * @returns A predicate function that checks if the property exists
- */
-export const createPropertyChecker =
-  <T extends string>(propertyName: T) =>
-  (node: unknown): node is ASTNode & {
-    "type": "Property";
-    "key": ASTNode & { "name": T };
-  } => allOf(isASTNode, isPropertyWithName(propertyName))(node as ASTNode);
-
-/**
- * Checks if a node has an ObjectExpression value.
- */
-const hasObjectExpressionValue = (
-  node: Deno.lint.Property,
-): node is Deno.lint.Property & { "value": Deno.lint.ObjectExpression } =>
-  pipe(
-    node as { "value": ASTNode },
-    prop("value"),
-    allOf(isASTNode, isNodeType("ObjectExpression")),
-  );
-
-/**
- * Type guard to check if a node is a Property.
- */
-const isProperty = (node: ASTNode): node is Deno.lint.Property =>
-  isNodeType("Property")(node);
-
-/**
- * Internal recursive checker for nested property paths.
- * This avoids circular dependency between hasNestedProperty and createNestedPropertyChecker.
- */
-const checkNestedPropertyPath =
-  (path: readonly string[]) => (node: unknown): boolean => {
-    if (!isASTNode(node) || !hasKeyName(path[0])(node)) return false;
-
-    // Base case: single property
-    if (path.length === 1) {
-      return isNodeType("Property")(node);
-    }
-
-    // Recursive case: check nested properties
-    if (!isProperty(node)) return false;
-
-    const value = node.value;
-
-    // Handle ObjectExpression: endpoints: { sharedInbox: ... }
-    if (hasObjectExpressionValue(node)) {
-      const properties = node.value.properties;
-      return pipe(
-        properties,
-        filter(isASTNode),
-        some(checkNestedPropertyPath(path.slice(1))),
-      );
-    }
-
-    // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
-    if (isNodeType("NewExpression")(value)) {
-      const args = value.arguments;
-      if (!Array.isArray(args) || args.length === 0) return false;
-      const firstArg = args[0];
-      if (!isASTNode(firstArg) || !isNodeType("ObjectExpression")(firstArg)) {
-        return false;
-      }
-      return pipe(
-        firstArg.properties,
-        filter(isASTNode),
-        some(checkNestedPropertyPath(path.slice(1))),
-      );
-    }
-
-    return false;
-  };
+export const isPropertyWithName = <T extends string>(propertyName: T) =>
+(
+  node: Property | SpreadElement,
+): node is Property & WithIdentifierKey<T> =>
+  allOf(
+    isNodeType("Property"),
+    hasKeyName(propertyName),
+  )(node as Expression & Property);
 
 /**
  * Creates a predicate function that checks if a nested property exists.
  * @param path Array of property names forming the path (e.g., ["endpoints", "sharedInbox"])
  * @returns A predicate function that checks if the nested property exists
  */
-export const createNestedPropertyChecker =
-  (path: readonly string[]) => (node: unknown): boolean =>
-    checkNestedPropertyPath(path)(node);
+export function createPropertyChecker(
+  checker: (
+    node:
+      | Expression
+      | AssignmentPattern
+      | TSEmptyBodyFunctionExpression,
+  ) => boolean,
+): (path: readonly string[]) => PropertyChecker {
+  const inner =
+    ([first, ...rest]: readonly string[]): PropertyChecker => (node) => {
+      if (!isPropertyWithName(first)(node)) return false;
+
+      // Base case: last property in path
+      if (isEmpty(rest)) return checker(node.value);
+
+      // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
+      if (isNodeType("NewExpression")(node.value)) {
+        if (node.value.arguments.length === 0) return false;
+        const firstArg = node.value.arguments[0];
+        if (!isNodeType("ObjectExpression")(firstArg)) return false;
+        return firstArg.properties.some(inner(rest));
+      }
+
+      return false;
+    };
+  return inner;
+}
 
 /**
  * Checks if an ObjectExpression node contains a property.
  * @param propertyChecker The predicate function to check properties
  * @returns A function that checks the ObjectExpression
  */
-export const checkObjectExpression =
-  (propertyChecker: (prop: unknown) => boolean) => (obj: ASTNode): boolean =>
-    pipe(
-      obj as { properties: unknown[] },
-      prop("properties"),
-      (properties) =>
-        Array.isArray(properties)
-          ? pipe(properties, filter(isASTNode), some(propertyChecker))
-          : false,
-    );
-
-/**
- * Extracts the first argument if it's an ObjectExpression.
- */
-const extractFirstArgument = (node: ASTNode):
-  | ASTNode & {
-    type: "ObjectExpression";
-  }
-  | null =>
-  pipe(
-    node as { arguments: unknown[] },
-    prop("arguments"),
-    (args) => {
-      if (!Array.isArray(args) || args.length === 0) return null;
-      const firstArg = args[0];
-      return isASTNode(firstArg) && isNodeType("ObjectExpression")(firstArg)
-        ? firstArg
-        : null;
-    },
-  );
-
-/**
- * Extracts ObjectExpression from NewExpression.
- */
-const extractObjectExpression = (
-  arg: ASTNode,
-): ASTNode & { type: "ObjectExpression" } | null => {
-  if (isNodeType("NewExpression")(arg)) return extractFirstArgument(arg);
-  return null;
-};
+const checkObjectExpression =
+  (propertyChecker: PropertyChecker) =>
+  (obj: Deno.lint.ObjectExpression): boolean =>
+    obj.properties.some(propertyChecker);
 
 /**
  * Checks if a ConditionalExpression (ternary operator) has the property in both branches.
  * @param propertyChecker The predicate function to check properties
  * @returns A function that checks the ConditionalExpression
  */
-const checkConditionalExpression =
-  (propertyChecker: (prop: unknown) => boolean) =>
-  (node: Deno.lint.ConditionalExpression): boolean => {
-    const consequent = node.consequent;
-    const alternate = node.alternate;
+const checkConditionalExpression = (
+  propertyChecker: PropertyChecker,
+) =>
+(node: Deno.lint.ConditionalExpression): boolean =>
+  [node.consequent, node.alternate].every(checkBranchWith(propertyChecker));
 
-    // Check if both branches have the property
-    const checkBranch = (branch: ASTNode): boolean => {
-      // Handle nested ternary operators
-      if (isNodeType("ConditionalExpression")(branch)) {
-        return checkConditionalExpression(propertyChecker)(branch);
-      }
-      const objExpr = extractObjectExpression(branch);
-      return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
-    };
-
-    return checkBranch(consequent) && checkBranch(alternate);
+// Check if both branches have the property
+const checkBranchWith =
+  (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
+    // Handle nested ternary operators
+    if (isNodeType("ConditionalExpression")(branch)) {
+      return checkConditionalExpression(propertyChecker)(branch);
+    }
+    const objExpr = extractObjectExpression(branch);
+    return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
   };
+
+/**
+ * Extracts ObjectExpression from NewExpression.
+ */
+const extractObjectExpression = (
+  arg: Expression,
+): Deno.lint.ObjectExpression | null => {
+  if (isNodeType("NewExpression")(arg)) {
+    return extractFirstObjectExpression(arg);
+  }
+  return null;
+};
+
+/**
+ * Extracts the first argument if it's an ObjectExpression.
+ */
+const extractFirstObjectExpression = (node: Deno.lint.NewExpression):
+  | Deno.lint.ObjectExpression
+  | null => {
+  const firstArg = node.arguments[0];
+  return isNodeType("ObjectExpression")(firstArg) ? firstArg : null;
+};
 
 /**
  * Checks if a ReturnStatement node contains a property.
  * @param propertyChecker The predicate function to check properties
  * @returns A function that checks the ReturnStatement
  */
-export const checkReturnStatement =
-  (propertyChecker: (prop: unknown) => boolean) =>
-  (
-    node: ASTNode,
-  ): node is ASTNode & { type: "ReturnStatement"; arg: unknown } => {
-    const arg = pipe(node as { argument: unknown }, prop("argument"));
-    if (!isASTNode(arg)) return false;
+export const checkReturnStatement = (
+  propertyChecker: PropertyChecker,
+) =>
+(node: Deno.lint.ReturnStatement) => {
+  const arg = node.argument;
+  if (isNil(arg)) return false;
 
-    // Handle ConditionalExpression (ternary operator)
-    if (isNodeType("ConditionalExpression")(arg)) {
-      return checkConditionalExpression(propertyChecker)(arg);
-    }
+  // Handle ConditionalExpression (ternary operator)
+  if (isNodeType("ConditionalExpression")(arg)) {
+    return checkConditionalExpression(propertyChecker)(arg);
+  }
 
-    const objExpr = extractObjectExpression(arg);
-    return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
-  };
+  const objExpr = extractObjectExpression(arg);
+  return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
+};
 
 /**
  * Creates a function that recursively checks for a property in an AST node.
  * @param propertyChecker The predicate function to check properties
  * @returns A recursive function that checks the AST node
  */
-export const createPropertySearcher =
-  (propertyChecker: (prop: unknown) => boolean) =>
-  (node: unknown): node is
-    | Deno.lint.ReturnStatement
-    | Deno.lint.BlockStatement
-    | Deno.lint.NewExpression => {
-    if (!isASTNode(node)) return false;
-
-    if (isNodeType("ReturnStatement")(node)) {
+export const createPropertySearcher = (propertyChecker: PropertyChecker) =>
+(
+  node:
+    | Expression
+    | BlockStatement
+    | Statement,
+): node is
+  | ReturnStatement
+  | BlockStatement
+  | NewExpression => {
+  switch (node.type) {
+    case "ReturnStatement":
       return checkReturnStatement(propertyChecker)(node);
-    }
-
-    if (isNodeType("BlockStatement")(node)) {
+    case "BlockStatement":
       return node.body.some(createPropertySearcher(propertyChecker));
-    }
-
-    // Handle arrow function with direct NewExpression body: () => new SomeClass({...})
-    if (isNodeType("NewExpression")(node)) {
-      const objExpr = extractFirstArgument(node);
-      return objExpr ? checkObjectExpression(propertyChecker)(objExpr) : false;
-    }
-
-    return false;
-  };
+    case "NewExpression":
+      return pipe(
+        node,
+        extractFirstObjectExpression,
+        when(isObject, checkObjectExpression(propertyChecker)),
+        Boolean,
+      );
+    default:
+      return false;
+  }
+};
