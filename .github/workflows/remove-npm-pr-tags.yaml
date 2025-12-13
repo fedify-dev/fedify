@@ -20,7 +20,7 @@ jobs:
         run: |
           TAG="pr-${PR_NUMBER}"
           npm config set //registry.npmjs.org/:_authToken "$NPM_AUTH_TOKEN"
-          pnpm list --depth -1 -r --json | jq -r '.[].name | select(.)' | while IFS= read -r PKG; do
+          pnpm list --depth -1 -r --json | jq -r '.[] | select(.name and (.name | startswith("@fedify/")) and (.private | not)) | .name' | while IFS= read -r PKG; do
             if npm dist-tag ls "$PKG" | grep -q "^$TAG:" ; then
               npm dist-tag rm "$PKG" "$TAG"
               echo "Removed $TAG from $PKG"
