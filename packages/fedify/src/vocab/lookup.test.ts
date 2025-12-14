@@ -1,7 +1,13 @@
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import fetchMock from "fetch-mock";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { test } from "../testing/mod.ts";
+import { createTestTracerProvider } from "../testing/otel.ts";
 import { lookupObject, traverseCollection } from "./lookup.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
@@ -627,6 +633,48 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       null,
     );
   });
+});
+
+test("lookupObject() records OpenTelemetry span events", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+
+  const object = await lookupObject("https://example.com/object", {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    tracerProvider,
+  });
+
+  assertInstanceOf(object, Object);
+
+  // Check that the span was recorded
+  const spans = exporter.getSpans("activitypub.lookup_object");
+  assertEquals(spans.length, 1);
+  const span = spans[0];
+
+  // Check span attributes
+  assertEquals(
+    span.attributes["activitypub.object.id"],
+    "https://example.com/object",
+  );
+
+  // Check that the object.fetched event was recorded
+  const events = exporter.getEvents(
+    "activitypub.lookup_object",
+    "activitypub.object.fetched",
+  );
+  assertEquals(events.length, 1);
+  const event = events[0];
+
+  // Verify event attributes
+  assert(event.attributes != null);
+  assert(typeof event.attributes["activitypub.object.type"] === "string");
+  assert(typeof event.attributes["activitypub.object.json"] === "string");
+
+  // Verify the JSON contains the object
+  const recordedObject = JSON.parse(
+    event.attributes["activitypub.object.json"] as string,
+  );
+  assertEquals(recordedObject.id, "https://example.com/object");
 });
 
 // cSpell: ignore gildong

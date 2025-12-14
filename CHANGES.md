@@ -8,6 +8,36 @@ Version 1.10.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Enhanced OpenTelemetry instrumentation with span events for capturing
+    detailed activity data.  Span events now record complete activity JSON
+    payloads and verification status, enabling richer observability and
+    debugging capabilities without relying solely on span attributes
+    (which only support primitive values).  [[#323]]
+
+     -  Added `activitypub.activity.received` span event to the
+        `activitypub.inbox` span, recording the full activity JSON,
+        verification status (activity verified, HTTP signatures verified,
+        Linked Data signatures verified), and actor information.
+     -  Added `activitypub.activity.sent` span event to the
+        `activitypub.send_activity` span, recording the full activity JSON
+        and target inbox URL.
+     -  Added `activitypub.object.fetched` span event to the
+        `activitypub.lookup_object` span, recording the fetched object's
+        type and complete JSON-LD representation.
+
+ -  Added OpenTelemetry spans for previously uninstrumented operations:
+    [[#323]]
+
+     -  Added `activitypub.fetch_document` span for document loader operations,
+        tracking URL fetching, HTTP redirects, and final document URLs.
+     -  Added `activitypub.verify_key_ownership` span for cryptographic
+        key ownership verification, recording actor ID, key ID, verification
+        result, and the verification method used.
+
+[#323]: https://github.com/fedify-dev/fedify/issues/323
+
 ### @fedify/nestjs
 
  -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
