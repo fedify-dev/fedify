@@ -976,6 +976,9 @@ importers:
       '@fxts/core':
         specifier: 'catalog:'
         version: 1.20.0
+      '@typescript-eslint/parser':
+        specifier: ^8.49.0
+        version: 8.50.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.3)
       '@typescript-eslint/utils':
         specifier: ^8.0.0
         version: 8.41.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.3)
@@ -986,9 +989,6 @@ importers:
       '@types/estree':
         specifier: ^1.0.8
         version: 1.0.8
-      '@typescript-eslint/parser':
-        specifier: ^8.49.0
-        version: 8.50.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.3)
       eslint:
         specifier: ^9.0.0
         version: 9.32.0(jiti@2.5.1)

@@ -3,6 +3,7 @@
  * Provides lint rules for validating Fedify federation code.
  */
 import { fromEntries, keys, map, pipe } from "@fxts/core";
+import parser from "@typescript-eslint/parser";
 import type { ESLint, Rule } from "eslint";
 import metadata from "../deno.json" with { type: "json" };
 import { RULE_IDS } from "./lib/const.ts";
@@ -124,15 +125,11 @@ const recommendedRules = pipe(
 const strictRules = pipe(
   rules,
   keys,
-  map((key) => [`@fedify/lint/${key}`, "error" as const] as const),
+  map((key) => [`${metadata.name as "@fedify/lint"}/${key}`, "error"] as const),
   fromEntries,
 );
 
-// ============================================================================
-// Plugin Export
-// ============================================================================
-
-const plugin = {
+export const plugin = {
   meta: {
     name: metadata.name,
     version: metadata.version,
@@ -150,4 +147,18 @@ const plugin = {
   },
 } as const satisfies ESLint.Plugin;
 
-export default plugin;
+const recommendedConfig = {
+  files: ["federation", "federation/*"].map((filename) => [
+    filename + ".ts",
+    filename + ".tsx",
+    filename + ".js",
+    filename + ".jsx",
+    filename + ".mjs",
+    filename + ".cjs",
+  ]).flat(),
+  languageOptions: { parser },
+  plugins: { [metadata.name]: plugin },
+  rules: recommendedRules,
+};
+
+export default recommendedConfig;
