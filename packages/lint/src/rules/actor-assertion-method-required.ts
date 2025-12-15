@@ -2,7 +2,7 @@ import { properties } from "../lib/const.ts";
 import {
   createRequiredRuleDeno,
   createRequiredRuleEslint,
-} from "../lib/required-rule-factory.ts";
+} from "../lib/required.ts";
 
 export const deno = createRequiredRuleDeno(
   properties.assertionMethod,
