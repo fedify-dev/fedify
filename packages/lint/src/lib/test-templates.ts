@@ -15,9 +15,11 @@ interface TestConfig {
 }
 
 const createDispatcherCode = (content: string) => `
-  federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (ctx, identifier) => {
     ${content}
-  });
+});
 `;
 
 const createChainedDispatcherCode = (
@@ -66,7 +68,8 @@ const createMethodCall = (
  *
  * @example
  * // Simple property: id: ctx.getActorUri(identifier),
- * // Nested property: endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+ * // Nested property:
+ * //   endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
  */
 const createPropertyAssignment = (
   prop: PropertyConfig,
@@ -89,7 +92,8 @@ const createPropertyAssignment = (
   );
 
   if (prop.nested) {
-    return `${prop.nested.parent}: new ${prop.nested.wrapper}({ ${prop.name}: ${methodCall} }),`;
+    return `${prop.nested.parent}: \
+    new ${prop.nested.wrapper}({ ${prop.name}: ${methodCall} }),`;
   }
   return `${prop.name}: ${methodCall},`;
 };
@@ -483,7 +487,8 @@ export function createIdRequiredRuleTests(config: TestConfig) {
 }
 
 /**
- * Creates required rule tests for key-related properties (publicKey, assertionMethod)
+ * Creates required rule tests for key-related properties
+ * (publicKey, assertionMethod)
  */
 export function createKeyRequiredRuleTests(
   propertyName: "publicKey" | "assertionMethod",
@@ -564,7 +569,8 @@ export function createKeyRequiredRuleTests(
       ruleName,
     }),
 
-    // ❌ Bad - key pairs dispatcher configured BEFORE (separate), property missing
+    // ❌ Bad - key pairs dispatcher configured BEFORE (separate),
+    // property missing
     "key pairs before separate property missing": lintTest({
       code: createSeparateDispatcherCode(
         createActorWithKey(false),
@@ -576,7 +582,8 @@ export function createKeyRequiredRuleTests(
       expectedError,
     }),
 
-    // ❌ Bad - key pairs dispatcher configured BEFORE (chained), property missing
+    // ❌ Bad - key pairs dispatcher configured BEFORE (chained),
+    // property missing
     "key pairs before chained property missing": lintTest({
       code: createChainedDispatcherCode(
         createActorWithKey(false),
@@ -587,7 +594,8 @@ export function createKeyRequiredRuleTests(
       expectedError,
     }),
 
-    // ❌ Bad - key pairs dispatcher configured AFTER (separate), property missing
+    // ❌ Bad - key pairs dispatcher configured AFTER (separate),
+    // property missing
     "key pairs after separate property missing": lintTest({
       code: createSeparateDispatcherCode(
         createActorWithKey(false),
@@ -599,7 +607,8 @@ export function createKeyRequiredRuleTests(
       expectedError,
     }),
 
-    // ❌ Bad - key pairs dispatcher configured AFTER (chained), property missing
+    // ❌ Bad - key pairs dispatcher configured AFTER (chained),
+    // property missing
     "key pairs after chained property missing": lintTest({
       code: createChainedDispatcherCode(
         createActorWithKey(false),
@@ -799,9 +808,11 @@ export function createRequiredEdgeCaseTests(
     // ✅ Ternary with property in both branches
     "ternary with property in both branches": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
+        `\
+  return condition
+    ? new Person({ id: ctx.getActorUri(identifier), \
+    ${propCode} name: "A" })
+    : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
         dispatcherMethod,
       ),
       rule,
@@ -811,9 +822,10 @@ export function createRequiredEdgeCaseTests(
     // ❌ Ternary missing property in consequent
     "ternary missing property in consequent": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
+        `\
+  return condition
+    ? new Person({ id: ctx.getActorUri(identifier), name: "A" })
+    : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
         dispatcherMethod,
       ),
       rule,
@@ -824,9 +836,10 @@ export function createRequiredEdgeCaseTests(
     // ❌ Ternary missing property in alternate
     "ternary missing property in alternate": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), name: "B" });`,
+        `\
+  return condition
+    ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
+    : new Person({ id: ctx.getActorUri(identifier), name: "B" });`,
         dispatcherMethod,
       ),
       rule,
@@ -850,11 +863,12 @@ export function createRequiredEdgeCaseTests(
     // ✅ Nested ternary with property
     "nested ternary with property": lintTest({
       code: createChainedDispatcherCode(
-        `return condition1
-            ? (condition2
-                ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-                : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
+        `\
+return condition1
+  ? (condition2
+      ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
+      : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
+  : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
         dispatcherMethod,
       ),
       rule,
@@ -889,22 +903,14 @@ export function createMismatchEdgeCaseTests(
   return {
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": lintTest({
-      code: createDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
-      ),
+      code: createDispatcherCode(nestedTernaryCode(propCode, propCode)),
       rule,
       ruleName,
     }),
 
     // ❌ Ternary with wrong getter in consequent
     "ternary with wrong getter in consequent": lintTest({
-      code: createDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${wrongPropCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
-      ),
+      code: createDispatcherCode(nestedTernaryCode(wrongPropCode, propCode)),
       rule,
       ruleName,
       expectedError,
@@ -912,11 +918,7 @@ export function createMismatchEdgeCaseTests(
 
     // ❌ Ternary with wrong getter in alternate
     "ternary with wrong getter in alternate": lintTest({
-      code: createDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${wrongPropCode} name: "B" });`,
-      ),
+      code: createDispatcherCode(nestedTernaryCode(propCode, wrongPropCode)),
       rule,
       ruleName,
       expectedError,
@@ -925,9 +927,7 @@ export function createMismatchEdgeCaseTests(
     // ❌ Ternary with wrong getter in both
     "ternary with wrong getter in both branches": lintTest({
       code: createDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${wrongPropCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), ${wrongPropCode} name: "B" });`,
+        nestedTernaryCode(wrongPropCode, wrongPropCode),
       ),
       rule,
       ruleName,
@@ -937,17 +937,23 @@ export function createMismatchEdgeCaseTests(
     // ✅ Nested ternary with correct getter
     "nested ternary with correct getter": lintTest({
       code: createDispatcherCode(
-        `return condition1
-            ? (condition2
-                ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-                : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
+        `\
+return condition1
+  ? (condition2
+      ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
+      : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
+  : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
       ),
       rule,
       ruleName,
     }),
   };
 }
+
+const nestedTernaryCode = (prop1: string, prop2: string) =>
+  `return condition
+  ? new Person({ id: ctx.getActorUri(identifier), ${prop1} name: "A" })
+  : new Person({ id: ctx.getActorUri(identifier), ${prop2} name: "B" });`;
 
 /**
  * Creates edge case tests for id required rule
@@ -1110,9 +1116,7 @@ export function createKeyRequiredEdgeCaseTests(
     // ✅ Ternary with property in both branches
     "ternary with property in both branches": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-          ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-          : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
+        nestedTernaryCode(propCode, propCode),
         "setKeyPairsDispatcher",
       ),
       rule,
@@ -1122,9 +1126,10 @@ export function createKeyRequiredEdgeCaseTests(
     // ❌ Ternary missing property in consequent
     "ternary missing property in consequent": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-          ? new Person({ id: ctx.getActorUri(identifier), name: "A" })
-          : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
+        `\
+  return condition
+    ? new Person({ id: ctx.getActorUri(identifier), name: "A" })
+    : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" });`,
         "setKeyPairsDispatcher",
       ),
       rule,
@@ -1135,9 +1140,10 @@ export function createKeyRequiredEdgeCaseTests(
     // ❌ Ternary missing property in alternate
     "ternary missing property in alternate": lintTest({
       code: createChainedDispatcherCode(
-        `return condition
-            ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-            : new Person({ id: ctx.getActorUri(identifier), name: "B" });`,
+        `\
+  return condition
+    ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
+    : new Person({ id: ctx.getActorUri(identifier), name: "B" });`,
         "setKeyPairsDispatcher",
       ),
       rule,
@@ -1161,11 +1167,12 @@ export function createKeyRequiredEdgeCaseTests(
     // ✅ Nested ternary with property
     "nested ternary with property": lintTest({
       code: createChainedDispatcherCode(
-        `return condition1
-            ? (condition2
-                ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
-                : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
-            : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
+        `\
+return condition1
+  ? (condition2
+      ? new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "A" })
+      : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "B" }))
+    : new Person({ id: ctx.getActorUri(identifier), ${propCode} name: "C" });`,
         "setKeyPairsDispatcher",
       ),
       rule,

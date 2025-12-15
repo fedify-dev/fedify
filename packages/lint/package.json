@@ -61,7 +61,7 @@
     "@types/eslint": "^9.0.0",
     "@types/estree": "^1.0.8",
     "@typescript-eslint/parser": "^8.49.0",
-    "eslint": "catalog:",
+    "eslint": "^9.0.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

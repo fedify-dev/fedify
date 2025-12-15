@@ -144,9 +144,11 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 }
 
 /**
- * Creates a lint rule that checks if a property uses the correct context method.
+ * Creates a lint rule that checks if a property uses
+ * the correct context method.
  *
- * @param config Property configuration containing name, getter, setter, and nested info
+ * @param config Property configuration containing name, getter, setter, and
+ *               nested info
  * @returns A Deno lint rule
  */
 export const createMismatchRuleDeno = (

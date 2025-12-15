@@ -109,7 +109,8 @@ export const isFunction = (
   )(expr);
 
 /**
- * Checks if a CallExpression is a setActorDispatcher call with proper structure.
+ * Checks if a CallExpression is a setActorDispatcher call with
+ * proper structure.
  */
 export const isSetActorDispatcherCall = (
   node: CallExpression,

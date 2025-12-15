@@ -28,8 +28,10 @@ export const actorPropertyRequired = ({
  * Generates error message for *-mismatch rules.
  * Used when a property exists but uses the wrong context method.
  *
- * @param propertyName - The property name or path (e.g., "id", "endpoints.sharedInbox")
- * @param expectedCall - The expected method call (e.g., "ctx.getActorUri(identifier)")
+ * @param propertyName - The property name or path
+ *                       (e.g., "id", "endpoints.sharedInbox")
+ * @param expectedCall - The expected method call
+ *                       (e.g., "ctx.getActorUri(identifier)")
  */
 export const actorPropertyMismatch = (
   context: MethodCallContext,

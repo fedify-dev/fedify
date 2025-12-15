@@ -57,7 +57,8 @@ export const isPropertyWithName = <T extends string>(propertyName: T) =>
 
 /**
  * Creates a predicate function that checks if a nested property exists.
- * @param path Array of property names forming the path (e.g., ["endpoints", "sharedInbox"])
+ * @param path Array of property names forming the path
+ *             (e.g., ["endpoints", "sharedInbox"])
  * @returns A predicate function that checks if the nested property exists
  */
 export function createPropertyChecker(
@@ -99,7 +100,8 @@ const checkObjectExpression =
     obj.properties.some(propertyChecker);
 
 /**
- * Checks if a ConditionalExpression (ternary operator) has the property in both branches.
+ * Checks if a ConditionalExpression (ternary operator) has the property in
+ * both branches.
  * @param propertyChecker The predicate function to check properties
  * @returns A function that checks the ConditionalExpression
  */

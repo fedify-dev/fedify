@@ -10,6 +10,6 @@
     "estree": "npm:@types/estree@^1.0.8"
   },
   "tasks": {
-    "test": "deno test --allow-all"
+    "test": "deno test --allow-env"
   }
 }

@@ -5,5 +5,4 @@ export default defineConfig({
   dts: true,
   format: ["esm", "cjs"],
   platform: "node",
-  exports: "named",
 });

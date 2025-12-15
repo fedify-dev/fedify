@@ -43,12 +43,12 @@ const hasFilterParameter = hasMinParams(4);
  * Lint rule: collection-filtering-not-implemented
  *
  * Warns when setFollowersDispatcher doesn't implement filtering.
- * The followers dispatcher should accept a 4th parameter (filter/baseUri) to support
- * server-side filtering for followers collection synchronization.
+ * The followers dispatcher should accept a 4th parameter (filter/baseUri) to
+ * support server-side filtering for followers collection synchronization.
  * See: https://fedify.dev/manual/collections#filtering-by-server
  *
  * @example Good:
- * ```ts
+ * ```typescript ignore
  * federation.setFollowersDispatcher(
  *   "/users/{identifier}/followers",
  *   async (ctx, identifier, cursor, filter) => {
@@ -62,7 +62,7 @@ const hasFilterParameter = hasMinParams(4);
  * ```
  *
  * @example Bad:
- * ```ts
+ * ```typescript ignore
  * federation.setFollowersDispatcher(
  *   "/users/{identifier}/followers",
  *   async (ctx, identifier, cursor) => {
