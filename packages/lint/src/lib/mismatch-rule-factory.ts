@@ -1,5 +1,5 @@
 import { isEmpty, negate, some } from "@fxts/core";
-import type { TSESLint } from "@typescript-eslint/utils";
+import type { Rule } from "eslint";
 import { actorPropertyMismatch } from "./messages.ts";
 import {
   allOf,
@@ -15,16 +15,15 @@ import {
 } from "./property-checker.ts";
 import { trackFederationVariables } from "./tracker.ts";
 import type {
-  AssignmentPattern,
   Expression,
   FunctionNode,
   Identifier,
   MethodCallContext,
+  Node,
   Parameter,
   PrivateIdentifier,
   PropertyConfig,
   SpreadElement,
-  TSEmptyBodyFunctionExpression,
 } from "./types.ts";
 
 const isIdentifierWithName = <T extends string>(name: T) =>
@@ -44,12 +43,7 @@ const isExpectedMethodCall = (
     requiresIdentifier,
   }: MethodCallContext,
 ) =>
-(
-  node:
-    | Expression
-    | AssignmentPattern
-    | TSEmptyBodyFunctionExpression,
-): boolean => {
+(node: Node): boolean => {
   if (
     !isNodeType("CallExpression")(node) ||
     !hasMemberExpressionCallee(node) ||
@@ -80,9 +74,7 @@ const extractParams = (
 };
 
 const getNameIfIdentifier = (node: Parameter): string | null =>
-  isNodeType("Identifier")(node as Identifier)
-    ? (node as Identifier).name
-    : null;
+  node?.type === "Identifier" ? node.name : null;
 /**
  * Creates a lint rule that checks if a property uses the correct context method.
  *
@@ -150,7 +142,7 @@ export const createMismatchRuleDeno = (
 
 export function createMismatchRuleEslint(
   { path, getter, requiresIdentifier = true }: PropertyConfig,
-): TSESLint.RuleModule<string, unknown[]> {
+): Rule.RuleModule {
   return {
     meta: {
       type: "problem",
@@ -164,7 +156,6 @@ export function createMismatchRuleEslint(
         mismatch: "{{ message }}",
       },
     },
-    defaultOptions: [],
     create(context) {
       const tracker = trackFederationVariables();
 
@@ -191,6 +182,14 @@ export function createMismatchRuleEslint(
             methodName: getter,
             requiresIdentifier,
           };
+
+          const existenceChecker = createPropertyChecker(Boolean);
+          const hasProperty = createPropertySearcher(existenceChecker(path))(
+            dispatcherArg.body,
+          );
+
+          // If property doesn't exist, don't report (that's for *-required rules)
+          if (!hasProperty) return;
 
           // Property exists, now check if the value is correct
           const propertyChecker = createPropertyChecker(

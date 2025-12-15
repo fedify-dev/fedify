@@ -1,4 +1,5 @@
-import type { TSESLint, TSESTree } from "@typescript-eslint/utils";
+import type { Rule } from "eslint";
+import type * as ESTree from "estree";
 import { actorPropertyRequired } from "./messages.ts";
 import {
   allOf,
@@ -65,8 +66,8 @@ interface ActorDispatcherInfoDeno {
     | Deno.lint.FunctionExpression;
 }
 
-function createRequiredRule<
-  Context = Deno.lint.RuleContext | TSESLint.RuleContext<string, unknown[]>,
+function _createRequiredRule<
+  Context = Deno.lint.RuleContext | Rule.RuleContext,
   /* CallExpression = Context extends Deno.lint.RuleContext
     ? Deno.lint.CallExpression
     : TSESTree.CallExpression, */
@@ -183,10 +184,10 @@ export function createRequiredRuleDeno(
 }
 
 interface ActorDispatcherInfoEslint {
-  node: TSESTree.CallExpression;
+  node: ESTree.CallExpression;
   dispatcherArg:
-    | TSESTree.ArrowFunctionExpression
-    | TSESTree.FunctionExpression;
+    | ESTree.ArrowFunctionExpression
+    | ESTree.FunctionExpression;
 }
 
 /**
@@ -195,7 +196,7 @@ interface ActorDispatcherInfoEslint {
 
 export function createRequiredRuleEslint(
   config: PropertyConfig,
-): TSESLint.RuleModule<string, unknown[]> {
+): Rule.RuleModule {
   return {
     meta: {
       type: "suggestion",
@@ -209,8 +210,7 @@ export function createRequiredRuleEslint(
         required: "{{ message }}",
       },
     },
-    defaultOptions: [],
-    create(context: TSESLint.RuleContext<string, unknown[]>) {
+    create(context) {
       const federationTracker = trackFederationVariables();
       const dispatcherTracker = createDispatcherTracker(
         config.setter,

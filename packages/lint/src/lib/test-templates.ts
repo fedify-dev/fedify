@@ -1,4 +1,4 @@
-import type { TSESLint } from "@typescript-eslint/utils";
+import type { Rule } from "eslint";
 import { properties } from "./const.ts";
 import { actorPropertyMismatch, actorPropertyRequired } from "./messages.ts";
 import lintTest from "./test.ts";
@@ -9,7 +9,7 @@ type PropertyKey = keyof typeof properties;
 interface TestConfig {
   rule: {
     deno: Deno.lint.Rule;
-    eslint: TSESLint.RuleModule<string, unknown[]>;
+    eslint: Rule.RuleModule;
   };
   ruleName: string;
 }

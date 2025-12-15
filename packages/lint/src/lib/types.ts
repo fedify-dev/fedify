@@ -1,40 +1,51 @@
-import type { TSESTree } from "@typescript-eslint/utils";
+import type * as ESTree from "estree";
 
-export type BlockStatement = Deno.lint.BlockStatement | TSESTree.BlockStatement;
-export type CallExpression = Deno.lint.CallExpression | TSESTree.CallExpression;
-export type Expression = Deno.lint.Expression | TSESTree.Expression;
-export type Identifier = Deno.lint.Identifier | TSESTree.Identifier;
+export type BlockStatement =
+  | Deno.lint.BlockStatement
+  | ESTree.BlockStatement;
+export type CallExpression = Deno.lint.CallExpression | ESTree.CallExpression;
+export type ConditionalExpression =
+  | Deno.lint.ConditionalExpression
+  | ESTree.ConditionalExpression;
+export type Expression =
+  | Deno.lint.Expression
+  | ESTree.Expression
+  | ESTree.Super;
+export type Identifier = Deno.lint.Identifier | ESTree.Identifier;
 export type MemberExpression =
   | Deno.lint.MemberExpression
-  | TSESTree.MemberExpression;
-export type NewExpression = Deno.lint.NewExpression | TSESTree.NewExpression;
-export type Node = Deno.lint.Node | TSESTree.Node;
+  | ESTree.MemberExpression;
+export type NewExpression = Deno.lint.NewExpression | ESTree.NewExpression;
+export type Node = Deno.lint.Node | ESTree.Node;
 export type ObjectExpression =
   | Deno.lint.ObjectExpression
-  | TSESTree.ObjectExpression;
-export type Parameter = Deno.lint.Parameter | TSESTree.Parameter;
+  | ESTree.ObjectExpression;
+export type ObjectPattern =
+  | Deno.lint.ObjectPattern
+  | ESTree.ObjectPattern;
+export type Parameter = Deno.lint.Parameter | ESTree.Pattern;
 export type PrivateIdentifier =
   | Deno.lint.PrivateIdentifier
-  | TSESTree.PrivateIdentifier;
-export type Property = Deno.lint.Property | TSESTree.Property;
+  | ESTree.PrivateIdentifier;
+export type Property = Deno.lint.Property | ESTree.Property;
 export type ReturnStatement =
   | Deno.lint.ReturnStatement
-  | TSESTree.ReturnStatement;
-export type SpreadElement = Deno.lint.SpreadElement | TSESTree.SpreadElement;
-export type Statement = Deno.lint.Statement | TSESTree.Statement;
+  | ESTree.ReturnStatement;
+export type SpreadElement = Deno.lint.SpreadElement | ESTree.SpreadElement;
+export type Statement = Deno.lint.Statement | ESTree.Statement;
+export type VariableDeclarator =
+  | Deno.lint.VariableDeclarator
+  | ESTree.VariableDeclarator;
 
 export type AssignmentPattern =
   | Deno.lint.AssignmentPattern
-  | TSESTree.AssignmentPattern;
-export type TSEmptyBodyFunctionExpression =
-  | Deno.lint.TSEmptyBodyFunctionExpression
-  | TSESTree.TSEmptyBodyFunctionExpression;
+  | ESTree.AssignmentPattern;
 
 export type FunctionNode =
   | Deno.lint.ArrowFunctionExpression
   | Deno.lint.FunctionExpression
-  | TSESTree.ArrowFunctionExpression
-  | TSESTree.FunctionExpression;
+  | ESTree.ArrowFunctionExpression
+  | ESTree.FunctionExpression;
 
 export type CallMemberExpression = CallExpression & {
   callee: MemberExpression;
@@ -102,8 +113,5 @@ export interface MethodCallContext {
 }
 
 export interface WithIdentifierKey<T extends string> {
-  key: {
-    type: "Identifier" | TSESTree.AST_NODE_TYPES.Identifier;
-    name: T;
-  };
+  key: Identifier & { name: T };
 }

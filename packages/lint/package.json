@@ -59,7 +59,9 @@
   },
   "devDependencies": {
     "@types/eslint": "^9.0.0",
-    "@typescript-eslint/rule-tester": "^8.49.0",
+    "@types/estree": "^1.0.8",
+    "@typescript-eslint/parser": "^8.49.0",
+    "eslint": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
@@ -67,6 +69,6 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "node --experimental-transform-types"
+    "test": "node --experimental-transform-types --test 'src/tests/**/*.test.ts'"
   }
 }

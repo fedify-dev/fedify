@@ -1,5 +1,4 @@
 import { pipe, prop } from "@fxts/core";
-import type { TSESTree } from "@typescript-eslint/utils";
 import type {
   CallExpression,
   CallMemberExpression,
@@ -38,8 +37,7 @@ export const anyOf =
  * Checks if a node is of a specific type.
  */
 export const isNodeType =
-  <T extends TSESTree.AST_NODE_TYPES | string>(type: T) =>
-  (node: Node): node is { "type": T } & Node =>
+  <T extends string>(type: T) => (node: Node): node is { "type": T } & Node =>
     pipe(
       node,
       prop("type"),
@@ -56,14 +54,6 @@ export const isNodeName =
       prop("name"),
       eq(name),
     ) as boolean;
-
-/**
- * Checks if a node's key is an Identifier.
- */
-export const hasIdentifierKey = <T extends Deno.lint.Property>(
-  node: T,
-): node is T & { "key": Deno.lint.Identifier } =>
-  pipe(node, prop("key"), isNodeType("Identifier")) as boolean;
 
 /**
  * Checks if a node's callee is a MemberExpression.

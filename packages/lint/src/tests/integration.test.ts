@@ -5,24 +5,67 @@
  * All tests start from the complete valid code and modify only the part
  * necessary to trigger the specific lint rule being tested.
  */
+
+import * as parser from "@typescript-eslint/parser";
+import { Linter } from "eslint";
 import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
-import plugin from "../mod.ts";
+import eslintPlugin from "../index.ts";
+import denoPlugin from "../mod.ts";
 
-const PLUGIN_NAME = "fedify-lint";
+const PLUGIN_NAME = "Deno" in globalThis ? "fedify-lint" : "@fedify/lint";
+
+type Diagnostic = {
+  id: string;
+  message: string;
+};
 
 /**
  * Run all lint rules on the given code and return diagnostics.
  */
-function lintCode(code: string): Deno.lint.Diagnostic[] {
-  return Deno.lint.runPlugin(plugin, "integration.test.ts", code);
+const lintTest = (code: string): Diagnostic[] =>
+  "Deno" in globalThis ? testDenoLint(code) : testEslint(code);
+
+const testDenoLint = (code: string) =>
+  Deno.lint.runPlugin(
+    denoPlugin,
+    "integration.test.ts",
+    code,
+  ) as Diagnostic[];
+
+function testEslint(code: string) {
+  // For Node.js environment using ESLint flat config
+  const linter = new Linter({ configType: "flat" });
+
+  const config = [{
+    files: ["**/*.ts"],
+    plugins: {
+      "@fedify/lint": {
+        meta: eslintPlugin.meta,
+        rules: eslintPlugin.rules,
+      },
+    },
+    rules: eslintPlugin.configs.recommended.rules,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      parser,
+    },
+  } as Linter.Config];
+
+  const results = linter.verify(code, config, "integration.test.ts");
+
+  return results.map((msg) => ({
+    id: msg.ruleId ?? "unknown",
+    message: msg.message,
+  }));
 }
 
 /**
  * Assert that the code passes all lint rules (no diagnostics).
  */
 function assertNoErrors(code: string, message?: string) {
-  const diagnostics = lintCode(code);
+  const diagnostics = lintTest(code);
   equal(
     diagnostics.length,
     0,
@@ -37,7 +80,7 @@ function assertNoErrors(code: string, message?: string) {
  * Assert that the code has exactly one error matching the given rule.
  */
 function assertHasError(code: string, ruleName: string, message?: string) {
-  const diagnostics = lintCode(code);
+  const diagnostics = lintTest(code);
   const ruleId = `${PLUGIN_NAME}/${ruleName}`;
   const matched = diagnostics.some((d) => d.id === ruleId);
   ok(
@@ -351,8 +394,11 @@ test("Integration: ✅ No setFollowingDispatcher - following property not requir
   // Remove the following property AND the setFollowingDispatcher
   const code = COMPLETE_VALID_CODE
     .replace(
-      "following: ctx.getFollowingUri(identifier),",
-      "// following: REMOVED",
+      `      outbox: ctx.getOutboxUri(identifier),
+      following: ctx.getFollowingUri(identifier),
+      followers: ctx.getFollowersUri(identifier),`,
+      `      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),`,
     )
     .replace(
       `federation.setFollowingDispatcher(
@@ -360,17 +406,23 @@ test("Integration: ✅ No setFollowingDispatcher - following property not requir
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
-);`,
-      "// setFollowingDispatcher REMOVED",
+);
+
+`,
+      "",
     );
+
   assertNoErrors(code);
 });
 
 test("Integration: ✅ No setFollowersDispatcher - followers property not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "followers: ctx.getFollowersUri(identifier),",
-      "// followers: REMOVED",
+      `      following: ctx.getFollowingUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      liked: ctx.getLikedUri(identifier),`,
+      `      following: ctx.getFollowingUri(identifier),
+      liked: ctx.getLikedUri(identifier),`,
     )
     .replace(
       `federation.setFollowersDispatcher(
@@ -378,8 +430,10 @@ test("Integration: ✅ No setFollowersDispatcher - followers property not requir
   async (_ctx, _identifier, _cursor, _filter) => {
     return { items: [] };
   },
-);`,
-      "// setFollowersDispatcher REMOVED",
+);
+
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -387,8 +441,11 @@ test("Integration: ✅ No setFollowersDispatcher - followers property not requir
 test("Integration: ✅ No setOutboxDispatcher - outbox property not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "outbox: ctx.getOutboxUri(identifier),",
-      "// outbox: REMOVED",
+      `      }),
+      outbox: ctx.getOutboxUri(identifier),
+      following: ctx.getFollowingUri(identifier),`,
+      `      }),
+      following: ctx.getFollowingUri(identifier),`,
     )
     .replace(
       `federation.setOutboxDispatcher(
@@ -396,8 +453,10 @@ test("Integration: ✅ No setOutboxDispatcher - outbox property not required", (
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
-);`,
-      "// setOutboxDispatcher REMOVED",
+);
+
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -405,8 +464,11 @@ test("Integration: ✅ No setOutboxDispatcher - outbox property not required", (
 test("Integration: ✅ No setLikedDispatcher - liked property not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "liked: ctx.getLikedUri(identifier),",
-      "// liked: REMOVED",
+      `      followers: ctx.getFollowersUri(identifier),
+      liked: ctx.getLikedUri(identifier),
+      featured: ctx.getFeaturedUri(identifier),`,
+      `      followers: ctx.getFollowersUri(identifier),
+      featured: ctx.getFeaturedUri(identifier),`,
     )
     .replace(
       `federation.setLikedDispatcher(
@@ -414,8 +476,10 @@ test("Integration: ✅ No setLikedDispatcher - liked property not required", () 
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
-);`,
-      "// setLikedDispatcher REMOVED",
+);
+
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -423,8 +487,11 @@ test("Integration: ✅ No setLikedDispatcher - liked property not required", () 
 test("Integration: ✅ No setFeaturedDispatcher - featured property not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "featured: ctx.getFeaturedUri(identifier),",
-      "// featured: REMOVED",
+      `      liked: ctx.getLikedUri(identifier),
+      featured: ctx.getFeaturedUri(identifier),
+      featuredTags: ctx.getFeaturedTagsUri(identifier),`,
+      `      liked: ctx.getLikedUri(identifier),
+      featuredTags: ctx.getFeaturedTagsUri(identifier),`,
     )
     .replace(
       `federation.setFeaturedDispatcher(
@@ -432,8 +499,10 @@ test("Integration: ✅ No setFeaturedDispatcher - featured property not required
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
-);`,
-      "// setFeaturedDispatcher REMOVED",
+);
+
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -441,8 +510,11 @@ test("Integration: ✅ No setFeaturedDispatcher - featured property not required
 test("Integration: ✅ No setFeaturedTagsDispatcher - featuredTags property not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "featuredTags: ctx.getFeaturedTagsUri(identifier),",
-      "// featuredTags: REMOVED",
+      `      featured: ctx.getFeaturedUri(identifier),
+      featuredTags: ctx.getFeaturedTagsUri(identifier),
+      publicKey: keyPairs[0]?.cryptographicKey,`,
+      `      featured: ctx.getFeaturedUri(identifier),
+      publicKey: keyPairs[0]?.cryptographicKey,`,
     )
     .replace(
       `federation.setFeaturedTagsDispatcher(
@@ -450,8 +522,9 @@ test("Integration: ✅ No setFeaturedTagsDispatcher - featuredTags property not 
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
-);`,
-      "// setFeaturedTagsDispatcher REMOVED",
+);
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -459,18 +532,20 @@ test("Integration: ✅ No setFeaturedTagsDispatcher - featuredTags property not 
 test("Integration: ✅ No setInboxListeners - inbox/sharedInbox not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "inbox: ctx.getInboxUri(identifier),",
-      "// inbox: REMOVED",
-    )
-    .replace(
-      `endpoints: new Endpoints({
+      `      summary: "A test actor for comprehensive lint rule validation",
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
         sharedInbox: ctx.getInboxUri(),
-      }),`,
-      "// endpoints: REMOVED",
+      }),
+      outbox: ctx.getOutboxUri(identifier),`,
+      `      summary: "A test actor for comprehensive lint rule validation",
+      outbox: ctx.getOutboxUri(identifier),`,
     )
     .replace(
-      `federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");`,
-      "// setInboxListeners REMOVED",
+      `federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+`,
+      "",
     );
   assertNoErrors(code);
 });
@@ -478,20 +553,28 @@ test("Integration: ✅ No setInboxListeners - inbox/sharedInbox not required", (
 test("Integration: ✅ No setKeyPairsDispatcher - publicKey/assertionMethod not required", () => {
   const code = COMPLETE_VALID_CODE
     .replace(
-      "const keyPairs = await ctx.getActorKeyPairs(identifier);",
-      "// keyPairs REMOVED",
+      `  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const keyPairs = await ctx.getActorKeyPairs(identifier);
+    return new Person({`,
+      `  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    return new Person({`,
     )
     .replace(
-      "publicKey: keyPairs[0]?.cryptographicKey,",
-      "// publicKey: REMOVED",
+      `      featuredTags: ctx.getFeaturedTagsUri(identifier),
+      publicKey: keyPairs[0]?.cryptographicKey,
+      assertionMethod: keyPairs[0]?.multikey,
+    });`,
+      `      featuredTags: ctx.getFeaturedTagsUri(identifier),
+    });`,
     )
     .replace(
-      "assertionMethod: keyPairs[0]?.multikey,",
-      "// assertionMethod: REMOVED",
-    )
-    .replace(
-      ".setKeyPairsDispatcher(async (_ctx, _identifier) => []);",
-      "; // setKeyPairsDispatcher REMOVED",
+      `  })
+  .setKeyPairsDispatcher(async (_ctx, _identifier) => []);
+
+federation.setInboxListeners`,
+      `  });
+
+federation.setInboxListeners`,
     );
   assertNoErrors(code);
 });
@@ -511,7 +594,7 @@ test("Integration: ❌ Multiple errors - missing id and inbox", () => {
       "// inbox: REMOVED",
     );
 
-  const diagnostics = lintCode(code);
+  const diagnostics = lintTest(code);
   const ruleIds = diagnostics.map((d) => d.id);
 
   ok(

@@ -1,26 +1,29 @@
 import {
+  always,
+  head,
   isEmpty,
   isNil,
   isObject,
   pipe,
   pipeLazy,
   prop,
-  some,
+  unless,
   when,
 } from "@fxts/core";
 import { allOf, isNodeType } from "./pred.ts";
 import type {
   AssignmentPattern,
   BlockStatement,
+  ConditionalExpression,
   Expression,
   NewExpression,
   Node,
+  ObjectExpression,
   Property,
   PropertyChecker,
   ReturnStatement,
   SpreadElement,
   Statement,
-  TSEmptyBodyFunctionExpression,
   WithIdentifierKey,
 } from "./types.ts";
 import { eq } from "./utils.ts";
@@ -61,8 +64,7 @@ export function createPropertyChecker(
   checker: (
     node:
       | Expression
-      | AssignmentPattern
-      | TSEmptyBodyFunctionExpression,
+      | AssignmentPattern,
   ) => boolean,
 ): (path: readonly string[]) => PropertyChecker {
   const inner =
@@ -70,7 +72,9 @@ export function createPropertyChecker(
       if (!isPropertyWithName(first)(node)) return false;
 
       // Base case: last property in path
-      if (isEmpty(rest)) return checker(node.value);
+      if (isEmpty(rest)) {
+        return checker(node.value as Expression | AssignmentPattern);
+      }
 
       // Handle NewExpression: endpoints: new Endpoints({ sharedInbox: ... })
       if (isNodeType("NewExpression")(node.value)) {
@@ -91,8 +95,7 @@ export function createPropertyChecker(
  * @returns A function that checks the ObjectExpression
  */
 const checkObjectExpression =
-  (propertyChecker: PropertyChecker) =>
-  (obj: Deno.lint.ObjectExpression): boolean =>
+  (propertyChecker: PropertyChecker) => (obj: ObjectExpression): boolean =>
     obj.properties.some(propertyChecker);
 
 /**
@@ -103,7 +106,7 @@ const checkObjectExpression =
 const checkConditionalExpression = (
   propertyChecker: PropertyChecker,
 ) =>
-(node: Deno.lint.ConditionalExpression): boolean =>
+(node: ConditionalExpression): boolean =>
   [node.consequent, node.alternate].every(checkBranchWith(propertyChecker));
 
 // Check if both branches have the property
@@ -120,9 +123,7 @@ const checkBranchWith =
 /**
  * Extracts ObjectExpression from NewExpression.
  */
-const extractObjectExpression = (
-  arg: Expression,
-): Deno.lint.ObjectExpression | null => {
+const extractObjectExpression = (arg: Expression): ObjectExpression | null => {
   if (isNodeType("NewExpression")(arg)) {
     return extractFirstObjectExpression(arg);
   }
@@ -132,12 +133,18 @@ const extractObjectExpression = (
 /**
  * Extracts the first argument if it's an ObjectExpression.
  */
-const extractFirstObjectExpression = (node: Deno.lint.NewExpression):
-  | Deno.lint.ObjectExpression
-  | null => {
-  const firstArg = node.arguments[0];
-  return isNodeType("ObjectExpression")(firstArg) ? firstArg : null;
-};
+const extractFirstObjectExpression = (node: NewExpression):
+  | ObjectExpression
+  | null =>
+  pipe(
+    node,
+    prop("arguments"),
+    head,
+    unless(
+      isNodeType("ObjectExpression"),
+      always(null),
+    ) as () => ObjectExpression | null,
+  );
 
 /**
  * Checks if a ReturnStatement node contains a property.
@@ -147,7 +154,7 @@ const extractFirstObjectExpression = (node: Deno.lint.NewExpression):
 export const checkReturnStatement = (
   propertyChecker: PropertyChecker,
 ) =>
-(node: Deno.lint.ReturnStatement) => {
+(node: ReturnStatement) => {
   const arg = node.argument;
   if (isNil(arg)) return false;
 

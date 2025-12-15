@@ -1,4 +1,4 @@
-import type { TSESLint } from "@typescript-eslint/utils";
+import type { Rule } from "eslint";
 import {
   COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR,
   COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR as message,
@@ -100,10 +100,7 @@ export const deno: Deno.lint.Rule = {
   },
 };
 
-export const eslint: TSESLint.RuleModule<
-  string,
-  unknown[]
-> = {
+export const eslint: Rule.RuleModule = {
   meta: {
     type: "suggestion",
     docs: {
@@ -114,7 +111,6 @@ export const eslint: TSESLint.RuleModule<
       filterRequired: COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR,
     },
   },
-  defaultOptions: [],
   create(context) {
     const federationTracker = trackFederationVariables();
 

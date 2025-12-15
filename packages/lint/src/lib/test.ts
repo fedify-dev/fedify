@@ -1,6 +1,6 @@
 import { isNil } from "@fxts/core";
-import { RuleTester } from "@typescript-eslint/rule-tester";
-import type { TSESLint } from "@typescript-eslint/utils";
+import * as tsParser from "@typescript-eslint/parser";
+import { Linter, type Rule } from "eslint";
 import assert from "node:assert/strict";
 import { FEDERATION_SETUP } from "./const.ts";
 
@@ -36,13 +36,7 @@ function testDenoLint(
     assert.equal(
       diagnostics.length,
       0,
-      `Should not report issues when id property is present but found: \n${
-        diagnostics.map((d) => "  - " + d.message).join(", ")
-      }
-
-=== CODE ===
-${code}
-=======`,
+      "Should not report issues when id property is present but found:",
     );
   } else {
     assert.ok(
@@ -60,10 +54,7 @@ ${code}
   }
 }
 
-RuleTester.afterAll = () => {};
-RuleTester.describe = () => {};
-
-function testEslintRule(
+function testEslint(
   {
     code,
     rule,
@@ -72,41 +63,57 @@ function testEslintRule(
     expectedError,
   }: {
     code: string;
-    rule: TSESLint.RuleModule<string, unknown[]>;
+    rule: Rule.RuleModule;
     ruleName: string;
     federationSetup?: string;
     expectedError?: string;
   },
 ) {
-  const ruleTester = new RuleTester({
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
+  const linter = new Linter({ configType: "flat" });
+
+  const config = [{
+    files: ["**/*.ts"],
+    plugins: {
+      "fedify-test": {
+        rules: { [ruleName]: rule },
       },
     },
-  });
+    rules: {
+      [`fedify-test/${ruleName}`]: expectedError ? "error" : "off",
+    },
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
+  } as Linter.Config];
 
   const fullCode = `${federationSetup ?? federationSetup}\n\n${code}`;
+  const results = linter.verify(fullCode, config, `${ruleName}.test.ts`);
 
   if (isNil(expectedError)) {
-    ruleTester.run(ruleName, rule, {
-      valid: [fullCode],
-      invalid: [],
-    });
+    assert.equal(
+      results.length,
+      0,
+      `Should not report issues but found: ${
+        results.map((r) => r.message).join(", ")
+      }`,
+    );
   } else {
-    ruleTester.run(ruleName, rule, {
-      valid: [],
-      invalid: [
-        {
-          code: fullCode,
-          errors: [{ messageId: expectedError }],
-        },
-      ],
-    });
+    assert.ok(
+      results.length > 0,
+      "Expected at least one diagnostic error but found none",
+    );
+    const matched = results.some((r) =>
+      r.message.includes(expectedError) ||
+      r.ruleId === `fedify-test/${ruleName}`
+    );
+    assert.ok(
+      matched,
+      `Expected fedify-test/${ruleName} to report but it did not. Got: ${
+        results.map((r) => r.message).join(", ")
+      }`,
+    );
   }
 }
 
@@ -121,7 +128,7 @@ export default function lintTest(
     code: string;
     rule: {
       deno: Deno.lint.Rule;
-      eslint: TSESLint.RuleModule<string, unknown[]>;
+      eslint: Rule.RuleModule;
     };
     ruleName: string;
     federationSetup?: string;
@@ -139,7 +146,7 @@ export default function lintTest(
       });
   } else {
     return () =>
-      testEslintRule({
+      testEslint({
         code,
         rule: eslint,
         ruleName,

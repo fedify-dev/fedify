@@ -2,8 +2,8 @@
  * ESLint plugin for Fedify.
  * Provides lint rules for validating Fedify federation code.
  */
-import { keys, pipe, reduceLazy } from "@fxts/core";
-import type { TSESLint } from "@typescript-eslint/utils";
+import { fromEntries, keys, map, pipe } from "@fxts/core";
+import type { ESLint, Rule } from "eslint";
 import metadata from "../deno.json" with { type: "json" };
 import { RULE_IDS } from "./lib/const.ts";
 import {
@@ -68,7 +68,7 @@ import {
 
 const rules: Record<
   typeof RULE_IDS[keyof typeof RULE_IDS],
-  TSESLint.RuleModule<string, unknown[]>
+  Rule.RuleModule
 > = {
   [RULE_IDS.actorIdMismatch]: actorIdMismatch,
   [RULE_IDS.actorIdRequired]: actorIdRequired,
@@ -95,43 +95,44 @@ const rules: Record<
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
 };
 
-/**
- * Recommended configuration - enables all rules as warnings
- */
-const recommendedRules = pipe(
-  rules,
-  keys,
-  reduceLazy((acc, key) => {
-    acc[`@fedify/lint/${key}`] = recommendedRuleIds
-        .includes(key)
-      ? "error" as const
-      : "warn" as const;
-    return acc;
-  }, {} as Record<string, "warn" | "error" | "off">),
-);
-
 const recommendedRuleIds: (keyof typeof rules)[] = [
   RULE_IDS.actorIdMismatch,
   RULE_IDS.actorIdRequired,
 ];
 
 /**
+ * Recommended configuration - enables all rules as warnings
+ */
+const recommendedRules = pipe(
+  rules,
+  keys,
+  map((key) =>
+    [
+      `@fedify/lint/${key}`,
+      recommendedRuleIds
+          .includes(key)
+        ? "error" as const
+        : "warn" as const,
+    ] as const
+  ),
+  fromEntries,
+);
+
+/**
  * Strict configuration - enables all rules as errors
  */
 const strictRules = pipe(
-  Object.keys(rules),
-  (keys) =>
-    keys.reduce((acc, key) => {
-      acc[`@fedify/lint/${key}`] = "error" as const;
-      return acc;
-    }, {} as Record<string, "warn" | "error" | "off">),
+  rules,
+  keys,
+  map((key) => [`@fedify/lint/${key}`, "error" as const] as const),
+  fromEntries,
 );
 
 // ============================================================================
 // Plugin Export
 // ============================================================================
 
-const plugin: TSESLint.Linter.Plugin = {
+const plugin = {
   meta: {
     name: metadata.name,
     version: metadata.version,
@@ -147,6 +148,6 @@ const plugin: TSESLint.Linter.Plugin = {
       rules: strictRules,
     },
   },
-};
+} as const satisfies ESLint.Plugin;
 
 export default plugin;
