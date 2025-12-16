@@ -1,4 +1,4 @@
-import { pipe, prop } from "@fxts/core";
+import { isObject, pipe, prop } from "@fxts/core";
 import type {
   CallExpression,
   CallMemberExpression,
@@ -32,6 +32,9 @@ export function allOf<T>(
 export const anyOf =
   <T>(...predicates: ((value: T) => boolean)[]) => (value: T): boolean =>
     predicates.some((predicate) => predicate(value));
+
+export const isNode = (obj: unknown): obj is Node =>
+  isObject(obj) && "type" in obj;
 
 /**
  * Checks if a node is of a specific type.

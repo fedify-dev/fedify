@@ -31,26 +31,7 @@ export const getArticle = (word: string): string =>
 
 export const endsWith = (suffix: string) => (str: string): boolean =>
   str.endsWith(suffix);
-/*
-export function replace(searchValue: string | RegExp, replaceValue: string): (
-  str: string,
-) => string;
-export function replace(
-  searchValue: string | RegExp,
-  replacer: (substring: string, ...args: unknown[]) => string,
-): (
-  str: string,
-) => string;
-export function replace(
-  searchValue: string | RegExp,
-  replaceValue: string | ((substring: string, ...args: unknown[]) => string),
-): (str: string) => string {
-  return (str: string) =>
-    typeof replaceValue === "function"
-      ? str.replace(searchValue, replaceValue)
-      : str.replace(searchValue, replaceValue);
-}
- */
+
 export const replace: {
   (searchValue: string | RegExp, replaceValue: string): (str: string) => string;
   (
@@ -67,3 +48,26 @@ export const replace: {
     // @ts-ignore tsc cannot infer the type here
     replaceValue,
   );
+
+export function cases<T1, T2, R1, R2>(
+  pred: <T extends T1 | T2>(value: T) => value is T1 & T,
+  ifTrue: (value: T1) => R1,
+  ifFalse: (value: T2) => R2,
+): <T extends T1 | T2>(value: T) => R1 | R2;
+export function cases<T1, T2, R>(
+  pred: <T extends T1 | T2>(value: T) => value is T1 & T,
+  ifTrue: (value: T1) => R,
+  ifFalse: (value: T2) => R,
+): (value: unknown) => R | R;
+export function cases<T, R>(
+  pred: (value: T) => boolean,
+  ifTrue: (value: T) => R,
+  ifFalse: (value: T) => R,
+): (value: T) => R;
+export function cases<T, R>(
+  pred: (value: T) => boolean,
+  ifTrue: (value: T) => R,
+  ifFalse: (value: T) => R,
+): (value: T) => R {
+  return (value: T): R => pred(value) ? ifTrue(value) : ifFalse(value);
+}
