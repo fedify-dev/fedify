@@ -110,10 +110,7 @@ const recommendedRules = pipe(
   map((key) =>
     [
       `@fedify/lint/${key}`,
-      recommendedRuleIds
-          .includes(key)
-        ? "error" as const
-        : "warn" as const,
+      recommendedRuleIds.includes(key) ? "error" : "warn",
     ] as const
   ),
   fromEntries,
