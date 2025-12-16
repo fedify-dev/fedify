@@ -1,216 +1,96 @@
 import { test } from "node:test";
-import { properties, RULE_IDS } from "../lib/const.ts";
-import { actorPropertyMismatch } from "../lib/messages.ts";
-import lintTest from "../lib/test.ts";
+import { RULE_IDS } from "../lib/const.ts";
+import {
+  createIdMismatchEdgeCaseTests,
+  createIdMismatchRuleTests,
+} from "../lib/test-templates.ts";
 import * as rule from "../rules/actor-id-mismatch.ts";
 
 const ruleName = RULE_IDS.actorIdMismatch;
+const config = { rule, ruleName };
 
-const expectedError = actorPropertyMismatch({
-  path: properties.id.path.join("."),
-  ctxName: "ctx",
-  idName: "identifier",
-  methodName: properties.id.getter,
-  requiresIdentifier: properties.id.requiresIdentifier,
-});
-
+// Standard id mismatch rule tests
+const tests = createIdMismatchRuleTests(config);
 test(
-  `${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    federationSetup: `
-      const federation = {
-        setActorDispatcher: () => {}
-      };
-    `,
-  }),
+  `${ruleName}: ✅ Good - non-federation object`,
+  tests["non-federation object"],
+);
+test(
+  `${ruleName}: ✅ Good - correct getter used`,
+  tests["correct getter used"],
+);
+test(
+  `${ruleName}: ❌ Bad - literal string id`,
+  tests["literal string id"],
+);
+test(
+  `${ruleName}: ❌ Bad - new URL as id`,
+  tests["new URL as id"],
+);
+test(
+  `${ruleName}: ❌ Bad - wrong getter used`,
+  tests["wrong getter used"],
+);
+test(
+  `${ruleName}: ❌ Bad - wrong identifier`,
+  tests["wrong identifier"],
 );
 
+// Edge case tests
+const edgeCases = createIdMismatchEdgeCaseTests(config);
 test(
-  `${ruleName}: ✅ Good - id uses ctx.getActorUri(identifier)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Edge - ternary with correct getter in both branches`,
+  edgeCases["ternary with correct getter in both branches"],
 );
-
 test(
-  `${ruleName}: ✅ Good - BlockStatement with correct id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const name = "John Doe";
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name,
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ❌ Edge - ternary with wrong getter in consequent`,
+  edgeCases["ternary with wrong getter in consequent"],
 );
-
 test(
-  `${ruleName}: ❌ Bad - id uses hardcoded string instead of ctx.getActorUri()`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: expectedError,
-  }),
+  `${ruleName}: ❌ Edge - ternary with wrong getter in alternate`,
+  edgeCases["ternary with wrong getter in alternate"],
 );
-
 test(
-  `${ruleName}: ❌ Bad - id uses wrong method (getInboxUri instead of getActorUri)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getInboxUri(identifier),
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: expectedError,
-  }),
+  `${ruleName}: ❌ Edge - ternary with wrong getter in both branches`,
+  edgeCases["ternary with wrong getter in both branches"],
 );
-
 test(
-  `${ruleName}: ❌ Bad - id uses wrong identifier parameter`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getActorUri("wrong"),
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: expectedError,
-  }),
+  `${ruleName}: ✅ Edge - nested ternary with correct getter`,
+  edgeCases["nested ternary with correct getter"],
 );
-
 test(
-  `${ruleName} Edge: ✅ multiple return statements - all correct`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier === "admin") {
-          return new Person({ id: ctx.getActorUri(identifier), name: "Admin" });
-        }
-        return new Person({ id: ctx.getActorUri(identifier), name: "User" });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Edge - if/else with correct getter in both branches`,
+  edgeCases["if else with correct getter in both branches"],
 );
-
 test(
-  `${ruleName} Edge: ⚠️ multiple returns - known limitation`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier === "admin") {
-          return new Person({ id: "hardcoded", name: "Admin" });
-        }
-        return new Person({ id: ctx.getActorUri(identifier), name: "User" });
-      });
-    `,
-    rule,
-    ruleName,
-    // Known limitation: Once ANY return has correct id, the rule passes.
-    // The first return with wrong id is not caught.
-  }),
+  `${ruleName}: ❌ Edge - if/else with wrong getter in if block`,
+  edgeCases["if else with wrong getter in if block"],
 );
-
 test(
-  `${ruleName} Edge: ✅ spread operator with correct id after spread`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const base = { name: "User" };
-        return new Person({ ...base, id: ctx.getActorUri(identifier) });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ❌ Edge - if/else with wrong getter in else block`,
+  edgeCases["if else with wrong getter in else block"],
 );
-
 test(
-  `${ruleName} Edge: ❌ spread operator with wrong id after spread`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const base = { name: "User" };
-        return new Person({ ...base, id: "hardcoded" });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: expectedError,
-  }),
+  `${ruleName}: ❌ Edge - if/else with wrong getter in both blocks`,
+  edgeCases["if else with wrong getter in both blocks"],
 );
-
 test(
-  `${ruleName} Edge: ✅ arrow function direct return with correct id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name: "User",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Edge - nested if with correct getter`,
+  edgeCases["nested if with correct getter"],
 );
-
 test(
-  `${ruleName} Edge: ❌ arrow function direct return with wrong id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: "hardcoded",
-          name: "User",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: expectedError,
-  }),
+  `${ruleName}: ✅ Edge - if else if else with correct getter in all branches`,
+  edgeCases["if else if else with correct getter in all branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if else with wrong getter in else if`,
+  edgeCases["if else if else with wrong getter in else if"],
+);
+test(
+  `${ruleName}: ✅ Edge - if else if with final return correct getter in all paths`,
+  edgeCases["if else if with final return correct getter in all paths"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if with final return wrong getter in final return`,
+  edgeCases["if else if with final return wrong getter in final return"],
 );

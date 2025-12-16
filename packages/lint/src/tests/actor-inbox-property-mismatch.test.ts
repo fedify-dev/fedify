@@ -49,3 +49,39 @@ test(
   `${ruleName}: ✅ Edge - nested ternary with correct getter`,
   edgeCases["nested ternary with correct getter"],
 );
+test(
+  `${ruleName}: ✅ Edge - if/else with correct getter in both branches`,
+  edgeCases["if else with correct getter in both branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else with wrong getter in if block`,
+  edgeCases["if else with wrong getter in if block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else with wrong getter in else block`,
+  edgeCases["if else with wrong getter in else block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else with wrong getter in both blocks`,
+  edgeCases["if else with wrong getter in both blocks"],
+);
+test(
+  `${ruleName}: ✅ Edge - nested if with correct getter`,
+  edgeCases["nested if with correct getter"],
+);
+test(
+  `${ruleName}: ✅ Edge - if else if else with correct getter in all branches`,
+  edgeCases["if else if else with correct getter in all branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if else with wrong getter in else if`,
+  edgeCases["if else if else with wrong getter in else if"],
+);
+test(
+  `${ruleName}: ✅ Edge - if else if with final return correct getter in all paths`,
+  edgeCases["if else if with final return correct getter in all paths"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if with final return wrong getter in final return`,
+  edgeCases["if else if with final return wrong getter in final return"],
+);

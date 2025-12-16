@@ -79,3 +79,39 @@ test(
   `${ruleName}: ✅ Edge - nested ternary with property`,
   edgeCases["nested ternary with property"],
 );
+test(
+  `${ruleName}: ✅ Edge - if/else with property in both branches`,
+  edgeCases["if else with property in both branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing property in if block`,
+  edgeCases["if else missing property in if block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing property in else block`,
+  edgeCases["if else missing property in else block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing property in both blocks`,
+  edgeCases["if else missing property in both blocks"],
+);
+test(
+  `${ruleName}: ✅ Edge - nested if with property`,
+  edgeCases["nested if with property"],
+);
+test(
+  `${ruleName}: ✅ Edge - if else if else with following in all branches`,
+  edgeCases["if else if else with property in all branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if else missing following in else if`,
+  edgeCases["if else if else missing property in else if"],
+);
+test(
+  `${ruleName}: ✅ Edge - if else if with final return following in all paths`,
+  edgeCases["if else if with final return property in all paths"],
+);
+test(
+  `${ruleName}: ❌ Edge - if else if with final return missing following in final return`,
+  edgeCases["if else if with final return missing property in final return"],
+);

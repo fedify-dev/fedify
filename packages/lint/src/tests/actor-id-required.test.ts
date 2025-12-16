@@ -1,359 +1,101 @@
 import { test } from "node:test";
-import { properties, RULE_IDS } from "../lib/const.ts";
-import { actorPropertyRequired } from "../lib/messages.ts";
-import lintTest from "../lib/test.ts";
+import { RULE_IDS } from "../lib/const.ts";
+import {
+  createIdRequiredEdgeCaseTests,
+  createIdRequiredRuleTests,
+} from "../lib/test-templates.ts";
 import * as rule from "../rules/actor-id-required.ts";
 
 const ruleName = RULE_IDS.actorIdRequired;
+const config = { rule, ruleName };
 
+// Standard id required rule tests
+const tests = createIdRequiredRuleTests(config);
 test(
-  `${ruleName}: ✅ Good - \`setActorDispatcher\` called on non-Federation object`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    federationSetup: `
-      const federation = {
-        setActorDispatcher: () => {}
-      };
-    `,
-  }),
+  `${ruleName}: ✅ Good - non-federation object`,
+  tests["non-federation object"],
 );
-
 test(
-  `${ruleName}: ✅ Good - with \`id\` property (any value)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: "https://example.com/users/123",
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Good - with id property any value`,
+  tests["with id property any value"],
 );
-
 test(
-  `${ruleName}: ✅ Good - with \`id\` property using ctx.getActorUri()`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Good - with id property using getActorUri`,
+  tests["with id property using getActorUri"],
 );
-
 test(
-  `${ruleName}: ✅ Good - BlockStatement with \`id\``,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const name = "John Doe";
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name,
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Good - block statement with id`,
+  tests["block statement with id"],
 );
-
-test(
-  `${ruleName}: ❌ Bad - without \`id\` property`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          name: "John Doe",
-        });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
-);
-
+test(`${ruleName}: ❌ Bad - without id property`, tests["without id property"]);
 test(
   `${ruleName}: ❌ Bad - returning empty object`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({});
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
+  tests["returning empty object"],
 );
-
 test(
-  `${ruleName}: ✅ Good - multiple properties including \`id\``,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return new Person({
-          id: ctx.getActorUri(identifier),
-          name: "John Doe",
-          inbox: ctx.getInboxUri(identifier),
-          outbox: ctx.getOutboxUri(identifier),
-        });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Good - multiple properties including id`,
+  tests["multiple properties including id"],
 );
-
 test(
-  `${ruleName}: ❌ Bad - variable assignment without \`id\``,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const actor = new Person({
-          name: "John Doe",
-        });
-        return actor;
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
+  `${ruleName}: ❌ Bad - variable assignment without id`,
+  tests["variable assignment without id"],
 );
-const withId = 'new Person({ id: ctx.getActorUri(identifier), name: "User" })';
-const withoutId = 'new Person({ name: "User" })';
 
+// Edge case tests
+const edgeCases = createIdRequiredEdgeCaseTests(config);
 test(
-  `${ruleName}: ✅ Edge - multiple return statements - all have id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier === "admin") {
-          return ${withId};
-        }
-        return identifier === "admin"
-          ? ${withId}
-          : ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Edge - ternary with id in both branches`,
+  edgeCases["ternary with id in both branches"],
 );
-
 test(
-  `${ruleName}: ✅ Edge - multiple return statements - first missing id (known limitation)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier === "admin") {
-          return ${withoutId};
-        }
-        return ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ❌ Edge - ternary missing id in consequent`,
+  edgeCases["ternary missing id in consequent"],
 );
-
 test(
-  `${ruleName}: ❌ Edge - multiple return statements - second missing id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier === "admin") {
-          return ${withId};
-        }
-        return ${withoutId};
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
+  `${ruleName}: ❌ Edge - ternary missing id in alternate`,
+  edgeCases["ternary missing id in alternate"],
 );
-
 test(
-  `${ruleName}: ✅ Edge - if/else with else block (known limitation: else not checked)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier) {
-          return ${withId};
-        } else {
-          return ${withoutId};
-        }
-        return ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ❌ Edge - ternary missing id in both branches`,
+  edgeCases["ternary missing id in both branches"],
 );
-
+test(
+  `${ruleName}: ✅ Edge - nested ternary with id`,
+  edgeCases["nested ternary with id"],
+);
+test(
+  `${ruleName}: ✅ Edge - if/else with id in both branches`,
+  edgeCases["if else with id in both branches"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing id in if block`,
+  edgeCases["if else missing id in if block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing id in else block`,
+  edgeCases["if else missing id in else block"],
+);
+test(
+  `${ruleName}: ❌ Edge - if/else missing id in both blocks`,
+  edgeCases["if else missing id in both blocks"],
+);
 test(
   `${ruleName}: ✅ Edge - nested if with id`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (identifier) {
-          if (identifier === "admin") {
-            return ${withId};
-          }
-          return ${withId};
-        }
-        return ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  edgeCases["nested if with id"],
 );
-
 test(
-  `${ruleName}: ✅ Edge - ternary operator with id in both branches`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return identifier ? ${withId} : ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ✅ Edge - if else if else with id in all branches`,
+  edgeCases["if else if else with id in all branches"],
 );
-
 test(
-  `${ruleName}: ❌ Edge - ternary operator without id in consequent`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return identifier ? ${withoutId} : ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
+  `${ruleName}: ❌ Edge - if else if else missing id in else if`,
+  edgeCases["if else if else missing id in else if"],
 );
-
 test(
-  `${ruleName}: ❌ Edge - ternary operator without id in alternate`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        return identifier ? ${withId} : ${withoutId};
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
+  `${ruleName}: ✅ Edge - if else if with final return id in all paths`,
+  edgeCases["if else if with final return id in all paths"],
 );
-
 test(
-  `${ruleName}: ✅ Edge - spread operator with id property after spread`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const base = { name: "User" };
-        return new Person({ ...base, id: ctx.getActorUri(identifier) });
-      });
-    `,
-    rule,
-    ruleName,
-  }),
-);
-
-test(
-  `${ruleName}: ❌ Edge - spread operator with id in spread source (known limitation)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const base = { id: ctx.getActorUri(identifier), name: "User" };
-        return new Person({ ...base });
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
-);
-
-test(
-  `${ruleName}: ❌ Edge - variable assignment then return (known limitation)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const actor = ${withId};
-        return actor;
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
-);
-
-test(
-  `${ruleName}: ❌ Edge - property assignment after construction (known limitation)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        const actor = ${withoutId};
-        actor.id = ctx.getActorUri(identifier);
-        return actor;
-      });
-    `,
-    rule,
-    ruleName,
-    expectedError: actorPropertyRequired(properties.id),
-  }),
-);
-
-test(
-  `${ruleName}: ✅ Edge - arrow function direct return NewExpression`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) =>
-        ${withId}
-      );
-    `,
-    rule,
-    ruleName,
-  }),
-);
-
-test(
-  `${ruleName}: ✅ Edge - return null (no actor)`,
-  lintTest({
-    code: `
-      federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-        if (!identifier) return null;
-        return ${withId};
-      });
-    `,
-    rule,
-    ruleName,
-  }),
+  `${ruleName}: ❌ Edge - if else if with final return missing id in final return`,
+  edgeCases["if else if with final return missing id in final return"],
 );
