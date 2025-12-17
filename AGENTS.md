@@ -77,6 +77,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/koa/*: Koa integration (@fedify/koa)
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres)
  -  *packages/redis/*: Redis drivers (@fedify/redis)
+ -  *packages/lint/*: Linting utilities (@fedify/lint)
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs)
  -  *packages/next/*: Next.js integration (@fedify/next)
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite)
