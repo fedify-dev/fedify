@@ -70,6 +70,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/denokv/*: Deno KV integration (@fedify/denokv)
  -  *packages/elysia/*: Elysia integration (@fedify/elysia)
  -  *packages/express/*: Express.js integration (@fedify/express)
+ -  *packages/fastify/*: Fastify integration (@fedify/fastify)
  -  *packages/h3/*: h3 framework integration (@fedify/h3)
  -  *packages/hono/*: Hono integration (@fedify/hono)
  -  *packages/koa/*: Koa integration (@fedify/koa)
@@ -175,10 +176,8 @@ When adding a new package to the monorepo, the following files must be updated:
  2. *README.md*: Add the package to the "Packages" section table
  3. *package.json*: Add the `repository` field to the package metadata.
     This is required for provenance information when publishing to npm.
- 4. *.github/workflows/build.yaml*: Update the PR comment in the `publish` job
-    (around the `thollander/actions-comment-pull-request` action)
- 5. Root *deno.json*: Add the package path to the `workspace` array
- 6. *pnpm-workspace.yaml*: Add the package path to the `packages` array
+ 4. Root *deno.json*: Add the package path to the `workspace` array
+ 5. *pnpm-workspace.yaml*: Add the package path to the `packages` array
 
 **Conditional updates:**
 
