@@ -1,0 +1,19 @@
+{
+  "name": "@fedify/vocab",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "description": "Vocabularies library for @fedify/fedify",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "imports": {},
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}

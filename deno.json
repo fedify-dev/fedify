@@ -19,6 +19,7 @@
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
+    "./packages/vocab",
     "./packages/vocab-runtime",
     "./packages/vocab-tools",
     "./examples/hono-sample",
