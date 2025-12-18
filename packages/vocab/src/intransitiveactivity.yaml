@@ -1,0 +1,15 @@
+$schema: ../../vocab-tools/schema.yaml
+name: IntransitiveActivity
+compactName: IntransitiveActivity
+uri: "https://www.w3.org/ns/activitystreams#IntransitiveActivity"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Instances of `IntransitiveActivity` are a subtype of {@link Activity}
+  representing intransitive actions.  The `object` property is therefore
+  inappropriate for these activities.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

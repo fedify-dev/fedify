@@ -1,0 +1,39 @@
+$schema: ../../vocab-tools/schema.yaml
+name: OrderedCollection
+compactName: OrderedCollection
+uri: "https://www.w3.org/ns/activitystreams#OrderedCollection"
+extends: "https://www.w3.org/ns/activitystreams#Collection"
+entity: true
+description: |
+  A subtype of {@link Collection} in which members of the logical collection
+  are assumed to always be strictly ordered.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  misskey: "https://misskey-hub.net/ns#"
+  fedibird: "http://fedibird.com/ns#"
+  ChatMessage: "http://litepub.social/ns#ChatMessage"
+  sensitive: "as:sensitive"
+  votersCount: "toot:votersCount"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  quoteUrl: "as:quoteUrl"
+  _misskey_quote: "misskey:_misskey_quote"
+  quoteUri: "fedibird:quoteUri"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+
+properties:
+- pluralName: items
+  singularName: item
+  compactName: orderedItems
+  uri: "https://www.w3.org/ns/activitystreams#items"
+  container: list
+  description: |
+    Identifies the items contained in a collection.  The items might be ordered
+    or unordered.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+  - "https://www.w3.org/ns/activitystreams#Link"

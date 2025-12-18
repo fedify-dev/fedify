@@ -1,0 +1,17 @@
+$schema: ../../vocab-tools/schema.yaml
+name: EmojiReact
+compactName: EmojiReact
+uri: "http://litepub.social/ns#EmojiReact"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Represents an emoji reaction.  See also [FEP-c0e0](https://w3id.org/fep/c0e0).
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- litepub: "http://litepub.social/ns#"
+  toot: "http://joinmastodon.org/ns#"
+  EmojiReact: "litepub:EmojiReact"
+  Emoji: "toot:Emoji"
+properties: []

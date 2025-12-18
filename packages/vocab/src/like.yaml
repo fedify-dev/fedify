@@ -1,0 +1,16 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Like
+compactName: Like
+uri: "https://www.w3.org/ns/activitystreams#Like"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the `actor` likes, recommends or endorses the `object`.
+  The `target` and `origin` typically have no defined meaning.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  Emoji: "toot:Emoji"
+properties: []

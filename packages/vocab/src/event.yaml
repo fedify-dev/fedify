@@ -1,0 +1,11 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Event
+compactName: Event
+uri: "https://www.w3.org/ns/activitystreams#Event"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: Represents any kind of event.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

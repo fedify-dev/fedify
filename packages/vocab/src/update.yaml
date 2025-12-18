@@ -1,0 +1,58 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Update
+compactName: Update
+uri: "https://www.w3.org/ns/activitystreams#Update"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the `actor` has updated the `object`.  Note, however,
+  that this vocabulary does not define a mechanism for describing the actual
+  set of modifications made to `object`.
+
+  The `target` and `origin` typically have no defined meaning.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/v1"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://www.w3.org/ns/did/v1"
+- "https://w3id.org/security/multikey/v1"
+- alsoKnownAs:
+    "@id": "as:alsoKnownAs"
+    "@type": "@id"
+  manuallyApprovesFollowers: "as:manuallyApprovesFollowers"
+  sensitive: "as:sensitive"
+  movedTo:
+    "@id": "as:movedTo"
+    "@type": "@id"
+  quoteUrl: "as:quoteUrl"
+  toot: "http://joinmastodon.org/ns#"
+  featured:
+    "@id": "toot:featured"
+    "@type": "@id"
+  featuredTags:
+    "@id": "toot:featuredTags"
+    "@type": "@id"
+  discoverable: "toot:discoverable"
+  suspended: "toot:suspended"
+  memorial: "toot:memorial"
+  indexable: "toot:indexable"
+  votersCount:
+    "@id": "toot:votersCount"
+    "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  schema: "http://schema.org#"
+  PropertyValue: "schema:PropertyValue"
+  value: "schema:value"
+  ChatMessage: "http://litepub.social/ns#ChatMessage"
+  fedibird: "http://fedibird.com/ns#"
+  quoteUri: "fedibird:quoteUri"
+  misskey: "https://misskey-hub.net/ns#"
+  _misskey_quote: "misskey:_misskey_quote"
+  _misskey_followedMessage: "misskey:_misskey_followedMessage"
+  isCat: "misskey:isCat"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+properties: []

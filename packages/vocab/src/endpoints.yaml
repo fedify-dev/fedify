@@ -1,0 +1,85 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Endpoints
+compactName: as:Endpoints
+uri: "https://www.w3.org/ns/activitystreams#Endpoints"
+entity: false
+description: Contents of {@link Actor}'s `endpoints`.
+defaultContext: "https://www.w3.org/ns/activitystreams"
+
+properties:
+- singularName: proxyUrl
+  functional: true
+  compactName: proxyUrl
+  uri: "https://www.w3.org/ns/activitystreams#proxyUrl"
+  description: |
+    Endpoint URI so this actor's clients may access remote ActivityStreams
+    objects which require authentication to access.  To use this endpoint,
+    the client posts an `x-www-form-urlencoded` `id` parameter with the value
+    being the `id` of the requested ActivityStreams object.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: oauthAuthorizationEndpoint
+  functional: true
+  compactName: oauthAuthorizationEndpoint
+  uri: "https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint"
+  description: |
+    If OAuth 2.0 bearer tokens [RFC 6749] [RFC 6750] are being used for
+    authenticating [client to server
+    interactions](https://www.w3.org/TR/activitypub/#client-to-server-interactions),
+    this endpoint specifies a URI at which a browser-authenticated user may
+    obtain a new authorization grant.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: oauthTokenEndpoint
+  functional: true
+  compactName: oauthTokenEndpoint
+  uri: "https://www.w3.org/ns/activitystreams#oauthTokenEndpoint"
+  description: |
+    If OAuth 2.0 bearer tokens [RFC 6749] [RFC 6750] are being used for
+    authenticating [client to server
+    interactions](https://www.w3.org/TR/activitypub/#client-to-server-interactions),
+    this endpoint specifies a URI at which a client may acquire an access token.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: provideClientKey
+  functional: true
+  compactName: provideClientKey
+  uri: "https://www.w3.org/ns/activitystreams#provideClientKey"
+  description: |
+    If Linked Data Signatures and HTTP Signatures are being used for
+    authentication and authorization, this endpoint specifies a URI at which
+    browser-authenticated users may authorize a client's public key for [client
+    to server interactions](https://www.w3.org/TR/activitypub/#client-to-server-interactions).
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: signClientKey
+  functional: true
+  compactName: signClientKey
+  uri: "https://www.w3.org/ns/activitystreams#signClientKey"
+  description: |
+    If Linked Data Signatures and HTTP Signatures are being used for
+    authentication and authorization, this endpoint specifies a URI at which
+    a client key may be signed by the actor's key for a time window to act on
+    behalf of the actor in interacting with foreign servers.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: sharedInbox
+  functional: true
+  compactName: sharedInbox
+  uri: "https://www.w3.org/ns/activitystreams#sharedInbox"
+  description: |
+    An optional endpoint [used for wide delivery of publicly addressed
+    activities and activities sent to
+    followers](https://www.w3.org/TR/activitypub/#shared-inbox-delivery).
+    `sharedInbox` endpoints SHOULD also be publicly readable
+    {@link OrderedCollection} objects containing objects addressed to the
+    [Public](https://www.w3.org/TR/activitypub/#public-addressing) special
+    collection.  Reading from the `sharedInbox` endpoint MUST NOT present
+    objects which are not addressed to the `Public`` endpoint.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"

@@ -1,0 +1,14 @@
+$schema: ../../vocab-tools/schema.yaml
+name: TentativeReject
+compactName: TentativeReject
+uri: "https://www.w3.org/ns/activitystreams#TentativeReject"
+extends: "https://www.w3.org/ns/activitystreams#Reject"
+entity: true
+description: |
+  A specialization of {@link Reject} in which
+  the rejection is considered tentative.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []
