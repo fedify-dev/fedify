@@ -1,0 +1,14 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Invite
+compactName: Invite
+uri: "https://www.w3.org/ns/activitystreams#Invite"
+extends: "https://www.w3.org/ns/activitystreams#Offer"
+entity: true
+description: |
+  A specialization of `Offer` in which the `actor` is extending an invitation
+  for the `object` to the `target`.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

@@ -1,0 +1,22 @@
+$schema: ../../vocab-tools/schema.yaml
+name: DidService
+uri: "https://www.w3.org/ns/did#Service"
+entity: true
+description: |
+  Means of communicating or interacting with the DID subject or associated
+  entities via one or more service endpoints. Examples include discovery
+  services, agent services, social networking services, file storage services,
+  and verifiable credential repository services. 
+defaultContext: "https://www.w3.org/ns/did/v1"
+
+properties:
+- pluralName: endpoints
+  singularName: endpoint
+  singularAccessor: true
+  uri: "https://www.w3.org/ns/did#serviceEndpoint"
+  description: |
+    A network address, such as an HTTP URL, at which services operate on behalf
+    of a DID subject.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+  

@@ -1,0 +1,46 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Article
+compactName: Article
+uri: "https://www.w3.org/ns/activitystreams#Article"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: Represents any kind of multi-paragraph written work.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  misskey: "https://misskey-hub.net/ns#"
+  fedibird: "http://fedibird.com/ns#"
+  sensitive: "as:sensitive"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  quoteUrl: "as:quoteUrl"
+  _misskey_quote: "misskey:_misskey_quote"
+  quoteUri: "fedibird:quoteUri"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+
+properties:
+- singularName: quoteUrl
+  functional: true
+  compactName: quoteUrl
+  uri: "https://www.w3.org/ns/activitystreams#quoteUrl"
+  redundantProperties:
+  - compactName: _misskey_quote
+    uri: "https://misskey-hub.net/ns#_misskey_quote"
+  - compactName: quoteUri
+    uri: "http://fedibird.com/ns#quoteUri"
+  description: |
+    The URI of the ActivityStreams object that this object quotes.
+
+    This property sets three JSON-LD properties at once under the hood:
+
+    1. https://www.w3.org/ns/activitystreams#quoteUrl
+    2. https://misskey-hub.net/ns#_misskey_quote
+    3. http://fedibird.com/ns#quoteUri
+
+    When a JSON-LD object is parsed, this property is filled with one of
+    the values of those three properties in order.
+  range:
+  - "fedify:url"

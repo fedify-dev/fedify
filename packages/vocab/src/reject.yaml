@@ -1,0 +1,14 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Reject
+compactName: Reject
+uri: "https://www.w3.org/ns/activitystreams#Reject"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the `actor` is rejecting the `object`.  The `target` and
+  `origin` typically have no defined meaning.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

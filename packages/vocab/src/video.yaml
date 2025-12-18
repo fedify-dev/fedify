@@ -1,0 +1,11 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Video
+compactName: Video
+uri: "https://www.w3.org/ns/activitystreams#Video"
+extends: "https://www.w3.org/ns/activitystreams#Document"
+entity: true
+description: Represents a video document of any kind.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []
