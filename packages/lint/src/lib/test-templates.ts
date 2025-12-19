@@ -160,13 +160,39 @@ const createTestCode = (
  * (following, followers, outbox, liked, featured, featuredTags)
  */
 export const createRequiredDispatcherRuleTests =
-  requiredDispatcherRuleTestsFactory(createDispatcherCode);
+  requiredDispatcherRuleTestsFactory(createDispatcherCode, false);
 export const createKeyRequiredDispatcherRuleTests =
-  requiredDispatcherRuleTestsFactory(createChainedDispatcherCode);
+  requiredDispatcherRuleTestsFactory(createChainedDispatcherCode, true);
 
 function requiredDispatcherRuleTestsFactory(
+  createDispatcherCode: (
+    content: string,
+    dispatcherMethod: string,
+    isBefore?: boolean,
+  ) => string,
+  isKeyRequired: false,
+): (
+  propertyKey: PropertyKey,
+  config: TestConfig,
+) => TestSuite;
+function requiredDispatcherRuleTestsFactory(
   createDispatcherCode: (content: string, dispatcherMethod: string) => string,
-) {
+  isKeyRequired: true,
+): (
+  propertyKey: PropertyKey,
+  config: TestConfig,
+) => TestSuite;
+function requiredDispatcherRuleTestsFactory(
+  createDispatcherCode: (
+    content: string,
+    dispatcherMethod: string,
+    isBefore?: boolean,
+  ) => string,
+  isKeyRequired: boolean,
+): (
+  propertyKey: PropertyKey,
+  config: TestConfig,
+) => TestSuite {
   return function (
     propertyKey: PropertyKey,
     config: TestConfig,
@@ -201,64 +227,65 @@ function requiredDispatcherRuleTestsFactory(
         }),
         true,
       ],
+      ...(isKeyRequired ? {} : {
+        // ✅ Good - dispatcher configured BEFORE
+        "dispatcher before separate with property": [
+          lintTest({
+            code: createDispatcherCode(
+              createTestCode(propertyKey, true),
+              prop.setter,
+              true,
+            ),
+            rule,
+            ruleName,
+          }),
+          true,
+        ],
 
-      // ✅ Good - dispatcher configured BEFORE
-      "dispatcher before separate with property": [
-        lintTest({
-          code: createDispatcherCode(
-            createTestCode(propertyKey, true),
-            prop.setter,
-            true,
-          ),
-          rule,
-          ruleName,
-        }),
-        true,
-      ],
+        // ✅ Good - dispatcher configured AFTER
+        "dispatcher after separate with property": [
+          lintTest({
+            code: createDispatcherCode(
+              createTestCode(propertyKey, true),
+              prop.setter,
+              false,
+            ),
+            rule,
+            ruleName,
+          }),
+          true,
+        ],
 
-      // ✅ Good - dispatcher configured AFTER
-      "dispatcher after separate with property": [
-        lintTest({
-          code: createDispatcherCode(
-            createTestCode(propertyKey, true),
-            prop.setter,
-            false,
-          ),
-          rule,
-          ruleName,
-        }),
-        true,
-      ],
+        // ❌ Bad - dispatcher before, property missing
+        "dispatcher before separate property missing": [
+          lintTest({
+            code: createDispatcherCode(
+              createTestCode(propertyKey, false),
+              prop.setter,
+              true,
+            ),
+            rule,
+            ruleName,
+            expectedError,
+          }),
+          false,
+        ],
 
-      // ❌ Bad - dispatcher before, property missing
-      "dispatcher before separate property missing": [
-        lintTest({
-          code: createDispatcherCode(
-            createTestCode(propertyKey, false),
-            prop.setter,
-            true,
-          ),
-          rule,
-          ruleName,
-          expectedError,
-        }),
-        false,
-      ],
-
-      // ❌ Bad - dispatcher after, property missing
-      "dispatcher after separate property missing": [
-        lintTest({
-          code: createDispatcherCode(
-            createTestCode(propertyKey, false),
-            prop.setter,
-            false,
-          ),
-          rule,
-          ruleName,
-          expectedError,
-        }),
-        false,
-      ],
+        // ❌ Bad - dispatcher after, property missing
+        "dispatcher after separate property missing": [
+          lintTest({
+            code: createDispatcherCode(
+              createTestCode(propertyKey, false),
+              prop.setter,
+              false,
+            ),
+            rule,
+            ruleName,
+            expectedError,
+          }),
+          false,
+        ],
+      }),
     };
   };
 }
