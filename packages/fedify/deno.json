@@ -31,9 +31,7 @@
     "uri-template-router": "npm:uri-template-router@^1.0.0",
     "url-template": "npm:url-template@^3.1.1"
   },
-  "include": [
-    "src/vocab/vocab.ts"
-  ],
+  "include": [],
   "exclude": [
     ".test-report.xml",
     "apidoc/",
@@ -47,15 +45,13 @@
     "src/cfworkers/README.md",
     "src/cfworkers/server.ts",
     "src/cfworkers/server.js",
-    "src/cfworkers/server.js.map",
-    "src/vocab/*.yaml",
-    "!src/vocab/vocab.ts"
+    "src/cfworkers/server.js.map"
   ],
   "publish": {
     "exclude": ["**/*.test.ts", "src/testing/"]
   },
   "tasks": {
-    "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab/vocab.ts && deno cache src/vocab/vocab.ts && deno check src/vocab/vocab.ts",
+    "codegen": "deno task -f @fedify/vocab codegen",
     "cache": {
       "command": "deno cache src/mod.ts",
       "dependencies": [

@@ -37,6 +37,11 @@
     },
     "./package.json": "./package.json"
   },
+  "dependencies": {
+    "@fedify/vocab-tools": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "jsonld": "^9.0.0"
+  },
   "scripts": {
     "build": "tsdown",
     "prepack": "tsdown",

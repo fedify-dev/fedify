@@ -11,9 +11,21 @@
     "email": "hong@minhee.org",
     "url": "https://hongminhee.org/"
   },
-  "imports": {},
+  "imports": {
+    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
+    "fast-check": "npm:fast-check@^3.22.0",
+    "fetch-mock": "npm:fetch-mock@^12.5.2",
+    "jsonld": "npm:jsonld@^9.0.0"
+  },
   "exclude": [
-    "dist",
-    "node_modules"
-  ]
+    "dist/",
+    "node_modules/",
+    "src/*.yaml",
+    "!src/vocab.ts"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab.ts && deno cache src/vocab.ts && deno check src/vocab.ts",
+    "test": "deno test"
+  }
 }
