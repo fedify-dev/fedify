@@ -99,6 +99,7 @@ Here is the list of packages:
 | [@fedify/denokv](/packages/denokv/)       | [JSR][jsr:@fedify/denokv]    |                              | Deno KV integration                     |
 | [@fedify/elysia](/packages/elysia/)       |                              | [npm][npm:@fedify/elysia]    | Elysia integration                      |
 | [@fedify/express](/packages/express/)     | [JSR][jsr:@fedify/express]   | [npm][npm:@fedify/express]   | Express integration                     |
+| [@fedify/fastify](/packages/fastify/)     | [JSR][jsr:@fedify/fastify]   | [npm][npm:@fedify/fastify]   | Fastify integration                     |
 | [@fedify/h3](/packages/h3/)               | [JSR][jsr:@fedify/h3]        | [npm][npm:@fedify/h3]        | H3 integration                          |
 | [@fedify/hono](/packages/hono/)           | [JSR][jsr:@fedify/hono]      | [npm][npm:@fedify/hono]      | Hono integration                        |
 | [@fedify/koa](/packages/koa/)             | [JSR][jsr:@fedify/koa]       | [npm][npm:@fedify/koa]       | Koa integration                         |
@@ -121,6 +122,8 @@ Here is the list of packages:
 [npm:@fedify/elysia]: https://www.npmjs.com/package/@fedify/elysia
 [jsr:@fedify/express]: https://jsr.io/@fedify/express
 [npm:@fedify/express]: https://www.npmjs.com/package/@fedify/express
+[jsr:@fedify/fastify]: https://jsr.io/@fedify/fastify
+[npm:@fedify/fastify]: https://www.npmjs.com/package/@fedify/fastify
 [jsr:@fedify/h3]: https://jsr.io/@fedify/h3
 [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3
 [jsr:@fedify/hono]: https://jsr.io/@fedify/hono

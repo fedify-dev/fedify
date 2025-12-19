@@ -1,8 +1,8 @@
 name: build
-on: [push, pull_request_target]
+on: [push, pull_request]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request_target' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -48,18 +48,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-        cache: true
-        cache-hash: ${{ hashFiles('**/deno.json', '**/pnpm-lock.yaml') }}
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -121,23 +111,9 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
     - run: pnpm install
     - run: pnpm run --recursive test
 
@@ -178,23 +154,9 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
     - uses: oven-sh/setup-bun@v1
       with:
         bun-version: 1.2.22
@@ -204,24 +166,9 @@ jobs:
   test-cfworkers:
     runs-on: ubuntu-latest
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        run_install: true
-        version: 10
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
     - run: pnpm install
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
@@ -229,18 +176,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-        cache: true
-        cache-hash: ${{ hashFiles('**/deno.json', '**/pnpm-lock.yaml') }}
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
     - run: deno task hooks:pre-commit
 
   release-test:
@@ -249,23 +186,9 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: deno task -f @fedify/fedify codegen
@@ -274,35 +197,23 @@ jobs:
     - run: pnpm publish --recursive --dry-run --no-git-checks
 
   publish:
+    if: github.event_name == 'push'
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: write
-      pull-requests: write
     outputs:
       version: ${{ steps.versioning.outputs.version }}
       short_version: ${{ steps.versioning.outputs.short_version }}
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
       with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        version: latest
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+        pnpm-version: latest
     - run: sudo npm install -g npm@latest && npm --version
-    - if: github.event_name == 'push' && github.ref_type == 'branch'
+    - if: github.ref_type == 'branch'
       run: |
         jq \
           --arg build "$GITHUB_RUN_NUMBER" \
@@ -311,19 +222,6 @@ jobs:
           deno.json > deno.json.tmp
         mv deno.json.tmp deno.json
       working-directory: ${{ github.workspace }}/packages/fedify/
-    - if: github.event_name == 'pull_request_target'
-      run: |
-        jq \
-          --arg pr_number "$PR_NUMBER" \
-          --arg build "$GITHUB_RUN_NUMBER" \
-          --arg commit "${PR_SHA::8}" \
-          '.version = .version + "-pr." + $pr_number + "." + $build + "+" + $commit' \
-          deno.json > deno.json.tmp
-        mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/packages/fedify/
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_SHA: ${{ github.event.pull_request.head.sha }}
     - id: versioning
       run: |
         set -ex
@@ -377,13 +275,18 @@ jobs:
     - run: |
         set -ex
         deno task -f @fedify/fedify codegen
-        if [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
-          deno publish --allow-dirty --no-provenance --token "$JSR_TOKEN"
-        else
-          deno publish --allow-dirty
-        fi
-      env:
-        JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
+        max_attempts=5
+        attempt=1
+        until deno publish --allow-dirty; do
+          exit_code=$?
+          if [[ $attempt -ge $max_attempts ]]; then
+            echo "deno publish failed after $max_attempts attempts"
+            exit $exit_code
+          fi
+          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
+          sleep 30
+          ((attempt++))
+        done
     - run: |
         set -ex
         for pkg in fedify-*.tgz; do
@@ -391,13 +294,6 @@ jobs:
             npm publish --logs-dir=. --provenance --access public "$pkg" \
               || grep "Cannot publish over previously published version" *.log
             rm *.log
-          elif [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
-            npm publish \
-              --logs-dir=. \
-              --access public \
-              --tag "pr-$PR_NUMBER" \
-              "$pkg" \
-              || grep "Cannot publish over previously published version" *.log
           else
             npm publish \
               --logs-dir=. \
@@ -408,75 +304,6 @@ jobs:
               || grep "Cannot publish over previously published version" *.log
           fi
         done
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-    - if: github.event_name == 'pull_request_target'
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        pr-number: ${{ github.event.pull_request.number }}
-        comment-tag: publish
-        mode: delete
-    - if: github.event_name == 'pull_request_target'
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        message: |
-          The latest push to this pull request has been published to JSR and npm as a pre-release:
-
-          | Package           | Version                                 | JSR                          | npm                          |
-          | ----------------- | --------------------------------------- | ---------------------------- | ---------------------------- |
-          | @fedify/fedify    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/fedify]    | [npm][npm:@fedify/fedify]    |
-          | @fedify/cli       | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/cli]       | [npm][npm:@fedify/cli]       |
-          | @fedify/amqp      | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/amqp]      | [npm][npm:@fedify/amqp]      |
-          | @fedify/cfworkers | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/cfworkers] | [npm][npm:@fedify/cfworkers] |
-          | @fedify/denokv    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/denokv]    |                              |
-          | @fedify/elysia    | ${{ steps.versioning.outputs.version }} |                              | [npm][npm:@fedify/elysia]    |
-          | @fedify/express   | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/express]   | [npm][npm:@fedify/express]   |
-          | @fedify/h3        | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/h3]        | [npm][npm:@fedify/h3]        |
-          | @fedify/hono      | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/hono]      | [npm][npm:@fedify/hono]      |
-          | @fedify/koa       | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/koa]       | [npm][npm:@fedify/koa]       |
-          | @fedify/nestjs    | ${{ steps.versioning.outputs.version }} |                              | [npm][npm:@fedify/nestjs]    |
-          | @fedify/next      | ${{ steps.versioning.outputs.version }} |                              | [npm][npm:@fedify/next]      |
-          | @fedify/postgres  | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/postgres]  | [npm][npm:@fedify/postgres]  |
-          | @fedify/redis     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/redis]     | [npm][npm:@fedify/redis]     |
-          | @fedify/relay     | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/relay]     | [npm][npm:@fedify/relay]     |
-          | @fedify/sqlite    | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/sqlite]    | [npm][npm:@fedify/sqlite]    |
-          | @fedify/sveltekit | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/sveltekit] | [npm][npm:@fedify/sveltekit] |
-          | @fedify/testing   | ${{ steps.versioning.outputs.version }} | [JSR][jsr:@fedify/testing]   | [npm][npm:@fedify/testing]   |
-
-          [jsr:@fedify/fedify]: https://jsr.io/@fedify/fedify@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/fedify]: https://www.npmjs.com/package/@fedify/fedify/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/cli]: https://jsr.io/@fedify/cli@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/amqp]: https://jsr.io/@fedify/amqp@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/cfworkers]: https://jsr.io/@fedify/cfworkers@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/cfworkers]: https://www.npmjs.com/package/@fedify/cfworkers/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/denokv]: https://jsr.io/@fedify/denokv@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/elysia]: https://www.npmjs.com/package/@fedify/elysia/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/express]: https://jsr.io/@fedify/express@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/express]: https://www.npmjs.com/package/@fedify/express/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/h3]: https://jsr.io/@fedify/h3@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/hono]: https://jsr.io/@fedify/hono@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/hono]: https://www.npmjs.com/package/@fedify/hono/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/koa]: https://jsr.io/@fedify/koa@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/koa]: https://www.npmjs.com/package/@fedify/koa/v/${{ steps.versioning.outputs.short_version }}
-          [npm:@fedify/nestjs]: https://www.npmjs.com/package/@fedify/nestjs/v/${{ steps.versioning.outputs.short_version }}
-          [npm:@fedify/next]: https://www.npmjs.com/package/@fedify/next/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/postgres]: https://jsr.io/@fedify/postgres@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/postgres]: https://www.npmjs.com/package/@fedify/postgres/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/redis]: https://jsr.io/@fedify/redis@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/relay]: https://jsr.io/@fedify/relay@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/relay]: https://www.npmjs.com/package/@fedify/relay/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/sqlite]: https://jsr.io/@fedify/sqlite@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/sqlite]: https://www.npmjs.com/package/@fedify/sqlite/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/sveltekit]: https://jsr.io/@fedify/sveltekit@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/sveltekit]: https://www.npmjs.com/package/@fedify/sveltekit/v/${{ steps.versioning.outputs.short_version }}
-          [jsr:@fedify/testing]: https://jsr.io/@fedify/testing@${{ steps.versioning.outputs.version }}
-          [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing/v/${{ steps.versioning.outputs.short_version }}
-        pr-number: ${{ github.event.pull_request.number }}
-        comment-tag: publish
 
   publish-docs:
     needs: [publish]
@@ -485,33 +312,18 @@ jobs:
       id-token: write
       pages: write
       deployments: write
-      pull-requests: write
       statuses: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - if: github.event_name == 'push'
-      uses: actions/checkout@v4
-    - if: github.event_name == 'pull_request_target'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.pull_request.head.repo.full_name }}
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: 2.5.6  # Keep in sync with mise.toml
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: pnpm
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
     - run: |
         set -ex
         pnpm install
-        if [[ "$GITHUB_EVENT_NAME" = "push" && "$GITHUB_REF_TYPE" = "tag" ]]; then
+        if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
           EXTRA_NAV_TEXT=Unstable \
           EXTRA_NAV_LINK="$UNSTABLE_DOCS_URL" \
           SITEMAP_HOSTNAME="$STABLE_DOCS_URL" \
@@ -534,9 +346,9 @@ jobs:
       with:
         path: docs/.vitepress/dist
     - id: deployment
-      if: github.event_name == 'push' && github.ref_type == 'tag'
+      if: github.ref_type == 'tag'
       uses: actions/deploy-pages@v4
-    - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    - if: github.ref == 'refs/heads/main'
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -547,27 +359,5 @@ jobs:
           --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
         packageManager: pnpm
         workingDirectory: ${{ github.workspace }}/docs/
-    - if: github.event_name == 'pull_request_target'
-      id: wrangler
-      uses: cloudflare/wrangler-action@v3
-      with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        gitHubToken: ${{ github.token }}
-        command: >-
-          pages deploy .vitepress/dist
-          --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
-          --branch=pr-${{ github.event.pull_request.number }}
-        packageManager: pnpm
-        workingDirectory: ${{ github.workspace }}/docs/
-    - if: github.event_name == 'pull_request_target'
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        message: |
-          The docs for this pull request have been published:
-
-          <${{ steps.wrangler.outputs.deployment-url }}>
-        pr-number: ${{ github.event.pull_request.number }}
-        comment-tag: docs
 
 # cSpell: ignore submark softprops npmjs deployctl nwtgck thollander elif

@@ -1,0 +1,214 @@
+name: Publish PR pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to publish'
+        required: true
+        type: number
+      publish_packages:
+        description: 'Publish packages to JSR/npm'
+        type: boolean
+        default: true
+      publish_docs:
+        description: 'Publish docs preview to Cloudflare'
+        type: boolean
+        default: true
+
+jobs:
+  get-pr-info:
+    runs-on: ubuntu-latest
+    outputs:
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      head_repo: ${{ steps.pr.outputs.head_repo }}
+    steps:
+    - name: Get PR info
+      id: pr
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: ${{ inputs.pr_number }}
+          });
+          if (pr.data.state !== 'open') {
+            core.setFailed(`PR #${{ inputs.pr_number }} is not open`);
+            return;
+          }
+          core.setOutput('head_sha', pr.data.head.sha);
+          core.setOutput('head_repo', pr.data.head.repo.full_name);
+
+  publish-packages:
+    if: inputs.publish_packages
+    needs: [get-pr-info]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    outputs:
+      version: ${{ steps.versioning.outputs.version }}
+      short_version: ${{ steps.versioning.outputs.short_version }}
+      packages_table: ${{ steps.packages-table.outputs.table }}
+      packages_links: ${{ steps.packages-table.outputs.links }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ needs.get-pr-info.outputs.head_repo }}
+        ref: ${{ needs.get-pr-info.outputs.head_sha }}
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
+      with:
+        pnpm-version: latest
+    - run: sudo npm install -g npm@latest && npm --version
+    - name: Generate PR version
+      run: |
+        jq \
+          --arg pr_number "${{ inputs.pr_number }}" \
+          --arg build "$GITHUB_RUN_NUMBER" \
+          --arg commit "${HEAD_SHA::8}" \
+          '.version = .version + "-pr." + $pr_number + "." + $build + "+" + $commit' \
+          deno.json > deno.json.tmp
+        mv deno.json.tmp deno.json
+      working-directory: ${{ github.workspace }}/packages/fedify/
+      env:
+        HEAD_SHA: ${{ needs.get-pr-info.outputs.head_sha }}
+    - id: versioning
+      run: |
+        set -ex
+        echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
+        echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
+      working-directory: ${{ github.workspace }}/packages/fedify/
+    - run: deno task check-versions --fix
+    # Don't know why, but the .gitignore list is not overridden by include list
+    # in deno.json:
+    - run: rm src/vocab/.gitignore
+      working-directory: ${{ github.workspace }}/packages/fedify/
+    - run: |
+        pnpm install
+        pnpm pack --recursive --filter='!./examples/**'
+        rm fedify-cli-*.tgz
+    - name: Publish to JSR
+      run: |
+        set -ex
+        deno task -f @fedify/fedify codegen
+        max_attempts=5
+        attempt=1
+        until deno publish --allow-dirty; do
+          exit_code=$?
+          if [[ $attempt -ge $max_attempts ]]; then
+            echo "deno publish failed after $max_attempts attempts"
+            exit $exit_code
+          fi
+          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
+          sleep 30
+          ((attempt++))
+        done
+    - name: Publish to npm
+      run: |
+        set -ex
+        for pkg in fedify-*.tgz; do
+          npm publish \
+            --logs-dir=. \
+            --provenance \
+            --access public \
+            --tag "pr-${{ inputs.pr_number }}" \
+            "$pkg" \
+            || grep "Cannot publish over previously published version" *.log
+        done
+    - name: Generate packages table
+      id: packages-table
+      run: |
+        set -e
+        VERSION="${{ steps.versioning.outputs.version }}"
+        SHORT_VERSION="${{ steps.versioning.outputs.short_version }}"
+
+        {
+          echo 'table<<EOFTABLE'
+          deno run -A scripts/generate_packages_table.ts --format=table "$VERSION" "$SHORT_VERSION"
+          echo 'EOFTABLE'
+        } >> $GITHUB_OUTPUT
+
+        {
+          echo 'links<<EOFLINKS'
+          deno run -A scripts/generate_packages_table.ts --format=links "$VERSION" "$SHORT_VERSION"
+          echo 'EOFLINKS'
+        } >> $GITHUB_OUTPUT
+
+  publish-docs:
+    if: inputs.publish_docs
+    needs: [get-pr-info]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      deployment_url: ${{ steps.wrangler.outputs.deployment-url }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ needs.get-pr-info.outputs.head_repo }}
+        ref: ${{ needs.get-pr-info.outputs.head_sha }}
+    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-node-and-pnpm
+    - run: |
+        set -ex
+        pnpm install
+        EXTRA_NAV_TEXT=Stable \
+        EXTRA_NAV_LINK="$STABLE_DOCS_URL" \
+        SITEMAP_HOSTNAME="$UNSTABLE_DOCS_URL" \
+        JSR_REF_VERSION=unstable \
+        pnpm run build
+      env:
+        PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
+        STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
+        UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}
+      working-directory: ${{ github.workspace }}/docs/
+    - id: wrangler
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        gitHubToken: ${{ github.token }}
+        command: >-
+          pages deploy .vitepress/dist
+          --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
+          --branch=pr-${{ inputs.pr_number }}
+        packageManager: pnpm
+        workingDirectory: ${{ github.workspace }}/docs/
+
+  comment-on-pr:
+    needs: [get-pr-info, publish-packages, publish-docs]
+    if: always() && needs.get-pr-info.result == 'success' && (needs.publish-packages.result == 'success' || needs.publish-docs.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+    - name: Delete old comment
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        pr-number: ${{ inputs.pr_number }}
+        comment-tag: publish
+        mode: delete
+    - name: Post comment
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        pr-number: ${{ inputs.pr_number }}
+        comment-tag: publish
+        message: |
+          Pre-release has been published for this pull request:
+
+          ${{ needs.publish-packages.result == 'success' && format('## Packages
+
+          {0}
+
+          {1}
+
+          ', needs.publish-packages.outputs.packages_table, needs.publish-packages.outputs.packages_links) || '' }}${{ needs.publish-docs.result == 'success' && format('## Documentation
+
+          The docs for this pull request have been published:
+
+          <{0}>', needs.publish-docs.outputs.deployment_url) || '' }}
+
+# cSpell: ignore npmjs thollander

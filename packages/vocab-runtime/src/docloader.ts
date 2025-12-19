@@ -1,4 +1,6 @@
 import { getLogger } from "@logtape/logtape";
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import metadata from "../deno.json" with { type: "json" };
 import preloadedContexts from "./contexts.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
@@ -266,6 +268,9 @@ export function getDocumentLoader(
   { allowPrivateAddress, skipPreloadedContexts, userAgent }:
     GetDocumentLoaderOptions = {},
 ): DocumentLoader {
+  const tracerProvider = trace.getTracerProvider();
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+
   async function load(
     url: string,
     options?: DocumentLoaderOptions,
@@ -289,23 +294,56 @@ export function getDocumentLoader(
         throw error;
       }
     }
-    const request = createActivityPubRequest(url, { userAgent });
-    logRequest(logger, request);
-    const response = await fetch(request, {
-      // Since Bun has a bug that ignores the `Request.redirect` option,
-      // to work around it we specify `redirect: "manual"` here too:
-      // https://github.com/oven-sh/bun/issues/10754
-      redirect: "manual",
-      signal: options?.signal,
-    });
-    // Follow redirects manually to get the final URL:
-    if (
-      response.status >= 300 && response.status < 400 &&
-      response.headers.has("Location")
-    ) {
-      return load(response.headers.get("Location")!, options);
-    }
-    return getRemoteDocument(url, response, load);
+
+    return await tracer.startActiveSpan(
+      "activitypub.fetch_document",
+      {
+        kind: SpanKind.CLIENT,
+        attributes: {
+          "url.full": url,
+        },
+      },
+      async (span) => {
+        try {
+          const request = createActivityPubRequest(url, { userAgent });
+          logRequest(logger, request);
+          const response = await fetch(request, {
+            // Since Bun has a bug that ignores the `Request.redirect` option,
+            // to work around it we specify `redirect: "manual"` here too:
+            // https://github.com/oven-sh/bun/issues/10754
+            redirect: "manual",
+            signal: options?.signal,
+          });
+          span.setAttribute("http.response.status_code", response.status);
+
+          // Follow redirects manually to get the final URL:
+          if (
+            response.status >= 300 && response.status < 400 &&
+            response.headers.has("Location")
+          ) {
+            const redirectUrl = response.headers.get("Location")!;
+            span.setAttribute("http.redirect.url", redirectUrl);
+            return await load(redirectUrl, options);
+          }
+
+          const result = await getRemoteDocument(url, response, load);
+          span.setAttribute("docloader.document_url", result.documentUrl);
+          if (result.contextUrl != null) {
+            span.setAttribute("docloader.context_url", result.contextUrl);
+          }
+          return result;
+        } catch (error) {
+          span.recordException(error as Error);
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          throw error;
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
   return load;
 }
