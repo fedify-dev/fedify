@@ -7,7 +7,7 @@ async function codegen() {
   if (!scriptsDir) {
     throw new Error("Could not determine schema directory");
   }
-  const schemaDir = join(dirname(scriptsDir), "src", "vocab");
+  const schemaDir = join(dirname(scriptsDir), "src");
   const generatedPath = join(schemaDir, `vocab-${crypto.randomUUID()}.ts`);
   const realPath = join(schemaDir, "vocab.ts");
 

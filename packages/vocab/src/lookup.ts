@@ -7,7 +7,7 @@ import {
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { delay } from "es-toolkit";
-import metadata from "../../deno.json" with { type: "json" };
+import metadata from "../deno.json" with { type: "json" };
 import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { toAcctUrl } from "./handle.ts";
 import { getTypeId } from "./type.ts";
