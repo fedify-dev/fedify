@@ -265,6 +265,10 @@ jobs:
           fedify-*.tgz
           packages/cli/fedify-cli-*.tar.xz
           packages/cli/fedify-cli-*.zip
+    - uses: actions/upload-artifact@v4
+      with:
+        name: npm-packages
+        path: fedify-*.tgz
     - if: github.event_name == 'push' && github.ref_type == 'tag'
       uses: softprops/action-gh-release@v1
       with:
@@ -290,23 +294,13 @@ jobs:
           sleep 30
           ((attempt++))
         done
-    - run: |
-        set -ex
-        for pkg in fedify-*.tgz; do
-          if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
-            npm publish --logs-dir=. --provenance --access public "$pkg" \
-              || grep "Cannot publish over previously published version" *.log
-            rm *.log
-          else
-            npm publish \
-              --logs-dir=. \
-              --provenance \
-              --access public \
-              --tag dev \
-              "$pkg" \
-              || grep "Cannot publish over previously published version" *.log
-          fi
-        done
+
+  publish-npm:
+    if: github.event_name == 'push'
+    needs: [publish]
+    uses: ./.github/workflows/npm-publish.yaml
+    with:
+      tag: ${{ github.ref_type == 'tag' && 'latest' || 'dev' }}
 
   publish-examples-blog:
     if: github.event_name == 'push'
