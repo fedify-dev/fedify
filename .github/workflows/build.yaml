@@ -1,363 +1,91 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# NOTE: This workflow is named "build" to maintain compatibility with legacy
+# maintenance branches (1.9-maintenance, 1.8-maintenance, etc.) which have
+# their own build.yaml that directly publishes to npm.
+#
+# IMPORTANT: This workflow MUST be the sole entry point for npm publishing
+# to work with npm's trusted publishing (OIDC). npm validates the workflow
+# that is directly triggered, not reusable workflows called via workflow_call.
+# See: https://docs.npmjs.com/trusted-publishers/
+#
+# The workflow is triggered in two ways:
+# 1. workflow_run: Automatically after main.yaml completes (for regular releases)
+# 2. workflow_dispatch: Manually triggered (for PR pre-releases)
 name: build
-on: [push, pull_request]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
-  cancel-in-progress: true
+on:
+  workflow_run:
+    workflows: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of the workflow that created the npm-packages artifact'
+        required: true
+        type: string
+      tag:
+        description: 'npm dist-tag to use (e.g., "latest", "dev", "pr-123")'
+        required: true
+        type: string
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
-    services:
-      rabbitmq:
-        image: rabbitmq
-        env:
-          RABBITMQ_DEFAULT_USER: guest
-          RABBITMQ_DEFAULT_PASS: guest
-        ports:
-        - 5672:5672
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 5432:5432
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 6379:6379
-    env:
-      AMQP_URL: amqp://guest:guest@localhost:5672
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
-      REDIS_URL: redis://localhost:6379
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - run: deno task test --coverage=.cov --junit-path=.test-report.xml
-      env:
-        RUST_BACKTRACE: ${{ runner.debug }}
-        LOG: ${{ runner.debug && 'always' || '' }}
-    - uses: dorny/test-reporter@v2
-      if: success() || failure()
-      with:
-        name: "Test Results (${{ matrix.os }})"
-        path: .test-report.xml
-        reporter: jest-junit
-      continue-on-error: true
-    - if: '!cancelled()'
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: .test-report.xml
-    - run: deno coverage --lcov .cov > .cov.lcov
-      continue-on-error: true
-    - uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: .cov.lcov
-      continue-on-error: true
-
-  test-node:
-    runs-on: ubuntu-latest
-    services:
-      rabbitmq:
-        image: rabbitmq
-        env:
-          RABBITMQ_DEFAULT_USER: guest
-          RABBITMQ_DEFAULT_PASS: guest
-        ports:
-        - 5672:5672
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 5432:5432
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 6379:6379
-    env:
-      AMQP_URL: amqp://guest:guest@localhost:5672
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
-      REDIS_URL: redis://localhost:6379
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: pnpm install
-    - run: pnpm run --recursive test
-
-  test-bun:
-    runs-on: ubuntu-latest
-    services:
-      rabbitmq:
-        image: rabbitmq
-        env:
-          RABBITMQ_DEFAULT_USER: guest
-          RABBITMQ_DEFAULT_PASS: guest
-        ports:
-        - 5672:5672
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 5432:5432
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-        - 6379:6379
-    env:
-      AMQP_URL: amqp://guest:guest@localhost:5672
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
-      REDIS_URL: redis://localhost:6379
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - uses: oven-sh/setup-bun@v1
-      with:
-        bun-version: 1.2.22
-    - run: pnpm install
-    - run: pnpm run --recursive test:bun
-
-  test-cfworkers:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: pnpm install
-    - run: deno task test:cfworkers
-      working-directory: ${{ github.workspace }}/packages/fedify/
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - run: deno task hooks:pre-commit
-
-  release-test:
+  npm-publish:
+    # For workflow_run: only run if the triggering workflow succeeded and was a push event
+    # For workflow_dispatch: always run
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: deno task -f @fedify/fedify codegen
-    - run: deno publish --dry-run
-    - run: pnpm install
-    - run: pnpm publish --recursive --dry-run --no-git-checks
-
-  publish:
-    if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: write
-    outputs:
-      version: ${{ steps.versioning.outputs.version }}
-      short_version: ${{ steps.versioning.outputs.short_version }}
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-      with:
-        pnpm-version: latest
-    - run: sudo npm install -g npm@latest && npm --version
-    - if: github.ref_type == 'branch'
+    - name: Determine run ID and tag
+      id: config
       run: |
-        jq \
-          --arg build "$GITHUB_RUN_NUMBER" \
-          --arg commit "${GITHUB_SHA::8}" \
-          '.version = .version + "-dev." + $build + "+" + $commit' \
-          deno.json > deno.json.tmp
-        mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - id: versioning
-      run: |
-        set -ex
-        echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
-        echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: deno task check-versions --fix
-    - if: github.ref_type == 'tag'
-      run: |
-        set -ex
-        [[ "$(jq -r .version deno.json)" = "$GITHUB_REF_NAME" ]]
-        ! grep -i "to be released" CHANGES.md
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    # Don't know why, but the .gitignore list is not overridden by include list
-    # in deno.json:
-    - run: rm src/vocab/.gitignore
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: |
-        pnpm install
-        pnpm pack --recursive --filter='!./examples/**'
-    - run: deno task pack
-      working-directory: ${{ github.workspace }}/packages/cli/
-    - id: extract-changelog
-      uses: dahlia/submark@5a5ff0a58382fb812616a5801402f5aef00f90ce
-      with:
-        input-file: CHANGES.md
-        heading-level: 2
-        heading-title-text: version ${{ github.ref_name }}
-        ignore-case: true
-        omit-heading: true
-    - run: 'cat "$CHANGES_FILE"'
-      env:
-        CHANGES_FILE: ${{ steps.extract-changelog.outputs.output-file }}
-    - uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: |
-          fedify-*.tgz
-          packages/cli/fedify-cli-*.tar.xz
-          packages/cli/fedify-cli-*.zip
-    - if: github.event_name == 'push' && github.ref_type == 'tag'
-      uses: softprops/action-gh-release@v1
-      with:
-        body_path: ${{ steps.extract-changelog.outputs.output-file }}
-        name: Fedify ${{ github.ref_name }}
-        files: |
-          fedify-*.tgz
-          packages/cli/fedify-cli-*.tar.xz
-          packages/cli/fedify-cli-*.zip
-        generate_release_notes: false
-    - run: |
-        set -ex
-        deno task -f @fedify/fedify codegen
-        max_attempts=5
-        attempt=1
-        until deno publish --allow-dirty; do
-          exit_code=$?
-          if [[ $attempt -ge $max_attempts ]]; then
-            echo "deno publish failed after $max_attempts attempts"
-            exit $exit_code
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          # Determine tag based on ref type from the triggering workflow
+          if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]] || \
+             [[ -n "$(echo '${{ github.event.workflow_run.head_branch }}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+')" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=dev" >> $GITHUB_OUTPUT
           fi
-          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
-          sleep 30
-          ((attempt++))
-        done
-    - run: |
+        fi
+    - uses: actions/download-artifact@v4
+      with:
+        name: npm-packages
+        run-id: ${{ steps.config.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - run: ls -la
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        registry-url: https://registry.npmjs.org
+    - run: sudo npm install -g npm@latest && npm --version
+    - name: Publish packages
+      run: |
         set -ex
+        TAG="${{ steps.config.outputs.tag }}"
         for pkg in fedify-*.tgz; do
-          if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
+          if [[ "$TAG" = "latest" ]]; then
             npm publish --logs-dir=. --provenance --access public "$pkg" \
               || grep "Cannot publish over previously published version" *.log
-            rm *.log
           else
             npm publish \
               --logs-dir=. \
               --provenance \
               --access public \
-              --tag dev \
+              --tag "$TAG" \
               "$pkg" \
               || grep "Cannot publish over previously published version" *.log
           fi
+          rm -f *.log
         done
-
-  publish-docs:
-    needs: [publish]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      pages: write
-      deployments: write
-      statuses: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: |
-        set -ex
-        pnpm install
-        if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
-          EXTRA_NAV_TEXT=Unstable \
-          EXTRA_NAV_LINK="$UNSTABLE_DOCS_URL" \
-          SITEMAP_HOSTNAME="$STABLE_DOCS_URL" \
-          JSR_REF_VERSION=stable \
-          pnpm run build
-        else
-          EXTRA_NAV_TEXT=Stable \
-          EXTRA_NAV_LINK="$STABLE_DOCS_URL" \
-          SITEMAP_HOSTNAME="$UNSTABLE_DOCS_URL" \
-          JSR_REF_VERSION=unstable \
-          pnpm run build
-        fi
-      env:
-        SHORT_VERSION: ${{ needs.publish.outputs.short_version }}
-        PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
-        STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
-        UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}
-      working-directory: ${{ github.workspace }}/docs/
-    - uses: actions/upload-pages-artifact@v3
-      with:
-        path: docs/.vitepress/dist
-    - id: deployment
-      if: github.ref_type == 'tag'
-      uses: actions/deploy-pages@v4
-    - if: github.ref == 'refs/heads/main'
-      uses: cloudflare/wrangler-action@v3
-      with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        gitHubToken: ${{ github.token }}
-        command: >-
-          pages deploy .vitepress/dist
-          --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
-        packageManager: pnpm
-        workingDirectory: ${{ github.workspace }}/docs/
-
-# cSpell: ignore submark softprops npmjs deployctl nwtgck thollander elif
