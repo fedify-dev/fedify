@@ -1,4 +1,11 @@
-name: build
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# Main CI workflow for testing, linting, and publishing to JSR.
+# npm publishing is handled separately by build.yaml, which is triggered
+# automatically via workflow_run after this workflow completes successfully.
+# This separation is required for npm's trusted publishing (OIDC) to work
+# correctly. See build.yaml for more details.
+name: main
 on: [push, pull_request]
 
 concurrency:
@@ -295,12 +302,8 @@ jobs:
           ((attempt++))
         done
 
-  publish-npm:
-    if: github.event_name == 'push'
-    needs: [publish]
-    uses: ./.github/workflows/build.yaml
-    with:
-      tag: ${{ github.ref_type == 'tag' && 'latest' || 'dev' }}
+  # NOTE: npm publishing is handled by build.yaml via workflow_run trigger.
+  # Do not add npm publish steps here - it will break trusted publishing.
 
   publish-examples-blog:
     if: github.event_name == 'push'

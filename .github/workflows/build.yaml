@@ -1,28 +1,68 @@
-name: Publish to npm (reusable)
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# NOTE: This workflow is named "build" to maintain compatibility with legacy
+# maintenance branches (1.9-maintenance, 1.8-maintenance, etc.) which have
+# their own build.yaml that directly publishes to npm.
+#
+# IMPORTANT: This workflow MUST be the sole entry point for npm publishing
+# to work with npm's trusted publishing (OIDC). npm validates the workflow
+# that is directly triggered, not reusable workflows called via workflow_call.
+# See: https://docs.npmjs.com/trusted-publishers/
+#
+# The workflow is triggered in two ways:
+# 1. workflow_run: Automatically after main.yaml completes (for regular releases)
+# 2. workflow_dispatch: Manually triggered (for PR pre-releases)
+name: build
 
 on:
-  workflow_call:
+  workflow_run:
+    workflows: [main]
+    types: [completed]
+  workflow_dispatch:
     inputs:
+      run_id:
+        description: 'Run ID of the workflow that created the npm-packages artifact'
+        required: true
+        type: string
       tag:
         description: 'npm dist-tag to use (e.g., "latest", "dev", "pr-123")'
         required: true
         type: string
-      package_pattern:
-        description: 'Glob pattern for package tarballs to publish'
-        required: false
-        type: string
-        default: 'fedify-*.tgz'
 
 jobs:
   npm-publish:
+    # For workflow_run: only run if the triggering workflow succeeded and was a push event
+    # For workflow_dispatch: always run
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
+    - name: Determine run ID and tag
+      id: config
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          # Determine tag based on ref type from the triggering workflow
+          if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]] || \
+             [[ -n "$(echo '${{ github.event.workflow_run.head_branch }}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+')" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=dev" >> $GITHUB_OUTPUT
+          fi
+        fi
     - uses: actions/download-artifact@v4
       with:
         name: npm-packages
+        run-id: ${{ steps.config.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
     - run: ls -la
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -33,8 +73,9 @@ jobs:
     - name: Publish packages
       run: |
         set -ex
-        for pkg in ${{ inputs.package_pattern }}; do
-          if [[ "${{ inputs.tag }}" = "latest" ]]; then
+        TAG="${{ steps.config.outputs.tag }}"
+        for pkg in fedify-*.tgz; do
+          if [[ "$TAG" = "latest" ]]; then
             npm publish --logs-dir=. --provenance --access public "$pkg" \
               || grep "Cannot publish over previously published version" *.log
           else
@@ -42,7 +83,7 @@ jobs:
               --logs-dir=. \
               --provenance \
               --access public \
-              --tag "${{ inputs.tag }}" \
+              --tag "$TAG" \
               "$pkg" \
               || grep "Cannot publish over previously published version" *.log
           fi

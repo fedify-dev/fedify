@@ -129,12 +129,86 @@ jobs:
           echo 'EOFLINKS'
         } >> $GITHUB_OUTPUT
 
+  # Trigger build.yaml via workflow_dispatch to publish to npm.
+  # This is required because npm's trusted publishing (OIDC) validates
+  # the directly triggered workflow, not reusable workflows called via
+  # workflow_call. By triggering build.yaml directly, npm sees build.yaml
+  # as the entry point and validates against it.
   publish-npm:
     if: inputs.publish_packages
     needs: [publish-packages]
-    uses: ./.github/workflows/build.yaml
-    with:
-      tag: pr-${{ inputs.pr_number }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger build.yaml workflow
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'build.yaml',
+            ref: 'main',
+            inputs: {
+              run_id: '${{ github.run_id }}',
+              tag: 'pr-${{ inputs.pr_number }}'
+            }
+          });
+          console.log('Triggered build.yaml workflow with run_id=${{ github.run_id }}, tag=pr-${{ inputs.pr_number }}');
+    - name: Wait for npm publish to complete
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Wait a bit for the workflow to start
+          await new Promise(resolve => setTimeout(resolve, 10000));
+
+          // Poll for the triggered workflow run
+          const maxAttempts = 30;
+          const pollInterval = 20000; // 20 seconds
+
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build.yaml',
+              event: 'workflow_dispatch',
+              per_page: 5
+            });
+
+            // Find the run that was triggered by this workflow
+            const matchingRun = runs.data.workflow_runs.find(run => {
+              // Check if it's recent (within last 5 minutes)
+              const runTime = new Date(run.created_at);
+              const now = new Date();
+              const diffMinutes = (now - runTime) / 1000 / 60;
+              return diffMinutes < 5;
+            });
+
+            if (matchingRun) {
+              console.log(`Found workflow run: ${matchingRun.html_url}`);
+
+              if (matchingRun.status === 'completed') {
+                if (matchingRun.conclusion === 'success') {
+                  console.log('npm publish completed successfully');
+                  return;
+                } else {
+                  core.setFailed(`npm publish failed with conclusion: ${matchingRun.conclusion}`);
+                  return;
+                }
+              }
+
+              console.log(`Attempt ${attempt}/${maxAttempts}: Workflow status is ${matchingRun.status}, waiting...`);
+            } else {
+              console.log(`Attempt ${attempt}/${maxAttempts}: Workflow run not found yet, waiting...`);
+            }
+
+            if (attempt < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+          }
+
+          core.setFailed('Timed out waiting for npm publish workflow to complete');
 
   publish-docs:
     if: inputs.publish_docs
