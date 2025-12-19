@@ -1,3 +1,4 @@
+import { CryptographicKey } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
@@ -20,7 +21,6 @@ import {
   Item,
 } from "structured-field-values";
 import metadata from "../../deno.json" with { type: "json" };
-import { CryptographicKey } from "../vocab/vocab.ts";
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
 
 /**

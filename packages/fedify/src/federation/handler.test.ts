@@ -3,6 +3,13 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import {
+  type Activity,
+  Create,
+  Note,
+  type Object,
+  Person,
+} from "@fedify/vocab";
 import { assert, assertEquals } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import {
@@ -14,13 +21,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import {
-  type Activity,
-  Create,
-  Note,
-  type Object,
-  Person,
-} from "../vocab/vocab.ts";
+import { createTestTracerProvider } from "../testing/otel.ts";
 import type {
   ActorDispatcher,
   CollectionCounter,

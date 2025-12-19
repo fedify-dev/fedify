@@ -47,5 +47,4 @@ export * from "./federation/mod.ts";
 export * from "./nodeinfo/mod.ts";
 export * from "./sig/mod.ts";
 export * from "./utils/mod.ts";
-export * from "./vocab/mod.ts";
 export { lookupWebFinger, type ResourceDescriptor } from "./webfinger/mod.ts";

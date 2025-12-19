@@ -10,7 +10,6 @@
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
     "./testing": "./src/testing/mod.ts",
-    "./vocab": "./src/vocab/mod.ts",
     "./utils": "./src/utils/mod.ts",
     "./webfinger": "./src/webfinger/mod.ts"
   },
@@ -104,6 +103,7 @@
       "command": "cd ../vocab-tools && pnpm build"
     },
     "pnpm:build-vocab": {
+      "command": "cd ../vocab && pnpm build",
       "dependencies": [
         "pnpm:build-vocab-runtime",
         "pnpm:build-vocab-tools"

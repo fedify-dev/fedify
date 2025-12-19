@@ -1,3 +1,4 @@
+import { Link as LinkObject } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import type { Span, Tracer } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode } from "@opentelemetry/api";
@@ -9,7 +10,6 @@ import type {
   WebFingerLinksDispatcher,
 } from "../federation/callback.ts";
 import type { RequestContext } from "../federation/context.ts";
-import { Link as LinkObject } from "../vocab/mod.ts";
 import type { Link, ResourceDescriptor } from "./jrd.ts";
 
 const logger = getLogger(["fedify", "webfinger", "server"]);
