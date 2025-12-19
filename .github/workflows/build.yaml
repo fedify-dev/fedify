@@ -9,15 +9,12 @@
 # that is directly triggered, not reusable workflows called via workflow_call.
 # See: https://docs.npmjs.com/trusted-publishers/
 #
-# The workflow is triggered in two ways:
-# 1. workflow_run: Automatically after main.yaml completes (for regular releases)
-# 2. workflow_dispatch: Manually triggered (for PR pre-releases)
+# This workflow is triggered via workflow_dispatch from:
+# 1. main.yaml's publish-npm job (for regular releases)
+# 2. publish-pr.yaml (for PR pre-releases)
 name: build
 
 on:
-  workflow_run:
-    workflows: [main]
-    types: [completed]
   workflow_dispatch:
     inputs:
       run_id:
@@ -31,37 +28,15 @@ on:
 
 jobs:
   npm-publish:
-    # For workflow_run: only run if the triggering workflow succeeded and was a push event
-    # For workflow_dispatch: always run
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-    - name: Determine run ID and tag
-      id: config
-      run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
-          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-          # Determine tag based on ref type from the triggering workflow
-          if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]] || \
-             [[ -n "$(echo '${{ github.event.workflow_run.head_branch }}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+')" ]]; then
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          else
-            echo "tag=dev" >> $GITHUB_OUTPUT
-          fi
-        fi
     - uses: actions/download-artifact@v4
       with:
         name: npm-packages
-        run-id: ${{ steps.config.outputs.run_id }}
+        run-id: ${{ inputs.run_id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - run: ls -la
     - name: Setup Node.js
@@ -73,7 +48,7 @@ jobs:
     - name: Publish packages
       run: |
         set -ex
-        TAG="${{ steps.config.outputs.tag }}"
+        TAG="${{ inputs.tag }}"
         for pkg in fedify-*.tgz; do
           if [[ "$TAG" = "latest" ]]; then
             npm publish --logs-dir=. --provenance --access public "$pkg" \
