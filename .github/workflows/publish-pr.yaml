@@ -90,6 +90,10 @@ jobs:
         pnpm install
         pnpm pack --recursive --filter='!./examples/**'
         rm fedify-cli-*.tgz
+    - uses: actions/upload-artifact@v4
+      with:
+        name: npm-packages
+        path: fedify-*.tgz
     - name: Publish to JSR
       run: |
         set -ex
@@ -105,18 +109,6 @@ jobs:
           echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
           sleep 30
           ((attempt++))
-        done
-    - name: Publish to npm
-      run: |
-        set -ex
-        for pkg in fedify-*.tgz; do
-          npm publish \
-            --logs-dir=. \
-            --provenance \
-            --access public \
-            --tag "pr-${{ inputs.pr_number }}" \
-            "$pkg" \
-            || grep "Cannot publish over previously published version" *.log
         done
     - name: Generate packages table
       id: packages-table
@@ -137,9 +129,16 @@ jobs:
           echo 'EOFLINKS'
         } >> $GITHUB_OUTPUT
 
+  publish-npm:
+    if: inputs.publish_packages
+    needs: [publish-packages]
+    uses: ./.github/workflows/build.yaml
+    with:
+      tag: pr-${{ inputs.pr_number }}
+
   publish-docs:
     if: inputs.publish_docs
-    needs: [get-pr-info]
+    needs: [get-pr-info, publish-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -179,8 +178,8 @@ jobs:
         workingDirectory: ${{ github.workspace }}/docs/
 
   comment-on-pr:
-    needs: [get-pr-info, publish-packages, publish-docs]
-    if: always() && needs.get-pr-info.result == 'success' && (needs.publish-packages.result == 'success' || needs.publish-docs.result == 'success')
+    needs: [get-pr-info, publish-packages, publish-npm, publish-docs]
+    if: always() && needs.get-pr-info.result == 'success' && (needs.publish-npm.result == 'success' || needs.publish-docs.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -199,7 +198,7 @@ jobs:
         message: |
           Pre-release has been published for this pull request:
 
-          ${{ needs.publish-packages.result == 'success' && format('## Packages
+          ${{ needs.publish-npm.result == 'success' && format('## Packages
 
           {0}
 

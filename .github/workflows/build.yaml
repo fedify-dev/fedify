@@ -1,0 +1,50 @@
+name: Publish to npm (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'npm dist-tag to use (e.g., "latest", "dev", "pr-123")'
+        required: true
+        type: string
+      package_pattern:
+        description: 'Glob pattern for package tarballs to publish'
+        required: false
+        type: string
+        default: 'fedify-*.tgz'
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: npm-packages
+    - run: ls -la
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        registry-url: https://registry.npmjs.org
+    - run: sudo npm install -g npm@latest && npm --version
+    - name: Publish packages
+      run: |
+        set -ex
+        for pkg in ${{ inputs.package_pattern }}; do
+          if [[ "${{ inputs.tag }}" = "latest" ]]; then
+            npm publish --logs-dir=. --provenance --access public "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
+          else
+            npm publish \
+              --logs-dir=. \
+              --provenance \
+              --access public \
+              --tag "${{ inputs.tag }}" \
+              "$pkg" \
+              || grep "Cannot publish over previously published version" *.log
+          fi
+          rm -f *.log
+        done
