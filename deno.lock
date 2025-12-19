@@ -5944,6 +5944,20 @@
           "npm:@sveltejs/kit@2"
         ]
       },
+      "packages/vocab": {
+        "dependencies": [
+          "npm:@opentelemetry/api@^1.9.0",
+          "npm:fast-check@^3.22.0",
+          "npm:fetch-mock@^12.5.2",
+          "npm:jsonld@9"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@opentelemetry/api@^1.9.0",
+            "npm:jsonld@9"
+          ]
+        }
+      },
       "packages/vocab-runtime": {
         "dependencies": [
           "npm:@multiformats/base-x@^4.0.1",

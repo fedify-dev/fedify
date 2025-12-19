@@ -2,9 +2,9 @@ import { fedifyPlugin } from "@fedify/fastify";
 import {
   createFederation,
   MemoryKvStore,
-  Person,
   type RequestContext,
 } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import Fastify from "fastify";
 import { strict as assert } from "node:assert";
 import { test } from "node:test";

@@ -10,7 +10,7 @@ export default defineConfig({
     "@fedify/fedify/federation",
     "@fedify/fedify/nodeinfo",
     "@fedify/fedify/utils",
-    "@fedify/fedify/vocab",
+    "@fedify/vocab",
     "@fedify/fedify/webfinger",
   ],
 });

@@ -36,17 +36,17 @@ list of the objects, please refer to the [API reference].
 > class as `ASObject` as follows:
 >
 > ~~~~ typescript twoslash
-> import { Object as ASObject } from "@fedify/fedify";
+> import { Object as ASObject } from "@fedify/vocab";
 > ~~~~
 >
 > Or, you can import the classes from the Activity Vocabulary with a prefix as
 > follows:
 >
 > ~~~~ typescript
-> import * as vocab from "@fedify/fedify/vocab";
+> import * as vocab from "@fedify/vocab";
 > ~~~~
 
-[API reference]: https://jsr.io/@fedify/fedify/doc/vocab/~
+[API reference]: https://jsr.io/@fedify/vocab/doc/~
 [`Object`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object
 
 
@@ -60,7 +60,7 @@ instantiating a `Create` object:
 ~~~~ typescript twoslash
 import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
-import { Create, Note } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 
 const create = new Create({
   id: new URL("https://example.com/activities/123"),
@@ -164,7 +164,7 @@ For example, the following two objects are equivalent (where dereferencing URI
 *https://example.com/notes/456* returns the `Note` object):
 
 ~~~~ typescript twoslash
-import { Create, Note } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 const a = new Create({
@@ -222,7 +222,7 @@ For example, the following code hydrates the `object` property of the `Create`
 object:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 // ---cut-before---
 const create = new Create({
   object: new URL(
@@ -245,7 +245,7 @@ the JSON-LD representation of the `Create` object has the `object` property
 with the URI of the object:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 // ---cut-before---
 const create = new Create({
   object: new URL(
@@ -272,7 +272,7 @@ However, if the property is once hydrated, the JSON-LD representation of the
 object has the `object` property with the full object:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const create = new Create({ });
 // ---cut-before---
 // Hydrates the `object` property:
@@ -321,7 +321,7 @@ property of a `Note` object:
 ~~~~ typescript{8-10} twoslash
 import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
-import { Note } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 import { LanguageString } from "@fedify/vocab-runtime";
 
 const noteInEnglish = new Note({
@@ -380,7 +380,7 @@ If you want to instantiate an object from a JSON-LD document, you can use the
 instantiating a `Create` object from the JSON-LD document:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 
 const create = await Create.fromJsonLd({
   "@context": "https://www.w3.org/ns/activitystreams",
@@ -401,7 +401,7 @@ since `Create` is a subtype of `Activity`, the `Activity.fromJsonLd()` method
 can parse a `Create` object as well:
 
 ~~~~ typescript twoslash
-import { Activity } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 
 const create = await Activity.fromJsonLd({
   "@context": "https://www.w3.org/ns/activitystreams",
@@ -421,7 +421,7 @@ On the other way around, you can use the `toJsonLd()` method to get the JSON-LD
 representation of the object:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const create = new Create({});
 // ---cut-before---
 const jsonLd = await create.toJsonLd();
@@ -437,7 +437,7 @@ In this case, the `toJsonLd()` method returns the compacted JSON-LD document
 which is processed by the proper JSON-LD processor:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const create = new Create({});
 // ---cut-before---
 const jsonLd = await create.toJsonLd({
@@ -545,7 +545,7 @@ You can control this behavior using the `crossOrigin` option when calling
 property accessors:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const create = {} as unknown as Create;
 // ---cut-before---
 // Default behavior: ignore untrusted embedded objects (recommended)
@@ -610,15 +610,15 @@ unconditionally if any of the following conditions are met:
     community ([Discord], [Matrix], [GitHub Discussions], etc.)
 
 If you want to contribute to Fedify's vocabulary API, the process is
-straightforward.  The _\*.yaml_ files located in the *fedify/vocab/* directory
-of the Fedify repository serve as the source data for code generation.  To add
-a new type, you simply need to add a new *.yaml* file, and to add a new
+straightforward.  The _\*.yaml_ files located in the *packages/vocab/src/*
+directory of the Fedify repository serve as the source data for code generation.
+  To add a new type, you simply need to add a new *.yaml* file, and to add a new
 property, you need to define the new property in the `properties` section of an
 existing *.yaml* file.
 
 For detailed information on how to contribute to the vocabulary API, please
 refer to the [*Contributing guide*](../contribute.md) and the existing YAML
-files in the *fedify/vocab/* directory for examples.
+files in the *packages/vocab/src/* directory for examples.
 
 [FEP]: https://w3id.org/fep/
 [Discord]: https://discord.gg/bhtwpzURwd
