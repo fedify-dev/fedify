@@ -1,7 +1,7 @@
 import { RULE_IDS } from "../lib/const.ts";
 import {
-  createRequiredDispatcherRuleTests,
-  createRequiredEdgeCaseTests,
+  createKeyRequiredDispatcherRuleTests,
+  createKeyRequiredEdgeCaseTests,
   runTests,
 } from "../lib/test-templates.ts";
 import * as rule from "../rules/actor-assertion-method-required.ts";
@@ -11,6 +11,6 @@ const config = { rule, ruleName };
 
 runTests(
   ruleName,
-  createRequiredDispatcherRuleTests("assertionMethod", config),
+  createKeyRequiredDispatcherRuleTests("assertionMethod", config),
 );
-runTests(ruleName, createRequiredEdgeCaseTests("assertionMethod", config));
+runTests(ruleName, createKeyRequiredEdgeCaseTests("assertionMethod", config));

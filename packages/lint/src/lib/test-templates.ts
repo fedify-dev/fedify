@@ -37,7 +37,7 @@ export const runTests = (ruleName: string, tests: TestSuite) =>
     consume,
   );
 
-const createDispatcherCode = (content: string) => `
+const createActorDispatcherCode = (content: string) => `
 federation.setActorDispatcher(
   "/users/{identifier}",
   async (ctx, identifier) => {
@@ -58,14 +58,14 @@ const createChainedDispatcherCode = (
     .${dispatcherMethod}(async (ctx, identifier) => []);
 `;
 
-const createSeparateDispatcherCode = (
+const createDispatcherCode = (
   content: string,
   dispatcherMethod: string,
-  isBefore: boolean,
+  isBefore?: boolean | undefined,
 ) => {
   const dispatcher =
     `federation.${dispatcherMethod}(async (ctx, identifier) => []);`;
-  const actor = createDispatcherCode(content);
+  const actor = createActorDispatcherCode(content);
   return isBefore ? `${dispatcher}\n${actor}` : `${actor}\n${dispatcher}`;
 };
 
@@ -159,153 +159,107 @@ const createTestCode = (
  * Creates required rule tests for standard properties that use a dispatcher
  * (following, followers, outbox, liked, featured, featuredTags)
  */
-export function createRequiredDispatcherRuleTests(
-  propertyKey: PropertyKey,
-  config: TestConfig,
-): TestSuite {
-  const { rule, ruleName } = config;
-  const prop = properties[propertyKey];
-  const expectedError = actorPropertyRequired(prop);
+export const createRequiredDispatcherRuleTests =
+  requiredDispatcherRuleTestsFactory(createDispatcherCode);
+export const createKeyRequiredDispatcherRuleTests =
+  requiredDispatcherRuleTestsFactory(createChainedDispatcherCode);
 
-  return {
-    // ✅ Good - non-Federation object
-    "non-federation object": [
-      lintTest({
-        code: createDispatcherCode(createTestCode(propertyKey, false)),
-        rule,
-        ruleName,
-        federationSetup: `
+function requiredDispatcherRuleTestsFactory(
+  createDispatcherCode: (content: string, dispatcherMethod: string) => string,
+) {
+  return function (
+    propertyKey: PropertyKey,
+    config: TestConfig,
+  ): TestSuite {
+    const { rule, ruleName } = config;
+    const prop = properties[propertyKey];
+    const expectedError = actorPropertyRequired(prop);
+
+    return {
+      // ✅ Good - non-Federation object
+      "non-federation object": [
+        lintTest({
+          code: createDispatcherCode(
+            createTestCode(propertyKey, false),
+            prop.setter,
+          ),
+          rule,
+          ruleName,
+          federationSetup: `
           const federation = { setActorDispatcher: () => {} };
         `,
-      }),
-      true,
-    ],
+        }),
+        true,
+      ],
 
-    // ✅ Good - dispatcher NOT configured
-    "dispatcher not configured": [
-      lintTest({
-        code: createDispatcherCode(createTestCode(propertyKey, false)),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+      // ✅ Good - dispatcher NOT configured
+      "dispatcher not configured": [
+        lintTest({
+          code: createActorDispatcherCode(createTestCode(propertyKey, false)),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ✅ Good - dispatcher configured BEFORE (chained)
-    "dispatcher before chained with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          createTestCode(propertyKey, true),
-          prop.setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+      // ✅ Good - dispatcher configured BEFORE
+      "dispatcher before separate with property": [
+        lintTest({
+          code: createDispatcherCode(
+            createTestCode(propertyKey, true),
+            prop.setter,
+            true,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ✅ Good - dispatcher configured BEFORE (separate)
-    "dispatcher before separate with property": [
-      lintTest({
-        code: createSeparateDispatcherCode(
-          createTestCode(propertyKey, true),
-          prop.setter,
-          true,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+      // ✅ Good - dispatcher configured AFTER
+      "dispatcher after separate with property": [
+        lintTest({
+          code: createDispatcherCode(
+            createTestCode(propertyKey, true),
+            prop.setter,
+            false,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ✅ Good - dispatcher configured AFTER (chained)
-    "dispatcher after chained with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          createTestCode(propertyKey, true),
-          prop.setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+      // ❌ Bad - dispatcher before, property missing
+      "dispatcher before separate property missing": [
+        lintTest({
+          code: createDispatcherCode(
+            createTestCode(propertyKey, false),
+            prop.setter,
+            true,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ✅ Good - dispatcher configured AFTER (separate)
-    "dispatcher after separate with property": [
-      lintTest({
-        code: createSeparateDispatcherCode(
-          createTestCode(propertyKey, true),
-          prop.setter,
-          false,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ❌ Bad - dispatcher configured, property missing
-    "dispatcher configured property missing": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          createTestCode(propertyKey, false),
-          prop.setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ Bad - dispatcher before (separate), property missing
-    "dispatcher before separate property missing": [
-      lintTest({
-        code: createSeparateDispatcherCode(
-          createTestCode(propertyKey, false),
-          prop.setter,
-          true,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ Bad - dispatcher after (separate), property missing
-    "dispatcher after separate property missing": [
-      lintTest({
-        code: createSeparateDispatcherCode(
-          createTestCode(propertyKey, false),
-          prop.setter,
-          false,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ Bad - variable assignment without property
-    "variable assignment without property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `const actor = new Person({
-            ${ID_PROP}
-            name: "John Doe",
-          });
-          return actor;`,
-          prop.setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+      // ❌ Bad - dispatcher after, property missing
+      "dispatcher after separate property missing": [
+        lintTest({
+          code: createDispatcherCode(
+            createTestCode(propertyKey, false),
+            prop.setter,
+            false,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
+    };
   };
 }
 
@@ -320,7 +274,9 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - non-Federation object
     "non-federation object": [
       lintTest({
-        code: createDispatcherCode(`return new Person({ name: "John Doe" });`),
+        code: createActorDispatcherCode(
+          `return new Person({ name: "John Doe" });`,
+        ),
         rule,
         ruleName,
         federationSetup: `
@@ -333,7 +289,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - with id property (any value)
     "with id property any value": [
       lintTest({
-        code: createDispatcherCode(`return new Person({
+        code: createActorDispatcherCode(`return new Person({
           id: "https://example.com/users/123",
           name: "John Doe",
         });`),
@@ -346,7 +302,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - with id property using ctx.getActorUri()
     "with id property using getActorUri": [
       lintTest({
-        code: createDispatcherCode(`return new Person({
+        code: createActorDispatcherCode(`return new Person({
           ${ID_PROP}
           name: "John Doe",
         });`),
@@ -359,7 +315,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - BlockStatement with id
     "block statement with id": [
       lintTest({
-        code: createDispatcherCode(`const name = "John Doe";
+        code: createActorDispatcherCode(`const name = "John Doe";
         return new Person({
           ${ID_PROP}
           name,
@@ -373,7 +329,9 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - without id property
     "without id property": [
       lintTest({
-        code: createDispatcherCode(`return new Person({ name: "John Doe" });`),
+        code: createActorDispatcherCode(
+          `return new Person({ name: "John Doe" });`,
+        ),
         rule,
         ruleName,
         expectedError,
@@ -384,7 +342,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - returning empty object
     "returning empty object": [
       lintTest({
-        code: createDispatcherCode(`return new Person({});`),
+        code: createActorDispatcherCode(`return new Person({});`),
         rule,
         ruleName,
         expectedError,
@@ -395,7 +353,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - multiple properties including id
     "multiple properties including id": [
       lintTest({
-        code: createDispatcherCode(`return new Person({
+        code: createActorDispatcherCode(`return new Person({
           ${ID_PROP}
           name: "John Doe",
           inbox: ctx.getInboxUri(identifier),
@@ -410,7 +368,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - variable assignment without id
     "variable assignment without id": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `const actor = new Person({ name: "John Doe" });
         return actor;`,
         ),
@@ -445,6 +403,9 @@ export function createMismatchRuleTests(
     .filter((p) => p.getter !== prop.getter)
     .map((p) => p.getter);
   const wrongGetter = wrongGetters[0] || "getWrongUri";
+  const wrongSetter = Object.values(properties)
+    .filter((p) => p.setter !== prop.setter)
+    .map((p) => p.setter)[0] || "setWrongDispatcher";
 
   const createLocalPropertyCode = (getter: string) =>
     createPropertyAssignment(prop, { getter });
@@ -460,7 +421,7 @@ export function createMismatchRuleTests(
     // ✅ Good - non-Federation object
     "non-federation object": [
       lintTest({
-        code: createDispatcherCode(createActorCode(wrongGetter)),
+        code: createDispatcherCode(createActorCode(wrongGetter), wrongSetter),
         rule,
         ruleName,
         federationSetup: `
@@ -473,7 +434,7 @@ export function createMismatchRuleTests(
     // ✅ Good - correct getter used
     "correct getter used": [
       lintTest({
-        code: createDispatcherCode(createActorCode(prop.getter)),
+        code: createDispatcherCode(createActorCode(prop.getter), prop.setter),
         rule,
         ruleName,
       }),
@@ -483,7 +444,7 @@ export function createMismatchRuleTests(
     // ❌ Bad - wrong getter used
     "wrong getter used": [
       lintTest({
-        code: createDispatcherCode(createActorCode(wrongGetter)),
+        code: createDispatcherCode(createActorCode(wrongGetter), wrongSetter),
         rule,
         ruleName,
         expectedError,
@@ -492,9 +453,9 @@ export function createMismatchRuleTests(
     ],
 
     // ❌ Bad - wrong identifier
-    "wrong identifier": [
+    "wrong context": [
       lintTest({
-        code: createDispatcherCode(`return new Person({
+        code: createActorDispatcherCode(`return new Person({
           ${ID_PROP}
           ${createPropertyAssignment(prop, { ctxName: "wrongContext" })}
           name: "John Doe",
@@ -509,7 +470,7 @@ export function createMismatchRuleTests(
     // ✅ Good - property not present (no error)
     "property not present": [
       lintTest({
-        code: createDispatcherCode(`return new Person({
+        code: createActorDispatcherCode(`return new Person({
           ${ID_PROP}
           name: "John Doe",
         });`),
@@ -534,7 +495,7 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - non-Federation object
     "non-federation object": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return new Person({ id: ctx.getFollowingUri(identifier) });`,
         ),
         rule,
@@ -549,8 +510,8 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - correct getter used
     "correct getter used": [
       lintTest({
-        code: createDispatcherCode(
-          `return new Person({ id: ctx.getActorUri(identifier) });`,
+        code: createActorDispatcherCode(
+          `return new Person({ ${ID_PROP} });`,
         ),
         rule,
         ruleName,
@@ -561,7 +522,7 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - literal string id
     "literal string id": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return new Person({ id: "https://example.com/users/123" });`,
         ),
         rule,
@@ -574,7 +535,7 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - new URL as id
     "new URL as id": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return new Person({ id: new URL("https://example.com/users/123") });`,
         ),
         rule,
@@ -587,7 +548,7 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ❌ Bad - wrong getter used
     "wrong getter used": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return new Person({ id: ctx.getFollowingUri(identifier) });`,
         ),
         rule,
@@ -598,9 +559,9 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     ],
 
     // ❌ Bad - wrong identifier
-    "wrong identifier": [
+    "wrong context": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return new Person({ id: wrongContext.getActorUri(identifier) });`,
         ),
         rule,
@@ -619,184 +580,191 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
 /**
  * Creates common edge case tests for required rules
  */
-export function createRequiredEdgeCaseTests(
-  propertyKey: PropertyKey,
-  config: TestConfig,
-): TestSuite {
-  const { rule, ruleName } = config;
-  const prop = properties[propertyKey];
-  const setter = prop.setter;
-  const expectedError = actorPropertyRequired(prop);
+export const createRequiredEdgeCaseTests = requiredEdgeCaseTestsFactory(
+  createDispatcherCode,
+);
 
-  const createLocalPropertyCode = () => createPropertyAssignment(prop);
-  const propCode = createLocalPropertyCode();
+/**
+ * Creates edge case tests for key required rules (publicKey, assertionMethod)
+ */
+export const createKeyRequiredEdgeCaseTests = requiredEdgeCaseTestsFactory(
+  createChainedDispatcherCode,
+);
 
-  return {
-    // ✅ Ternary with property in both branches
-    "ternary with property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-  return condition
-    ? new Person({ ${ID_PROP} \
-    ${propCode} name: "A" })
+function requiredEdgeCaseTestsFactory(
+  createDispatcherCode: (content: string, dispatcherMethod: string) => string,
+) {
+  return function (
+    propertyKey: PropertyKey,
+    config: TestConfig,
+  ): TestSuite {
+    const { rule, ruleName } = config;
+    const prop = properties[propertyKey];
+    const setter = prop.setter;
+    const expectedError = actorPropertyRequired(prop);
+    const propCode = createPropertyAssignment(prop);
+
+    return {
+      // ✅ Ternary with property in both branches
+      "ternary with property in both branches": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
+    ? new Person({ ${ID_PROP} ${propCode} name: "A" })
     : new Person({ ${ID_PROP} ${propCode} name: "B" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ❌ Ternary missing property in consequent
-    "ternary missing property in consequent": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-  return condition
+      // ❌ Ternary missing property in consequent
+      "ternary missing property in consequent": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
     ? new Person({ ${ID_PROP} name: "A" })
     : new Person({ ${ID_PROP} ${propCode} name: "B" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ❌ Ternary missing property in alternate
-    "ternary missing property in alternate": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-  return condition
+      // ❌ Ternary missing property in alternate
+      "ternary missing property in alternate": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
     ? new Person({ ${ID_PROP} ${propCode} name: "A" })
     : new Person({ ${ID_PROP} name: "B" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ❌ Ternary missing property in both
-    "ternary missing property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `return condition
+      // ❌ Ternary missing property in both
+      "ternary missing property in both branches": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
             ? new Person({ ${ID_PROP} name: "A" })
             : new Person({ ${ID_PROP} name: "B" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ✅ Nested ternary with property
-    "nested ternary with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-return condition1
+      // ✅ Nested ternary with property
+      "nested ternary with property": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition1
   ? (condition2
       ? new Person({ ${ID_PROP} ${propCode} name: "A" })
       : new Person({ ${ID_PROP} ${propCode} name: "B" }))
   : new Person({ ${ID_PROP} ${propCode} name: "C" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ✅ If/else with property in both branches
-    "if else with property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ✅ If/else with property in both branches
+      "if else with property in both branches": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else {
   return new Person({ ${ID_PROP} ${propCode} name: "B" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ❌ If/else missing property in if block
-    "if else missing property in if block": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ❌ If/else missing property in if block
+      "if else missing property in if block": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
 } else {
   return new Person({ ${ID_PROP} ${propCode} name: "B" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ❌ If/else missing property in else block
-    "if else missing property in else block": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ❌ If/else missing property in else block
+      "if else missing property in else block": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else {
   return new Person({ ${ID_PROP} name: "B" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ❌ If/else missing property in both blocks
-    "if else missing property in both blocks": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ❌ If/else missing property in both blocks
+      "if else missing property in both blocks": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
 } else {
   return new Person({ ${ID_PROP} name: "B" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ✅ Nested if with property
-    "nested if with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ✅ Nested if with property
+      "nested if with property": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition1) {
   if (condition2) {
     return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -806,19 +774,19 @@ if (condition1) {
 } else {
   return new Person({ ${ID_PROP} ${propCode} name: "C" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ✅ If/else if/else with property in all branches
-    "if else if else with property in all branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ✅ If/else if/else with property in all branches
+      "if else if else with property in all branches": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else if (condition2) {
@@ -826,19 +794,19 @@ if (condition1) {
 } else {
   return new Person({ ${ID_PROP} ${propCode} name: "C" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ❌ If/else if/else missing property in else if
-    "if else if else missing property in else if": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ❌ If/else if/else missing property in else if
+      "if else if else missing property in else if": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else if (condition2) {
@@ -846,53 +814,54 @@ if (condition1) {
 } else {
   return new Person({ ${ID_PROP} ${propCode} name: "C" });
 }`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
 
-    // ✅ If/else if with final return, property in all paths
-    "if else if with final return property in all paths": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ✅ If/else if with final return, property in all paths
+      "if else if with final return property in all paths": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else if (condition2) {
   return new Person({ ${ID_PROP} ${propCode} name: "B" });
 }
 return new Person({ ${ID_PROP} ${propCode} name: "C" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
 
-    // ❌ If/else if with final return, missing property in final return
-    "if else if with final return missing property in final return": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
+      // ❌ If/else if with final return, missing property in final return
+      "if else if with final return missing property in final return": [
+        lintTest({
+          code: createDispatcherCode(
+            `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
 } else if (condition2) {
   return new Person({ ${ID_PROP} ${propCode} name: "B" });
 }
 return new Person({ ${ID_PROP} name: "C" });`,
-          setter,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
+    };
   };
 }
 
@@ -923,7 +892,7 @@ export function createMismatchEdgeCaseTests(
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": [
       lintTest({
-        code: createDispatcherCode(nestedTernaryCode(propCode, propCode)),
+        code: createActorDispatcherCode(nestedTernaryCode(propCode, propCode)),
         rule,
         ruleName,
       }),
@@ -933,7 +902,9 @@ export function createMismatchEdgeCaseTests(
     // ❌ Ternary with wrong getter in consequent
     "ternary with wrong getter in consequent": [
       lintTest({
-        code: createDispatcherCode(nestedTernaryCode(wrongPropCode, propCode)),
+        code: createActorDispatcherCode(
+          nestedTernaryCode(wrongPropCode, propCode),
+        ),
         rule,
         ruleName,
         expectedError,
@@ -944,7 +915,9 @@ export function createMismatchEdgeCaseTests(
     // ❌ Ternary with wrong getter in alternate
     "ternary with wrong getter in alternate": [
       lintTest({
-        code: createDispatcherCode(nestedTernaryCode(propCode, wrongPropCode)),
+        code: createActorDispatcherCode(
+          nestedTernaryCode(propCode, wrongPropCode),
+        ),
         rule,
         ruleName,
         expectedError,
@@ -955,7 +928,7 @@ export function createMismatchEdgeCaseTests(
     // ❌ Ternary with wrong getter in both
     "ternary with wrong getter in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           nestedTernaryCode(wrongPropCode, wrongPropCode),
         ),
         rule,
@@ -968,7 +941,7 @@ export function createMismatchEdgeCaseTests(
     // ✅ Nested ternary with correct getter
     "nested ternary with correct getter": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 return condition1
   ? (condition2
@@ -985,7 +958,7 @@ return condition1
     // ✅ If/else with correct getter in both branches
     "if else with correct getter in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1002,7 +975,7 @@ if (condition) {
     // ❌ If/else with wrong getter in if block
     "if else with wrong getter in if block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} ${wrongPropCode} name: "A" });
@@ -1020,7 +993,7 @@ if (condition) {
     // ❌ If/else with wrong getter in else block
     "if else with wrong getter in else block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1038,7 +1011,7 @@ if (condition) {
     // ❌ If/else with wrong getter in both blocks
     "if else with wrong getter in both blocks": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} ${wrongPropCode} name: "A" });
@@ -1056,7 +1029,7 @@ if (condition) {
     // ✅ Nested if with correct getter
     "nested if with correct getter": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   if (condition2) {
@@ -1077,7 +1050,7 @@ if (condition1) {
     // ✅ If/else if/else with correct getter in all branches
     "if else if else with correct getter in all branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1096,7 +1069,7 @@ if (condition1) {
     // ❌ If/else if/else with wrong getter in else if
     "if else if else with wrong getter in else if": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1116,7 +1089,7 @@ if (condition1) {
     // ✅ If/else if with final return, correct getter in all paths
     "if else if with final return correct getter in all paths": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1134,7 +1107,7 @@ return new Person({ ${ID_PROP} ${propCode} name: "C" });`,
     // ❌ If/else if with final return, wrong getter in final return
     "if else if with final return wrong getter in final return": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} ${propCode} name: "A" });
@@ -1168,7 +1141,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ Ternary with id in both branches
     "ternary with id in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ ${ID_PROP} name: "A" })
             : new Person({ ${ID_PROP} name: "B" });`,
@@ -1182,7 +1155,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary missing id in consequent
     "ternary missing id in consequent": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ name: "A" })
             : new Person({ ${ID_PROP} name: "B" });`,
@@ -1197,7 +1170,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary missing id in alternate
     "ternary missing id in alternate": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ ${ID_PROP} name: "A" })
             : new Person({ name: "B" });`,
@@ -1212,7 +1185,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary missing id in both
     "ternary missing id in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ name: "A" })
             : new Person({ name: "B" });`,
@@ -1227,7 +1200,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ Nested ternary with id
     "nested ternary with id": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition1
             ? (condition2
                 ? new Person({ ${ID_PROP} name: "A" })
@@ -1243,7 +1216,7 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ If/else with id in both branches
     "if else with id in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1260,7 +1233,7 @@ if (condition) {
     // ❌ If/else missing id in if block
     "if else missing id in if block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ name: "A" });
@@ -1278,7 +1251,7 @@ if (condition) {
     // ❌ If/else missing id in else block
     "if else missing id in else block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1296,7 +1269,7 @@ if (condition) {
     // ❌ If/else missing id in both blocks
     "if else missing id in both blocks": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ name: "A" });
@@ -1314,7 +1287,7 @@ if (condition) {
     // ✅ Nested if with id
     "nested if with id": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   if (condition2) {
@@ -1335,7 +1308,7 @@ if (condition1) {
     // ✅ If/else if/else with id in all branches
     "if else if else with id in all branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1354,7 +1327,7 @@ if (condition1) {
     // ❌ If/else if/else missing id in else if
     "if else if else missing id in else if": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1374,7 +1347,7 @@ if (condition1) {
     // ✅ If/else if with final return, id in all paths
     "if else if with final return id in all paths": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1392,7 +1365,7 @@ return new Person({ ${ID_PROP} name: "C" });`,
     // ❌ If/else if with final return, missing id in final return
     "if else if with final return missing id in final return": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1423,7 +1396,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ ${ID_PROP} name: "A" })
             : new Person({ ${ID_PROP} name: "B" });`,
@@ -1437,7 +1410,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary with wrong getter in consequent
     "ternary with wrong getter in consequent": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ id: ctx.getFollowingUri(identifier), name: "A" })
             : new Person({ ${ID_PROP} name: "B" });`,
@@ -1452,7 +1425,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary with wrong getter in alternate
     "ternary with wrong getter in alternate": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ ${ID_PROP} name: "A" })
             : new Person({ id: ctx.getFollowingUri(identifier), name: "B" });`,
@@ -1467,7 +1440,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ❌ Ternary with wrong getter in both
     "ternary with wrong getter in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition
             ? new Person({ id: ctx.getFollowingUri(identifier), name: "A" })
             : new Person({ id: ctx.getFollowingUri(identifier), name: "B" });`,
@@ -1482,7 +1455,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ Nested ternary with correct getter
     "nested ternary with correct getter": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `return condition1
             ? (condition2
                 ? new Person({ ${ID_PROP} name: "A" })
@@ -1498,7 +1471,7 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
     // ✅ If/else with correct getter in both branches
     "if else with correct getter in both branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1515,7 +1488,7 @@ if (condition) {
     // ❌ If/else with wrong getter in if block
     "if else with wrong getter in if block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ id: ctx.getFollowingUri(identifier), name: "A" });
@@ -1533,7 +1506,7 @@ if (condition) {
     // ❌ If/else with wrong getter in else block
     "if else with wrong getter in else block": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1551,7 +1524,7 @@ if (condition) {
     // ❌ If/else with wrong getter in both blocks
     "if else with wrong getter in both blocks": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition) {
   return new Person({ id: ctx.getFollowingUri(identifier), name: "A" });
@@ -1569,7 +1542,7 @@ if (condition) {
     // ✅ Nested if with correct getter
     "nested if with correct getter": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   if (condition2) {
@@ -1590,7 +1563,7 @@ if (condition1) {
     // ✅ If/else if/else with correct getter in all branches
     "if else if else with correct getter in all branches": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1609,7 +1582,7 @@ if (condition1) {
     // ❌ If/else if/else with wrong getter in else if
     "if else if else with wrong getter in else if": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1629,7 +1602,7 @@ if (condition1) {
     // ✅ If/else if with final return, correct getter in all paths
     "if else if with final return correct getter in all paths": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1647,7 +1620,7 @@ return new Person({ ${ID_PROP} name: "C" });`,
     // ❌ If/else if with final return, wrong getter in final return
     "if else if with final return wrong getter in final return": [
       lintTest({
-        code: createDispatcherCode(
+        code: createActorDispatcherCode(
           `\
 if (condition1) {
   return new Person({ ${ID_PROP} name: "A" });
@@ -1655,282 +1628,6 @@ if (condition1) {
   return new Person({ ${ID_PROP} name: "B" });
 }
 return new Person({ id: ctx.getFollowingUri(identifier), name: "C" });`,
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-  };
-}
-
-/**
- * Creates edge case tests for key required rules (publicKey, assertionMethod)
- */
-export function _createRequiredEdgeCaseTests(
-  propertyName: "publicKey" | "assertionMethod",
-  config: TestConfig,
-): TestSuite {
-  const { rule, ruleName } = config;
-  const prop = properties[propertyName];
-  const expectedError = actorPropertyRequired(prop);
-
-  const createPropertyCode = () =>
-    `${propertyName}: ctx.getActorKeyPairs(identifier),`;
-  const propCode = createPropertyCode();
-
-  return {
-    // ✅ Ternary with property in both branches
-    "ternary with property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          nestedTernaryCode(propCode, propCode),
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ❌ Ternary missing property in consequent
-    "ternary missing property in consequent": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-  return condition
-    ? new Person({ ${ID_PROP} name: "A" })
-    : new Person({ ${ID_PROP} ${propCode} name: "B" });`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ Ternary missing property in alternate
-    "ternary missing property in alternate": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-  return condition
-    ? new Person({ ${ID_PROP} ${propCode} name: "A" })
-    : new Person({ ${ID_PROP} name: "B" });`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ Ternary missing property in both
-    "ternary missing property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `return condition
-            ? new Person({ ${ID_PROP} name: "A" })
-            : new Person({ ${ID_PROP} name: "B" });`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ✅ Nested ternary with property
-    "nested ternary with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-return condition1
-  ? (condition2
-      ? new Person({ ${ID_PROP} ${propCode} name: "A" })
-      : new Person({ ${ID_PROP} ${propCode} name: "B" }))
-    : new Person({ ${ID_PROP} ${propCode} name: "C" });`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ✅ If/else with property in both branches
-    "if else with property in both branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else {
-  return new Person({ ${ID_PROP} ${propCode} name: "B" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ❌ If/else missing property in if block
-    "if else missing property in if block": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition) {
-  return new Person({ ${ID_PROP} name: "A" });
-} else {
-  return new Person({ ${ID_PROP} ${propCode} name: "B" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ If/else missing property in else block
-    "if else missing property in else block": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else {
-  return new Person({ ${ID_PROP} name: "B" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ❌ If/else missing property in both blocks
-    "if else missing property in both blocks": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition) {
-  return new Person({ ${ID_PROP} name: "A" });
-} else {
-  return new Person({ ${ID_PROP} name: "B" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ✅ Nested if with property
-    "nested if with property": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition1) {
-  if (condition2) {
-    return new Person({ ${ID_PROP} ${propCode} name: "A" });
-  } else {
-    return new Person({ ${ID_PROP} ${propCode} name: "B" });
-  }
-} else {
-  return new Person({ ${ID_PROP} ${propCode} name: "C" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ✅ If/else if/else with property in all branches
-    "if else if else with property in all branches": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition1) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else if (condition2) {
-  return new Person({ ${ID_PROP} ${propCode} name: "B" });
-} else {
-  return new Person({ ${ID_PROP} ${propCode} name: "C" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ❌ If/else if/else missing property in else if
-    "if else if else missing property in else if": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition1) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else if (condition2) {
-  return new Person({ ${ID_PROP} name: "B" });
-} else {
-  return new Person({ ${ID_PROP} ${propCode} name: "C" });
-}`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-        expectedError,
-      }),
-      false,
-    ],
-
-    // ✅ If/else if with final return, property in all paths
-    "if else if with final return property in all paths": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition1) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else if (condition2) {
-  return new Person({ ${ID_PROP} ${propCode} name: "B" });
-}
-return new Person({ ${ID_PROP} ${propCode} name: "C" });`,
-          "setKeyPairsDispatcher",
-        ),
-        rule,
-        ruleName,
-      }),
-      true,
-    ],
-
-    // ❌ If/else if with final return, missing property in final return
-    "if else if with final return missing property in final return": [
-      lintTest({
-        code: createChainedDispatcherCode(
-          `\
-if (condition1) {
-  return new Person({ ${ID_PROP} ${propCode} name: "A" });
-} else if (condition2) {
-  return new Person({ ${ID_PROP} ${propCode} name: "B" });
-}
-return new Person({ ${ID_PROP} name: "C" });`,
-          "setKeyPairsDispatcher",
         ),
         rule,
         ruleName,
