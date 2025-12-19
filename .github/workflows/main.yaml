@@ -1,10 +1,11 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 #
-# Main CI workflow for testing, linting, and publishing to JSR.
-# npm publishing is handled separately by build.yaml, which is triggered
-# automatically via workflow_run after this workflow completes successfully.
-# This separation is required for npm's trusted publishing (OIDC) to work
-# correctly. See build.yaml for more details.
+# Main CI workflow for testing, linting, and publishing to JSR/npm.
+# npm publishing is handled by build.yaml, which is triggered via workflow_dispatch
+# from the publish-npm job. This allows npm publishing to run in parallel with
+# docs publishing, rather than waiting for the entire workflow to complete.
+# See build.yaml for details on why this separation is required for npm's
+# trusted publishing (OIDC).
 name: main
 on: [push, pull_request]
 
@@ -203,7 +204,7 @@ jobs:
     - run: pnpm install
     - run: pnpm publish --recursive --dry-run --no-git-checks
 
-  publish:
+  publish-jsr:
     if: github.event_name == 'push'
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test]
     runs-on: ubuntu-latest
@@ -302,11 +303,44 @@ jobs:
           ((attempt++))
         done
 
-  # NOTE: npm publishing is handled by build.yaml via workflow_run trigger.
-  # Do not add npm publish steps here - it will break trusted publishing.
+  # Trigger build.yaml via workflow_dispatch to publish to npm.
+  # This is required because npm's trusted publishing (OIDC) validates
+  # the directly triggered workflow, not reusable workflows called via
+  # workflow_call. By triggering build.yaml directly, npm sees build.yaml
+  # as the entry point and validates against it.
+  publish-npm:
+    if: github.event_name == 'push'
+    needs: [publish-jsr]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger build.yaml workflow
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Determine tag based on ref type
+          let tag;
+          if (context.payload.ref && context.payload.ref.startsWith('refs/tags/')) {
+            tag = 'latest';
+          } else {
+            tag = 'dev';
+          }
+
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'build.yaml',
+            ref: context.ref,
+            inputs: {
+              run_id: '${{ github.run_id }}',
+              tag: tag
+            }
+          });
+          console.log(`Triggered build.yaml workflow with run_id=${{ github.run_id }}, tag=${tag}`);
 
   publish-docs:
-    needs: [publish]
+    needs: [publish-jsr]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -337,7 +371,7 @@ jobs:
           pnpm run build
         fi
       env:
-        SHORT_VERSION: ${{ needs.publish.outputs.short_version }}
+        SHORT_VERSION: ${{ needs.publish-jsr.outputs.short_version }}
         PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}
