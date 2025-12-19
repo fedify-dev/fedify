@@ -40,7 +40,7 @@ interface for unit testing:
 
 ~~~~ typescript
 import { MockFederation } from "@fedify/testing";
-import { Create } from "@fedify/fedify/vocab";
+import { Create } from "@fedify/vocab";
 
 // Create a mock federation
 const federation = new MockFederation<{ userId: string }>();

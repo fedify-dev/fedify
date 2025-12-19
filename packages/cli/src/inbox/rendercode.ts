@@ -1,4 +1,4 @@
-import type { Activity } from "@fedify/fedify";
+import type { Activity } from "@fedify/vocab";
 import { getStatusText } from "@poppanator/http-constants";
 import { getContextLoader } from "../docloader.ts";
 

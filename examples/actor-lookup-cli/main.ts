@@ -5,7 +5,7 @@ import {
   isActor,
   lookupObject,
   PropertyValue,
-} from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 import { convert } from "npm:html-to-text@^9.0.5";
 
 export interface Actor {

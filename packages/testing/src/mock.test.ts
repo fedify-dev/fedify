@@ -1,5 +1,5 @@
 import type { InboxContext } from "@fedify/fedify/federation";
-import { Create, Note, Person } from "@fedify/fedify/vocab";
+import { Create, Note, Person } from "@fedify/vocab";
 import { assertEquals, assertRejects } from "@std/assert";
 import { test } from "../../fedify/src/testing/mod.ts";
 import { createFederation } from "./mock.ts";
