@@ -133,33 +133,33 @@ export class LitePubRelay implements Relay {
             ...ctx,
           });
           if (!(follow instanceof Follow)) return;
-          const follower = follow.actorId;
-          if (follower == null) return;
+          const relayActorId = follow.actorId;
+          if (relayActorId == null) return;
 
-          // Validate following - accept activity sender
-          const following = await accept.getActor();
-          if (!isActor(following) || !following.id) return;
-          const parsed = ctx.parseUri(follower);
+          // Validate follower actor - accept activity sender
+          const followerActor = await accept.getActor();
+          if (!isActor(followerActor) || !followerActor.id) return;
+          const parsed = ctx.parseUri(relayActorId);
           if (parsed == null || parsed.type !== "actor") return;
 
           // Get follower from kv store
           const followerData = await ctx.data.kv.get([
             "follower",
-            following.id.href,
+            followerActor.id.href,
           ]);
           if (followerData == null) return;
 
           // Update follower state
           const updatedFollowerData = { ...followerData, state: "accepted" };
           await ctx.data.kv.set(
-            ["follower", following.id.href],
+            ["follower", followerActor.id.href],
             updatedFollowerData,
           );
 
           // Update followers list
           const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
             [];
-          followers.push(following.id.href);
+          followers.push(followerActor.id.href);
           await ctx.data.kv.set(["followers"], followers);
         })
         .on(Undo, async (ctx, undo) => {
