@@ -11,7 +11,7 @@ import {
   unless,
   when,
 } from "@fxts/core";
-import { allOf, isNode, isNodeType } from "./pred.ts";
+import { allOf, isNodeType } from "./pred.ts";
 import type {
   AssignmentPattern,
   BlockStatement,
@@ -234,28 +234,57 @@ const collectReturnPaths = (
   );
 
 function* flatten(node: Node): Generator<ReturnStatement> {
-  if (isNodeType("ReturnStatement")(node)) yield node;
+  switch (node.type) {
+    case "ReturnStatement":
+      yield node;
+      return;
 
-  if (isNodeType("IfStatement")(node)) {
-    // Collect returns from both branches
-    if (node.consequent) yield* flatten(node.consequent);
-    if (node.alternate) yield* flatten(node.alternate);
-  }
+    case "IfStatement":
+      // Collect returns from both branches
+      if (node.consequent) yield* flatten(node.consequent);
+      if (node.alternate) yield* flatten(node.alternate);
+      return;
 
-  if (isNodeType("BlockStatement")(node)) {
-    yield* node.body.map(flatten).flatMap(toArrayIfIter);
-  }
+    case "BlockStatement":
+      for (const statement of node.body) {
+        yield* flatten(statement);
+      }
+      return;
 
-  for (const child of Object.values(node)) {
-    if (isNode(child)) {
-      yield* flatten(child);
-    } else if (Array.isArray(child)) {
-      yield* child.filter(isNode).map(flatten).flatMap(toArrayIfIter);
-    }
+    case "SwitchStatement":
+      for (const switchCase of node.cases) {
+        for (const statement of switchCase.consequent) {
+          yield* flatten(statement);
+        }
+      }
+      return;
+
+    case "TryStatement":
+      yield* flatten(node.block);
+      if (node.handler) yield* flatten(node.handler.body);
+      if (node.finalizer) yield* flatten(node.finalizer);
+      return;
+
+    case "WhileStatement":
+    case "DoWhileStatement":
+    case "ForStatement":
+    case "ForInStatement":
+    case "ForOfStatement":
+      yield* flatten(node.body);
+      return;
+
+    case "LabeledStatement":
+      yield* flatten(node.body);
+      return;
+
+    case "WithStatement":
+      yield* flatten(node.body);
+      return;
+
+    default:
+      // For other node types (expressions, declarations, etc.),
+      // we don't traverse deeper to avoid infinite recursion
+      // from circular references like `parent`
+      return;
   }
 }
-
-const toArrayIfIter = <T>(input: T | Iterable<T>): T[] =>
-  Symbol.iterator in Object(input)
-    ? toArray(input as Iterable<T>)
-    : [input as T];
