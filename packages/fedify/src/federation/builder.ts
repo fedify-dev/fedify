@@ -1,9 +1,15 @@
+import type {
+  Activity,
+  Actor,
+  Hashtag,
+  Like,
+  Object,
+  Recipient,
+} from "@fedify/vocab";
+import { getTypeId } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
-import type { Actor, Recipient } from "../vocab/actor.ts";
-import { getTypeId } from "../vocab/type.ts";
-import type { Activity, Hashtag, Like, Object } from "../vocab/vocab.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,

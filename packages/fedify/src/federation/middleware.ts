@@ -1,11 +1,28 @@
-import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
+import type {
+  Actor,
+  Collection,
+  Link,
+  LookupObjectOptions,
+  Object,
+  Recipient,
+  TraverseCollectionOptions,
+} from "@fedify/vocab";
 import {
-  type AuthenticatedDocumentLoaderFactory,
-  type DocumentLoader,
-  type DocumentLoaderFactory,
-  type DocumentLoaderFactoryOptions,
-  getDocumentLoader,
+  Activity,
+  CryptographicKey,
+  getTypeId,
+  lookupObject,
+  Multikey,
+  traverseCollection,
+} from "@fedify/vocab";
+import type {
+  AuthenticatedDocumentLoaderFactory,
+  DocumentLoader,
+  DocumentLoaderFactory,
+  DocumentLoaderFactoryOptions,
+  GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
+import { getDocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger, withContext } from "@logtape/logtape";
 import {
   context,
@@ -41,22 +58,6 @@ import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
-import type { Actor, Recipient } from "../vocab/actor.ts";
-import {
-  lookupObject,
-  type LookupObjectOptions,
-  traverseCollection,
-  type TraverseCollectionOptions,
-} from "../vocab/lookup.ts";
-import { getTypeId } from "../vocab/type.ts";
-import {
-  Activity,
-  type Collection,
-  CryptographicKey,
-  type Link,
-  Multikey,
-  type Object,
-} from "../vocab/vocab.ts";
 import { handleWebFinger } from "../webfinger/handler.ts";
 import type { ResourceDescriptor } from "../webfinger/jrd.ts";
 import {

@@ -9,7 +9,6 @@
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
-    "./vocab": "./src/vocab/mod.ts",
     "./utils": "./src/utils/mod.ts",
     "./webfinger": "./src/webfinger/mod.ts"
   },
@@ -48,7 +47,10 @@
     "src/cfworkers/server.js.map"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts", "src/testing/"]
+    "exclude": [
+      "**/*.test.ts",
+      "src/testing/"
+    ]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab codegen",
@@ -106,6 +108,7 @@
       "command": "cd ../vocab-tools && pnpm build"
     },
     "pnpm:build-vocab": {
+      "command": "cd ../vocab && pnpm build",
       "dependencies": [
         "pnpm:build-vocab-runtime",
         "pnpm:build-vocab-tools"

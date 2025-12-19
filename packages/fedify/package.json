@@ -108,16 +108,6 @@
       "require": "./dist/utils/mod.cjs",
       "default": "./dist/utils/mod.js"
     },
-    "./vocab": {
-      "types": {
-        "import": "./dist/vocab/mod.d.ts",
-        "require": "./dist/vocab/mod.d.cts",
-        "default": "./dist/vocab/mod.d.ts"
-      },
-      "import": "./dist/vocab/mod.js",
-      "require": "./dist/vocab/mod.cjs",
-      "default": "./dist/vocab/mod.js"
-    },
     "./webfinger": {
       "types": {
         "import": "./dist/webfinger/mod.d.ts",
@@ -130,6 +120,7 @@
     }
   },
   "dependencies": {
+    "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",

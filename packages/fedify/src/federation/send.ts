@@ -1,3 +1,4 @@
+import type { Recipient } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -11,7 +12,6 @@ import {
   doubleKnock,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
-import type { Recipient } from "../vocab/actor.ts";
 
 /**
  * Parameters for {@link extractInboxes}.

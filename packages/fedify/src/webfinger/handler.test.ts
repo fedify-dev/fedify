@@ -1,4 +1,6 @@
 import { test } from "@fedify/fixture";
+import type { Actor } from "@fedify/vocab";
+import { Image, Link, Person } from "@fedify/vocab";
 import { assertEquals } from "@std/assert";
 import type {
   ActorAliasMapper,
@@ -10,8 +12,6 @@ import type { RequestContext } from "../federation/context.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
 import { createFederation } from "../federation/middleware.ts";
 import { createRequestContext } from "../testing/context.ts";
-import type { Actor } from "../vocab/actor.ts";
-import { Image, Link, Person } from "../vocab/vocab.ts";
 import { handleWebFinger } from "./handler.ts";
 
 test("handleWebFinger()", async (t) => {

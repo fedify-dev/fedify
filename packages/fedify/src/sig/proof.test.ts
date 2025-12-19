@@ -1,4 +1,12 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  Create,
+  type CryptographicKey,
+  DataIntegrityProof,
+  Multikey,
+  Note,
+  Place,
+} from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
 import { decodeHex, encodeHex } from "byte-encodings/hex";
@@ -9,14 +17,6 @@ import {
   rsaPrivateKey2,
   rsaPublicKey2,
 } from "../testing/keys.ts";
-import {
-  Create,
-  type CryptographicKey,
-  DataIntegrityProof,
-  Multikey,
-  Note,
-  Place,
-} from "../vocab/vocab.ts";
 import type { KeyCache } from "./key.ts";
 import {
   createProof,

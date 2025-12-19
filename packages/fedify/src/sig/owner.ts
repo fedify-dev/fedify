@@ -1,17 +1,26 @@
-import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
+import {
+  type Activity,
+  type Actor,
+  CryptographicKey,
+  isActor,
+  Object as ASObject,
+} from "@fedify/vocab";
+import {
+  type DocumentLoader,
+  type DocumentLoader,
+  getDocumentLoader,
+  getDocumentLoader,
+} from "@fedify/vocab-runtime";
 import {
   SpanKind,
   SpanStatusCode,
   trace,
+  trace,
+  type TracerProvider,
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import { type Actor, isActor } from "../vocab/actor.ts";
-import {
-  type Activity,
-  CryptographicKey,
-  Object as ASObject,
-} from "../vocab/vocab.ts";
 export { exportJwk, generateCryptoKeyPair, importJwk } from "./key.ts";
 
 /**

@@ -3,10 +3,9 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import { Create, lookupObject } from "@fedify/vocab";
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { rsaPublicKey1, rsaPublicKey2 } from "../testing/keys.ts";
-import { lookupObject } from "../vocab/lookup.ts";
-import { Create, CryptographicKey } from "../vocab/vocab.ts";
 import { doesActorOwnKey, getKeyOwner } from "./owner.ts";
 
 test("doesActorOwnKey()", async () => {
