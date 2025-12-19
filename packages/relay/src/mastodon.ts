@@ -9,7 +9,7 @@ import {
   Undo,
   Update,
 } from "@fedify/fedify";
-import { RELAY_SERVER_ACTOR, type RelayOptions } from "./relay.ts";
+import { type Relay, RELAY_SERVER_ACTOR, type RelayOptions } from "./relay.ts";
 import type { FederationBuilder } from "@fedify/fedify/federation";
 
 /**
@@ -19,7 +19,7 @@ import type { FederationBuilder } from "@fedify/fedify/federation";
  *
  * @since 2.0.0
  */
-export class MastodonRelay {
+export class MastodonRelay implements Relay {
   #federationBuilder: FederationBuilder<RelayOptions>;
   #options: RelayOptions;
   #federation?: Federation<RelayOptions>;
@@ -156,8 +156,8 @@ export class MastodonRelay {
             },
           );
         })
-        .on(Move, async (ctx, deleteActivity) => {
-          const sender = await deleteActivity.getActor(ctx);
+        .on(Move, async (ctx, move) => {
+          const sender = await move.getActor(ctx);
           // Exclude the sender's origin to prevent forwarding back to them
           const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
 
@@ -171,8 +171,8 @@ export class MastodonRelay {
             },
           );
         })
-        .on(Update, async (ctx, deleteActivity) => {
-          const sender = await deleteActivity.getActor(ctx);
+        .on(Update, async (ctx, update) => {
+          const sender = await update.getActor(ctx);
           // Exclude the sender's origin to prevent forwarding back to them
           const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
 

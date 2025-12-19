@@ -18,6 +18,18 @@ import { MastodonRelay } from "./mastodon.ts";
 export const RELAY_SERVER_ACTOR = "relay";
 
 /**
+ * Supported relay types.
+ */
+export type RelayType = "mastodon" | "litepub";
+
+/**
+ * Common interface for all relay implementations.
+ */
+export interface Relay {
+  fetch(request: Request): Promise<Response>;
+}
+
+/**
  * Handler for subscription requests (Follow/Undo activities).
  */
 export type SubscriptionRequestHandler = (
@@ -100,25 +112,30 @@ relayBuilder.setActorDispatcher(
     },
   );
 
+async function getFollowerActors(
+  ctx: Context<RelayOptions>,
+): Promise<Actor[]> {
+  const followers = await ctx.data.kv.get<string[]>(["followers"]) ?? [];
+
+  const actors: Actor[] = [];
+  for (const followerId of followers) {
+    const follower = await ctx.data.kv.get<RelayFollower>([
+      "follower",
+      followerId,
+    ]);
+    if (!follower) continue;
+    const actor = await Object.fromJsonLd(follower.actor);
+    if (!isActor(actor)) continue;
+    actors.push(actor);
+  }
+  return actors;
+}
+
 relayBuilder.setFollowersDispatcher(
   "/users/{identifier}/followers",
   async (ctx, identifier) => {
     if (identifier !== RELAY_SERVER_ACTOR) return null;
-
-    const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-      [];
-
-    const actors: Actor[] = [];
-    for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<RelayFollower>([
-        "follower",
-        followerId,
-      ]);
-      if (!follower) continue;
-      const actor = await Object.fromJsonLd(follower.actor);
-      if (!isActor(actor)) continue;
-      actors.push(actor);
-    }
+    const actors = await getFollowerActors(ctx);
     return { items: actors };
   },
 );
@@ -127,35 +144,19 @@ relayBuilder.setFollowingDispatcher(
   "/users/{identifier}/following",
   async (ctx, identifier) => {
     if (identifier !== RELAY_SERVER_ACTOR) return null;
-
-    const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-      [];
-
-    const actors: Actor[] = [];
-    for (const followerId of followers) {
-      const follower = await ctx.data.kv.get<RelayFollower>([
-        "follower",
-        followerId,
-      ]);
-      if (!follower) continue;
-      const actor = await Object.fromJsonLd(follower.actor);
-      if (!isActor(actor)) continue;
-      actors.push(actor);
-    }
+    const actors = await getFollowerActors(ctx);
     return { items: actors };
   },
 );
 
 export function createRelay(
-  type: string,
+  type: RelayType,
   options: RelayOptions,
-): MastodonRelay | LitePubRelay {
+): Relay {
   switch (type) {
     case "mastodon":
       return new MastodonRelay(options, relayBuilder);
     case "litepub":
       return new LitePubRelay(options, relayBuilder);
-    default:
-      throw new Error(`Unsupported relay type: ${type}`);
   }
 }
