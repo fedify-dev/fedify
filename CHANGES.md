@@ -124,6 +124,13 @@ Released on June 30, 2025.
     typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
     "@value":123}`).
 
+ -  Fixed a ReDoS (Regular Expression Denial of Service) vulnerability in
+    the document loader's HTML parsing.  An attacker-controlled server could
+    respond with a malicious HTML payload that blocked the event loop.
+    [[CVE-2025-68475]]
+
+[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
+
 
 Version 1.6.2
 -------------
