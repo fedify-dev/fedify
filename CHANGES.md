@@ -8,6 +8,13 @@ Version 1.8.15
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed a ReDoS (Regular Expression Denial of Service) vulnerability in
+    the document loader's HTML parsing.  An attacker-controlled server could
+    respond with a malicious HTML payload that blocked the event loop.
+    [[CVE-2025-68475]]
+
 ### @fedify/sqlite
 
  -  Fixed `SyntaxError: Identifier 'Temporal' has already been declared` error
@@ -453,6 +460,17 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.14
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a ReDoS (Regular Expression Denial of Service) vulnerability in
+    the document loader's HTML parsing.  An attacker-controlled server could
+    respond with a malicious HTML payload that blocked the event loop.
+    [[CVE-2025-68475]]
+
+
 Version 1.7.13
 --------------
 
@@ -636,6 +654,19 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.13
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a ReDoS (Regular Expression Denial of Service) vulnerability in
+    the document loader's HTML parsing.  An attacker-controlled server could
+    respond with a malicious HTML payload that blocked the event loop.
+    [[CVE-2025-68475]]
+
+[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
 
 
 Version 1.6.12

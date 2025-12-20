@@ -53,7 +53,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -124,7 +124,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -181,7 +181,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -207,7 +207,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -230,7 +230,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task hooks:pre-commit
 
   release-test:
@@ -248,7 +248,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: pnpm/action-setup@v4
       with:
         version: 10
@@ -283,7 +283,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: pnpm/action-setup@v4
       with:
         version: latest
@@ -337,7 +337,10 @@ jobs:
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
         fi
-    - run: deno task pack
+    - run: |
+        set -ex
+        mkdir -p "$RUNNER_TEMP"
+        TMPDIR="$RUNNER_TEMP" deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
     - id: extract-changelog
       uses: dahlia/submark@5a5ff0a58382fb812616a5801402f5aef00f90ce
@@ -381,7 +384,12 @@ jobs:
         set -ex
         for pkg in fedify-*.tgz; do
           if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
-            npm publish --logs-dir=. --provenance --access public "$pkg" \
+            npm publish \
+              --logs-dir=. \
+              --provenance \
+              --access public \
+              --tag latest \
+              "$pkg" \
               || grep "Cannot publish over previously published version" *.log
             rm *.log
           elif [[ "$GITHUB_EVENT_NAME" = "pull_request_target" ]]; then
@@ -468,7 +476,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task codegen
       working-directory: ${{ github.workspace }}/packages/fedify/
     - uses: denoland/deployctl@v1

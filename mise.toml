@@ -2,6 +2,6 @@
 # Bun version should be kept in sync with GitHub Actions workflows
 bun = "1.2.22"
 # Deno version should be kept in sync with GitHub Actions workflows
-deno = "2.5.0"
+deno = "2.5.6"
 node = "22"
 "npm:pnpm" = "latest"
