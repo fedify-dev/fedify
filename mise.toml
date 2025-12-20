@@ -1,5 +1,5 @@
 [tools]
 bun = "latest"
-deno = "2.5.0"
+deno = "2.5.6"
 node = "22"
 "npm:pnpm" = "latest"

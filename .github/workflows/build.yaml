@@ -23,7 +23,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task cache
       working-directory: ${{ github.workspace }}/fedify/
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
@@ -69,7 +69,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -95,7 +95,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -120,7 +120,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -142,7 +142,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task hooks:pre-commit
 
   release-test:
@@ -160,7 +160,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -200,7 +200,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -359,7 +359,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: denoland/setup-deno@v2
       with:
-        deno-version: v2.x
+        deno-version: 2.5.6
     - run: deno task codegen
       working-directory: ${{ github.workspace }}/fedify/
     - uses: denoland/deployctl@v1
