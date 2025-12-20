@@ -797,6 +797,15 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.15
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
+    in the npm package, causing type errors when importing the package.
+
+
 Version 1.7.14
 --------------
 
@@ -991,6 +1000,15 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.14
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
+    in the npm package, causing type errors when importing the package.
 
 
 Version 1.6.13
