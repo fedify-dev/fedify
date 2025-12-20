@@ -127,9 +127,28 @@ const federation = createFederation<void>({
 
 :::
 
+> [!TIP]
+> If you are using Bun, you may encounter a type error in your IDE because
+> TypeScript's language server runs on Node.js and resolves the
+> `@fedify/sqlite` module using Node.js [conditional exports] instead of
+> Bun's.  To fix this, add the following to your *tsconfig.json*:
+>
+> ~~~~ json
+> {
+>   "compilerOptions": {
+>     "moduleResolution": "bundler",
+>     "customConditions": ["bun"]
+>   }
+> }
+> ~~~~
+>
+> This tells TypeScript to use Bun's module resolution when resolving
+> [conditional exports].
+
 [`SqliteKvStore`]: https://jsr.io/@fedify/sqlite/doc/kv/~/SqliteKvStore
 [`node:sqlite`]: https://nodejs.org/api/sqlite.html
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
+[conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
 
 ### `DenoKvStore` (Deno only)
 
