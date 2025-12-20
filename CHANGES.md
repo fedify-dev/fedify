@@ -6,7 +6,7 @@ Fedify changelog
 Version 1.6.14
 --------------
 
-To be released.
+Released on December 20, 2025.
 
  -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
     in the npm package, causing type errors when importing the package.
