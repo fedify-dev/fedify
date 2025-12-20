@@ -248,7 +248,10 @@ jobs:
       working-directory: ${{ github.workspace }}/fedify/
     - run: deno task npm
       working-directory: ${{ github.workspace }}/fedify/
-    - run: deno task pack
+    - run: |
+        set -ex
+        mkdir -p "$RUNNER_TEMP"
+        TMPDIR="$RUNNER_TEMP" deno task pack
       working-directory: ${{ github.workspace }}/cli/
     - run: 'deno task npm "$(jq -r .version deno.json)"'
       working-directory: ${{ github.workspace }}/cli/

@@ -6,7 +6,7 @@ Fedify changelog
 Version 1.7.14
 --------------
 
-To be released.
+Released on December 20, 2025.
 
  -  Fixed a ReDoS (Regular Expression Denial of Service) vulnerability in
     the document loader's HTML parsing.  An attacker-controlled server could
