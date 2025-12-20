@@ -460,6 +460,16 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.16
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where the npm package failed to load at runtime with an error
+    like `SyntaxError: The requested module '../types.js' does not provide an
+    export named 'i'`.  This was a regression introduced in version 1.7.15.
+
+
 Version 1.7.15
 --------------
 
@@ -663,6 +673,16 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.15
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where the npm package failed to load at runtime with an error
+    like `SyntaxError: The requested module '../types.js' does not provide an
+    export named 'i'`.  This was a regression introduced in version 1.6.14.
 
 
 Version 1.6.14
