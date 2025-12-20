@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cli",
-  "version": "1.7.15",
+  "version": "1.7.16",
   "license": "MIT",
   "exports": "./mod.ts",
   "imports": {
