@@ -8,6 +8,10 @@ Version 1.6.15
 
 To be released.
 
+ -  Fixed a bug where the npm package failed to load at runtime with an error
+    like `SyntaxError: The requested module '../types.js' does not provide an
+    export named 'i'`.  This was a regression introduced in version 1.6.14.
+
 
 Version 1.6.14
 --------------

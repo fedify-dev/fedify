@@ -37,7 +37,6 @@ export default [
         )
         .map((f) => f.replace(sep, "/")),
     ],
-    hash: false,
     dts: true,
     external: [/^node:/],
     inputOptions: {
