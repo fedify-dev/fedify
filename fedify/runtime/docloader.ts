@@ -235,37 +235,55 @@ export async function getRemoteDocument(
       contentType === "application/xhtml+xml" ||
       contentType?.startsWith("application/xhtml+xml;"))
   ) {
-    const p =
-      /<(a|link)((\s+[a-z][a-z:_-]*=("[^"]*"|'[^']*'|[^\s>]+))+)\s*\/?>/ig;
-    const p2 = /\s+([a-z][a-z:_-]*)=("([^"]*)"|'([^']*)'|([^\s>]+))/ig;
+    // Security: Limit HTML response size to mitigate ReDoS attacks
+    const MAX_HTML_SIZE = 1024 * 1024; // 1MB
     const html = await response.text();
-    let m: RegExpExecArray | null;
-    const rawAttribs: string[] = [];
-    while ((m = p.exec(html)) !== null) rawAttribs.push(m[2]);
-    for (const rawAttrs of rawAttribs) {
-      let m2: RegExpExecArray | null;
-      const attribs: Record<string, string> = {};
-      while ((m2 = p2.exec(rawAttrs)) !== null) {
-        const key = m2[1].toLowerCase();
-        const value = m2[3] ?? m2[4] ?? m2[5] ?? "";
-        attribs[key] = value;
+    if (html.length > MAX_HTML_SIZE) {
+      logger.warn(
+        "HTML response too large, skipping alternate link discovery: {url}",
+        { url: documentUrl, size: html.length },
+      );
+      document = JSON.parse(html);
+    } else {
+      // Safe regex patterns without nested quantifiers to prevent ReDoS
+      // (CVE-2025-68475)
+      // Step 1: Extract <a ...> or <link ...> tags
+      const tagPattern = /<(a|link)\s+([^>]*?)\s*\/?>/gi;
+      // Step 2: Parse attributes
+      const attrPattern =
+        /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+
+      let tagMatch: RegExpExecArray | null;
+      while ((tagMatch = tagPattern.exec(html)) !== null) {
+        const tagContent = tagMatch[2];
+        let attrMatch: RegExpExecArray | null;
+        const attribs: Record<string, string> = {};
+
+        // Reset regex state for attribute parsing
+        attrPattern.lastIndex = 0;
+        while ((attrMatch = attrPattern.exec(tagContent)) !== null) {
+          const key = attrMatch[1].toLowerCase();
+          const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
+          attribs[key] = value;
+        }
+
+        if (
+          attribs.rel === "alternate" && "type" in attribs && (
+            attribs.type === "application/activity+json" ||
+            attribs.type === "application/ld+json" ||
+            attribs.type.startsWith("application/ld+json;")
+          ) && "href" in attribs &&
+          new URL(attribs.href, docUrl).href !== docUrl.href
+        ) {
+          logger.debug(
+            "Found alternate document: {alternateUrl} from {url}",
+            { alternateUrl: attribs.href, url: documentUrl },
+          );
+          return await fetch(new URL(attribs.href, docUrl).href);
+        }
       }
-      if (
-        attribs.rel === "alternate" && "type" in attribs && (
-          attribs.type === "application/activity+json" ||
-          attribs.type === "application/ld+json" ||
-          attribs.type.startsWith("application/ld+json;")
-        ) && "href" in attribs &&
-        new URL(attribs.href, docUrl).href !== docUrl.href
-      ) {
-        logger.debug(
-          "Found alternate document: {alternateUrl} from {url}",
-          { alternateUrl: attribs.href, url: documentUrl },
-        );
-        return await fetch(new URL(attribs.href, docUrl).href);
-      }
+      document = JSON.parse(html);
     }
-    document = JSON.parse(html);
   } else {
     document = await response.json();
   }
