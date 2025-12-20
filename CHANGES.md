@@ -8,6 +8,9 @@ Version 1.6.14
 
 To be released.
 
+ -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
+    in the npm package, causing type errors when importing the package.
+
 
 Version 1.6.13
 --------------

@@ -17,6 +17,7 @@ export default [
       "./x/hono.ts",
       "./x/sveltekit.ts",
     ],
+    hash: false,
     dts: true,
     platform: "neutral",
     external: [/^node:/],
@@ -36,6 +37,7 @@ export default [
         )
         .map((f) => f.replace(sep, "/")),
     ],
+    hash: false,
     dts: true,
     external: [/^node:/],
     inputOptions: {
