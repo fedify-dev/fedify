@@ -6,7 +6,7 @@ Fedify changelog
 Version 1.7.16
 --------------
 
-To be released.
+Released on December 20, 2025.
 
  -  Fixed a bug where the npm package failed to load at runtime with an error
     like `SyntaxError: The requested module '../types.js' does not provide an
