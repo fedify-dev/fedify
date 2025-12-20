@@ -1,6 +1,5 @@
 import { type PlatformDatabase, SqliteDatabase } from "#sqlite";
 import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
-import { Temporal } from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import { isEqual } from "es-toolkit";
 import type { SqliteDatabaseAdapter } from "./adapter.ts";
@@ -81,8 +80,8 @@ export class SqliteKvStore implements KvStore {
 
     const result = this.#db
       .prepare(`
-      SELECT value 
-      FROM "${this.#tableName}" 
+      SELECT value
+      FROM "${this.#tableName}"
       WHERE key = ? AND (expires IS NULL OR expires > ?)
     `)
       .get(encodedKey, now);
@@ -170,8 +169,8 @@ export class SqliteKvStore implements KvStore {
 
       const currentResult = this.#db
         .prepare(`
-          SELECT value 
-          FROM "${this.#tableName}" 
+          SELECT value
+          FROM "${this.#tableName}"
           WHERE key = ? AND (expires IS NULL OR expires > ?)
         `)
         .get(encodedKey, now) as { value: string } | undefined;
@@ -236,7 +235,7 @@ export class SqliteKvStore implements KvStore {
     `);
 
     this.#db.exec(`
-      CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_expires" 
+      CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_expires"
       ON "${this.#tableName}" (expires)
     `);
 
