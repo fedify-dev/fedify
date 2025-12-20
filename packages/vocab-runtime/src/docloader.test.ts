@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, rejects } from "node:assert";
+import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import preloadedContexts from "./contexts.ts";
 import { getDocumentLoader } from "./docloader.ts";
@@ -358,6 +358,34 @@ test("getDocumentLoader()", async (t) => {
     deepStrictEqual(
       await fetchDocumentLoader2("https://example.com/localhost-link"),
       expected,
+    );
+  });
+
+  // Regression test for ReDoS vulnerability (CVE-2025-68475)
+  // Malicious HTML payload: <a a="b" a="b" ... (unclosed tag)
+  // With the vulnerable regex, this causes catastrophic backtracking
+  const maliciousPayload = "<a" + ' a="b"'.repeat(30) + " ";
+
+  fetchMock.get("https://example.com/redos", {
+    body: maliciousPayload,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+
+  await t.test("ReDoS resistance (CVE-2025-68475)", async () => {
+    const start = performance.now();
+    // The malicious HTML will fail JSON parsing, but the important thing is
+    // that it should complete quickly (not hang due to ReDoS)
+    await rejects(
+      () => fetchDocumentLoader("https://example.com/redos"),
+      SyntaxError,
+    );
+    const elapsed = performance.now() - start;
+
+    // Should complete in under 1 second. With the vulnerable regex,
+    // this would take 14+ seconds for 30 repetitions.
+    ok(
+      elapsed < 1000,
+      `Potential ReDoS vulnerability detected: ${elapsed}ms (expected < 1000ms)`,
     );
   });
 
