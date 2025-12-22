@@ -4763,6 +4763,19 @@
           "npm:@sveltejs/kit@2"
         ]
       },
+      "packages/vocab": {
+        "dependencies": [
+          "npm:jsonld@9"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@js-temporal/polyfill@~0.5.1",
+            "npm:@types/node@^24.2.1",
+            "npm:jsonld@9",
+            "npm:urlpattern-polyfill@^10.1.0"
+          ]
+        }
+      },
       "packages/vocab-runtime": {
         "dependencies": [
           "npm:@multiformats/base-x@^4.0.1",

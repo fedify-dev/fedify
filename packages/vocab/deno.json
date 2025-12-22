@@ -1,0 +1,25 @@
+{
+  "name": "@fedify/vocab",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "description": "Code-generated Activity Vocabulary APIs for @fedify/fedify",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "imports": {
+    "jsonld": "npm:jsonld@^9.0.0"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "tasks": {
+    "check": "deno fmt src/mod.ts && deno cache src/mod.ts && deno lint src/mod.ts && deno check src/mod.ts",
+    "test": "deno test ../fedify/src/vocab/vocab.test.ts --allow-read --allow-net --allow-env"
+  }
+}

@@ -171,6 +171,9 @@ importers:
       '@fedify/testing':
         specifier: 'workspace:'
         version: link:../packages/testing
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../packages/vocab
       '@fedify/vocab-runtime':
         specifier: 'workspace:'
         version: link:../packages/vocab-runtime
@@ -292,8 +295,11 @@ importers:
   examples/cloudflare-workers:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:*
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../../packages/vocab
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -310,6 +316,9 @@ importers:
       '@fedify/fedify':
         specifier: workspace:*
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../../packages/vocab
       elysia:
         specifier: 'catalog:'
         version: 1.3.8(exact-mirror@0.1.3(@sinclair/typebox@0.34.38))(file-type@21.0.0)(typescript@5.9.3)
@@ -326,6 +335,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.3.5
@@ -354,6 +366,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       fastify:
         specifier: 'catalog:'
         version: 5.6.1
@@ -373,6 +388,9 @@ importers:
       '@fedify/koa':
         specifier: 'workspace:'
         version: link:../../packages/koa
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.3.5
@@ -401,6 +419,9 @@ importers:
       '@fedify/next':
         specifier: 'workspace:'
         version: link:../../packages/next
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       next:
         specifier: 15.5.0
         version: 15.5.0(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -447,6 +468,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.3.5
@@ -493,6 +517,9 @@ importers:
       '@fedify/fedify':
         specifier: 'workspace:'
         version: link:../../packages/fedify
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       next:
         specifier: 15.3.1
         version: 15.3.1(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -542,6 +569,9 @@ importers:
       '@fedify/sveltekit':
         specifier: 'workspace:'
         version: link:../../packages/sveltekit
+      '@fedify/vocab':
+        specifier: 'workspace:'
+        version: link:../../packages/vocab
       x-forwarded-fetch:
         specifier: ^0.2.0
         version: 0.2.0
@@ -659,6 +689,9 @@ importers:
       '@fedify/sqlite':
         specifier: workspace:*
         version: link:../sqlite
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@fedify/vocab-runtime':
         specifier: workspace:*
         version: link:../vocab-runtime
@@ -813,6 +846,9 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0
     devDependencies:
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
@@ -825,6 +861,9 @@ importers:
 
   packages/fedify:
     dependencies:
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@fedify/vocab-runtime':
         specifier: workspace:*
         version: link:../vocab-runtime
@@ -1105,6 +1144,9 @@ importers:
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../vocab-runtime
@@ -1162,6 +1204,9 @@ importers:
         specifier: workspace:^
         version: link:../fedify
     devDependencies:
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
@@ -1171,6 +1216,37 @@ importers:
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/vocab:
+    dependencies:
+      '@fedify/vocab-runtime':
+        specifier: workspace:*
+        version: link:../vocab-runtime
+      '@js-temporal/polyfill':
+        specifier: ^0.5.1
+        version: 0.5.1
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 1.3.5
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.0
+      jsonld:
+        specifier: ^9.0.0
+        version: 9.0.0
+      urlpattern-polyfill:
+        specifier: ^10.1.0
+        version: 10.1.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.2.1
+        version: 24.3.0
       tsdown:
         specifier: 'catalog:'
         version: 0.12.9(typescript@5.9.3)

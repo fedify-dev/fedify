@@ -1,0 +1,69 @@
+{
+  "name": "@fedify/vocab",
+  "version": "2.0.0",
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/vocab"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "engines": {
+    "deno": ">=2.0.0",
+    "node": ">=22.0.0",
+    "bun": ">=1.1.0"
+  },
+  "description": "Code-generated Activity Vocabulary APIs for @fedify/fedify",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown"
+  },
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse"
+  ],
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@fedify/vocab-runtime": "workspace:*",
+    "@js-temporal/polyfill": "^0.5.1",
+    "@logtape/logtape": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "jsonld": "^9.0.0",
+    "urlpattern-polyfill": "^10.1.0"
+  }
+}
