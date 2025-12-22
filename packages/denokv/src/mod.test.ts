@@ -75,6 +75,40 @@ Deno.test("DenoKvStore", async (t) => {
     await store.delete(["b"]);
   });
 
+  await t.step(
+    "list() - exact prefix key should not be duplicated",
+    async () => {
+      // Regression test: when the exact prefix key exists alongside child keys,
+      // it should only be yielded once, not twice
+      await store.set(["exact"], "exact-value");
+      await store.set(["exact", "child1"], "child1-value");
+      await store.set(["exact", "child2"], "child2-value");
+
+      const entries: { key: Deno.KvKey; value: unknown }[] = [];
+      for await (const entry of store.list!(["exact"])) {
+        entries.push(entry);
+      }
+
+      // Should have exactly 3 entries, not 4 (no duplicate of ["exact"])
+      assertEquals(entries.length, 3);
+
+      // Count how many times the exact prefix key appears
+      const exactKeyCount =
+        entries.filter((e) => e.key.length === 1 && e.key[0] === "exact")
+          .length;
+      assertEquals(
+        exactKeyCount,
+        1,
+        "Exact prefix key should appear only once",
+      );
+
+      // Cleanup
+      await store.delete(["exact"]);
+      await store.delete(["exact", "child1"]);
+      await store.delete(["exact", "child2"]);
+    },
+  );
+
   await t.step("list() - empty prefix", async () => {
     // Cleanup from previous tests
     await store.delete(["foo", "bar"]);
