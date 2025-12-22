@@ -34,6 +34,47 @@ Deno.test("DenoKvStore", async (t) => {
     assertEquals(await store.get(["foo", "bar"]), "baz");
   });
 
+  await t.step("list()", async () => {
+    await store.set(["prefix", "a"], "value-a");
+    await store.set(["prefix", "b"], "value-b");
+    await store.set(["prefix", "nested", "c"], "value-c");
+    await store.set(["other", "x"], "value-x");
+
+    const entries: { key: Deno.KvKey; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+      entries.push(entry);
+    }
+
+    assertEquals(entries.length, 3);
+    assertEquals(
+      entries.find((e) => e.key[1] === "a")?.value,
+      "value-a",
+    );
+
+    // Cleanup
+    await store.delete(["prefix", "a"]);
+    await store.delete(["prefix", "b"]);
+    await store.delete(["prefix", "nested", "c"]);
+    await store.delete(["other", "x"]);
+  });
+
+  await t.step("list() - single element key", async () => {
+    await store.set(["a"], "value-a");
+    await store.set(["b"], "value-b");
+
+    const entries: { key: Deno.KvKey; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["a"] })) {
+      entries.push(entry);
+    }
+
+    assertEquals(entries.length, 1);
+    assertEquals(entries[0].value, "value-a");
+
+    // Cleanup
+    await store.delete(["a"]);
+    await store.delete(["b"]);
+  });
+
   kv.close();
 });
 

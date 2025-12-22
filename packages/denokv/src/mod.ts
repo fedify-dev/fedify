@@ -13,6 +13,8 @@
 import type {
   KvKey,
   KvStore,
+  KvStoreListEntry,
+  KvStoreListOptions,
   KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
@@ -91,6 +93,33 @@ export class DenoKvStore implements KvStore {
         )
         .commit();
       if (result.ok) return true;
+    }
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(
+    options: KvStoreListOptions,
+  ): AsyncIterable<KvStoreListEntry> {
+    // First, check if the exact prefix key exists
+    const exactEntry = await this.#kv.get(options.prefix);
+    if (exactEntry.value != null) {
+      yield {
+        key: options.prefix,
+        value: exactEntry.value,
+      };
+    }
+
+    // Then list all keys starting with the prefix
+    const entries = this.#kv.list({ prefix: options.prefix });
+    for await (const entry of entries) {
+      if (entry.value == null) continue;
+      yield {
+        key: entry.key as KvKey,
+        value: entry.value,
+      };
     }
   }
 }
