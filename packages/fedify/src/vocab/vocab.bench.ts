@@ -1,4 +1,4 @@
-import { Collection, Object } from "./vocab.ts";
+import { Collection, Object } from "@fedify/vocab";
 
 const jsonLd = {
   "@context": [

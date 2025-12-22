@@ -1,6 +1,6 @@
+import { CryptographicKey, Multikey } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { KeyCache } from "../sig/key.ts";
-import { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
 export interface KvKeyCacheOptions {

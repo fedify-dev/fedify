@@ -1,7 +1,7 @@
+import { Person } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
 import { test } from "../testing/mod.ts";
 import { getTypeId } from "./type.ts";
-import { Person } from "./vocab.ts";
 
 test("getTypeId()", () => {
   const obj = new Person({});

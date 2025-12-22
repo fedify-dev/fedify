@@ -1,15 +1,11 @@
+import { keyPairsStore, relationStore } from "@/data/store";
 import {
-  Accept,
   createFederation,
-  Endpoints,
-  Follow,
   generateCryptoKeyPair,
   MemoryKvStore,
-  Person,
-  Undo,
 } from "@fedify/fedify";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { revalidatePath } from "next/cache";
-import { keyPairsStore, relationStore } from "@/data/store";
 
 const federation = createFederation({
   kv: new MemoryKvStore(),

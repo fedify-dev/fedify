@@ -19,6 +19,7 @@
     "@fedify/sqlite": "workspace:",
     "@fedify/sveltekit": "workspace:",
     "@fedify/testing": "workspace:",
+    "@fedify/vocab": "workspace:",
     "@fedify/vocab-runtime": "workspace:",
     "@hono/node-server": "^1.13.7",
     "@js-temporal/polyfill": "catalog:",

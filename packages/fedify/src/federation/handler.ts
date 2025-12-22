@@ -1,3 +1,13 @@
+import {
+  Activity,
+  Collection,
+  CollectionPage,
+  type CryptographicKey,
+  Link,
+  Object,
+  OrderedCollection,
+  OrderedCollectionPage,
+} from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import type {
@@ -14,16 +24,6 @@ import { doesActorOwnKey } from "../sig/owner.ts";
 import { verifyObject } from "../sig/proof.ts";
 import type { Recipient } from "../vocab/actor.ts";
 import { getTypeId } from "../vocab/type.ts";
-import {
-  Activity,
-  Collection,
-  CollectionPage,
-  type CryptographicKey,
-  Link,
-  Object,
-  OrderedCollection,
-  OrderedCollectionPage,
-} from "../vocab/vocab.ts";
 import type {
   ActorDispatcher,
   AuthorizePredicate,

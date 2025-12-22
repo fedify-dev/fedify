@@ -1,3 +1,4 @@
+import type { CryptographicKey, Multikey } from "@fedify/vocab";
 import { exportSpki } from "@fedify/vocab-runtime";
 import {
   assert,
@@ -18,7 +19,6 @@ import {
   rsaPublicKey5,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
-import type { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import {
   createRfc9421SignatureBase,
   doubleKnock,

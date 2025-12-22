@@ -1,4 +1,11 @@
 import {
+  Application,
+  Group,
+  Organization,
+  Person,
+  Service,
+} from "@fedify/vocab";
+import {
   assert,
   assertEquals,
   assertFalse,
@@ -17,7 +24,6 @@ import {
   isActor,
   normalizeActorHandle,
 } from "./actor.ts";
-import { Application, Group, Organization, Person, Service } from "./vocab.ts";
 
 function actorClass(): fc.Arbitrary<
   | typeof Application

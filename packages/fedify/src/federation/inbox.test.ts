@@ -1,7 +1,7 @@
+import { Activity, Create, Invite, Offer, Update } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertThrows } from "@std/assert/assert-throws";
 import { test } from "../testing/mod.ts";
-import { Activity, Create, Invite, Offer, Update } from "../vocab/vocab.ts";
 import { InboxListenerSet } from "./inbox.ts";
 
 test("InboxListenerSet", () => {

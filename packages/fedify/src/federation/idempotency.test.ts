@@ -1,3 +1,4 @@
+import { type Activity, Create, Follow, Person } from "@fedify/vocab";
 import { assertEquals } from "@std/assert";
 import { signObject } from "../sig/proof.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
@@ -7,7 +8,6 @@ import {
   ed25519PublicKey,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
-import { type Activity, Create, Follow, Person } from "../vocab/vocab.ts";
 import type { Federation, FederationOptions } from "./federation.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";

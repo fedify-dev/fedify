@@ -1,3 +1,22 @@
+import * as vocab from "@fedify/vocab";
+import {
+  Activity,
+  Announce,
+  Collection,
+  Create,
+  CryptographicKey,
+  type DataIntegrityProof,
+  Follow,
+  Hashtag,
+  Link,
+  Note,
+  Object,
+  OrderedCollectionPage,
+  Person,
+  Place,
+  Question,
+  Source,
+} from "@fedify/vocab";
 import { decodeMultibase, LanguageString } from "@fedify/vocab-runtime";
 import {
   areAllScalarTypes,
@@ -18,25 +37,6 @@ import { pascalCase } from "es-toolkit";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { ed25519PublicKey, rsaPublicKey1 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
-import * as vocab from "./vocab.ts";
-import {
-  Activity,
-  Announce,
-  Collection,
-  Create,
-  CryptographicKey,
-  type DataIntegrityProof,
-  Follow,
-  Hashtag,
-  Link,
-  Note,
-  Object,
-  OrderedCollectionPage,
-  Person,
-  Place,
-  Question,
-  Source,
-} from "./vocab.ts";
 
 test("new Object()", () => {
   const obj = new Object({

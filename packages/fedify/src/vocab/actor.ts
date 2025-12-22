@@ -1,10 +1,16 @@
+import {
+  Application,
+  Group,
+  Organization,
+  Person,
+  Service,
+} from "@fedify/vocab";
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { domainToASCII, domainToUnicode } from "node:url";
 import metadata from "../../deno.json" with { type: "json" };
 import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { getTypeId } from "./type.ts";
-import { Application, Group, Organization, Person, Service } from "./vocab.ts";
 
 /**
  * Actor types are {@link Object} types that are capable of performing

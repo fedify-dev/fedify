@@ -1,3 +1,11 @@
+import {
+  Create,
+  type CryptographicKey,
+  DataIntegrityProof,
+  Multikey,
+  Note,
+  Place,
+} from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
 import { decodeHex, encodeHex } from "byte-encodings/hex";
@@ -10,14 +18,6 @@ import {
   rsaPublicKey2,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
-import {
-  Create,
-  type CryptographicKey,
-  DataIntegrityProof,
-  Multikey,
-  Note,
-  Place,
-} from "../vocab/vocab.ts";
 import type { KeyCache } from "./key.ts";
 import {
   createProof,

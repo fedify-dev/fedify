@@ -12,5 +12,7 @@ export default defineConfig({
     "@fedify/fedify/utils",
     "@fedify/fedify/vocab",
     "@fedify/fedify/webfinger",
+    "@fedify/vocab",
+    "@fedify/vocab-runtime",
   ],
 });

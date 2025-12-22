@@ -1,3 +1,4 @@
+import { Activity, CryptographicKey, Object } from "@fedify/vocab";
 import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
@@ -6,7 +7,6 @@ import { encodeHex } from "byte-encodings/hex";
 import jsonld from "jsonld";
 import metadata from "../../deno.json" with { type: "json" };
 import { getTypeId } from "../vocab/type.ts";
-import { Activity, CryptographicKey, Object } from "../vocab/vocab.ts";
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
 
 const logger = getLogger(["fedify", "sig", "ld"]);

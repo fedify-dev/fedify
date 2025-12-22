@@ -1,3 +1,9 @@
+import {
+  Activity,
+  DataIntegrityProof,
+  Multikey,
+  type Object,
+} from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
@@ -5,12 +11,6 @@ import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
 import { getTypeId } from "../vocab/type.ts";
-import {
-  Activity,
-  DataIntegrityProof,
-  Multikey,
-  type Object,
-} from "../vocab/vocab.ts";
 import {
   fetchKey,
   type FetchKeyResult,

@@ -1,3 +1,4 @@
+import { Collection, Note, Object, Person } from "@fedify/vocab";
 import {
   assert,
   assertEquals,
@@ -9,7 +10,6 @@ import { mockDocumentLoader } from "../testing/docloader.ts";
 import { test } from "../testing/mod.ts";
 import { createTestTracerProvider } from "../testing/otel.ts";
 import { lookupObject, traverseCollection } from "./lookup.ts";
-import { Collection, Note, Object, Person } from "./vocab.ts";
 
 test("lookupObject()", {
   sanitizeResources: false,

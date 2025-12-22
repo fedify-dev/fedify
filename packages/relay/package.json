@@ -48,10 +48,12 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^"
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^"
   },
   "devDependencies": {
     "@fedify/testing": "workspace:^",
+    "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:^",
     "tsdown": "catalog:",
     "typescript": "catalog:"

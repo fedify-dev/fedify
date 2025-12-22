@@ -50,9 +50,11 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^"
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^"
   },
   "devDependencies": {
+    "@fedify/vocab": "workspace:*",
     "@js-temporal/polyfill": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",

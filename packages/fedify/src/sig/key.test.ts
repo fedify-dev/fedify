@@ -1,3 +1,4 @@
+import { CryptographicKey, Multikey } from "@fedify/vocab";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
@@ -8,7 +9,6 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
-import { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import {
   exportJwk,
   fetchKey,

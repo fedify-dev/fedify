@@ -1,3 +1,11 @@
+import {
+  Activity,
+  type Collection,
+  CryptographicKey,
+  type Link,
+  Multikey,
+  type Object,
+} from "@fedify/vocab";
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import {
   type AuthenticatedDocumentLoaderFactory,
@@ -49,14 +57,6 @@ import {
   type TraverseCollectionOptions,
 } from "../vocab/lookup.ts";
 import { getTypeId } from "../vocab/type.ts";
-import {
-  Activity,
-  type Collection,
-  CryptographicKey,
-  type Link,
-  Multikey,
-  type Object,
-} from "../vocab/vocab.ts";
 import { handleWebFinger } from "../webfinger/handler.ts";
 import type { ResourceDescriptor } from "../webfinger/jrd.ts";
 import {

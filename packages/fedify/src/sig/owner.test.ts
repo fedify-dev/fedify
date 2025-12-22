@@ -1,10 +1,10 @@
+import { Create, CryptographicKey } from "@fedify/vocab";
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { rsaPublicKey1, rsaPublicKey2 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
 import { createTestTracerProvider } from "../testing/otel.ts";
 import { lookupObject } from "../vocab/lookup.ts";
-import { Create, CryptographicKey } from "../vocab/vocab.ts";
 import { doesActorOwnKey, getKeyOwner } from "./owner.ts";
 
 test("doesActorOwnKey()", async () => {

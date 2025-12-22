@@ -8,23 +8,21 @@ import {
   type KvStore,
   type MessageQueue,
 } from "@fedify/fedify";
+import { type Actor, isActor, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import {
   Accept,
-  type Actor,
   Announce,
   Application,
   Create,
   Delete,
   Follow,
-  isActor,
   Move,
   Object,
-  PUBLIC_COLLECTION,
   Reject,
   Service,
   Undo,
   Update,
-} from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,

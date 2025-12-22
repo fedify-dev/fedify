@@ -32,6 +32,7 @@
   "dependencies": {
     "@fedify/elysia": "workspace:*",
     "@fedify/fedify": "workspace:*",
+    "@fedify/vocab": "workspace:*",
     "elysia": "catalog:"
   }
 }

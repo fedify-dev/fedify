@@ -1,3 +1,4 @@
+import { CryptographicKey, type Multikey, Object } from "@fedify/vocab";
 import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import { isActor } from "../vocab/actor.ts";
-import { CryptographicKey, type Multikey, Object } from "../vocab/vocab.ts";
 
 /**
  * Checks if the given key is valid and supported.  No-op if the key is valid,

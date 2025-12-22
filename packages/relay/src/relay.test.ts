@@ -2,7 +2,7 @@
 import { ok, strictEqual } from "node:assert/strict";
 import { describe, test } from "node:test";
 import { MemoryKvStore } from "@fedify/fedify";
-import { Accept, Follow, Person } from "@fedify/fedify/vocab";
+import { Accept, Follow, Person } from "@fedify/vocab";
 import { signRequest } from "@fedify/fedify/sig";
 import { LitePubRelay, MastodonRelay, type RelayOptions } from "@fedify/relay";
 import { createFederation } from "@fedify/testing";

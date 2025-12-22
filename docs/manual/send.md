@@ -33,7 +33,8 @@ To send an activity to another actor, you can use the `Context.sendActivity()`
 method.  The following shows how to send a `Follow` activity to another actor:
 
 ~~~~ typescript{8-15} twoslash
-import { type Context, Follow, type Recipient } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Follow, type Recipient } from "@fedify/vocab";
 
 async function sendFollow(
   ctx: Context<void>,
@@ -71,7 +72,8 @@ the actor with the given identifier.  The identifier is used to find the
 actor's key pairs to sign the activity:
 
 ~~~~ typescript twoslash
-import { Activity, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 // ---cut-before---
@@ -89,7 +91,8 @@ the actor with the given WebFinger username.  The username is used to find
 the actor's key pairs to sign the activity:
 
 ~~~~ typescript twoslash
-import { Activity, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 // ---cut-before---
@@ -110,12 +113,8 @@ If you specify a `SenderKeyPair` object or an array of `SenderKeyPair` objects,
 the sender is the set of the given key pairs:
 
 ~~~~ typescript twoslash
-import {
-  Activity,
-  type Actor,
-  type Context,
-  SenderKeyPair,
-} from "@fedify/fedify";
+import { type Context, SenderKeyPair } from "@fedify/fedify";
+import { Activity, type Actor } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 const recipients: Actor[] = [];
@@ -147,7 +146,8 @@ inboxes (or shared inboxes if some actors support it and you turn on
 the `preferSharedInbox` option):
 
 ~~~~ typescript twoslash
-import { Activity, type Actor, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity, type Actor } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 const actor = {} as Actor;
@@ -162,7 +162,8 @@ await ctx.sendActivity(
 Or you can specify multiple actors:
 
 ~~~~ typescript twoslash
-import { Activity, type Actor, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity, type Actor } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 const actor = {} as Actor;
@@ -197,7 +198,8 @@ export interface Recipient {
 Here's an example of specifying a `Recipient` object:
 
 ~~~~ typescript{3-6} twoslash
-import { Activity, type Context, Recipient } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 // ---cut-before---
@@ -214,7 +216,8 @@ await ctx.sendActivity(
 Or you can provide its shared inbox endpoint as well:
 
 ~~~~ typescript{6-8} twoslash
-import { Activity, type Context, Recipient } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 // ---cut-before---
@@ -246,7 +249,8 @@ followers of the sender.  It is a special value that represents the followers
 of the sender:
 
 ~~~~ typescript twoslash
-import { Activity, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = new Activity({});
 // ---cut-before---
@@ -331,9 +335,8 @@ and you can set them to `Actor` objects, `Collection` objects, or `URL` objects.
 To wrap up, the following is an example of sending a `Create` activity:
 
 ~~~~ typescript twoslash
-import {
-  type Context, Create, Note, type Actor, PUBLIC_COLLECTION,
-} from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { type Actor, Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const senderId: string = "";
 const noteId: string = "";
@@ -446,7 +449,8 @@ You can control this behavior using the `fanout` option in
 the `~Context.sendActivity()` method:
 
 ~~~~ typescript twoslash
-import type { Activity, Context, Recipient } from "@fedify/fedify";
+import type { Context } from "@fedify/fedify";
+import type { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = {} as Activity;
 const recipients: Recipient[] = [];
@@ -480,7 +484,8 @@ The `fanout` option accepts the following values:
 Use the default `"auto"` for most cases:
 
 ~~~~ typescript twoslash
-import type { Activity, Context, Recipient } from "@fedify/fedify";
+import type { Context } from "@fedify/fedify";
+import type { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = {} as Activity;
 const recipients: Recipient[] = [];
@@ -491,7 +496,8 @@ await ctx.sendActivity({ identifier: "alice" }, recipients, activity);
 Use `"skip"` when you need different content for each recipient:
 
 ~~~~ typescript twoslash
-import type { Activity, Context, Recipient } from "@fedify/fedify";
+import type { Context } from "@fedify/fedify";
+import type { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = {} as Activity;
 const recipients: Recipient[] = [];
@@ -507,7 +513,8 @@ await ctx.sendActivity(
 Use `"force"` to ensure fan-out behavior even with few recipients (rarely needed):
 
 ~~~~ typescript twoslash
-import type { Activity, Context, Recipient } from "@fedify/fedify";
+import type { Context } from "@fedify/fedify";
+import type { Activity, Recipient } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const activity = {} as Activity;
 const recipients: Recipient[] = [];
@@ -530,7 +537,8 @@ You can do this by calling the `~Context.sendActivity()` method with the
 
 
 ~~~~ typescript twoslash
-import { type Context, Follow, type Recipient } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Follow, type Recipient } from "@fedify/vocab";
 
 async function sendFollow(
   ctx: Context<void>,
@@ -561,13 +569,8 @@ recipient's personal inbox.  To deliver an activity to the shared inbox,
 you can pass the `preferSharedInbox` option:
 
 ~~~~ typescript twoslash
-import {
-  type Context,
-  Create,
-  Note,
-  type Recipient,
-  PUBLIC_COLLECTION,
-} from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Create, Note, type Recipient, PUBLIC_COLLECTION } from "@fedify/vocab";
 
 async function sendNote(
   ctx: Context<void>,
@@ -633,7 +636,8 @@ the `"followers"` string and turning on
 the `~SendActivityOptionsForCollection.syncCollection` option:
 
 ~~~~ typescript twoslash
-import { type Context, Create, Note } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const senderId : string = "";
 // ---cut-before---
@@ -694,7 +698,8 @@ To exclude same-server recipients, you can pass the `excludeBaseUris` option
 to the `~Context.sendActivity()` method:
 
 ~~~~ typescript twoslash
-import { Activity, type Context } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const senderId: string = "";
 const activity = new Activity({});
@@ -937,7 +942,7 @@ property contains the full actor object inlined.
 For example, the following activity:
 
 ~~~~ typescript{3-7} twoslash
-import { Follow, Person } from "@fedify/fedify";
+import { Follow, Person } from "@fedify/vocab";
 // ---cut-before---
 new Follow({
   id: new URL("http://example.com/activities/1"),
@@ -957,7 +962,7 @@ new Follow({
 is transformed into:
 
 ~~~~ typescript twoslash
-import { Follow, Person } from "@fedify/fedify";
+import { Follow, Person } from "@fedify/vocab";
 // ---cut-before---
 new Follow({
   id: new URL("http://example.com/activities/1"),

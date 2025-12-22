@@ -1,3 +1,4 @@
+import { Image, Link, Person } from "@fedify/vocab";
 import { assertEquals } from "@std/assert";
 import type {
   ActorAliasMapper,
@@ -11,7 +12,6 @@ import { createFederation } from "../federation/middleware.ts";
 import { createRequestContext } from "../testing/context.ts";
 import { test } from "../testing/mod.ts";
 import type { Actor } from "../vocab/actor.ts";
-import { Image, Link, Person } from "../vocab/vocab.ts";
 import { handleWebFinger } from "./handler.ts";
 
 test("handleWebFinger()", async (t) => {

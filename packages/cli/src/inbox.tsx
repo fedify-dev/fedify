@@ -1,24 +1,26 @@
 /** @jsx react-jsx */
 /** @jsxImportSource hono/jsx */
 import {
-  Accept,
-  Activity,
   type Actor,
-  Application,
   type Context,
   createFederation,
-  Delete,
-  Endpoints,
-  Follow,
   generateCryptoKeyPair,
   getActorHandle,
-  Image,
   isActor,
   lookupObject,
   MemoryKvStore,
   PUBLIC_COLLECTION,
   type Recipient,
 } from "@fedify/fedify";
+import {
+  Accept,
+  Activity,
+  Application,
+  Delete,
+  Endpoints,
+  Follow,
+  Image,
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   command,

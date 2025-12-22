@@ -1,0 +1,233 @@
+
+> @fedify/relay@2.0.0 test /workspaces/fedify/packages/relay
+> deno task codegen && tsdown && node --test
+
+[34mℹ[39m tsdown [2mv0.12.9[22m powered by rolldown [2mv1.0.0-beta.22[22m
+[34mℹ[39m Using tsdown config: [4m/workspaces/fedify/packages/relay/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/mod.ts[39m
+[34mℹ[39m Build start
+[34mℹ[39m Cleaning 8 files
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mmod.cjs[22m  [2m18.65 kB[22m [2m│ gzip: 2.95 kB[22m
+[34mℹ[39m [33m[CJS][39m 1 files, total: 18.65 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mmod.js[22m    [2m16.60 kB[22m [2m│ gzip: 2.55 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mmod.d.ts[22m[39m  [2m 1.87 kB[22m [2m│ gzip: 0.65 kB[22m
+[34mℹ[39m [34m[ESM][39m 2 files, total: 18.47 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mmod.d.cts[22m[39m  [2m1.87 kB[22m [2m│ gzip: 0.65 kB[22m
+[34mℹ[39m [33m[CJS][39m 1 files, total: 1.87 kB
+[32m✔[39m Build complete in [32m934ms[39m
+TAP version 13
+# Subtest: MastodonRelay
+    # Subtest: constructor with required options
+    ok 1 - constructor with required options
+      ---
+      duration_ms: 0.623709
+      type: 'test'
+      ...
+    # Subtest: creates relay with default domain
+    ok 2 - creates relay with default domain
+      ---
+      duration_ms: 11.472417
+      type: 'test'
+      ...
+    # Subtest: setSubscriptionHandler returns relay instance for chaining
+    ok 3 - setSubscriptionHandler returns relay instance for chaining
+      ---
+      duration_ms: 3.739542
+      type: 'test'
+      ...
+    # Subtest: fetch method returns Response
+    ok 4 - fetch method returns Response
+      ---
+      duration_ms: 6.895875
+      type: 'test'
+      ...
+    # Subtest: fetching relay actor returns Service
+    ok 5 - fetching relay actor returns Service
+      ---
+      duration_ms: 337.370417
+      type: 'test'
+      ...
+    # Subtest: fetching non-relay actor returns 404
+    ok 6 - fetching non-relay actor returns 404
+      ---
+      duration_ms: 5.456959
+      type: 'test'
+      ...
+    # Subtest: followers collection returns empty list initially
+    ok 7 - followers collection returns empty list initially
+      ---
+      duration_ms: 5.737625
+      type: 'test'
+      ...
+    # Subtest: followers collection returns populated list
+    ok 8 - followers collection returns populated list
+      ---
+      duration_ms: 9.797834
+      type: 'test'
+      ...
+    # Subtest: subscription handler is called on Follow activity
+    ok 9 - subscription handler is called on Follow activity
+      ---
+      duration_ms: 217.12425
+      type: 'test'
+      ...
+    # Subtest: stores follower in KV when Follow is approved
+    ok 10 - stores follower in KV when Follow is approved
+      ---
+      duration_ms: 0.9195
+      type: 'test'
+      ...
+    # Subtest: removes follower from KV when Undo Follow is received
+    ok 11 - removes follower from KV when Undo Follow is received
+      ---
+      duration_ms: 0.370792
+      type: 'test'
+      ...
+    # Subtest: does not store follower when Follow is rejected
+    ok 12 - does not store follower when Follow is rejected
+      ---
+      duration_ms: 0.109792
+      type: 'test'
+      ...
+    # Subtest: relay actor has correct properties
+    ok 13 - relay actor has correct properties
+      ---
+      duration_ms: 400.215667
+      type: 'test'
+      ...
+    # Subtest: multiple followers can be stored
+    ok 14 - multiple followers can be stored
+      ---
+      duration_ms: 0.46825
+      type: 'test'
+      ...
+    1..14
+ok 1 - MastodonRelay
+  ---
+  duration_ms: 1001.201667
+  type: 'suite'
+  ...
+# Subtest: LitePubRelay
+    # Subtest: creates relay with required options
+    ok 1 - creates relay with required options
+      ---
+      duration_ms: 0.286625
+      type: 'test'
+      ...
+    # Subtest: creates relay with default domain
+    ok 2 - creates relay with default domain
+      ---
+      duration_ms: 5.284208
+      type: 'test'
+      ...
+    # Subtest: setSubscriptionHandler returns relay instance for chaining
+    ok 3 - setSubscriptionHandler returns relay instance for chaining
+      ---
+      duration_ms: 4.528166
+      type: 'test'
+      ...
+    # Subtest: fetch method returns Response
+    ok 4 - fetch method returns Response
+      ---
+      duration_ms: 0.682334
+      type: 'test'
+      ...
+    # Subtest: fetching relay actor returns Application
+    ok 5 - fetching relay actor returns Application
+      ---
+      duration_ms: 286.721167
+      type: 'test'
+      ...
+    # Subtest: fetching non-relay actor returns 404
+    ok 6 - fetching non-relay actor returns 404
+      ---
+      duration_ms: 4.046708
+      type: 'test'
+      ...
+    # Subtest: followers collection returns empty list initially
+    ok 7 - followers collection returns empty list initially
+      ---
+      duration_ms: 3.883542
+      type: 'test'
+      ...
+    # Subtest: followers collection returns populated list
+    ok 8 - followers collection returns populated list
+      ---
+      duration_ms: 6.523833
+      type: 'test'
+      ...
+    # Subtest: subscription handler is called on Follow activity
+    ok 9 - subscription handler is called on Follow activity
+      ---
+      duration_ms: 72.803417
+      type: 'test'
+      ...
+    # Subtest: stores follower with pending state then accepted after two-step handshake
+    ok 10 - stores follower with pending state then accepted after two-step handshake
+      ---
+      duration_ms: 0.429583
+      type: 'test'
+      ...
+    # Subtest: removes follower from KV when Undo Follow is received
+    ok 11 - removes follower from KV when Undo Follow is received
+      ---
+      duration_ms: 0.315291
+      type: 'test'
+      ...
+    # Subtest: does not store follower when Follow is rejected
+    ok 12 - does not store follower when Follow is rejected
+      ---
+      duration_ms: 0.037209
+      type: 'test'
+      ...
+    # Subtest: relay actor has correct properties
+    ok 13 - relay actor has correct properties
+      ---
+      duration_ms: 593.456167
+      type: 'test'
+      ...
+    # Subtest: multiple followers can be stored
+    ok 14 - multiple followers can be stored
+      ---
+      duration_ms: 0.738083
+      type: 'test'
+      ...
+    # Subtest: Accept handler updates follower state and adds to followers list
+    ok 15 - Accept handler updates follower state and adds to followers list
+      ---
+      duration_ms: 10.498875
+      type: 'test'
+      ...
+    # Subtest: following dispatcher returns same actors as followers
+    ok 16 - following dispatcher returns same actors as followers
+      ---
+      duration_ms: 5.356292
+      type: 'test'
+      ...
+    # Subtest: pending followers are not in followers list
+    ok 17 - pending followers are not in followers list
+      ---
+      duration_ms: 3.910834
+      type: 'test'
+      ...
+    # Subtest: duplicate Follow is ignored when follower is pending
+    ok 18 - duplicate Follow is ignored when follower is pending
+      ---
+      duration_ms: 7.843458
+      type: 'test'
+      ...
+    1..18
+ok 2 - LitePubRelay
+  ---
+  duration_ms: 1007.688875
+  type: 'suite'
+  ...
+1..2
+# tests 32
+# suites 2
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2488.625959

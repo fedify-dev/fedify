@@ -1,4 +1,4 @@
-import type { Link, Object } from "./vocab.ts";
+import type { Link, Object } from "@fedify/vocab";
 
 /**
  * Returns the type URI of the given object.

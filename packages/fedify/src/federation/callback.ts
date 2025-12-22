@@ -1,7 +1,6 @@
+import type { Activity, CryptographicKey, Object } from "@fedify/vocab";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { Actor } from "../vocab/actor.ts";
-import type { Activity, CryptographicKey } from "../vocab/mod.ts";
-import type { Object } from "../vocab/vocab.ts";
 import type { Link } from "../webfinger/mod.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";

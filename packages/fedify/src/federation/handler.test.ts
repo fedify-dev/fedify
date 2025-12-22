@@ -1,3 +1,10 @@
+import {
+  type Activity,
+  Create,
+  Note,
+  type Object,
+  Person,
+} from "@fedify/vocab";
 import { assert, assertEquals } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import {
@@ -12,13 +19,6 @@ import {
 } from "../testing/keys.ts";
 import { test } from "../testing/mod.ts";
 import { createTestTracerProvider } from "../testing/otel.ts";
-import {
-  type Activity,
-  Create,
-  Note,
-  type Object,
-  Person,
-} from "../vocab/vocab.ts";
 import type {
   ActorDispatcher,
   CollectionCounter,

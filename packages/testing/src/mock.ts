@@ -12,12 +12,10 @@ import type {
 } from "@fedify/fedify/federation";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type {
-  Activity,
-  Collection,
   LookupObjectOptions,
-  Object,
   TraverseCollectionOptions,
 } from "@fedify/fedify/vocab";
+import type { Activity, Collection, Object } from "@fedify/vocab";
 import {
   createContext,
   createInboxContext,
@@ -141,7 +139,7 @@ interface TestFederation<TContextData>
  *
  * @example
  * ```typescript
- * import { Create } from "@fedify/fedify/vocab";
+ * import { Create } from "@fedify/vocab";
  * import { createFederation } from "@fedify/testing";
  *
  * // Create a mock federation with contextData
@@ -495,7 +493,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
  *
  * @example
  * ```typescript
- * import { Create } from "@fedify/fedify/vocab";
+ * import { Create } from "@fedify/vocab";
  * import { createFederation } from "@fedify/testing";
  *
  * // Create a mock federation with contextData
@@ -544,7 +542,7 @@ export function createFederation<TContextData>(
  *
  * @example
  * ```typescript
- * import { Person, Create } from "@fedify/fedify/vocab";
+ * import { Person, Create } from "@fedify/vocab";
  * import { createFederation } from "@fedify/testing";
  *
  * // Create a mock federation and context

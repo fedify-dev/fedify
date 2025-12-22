@@ -381,7 +381,8 @@ Let's create an actor dispatcher for our server:
 ::: code-group
 
 ~~~~ typescript{7-16} twoslash [Deno]
-import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -406,7 +407,8 @@ Deno.serve(
 ~~~~ typescript{7-16} twoslash [Bun]
 import "@types/bun";
 // ---cut-before---
-import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -432,7 +434,8 @@ Bun.serve({
 ~~~~
 
 ~~~~ typescript{8-17} twoslash [Node.js]
-import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { serve } from "@hono/node-server";
 
 const federation = createFederation<void>({
@@ -728,18 +731,15 @@ represents the `Follow` activity.  We will use the `Follow` class to handle
 incoming follow requests:
 
 ~~~~ typescript twoslash [server.ts]
-import {
-  createFederation,
-  Follow,  // [!code highlight]
-  Person,
-  MemoryKvStore,
-} from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Follow, Person } from "@fedify/vocab";  // [!code highlight]
 ~~~~
 
 Then, we register an inbox listener for the `Follow` activity:
 
 ~~~~ typescript{3-11} twoslash [server.ts]
-import { type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -765,7 +765,8 @@ URI in the actor object.  Let's modify the actor dispatcher to include the inbox
 URI:
 
 ~~~~ typescript twoslash [server.ts]
-import { type Federation, Person } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -823,10 +824,9 @@ import {
   exportJwk,
   generateCryptoKeyPair,
   importJwk,
-  Follow,
-  Person,
   MemoryKvStore,
 } from "@fedify/fedify";
+import { Follow, Person } from "@fedify/vocab";
 ~~~~
 
 By the way, when should we generate a key pair?  In general, you should generate
@@ -848,8 +848,8 @@ import {
   generateCryptoKeyPair,
   importJwk,
   type Federation,
-  Person,
 } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 const kv = await Deno.openKv();  // Open the key–value store
@@ -904,8 +904,8 @@ import {
   generateCryptoKeyPair,
   importJwk,
   type Federation,
-  Person,
 } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 import { serialize as encodeV8, deserialize as decodeV8 } from "node:v8";
@@ -963,8 +963,8 @@ import {
   generateCryptoKeyPair,
   importJwk,
   type Federation,
-  Person,
 } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 import { openKv } from "@deno/kv";
@@ -1087,17 +1087,20 @@ import {
   exportJwk,
   generateCryptoKeyPair,
   importJwk,
+} from "@fedify/fedify";
+import {
   Accept,  // [!code highlight]
   Follow,
   Person,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Then, we modify the inbox listener to send an `Accept` activity back to the
 follower when we receive a follow request:
 
 ~~~~ typescript{10-17} twoslash [server.ts]
-import { Accept, type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -1138,7 +1141,8 @@ we need to store the followers in the key–value store.  We will store each
 `Follow` activity's ID as the key and the follower's actor ID as the value:
 
 ~~~~ typescript{16-17} twoslash [server.ts]
-import { Accept, type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 const kv = await Deno.openKv();
 // ---cut-before---

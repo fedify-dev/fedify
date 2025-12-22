@@ -1,4 +1,12 @@
 import {
+  Activity,
+  Application,
+  Endpoints,
+  Group,
+  Person,
+  Service,
+} from "@fedify/vocab";
+import {
   assert,
   assertEquals,
   assertFalse,
@@ -18,14 +26,6 @@ import {
 import { test } from "../testing/mod.ts";
 import { createTestTracerProvider } from "../testing/otel.ts";
 import type { Actor } from "../vocab/actor.ts";
-import {
-  Activity,
-  Application,
-  Endpoints,
-  Group,
-  Person,
-  Service,
-} from "../vocab/vocab.ts";
 import { extractInboxes, sendActivity } from "./send.ts";
 
 test("extractInboxes()", () => {

@@ -47,7 +47,8 @@ characters like `:` and spaces are percent-encoded:
 Here's how to use it in an actor dispatcher:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(
@@ -86,7 +87,8 @@ This prevents double-encoding issues when your identifier is itself a URI:
 Here's how to use it when your identifiers might contain URIs:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(
@@ -148,7 +150,8 @@ If you're using simple usernames or UUIDs as actor identifiers, use simple
 expansion.  This will properly encode any special characters:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(
@@ -169,7 +172,8 @@ a proxy layer on top of existing ActivityPub servers), use reserved expansion
 to avoid double-encoding:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(
@@ -191,7 +195,8 @@ The same principle applies to collections.  Use simple expansion when your
 identifiers are basic strings:
 
 ~~~~ typescript twoslash
-import { type Federation, type Recipient } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setFollowersDispatcher(
@@ -207,7 +212,8 @@ federation.setFollowersDispatcher(
 And use reserved expansion when identifiers might contain URIs:
 
 ~~~~ typescript twoslash
-import { type Federation, type Recipient } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setFollowersDispatcher(
@@ -228,7 +234,8 @@ Here are some additional examples:
 Inbox listeners use the same pattern as other dispatchers:
 
 ~~~~ typescript twoslash
-import { type Federation, Create } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -241,7 +248,8 @@ federation
 Object dispatchers allow you to serve ActivityPub objects at custom URIs:
 
 ~~~~ typescript twoslash
-import { Note, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setObjectDispatcher(
@@ -305,7 +313,8 @@ To prevent this, add validation in your dispatcher to reject identifiers
 containing unexpected characters:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(
@@ -383,7 +392,8 @@ expand the templates according to the pattern you specified.
 For example, to verify the expansion:
 
 ~~~~ typescript twoslash
-import { Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setActorDispatcher(

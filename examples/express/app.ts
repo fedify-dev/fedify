@@ -1,16 +1,12 @@
-import express from "express";
 import { integrateFederation } from "@fedify/express";
 import {
-  Accept,
   createFederation,
-  Endpoints,
-  Follow,
   generateCryptoKeyPair,
   MemoryKvStore,
-  Person,
-  Undo,
 } from "@fedify/fedify";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { configure, getConsoleSink } from "@logtape/logtape";
+import express from "express";
 import process from "node:process";
 
 const keyPairsStore = new Map<string, Array<CryptoKeyPair>>();

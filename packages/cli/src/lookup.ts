@@ -1,16 +1,18 @@
 import {
-  Application,
-  Collection,
-  CryptographicKey,
   generateCryptoKeyPair,
   getAuthenticatedDocumentLoader,
-  type Link,
   lookupObject,
-  Object as APObject,
   type ResourceDescriptor,
   respondWithObject,
   traverseCollection,
 } from "@fedify/fedify";
+import {
+  Application,
+  Collection,
+  CryptographicKey,
+  type Link,
+  Object as APObject,
+} from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {

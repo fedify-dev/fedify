@@ -120,6 +120,7 @@
     }
   },
   "dependencies": {
+    "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
