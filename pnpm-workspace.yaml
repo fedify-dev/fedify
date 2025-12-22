@@ -28,7 +28,7 @@ packages:
 - examples/sveltekit-sample
 
 catalog:
-  "@cloudflare/workers-types": ^4.20250529.0
+  "@cloudflare/workers-types": ^4.20250906.0
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^1.2.2
   "@logtape/logtape": ^1.2.2
