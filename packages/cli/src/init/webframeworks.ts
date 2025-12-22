@@ -79,6 +79,32 @@ const webFrameworks: WebFrameworks = {
     }),
     defaultPort: 8000,
   },
+  elysia: {
+    label: "ElysiaJS",
+    packageManagers: ["bun"],
+    init: ({ projectName, packageManager: pm }) => ({
+      dependencies: {
+        elysia: "^1.3.6",
+        "@fedify/elysia": PACKAGE_VERSION,
+      },
+      devDependencies: {
+        "@types/bun": "^1.2.19",
+      },
+      federationFile: "src/federation.ts",
+      loggingFile: "src/logging.ts",
+      files: {
+        "src/index.ts": readTemplate("elysia/index.ts")
+          .replace(/\/\* logger \*\//, projectName),
+      },
+      compilerOptions: undefined,
+      tasks: {
+        "dev": "bun run --hot ./src/index.ts",
+        "prod": "bun run ./src/index.ts",
+      },
+      instruction: getInstruction(pm, 3000),
+    }),
+    defaultPort: 3000,
+  },
   express: {
     label: "Express",
     packageManagers: PACKAGE_MANAGER,
