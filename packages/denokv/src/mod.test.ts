@@ -41,7 +41,7 @@ Deno.test("DenoKvStore", async (t) => {
     await store.set(["other", "x"], "value-x");
 
     const entries: { key: Deno.KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+    for await (const entry of store.list!(["prefix"])) {
       entries.push(entry);
     }
 
@@ -63,7 +63,7 @@ Deno.test("DenoKvStore", async (t) => {
     await store.set(["b"], "value-b");
 
     const entries: { key: Deno.KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["a"] })) {
+    for await (const entry of store.list!(["a"])) {
       entries.push(entry);
     }
 
@@ -84,11 +84,7 @@ Deno.test("DenoKvStore", async (t) => {
     await store.set(["d", "e", "f"], "value-def");
 
     const entries: { key: Deno.KvKey; value: unknown }[] = [];
-    for await (
-      const entry of store.list!({
-        prefix: [] as unknown as readonly [string, ...string[]],
-      })
-    ) {
+    for await (const entry of store.list!()) {
       entries.push(entry);
     }
 

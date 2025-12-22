@@ -419,7 +419,6 @@ import type {
   KvStore,
   KvKey,
   KvStoreSetOptions,
-  KvStoreListOptions,
   KvStoreListEntry,
 } from "@fedify/fedify";
 
@@ -454,9 +453,7 @@ class MyCustomKvStore implements KvStore {
     // ---cut-end---
   }
 
-  async *list(
-    options: KvStoreListOptions
-  ): AsyncIterable<KvStoreListEntry> {
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     // Implement list logic if needed
   }
 }
@@ -706,7 +703,7 @@ batch operations or iterating over related entries.
 
 ~~~~ typescript twoslash
 import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
-import type { KvStoreListOptions, KvStoreListEntry } from "@fedify/fedify";
+import type { KvStoreListEntry } from "@fedify/fedify";
 /**
  * A hypothetical storage interface.
  */
@@ -740,10 +737,8 @@ class MyCustomKvStore implements KvStore {
   ): Promise<void> { }
   async delete(key: KvKey): Promise<void> { }
 // ---cut-before---
-async *list(
-  options: KvStoreListOptions
-): AsyncIterable<KvStoreListEntry> {
-  const serializedPrefix = this.serializeKey(options.prefix);
+async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+  const serializedPrefix = prefix ? this.serializeKey(prefix) : "";
   for await (const { key, value } of this.storage.scan(serializedPrefix)) {
     yield {
       key: this.deserializeKey(key),
@@ -755,8 +750,8 @@ async *list(
 }
 ~~~~
 
-The `~KvStore.list()` method takes a `KvStoreListOptions` object with a
-`~KvStoreListOptions.prefix` property specifying the key prefix to filter by.
+The `~KvStore.list()` method takes an optional `prefix` parameter specifying
+the key prefix to filter by.  If omitted or empty, it returns all entries.
 It returns an `AsyncIterable` of `KvStoreListEntry` objects, each containing
 a `~KvStoreListEntry.key` and a `~KvStoreListEntry.value`.
 

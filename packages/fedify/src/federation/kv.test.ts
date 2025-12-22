@@ -46,7 +46,7 @@ test("MemoryKvStore", async (t) => {
 
     // Test: list with prefix
     const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+    for await (const entry of store.list!(["prefix"])) {
       entries.push(entry);
     }
     assertEquals(entries.length, 4); // prefix, prefix/a, prefix/b, prefix/nested/c
@@ -57,7 +57,7 @@ test("MemoryKvStore", async (t) => {
 
     // Test: non-matching prefix returns empty
     const noMatch: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["nonexistent"] })) {
+    for await (const entry of store.list!(["nonexistent"])) {
       noMatch.push(entry);
     }
     assertEquals(noMatch.length, 0);
@@ -79,7 +79,7 @@ test("MemoryKvStore", async (t) => {
     await new Promise((r) => setTimeout(r, 10));
 
     const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["expired"] })) {
+    for await (const entry of store.list!(["expired"])) {
       entries.push(entry);
     }
 
@@ -100,7 +100,7 @@ test("MemoryKvStore", async (t) => {
 
     // Test: empty prefix should return all entries
     const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: [] as unknown as KvKey })) {
+    for await (const entry of store.list!()) {
       entries.push(entry);
     }
 

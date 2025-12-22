@@ -320,7 +320,7 @@ test("SqliteKvStore.list()", async () => {
     await store.set(["other", "x"], "value-x");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+    for await (const entry of store.list!(["prefix"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -355,7 +355,7 @@ test("SqliteKvStore.list() - excludes expired", async () => {
     await store.set(["list-test", "valid"], "valid-value");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["list-test"] })) {
+    for await (const entry of store.list!(["list-test"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -374,7 +374,7 @@ test("SqliteKvStore.list() - single element key", async () => {
     await store.set(["b"], "value-b");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!({ prefix: ["a"] })) {
+    for await (const entry of store.list!(["a"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -393,11 +393,7 @@ test("SqliteKvStore.list() - empty prefix", async () => {
     await store.set(["d", "e", "f"], "value-def");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (
-      const entry of store.list!({
-        prefix: [] as unknown as readonly [string, ...string[]],
-      })
-    ) {
+    for await (const entry of store.list!()) {
       entries.push({ key: entry.key, value: entry.value });
     }
 

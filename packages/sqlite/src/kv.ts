@@ -3,7 +3,6 @@ import type {
   KvKey,
   KvStore,
   KvStoreListEntry,
-  KvStoreListOptions,
   KvStoreSetOptions,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
@@ -222,17 +221,14 @@ export class SqliteKvStore implements KvStore {
    * {@inheritDoc KvStore.list}
    * @since 1.10.0
    */
-  async *list(
-    options: KvStoreListOptions,
-  ): AsyncIterable<KvStoreListEntry> {
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     this.initialize();
 
-    const prefix = options.prefix;
     const now = Temporal.Now.instant().epochMilliseconds;
 
     let results: { key: string; value: string }[];
 
-    if (prefix.length === 0) {
+    if (prefix == null || prefix.length === 0) {
       // Empty prefix: return all entries
       results = this.#db
         .prepare(`

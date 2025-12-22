@@ -37,11 +37,12 @@ To be released.
         result, and the verification method used.
 
  -  Added optional `list()` method to the `KvStore` interface for enumerating
-    entries by key prefix.  This enables efficient prefix scanning which is
-    useful for implementing features like distributed trace storage, cache
-    invalidation by prefix, and listing related entries.  [[#498]]
+    entries by key prefix.  This method takes an optional `prefix` parameter;
+    when omitted or empty, it returns all entries.  This enables efficient
+    prefix scanning which is useful for implementing features like distributed
+    trace storage, cache invalidation by prefix, and listing related entries.
+    [[#498]]
 
-     -  Added `KvStoreListOptions` interface.
      -  Added `KvStoreListEntry` interface.
      -  Implemented in `MemoryKvStore`.
 

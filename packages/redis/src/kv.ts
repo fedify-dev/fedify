@@ -2,7 +2,6 @@ import type {
   KvKey,
   KvStore,
   KvStoreListEntry,
-  KvStoreListOptions,
   KvStoreSetOptions,
 } from "@fedify/fedify";
 import type { Cluster, Redis, RedisKey } from "ioredis";
@@ -125,14 +124,12 @@ export class RedisKvStore implements KvStore {
    * {@inheritDoc KvStore.list}
    * @since 1.10.0
    */
-  async *list(
-    options: KvStoreListOptions,
-  ): AsyncIterable<KvStoreListEntry> {
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     const prefixKeyStr = typeof this.#keyPrefix === "string"
       ? this.#keyPrefix
       : new TextDecoder().decode(new Uint8Array(this.#keyPrefix));
 
-    if (options.prefix.length === 0) {
+    if (prefix == null || prefix.length === 0) {
       // Empty prefix: scan for all keys with the key prefix
       const pattern = `${prefixKeyStr}*`;
 
@@ -157,7 +154,7 @@ export class RedisKvStore implements KvStore {
         }
       } while (cursor !== "0");
     } else {
-      const prefixKey = this.#serializeKey(options.prefix);
+      const prefixKey = this.#serializeKey(prefix);
       const prefixKeyFullStr = typeof prefixKey === "string"
         ? prefixKey
         : new TextDecoder().decode(new Uint8Array(prefixKey));
@@ -166,7 +163,7 @@ export class RedisKvStore implements KvStore {
       const exactValue = await this.#redis.getBuffer(prefixKey);
       if (exactValue != null) {
         yield {
-          key: options.prefix,
+          key: prefix,
           value: this.#codec.decode(exactValue),
         };
       }

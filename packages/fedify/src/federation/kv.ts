@@ -20,19 +20,6 @@ export interface KvStoreSetOptions {
 }
 
 /**
- * Options for listing entries in a key–value store.
- *
- * @since 1.10.0
- */
-export interface KvStoreListOptions {
-  /**
-   * The prefix to filter keys by.  Only keys that start with this prefix
-   * will be returned.
-   */
-  prefix: KvKey;
-}
-
-/**
  * An entry returned by the {@link KvStore.list} method.
  *
  * @since 1.10.0
@@ -95,11 +82,13 @@ export interface KvStore {
 
   /**
    * Lists all entries in the store that match the given prefix.
-   * @param options The options for listing entries.
+   * If no prefix is given, all entries are returned.
+   * @param prefix The prefix to filter keys by.  If not specified, all entries
+   *               are returned.
    * @returns An async iterable of entries matching the prefix.
    * @since 1.10.0
    */
-  list?: (options: KvStoreListOptions) => AsyncIterable<KvStoreListEntry>;
+  list?: (prefix?: KvKey) => AsyncIterable<KvStoreListEntry>;
 }
 
 /**
@@ -190,21 +179,22 @@ export class MemoryKvStore implements KvStore {
   /**
    * {@inheritDoc KvStore.list}
    */
-  async *list(options: KvStoreListOptions): AsyncIterable<KvStoreListEntry> {
-    const prefix = options.prefix;
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     const now = Temporal.Now.instant();
     for (const [encodedKey, entry] of Object.entries(this.#values)) {
       const key = JSON.parse(encodedKey) as KvKey;
       // Check prefix match
-      if (key.length < prefix.length) continue;
-      let matches = true;
-      for (let i = 0; i < prefix.length; i++) {
-        if (key[i] !== prefix[i]) {
-          matches = false;
-          break;
+      if (prefix != null) {
+        if (key.length < prefix.length) continue;
+        let matches = true;
+        for (let i = 0; i < prefix.length; i++) {
+          if (key[i] !== prefix[i]) {
+            matches = false;
+            break;
+          }
         }
+        if (!matches) continue;
       }
-      if (!matches) continue;
 
       const [value, expiration] = entry;
       if (expiration != null && now.until(expiration).sign < 0) {

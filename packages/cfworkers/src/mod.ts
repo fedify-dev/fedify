@@ -17,7 +17,6 @@ import type {
   KvKey,
   KvStore,
   KvStoreListEntry,
-  KvStoreListOptions,
   KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
@@ -90,10 +89,8 @@ export class WorkersKvStore implements KvStore {
    * {@inheritDoc KvStore.list}
    * @since 1.10.0
    */
-  async *list(
-    options: KvStoreListOptions,
-  ): AsyncIterable<KvStoreListEntry> {
-    if (options.prefix.length === 0) {
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    if (prefix == null || prefix.length === 0) {
       // Empty prefix: list all entries
       // JSON encoded keys start with '[', so prefix with '[' to match all arrays
       let cursor: string | undefined;
@@ -123,8 +120,8 @@ export class WorkersKvStore implements KvStore {
       // Keys are JSON encoded: '["prefix","a"]'
       // Pattern to match keys starting with prefix: '["prefix",' matches children
       // Also check for exact match: '["prefix"]'
-      const exactKey = this.#encodeKey(options.prefix);
-      const childrenPattern = JSON.stringify(options.prefix).slice(0, -1) + ",";
+      const exactKey = this.#encodeKey(prefix);
+      const childrenPattern = JSON.stringify(prefix).slice(0, -1) + ",";
 
       // First, check if the exact prefix key exists
       const { value, metadata } = await this.#namespace.getWithMetadata(
@@ -137,7 +134,7 @@ export class WorkersKvStore implements KvStore {
           (metadata as KvMetadata).expires! >= Date.now())
       ) {
         yield {
-          key: options.prefix,
+          key: prefix,
           value,
         };
       }
