@@ -73,5 +73,10 @@
     "exclude": [
       "src/init/templates/**"
     ]
+  },
+  "test": {
+    "exclude": [
+      "src/init/test/**"
+    ]
   }
 }
