@@ -20,6 +20,36 @@ export interface KvStoreSetOptions {
 }
 
 /**
+ * Options for listing entries in a key–value store.
+ *
+ * @since 1.10.0
+ */
+export interface KvStoreListOptions {
+  /**
+   * The prefix to filter keys by.  Only keys that start with this prefix
+   * will be returned.
+   */
+  prefix: KvKey;
+}
+
+/**
+ * An entry returned by the {@link KvStore.list} method.
+ *
+ * @since 1.10.0
+ */
+export interface KvStoreListEntry {
+  /**
+   * The key of the entry.
+   */
+  key: KvKey;
+
+  /**
+   * The value of the entry.
+   */
+  value: unknown;
+}
+
+/**
  * An abstract interface for a key–value store.
  *
  * @since 0.5.0
@@ -62,6 +92,14 @@ export interface KvStore {
     newValue: unknown,
     options?: KvStoreSetOptions,
   ) => Promise<boolean>;
+
+  /**
+   * Lists all entries in the store that match the given prefix.
+   * @param options The options for listing entries.
+   * @returns An async iterable of entries matching the prefix.
+   * @since 1.10.0
+   */
+  list?: (options: KvStoreListOptions) => AsyncIterable<KvStoreListEntry>;
 }
 
 /**
@@ -147,5 +185,33 @@ export class MemoryKvStore implements KvStore {
       : Temporal.Now.instant().add(options.ttl.round({ largestUnit: "hour" }));
     this.#values[encodedKey] = [newValue, expiration];
     return Promise.resolve(true);
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   */
+  async *list(options: KvStoreListOptions): AsyncIterable<KvStoreListEntry> {
+    const prefix = options.prefix;
+    const now = Temporal.Now.instant();
+    for (const [encodedKey, entry] of Object.entries(this.#values)) {
+      const key = JSON.parse(encodedKey) as KvKey;
+      // Check prefix match
+      if (key.length < prefix.length) continue;
+      let matches = true;
+      for (let i = 0; i < prefix.length; i++) {
+        if (key[i] !== prefix[i]) {
+          matches = false;
+          break;
+        }
+      }
+      if (!matches) continue;
+
+      const [value, expiration] = entry;
+      if (expiration != null && now.until(expiration).sign < 0) {
+        delete this.#values[encodedKey];
+        continue;
+      }
+      yield { key, value };
+    }
   }
 }

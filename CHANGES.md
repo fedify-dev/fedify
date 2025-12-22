@@ -38,6 +38,17 @@ To be released.
 
 [#323]: https://github.com/fedify-dev/fedify/issues/323
 
+ -  Added optional `list()` method to the `KvStore` interface for enumerating
+    entries by key prefix.  This enables efficient prefix scanning which is
+    useful for implementing features like distributed trace storage, cache
+    invalidation by prefix, and listing related entries.  [[#498]]
+
+     -  Added `KvStoreListOptions` interface.
+     -  Added `KvStoreListEntry` interface.
+     -  Implemented in `MemoryKvStore`.
+
+[#498]: https://github.com/fedify-dev/fedify/issues/498
+
 ### @fedify/nestjs
 
  -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
