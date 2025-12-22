@@ -1,13 +1,9 @@
 import {
-  Accept,
   createFederation,
-  Endpoints,
-  Follow,
   generateCryptoKeyPair,
   MemoryKvStore,
-  Person,
-  Undo,
 } from "@fedify/fedify";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { keyPairsStore, relationStore } from "~/data/store";
 import { integrateFederation } from "~/shared/integrate-fedify";
 

@@ -32,7 +32,8 @@ const federation = null as unknown as Federation<void>;
 interface User { }
 const user = null as User | null;
 // ---cut-before---
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 
 const federation = createFederation({
   // Omitted for brevity; see the related section for details.
@@ -196,7 +197,8 @@ the URIs of the actor's endpoints.  The most important endpoint is the `sharedIn
 to generate the URI of the actor's shared inbox:
 
 ~~~~ typescript twoslash
-import { Endpoints, Context } from "@fedify/fedify";
+import { Context } from "@fedify/fedify";
+import { Endpoints } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 new Endpoints({ sharedInbox: ctx.getInboxUri() })
@@ -245,7 +247,8 @@ the `~ActorCallbackSetters.setKeyPairsDispatcher()` method so that Fedify can
 dispatch appropriate key pairs by the actor's identifier:
 
 ~~~~ typescript{4-6,10-14,17-26} twoslash
-import { type Federation, Person } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface User {}
 const user = null as User | null;
@@ -514,7 +517,8 @@ If you want to provide links with other `rel` than
 `url` property:
 
 ~~~~ typescript{8-16} twoslash
-import { type Federation, Person, Link } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Link, Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation

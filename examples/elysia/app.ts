@@ -1,5 +1,6 @@
 import { fedify } from "@fedify/elysia";
-import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { Elysia, redirect } from "elysia";
 
 const federation = createFederation<void>({

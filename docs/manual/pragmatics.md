@@ -55,7 +55,7 @@ If an actor is represented as an `Application` or `Service` object, it is
 considered an automated actor by Mastodon and a bot actor by Misskey.
 
 ~~~~ typescript twoslash
-import { Application } from "@fedify/fedify";
+import { Application } from "@fedify/vocab";
 // ---cut-before---
 new Application({  // [!code highlight]
   name: "Fedify Demo",
@@ -76,7 +76,7 @@ If an actor is represented as a `Group` object, it is considered a group actor
 by Mastodon.
 
 ~~~~ typescript twoslash
-import { Group } from "@fedify/fedify";
+import { Group } from "@fedify/vocab";
 // ---cut-before---
 new Group({  // [!code highlight]
   name: "Fedify Demo",
@@ -106,7 +106,7 @@ a nickname of a person, or a title of a group or an organization.
 It is displayed in the profile page of an actor and the timeline.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",  // [!code highlight]
@@ -131,7 +131,7 @@ implementations.  The bio is displayed in the profile page of the actor.
 > entities if it contains characters like `<`, `>`, and `&`.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -157,7 +157,7 @@ The date joined is displayed in the profile page of the actor.
 > implementations that display the date and time.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 new Person({
@@ -181,7 +181,7 @@ ActivityPub implementations.  The avatar image is displayed next to the name
 of the actor in the profile page and the timeline.
 
 ~~~~ typescript{5-8} twoslash
-import { Image, Person } from "@fedify/fedify";
+import { Image, Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -206,7 +206,7 @@ The `image` property is used as a header image in Mastodon and Misskey.
 The header image is displayed on the top of the profile page.
 
 ~~~~ typescript{5-8} twoslash
-import { Image, Person } from "@fedify/fedify";
+import { Image, Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -231,7 +231,7 @@ The `attachments` property is used as custom fields in Mastodon and Misskey.
 The custom fields are displayed as a table in the profile page.
 
 ~~~~ typescript{5-18} twoslash
-import { Person, PropertyValue } from "@fedify/fedify";
+import { Person, PropertyValue } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -280,7 +280,7 @@ a locked account if the `manuallyApprovesFollowers` property is `true`.
 > account.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -303,7 +303,7 @@ If the `suspended` property is `true`, the profile page of the actor is
 displayed as suspended.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -326,7 +326,7 @@ If the `memorial` property is `true`, the profile page of the actor is
 displayed as memorialized.
 
 ~~~~ typescript twoslash
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -387,7 +387,8 @@ is displayed in the profile page of the actor.  Each item in the collection is
 a `Recipient` or an `Actor` that follows the actor.
 
 ~~~~ typescript twoslash
-import type { Federation, Recipient } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation

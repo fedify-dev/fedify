@@ -27,7 +27,8 @@ The below example shows how to register an object dispatcher:
 // @noErrors: 2345
 const note: { id: string; content: string } = { id: "", content: "" };
 // ---cut-before---
-import { createFederation, Note } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 
 const federation = createFederation({
   // Omitted for brevity; see the related section for details.
@@ -74,7 +75,8 @@ of the object.
 The below example shows how to construct an object URI:
 
 ~~~~ typescript twoslash
-import { type Context, Note } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 ctx.getObjectUri(Note, {

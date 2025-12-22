@@ -51,7 +51,8 @@ a time.  The following shows how to register an inbox listener:
 
 ~~~~ typescript{7-20} twoslash
 // @noErrors: 2345
-import { createFederation, Accept, Follow } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
 
 const federation = createFederation({
   // Omitted for brevity; see the related section for details.
@@ -116,7 +117,8 @@ the `to`, `cc`, `bto`, or `bcc` field of the activity.  The following shows
 how to determine the recipient of a `Create` activity:
 
 ~~~~ typescript twoslash
-import { Create, type InboxListenerSetters } from "@fedify/fedify";
+import { type InboxListenerSetters } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 (0 as unknown as InboxListenerSetters<void>)
 // ---cut-before---
 .on(Create, async (ctx, create) => {
@@ -132,7 +134,8 @@ The `to`, `cc`, `bto`, and `bcc` fields can contain multiple recipients,
 so you may need to iterate over them to determine the recipient of the activity:
 
 ~~~~ typescript twoslash
-import { Create, type InboxListenerSetters } from "@fedify/fedify";
+import { type InboxListenerSetters } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 (0 as unknown as InboxListenerSetters<void>)
 // ---cut-before---
 .on(Create, async (ctx, create) => {
@@ -150,12 +153,8 @@ collection objects.  In such cases, you may need to recursively resolve the
 collection objects to determine the recipients of the activity:
 
 ~~~~ typescript twoslash
-import {
-  Collection,
-  Create,
-  type InboxListenerSetters,
-  isActor,
-} from "@fedify/fedify";
+import { type InboxListenerSetters } from "@fedify/fedify";
+import { Collection, Create, isActor } from "@fedify/vocab";
 (0 as unknown as InboxListenerSetters<void>)
 // ---cut-before---
 .on(Create, async (ctx, create) => {
@@ -190,7 +189,8 @@ the `InboxContext.recipient` property.  The below example shows how to determine
 the recipient of a `Follow` activity:
 
 ~~~~ typescript twoslash
-import { Follow, type InboxListenerSetters } from "@fedify/fedify";
+import { type InboxListenerSetters } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 (0 as unknown as InboxListenerSetters<void>)
 // ---cut-before---
 .on(Follow, async (ctx, follow) => {
@@ -243,7 +243,7 @@ pattern:
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-import { Application, Person } from "@fedify/fedify";
+import { Application, Person } from "@fedify/vocab";
 
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
@@ -427,7 +427,8 @@ You can configure the idempotency strategy using the
 `~InboxListenerSetters.withIdempotency()` method:
 
 ~~~~ typescript twoslash
-import { type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -446,7 +447,8 @@ the inbox context and the activity, and should return a unique cache key for
 the activity, or `null` to skip idempotency checking for that activity:
 
 ~~~~ typescript twoslash
-import { type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -485,7 +487,8 @@ function that takes a `Context` object and an error object.  The following shows
 an example of handling errors:
 
 ~~~~ typescript{6-8} twoslash
-import { type Federation, Follow } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -529,7 +532,8 @@ modification, so the signature made by the original sender is preserved
 The following shows an example of forwarding `Create` activities to followers:
 
 ~~~~ typescript twoslash
-import { Create, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Create } from "@fedify/vocab";
 const federation: Federation<void> = null as unknown as Federation<void>;
 federation.setInboxListeners("/{identifier}/inbox", "/inbox")
 // ---cut-before---
@@ -626,7 +630,8 @@ The following code shows how to route an `Activity` object enclosed in
 top-level `Announce` object to the corresponding inbox listener:
 
 ~~~~ typescript twoslash
-import { Activity, Announce, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Activity, Announce } from "@fedify/vocab";
 
 const federation = null as unknown as Federation<void>;
 
@@ -647,7 +652,8 @@ As another example, the following code shows how to invoke the corresponding
 inbox listeners for a remote actor's activities:
 
 ~~~~ typescript twoslash
-import { Activity, type Context, isActor } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Activity, isActor } from "@fedify/vocab";
 
 async function main(context: Context<void>) {
 // ---cut-before---

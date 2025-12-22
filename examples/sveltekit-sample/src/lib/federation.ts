@@ -1,17 +1,19 @@
 import {
-  Accept,
   createFederation,
+  generateCryptoKeyPair,
+  MemoryKvStore,
+  PUBLIC_COLLECTION,
+} from "@fedify/fedify";
+import {
+  Accept,
   Endpoints,
   Follow,
-  generateCryptoKeyPair,
   Image,
-  MemoryKvStore,
   Note,
   Person,
-  PUBLIC_COLLECTION,
   type Recipient,
   Undo,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { keyPairsStore, postStore, relationStore } from "./store";
 
 const federation = createFederation({

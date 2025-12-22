@@ -35,7 +35,8 @@ authorized fetch for the actor dispatcher:
 
 ~~~~ typescript{9-11} twoslash
 // @noErrors: 2307 2345
-import type { Actor, Federation } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Actor } from "@fedify/vocab";
 /**
  * A hypothetical `Federation` instance.
  */
@@ -68,7 +69,8 @@ The equivalent method is available for collections as well:
 
 ~~~~ typescript{9-11} twoslash
 // @noErrors: 2307 2345
-import type { Actor, Federation } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Actor } from "@fedify/vocab";
 /**
  * A hypothetical `Federation` instance.
  */
@@ -116,7 +118,8 @@ actor).  The below pseudo code shows how to filter out private posts:
 
 ~~~~ typescript{7} twoslash
 // @noErrors: 2307
-import type { Actor, Create, Federation } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Actor, Create } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface Post {
   /**
@@ -177,7 +180,8 @@ domain name, such as `example.com@example.com`.  Here is an example of how to
 implement an instance actor:
 
 ~~~~ typescript{3-11,20-27} twoslash
-import { type Actor, Application, type Federation, Person } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { type Actor, Application, Person } from "@fedify/vocab";
 /**
  * A hypothetical `Federation` instance.
  */
