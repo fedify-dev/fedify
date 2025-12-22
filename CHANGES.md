@@ -41,13 +41,14 @@ To be released.
     when omitted or empty, it returns all entries.  This enables efficient
     prefix scanning which is useful for implementing features like distributed
     trace storage, cache invalidation by prefix, and listing related entries.
-    [[#498]]
+    [[#498], [#500]]
 
      -  Added `KvStoreListEntry` interface.
      -  Implemented in `MemoryKvStore`.
 
 [#323]: https://github.com/fedify-dev/fedify/issues/323
 [#498]: https://github.com/fedify-dev/fedify/issues/498
+[#500]: https://github.com/fedify-dev/fedify/pull/500
 
 ### @fedify/nestjs
 
@@ -59,23 +60,23 @@ To be released.
 
 ### @fedify/sqlite
 
- -  Implemented `list()` method in `SqliteKvStore`.  [[#498]]
+ -  Implemented `list()` method in `SqliteKvStore`.  [[#498], [#500]]
 
 ### @fedify/postgres
 
- -  Implemented `list()` method in `PostgresKvStore`.  [[#498]]
+ -  Implemented `list()` method in `PostgresKvStore`.  [[#498], [#500]]
 
 ### @fedify/redis
 
- -  Implemented `list()` method in `RedisKvStore`.  [[#498]]
+ -  Implemented `list()` method in `RedisKvStore`.  [[#498], [#500]]
 
 ### @fedify/denokv
 
- -  Implemented `list()` method in `DenoKvStore`.  [[#498]]
+ -  Implemented `list()` method in `DenoKvStore`.  [[#498], [#500]]
 
 ### @fedify/cfworkers
 
- -  Implemented `list()` method in `WorkersKvStore`.  [[#498]]
+ -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
 
 
 Version 1.9.2
