@@ -72,6 +72,10 @@ To be released.
 
  -  Implemented `list()` method in `DenoKvStore`.  [[#498]]
 
+### @fedify/cfworkers
+
+ -  Implemented `list()` method in `WorkersKvStore`.  [[#498]]
+
 
 Version 1.9.2
 -------------

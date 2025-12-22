@@ -16,6 +16,8 @@ import type {
 import type {
   KvKey,
   KvStore,
+  KvStoreListEntry,
+  KvStoreListOptions,
   KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
@@ -82,6 +84,61 @@ export class WorkersKvStore implements KvStore {
 
   delete(key: KvKey): Promise<void> {
     return this.#namespace.delete(this.#encodeKey(key));
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(
+    options: KvStoreListOptions,
+  ): AsyncIterable<KvStoreListEntry> {
+    // Keys are JSON encoded: '["prefix","a"]'
+    // Pattern to match keys starting with prefix: '["prefix",' matches children
+    // Also check for exact match: '["prefix"]'
+    const exactKey = this.#encodeKey(options.prefix);
+    const childrenPattern = JSON.stringify(options.prefix).slice(0, -1) + ",";
+
+    // First, check if the exact prefix key exists
+    const { value, metadata } = await this.#namespace.getWithMetadata(
+      exactKey,
+      "json",
+    );
+    if (
+      value != null &&
+      (metadata == null || (metadata as KvMetadata).expires == null ||
+        (metadata as KvMetadata).expires! >= Date.now())
+    ) {
+      yield {
+        key: options.prefix,
+        value,
+      };
+    }
+
+    // Then list all keys starting with prefix
+    let cursor: string | undefined;
+    do {
+      const result = await this.#namespace.list<KvMetadata>({
+        prefix: childrenPattern,
+        cursor,
+      });
+      cursor = result.list_complete ? undefined : result.cursor;
+
+      for (const keyInfo of result.keys) {
+        const metadata = keyInfo.metadata as KvMetadata | undefined;
+        if (metadata?.expires != null && metadata.expires < Date.now()) {
+          continue;
+        }
+
+        const value = await this.#namespace.get(keyInfo.name, "json");
+        if (value == null) continue;
+
+        yield {
+          key: JSON.parse(keyInfo.name) as KvKey,
+          value,
+        };
+      }
+    } while (cursor != null);
   }
 }
 

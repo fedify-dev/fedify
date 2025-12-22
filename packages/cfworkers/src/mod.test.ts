@@ -36,6 +36,43 @@ describe("WorkersKvStore", {
     await store.delete(["foo", "bar"]);
     strictEqual(await store.get(["foo", "bar"]), undefined);
   });
+
+  test("list()", async (t) => {
+    const { env } = t as unknown as {
+      env: Record<string, KVNamespace<string>>;
+    };
+    const store = new WorkersKvStore(env.KV1);
+
+    await store.set(["prefix", "a"], "value-a");
+    await store.set(["prefix", "b"], "value-b");
+    await store.set(["prefix", "nested", "c"], "value-c");
+    await store.set(["other", "x"], "value-x");
+
+    const entries: { key: readonly unknown[]; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    strictEqual(entries.length, 3);
+  });
+
+  test("list() - single element key", async (t) => {
+    const { env } = t as unknown as {
+      env: Record<string, KVNamespace<string>>;
+    };
+    const store = new WorkersKvStore(env.KV1);
+
+    await store.set(["a"], "value-a");
+    await store.set(["b"], "value-b");
+
+    const entries: { key: readonly unknown[]; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["a"] })) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    strictEqual(entries.length, 1);
+    strictEqual(entries[0].value, "value-a");
+  });
 });
 
 describe("WorkersMessageQueue", {
