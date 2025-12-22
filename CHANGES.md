@@ -54,6 +54,10 @@ To be released.
  -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
     [[#492], [#493] by Cho Hasang]
 
+### @fedify/sqlite
+
+ -  Implemented `list()` method in `SqliteKvStore`.  [[#498]]
+
 
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
