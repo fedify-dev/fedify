@@ -1,5 +1,5 @@
 import { generateVocab } from "@fedify/vocab-tools";
-import { rename } from "node:fs/promises";
+import { mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 async function codegen() {
@@ -9,8 +9,10 @@ async function codegen() {
   }
   const schemaDir = join(dirname(scriptsDir), "src", "vocab");
   const generatedPath = join(schemaDir, `vocab-${crypto.randomUUID()}.ts`);
-  const realPath = join(schemaDir, "vocab.ts");
+  const realDir = join(scriptsDir, "..", "..", "vocab", "src");
+  const realPath = join(realDir, "mod.ts");
 
+  await mkdir(realDir, { recursive: true });
   await generateVocab(schemaDir, generatedPath);
   await rename(generatedPath, realPath);
 }

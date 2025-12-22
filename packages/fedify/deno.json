@@ -53,7 +53,7 @@
     "!src/vocab/vocab.ts"
   ],
   "tasks": {
-    "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab/vocab.ts && deno cache src/vocab/vocab.ts && deno check src/vocab/vocab.ts",
+    "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno task -f @fedify/vocab check",
     "cache": {
       "command": "deno cache src/mod.ts",
       "dependencies": [
