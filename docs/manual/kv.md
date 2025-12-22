@@ -412,10 +412,16 @@ If the provided implementations don't meet your needs, you can create a custom
 
 Create a class that implements the `KvStore` interface.  The interface defines
 three methods: `~KvStore.get()`, `~KvStore.set()`, `~KvStore.delete()`, and
-optionally `~KvStore.cas()`.
+optionally `~KvStore.cas()` and `~KvStore.list()`.
 
 ~~~~ typescript twoslash
-import { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
+import type {
+  KvStore,
+  KvKey,
+  KvStoreSetOptions,
+  KvStoreListOptions,
+  KvStoreListEntry,
+} from "@fedify/fedify";
 
 class MyCustomKvStore implements KvStore {
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
@@ -446,6 +452,12 @@ class MyCustomKvStore implements KvStore {
     // ---cut-start---
     return false;
     // ---cut-end---
+  }
+
+  async *list(
+    options: KvStoreListOptions
+  ): AsyncIterable<KvStoreListEntry> {
+    // Implement list logic if needed
   }
 }
 ~~~~
@@ -682,6 +694,79 @@ async cas(
 // ---cut-after---
 }
 ~~~~
+
+### Implement `~KvStore.list()` method (optional)
+
+*This API is available since Fedify 1.10.0.*
+
+If your storage backend supports prefix scanning, you can implement the
+`~KvStore.list()` method.  This method allows you to enumerate all entries
+whose keys start with a given prefix.  This is useful for implementing
+batch operations or iterating over related entries.
+
+~~~~ typescript twoslash
+import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
+import type { KvStoreListOptions, KvStoreListEntry } from "@fedify/fedify";
+/**
+ * A hypothetical storage interface.
+ */
+interface HypotheticalStorage {
+  /**
+   * A hypothetical method to list entries by prefix.
+   * @param prefix The prefix to filter by.
+   * @returns An async iterable of key-value pairs.
+   */
+  scan(prefix: string): AsyncIterable<{ key: string; value: unknown }>;
+}
+class MyCustomKvStore implements KvStore {
+  /**
+   * A hypothetical storage backend.
+   */
+  storage: HypotheticalStorage = {
+   async *scan(prefix: string): AsyncIterable<{ key: string; value: unknown }> {
+   }
+  };
+  private serializeKey(key: KvKey): string { return ""; }
+  private deserializeKey(key: string): KvKey {
+    return key.split(":") as unknown as KvKey;
+  }
+  async get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    return undefined;
+  }
+  async set(
+    key: KvKey,
+    value: unknown,
+    options?: KvStoreSetOptions
+  ): Promise<void> { }
+  async delete(key: KvKey): Promise<void> { }
+// ---cut-before---
+async *list(
+  options: KvStoreListOptions
+): AsyncIterable<KvStoreListEntry> {
+  const serializedPrefix = this.serializeKey(options.prefix);
+  for await (const { key, value } of this.storage.scan(serializedPrefix)) {
+    yield {
+      key: this.deserializeKey(key),
+      value,
+    };
+  }
+}
+// ---cut-after---
+}
+~~~~
+
+The `~KvStore.list()` method takes a `KvStoreListOptions` object with a
+`~KvStoreListOptions.prefix` property specifying the key prefix to filter by.
+It returns an `AsyncIterable` of `KvStoreListEntry` objects, each containing
+a `~KvStoreListEntry.key` and a `~KvStoreListEntry.value`.
+
+> [!TIP]
+> When implementing `~KvStore.list()`, make sure to:
+>
+>  -  Include the exact prefix key itself if it exists (not just keys that
+>     have additional components after the prefix)
+>  -  Filter out expired entries if your storage backend supports TTL
+>  -  Handle pagination efficiently for large datasets
 
 ### Use your custom `KvStore`
 
