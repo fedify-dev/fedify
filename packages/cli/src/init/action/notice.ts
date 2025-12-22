@@ -22,7 +22,9 @@ ${d("                   ")}  ${f("                      |___/")}
 `);
 }
 
-export const noticeOptions: (options: RequiredNotNull<InitCommand>) => void = (
+export const noticeOptions: <T extends RequiredNotNull<InitCommand>>(
+  options: T,
+) => void = (
   {
     packageManager,
     webFramework,

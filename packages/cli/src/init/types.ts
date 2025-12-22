@@ -49,7 +49,7 @@ export interface WebFrameworkDescription {
   packageManagers: readonly PackageManager[];
   defaultPort: number;
   init(
-    data: InitCommandOptions & { projectName: string },
+    data: InitCommandOptions & { projectName: string; testMode: boolean },
   ): WebFrameworkInitializer;
 }
 
@@ -75,7 +75,9 @@ export interface KvStoreDescription {
   env?: Record<string, string>;
 }
 
-export type InitCommandOptions = RequiredNotNull<InitCommand>;
+export type InitCommandOptions = RequiredNotNull<InitCommand> & {
+  readonly testMode: boolean;
+};
 
 export interface InitCommandData extends InitCommandOptions {
   readonly projectName: string;

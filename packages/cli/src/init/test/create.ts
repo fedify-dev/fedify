@@ -81,7 +81,6 @@ function* genInitCommand(
   yield kvStore;
   yield "-m";
   yield messageQueue;
-  yield "--test-mode";
   if (dry) yield "-d";
 }
 

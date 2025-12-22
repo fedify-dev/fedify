@@ -6,12 +6,7 @@ import {
   runGenerateVocab,
 } from "./generate-vocab/mod.ts";
 import { inboxCommand, runInbox } from "./inbox.tsx";
-import {
-  initCommand,
-  runInit,
-  runTestInit,
-  testInitCommand,
-} from "./init/mod.ts";
+import { initCommand, runInit } from "./init/mod.ts";
 import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
@@ -25,7 +20,6 @@ const command = or(
   nodeInfoCommand,
   tunnelCommand,
   generateVocabCommand,
-  testInitCommand,
 );
 
 async function main() {
@@ -53,9 +47,6 @@ async function main() {
   }
   if (result.command === "generate-vocab") {
     await runGenerateVocab(result);
-  }
-  if (result.command === "test-init") {
-    await runTestInit(result);
   }
 }
 

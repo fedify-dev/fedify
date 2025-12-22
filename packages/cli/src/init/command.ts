@@ -56,12 +56,6 @@ const messageQueue = optional(option(
     description: message`The message queue to use for background tasks.`,
   },
 ));
-const testMode = option(
-  "--test-mode",
-  {
-    description: message`The test mode to use for testing purposes.`,
-  },
-);
 
 export const initCommand = command(
   "init",
@@ -79,7 +73,6 @@ export const initCommand = command(
       description: message`Perform a trial run with no changes made.`,
     }),
     debugOption,
-    testMode,
   }),
   {
     brief: message`Initialize a new Fedify project directory.`,
@@ -111,7 +104,6 @@ export const testInitCommand = command(
   "test-init",
   merge(
     object("Initialization options", {
-      command: constant("test-init"),
       webFramework: multiple(webFramework),
       packageManager: multiple(packageManager),
       kvStore: multiple(kvStore),
