@@ -1,4 +1,6 @@
 import { pipe, tap, unless, when } from "@fxts/core";
+import process from "node:process";
+import { set } from "../../utils.ts";
 import askOptions from "../ask/mod.ts";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
@@ -37,6 +39,7 @@ const runInit = (options: InitCommand) =>
   pipe(
     options,
     tap(drawDinosaur),
+    setTestMode,
     askOptions,
     tap(noticeOptions),
     setData,
@@ -48,6 +51,10 @@ const runInit = (options: InitCommand) =>
 
 export default runInit;
 
+const setTestMode: <T>(obj: T) => T & { testMode: boolean } = set(
+  "testMode",
+  () => Boolean(process.env["FEDIFY_TEST_MODE"]),
+) as <T>(obj: T) => T & { testMode: boolean };
 const handleDryRun = (data: InitCommandData) =>
   pipe(
     data,

@@ -144,8 +144,6 @@
     "@fedify/vocab-tools": "workspace:^",
     "@std/assert": "jsr:^0.226.0",
     "@std/path": "catalog:",
-    "@std/url": "jsr:1.0.0-rc.3",
-    "@std/yaml": "jsr:^1.0.6",
     "@types/node": "^24.2.1",
     "fast-check": "^3.22.0",
     "fetch-mock": "catalog:",

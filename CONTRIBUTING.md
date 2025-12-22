@@ -403,6 +403,47 @@ with Node.js and Bun.
 > mise install
 > ~~~~
 
+#### Testing the `init` command
+
+If you want to test some integration packages like `@fedify/hono` or
+`@fedify/denokv`, you can test them with `test-init` task.  This task runs
+the `fedify init` command with various combinations of web frameworks,
+package managers, KvStore implementations, and MessageQueue implementations.
+
+~~~~ bash
+# From /packages/cli
+deno task test-init
+~~~~
+
+You can also specify specific options to test:
+
+~~~~ bash
+# Test with specific web framework and package manager
+deno task test-init -w hono -p deno
+
+# Test with multiple options
+deno task test-init -w hono -w express -p deno -p npm -k denokv -m denokv
+~~~~
+
+If some options are not specified, all combinations are tested by default.
+
+You can skip dry run or hydration tests:
+
+~~~~ bash
+deno task test-init --no-dry-run   # Only run hydration tests
+deno task test-init --no-hyd-run   # Only run dry-run tests
+~~~~
+
+The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
+
+> [!NOTE]
+>
+> The `test-init` command is for contributors only and is not exposed in the
+> public CLI. It uses the `FEDIFY_TEST_MODE` environment variable internally
+> to configure the init command to use local workspace packages instead of
+> published versions.
+
+
 ### Building the docs
 
 If you want to change the Fedify docs, you would like to preview the changes
