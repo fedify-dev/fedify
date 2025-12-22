@@ -126,8 +126,8 @@ To be released.
     `-t`/`--traverse` option, allowing users to traverse multiple collections
     in a single command.  [[#408], [#449] by Jiwon Kwon]
 
- -  Added `fedify test-init` command to test `fedify init` command.  This
-    command create test server with various combinations of options and test
+ -  Added `test-init` task to test `fedify init` command in `/packages/cli`.  
+    This task create test server with various combinations of options and test
     the server using `fedify lookup` command.  This command is for
     contributors who make integration with various frameworks.  [[#461] by
     Chanhaeng Lee]
