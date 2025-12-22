@@ -1,4 +1,10 @@
-import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreListOptions,
+  KvStoreSetOptions,
+} from "@fedify/fedify";
 import type { Cluster, Redis, RedisKey } from "ioredis";
 import { Buffer } from "node:buffer";
 import { type Codec, JsonCodec } from "./codec.ts";
@@ -103,5 +109,61 @@ export class RedisKvStore implements KvStore {
   async delete(key: KvKey): Promise<void> {
     const serializedKey = this.#serializeKey(key);
     await this.#redis.del(serializedKey);
+  }
+
+  #deserializeKey(redisKey: string): KvKey {
+    const prefixStr = typeof this.#keyPrefix === "string"
+      ? this.#keyPrefix
+      : new TextDecoder().decode(new Uint8Array(this.#keyPrefix));
+    const suffix = redisKey.slice(prefixStr.length);
+    return suffix.split("::").map((p) =>
+      p.replaceAll("_:", ":")
+    ) as unknown as KvKey;
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(
+    options: KvStoreListOptions,
+  ): AsyncIterable<KvStoreListEntry> {
+    const prefixKey = this.#serializeKey(options.prefix);
+    const prefixKeyStr = typeof prefixKey === "string"
+      ? prefixKey
+      : new TextDecoder().decode(new Uint8Array(prefixKey));
+
+    // First, check if the exact prefix key exists
+    const exactValue = await this.#redis.getBuffer(prefixKey);
+    if (exactValue != null) {
+      yield {
+        key: options.prefix,
+        value: this.#codec.decode(exactValue),
+      };
+    }
+
+    // Then scan for all keys starting with prefix::
+    const pattern = `${prefixKeyStr}::*`;
+
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await this.#redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+
+      for (const key of keys) {
+        const encodedValue = await this.#redis.getBuffer(key);
+        if (encodedValue == null) continue;
+        yield {
+          key: this.#deserializeKey(key),
+          value: this.#codec.decode(encodedValue),
+        };
+      }
+    } while (cursor !== "0");
   }
 }

@@ -47,3 +47,47 @@ test("RedisKvStore.delete()", { skip }, async () => {
     redis.disconnect();
   }
 });
+
+test("RedisKvStore.list()", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+  const { redis, store } = getRedis();
+  try {
+    await store.set(["prefix", "a"], "value-a");
+    await store.set(["prefix", "b"], "value-b");
+    await store.set(["prefix", "nested", "c"], "value-c");
+    await store.set(["other", "x"], "value-x");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["prefix"] })) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+    assert(entries.some((e) => e.key[1] === "a" && e.value === "value-a"));
+    assert(entries.some((e) => e.key[1] === "b"));
+    assert(entries.some((e) => e.key[1] === "nested"));
+  } finally {
+    await redis.flushdb();
+    redis.disconnect();
+  }
+});
+
+test("RedisKvStore.list() - single element key", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+  const { redis, store } = getRedis();
+  try {
+    await store.set(["a"], "value-a");
+    await store.set(["b"], "value-b");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: ["a"] })) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].value, "value-a");
+  } finally {
+    await redis.flushdb();
+    redis.disconnect();
+  }
+});

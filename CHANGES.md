@@ -64,6 +64,10 @@ To be released.
 
  -  Implemented `list()` method in `PostgresKvStore`.  [[#498]]
 
+### @fedify/redis
+
+ -  Implemented `list()` method in `RedisKvStore`.  [[#498]]
+
 
 Version 1.9.2
 -------------
