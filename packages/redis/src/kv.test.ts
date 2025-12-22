@@ -91,3 +91,27 @@ test("RedisKvStore.list() - single element key", { skip }, async () => {
     redis.disconnect();
   }
 });
+
+test("RedisKvStore.list() - empty prefix", { skip }, async () => {
+  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+  const { redis, store } = getRedis();
+  try {
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (
+      const entry of store.list!({
+        prefix: [] as unknown as readonly [string, ...string[]],
+      })
+    ) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+  } finally {
+    await redis.flushdb();
+    redis.disconnect();
+  }
+});

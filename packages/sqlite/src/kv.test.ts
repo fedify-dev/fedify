@@ -384,3 +384,26 @@ test("SqliteKvStore.list() - single element key", async () => {
     await db.close();
   }
 });
+
+test("SqliteKvStore.list() - empty prefix", async () => {
+  const { db, store } = getStore();
+  try {
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (
+      const entry of store.list!({
+        prefix: [] as unknown as readonly [string, ...string[]],
+      })
+    ) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+  } finally {
+    await store.drop();
+    await db.close();
+  }
+});

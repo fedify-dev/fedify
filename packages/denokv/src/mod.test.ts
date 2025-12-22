@@ -75,6 +75,31 @@ Deno.test("DenoKvStore", async (t) => {
     await store.delete(["b"]);
   });
 
+  await t.step("list() - empty prefix", async () => {
+    // Cleanup from previous tests
+    await store.delete(["foo", "bar"]);
+
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    const entries: { key: Deno.KvKey; value: unknown }[] = [];
+    for await (
+      const entry of store.list!({
+        prefix: [] as unknown as readonly [string, ...string[]],
+      })
+    ) {
+      entries.push(entry);
+    }
+
+    assertEquals(entries.length, 3);
+
+    // Cleanup
+    await store.delete(["a"]);
+    await store.delete(["b", "c"]);
+    await store.delete(["d", "e", "f"]);
+  });
+
   kv.close();
 });
 

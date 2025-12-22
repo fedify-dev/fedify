@@ -88,4 +88,27 @@ test("MemoryKvStore", async (t) => {
 
     await store.delete(["expired", "valid"]);
   });
+
+  await t.step("list() with empty prefix", async () => {
+    // Cleanup from previous tests
+    await store.delete(["foo", "bar"]);
+
+    // Setup: add entries with various key structures
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    // Test: empty prefix should return all entries
+    const entries: { key: KvKey; value: unknown }[] = [];
+    for await (const entry of store.list!({ prefix: [] as unknown as KvKey })) {
+      entries.push(entry);
+    }
+
+    assertEquals(entries.length, 3);
+
+    // Cleanup
+    await store.delete(["a"]);
+    await store.delete(["b", "c"]);
+    await store.delete(["d", "e", "f"]);
+  });
 });

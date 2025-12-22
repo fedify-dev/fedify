@@ -221,4 +221,32 @@ test(
   },
 );
 
+test(
+  "PostgresKvStore.list() - empty prefix",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const { sql, store } = getStore();
+    try {
+      await store.set(["a"], "value-a");
+      await store.set(["b", "c"], "value-bc");
+      await store.set(["d", "e", "f"], "value-def");
+
+      const entries: { key: readonly string[]; value: unknown }[] = [];
+      for await (
+        const entry of store.list!({
+          prefix: [] as unknown as readonly [string, ...string[]],
+        })
+      ) {
+        entries.push({ key: entry.key, value: entry.value });
+      }
+
+      assert.strictEqual(entries.length, 3);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cSpell: ignore regclass

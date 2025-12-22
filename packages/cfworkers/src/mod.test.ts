@@ -73,6 +73,28 @@ describe("WorkersKvStore", {
     strictEqual(entries.length, 1);
     strictEqual(entries[0].value, "value-a");
   });
+
+  test("list() - empty prefix", async (t) => {
+    const { env } = t as unknown as {
+      env: Record<string, KVNamespace<string>>;
+    };
+    const store = new WorkersKvStore(env.KV1);
+
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    const entries: { key: readonly unknown[]; value: unknown }[] = [];
+    for await (
+      const entry of store.list!({
+        prefix: [] as unknown as readonly [string, ...string[]],
+      })
+    ) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    strictEqual(entries.length, 3);
+  });
 });
 
 describe("WorkersMessageQueue", {

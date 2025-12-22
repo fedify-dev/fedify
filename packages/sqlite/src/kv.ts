@@ -229,19 +229,34 @@ export class SqliteKvStore implements KvStore {
 
     const prefix = options.prefix;
     const now = Temporal.Now.instant().epochMilliseconds;
-    // JSON pattern: '["prefix","' matches keys starting with prefix
-    const pattern = JSON.stringify(prefix).slice(0, -1) + ",%";
-    const exactKey = JSON.stringify(prefix);
 
-    const results = this.#db
-      .prepare(`
-        SELECT key, value
-        FROM "${this.#tableName}"
-        WHERE (key LIKE ? ESCAPE '\\' OR key = ?)
-          AND (expires IS NULL OR expires > ?)
-        ORDER BY key
-      `)
-      .all(pattern, exactKey, now) as { key: string; value: string }[];
+    let results: { key: string; value: string }[];
+
+    if (prefix.length === 0) {
+      // Empty prefix: return all entries
+      results = this.#db
+        .prepare(`
+          SELECT key, value
+          FROM "${this.#tableName}"
+          WHERE expires IS NULL OR expires > ?
+          ORDER BY key
+        `)
+        .all(now) as { key: string; value: string }[];
+    } else {
+      // JSON pattern: '["prefix","' matches keys starting with prefix
+      const pattern = JSON.stringify(prefix).slice(0, -1) + ",%";
+      const exactKey = JSON.stringify(prefix);
+
+      results = this.#db
+        .prepare(`
+          SELECT key, value
+          FROM "${this.#tableName}"
+          WHERE (key LIKE ? ESCAPE '\\' OR key = ?)
+            AND (expires IS NULL OR expires > ?)
+          ORDER BY key
+        `)
+        .all(pattern, exactKey, now) as { key: string; value: string }[];
+    }
 
     for (const row of results) {
       yield {
