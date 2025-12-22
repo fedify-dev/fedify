@@ -85,7 +85,7 @@ interface Post {
  */
 function getPostsByUserId(userId: string): Post[] { return []; }
 // ---cut-before---
-import { Article, Create } from "@fedify/fedify";
+import { Article, Create } from "@fedify/vocab";
 
 federation
   .setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier) => {
@@ -178,7 +178,8 @@ Here's an example of how to implement collection pages for the outbox collection
 with assuming that the database system supports cursor-based pagination:
 
 ~~~~ typescript twoslash
-import { Article, Create, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article, Create } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents a post.
@@ -290,7 +291,8 @@ The value for the first cursor is determined by
 `~CollectionCallbackSetters.setFirstCursor()` method:
 
 ~~~~ typescript twoslash
-import { Article, Create, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article, Create } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents a post.
@@ -447,7 +449,8 @@ So, the below example assumes that the database system supports offset-based
 pagination, which is easy to implement backward pagination:
 
 ~~~~ typescript twoslash
-import { Article, Create, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article, Create } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents a post.
@@ -610,7 +613,7 @@ async function countInboxByUserId(userId: string): Promise<number> {
   return 0;
 }
 // ---cut-before---
-import { Activity } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
 
 federation
   .setInboxDispatcher("/users/{identifier}/inbox", async (ctx, identifier) => {
@@ -790,7 +793,8 @@ has to consist of `Recipient` objects that represent the actors.
 The below example shows how to construct a followers collection:
 
 ~~~~ typescript twoslash
-import type { Federation, Recipient } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents an actor in the database.
@@ -904,7 +908,8 @@ the `Context.sendActivity()` method, you should return the entire followers
 collection when the `cursor` parameter is `null`:
 
 ~~~~ typescript{5-17} twoslash
-import type { Federation, Recipient } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents an actor in the database.
@@ -1031,7 +1036,8 @@ The following example shows how to filter the followers collection by the
 server:
 
 ~~~~ typescript{8-11} twoslash
-import type { Federation, Recipient } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents an actor in the database.
@@ -1146,7 +1152,7 @@ async function getLikedByUserId(userId: string): Promise<Object[]> {
   return [];
 }
 // ---cut-before---
-import type { Object } from "@fedify/fedify";
+import type { Object } from "@fedify/vocab";
 
 federation
   .setLikedDispatcher("/users/{identifier}/liked", async (ctx, identifier, cursor) => {
@@ -1171,7 +1177,7 @@ async function getLikedByUserId(userId: string): Promise<Object[]> {
   return [];
 }
 // ---cut-before---
-import type { Object } from "@fedify/fedify";
+import type { Object } from "@fedify/vocab";
 
 federation
   .setLikedDispatcher("/users/{identifier}/liked", async (ctx, identifier, cursor) => {
@@ -1238,7 +1244,8 @@ as the outbox collection, so we don't repeat the explanation here.
 The below example shows how to construct a featured collection:
 
 ~~~~ typescript twoslash
-import type { Object, Federation } from "@fedify/fedify";
+import type { Federation } from "@fedify/fedify";
+import type { Object } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical function that returns the objects that an actor has featured.
@@ -1312,7 +1319,8 @@ way as the outbox collection, so we don't repeat the explanation here.
 The below example shows how to construct a featured tags collection:
 
 ~~~~ typescript twoslash
-import { Hashtag, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Hashtag } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical function that returns the tags that an actor has featured.
@@ -1401,7 +1409,8 @@ collections. Both methods work similarly to the built-in collection dispatchers.
 Here's an example of creating a custom collection of bookmarked posts:
 
 ~~~~ typescript twoslash
-import { Article, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents a bookmarked post.
@@ -1476,7 +1485,8 @@ federation
 For ordered collections, simply use `setOrderedCollectionDispatcher()` instead:
 
 ~~~~ typescript twoslash
-import { Article, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical type that represents a bookmarked post.
@@ -1560,7 +1570,8 @@ Custom collections support the same callback methods as built-in collections:
 Custom collections can have multiple parameters in their URI patterns:
 
 ~~~~ typescript twoslash
-import { Note, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical function that returns posts by category.
@@ -1628,7 +1639,8 @@ ctx.getCollectionUri("category-posts", {
 You can restrict access to custom collections using the `.authorize()` method:
 
 ~~~~ typescript twoslash
-import { Article, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Article } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 /**
  * A hypothetical function that checks if a user can access another user's bookmarks.

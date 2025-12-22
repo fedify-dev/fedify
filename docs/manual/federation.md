@@ -468,7 +468,8 @@ and is available in the `Context` object passed to the dispatchers and
 listeners.  For example, you can access the `Federation` object like this:
 
 ~~~~ typescript twoslash
-import { type FederationBuilder, Person } from "@fedify/fedify";
+import { type FederationBuilder } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const builder = null as unknown as FederationBuilder<void>;
 // ---cut-before---
 builder.setActorDispatcher(
