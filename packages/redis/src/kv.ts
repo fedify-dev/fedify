@@ -126,68 +126,52 @@ export class RedisKvStore implements KvStore {
    * @since 1.10.0
    */
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    let pattern: string;
+    let exactKey: string | Buffer | null = null;
+
     if (prefix == null || prefix.length === 0) {
       // Empty prefix: scan for all keys with the key prefix
-      const pattern = `${this.#keyPrefixStr}*`;
-
-      let cursor = "0";
-      do {
-        const [nextCursor, keys] = await this.#redis.scan(
-          cursor,
-          "MATCH",
-          pattern,
-          "COUNT",
-          100,
-        );
-        cursor = nextCursor;
-
-        for (const key of keys) {
-          const encodedValue = await this.#redis.getBuffer(key);
-          if (encodedValue == null) continue;
-          yield {
-            key: this.#deserializeKey(key),
-            value: this.#codec.decode(encodedValue),
-          };
-        }
-      } while (cursor !== "0");
+      pattern = `${this.#keyPrefixStr}*`;
     } else {
       const prefixKey = this.#serializeKey(prefix);
       const prefixKeyFullStr = typeof prefixKey === "string"
         ? prefixKey
         : new TextDecoder().decode(new Uint8Array(prefixKey));
+      exactKey = prefixKey;
+      pattern = `${prefixKeyFullStr}::*`;
+    }
 
-      // First, check if the exact prefix key exists
-      const exactValue = await this.#redis.getBuffer(prefixKey);
+    // First, check if the exact prefix key exists
+    if (exactKey != null) {
+      const exactValue = await this.#redis.getBuffer(exactKey);
       if (exactValue != null) {
         yield {
-          key: prefix,
+          key: prefix!,
           value: this.#codec.decode(exactValue),
         };
       }
-
-      // Then scan for all keys starting with prefix::
-      const pattern = `${prefixKeyFullStr}::*`;
-
-      let cursor = "0";
-      do {
-        const [nextCursor, keys] = await this.#redis.scan(
-          cursor,
-          "MATCH",
-          pattern,
-          "COUNT",
-          100,
-        );
-        cursor = nextCursor;
-
-        for (const key of keys) {
-          const encodedValue = await this.#redis.getBuffer(key);
-          if (encodedValue == null) continue;
-          yield {
-            key: this.#deserializeKey(key),
-            value: this.#codec.decode(encodedValue),
-          };
-        }
-      } while (cursor !== "0");
     }
+
+    // Scan for all keys matching the pattern
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await this.#redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+
+      for (const key of keys) {
+        const encodedValue = await this.#redis.getBuffer(key);
+        if (encodedValue == null) continue;
+        yield {
+          key: this.#deserializeKey(key),
+          value: this.#codec.decode(encodedValue),
+        };
+      }
+    } while (cursor !== "0");
   }
 }
