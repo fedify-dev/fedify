@@ -18,6 +18,9 @@
     "dist",
     "node_modules"
   ],
+  "publish": {
+    "exclude": ["!src/mod.ts"]
+  },
   "tasks": {
     "check": "deno fmt src/mod.ts && deno cache src/mod.ts && deno lint src/mod.ts && deno check src/mod.ts",
     "test": "deno test ../fedify/src/vocab/vocab.test.ts --allow-read --allow-net --allow-env"

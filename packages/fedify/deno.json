@@ -101,12 +101,13 @@
       ]
     },
     "pnpm:build-vocab-runtime": {
-      "command": "cd ../vocab-runtime && pnpm build"
+      "command": "pnpm run --filter vocab-runtime build"
     },
     "pnpm:build-vocab-tools": {
-      "command": "cd ../vocab-tools && pnpm build"
+      "command": "pnpm run --filter vocab-tools build"
     },
     "pnpm:build-vocab": {
+      "command": "pnpm run --filter vocab build",
       "dependencies": [
         "pnpm:build-vocab-runtime",
         "pnpm:build-vocab-tools"

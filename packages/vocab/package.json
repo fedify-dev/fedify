@@ -38,9 +38,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown"
+    "build": "deno task codegen && tsdown",
+    "prepack": "deno task codegen && tsdown",
+    "prepublish": "deno task codegen && tsdown"
   },
   "keywords": [
     "Fedify",
