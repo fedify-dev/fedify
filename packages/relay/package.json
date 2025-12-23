@@ -48,7 +48,8 @@
     "package.json"
   ],
   "dependencies": {
-    "@js-temporal/polyfill": "catalog:"
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:"
   },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"

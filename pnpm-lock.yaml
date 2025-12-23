@@ -1070,6 +1070,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 1.3.5
     devDependencies:
       '@fedify/testing':
         specifier: workspace:^

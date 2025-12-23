@@ -3,8 +3,6 @@ import {
   Announce,
   Create,
   Delete,
-  type Federation,
-  type FederationBuilder,
   Follow,
   type InboxContext,
   isActor,
@@ -15,8 +13,8 @@ import {
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import {
+  BaseRelay,
   handleUndoFollow,
-  type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
@@ -33,30 +31,7 @@ const logger = getLogger(["fedify", "relay", "litepub"]);
  *
  * @since 2.0.0
  */
-export class LitePubRelay implements Relay {
-  #federationBuilder: FederationBuilder<RelayOptions>;
-  #options: RelayOptions;
-  #federation?: Federation<RelayOptions>;
-
-  constructor(
-    options: RelayOptions,
-    relayBuilder: FederationBuilder<RelayOptions>,
-  ) {
-    this.#options = options;
-    this.#federationBuilder = relayBuilder;
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    if (this.#federation == null) {
-      this.#federation = await this.#federationBuilder.build(this.#options);
-      this.setupInboxListeners();
-    }
-
-    return await this.#federation.fetch(request, {
-      contextData: this.#options,
-    });
-  }
-
+export class LitePubRelay extends BaseRelay {
   async #announceToFollowers(
     ctx: InboxContext<RelayOptions>,
     activity: Create | Delete | Move | Update | Announce,
@@ -83,9 +58,9 @@ export class LitePubRelay implements Relay {
     );
   }
 
-  setupInboxListeners() {
-    if (this.#federation != null) {
-      this.#federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  protected setupInboxListeners(): void {
+    if (this.federation != null) {
+      this.federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Follow, async (ctx, follow) => {
           const follower = await validateFollowActivity(ctx, follow);
           if (!follower || !follower.id) return;
@@ -98,8 +73,8 @@ export class LitePubRelay implements Relay {
           if (existingFollow?.state === "pending") return;
 
           let approved = false;
-          if (this.#options.subscriptionHandler) {
-            approved = await this.#options.subscriptionHandler(ctx, follower);
+          if (this.options.subscriptionHandler) {
+            approved = await this.options.subscriptionHandler(ctx, follower);
           }
 
           if (approved) {

@@ -3,6 +3,8 @@ import {
   type Context,
   createFederationBuilder,
   exportJwk,
+  type Federation,
+  type FederationBuilder,
   Follow,
   generateCryptoKeyPair,
   importJwk,
@@ -17,8 +19,6 @@ import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,
 } from "@fedify/vocab-runtime";
-import { LitePubRelay } from "./litepub.ts";
-import { MastodonRelay } from "./mastodon.ts";
 
 export const RELAY_SERVER_ACTOR = "relay";
 
@@ -60,7 +60,45 @@ export interface RelayFollower {
   readonly state: "pending" | "accepted";
 }
 
-export const relayBuilder = createFederationBuilder<RelayOptions>();
+/**
+ * Abstract base class for relay implementations.
+ * Provides common infrastructure for both Mastodon and LitePub relays.
+ *
+ * @since 2.0.0
+ */
+export abstract class BaseRelay implements Relay {
+  protected federationBuilder: FederationBuilder<RelayOptions>;
+  protected options: RelayOptions;
+  protected federation?: Federation<RelayOptions>;
+
+  constructor(
+    options: RelayOptions,
+    relayBuilder: FederationBuilder<RelayOptions>,
+  ) {
+    this.options = options;
+    this.federationBuilder = relayBuilder;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    if (this.federation == null) {
+      this.federation = await this.federationBuilder.build(this.options);
+      this.setupInboxListeners();
+    }
+
+    return await this.federation.fetch(request, {
+      contextData: this.options,
+    });
+  }
+
+  /**
+   * Set up inbox listeners for handling ActivityPub activities.
+   * Each relay type implements this method with protocol-specific logic.
+   */
+  protected abstract setupInboxListeners(): void;
+}
+
+export const relayBuilder: FederationBuilder<RelayOptions> =
+  createFederationBuilder<RelayOptions>();
 
 relayBuilder.setActorDispatcher(
   "/users/{identifier}",
@@ -249,15 +287,3 @@ relayBuilder.setFollowingDispatcher(
     return { items: actors };
   },
 );
-
-export function createRelay(
-  type: RelayType,
-  options: RelayOptions,
-): Relay {
-  switch (type) {
-    case "mastodon":
-      return new MastodonRelay(options, relayBuilder);
-    case "litepub":
-      return new LitePubRelay(options, relayBuilder);
-  }
-}
