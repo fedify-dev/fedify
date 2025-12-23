@@ -527,8 +527,6 @@ export class FedifySpanExporter implements SpanExporter {
       const records: TraceActivityRecord[] = [];
 
       for await (const entry of this.#kv.list!(prefix)) {
-        // Skip summary entries based on key structure
-        if (entry.key[this.#keyPrefix.length] === "_summaries") continue;
         records.push(entry.value as TraceActivityRecord);
       }
 
