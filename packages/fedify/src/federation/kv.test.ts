@@ -1,6 +1,5 @@
 import { assertEquals } from "@std/assert";
 import { test } from "../testing/mod.ts";
-import type { KvKey } from "./kv.ts";
 import { MemoryKvStore } from "./kv.ts";
 
 test("MemoryKvStore", async (t) => {
@@ -45,10 +44,7 @@ test("MemoryKvStore", async (t) => {
     await store.set(["prefix"], "exact-match");
 
     // Test: list with prefix
-    const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!(["prefix"])) {
-      entries.push(entry);
-    }
+    const entries = await Array.fromAsync(store.list!(["prefix"]));
     assertEquals(entries.length, 4); // prefix, prefix/a, prefix/b, prefix/nested/c
 
     // Test: verify a value
@@ -56,10 +52,7 @@ test("MemoryKvStore", async (t) => {
     assertEquals(entryA?.value, "value-a");
 
     // Test: non-matching prefix returns empty
-    const noMatch: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!(["nonexistent"])) {
-      noMatch.push(entry);
-    }
+    const noMatch = await Array.fromAsync(store.list!(["nonexistent"]));
     assertEquals(noMatch.length, 0);
 
     // Cleanup
@@ -78,10 +71,7 @@ test("MemoryKvStore", async (t) => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!(["expired"])) {
-      entries.push(entry);
-    }
+    const entries = await Array.fromAsync(store.list!(["expired"]));
 
     assertEquals(entries.length, 1);
     assertEquals(entries[0].value, "valid-value");
@@ -99,10 +89,7 @@ test("MemoryKvStore", async (t) => {
     await store.set(["d", "e", "f"], "value-def");
 
     // Test: empty prefix should return all entries
-    const entries: { key: KvKey; value: unknown }[] = [];
-    for await (const entry of store.list!()) {
-      entries.push(entry);
-    }
+    const entries = await Array.fromAsync(store.list!());
 
     assertEquals(entries.length, 3);
 
