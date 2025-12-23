@@ -270,20 +270,21 @@ export async function handleUndoFollow(
   }
 }
 
+async function dispatchRelayActors(
+  ctx: Context<RelayOptions>,
+  identifier: string,
+) {
+  if (identifier !== RELAY_SERVER_ACTOR) return null;
+  const actors = await getFollowerActors(ctx);
+  return { items: actors };
+}
+
 relayBuilder.setFollowersDispatcher(
   "/users/{identifier}/followers",
-  async (ctx, identifier) => {
-    if (identifier !== RELAY_SERVER_ACTOR) return null;
-    const actors = await getFollowerActors(ctx);
-    return { items: actors };
-  },
+  dispatchRelayActors,
 );
 
 relayBuilder.setFollowingDispatcher(
   "/users/{identifier}/following",
-  async (ctx, identifier) => {
-    if (identifier !== RELAY_SERVER_ACTOR) return null;
-    const actors = await getFollowerActors(ctx);
-    return { items: actors };
-  },
+  dispatchRelayActors,
 );
