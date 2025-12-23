@@ -1,16 +1,22 @@
 import {
-  Accept,
   Create,
   Delete,
   type Federation,
   Follow,
+  type InboxContext,
   Move,
-  Reject,
   Undo,
   Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import { type Relay, RELAY_SERVER_ACTOR, type RelayOptions } from "./relay.ts";
+import {
+  handleUndoFollow,
+  type Relay,
+  RELAY_SERVER_ACTOR,
+  type RelayOptions,
+  sendFollowResponse,
+  validateFollowActivity,
+} from "./relay.ts";
 import type { FederationBuilder } from "@fedify/fedify/federation";
 
 const logger = getLogger(["fedify", "relay", "mastodon"]);
@@ -46,33 +52,42 @@ export class MastodonRelay implements Relay {
     });
   }
 
+  /**
+   * Forward activity to all followers (mastodon-specific pattern).
+   * Used for Create, Delete, Move, and Update activities.
+   */
+  async #forwardToFollowers(
+    ctx: InboxContext<RelayOptions>,
+    activity: Create | Delete | Move | Update,
+  ): Promise<void> {
+    const sender = await activity.getActor(ctx);
+    const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+    await ctx.forwardActivity(
+      { identifier: RELAY_SERVER_ACTOR },
+      "followers",
+      {
+        skipIfUnsigned: true,
+        excludeBaseUris,
+        preferSharedInbox: true,
+      },
+    );
+  }
+
   setupInboxListeners() {
     if (this.#federation != null) {
       this.#federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Follow, async (ctx, follow) => {
-          if (follow.id == null || follow.objectId == null) return;
-          const parsed = ctx.parseUri(follow.objectId);
-          const isPublicFollow = follow.objectId.href ===
-            "https://www.w3.org/ns/activitystreams#Public";
-          if (!isPublicFollow && parsed?.type !== "actor") return;
+          const follower = await validateFollowActivity(ctx, follow);
+          if (!follower || !follower.id) return;
 
-          const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
-          const follower = await follow.getActor(ctx);
-          if (
-            follower == null || follower.id == null ||
-            follower.preferredUsername == null ||
-            follower.inboxId == null
-          ) return;
           let approved = false;
-
           if (this.#options.subscriptionHandler) {
-            approved = await this.#options.subscriptionHandler(
-              ctx,
-              follower,
-            );
+            approved = await this.#options.subscriptionHandler(ctx, follower);
           }
 
           if (approved) {
+            // mastodon-specific: immediately add to followers list
             const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
               [];
             followers.push(follower.id.href);
@@ -80,115 +95,17 @@ export class MastodonRelay implements Relay {
 
             await ctx.data.kv.set(
               ["follower", follower.id.href],
-              { "actor": await follower.toJsonLd(), "state": "accepted" },
-            );
-
-            await ctx.sendActivity(
-              { identifier: RELAY_SERVER_ACTOR },
-              follower,
-              new Accept({
-                id: new URL(`#accepts`, relayActorUri),
-                actor: relayActorUri,
-                object: follow,
-              }),
-            );
-          } else {
-            await ctx.sendActivity(
-              { identifier: RELAY_SERVER_ACTOR },
-              follower,
-              new Reject({
-                id: new URL(`#rejects`, relayActorUri),
-                actor: relayActorUri,
-                object: follow,
-              }),
+              { actor: await follower.toJsonLd(), state: "accepted" },
             );
           }
-        })
-        .on(Undo, async (ctx, undo) => {
-          const activity = await undo.getObject({
-            crossOrigin: "trust",
-            ...ctx,
-          });
-          if (activity instanceof Follow) {
-            if (
-              activity.id == null ||
-              activity.actorId == null
-            ) return;
-            const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-              []; // actor ids
 
-            const updatedFollowers = followers.filter((id) =>
-              id !== activity.actorId?.href
-            );
-            await ctx.data.kv.set(["followers"], updatedFollowers);
-            await ctx.data.kv.delete(["follower", activity.actorId?.href]);
-          } else {
-            logger.warn(
-              "Unsupported object type ({type}) for Undo activity: {object}",
-              { type: activity?.constructor.name, object: activity },
-            );
-          }
+          await sendFollowResponse(ctx, follow, follower, approved);
         })
-        .on(Create, async (ctx, create) => {
-          const sender = await create.getActor(ctx);
-          // Exclude the sender's origin to prevent forwarding back to them
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          await ctx.forwardActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            {
-              skipIfUnsigned: true,
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Delete, async (ctx, deleteActivity) => {
-          const sender = await deleteActivity.getActor(ctx);
-          // Exclude the sender's origin to prevent forwarding back to them
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          await ctx.forwardActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            {
-              skipIfUnsigned: true,
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Move, async (ctx, move) => {
-          const sender = await move.getActor(ctx);
-          // Exclude the sender's origin to prevent forwarding back to them
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          await ctx.forwardActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            {
-              skipIfUnsigned: true,
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Update, async (ctx, update) => {
-          const sender = await update.getActor(ctx);
-          // Exclude the sender's origin to prevent forwarding back to them
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          await ctx.forwardActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            {
-              skipIfUnsigned: true,
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        });
+        .on(Undo, (ctx, undo) => handleUndoFollow(ctx, undo, logger))
+        .on(Create, (ctx, create) => this.#forwardToFollowers(ctx, create))
+        .on(Delete, (ctx, del) => this.#forwardToFollowers(ctx, del))
+        .on(Move, (ctx, move) => this.#forwardToFollowers(ctx, move))
+        .on(Update, (ctx, update) => this.#forwardToFollowers(ctx, update));
     }
   }
 }
