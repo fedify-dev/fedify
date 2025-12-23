@@ -22,7 +22,7 @@ export const actorPropertyRequired = ({
       path: path.join("."),
       requiresIdentifier,
     })
-  }\`for the \`${path.join(".")}\` property URI.`;
+  }\` for the \`${path.join(".")}\` property URI.`;
 
 /**
  * Generates error message for *-mismatch rules.

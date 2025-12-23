@@ -1283,9 +1283,9 @@ Linting your federation code
 -----------------------------
 
 As your federated server grows, it's important to maintain code quality and
-catch common mistakes early.  Fedify provides linting plugins for both
-[Deno Lint] and [ESLint], which include specialized linting rules for
-federation code.
+catch common mistakes early.  Fedify provides the [`@fedify/lint`] package
+with linting plugins for both Deno Lint and ESLint, which include specialized
+linting rules for federation code.
 
 The `@fedify/lint` package helps you avoid common pitfalls such as:
 
@@ -1294,79 +1294,6 @@ The `@fedify/lint` package helps you avoid common pitfalls such as:
  -  Missing required actor properties (inbox, outbox, followers, etc.)
  -  Incorrect URL patterns for actor collections
  -  Missing public keys or assertion methods
-
-### Using Deno Lint
-
-If you are using Deno, you can use the Deno Lint plugin.  First, install the
-plugin:
-
-~~~~ sh
-deno add jsr:@fedify/lint
-~~~~
-
-Then add the plugin to your *deno.json* configuration file:
-
-~~~~ json
-{
-  "lint": {
-    "plugins": ["jsr:@fedify/lint"]
-  }
-}
-~~~~
-
-Now you can run the linter on your code:
-
-~~~~ sh
-deno lint
-~~~~
-
-### Using ESLint
-
-For ESLint users (including Deno, Bun, and Node.js), first install the plugin:
-
-::: code-group
-
-~~~~ sh [Bun]
-bun add -D @fedify/lint eslint
-~~~~
-
-~~~~ sh [Node.js]
-npm add -D @fedify/lint eslint
-~~~~
-
-:::
-
-Then create an ESLint configuration file (e.g., *eslint.config.ts*) in your
-project directory:
-
-~~~~ typescript twoslash
-import fedifyLint from "@fedify/lint";
-
-export default [{
-  ...fedifyLint,
-  files: ["**/*.ts"],
-}];
-~~~~
-
-Now you can run the linter on your code:
-
-::: code-group
-
-~~~~ sh [Bun]
-bun run eslint .
-~~~~
-
-~~~~ sh [Node.js]
-npx eslint .
-~~~~
-
-:::
-
-> [!NOTE]
-> When using ESLint with Deno, you may need to exclude some Deno-specific
-> lint rules like `no-unused-vars` to avoid conflicts.
-
-### Example
 
 For example, if you had written the actor dispatcher like this:
 
@@ -1390,15 +1317,13 @@ error[fedify-lint/actor-id-mismatch]: Actor's `id` property must match
 `_ctx.getActorUri(identifier)`. Ensure you're using the correct context method.
 ~~~~
 
-This helps you catch mistakes before they cause issues in production.  The
-linter includes many other rules to ensure your federation code follows best
-practices.
+This helps you catch mistakes before they cause issues in production.
 
-For more information about available rules and configuration options, see
-the [`@fedify/lint` documentation](https://jsr.io/@fedify/lint).
+> [!TIP]
+> For detailed setup instructions, available rules, and configuration options,
+> see the [*Linting* section](../manual/lint.md) in the manual.
 
-[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
-[ESLint]: https://eslint.org/
+[`@fedify/lint`]: https://jsr.io/@fedify/lint
 
 
 Wrapping up

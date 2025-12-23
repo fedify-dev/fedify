@@ -11,6 +11,7 @@
     "@fedify/h3": "workspace:",
     "@fedify/hono": "workspace:",
     "@fedify/koa": "workspace:",
+    "@fedify/lint": "workspace:",
     "@fedify/nestjs": "workspace:",
     "@fedify/next": "workspace:",
     "@fedify/postgres": "workspace:",
