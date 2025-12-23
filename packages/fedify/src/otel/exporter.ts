@@ -353,7 +353,9 @@ export class FedifySpanExporter implements SpanExporter {
       activityJson,
       verified: typeof verified === "boolean" ? verified : undefined,
       signatureDetails,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(
+        event.time[0] * 1000 + event.time[1] / 1e6,
+      ).toISOString(),
     };
   }
 
@@ -404,7 +406,9 @@ export class FedifySpanExporter implements SpanExporter {
           : undefined),
       actorId,
       activityJson,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(
+        event.time[0] * 1000 + event.time[1] / 1e6,
+      ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
     };
   }
