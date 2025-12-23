@@ -547,15 +547,12 @@ export class FedifySpanExporter implements SpanExporter {
   async getRecentTraces(
     options?: GetRecentTracesOptions,
   ): Promise<TraceSummary[]> {
-    const summaryPrefix: KvKey = [...this.#keyPrefix, "_summaries"] as KvKey;
+    const summaryPrefix = [...this.#keyPrefix, "_summaries"] as KvKey;
     const summaries: TraceSummary[] = [];
 
     if (this.#kv.list != null) {
       for await (const entry of this.#kv.list(summaryPrefix)) {
         summaries.push(entry.value as TraceSummary);
-        if (options?.limit != null && summaries.length >= options.limit) {
-          break;
-        }
       }
     }
 
