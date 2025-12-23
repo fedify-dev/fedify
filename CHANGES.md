@@ -36,16 +36,47 @@ To be released.
         key ownership verification, recording actor ID, key ID, verification
         result, and the verification method used.
 
+ -  Added optional `list()` method to the `KvStore` interface for enumerating
+    entries by key prefix.  This method takes an optional `prefix` parameter;
+    when omitted or empty, it returns all entries.  This enables efficient
+    prefix scanning which is useful for implementing features like distributed
+    trace storage, cache invalidation by prefix, and listing related entries.
+    [[#498], [#500]]
+
+     -  Added `KvStoreListEntry` interface.
+     -  Implemented in `MemoryKvStore`.
+
 [#323]: https://github.com/fedify-dev/fedify/issues/323
+[#498]: https://github.com/fedify-dev/fedify/issues/498
+[#500]: https://github.com/fedify-dev/fedify/pull/500
 
 ### @fedify/nestjs
 
  -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
     [[#492], [#493] by Cho Hasang]
 
-
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
+
+### @fedify/sqlite
+
+ -  Implemented `list()` method in `SqliteKvStore`.  [[#498], [#500]]
+
+### @fedify/postgres
+
+ -  Implemented `list()` method in `PostgresKvStore`.  [[#498], [#500]]
+
+### @fedify/redis
+
+ -  Implemented `list()` method in `RedisKvStore`.  [[#498], [#500]]
+
+### @fedify/denokv
+
+ -  Implemented `list()` method in `DenoKvStore`.  [[#498], [#500]]
+
+### @fedify/cfworkers
+
+ -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
 
 
 Version 1.9.2

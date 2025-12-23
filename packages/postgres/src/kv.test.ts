@@ -139,4 +139,110 @@ test("PostgresKvStore.drop()", { skip: dbUrl == null }, async () => {
   }
 });
 
+test("PostgresKvStore.list()", { skip: dbUrl == null }, async () => {
+  if (dbUrl == null) return; // Bun does not support skip option
+  const { sql, store } = getStore();
+  try {
+    await store.set(["prefix", "a"], "value-a");
+    await store.set(["prefix", "b"], "value-b");
+    await store.set(["prefix", "nested", "c"], "value-c");
+    await store.set(["other", "x"], "value-x");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!(["prefix"])) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+    assert(entries.some((e) => e.key[1] === "a" && e.value === "value-a"));
+    assert(entries.some((e) => e.key[1] === "b"));
+    assert(entries.some((e) => e.key[1] === "nested"));
+  } finally {
+    await store.drop();
+    await sql.end();
+  }
+});
+
+test(
+  "PostgresKvStore.list() - excludes expired",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const { sql, tableName, store } = getStore();
+    try {
+      await store.initialize();
+
+      // Insert expired entry directly
+      await sql`
+      INSERT INTO ${sql(tableName)} (key, value, created, ttl)
+      VALUES (
+        ${["list-test", "expired"]},
+        ${"expired-value"},
+        CURRENT_TIMESTAMP - INTERVAL '1 hour',
+        ${"30 minutes"}
+      )
+    `;
+      await store.set(["list-test", "valid"], "valid-value");
+
+      const entries: { key: readonly string[]; value: unknown }[] = [];
+      for await (const entry of store.list!(["list-test"])) {
+        entries.push({ key: entry.key, value: entry.value });
+      }
+
+      assert.strictEqual(entries.length, 1);
+      assert.deepStrictEqual(entries[0].key, ["list-test", "valid"]);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+test(
+  "PostgresKvStore.list() - single element key",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const { sql, store } = getStore();
+    try {
+      await store.set(["a"], "value-a");
+      await store.set(["b"], "value-b");
+
+      const entries: { key: readonly string[]; value: unknown }[] = [];
+      for await (const entry of store.list!(["a"])) {
+        entries.push({ key: entry.key, value: entry.value });
+      }
+
+      assert.strictEqual(entries.length, 1);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+test(
+  "PostgresKvStore.list() - empty prefix",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const { sql, store } = getStore();
+    try {
+      await store.set(["a"], "value-a");
+      await store.set(["b", "c"], "value-bc");
+      await store.set(["d", "e", "f"], "value-def");
+
+      const entries: { key: readonly string[]; value: unknown }[] = [];
+      for await (const entry of store.list!()) {
+        entries.push({ key: entry.key, value: entry.value });
+      }
+
+      assert.strictEqual(entries.length, 3);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cSpell: ignore regclass

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fedify-cfworkers-test",
+  "compatibility_date": "2024-12-01",
+  "main": "src/mod.ts",
+  "kv_namespaces": [
+    {
+      "binding": "KV1",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "Q1",
+        "queue": "test-queue"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "test-queue",
+        "max_batch_timeout": 1
+      }
+    ]
+  }
+}
