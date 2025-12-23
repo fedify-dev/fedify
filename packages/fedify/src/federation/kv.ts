@@ -186,14 +186,7 @@ export class MemoryKvStore implements KvStore {
       // Check prefix match
       if (prefix != null) {
         if (key.length < prefix.length) continue;
-        let matches = true;
-        for (let i = 0; i < prefix.length; i++) {
-          if (key[i] !== prefix[i]) {
-            matches = false;
-            break;
-          }
-        }
-        if (!matches) continue;
+        if (!prefix.every((p, i) => key[i] === p)) continue;
       }
 
       const [value, expiration] = entry;
