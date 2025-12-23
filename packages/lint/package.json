@@ -1,0 +1,75 @@
+{
+  "name": "@fedify/lint",
+  "version": "2.0.0",
+  "description": "Fedify linting rules and plugins",
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse",
+    "Lint",
+    "ESLint",
+    "ESLint Plugin"
+  ],
+  "author": {
+    "name": "Chanhaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://chomu.dev/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/lint"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "deno.json",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^",
+    "eslint": ">=9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "eslint": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@fxts/core": "catalog:",
+    "@typescript-eslint/parser": "^8.49.0",
+    "@typescript-eslint/utils": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/eslint": "^9.0.0",
+    "@types/estree": "^1.0.8",
+    "eslint": "^9.0.0",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "node --experimental-transform-types --test 'src/tests/**/*.test.ts'"
+  }
+}

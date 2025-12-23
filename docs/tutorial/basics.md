@@ -1279,6 +1279,53 @@ should see the actor's followers in the bulleted list.
 [Hono]: https://hono.dev/
 
 
+Linting your federation code
+-----------------------------
+
+As your federated server grows, it's important to maintain code quality and
+catch common mistakes early.  Fedify provides the [`@fedify/lint`] package
+with linting plugins for both Deno Lint and ESLint, which include specialized
+linting rules for federation code.
+
+The `@fedify/lint` package helps you avoid common pitfalls such as:
+
+ -  Using incorrect actor IDs (e.g., relative URLs instead of
+    `Context.getActorUri()`)
+ -  Missing required actor properties (inbox, outbox, followers, etc.)
+ -  Incorrect URL patterns for actor collections
+ -  Missing public keys or assertion methods
+
+For example, if you had written the actor dispatcher like this:
+
+~~~~ typescript
+// ❌ Wrong: Using relative URL
+federation.setActorDispatcher(
+  "/{identifier}",
+  (_ctx, identifier) => {
+    return new Person({
+      id: new URL(`/${identifier}`),  // ❌ Linter will catch this
+      name: "Example User",
+    });
+  },
+);
+~~~~
+
+The linter would warn you:
+
+~~~~
+error[fedify-lint/actor-id-mismatch]: Actor's `id` property must match
+`_ctx.getActorUri(identifier)`. Ensure you're using the correct context method.
+~~~~
+
+This helps you catch mistakes before they cause issues in production.
+
+> [!TIP]
+> For detailed setup instructions, available rules, and configuration options,
+> see the [*Linting* section](../manual/lint.md) in the manual.
+
+[`@fedify/lint`]: https://jsr.io/@fedify/lint
+
+
 Wrapping up
 -----------
 
