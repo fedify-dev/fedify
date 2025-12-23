@@ -258,11 +258,19 @@ export class FedifySpanExporter implements SpanExporter {
   }
 
   async #exportAsync(spans: ReadableSpan[]): Promise<void> {
+    const storeOperations: Promise<void>[] = [];
     for (const span of spans) {
       const records = this.#extractRecords(span);
       for (const record of records) {
-        await this.#storeRecord(record);
+        storeOperations.push(this.#storeRecord(record));
       }
+    }
+    const results = await Promise.allSettled(storeOperations);
+    const rejected = results.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    );
+    if (rejected.length > 0) {
+      throw rejected[0].reason;
     }
   }
 
