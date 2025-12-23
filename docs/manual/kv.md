@@ -702,8 +702,13 @@ whose keys start with a given prefix.  This is useful for implementing
 batch operations or iterating over related entries.
 
 ~~~~ typescript twoslash
-import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
-import type { KvStoreListEntry } from "@fedify/fedify";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "@fedify/fedify";
+
 /**
  * A hypothetical storage interface.
  */
