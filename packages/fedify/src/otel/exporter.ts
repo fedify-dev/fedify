@@ -575,10 +575,10 @@ export class FedifySpanExporter implements SpanExporter {
 
   /**
    * Forces the exporter to flush any buffered data.
-   * This implementation is synchronous, so this is a no-op.
+   * This is a no-op because we write directly to the KvStore without buffering.
    */
   async forceFlush(): Promise<void> {
-    // No-op: data is written synchronously
+    // No-op: data is written directly to KvStore without buffering
   }
 
   /**
