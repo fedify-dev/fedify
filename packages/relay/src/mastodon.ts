@@ -1,4 +1,5 @@
 import {
+  Announce,
   Create,
   Delete,
   type Federation,
@@ -58,7 +59,7 @@ export class MastodonRelay implements Relay {
    */
   async #forwardToFollowers(
     ctx: InboxContext<RelayOptions>,
-    activity: Create | Delete | Move | Update,
+    activity: Create | Delete | Move | Update | Announce,
   ): Promise<void> {
     const sender = await activity.getActor(ctx);
     const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
@@ -101,11 +102,32 @@ export class MastodonRelay implements Relay {
 
           await sendFollowResponse(ctx, follow, follower, approved);
         })
-        .on(Undo, (ctx, undo) => handleUndoFollow(ctx, undo, logger))
-        .on(Create, (ctx, create) => this.#forwardToFollowers(ctx, create))
-        .on(Delete, (ctx, del) => this.#forwardToFollowers(ctx, del))
-        .on(Move, (ctx, move) => this.#forwardToFollowers(ctx, move))
-        .on(Update, (ctx, update) => this.#forwardToFollowers(ctx, update));
+        .on(
+          Undo,
+          async (ctx, undo) => await handleUndoFollow(ctx, undo, logger),
+        )
+        .on(
+          Create,
+          async (ctx, create) => await this.#forwardToFollowers(ctx, create),
+        )
+        .on(
+          Delete,
+          async (ctx, deleteActivity) =>
+            await this.#forwardToFollowers(ctx, deleteActivity),
+        )
+        .on(
+          Move,
+          async (ctx, move) => await this.#forwardToFollowers(ctx, move),
+        )
+        .on(
+          Update,
+          async (ctx, update) => await this.#forwardToFollowers(ctx, update),
+        )
+        .on(
+          Announce,
+          async (ctx, announce) =>
+            await this.#forwardToFollowers(ctx, announce),
+        );
     }
   }
 }
