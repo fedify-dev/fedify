@@ -28,10 +28,6 @@ const logger = getLogger(["fedify", "relay", "mastodon"]);
  * @since 2.0.0
  */
 export class MastodonRelay extends BaseRelay {
-  /**
-   * Forward activity to all followers (mastodon-specific pattern).
-   * Used for Create, Delete, Move, and Update activities.
-   */
   async #forwardToFollowers(
     ctx: InboxContext<RelayOptions>,
     activity: Create | Delete | Move | Update | Announce,
