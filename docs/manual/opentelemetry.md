@@ -394,3 +394,189 @@ can use `debugExporter.getActivities()` to access the captured activities for
 your debug dashboard or other observability tools.
 
 [SpanExporter]: https://open-telemetry.github.io/opentelemetry-js/interfaces/_opentelemetry_sdk_trace_base.SpanExporter.html
+
+
+Distributed trace storage with `FedifySpanExporter`
+---------------------------------------------------
+
+*This API is available since Fedify 1.10.0.*
+
+The example `FedifyDebugExporter` shown above stores activities in memory,
+which works well for single-process applications.  However, Fedify applications
+often run in distributed environments where:
+
+ -  The web server handling HTTP requests runs on different nodes than
+    the background workers processing the message queue.
+ -  Multiple worker nodes may process queued messages in parallel.
+ -  The debug dashboard itself may run on yet another node.
+
+In such environments, an in-memory exporter cannot aggregate traces across
+nodes.  Each node would only see its own spans, making it impossible to view
+the complete picture of a distributed trace.
+
+Fedify provides [`FedifySpanExporter`] which persists trace data to a
+[`KvStore`](./kv.md), enabling distributed tracing across multiple nodes.
+All nodes can write to the same storage, and your debug dashboard can query
+this shared storage to display complete traces.
+
+### Setting up `FedifySpanExporter`
+
+To use `FedifySpanExporter`, import it from the `@fedify/fedify/otel` module
+and configure it with a [`KvStore`](./kv.md):
+
+::: code-group
+
+~~~~ typescript twoslash [Deno]
+import type { KvStore, MessageQueue } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+import { RedisKvStore } from "@fedify/redis";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import {
+  BasicTracerProvider,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
+import Redis from "ioredis";
+
+const redis = new Redis();
+const kv = new RedisKvStore(redis);
+
+// Create the exporter that writes to KvStore
+const fedifyExporter = new FedifySpanExporter(kv, {
+  ttl: Temporal.Duration.from({ hours: 1 }),
+});
+
+const tracerProvider = new BasicTracerProvider();
+tracerProvider.addSpanProcessor(new SimpleSpanProcessor(fedifyExporter));
+
+const federation = createFederation<void>({
+  kv,
+  tracerProvider,
+// ---cut-start---
+  queue: null as unknown as MessageQueue,
+// ---cut-end---
+  // Omitted for brevity; see the related section for details.
+});
+~~~~
+
+~~~~ typescript [Node.js]
+import { createFederation } from "@fedify/fedify";
+import { RedisKvStore } from "@fedify/redis";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import { NodeTracerProvider, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import Redis from "ioredis";
+
+const redis = new Redis();
+const kv = new RedisKvStore(redis);
+
+// Create the exporter that writes to KvStore
+const fedifyExporter = new FedifySpanExporter(kv, {
+  ttl: Temporal.Duration.from({ hours: 1 }),
+});
+
+const tracerProvider = new NodeTracerProvider();
+tracerProvider.addSpanProcessor(new SimpleSpanProcessor(fedifyExporter));
+
+const federation = createFederation({
+  kv,
+  tracerProvider,
+  // Omitted for brevity; see the related section for details.
+});
+~~~~
+
+:::
+
+### Querying stored traces
+
+The `FedifySpanExporter` provides methods to query stored trace data:
+
+~~~~ typescript twoslash
+import { MemoryKvStore } from "@fedify/fedify";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+const kv = new MemoryKvStore();
+const fedifyExporter = new FedifySpanExporter(kv);
+const traceId = "";
+// ---cut-before---
+// Get all activities for a specific trace
+const activities = await fedifyExporter.getActivitiesByTraceId(traceId);
+
+// Get recent traces (with optional limit)
+const recentTraces = await fedifyExporter.getRecentTraces({ limit: 100 });
+~~~~
+
+Each `TraceActivityRecord` contains:
+
+ -  `traceId`: The OpenTelemetry trace ID
+ -  `spanId`: The OpenTelemetry span ID
+ -  `parentSpanId`: The parent span ID (if any)
+ -  `direction`: `"inbound"` or `"outbound"`
+ -  `activityType`: The ActivityPub activity type (e.g., `"Create"`, `"Follow"`)
+ -  `activityId`: The activity's ID URL
+ -  `actorId`: The actor ID URL (sender of the activity)
+ -  `activityJson`: The complete activity JSON
+ -  `verified`: Whether the activity was verified (for inbound activities)
+ -  `signatureDetails`: Detailed signature verification information
+    (for inbound activities), containing:
+     -  `httpSignaturesVerified`: Whether HTTP Signatures were verified
+     -  `httpSignaturesKeyId`: The key ID used for HTTP signature verification
+     -  `ldSignaturesVerified`: Whether Linked Data Signatures were verified
+ -  `timestamp`: ISO 8601 timestamp
+ -  `inboxUrl`: The target inbox URL (for outbound activities)
+
+### Configuration options
+
+The `FedifySpanExporter` constructor accepts the following options:
+
+`ttl`
+:   The time-to-live for stored trace data.  If not specified, data will be
+    stored indefinitely (or until manually deleted).  This is useful for
+    automatically cleaning up old trace data:
+
+    ~~~~ typescript twoslash
+    import { MemoryKvStore } from "@fedify/fedify";
+    import { FedifySpanExporter } from "@fedify/fedify/otel";
+    const kv = new MemoryKvStore();
+    // ---cut-before---
+    const exporter = new FedifySpanExporter(kv, {
+      ttl: Temporal.Duration.from({ hours: 24 }),
+    });
+    ~~~~
+
+`keyPrefix`
+:   The key prefix for storing trace data in the `KvStore`.  Defaults to
+    `["fedify", "traces"]`.  You can customize this to avoid conflicts with
+    other data in the same `KvStore`:
+
+    ~~~~ typescript twoslash
+    import { MemoryKvStore } from "@fedify/fedify";
+    import { FedifySpanExporter } from "@fedify/fedify/otel";
+    const kv = new MemoryKvStore();
+    // ---cut-before---
+    const exporter = new FedifySpanExporter(kv, {
+      keyPrefix: ["myapp", "otel", "traces"],
+    });
+    ~~~~
+
+### `KvStore` requirements
+
+The `FedifySpanExporter` requires a [`KvStore`](./kv.md) that supports either
+the `list()` method (preferred) or the `cas()` method:
+
+ -  When `list()` is available, the exporter stores each activity record under
+    its own unique key, enabling efficient prefix scans without concurrency
+    issues.
+ -  When only `cas()` is available, the exporter uses compare-and-swap
+    operations to append records to a list, which works but may experience
+    contention under high load.
+ -  If neither method is available, the constructor throws an error.
+
+The following `KvStore` implementations support the required operations:
+
+ -  `MemoryKvStore` (supports both `list()` and `cas()`)
+ -  `RedisKvStore` from *@fedify/redis* (supports both `list()` and `cas()`)
+ -  `PostgresKvStore` from *@fedify/postgres* (supports `list()`)
+ -  `SqliteKvStore` from *@fedify/sqlite* (supports `list()`)
+ -  `DenoKvStore` from *@fedify/denokv* (supports both `list()` and `cas()`)
+ -  `WorkersKvStore` from *@fedify/cfworkers* (supports `list()`)
+
+[`FedifySpanExporter`]: https://jsr.io/@fedify/fedify/doc/otel/~/FedifySpanExporter
