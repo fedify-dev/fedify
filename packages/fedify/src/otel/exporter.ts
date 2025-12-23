@@ -507,11 +507,7 @@ export class FedifySpanExporter implements SpanExporter {
 
     await this.#setWithCasRetry<TraceActivityRecord[]>(
       key,
-      (existing) => {
-        const records = existing ?? [];
-        records.push(record);
-        return records;
-      },
+      (existing) => (existing ? [...existing, record] : [record]),
       options,
     );
     await this.#updateTraceSummary(record, options);
