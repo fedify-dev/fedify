@@ -445,20 +445,42 @@ export class FedifySpanExporter implements SpanExporter {
       record.traceId,
     ] as KvKey;
 
-    const existing = await this.#kv.get<TraceSummary>(summaryKey);
-
-    const summary: TraceSummary = existing ?? {
-      traceId: record.traceId,
-      timestamp: record.timestamp,
-      activityCount: 0,
-      activityTypes: [],
+    const createOrUpdateSummary = (
+      existing: TraceSummary | undefined,
+    ): TraceSummary => {
+      const summary: TraceSummary = existing != null
+        ? {
+          traceId: existing.traceId,
+          timestamp: existing.timestamp,
+          activityCount: existing.activityCount,
+          activityTypes: [...existing.activityTypes],
+        }
+        : {
+          traceId: record.traceId,
+          timestamp: record.timestamp,
+          activityCount: 0,
+          activityTypes: [],
+        };
+      summary.activityCount += 1;
+      if (!summary.activityTypes.includes(record.activityType)) {
+        summary.activityTypes.push(record.activityType);
+      }
+      return summary;
     };
 
-    summary.activityCount += 1;
-    if (!summary.activityTypes.includes(record.activityType)) {
-      summary.activityTypes.push(record.activityType);
+    if (this.#kv.cas != null) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const existing = await this.#kv.get<TraceSummary>(summaryKey);
+        const summary = createOrUpdateSummary(existing);
+        if (await this.#kv.cas(summaryKey, existing, summary, options)) {
+          return;
+        }
+      }
     }
 
+    // Fallback to non-atomic set if CAS is not available or fails
+    const existing = await this.#kv.get<TraceSummary>(summaryKey);
+    const summary = createOrUpdateSummary(existing);
     await this.#kv.set(summaryKey, summary, options);
   }
 
