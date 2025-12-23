@@ -518,7 +518,8 @@ Each `TraceActivityRecord` contains:
  -  `signatureDetails`: Detailed signature verification information
     (for inbound activities), containing:
      -  `httpSignaturesVerified`: Whether HTTP Signatures were verified
-     -  `httpSignaturesKeyId`: The key ID used for HTTP signature verification
+     -  `httpSignaturesKeyId` (optional): The key ID used for HTTP signature
+        verification, if available
      -  `ldSignaturesVerified`: Whether Linked Data Signatures were verified
  -  `timestamp`: ISO 8601 timestamp
  -  `inboxUrl`: The target inbox URL (for outbound activities)
