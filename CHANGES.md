@@ -50,7 +50,7 @@ To be released.
     to a `KvStore` for distributed tracing support.  This enables aggregating
     trace data across multiple nodes in a distributed deployment, making it
     possible to build debug dashboards that show complete request flows across
-    web servers and background workers.  [[#497]]
+    web servers and background workers.  [[#497], [#502]]
 
      -  Added `@fedify/fedify/otel` module.
      -  Added `FedifySpanExporter` class implementing OpenTelemetry's
@@ -69,6 +69,7 @@ To be released.
 [#497]: https://github.com/fedify-dev/fedify/issues/497
 [#498]: https://github.com/fedify-dev/fedify/issues/498
 [#500]: https://github.com/fedify-dev/fedify/pull/500
+[#502]: https://github.com/fedify-dev/fedify/pull/502
 
 ### @fedify/nestjs
 
