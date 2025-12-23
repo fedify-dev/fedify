@@ -14,11 +14,11 @@ import {
   type Undo,
 } from "@fedify/fedify";
 import { type Actor, Application, isActor, Object } from "@fedify/fedify/vocab";
-import type { getLogger } from "@logtape/logtape";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,
 } from "@fedify/vocab-runtime";
+import type { getLogger } from "@logtape/logtape";
 
 export const RELAY_SERVER_ACTOR = "relay";
 
@@ -26,13 +26,6 @@ export const RELAY_SERVER_ACTOR = "relay";
  * Supported relay types.
  */
 export type RelayType = "mastodon" | "litepub";
-
-/**
- * Common interface for all relay implementations.
- */
-export interface Relay {
-  fetch(request: Request): Promise<Response>;
-}
 
 /**
  * Handler for subscription requests (Follow/Undo activities).
@@ -66,7 +59,7 @@ export interface RelayFollower {
  *
  * @since 2.0.0
  */
-export abstract class BaseRelay implements Relay {
+export abstract class BaseRelay {
   protected federationBuilder: FederationBuilder<RelayOptions>;
   protected options: RelayOptions;
   protected federation?: Federation<RelayOptions>;
