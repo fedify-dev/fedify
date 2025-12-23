@@ -442,6 +442,27 @@ export class FedifySpanExporter implements SpanExporter {
     }
   }
 
+  async #setWithCasRetry<T>(
+    key: KvKey,
+    transform: (existing: T | undefined) => T,
+    options?: KvStoreSetOptions,
+  ): Promise<void> {
+    if (this.#kv.cas != null) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const existing = await this.#kv.get<T>(key);
+        const newValue = transform(existing);
+        if (await this.#kv.cas(key, existing, newValue, options)) {
+          return;
+        }
+      }
+    }
+
+    // Fallback to non-atomic set if CAS is not available or fails
+    const existing = await this.#kv.get<T>(key);
+    const newValue = transform(existing);
+    await this.#kv.set(key, newValue, options);
+  }
+
   async #updateTraceSummary(
     record: TraceActivityRecord,
     options?: KvStoreSetOptions,
@@ -452,43 +473,30 @@ export class FedifySpanExporter implements SpanExporter {
       record.traceId,
     ] as KvKey;
 
-    const createOrUpdateSummary = (
-      existing: TraceSummary | undefined,
-    ): TraceSummary => {
-      const summary: TraceSummary = existing != null
-        ? {
-          traceId: existing.traceId,
-          timestamp: existing.timestamp,
-          activityCount: existing.activityCount,
-          activityTypes: [...existing.activityTypes],
+    await this.#setWithCasRetry<TraceSummary>(
+      summaryKey,
+      (existing) => {
+        const summary: TraceSummary = existing != null
+          ? {
+            traceId: existing.traceId,
+            timestamp: existing.timestamp,
+            activityCount: existing.activityCount,
+            activityTypes: [...existing.activityTypes],
+          }
+          : {
+            traceId: record.traceId,
+            timestamp: record.timestamp,
+            activityCount: 0,
+            activityTypes: [],
+          };
+        summary.activityCount += 1;
+        if (!summary.activityTypes.includes(record.activityType)) {
+          summary.activityTypes.push(record.activityType);
         }
-        : {
-          traceId: record.traceId,
-          timestamp: record.timestamp,
-          activityCount: 0,
-          activityTypes: [],
-        };
-      summary.activityCount += 1;
-      if (!summary.activityTypes.includes(record.activityType)) {
-        summary.activityTypes.push(record.activityType);
-      }
-      return summary;
-    };
-
-    if (this.#kv.cas != null) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const existing = await this.#kv.get<TraceSummary>(summaryKey);
-        const summary = createOrUpdateSummary(existing);
-        if (await this.#kv.cas(summaryKey, existing, summary, options)) {
-          return;
-        }
-      }
-    }
-
-    // Fallback to non-atomic set if CAS is not available or fails
-    const existing = await this.#kv.get<TraceSummary>(summaryKey);
-    const summary = createOrUpdateSummary(existing);
-    await this.#kv.set(summaryKey, summary, options);
+        return summary;
+      },
+      options,
+    );
   }
 
   async #storeWithCas(
@@ -497,24 +505,15 @@ export class FedifySpanExporter implements SpanExporter {
   ): Promise<void> {
     const key: KvKey = [...this.#keyPrefix, record.traceId] as KvKey;
 
-    // Retry CAS operation up to 3 times
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const existing = await this.#kv.get<TraceActivityRecord[]>(key);
-      const records = existing ?? [];
-      records.push(record);
-
-      const success = await this.#kv.cas!(key, existing, records, options);
-      if (success) {
-        await this.#updateTraceSummary(record, options);
-        return;
-      }
-    }
-
-    // If CAS fails after retries, fall back to simple set
-    const existing = await this.#kv.get<TraceActivityRecord[]>(key);
-    const records = existing ?? [];
-    records.push(record);
-    await this.#kv.set(key, records, options);
+    await this.#setWithCasRetry<TraceActivityRecord[]>(
+      key,
+      (existing) => {
+        const records = existing ?? [];
+        records.push(record);
+        return records;
+      },
+      options,
+    );
     await this.#updateTraceSummary(record, options);
   }
 
