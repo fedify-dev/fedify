@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { ExportResultCode } from "@opentelemetry/core";
 import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
@@ -247,7 +248,13 @@ export class FedifySpanExporter implements SpanExporter {
   ): void {
     this.#exportAsync(spans)
       .then(() => resultCallback({ code: ExportResultCode.SUCCESS }))
-      .catch(() => resultCallback({ code: ExportResultCode.FAILED }));
+      .catch((error) => {
+        getLogger(["fedify", "otel", "exporter"]).error(
+          "Failed to export spans to KvStore: {error}",
+          { error },
+        );
+        resultCallback({ code: ExportResultCode.FAILED });
+      });
   }
 
   async #exportAsync(spans: ReadableSpan[]): Promise<void> {
