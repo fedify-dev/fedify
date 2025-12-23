@@ -1,14 +1,16 @@
 import {
+  type Actor,
   type Context,
   createFederation,
   exportJwk,
   type Federation,
   generateCryptoKeyPair,
   importJwk,
+  isActor,
   type KvStore,
   type MessageQueue,
+  PUBLIC_COLLECTION,
 } from "@fedify/fedify";
-import { type Actor, isActor, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import {
   Accept,
   Announce,

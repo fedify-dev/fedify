@@ -1871,6 +1871,7 @@ import {
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -1878,7 +1879,6 @@ import {
   Endpoints,
   Follow,
   Person,
-  getActorHandle,
 } from "@fedify/vocab";
 ~~~~
 
@@ -1890,6 +1890,7 @@ import {
   type Federation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -1897,7 +1898,6 @@ import {
   Endpoints,
   Follow,
   Person,
-  getActorHandle,
 } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import type { Logger } from "@logtape/logtape";
@@ -2125,6 +2125,7 @@ import {
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -2133,7 +2134,6 @@ import {
   Follow,
   Person,
   Undo,  // [!code highlight]
-  getActorHandle,
 } from "@fedify/vocab";
 ~~~~
 
@@ -2470,6 +2470,7 @@ import {
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -2478,7 +2479,6 @@ import {
   Follow,
   Person,
   Undo,
-  getActorHandle,
   type Recipient,  // [!code highlight]
 } from "@fedify/vocab";
 ~~~~
@@ -2816,6 +2816,7 @@ import {
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -2825,7 +2826,6 @@ import {
   Note,  // [!code highlight]
   Person,
   Undo,
-  getActorHandle,
   type Recipient,
 } from "@fedify/vocab";
 ~~~~
@@ -3152,6 +3152,7 @@ import {
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
+  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -3162,7 +3163,6 @@ import {
   PUBLIC_COLLECTION,  // [!code highlight]
   Person,
   Undo,
-  getActorHandle,
   type Recipient,
 } from "@fedify/vocab";
 import type {
@@ -3522,10 +3522,10 @@ Open the *src/app.tsx* file and `import` the `Follow` class and the `isActor()`
 function provided by Fedify:
 
 ~~~~ typescript twoslash [src/app.tsx]
+import { isActor } from "@fedify/fedify"; // [!code highlight]
 import {
   Create,
   Follow,        // [!code highlight]
-  isActor,       // [!code highlight]
   Note,
 } from "@fedify/vocab";
 ~~~~
@@ -3533,8 +3533,8 @@ import {
 Then add a `POST /users/{username}/following` request handler:
 
 ~~~~ typescript twoslash [src/app.tsx]
-import { type Federation } from "@fedify/fedify";
-import { Follow, isActor } from "@fedify/vocab";
+import { type Federation, isActor } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const fedi = null as unknown as Federation<void>;
 import { Hono } from "hono";
 const app = new Hono();
@@ -3620,9 +3620,13 @@ Open the *src/federation.ts* file and `import` the `isActor()` function and
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  type Actor as APActor,  // [!code highlight]
   createFederation,
   exportJwk,
+  isActor,                // [!code highlight]
   generateCryptoKeyPair,
+  getActorHandle,
+  PUBLIC_COLLECTION,
   importJwk,
 } from "@fedify/fedify";
 import {
@@ -3630,12 +3634,8 @@ import {
   Endpoints,
   Follow,
   Note,
-  PUBLIC_COLLECTION,
   Person,
   Undo,
-  getActorHandle,
-  isActor,                // [!code highlight]
-  type Actor as APActor,  // [!code highlight]
   type Recipient,
 } from "@fedify/vocab";
 ~~~~
@@ -3648,7 +3648,7 @@ the `actors` table when first encountered to make it reusable. Add the following
 function:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { getActorHandle, isActor, type Actor as APActor } from "@fedify/vocab";
+import { getActorHandle, isActor, type Actor as APActor } from "@fedify/fedify";
 import type { Logger } from "@logtape/logtape";
 const logger = {} as unknown as Logger;
 import Database from "better-sqlite3";
@@ -3698,8 +3698,12 @@ Change the code doing the same role in the `on(Follow, ...)` part of the inbox
 to use the `persistActor()` function:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation, type ParseUriResult } from "@fedify/fedify";
-import { type Actor as APActor, Follow } from "@fedify/vocab";
+import { 
+  type Actor as APActor
+  type Federation, 
+  type ParseUriResult,
+} from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import type { Logger } from "@logtape/logtape";
 const logger = {} as unknown as Logger;
@@ -3735,13 +3739,12 @@ Now that we've finished refactoring, let's implement the behavior when receiving
 an `Accept(Follow)` activity in the inbox:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation } from "@fedify/fedify";
-import {
-  Accept,
+import { 
   type Actor as APActor,
-  Follow,
+  type Federation
   isActor,
-} from "@fedify/vocab";
+ } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
