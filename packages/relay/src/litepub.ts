@@ -13,12 +13,15 @@ import {
   Undo,
   Update,
 } from "@fedify/fedify";
+import { getLogger } from "@logtape/logtape";
 import {
   type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
 } from "./relay.ts";
+
+const logger = getLogger(["fedify", "relay", "litepub"]);
 
 /**
  * A LitePub-compatible ActivityPub relay implementation.
@@ -181,7 +184,7 @@ export class LitePubRelay implements Relay {
             await ctx.data.kv.set(["followers"], updatedFollowers);
             await ctx.data.kv.delete(["follower", activity.actorId?.href]);
           } else {
-            console.warn(
+            logger.warn(
               "Unsupported object type ({type}) for Undo activity: {object}",
               { type: activity?.constructor.name, object: activity },
             );

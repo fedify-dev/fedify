@@ -9,8 +9,11 @@ import {
   Undo,
   Update,
 } from "@fedify/fedify";
+import { getLogger } from "@logtape/logtape";
 import { type Relay, RELAY_SERVER_ACTOR, type RelayOptions } from "./relay.ts";
 import type { FederationBuilder } from "@fedify/fedify/federation";
+
+const logger = getLogger(["fedify", "relay", "mastodon"]);
 
 /**
  * A Mastodon-compatible ActivityPub relay implementation.
@@ -120,7 +123,7 @@ export class MastodonRelay implements Relay {
             await ctx.data.kv.set(["followers"], updatedFollowers);
             await ctx.data.kv.delete(["follower", activity.actorId?.href]);
           } else {
-            console.warn(
+            logger.warn(
               "Unsupported object type ({type}) for Undo activity: {object}",
               { type: activity?.constructor.name, object: activity },
             );

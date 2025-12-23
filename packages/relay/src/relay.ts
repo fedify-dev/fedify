@@ -43,6 +43,7 @@ export type SubscriptionRequestHandler = (
 export interface RelayOptions {
   kv: KvStore;
   domain?: string;
+  name?: string;
   documentLoaderFactory?: DocumentLoaderFactory;
   authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory;
   queue?: MessageQueue;
@@ -51,7 +52,7 @@ export interface RelayOptions {
 
 export interface RelayFollower {
   readonly actor: unknown;
-  readonly state: string;
+  readonly state: "pending" | "accepted";
 }
 
 export const relayBuilder = createFederationBuilder<RelayOptions>();
@@ -64,7 +65,7 @@ relayBuilder.setActorDispatcher(
     return new Application({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
-      name: "ActivityPub Relay",
+      name: ctx.data.name ?? "ActivityPub Relay",
       inbox: ctx.getInboxUri(), // This should be sharedInboxUri
       followers: ctx.getFollowersUri(identifier),
       following: ctx.getFollowingUri(identifier),

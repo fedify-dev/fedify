@@ -11,9 +11,11 @@
 // Export relay functionality here
 export {
   createRelay,
+  type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
+  type RelayType,
   type SubscriptionRequestHandler,
 } from "./relay.ts";
 
