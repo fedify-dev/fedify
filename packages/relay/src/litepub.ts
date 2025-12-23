@@ -6,19 +6,22 @@ import {
   type Federation,
   type FederationBuilder,
   Follow,
+  type InboxContext,
   isActor,
   Move,
   PUBLIC_COLLECTION,
-  Reject,
   Undo,
   Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import {
+  handleUndoFollow,
   type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
+  sendFollowResponse,
+  validateFollowActivity,
 } from "./relay.ts";
 
 const logger = getLogger(["fedify", "relay", "litepub"]);
@@ -54,60 +57,62 @@ export class LitePubRelay implements Relay {
     });
   }
 
+  async #announceToFollowers(
+    ctx: InboxContext<RelayOptions>,
+    activity: Create | Delete | Move | Update | Announce,
+  ): Promise<void> {
+    const sender = await activity.getActor(ctx);
+    const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
+
+    const announce = new Announce({
+      id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
+      actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
+      object: activity.objectId,
+      to: PUBLIC_COLLECTION,
+      published: Temporal.Now.instant(),
+    });
+
+    await ctx.sendActivity(
+      { identifier: RELAY_SERVER_ACTOR },
+      "followers",
+      announce,
+      {
+        excludeBaseUris,
+        preferSharedInbox: true,
+      },
+    );
+  }
+
   setupInboxListeners() {
     if (this.#federation != null) {
       this.#federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Follow, async (ctx, follow) => {
-          if (follow.id == null || follow.objectId == null) return;
-          const parsed = ctx.parseUri(follow.objectId);
-          const isPublicFollow = follow.objectId.href ===
-            "https://www.w3.org/ns/activitystreams#Public";
-          if (!isPublicFollow && parsed?.type !== "actor") return;
+          const follower = await validateFollowActivity(ctx, follow);
+          if (!follower || !follower.id) return;
 
-          const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
-          const follower = await follow.getActor(ctx);
-          if (
-            follower == null || follower.id == null ||
-            follower.preferredUsername == null ||
-            follower.inboxId == null
-          ) return;
-
-          // Check if this is a follow from a client or if we already have a pending state
+          // Litepub-specific: check if already in pending state
           const existingFollow = await ctx.data.kv.get<RelayFollower>([
             "follower",
             follower.id.href,
           ]);
-
-          // "pending" follower means this follower client requested subscription already.
           if (existingFollow?.state === "pending") return;
 
-          let subscriptionApproved = false;
-
-          // Receive follow request from the relay client.
+          let approved = false;
           if (this.#options.subscriptionHandler) {
-            subscriptionApproved = await this.#options.subscriptionHandler(
-              ctx,
-              follower,
-            );
+            approved = await this.#options.subscriptionHandler(ctx, follower);
           }
 
-          if (subscriptionApproved) {
+          if (approved) {
+            // Litepub-specific: save with "pending" state
             await ctx.data.kv.set(
               ["follower", follower.id.href],
-              { "actor": await follower.toJsonLd(), "state": "pending" },
+              { actor: await follower.toJsonLd(), state: "pending" },
             );
 
-            await ctx.sendActivity(
-              { identifier: RELAY_SERVER_ACTOR },
-              follower,
-              new Accept({
-                id: new URL(`#accepts`, relayActorUri),
-                actor: relayActorUri,
-                object: follow,
-              }),
-            );
+            await sendFollowResponse(ctx, follow, follower, approved);
 
-            // Send reciprocal follow
+            // Litepub-specific: send reciprocal follow
+            const relayActorUri = ctx.getActorUri(RELAY_SERVER_ACTOR);
             await ctx.sendActivity(
               { identifier: RELAY_SERVER_ACTOR },
               follower,
@@ -118,15 +123,7 @@ export class LitePubRelay implements Relay {
               }),
             );
           } else {
-            await ctx.sendActivity(
-              { identifier: RELAY_SERVER_ACTOR },
-              follower,
-              new Reject({
-                id: new URL(`#rejects`, relayActorUri),
-                actor: relayActorUri,
-                object: follow,
-              }),
-            );
+            await sendFollowResponse(ctx, follow, follower, approved);
           }
         })
         .on(Accept, async (ctx, accept) => {
@@ -165,141 +162,32 @@ export class LitePubRelay implements Relay {
           followers.push(followerActor.id.href);
           await ctx.data.kv.set(["followers"], followers);
         })
-        .on(Undo, async (ctx, undo) => {
-          const activity = await undo.getObject({
-            crossOrigin: "trust",
-            ...ctx,
-          });
-          if (activity instanceof Follow) {
-            if (
-              activity.id == null ||
-              activity.actorId == null
-            ) return;
-            const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-              []; // actor ids
-
-            const updatedFollowers = followers.filter((id) =>
-              id !== activity.actorId?.href
-            );
-            await ctx.data.kv.set(["followers"], updatedFollowers);
-            await ctx.data.kv.delete(["follower", activity.actorId?.href]);
-          } else {
-            logger.warn(
-              "Unsupported object type ({type}) for Undo activity: {object}",
-              { type: activity?.constructor.name, object: activity },
-            );
-          }
-        })
-        .on(Create, async (ctx, create) => {
-          const sender = await create.getActor(ctx);
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          const announce = new Announce({
-            id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
-            actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
-            object: create.objectId,
-            to: PUBLIC_COLLECTION,
-            published: Temporal.Now.instant(),
-          });
-
-          await ctx.sendActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            announce,
-            {
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Update, async (ctx, update) => {
-          const sender = await update.getActor(ctx);
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          const announce = new Announce({
-            id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
-            actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
-            object: update.objectId,
-            to: PUBLIC_COLLECTION,
-            published: Temporal.Now.instant(),
-          });
-
-          await ctx.sendActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            announce,
-            {
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Move, async (ctx, move) => {
-          const sender = await move.getActor(ctx);
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          const announce = new Announce({
-            id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
-            actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
-            object: move.objectId,
-            to: PUBLIC_COLLECTION,
-            published: Temporal.Now.instant(),
-          });
-
-          await ctx.sendActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            announce,
-            {
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Delete, async (ctx, deleteActivity) => {
-          const sender = await deleteActivity.getActor(ctx);
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          const announce = new Announce({
-            id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
-            actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
-            object: deleteActivity.objectId,
-            to: PUBLIC_COLLECTION,
-            published: Temporal.Now.instant(),
-          });
-
-          await ctx.sendActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            announce,
-            {
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        })
-        .on(Announce, async (ctx, announceActivity) => {
-          const sender = await announceActivity.getActor(ctx);
-          const excludeBaseUris = sender?.id ? [new URL(sender.id)] : [];
-
-          const announce = new Announce({
-            id: new URL(`/announce#${crypto.randomUUID()}`, ctx.origin),
-            actor: ctx.getActorUri(RELAY_SERVER_ACTOR),
-            object: announceActivity.objectId,
-            to: PUBLIC_COLLECTION,
-            published: Temporal.Now.instant(),
-          });
-
-          await ctx.sendActivity(
-            { identifier: RELAY_SERVER_ACTOR },
-            "followers",
-            announce,
-            {
-              excludeBaseUris,
-              preferSharedInbox: true,
-            },
-          );
-        });
+        .on(
+          Undo,
+          async (ctx, undo) => await handleUndoFollow(ctx, undo, logger),
+        )
+        .on(
+          Create,
+          async (ctx, create) => await this.#announceToFollowers(ctx, create),
+        )
+        .on(
+          Update,
+          async (ctx, update) => await this.#announceToFollowers(ctx, update),
+        )
+        .on(
+          Move,
+          async (ctx, move) => await this.#announceToFollowers(ctx, move),
+        )
+        .on(
+          Delete,
+          async (ctx, deleteActivity) =>
+            await this.#announceToFollowers(ctx, deleteActivity),
+        )
+        .on(
+          Announce,
+          async (ctx, announce) =>
+            await this.#announceToFollowers(ctx, announce),
+        );
     }
   }
 }
