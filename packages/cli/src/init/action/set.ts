@@ -11,7 +11,7 @@ import type {
   KvStoreDescription,
   MessageQueue,
   MessageQueueDescription,
-  PackageManager,
+  WebFrameworkDescription,
 } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
@@ -38,27 +38,12 @@ export default setData;
 
 const setProjectName = set(
   "projectName",
-  async <
-    T extends { dir: string },
-  >({ dir }: T) =>
+  async <T extends { dir: string }>({ dir }: T) =>
     basename(existsSync(dir) ? await realpath(dir) : normalize(dir)),
 );
-
 const setInitializer = set("initializer", <
-  T extends {
-    webFramework: keyof typeof webFrameworks;
-    projectName: string;
-    packageManager: PackageManager;
-  },
->({
-  webFramework,
-  projectName,
-  packageManager,
-}: T) =>
-  webFrameworks[webFramework].init(
-    projectName,
-    packageManager,
-  ));
+  T extends Parameters<WebFrameworkDescription["init"]>[0],
+>(data: T) => webFrameworks[data.webFramework].init(data));
 
 const setKv = set("kv", <
   T extends { kvStore: KvStore },

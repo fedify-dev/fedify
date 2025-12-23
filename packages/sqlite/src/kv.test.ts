@@ -1,9 +1,9 @@
 import { PlatformDatabase } from "#sqlite";
+import { SqliteKvStore } from "@fedify/sqlite/kv";
 import * as temporal from "@js-temporal/polyfill";
 import { delay } from "@std/async/delay";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SqliteKvStore } from "@fedify/sqlite/kv";
 
 let Temporal: typeof temporal.Temporal;
 if ("Temporal" in globalThis) {

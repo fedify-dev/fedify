@@ -1,5 +1,4 @@
 import { pipe } from "@fxts/core";
-import { message } from "@optique/core";
 import { replace } from "../utils.ts";
 import { PACKAGE_MANAGER } from "./const.ts";
 import {
@@ -7,6 +6,7 @@ import {
   getNextInitCommand,
   getNitroInitCommand,
   PACKAGE_VERSION,
+  packageManagerToRuntime,
   readTemplate,
 } from "./lib.ts";
 import type { WebFrameworks } from "./types.ts";
@@ -15,36 +15,41 @@ const webFrameworks: WebFrameworks = {
   hono: {
     label: "Hono",
     packageManagers: PACKAGE_MANAGER,
-    init: (projectName, pm) => ({
+    init: ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
           "@std/dotenv": "^0.225.2",
           "@hono/hono": "^4.5.0",
           "@hongminhee/x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
         }
         : pm === "bun"
-        ? { hono: "^4.5.0", "x-forwarded-fetch": "^0.2.0" }
+        ? {
+          hono: "^4.5.0",
+          "x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
+        }
         : {
           "@dotenvx/dotenvx": "^1.14.1",
           hono: "^4.5.0",
           "@hono/node-server": "^1.12.0",
           tsx: "^4.17.0",
           "x-forwarded-fetch": "^0.2.0",
+          "@fedify/hono": PACKAGE_VERSION,
         },
       devDependencies: pm === "bun" ? { "@types/bun": "^1.1.6" } : {},
-      federationFile: message`src/federation.ts`,
+      federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
         "src/app.tsx": pipe(
           "hono/app.tsx",
           readTemplate,
-          replace(
-            /\/\* hono \*\//,
-            pm === "deno" ? "@hono/hono" : "hono",
-          ),
-        )
-          .replace(/\/\* logger \*\//, projectName),
-        "src/index.ts": readTemplate(`hono/index/${pm}.ts`),
+          replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
+          replace(/\/\* logger \*\//, projectName),
+        ),
+        "src/index.ts": readTemplate(
+          `hono/index/${packageManagerToRuntime(pm)}.ts`,
+        ),
       },
       compilerOptions: pm === "deno" ? undefined : {
         "lib": ["ESNext", "DOM"],
@@ -70,15 +75,16 @@ const webFrameworks: WebFrameworks = {
           ? "bun run ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 8000),
     }),
+    defaultPort: 8000,
   },
   express: {
     label: "Express",
-    packageManagers: ["bun", "npm", "yarn", "pnpm"] as const,
-    init: (projectName, pm) => ({
+    packageManagers: PACKAGE_MANAGER,
+    init: ({ projectName, packageManager: pm }) => ({
       dependencies: {
-        express: "^4.19.2",
+        "npm:express": "^4.19.2",
         "@fedify/express": PACKAGE_VERSION,
         ...(pm !== "deno" && pm !== "bun"
           ? { "@dotenvx/dotenvx": "^1.14.1", tsx: "^4.17.0" }
@@ -88,7 +94,7 @@ const webFrameworks: WebFrameworks = {
         "@types/express": "^4.17.21",
         ...(pm === "bun" ? { "@types/bun": "^1.1.6" } : {}),
       },
-      federationFile: message`src/federation.ts`,
+      federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
         "src/app.ts": readTemplate("express/app.ts")
@@ -108,21 +114,26 @@ const webFrameworks: WebFrameworks = {
       tasks: {
         "dev": pm === "bun"
           ? "bun run --hot ./src/index.ts"
+          : pm === "deno"
+          ? "deno run --allow-net --allow-env --allow-sys --watch ./src/index.ts"
           : "dotenvx run -- tsx watch ./src/index.ts",
         "prod": pm === "bun"
           ? "bun run ./src/index.ts"
+          : pm === "deno"
+          ? "deno run --allow-net --allow-env --allow-sys ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 8000),
     }),
+    defaultPort: 8000,
   },
   nitro: {
     label: "Nitro",
     packageManagers: PACKAGE_MANAGER,
-    init: (_, pm) => ({
+    init: ({ packageManager: pm, testMode }) => ({
       command: getNitroInitCommand(pm),
       dependencies: { "@fedify/h3": PACKAGE_VERSION },
-      federationFile: message`server/federation.ts`,
+      federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
       files: {
         "server/middleware/federation.ts": readTemplate(
@@ -130,23 +141,28 @@ const webFrameworks: WebFrameworks = {
         ),
         "server/error.ts": readTemplate("nitro/server/error.ts"),
         "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
+        ...(
+          testMode ? { ".env": readTemplate("nitro/.env.test") } : {}
+        ),
       },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 3000),
     }),
+    defaultPort: 3000,
   },
   next: {
     label: "Next.js",
     packageManagers: PACKAGE_MANAGER,
-    init: (_, pm) => ({
+    init: ({ packageManager: pm }) => ({
       label: "Next.js",
       command: getNextInitCommand(pm),
       dependencies: { "@fedify/next": PACKAGE_VERSION },
       devDependencies: { "@types/node": "^20.11.2" },
-      federationFile: message`federation/index.ts`,
+      federationFile: "federation/index.ts",
       loggingFile: "logging.ts",
       files: { "middleware.ts": readTemplate("next/middleware.ts") },
-      instruction: getInstruction(pm),
+      instruction: getInstruction(pm, 3000),
     }),
+    defaultPort: 3000,
   },
 } as const;
 export default webFrameworks;

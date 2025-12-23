@@ -36,7 +36,7 @@ export interface WebFrameworkInitializer {
   command?: string[];
   dependencies?: object;
   devDependencies?: object;
-  federationFile: Message;
+  federationFile: string;
   loggingFile: string;
   files?: Record<string, string>;
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
@@ -47,9 +47,9 @@ export interface WebFrameworkInitializer {
 export interface WebFrameworkDescription {
   label: string;
   packageManagers: readonly PackageManager[];
+  defaultPort: number;
   init(
-    projectName: string,
-    pm: PackageManager,
+    data: InitCommandOptions & { projectName: string; testMode: boolean },
   ): WebFrameworkInitializer;
 }
 
@@ -75,7 +75,9 @@ export interface KvStoreDescription {
   env?: Record<string, string>;
 }
 
-export type InitCommandOptions = RequiredNotNull<InitCommand>;
+export type InitCommandOptions = RequiredNotNull<InitCommand> & {
+  readonly testMode: boolean;
+};
 
 export interface InitCommandData extends InitCommandOptions {
   readonly projectName: string;

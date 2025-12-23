@@ -1,4 +1,16 @@
-import { join as joinPath } from "node:path";
+import {
+  concat,
+  filter,
+  keys,
+  map,
+  pick,
+  pipe,
+  toArray,
+} from "@fxts/core/index.js";
+import { uniq } from "es-toolkit";
+import { realpathSync } from "node:fs";
+import { join as joinPath, relative } from "node:path";
+import { merge } from "../../utils.ts";
 import biome from "../json/biome.json" with { type: "json" };
 import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
   type: "json",
@@ -7,6 +19,8 @@ import vscodeSettings from "../json/vscode-settings.json" with {
   type: "json",
 };
 import type { InitCommandData } from "../types.ts";
+import { PACKAGES_PATH } from "./const.ts";
+import { getDependencies, getDevDependencies, joinDepsReg } from "./deps.ts";
 
 /**
  * Loads Deno configuration object with compiler options, unstable features, and tasks.
@@ -16,19 +30,46 @@ import type { InitCommandData } from "../types.ts";
  * @returns Configuration object with path and Deno-specific settings
  */
 export const loadDenoConfig = (
-  { kv, mq, initializer, dir }: InitCommandData,
+  data: InitCommandData,
 ) => ({
-  path: joinPath(dir, "deno.json"),
+  path: "deno.json",
   data: {
-    compilerOptions: initializer.compilerOptions,
+    ...pick(["compilerOptions", "tasks"], data.initializer),
+    unstable: getUnstable(data),
+    nodeModulesDir: "auto",
+    imports: joinDepsReg("deno")(getDependencies(data)),
+    ...(data.testMode ? { links: getLinks(data) } : {}),
   },
-  unstable: [
-    "temporal",
-    ...kv.denoUnstable ?? [],
-    ...mq.denoUnstable ?? [],
-  ],
-  tasks: initializer.tasks,
 });
+
+const getUnstable = <T extends Pick<InitCommandData, "kv" | "mq">>({
+  kv: { denoUnstable: kv = [] },
+  mq: { denoUnstable: mq = [] },
+}: T) =>
+  pipe(
+    ["temporal"],
+    concat(kv),
+    concat(mq),
+    toArray,
+    uniq,
+  );
+
+const getLinks = <
+  T extends Pick<InitCommandData, "kv" | "mq" | "initializer" | "dir">,
+>({ kv, mq, initializer, dir }: T) =>
+  pipe(
+    { "@fedify/fedify": "" },
+    merge(initializer.dependencies),
+    merge(kv.dependencies),
+    merge(mq.dependencies),
+    keys,
+    filter((dep) => dep.includes("@fedify/")),
+    map((dep) => dep.replace("@fedify/", "")),
+    map((dep) => joinPath(PACKAGES_PATH, dep)),
+    map((absolutePath) => realpathSync(absolutePath)),
+    map((realAbsolutePath) => relative(realpathSync(dir), realAbsolutePath)),
+    toArray,
+  );
 
 /**
  * Loads TypeScript configuration object for Node.js/Bun projects.
@@ -51,11 +92,15 @@ export const loadTsConfig = ({ initializer, dir }: InitCommandData) => ({
  * @param param0 - Destructured initialization data containing initializer and directory
  * @returns Configuration object with path and package.json settings
  */
-export const loadPackageJson = ({ initializer, dir }: InitCommandData) => ({
-  path: joinPath(dir, "package.json"),
+export const loadPackageJson = (
+  data: InitCommandData,
+) => ({
+  path: "package.json",
   data: {
     type: "module",
-    scripts: initializer.tasks,
+    scripts: data.initializer.tasks,
+    dependencies: getDependencies(data),
+    devDependencies: getDevDependencies(data),
   },
 });
 

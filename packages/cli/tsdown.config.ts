@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/mod.ts", "src/kv.bun.ts", "src/kv.node.ts"],
+  entry: [
+    "src/mod.ts",
+    "src/init/test/mod.ts",
+    "src/kv.bun.ts",
+    "src/kv.node.ts",
+  ],
   platform: "node",
   unbundle: true,
   inputOptions: {
