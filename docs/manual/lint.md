@@ -5,7 +5,8 @@ description: >-
   apps.
 ---
 
-# Linting
+Linting
+=======
 
 _This package is available since Fedify 2.0.0._
 
@@ -29,7 +30,8 @@ The plugin includes rules that check for:
 [Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
 
-## Installation
+Installation
+------------
 
 ::: code-group
 
@@ -55,7 +57,8 @@ bun add -D @fedify/lint
 
 :::
 
-## Deno Lint
+Deno Lint
+---------
 
 ### Basic setup
 
@@ -108,7 +111,8 @@ deno lint federation.ts
 deno lint src/federation/
 ~~~~
 
-## ESLint
+ESLint
+------
 
 ### Basic setup
 
@@ -254,7 +258,8 @@ bunx eslint .
 
 :::
 
-## Rules
+Rules
+-----
 
 ### `actor-id-required`
 
@@ -1076,7 +1081,8 @@ federation.setFollowersDispatcher(
 
 [*Filtering by server*]: ./collections.md#filtering-by-server
 
-## Example
+Example
+-------
 
 Here's an example of code that would trigger lint errors:
 
@@ -1127,7 +1133,8 @@ error[fedify-lint/actor-id-mismatch]: Actor's `id` property must match
 `ctx.getActorUri(identifier)`. Ensure you're using the correct context method.
 ~~~~
 
-## See also
+See also
+--------
 
 - [`@fedify/lint` on JSR](https://jsr.io/@fedify/lint)
 - [`@fedify/lint` on npm](https://www.npmjs.com/package/@fedify/lint)
