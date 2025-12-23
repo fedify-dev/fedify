@@ -33,25 +33,25 @@ The plugin includes rules that check for:
 
 ::: code-group
 
-```sh [Deno]
+~~~~sh [Deno]
 deno add jsr:@fedify/lint
-```
+~~~~
 
-```sh [npm]
+~~~~sh [npm]
 npm add -D @fedify/lint
-```
+~~~~
 
-```sh [pnpm]
+~~~~sh [pnpm]
 pnpm add -D @fedify/lint
-```
+~~~~
 
-```sh [Yarn]
+~~~~sh [Yarn]
 yarn add -D @fedify/lint
-```
+~~~~
 
-```sh [Bun]
+~~~~sh [Bun]
 bun add -D @fedify/lint
-```
+~~~~
 
 :::
 
@@ -61,13 +61,13 @@ bun add -D @fedify/lint
 
 Add the plugin to your _deno.json_ configuration file:
 
-```json
+~~~~json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"]
   }
 }
-```
+~~~~
 
 By default, this enables all recommended rules.
 
@@ -75,7 +75,7 @@ By default, this enables all recommended rules.
 
 You can customize which rules to enable and their severity levels:
 
-```json
+~~~~json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
@@ -91,22 +91,22 @@ You can customize which rules to enable and their severity levels:
     }
   }
 }
-```
+~~~~
 
 ### Running Deno Lint
 
 After setting up the configuration, run Deno's linter:
 
-```sh
+~~~~sh
 deno lint
-```
+~~~~
 
 You can also specify which files to lint:
 
-```sh
+~~~~sh
 deno lint federation.ts
 deno lint src/federation/
-```
+~~~~
 
 ## ESLint
 
@@ -115,24 +115,36 @@ deno lint src/federation/
 Add the plugin to your ESLint configuration file (e.g., _eslint.config.ts_ or
 _eslint.config.js_):
 
-```typescript twoslash
+~~~~ typescript twoslash
 import fedifyLint from "@fedify/lint";
 
 // If your `createFederation` code is in `federation.ts` or `federation/**.ts`
 export default fedifyLint;
+~~~~
 
-// Or specify your own federation files
+Or specify your own federation files: 
+
+~~~~ typescript twoslash
+// @errors: 2304
+import fedifyLint from "@fedify/lint";
+// ---cut-before---
 export default {
   ...fedifyLint,
   files: ["my-own-federation.ts"],
 };
+~~~~
 
-// If you use other ESLint configurations
+If you use other ESLint configurations: 
+
+~~~~ typescript twoslash
+// @errors: 2304
+import fedifyLint from "@fedify/lint";
+// ---cut-before---
 export default [
   // otherConfig,
   fedifyLint,
 ];
-```
+~~~~
 
 The default configuration applies recommended rules to files that match common
 federation-related patterns (e.g., _federation.ts_, _federation/\*.ts_).
@@ -141,7 +153,7 @@ federation-related patterns (e.g., _federation.ts_, _federation/\*.ts_).
 
 You can customize which files to lint and which rules to enable:
 
-```typescript twoslash
+~~~~ typescript twoslash
 import { plugin } from "@fedify/lint";
 
 export default [{
@@ -156,7 +168,7 @@ export default [{
     // ... other rules
   },
 }];
-```
+~~~~
 
 ### Using configurations
 
@@ -166,57 +178,57 @@ The plugin provides two preset configurations:
 
 Enables critical rules as errors and optional rules as warnings:
 
-```typescript twoslash
+~~~~ typescript twoslash
 import fedifyLint from "@fedify/lint";
 
 export default fedifyLint;
-```
+~~~~
 
 #### Strict
 
 Enables all rules as errors:
 
-```typescript twoslash
+~~~~ typescript twoslash
 import { plugin } from "@fedify/lint";
 
 export default [{
   files: ["**/*.ts"],
   ...plugin.configs.strict,
 }];
-```
+~~~~
 
 ### Running ESLint
 
 Set up your ESLint configuration as shown above and add a script to
 _package.json_:
 
-```jsonc
+~~~~jsonc
 {
   "scripts": {
     "lint": "eslint ."
   }
 }
-```
+~~~~
 
 After setting up the configuration, run ESLint on your codebase:
 
 ::: code-group
 
-```sh [npm]
+~~~~sh [npm]
 npm run lint
-```
+~~~~
 
-```sh [pnpm]
+~~~~sh [pnpm]
 pnpm lint
-```
+~~~~
 
-```sh [Yarn]
+~~~~sh [Yarn]
 yarn lint
-```
+~~~~
 
-```sh [Bun]
+~~~~sh [Bun]
 bun lint
-```
+~~~~
 
 :::
 
@@ -224,21 +236,21 @@ Or run the linter directly via command line:
 
 ::: code-group
 
-```sh [npm]
+~~~~sh [npm]
 npx eslint .
-```
+~~~~
 
-```sh [pnpm]
+~~~~sh [pnpm]
 pnpx eslint .
-```
+~~~~
 
-```sh [Yarn]
+~~~~sh [Yarn]
 yarn eslint .
-```
+~~~~
 
-```sh [Bun]
+~~~~sh [Bun]
 bunx eslint .
-```
+~~~~
 
 :::
 
@@ -1110,10 +1122,10 @@ federation.setActorDispatcher(
 
 When you run the linter on the incorrect code, you'll see an error like:
 
-```
+~~~~
 error[fedify-lint/actor-id-mismatch]: Actor's `id` property must match
 `ctx.getActorUri(identifier)`. Ensure you're using the correct context method.
-```
+~~~~
 
 ## See also
 
