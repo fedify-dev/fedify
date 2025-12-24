@@ -127,10 +127,15 @@ export const joinDepsReg = (pm: PackageManager) => //
   pipe(
     dependencies,
     entries,
-    map(([name, version]): [string, string] => [
-      name.substring(4),
-      `${name}@${getPackageVersion(pm, version)}`,
-    ]),
+    map(([name, version]): [string, string] => {
+      const cleanName = name.substring(4);
+      // If version already contains a registry prefix (npm: or jsr:), use it as-is
+      // Otherwise, construct the full spec from the name and version
+      const fullSpec = version.startsWith("npm:") || version.startsWith("jsr:")
+        ? version
+        : `${name}@${getPackageVersion(pm, version)}`;
+      return [cleanName, fullSpec];
+    }),
     fromEntries,
   );
 
