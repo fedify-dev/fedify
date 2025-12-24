@@ -365,7 +365,7 @@ test("FedifySpanExporter", async (t) => {
     await exporter.forceFlush();
   });
 
-  await t.step("shutdown() clears internal state", async () => {
+  await t.step("shutdown() completes successfully", async () => {
     const kv = new MemoryKvStore();
     const exporter = new FedifySpanExporter(kv);
     await exporter.shutdown();
