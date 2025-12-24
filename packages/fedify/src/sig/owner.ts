@@ -5,22 +5,14 @@ import {
   isActor,
   Object as ASObject,
 } from "@fedify/vocab";
-import {
-  type DocumentLoader,
-  type DocumentLoader,
-  getDocumentLoader,
-  getDocumentLoader,
-} from "@fedify/vocab-runtime";
+import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
 import {
   SpanKind,
   SpanStatusCode,
   trace,
-  trace,
-  type TracerProvider,
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
-import { type Actor, isActor } from "../vocab/actor.ts";
 export { exportJwk, generateCryptoKeyPair, importJwk } from "./key.ts";
 
 /**
