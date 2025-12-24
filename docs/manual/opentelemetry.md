@@ -504,6 +504,12 @@ const activities = await fedifyExporter.getActivitiesByTraceId(traceId);
 const recentTraces = await fedifyExporter.getRecentTraces({ limit: 100 });
 ~~~~
 
+> [!NOTE]
+> The `~FedifySpanExporter.getRecentTraces()` method requires a `KvStore`
+> implementation that supports the `list()` method.  When using a store
+> that only provides `cas()` without `list()` support, this method will
+> return an empty array.
+
 Each `TraceActivityRecord` contains:
 
  -  `traceId`: The OpenTelemetry trace ID
