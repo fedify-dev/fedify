@@ -121,7 +121,7 @@ The above command will start the interactive prompt to initialize a new Fedify
 project.  It will ask you a few questions to set up the project:
 
  -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
- -  Web framework: [Hono], [Express], [Nitro], or [Next.js] 
+ -  Web framework: [Hono], [Elysia], [Express], [Nitro], or [Next.js]
  -  key–value store: In-memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
  -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
@@ -142,6 +142,7 @@ interactive prompts:
 [AMQP]: https://www.amqp.org/
 [RabbitMQ]: https://www.rabbitmq.com/
 [Deno KV]: https://deno.com/kv
+[Elysia]: https://elysiajs.com/
 
 ### `-r`/`--runtime`: JavaScript runtime
 
@@ -173,6 +174,7 @@ the `-w`/`--web-framework` option.  The available options are:
  -  `hono`: [Hono]
  -  `express`: [Express] (unless Deno)
  -  `nitro`: [Nitro] (unless Deno)
+ -  `elysia`: [Elysia]
 
 If it's omitted, no web framework will be integrated.
 
