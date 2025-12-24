@@ -118,6 +118,16 @@
       "require": "./dist/webfinger/mod.cjs",
       "default": "./dist/webfinger/mod.js"
     },
+    "./otel": {
+      "types": {
+        "import": "./dist/otel/mod.d.ts",
+        "require": "./dist/otel/mod.d.cts",
+        "default": "./dist/otel/mod.d.ts"
+      },
+      "import": "./dist/otel/mod.js",
+      "require": "./dist/otel/mod.cjs",
+      "default": "./dist/otel/mod.js"
+    },
     "./x/cfworkers": {
       "types": {
         "import": "./dist/x/cfworkers.d.ts",

@@ -12,6 +12,7 @@
     "./testing": "./src/testing/mod.ts",
     "./vocab": "./src/vocab/mod.ts",
     "./webfinger": "./src/webfinger/mod.ts",
+    "./otel": "./src/otel/mod.ts",
     "./x/cfworkers": "./src/x/cfworkers.ts",
     "./x/denokv": "./src/x/denokv.ts",
     "./x/fresh": "./src/x/fresh.ts",

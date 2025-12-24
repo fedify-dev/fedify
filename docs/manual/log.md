@@ -210,6 +210,14 @@ The `["fedify", "nodeinfo", "client"]` category is used for logging messages
 related to the NodeInfo client.  When you are curious about the NodeInfo client,
 you can check the log messages in this category with the `"error"` level.
 
+### `["fedify", "otel", "exporter"]`
+
+*This category is available since Fedify 1.10.0.*
+
+The `["fedify", "otel", "exporter"]` category is used for logging messages
+related to the `FedifySpanExporter`.  When span export to the `KvStore` fails,
+you can check the log messages in this category with the `"error"` level.
+
 ### `["fedify", "runtime", "docloader"]`
 
 *This category is available since Fedify 0.8.0.*

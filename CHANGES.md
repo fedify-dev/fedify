@@ -46,9 +46,30 @@ To be released.
      -  Added `KvStoreListEntry` interface.
      -  Implemented in `MemoryKvStore`.
 
+ -  Added `FedifySpanExporter` class that persists ActivityPub activity traces
+    to a `KvStore` for distributed tracing support.  This enables aggregating
+    trace data across multiple nodes in a distributed deployment, making it
+    possible to build debug dashboards that show complete request flows across
+    web servers and background workers.  [[#497], [#502]]
+
+     -  Added `@fedify/fedify/otel` module.
+     -  Added `FedifySpanExporter` class implementing OpenTelemetry's
+        `SpanExporter` interface.
+     -  Added `TraceActivityRecord` interface for stored activity data,
+        including `actorId` and `signatureDetails` fields for debug dashboard
+        support.
+     -  Added `SignatureVerificationDetails` interface for detailed signature
+        verification information.
+     -  Added `TraceSummary` interface for trace listing.
+     -  Added `FedifySpanExporterOptions` interface.
+     -  Added `GetRecentTracesOptions` interface.
+     -  Added `ActivityDirection` type.
+
 [#323]: https://github.com/fedify-dev/fedify/issues/323
+[#497]: https://github.com/fedify-dev/fedify/issues/497
 [#498]: https://github.com/fedify-dev/fedify/issues/498
 [#500]: https://github.com/fedify-dev/fedify/pull/500
+[#502]: https://github.com/fedify-dev/fedify/pull/502
 
 ### @fedify/nestjs
 

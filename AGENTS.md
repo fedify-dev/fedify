@@ -57,6 +57,7 @@ The repository is organized as a monorepo with the following packages:
     -  *src/compat/*: Compatibility layer
     -  *src/federation/*: Core federation functionality
     -  *src/nodeinfo/*: NodeInfo protocol implementation
+    -  *src/otel/*: OpenTelemetry integration utilities
     -  *src/runtime/*: Runtime utilities
     -  *src/shim/*: Platform abstraction layer
     -  *src/sig/*: Signature implementation
