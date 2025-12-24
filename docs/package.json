@@ -25,6 +25,7 @@
     "@nestjs/common": "catalog:",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0",
     "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "catalog:",
     "@sentry/node": "^8.47.0",
     "@shikijs/vitepress-twoslash": "^1.24.4",
     "@teidesu/deno-types": "^2.1.4",

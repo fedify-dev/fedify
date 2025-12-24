@@ -21,6 +21,9 @@ catalogs:
     '@nestjs/common':
       specifier: ^11.0.1
       version: 11.1.4
+    '@opentelemetry/sdk-trace-base':
+      specifier: ^1.30.1
+      version: 1.30.1
     '@std/assert':
       specifier: jsr:^1.0.13
       version: 1.0.13
@@ -171,6 +174,9 @@ importers:
       '@opentelemetry/sdk-node':
         specifier: ^0.57.0
         version: 0.57.2(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: 'catalog:'
+        version: 1.30.1(@opentelemetry/api@1.9.0)
       '@sentry/node':
         specifier: ^8.47.0
         version: 8.55.0
@@ -722,7 +728,7 @@ importers:
         specifier: ^1.30.1
         version: 1.30.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base':
-        specifier: ^1.30.1
+        specifier: 'catalog:'
         version: 1.30.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions':
         specifier: ^1.27.0
