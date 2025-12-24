@@ -11,7 +11,7 @@ import {
   trace,
   type TracerProvider,
 } from "@opentelemetry/api";
-import metadata from "../../deno.json" with { type: "json" };
+import metadata from "../deno.json" with { type: "json" };
 import type { ResourceDescriptor } from "./jrd.ts";
 
 const logger = getLogger(["fedify", "webfinger", "lookup"]);

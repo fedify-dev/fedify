@@ -12,7 +12,7 @@ import type { RequestContext } from "../federation/context.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
 import { createFederation } from "../federation/middleware.ts";
 import { createRequestContext } from "../testing/context.ts";
-import { handleWebFinger } from "./handler.ts";
+import { handleWebFinger } from "./webfinger.ts";
 
 test("handleWebFinger()", async (t) => {
   const url = new URL("https://example.com/.well-known/webfinger");
