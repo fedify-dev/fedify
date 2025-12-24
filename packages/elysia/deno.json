@@ -1,0 +1,15 @@
+{
+  "name": "@fedify/elysia",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts"
+  }
+}
