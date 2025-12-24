@@ -40,13 +40,13 @@
     "npm:@jimp/wasm-webp@^1.6.0": "1.6.0",
     "npm:@js-temporal/polyfill@~0.5.1": "0.5.1",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
-    "npm:@nestjs/common@^11.0.1": "11.1.9_reflect-metadata@0.2.2_rxjs@7.8.2",
+    "npm:@nestjs/common@^11.0.1": "11.1.10_reflect-metadata@0.2.2_rxjs@7.8.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@opentelemetry/core@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/sdk-trace-base@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.28.0",
-    "npm:@optique/core@~0.6.1": "0.6.5",
-    "npm:@optique/run@~0.6.1": "0.6.5",
+    "npm:@optique/core@~0.6.1": "0.6.6",
+    "npm:@optique/run@~0.6.1": "0.6.6",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
     "npm:@sveltejs/kit@2": "2.49.2_@opentelemetry+api@1.9.0_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.46.0___acorn@8.15.0__vite@7.3.0___@types+node@22.19.3___tsx@4.21.0___yaml@2.8.2___picomatch@4.0.3__@types+node@22.19.3__tsx@4.21.0__yaml@2.8.2_svelte@5.46.0__acorn@8.15.0_vite@7.3.0__@types+node@22.19.3__tsx@4.21.0__yaml@2.8.2__picomatch@4.0.3_acorn@8.15.0_@types+node@22.19.3_tsx@4.21.0_yaml@2.8.2",
     "npm:@types/amqplib@~0.10.7": "0.10.8",
@@ -1292,10 +1292,10 @@
         "@tybys/wasm-util"
       ]
     },
-    "@nestjs/common@11.1.9_reflect-metadata@0.2.2_rxjs@7.8.2": {
-      "integrity": "sha512-zDntUTReRbAThIfSp3dQZ9kKqI+LjgLp5YZN5c1bgNRDuoeLySAoZg46Bg1a+uV8TMgIRziHocglKGNzr6l+bQ==",
+    "@nestjs/common@11.1.10_reflect-metadata@0.2.2_rxjs@7.8.2": {
+      "integrity": "sha512-NoBzJFtq1bzHGia5Q5NO1pJNpx530nupbEu/auCWOFCGL5y8Zo8kiG28EXTCDfIhQgregEtn1Cs6H8WSLUC8kg==",
       "dependencies": [
-        "file-type@21.1.0",
+        "file-type@21.1.1",
         "iterare",
         "load-esm",
         "reflect-metadata",
@@ -1337,11 +1337,11 @@
     "@opentelemetry/semantic-conventions@1.28.0": {
       "integrity": "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="
     },
-    "@optique/core@0.6.5": {
-      "integrity": "sha512-H3O//t/qxq7GT+25oLi4mXyxB/PccTcj+0P4HcboDcTnAN7gcTgoxvAugaHExw9s7WrVOlRQRZuYXseKtU/cyw=="
+    "@optique/core@0.6.6": {
+      "integrity": "sha512-rllp+mWPhkQcbpY1L8AQJCHPDUEJ/TVBEsAvx3HkPAnJXp4LNlLS25KF0S7qqsuy47cwmpW8Tkme27CzA5iazA=="
     },
-    "@optique/run@0.6.5": {
-      "integrity": "sha512-dJTfcNXRWM+dmGxbeTFNDt/cf3v92wNYcJVZUu+FqwNXD5lX/koWeMIGwT0eoJegGPWvzpCVRb0CVjc+b/AUbQ==",
+    "@optique/run@0.6.6": {
+      "integrity": "sha512-VaEIAbTyer76ywpAKcoBzhrvhVUp/inRxEuesrYMlxRc/5uTJNUTGCngUBy/+ClYHtHpCW9BvhM4i53lmJ7gIw==",
       "dependencies": [
         "@optique/core"
       ]
@@ -1674,11 +1674,10 @@
         "vitefu"
       ]
     },
-    "@tokenizer/inflate@0.3.1": {
-      "integrity": "sha512-4oeoZEBQdLdt5WmP/hx1KZ6D3/Oid/0cUb2nk4F0pTDAWy+KCH3/EnAkZF/bvckWo8I33EqBm01lIPgmgc8rCA==",
+    "@tokenizer/inflate@0.4.1": {
+      "integrity": "sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==",
       "dependencies": [
         "debug@4.4.3",
-        "fflate",
         "token-types@6.1.1"
       ]
     },
@@ -2635,6 +2634,7 @@
         "regexparam"
       ]
     },
+<<<<<<< HEAD
     "fflate@0.8.2": {
       "integrity": "sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A=="
     },
@@ -2644,6 +2644,8 @@
         "flat-cache"
       ]
     },
+=======
+>>>>>>> ac923ced (Fix deno.lock)
     "file-type@16.5.4": {
       "integrity": "sha512-/yFHK0aGjFEgDJjEKP0pWCplsPFPhwyfwevf/pVxiN0tmE4L9LmwWxWukdJSHdoCli4VgQLehjJtwQBnqmsKcw==",
       "dependencies": [
@@ -2661,8 +2663,8 @@
         "uint8array-extras"
       ]
     },
-    "file-type@21.1.0": {
-      "integrity": "sha512-boU4EHmP3JXkwDo4uhyBhTt5pPstxB6eEXKJBu2yu2l7aAMMm7QQYQEzssJmKReZYrFdFOJS8koVo6bXIBGDqA==",
+    "file-type@21.1.1": {
+      "integrity": "sha512-ifJXo8zUqbQ/bLbl9sFoqHNTNWbnPY1COImFfM6CCy7z+E+jC1eY9YfOKkx0fckIg+VljAy2/87T61fp0+eEkg==",
       "dependencies": [
         "@tokenizer/inflate",
         "strtok3@10.3.4",
@@ -3782,8 +3784,13 @@
         "rolldown"
       ]
     },
+<<<<<<< HEAD
     "rolldown@1.0.0-beta.55": {
       "integrity": "sha512-r8Ws43aYCnfO07ao0SvQRz4TBAtZJjGWNvScRBOHuiNHvjfECOJBIqJv0nUkL1GYcltjvvHswRilDF1ocsC0+g==",
+=======
+    "rolldown@1.0.0-beta.56": {
+      "integrity": "sha512-9MHiUvRH2R8rb6ad6EaLxahS3RbQKdMMlrh9XKmbz2HiCGfK4IWKSNv4N6GhYr+7kHExg6oIc5EF1xA3iR4x1A==",
+>>>>>>> ac923ced (Fix deno.lock)
       "dependencies": [
         "@oxc-project/types",
         "@rolldown/pluginutils"
