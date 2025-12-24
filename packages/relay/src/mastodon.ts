@@ -21,7 +21,7 @@ const logger = getLogger(["fedify", "relay", "mastodon"]);
 
 /**
  * A Mastodon-compatible ActivityPub relay implementation.
- * This relay follows Mastodon's relay protocol for maximum compatibility
+ * This relay follows Mastodon's relay protocol for compatibility
  * with Mastodon instances.
  *
  * @since 2.0.0
@@ -58,7 +58,7 @@ export class MastodonRelay extends BaseRelay {
           }
 
           if (approved) {
-            // mastodon-specific: immediately add to followers list
+            // Mastodon-specific: immediately add to followers list
             const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
               [];
             followers.push(follower.id.href);

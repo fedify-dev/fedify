@@ -26,7 +26,7 @@ relayBuilder.setActorDispatcher(
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
       name: ctx.data.name ?? "ActivityPub Relay",
-      inbox: ctx.getInboxUri(), // This should be sharedInboxUri
+      inbox: ctx.getInboxUri(), // This should be shared inbox uri
       followers: ctx.getFollowersUri(identifier),
       following: ctx.getFollowingUri(identifier),
       url: ctx.getActorUri(identifier),
