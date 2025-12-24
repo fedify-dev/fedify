@@ -189,6 +189,13 @@ To be released.
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
 
+### @fedify/lint
+
+ -  Created Fedify linting tools as the *@fedify/lint* package.
+    This package provides shared Deno Lint and ESLint configurations for
+    consistent code style across Fedify packages and user projects. 
+    [[#297], [#494] by ChanHaeng Lee]
+
 
 Version 1.10.0
 --------------

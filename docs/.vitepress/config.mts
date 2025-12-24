@@ -76,6 +76,7 @@ const MANUAL = {
     { text: "Message queue", link: "/manual/mq.md" },
     { text: "Integration", link: "/manual/integration.md" },
     { text: "Testing", link: "/manual/test.md" },
+    { text: "Linting", link: "/manual/lint.md" },
     { text: "Logging", link: "/manual/log.md" },
     { text: "OpenTelemetry", link: "/manual/opentelemetry.md" },
     { text: "Deployment", link: "/manual/deploy.md" },
@@ -100,6 +101,7 @@ const REFERENCES = {
     { text: "@fedify/sqlite", link: "https://jsr.io/@fedify/sqlite/doc" },
     { text: "@fedify/sveltekit", link: "https://jsr.io/@fedify/sveltekit/doc" },
     { text: "@fedify/testing", link: "https://jsr.io/@fedify/testing/doc" },
+    { text: "@fedify/lint", link: "https://jsr.io/@fedify/lint/doc" },
   ],
 };
 
