@@ -9,14 +9,13 @@ import {
   Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
+import { BaseRelay } from "./base.ts";
 import {
-  BaseRelay,
   handleUndoFollow,
-  RELAY_SERVER_ACTOR,
-  type RelayOptions,
   sendFollowResponse,
   validateFollowActivity,
-} from "./relay.ts";
+} from "./follow.ts";
+import { RELAY_SERVER_ACTOR, type RelayOptions } from "./types.ts";
 
 const logger = getLogger(["fedify", "relay", "mastodon"]);
 

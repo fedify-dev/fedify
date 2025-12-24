@@ -12,15 +12,17 @@ import {
   Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
+import { BaseRelay } from "./base.ts";
 import {
-  BaseRelay,
   handleUndoFollow,
+  sendFollowResponse,
+  validateFollowActivity,
+} from "./follow.ts";
+import {
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
-  sendFollowResponse,
-  validateFollowActivity,
-} from "./relay.ts";
+} from "./types.ts";
 
 const logger = getLogger(["fedify", "relay", "litepub"]);
 
