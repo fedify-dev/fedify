@@ -270,7 +270,10 @@ export class FedifySpanExporter implements SpanExporter {
       (r): r is PromiseRejectedResult => r.status === "rejected",
     );
     if (rejected.length > 0) {
-      throw rejected[0].reason;
+      throw new AggregateError(
+        rejected.map((r) => r.reason),
+        "Failed to store one or more trace activity records.",
+      );
     }
   }
 
