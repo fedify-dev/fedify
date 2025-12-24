@@ -79,7 +79,7 @@
   },
   "nodeModulesDir": "auto",
   "tasks": {
-    "codegen": "deno task -f @fedify/vocab codegen",
+    "codegen": "deno task -f @fedify/vocab compile",
     "check-versions": "deno run --allow-read --allow-write scripts/check_versions.ts",
     "check-all": {
       "command": "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')",

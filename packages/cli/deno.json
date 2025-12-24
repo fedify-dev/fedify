@@ -33,7 +33,7 @@
     "exclude": ["**/*.test.ts"]
   },
   "tasks": {
-    "codegen": "deno task -f @fedify/vocab codegen",
+    "codegen": "deno task -f @fedify/vocab compile",
     "check": {
       "command": "deno task codegen && deno fmt --check && deno lint && deno check src/**/*.ts",
       "dependencies": [

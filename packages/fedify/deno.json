@@ -53,7 +53,7 @@
     ]
   },
   "tasks": {
-    "codegen": "deno task -f @fedify/vocab codegen",
+    "codegen": "deno task -f @fedify/vocab compile",
     "cache": {
       "command": "deno cache src/mod.ts",
       "dependencies": [
