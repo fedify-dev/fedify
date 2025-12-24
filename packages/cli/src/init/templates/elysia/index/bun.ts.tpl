@@ -1,11 +1,13 @@
 import { fedify } from "@fedify/elysia";
 import { Elysia } from "elysia";
 import federation from "./federation.ts";
-import { getLogger } from "@logtape/logtape";
+import "./logging.ts";
 
-const logger = getLogger("/* logger */");
 const app = new Elysia();
 
 app
   .use(fedify(federation, () => undefined))
-  .listen(3000)
+  .get("/", () => "Hello, Fedify!")
+  .listen(3000, () => {
+    console.log("Server started at http://localhost:3000");
+  })
