@@ -124,7 +124,9 @@ test("FedifySpanExporter", async (t) => {
     const kv = new MemoryKvStore();
     const exporter = new FedifySpanExporter(kv);
 
-    const activityJson = JSON.stringify({
+    const traceId = "trace123";
+    const spanId = "span456";
+    const activity = {
       "@context": "https://www.w3.org/ns/activitystreams",
       type: "Create",
       id: "https://example.com/activities/123",
@@ -133,11 +135,12 @@ test("FedifySpanExporter", async (t) => {
         type: "Note",
         content: "Hello!",
       },
-    });
+    };
+    const activityJson = JSON.stringify(activity);
 
     const span = createMockSpan({
-      traceId: "trace123",
-      spanId: "span456",
+      traceId,
+      spanId,
       name: "activitypub.inbox",
       events: [
         createActivityReceivedEvent({
@@ -155,16 +158,13 @@ test("FedifySpanExporter", async (t) => {
       });
     });
 
-    const activities = await exporter.getActivitiesByTraceId("trace123");
+    const activities = await exporter.getActivitiesByTraceId(traceId);
     assertEquals(activities.length, 1);
-    assertEquals(activities[0].traceId, "trace123");
-    assertEquals(activities[0].spanId, "span456");
+    assertEquals(activities[0].traceId, traceId);
+    assertEquals(activities[0].spanId, spanId);
     assertEquals(activities[0].direction, "inbound");
-    assertEquals(activities[0].activityType, "Create");
-    assertEquals(
-      activities[0].activityId,
-      "https://example.com/activities/123",
-    );
+    assertEquals(activities[0].activityType, activity.type);
+    assertEquals(activities[0].activityId, activity.id);
     assertEquals(activities[0].activityJson, activityJson);
     assertEquals(activities[0].verified, true);
   });
@@ -175,23 +175,27 @@ test("FedifySpanExporter", async (t) => {
       const kv = new MemoryKvStore();
       const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
+      const traceId = "trace789";
+      const spanId = "span012";
+      const inboxUrl = "https://example.com/users/alice/inbox";
+      const activity = {
         "@context": "https://www.w3.org/ns/activitystreams",
         type: "Follow",
         id: "https://myserver.com/activities/789",
         actor: "https://myserver.com/users/bob",
         object: "https://example.com/users/alice",
-      });
+      };
+      const activityJson = JSON.stringify(activity);
 
       const span = createMockSpan({
-        traceId: "trace789",
-        spanId: "span012",
+        traceId,
+        spanId,
         name: "activitypub.send_activity",
         events: [
           createActivitySentEvent({
             activityJson,
-            inboxUrl: "https://example.com/users/alice/inbox",
-            activityId: "https://myserver.com/activities/789",
+            inboxUrl,
+            activityId: activity.id,
           }),
         ],
       });
@@ -203,20 +207,14 @@ test("FedifySpanExporter", async (t) => {
         });
       });
 
-      const activities = await exporter.getActivitiesByTraceId("trace789");
+      const activities = await exporter.getActivitiesByTraceId(traceId);
       assertEquals(activities.length, 1);
-      assertEquals(activities[0].traceId, "trace789");
-      assertEquals(activities[0].spanId, "span012");
+      assertEquals(activities[0].traceId, traceId);
+      assertEquals(activities[0].spanId, spanId);
       assertEquals(activities[0].direction, "outbound");
-      assertEquals(activities[0].activityType, "Follow");
-      assertEquals(
-        activities[0].activityId,
-        "https://myserver.com/activities/789",
-      );
-      assertEquals(
-        activities[0].inboxUrl,
-        "https://example.com/users/alice/inbox",
-      );
+      assertEquals(activities[0].activityType, activity.type);
+      assertEquals(activities[0].activityId, activity.id);
+      assertEquals(activities[0].inboxUrl, inboxUrl);
     },
   );
 
