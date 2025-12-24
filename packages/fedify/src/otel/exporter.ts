@@ -350,9 +350,10 @@ export class FedifySpanExporter implements SpanExporter {
     ) {
       signatureDetails = {
         httpSignaturesVerified: httpSigVerified === true,
-        httpSignaturesKeyId: typeof httpSigKeyId === "string"
-          ? httpSigKeyId
-          : undefined,
+        httpSignaturesKeyId:
+          typeof httpSigKeyId === "string" && httpSigKeyId !== ""
+            ? httpSigKeyId
+            : undefined,
         ldSignaturesVerified: ldSigVerified === true,
       };
     }
