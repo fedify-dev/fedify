@@ -62,7 +62,7 @@
   },
   "scripts": {
     "dev": "cd ../ && pnpm run --filter '!{docs}' --filter='!./examples/**' -r build && cd docs/ && vitepress dev --host",
-    "build": "cd ../ && pnpm run --filter '!{docs}' --filter '!./examples/**' -r build && cd docs/ && vitepress build",
+    "build": "cd ../ && pnpm run --filter '!{docs}' --filter '!./examples/**' -r build && cd docs/ && NODE_OPTIONS='--max-old-space-size=8192' vitepress build",
     "preview": "cd ../ && pnpm run --filter '!{docs}' --filter '!./examples/**' -r build && cd docs/ && vitepress preview"
   }
 }

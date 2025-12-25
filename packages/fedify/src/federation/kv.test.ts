@@ -44,7 +44,7 @@ test("MemoryKvStore", async (t) => {
     await store.set(["prefix"], "exact-match");
 
     // Test: list with prefix
-    const entries = await Array.fromAsync(store.list!(["prefix"]));
+    const entries = await Array.fromAsync(store.list(["prefix"]));
     assertEquals(entries.length, 4); // prefix, prefix/a, prefix/b, prefix/nested/c
 
     // Test: verify a value
@@ -52,7 +52,7 @@ test("MemoryKvStore", async (t) => {
     assertEquals(entryA?.value, "value-a");
 
     // Test: non-matching prefix returns empty
-    const noMatch = await Array.fromAsync(store.list!(["nonexistent"]));
+    const noMatch = await Array.fromAsync(store.list(["nonexistent"]));
     assertEquals(noMatch.length, 0);
 
     // Cleanup
@@ -71,7 +71,7 @@ test("MemoryKvStore", async (t) => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const entries = await Array.fromAsync(store.list!(["expired"]));
+    const entries = await Array.fromAsync(store.list(["expired"]));
 
     assertEquals(entries.length, 1);
     assertEquals(entries[0].value, "valid-value");
@@ -89,7 +89,7 @@ test("MemoryKvStore", async (t) => {
     await store.set(["d", "e", "f"], "value-def");
 
     // Test: empty prefix should return all entries
-    const entries = await Array.fromAsync(store.list!());
+    const entries = await Array.fromAsync(store.list());
 
     assertEquals(entries.length, 3);
 

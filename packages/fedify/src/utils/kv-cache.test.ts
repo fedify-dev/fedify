@@ -1,7 +1,12 @@
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { preloadedContexts } from "@fedify/vocab-runtime";
 import { deepStrictEqual, throws } from "node:assert";
-import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "../federation/kv.ts";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { test } from "../testing/mod.ts";
 import { kvCache, MockKvStore } from "./kv-cache.ts";
@@ -153,6 +158,10 @@ test("kvCache()", async (t) => {
       }
       delete(_key: KvKey): Promise<void> {
         throw new Error("Failed to delete key");
+      }
+      // deno-lint-ignore require-yield
+      async *list(_prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+        throw new Error("Failed to list keys");
       }
     }
 

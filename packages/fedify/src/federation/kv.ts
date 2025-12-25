@@ -87,8 +87,9 @@ export interface KvStore {
    *               are returned.
    * @returns An async iterable of entries matching the prefix.
    * @since 1.10.0
+   * @since 2.0.0 This method is now required instead of optional.
    */
-  list?: (prefix?: KvKey) => AsyncIterable<KvStoreListEntry>;
+  list(prefix?: KvKey): AsyncIterable<KvStoreListEntry>;
 }
 
 /**

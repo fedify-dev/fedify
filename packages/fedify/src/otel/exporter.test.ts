@@ -1,8 +1,13 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import type { HrTime, SpanContext, SpanStatus } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, TraceFlags } from "@opentelemetry/api";
 import type { ReadableSpan, TimedEvent } from "@opentelemetry/sdk-trace-base";
-import { type KvKey, type KvStore, MemoryKvStore } from "../federation/kv.ts";
+import {
+  type KvKey,
+  type KvStore,
+  type KvStoreListEntry,
+  MemoryKvStore,
+} from "../federation/kv.ts";
 import { test } from "../testing/mod.ts";
 import { FedifySpanExporter } from "./exporter.ts";
 
@@ -86,36 +91,8 @@ function createActivitySentEvent(options: {
 }
 
 test("FedifySpanExporter", async (t) => {
-  await t.step(
-    "constructor throws if KvStore has neither list() nor cas()",
-    () => {
-      const kv: KvStore = {
-        get: () => Promise.resolve(undefined),
-        set: () => Promise.resolve(),
-        delete: () => Promise.resolve(),
-      };
-
-      assertThrows(
-        () => new FedifySpanExporter(kv),
-        Error,
-        "KvStore must support either list() or cas()",
-      );
-    },
-  );
-
   await t.step("constructor accepts KvStore with list()", () => {
     const kv = new MemoryKvStore();
-    const exporter = new FedifySpanExporter(kv);
-    assertEquals(exporter instanceof FedifySpanExporter, true);
-  });
-
-  await t.step("constructor accepts KvStore with cas() only", () => {
-    const kv: KvStore = {
-      get: () => Promise.resolve(undefined),
-      set: () => Promise.resolve(),
-      delete: () => Promise.resolve(),
-      cas: () => Promise.resolve(true),
-    };
     const exporter = new FedifySpanExporter(kv);
     assertEquals(exporter instanceof FedifySpanExporter, true);
   });
@@ -369,7 +346,7 @@ test("FedifySpanExporter", async (t) => {
     await exporter.shutdown();
   });
 
-  await t.step("works with cas()-only KvStore", async () => {
+  await t.step("works with custom KvStore implementation", async () => {
     const storedData: Record<string, unknown> = {};
 
     const kv: KvStore = {
@@ -387,14 +364,15 @@ test("FedifySpanExporter", async (t) => {
         delete storedData[k];
         return Promise.resolve();
       },
-      cas: (key: KvKey, expected: unknown, newValue: unknown) => {
-        const k = JSON.stringify(key);
-        const current = storedData[k];
-        if (JSON.stringify(current) === JSON.stringify(expected)) {
-          storedData[k] = newValue;
-          return Promise.resolve(true);
+      async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+        for (const [encodedKey, value] of Object.entries(storedData)) {
+          const key = JSON.parse(encodedKey) as KvKey;
+          if (prefix != null) {
+            if (key.length < prefix.length) continue;
+            if (!prefix.every((p, i) => key[i] === p)) continue;
+          }
+          yield { key, value };
         }
-        return Promise.resolve(false);
       },
     };
 

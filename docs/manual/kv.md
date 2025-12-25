@@ -403,8 +403,8 @@ If the provided implementations don't meet your needs, you can create a custom
 ### Implement the `KvStore` interface
 
 Create a class that implements the `KvStore` interface.  The interface defines
-three methods: `~KvStore.get()`, `~KvStore.set()`, `~KvStore.delete()`, and
-optionally `~KvStore.cas()` and `~KvStore.list()`.
+four methods: `~KvStore.get()`, `~KvStore.set()`, `~KvStore.delete()`, and
+`~KvStore.list()`, and optionally `~KvStore.cas()`.
 
 ~~~~ typescript twoslash
 import type {
@@ -446,7 +446,7 @@ class MyCustomKvStore implements KvStore {
   }
 
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
-    // Implement list logic if needed
+    // Implement list logic
   }
 }
 ~~~~
@@ -506,6 +506,7 @@ class MyCustomKvStore implements KvStore {
     options?: KvStoreSetOptions
   ): Promise<void> { }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async get<T = unknown>(key: KvKey): Promise<T | undefined> {
   const serializedKey = this.serializeKey(key);
@@ -555,6 +556,7 @@ class MyCustomKvStore implements KvStore {
     return undefined;
   }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async set(
   key: KvKey,
@@ -611,6 +613,7 @@ class MyCustomKvStore implements KvStore {
     value: unknown,
     options?: KvStoreSetOptions
   ): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async delete(key: KvKey): Promise<void> {
   const serializedKey = this.serializeKey(key);
@@ -667,6 +670,7 @@ class MyCustomKvStore implements KvStore {
     options?: KvStoreSetOptions
   ): Promise<void> { }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async cas(
   key: KvKey,
@@ -684,14 +688,16 @@ async cas(
 }
 ~~~~
 
-### Implement `~KvStore.list()` method (optional)
+### Implement `~KvStore.list()` method
 
 *This API is available since Fedify 1.10.0.*
 
-If your storage backend supports prefix scanning, you can implement the
-`~KvStore.list()` method.  This method allows you to enumerate all entries
-whose keys start with a given prefix.  This is useful for implementing
-batch operations or iterating over related entries.
+*Since Fedify 2.0.0, this method is required instead of optional.*
+
+The `~KvStore.list()` method allows you to enumerate all entries whose keys
+start with a given prefix.  This is useful for implementing batch operations
+or iterating over related entries.  If your storage backend supports prefix
+scanning, you can use it to implement this method efficiently.
 
 ~~~~ typescript twoslash
 import type {
@@ -777,6 +783,8 @@ class MyCustomKvStore implements KvStore {
   ): Promise<void> {
   }
   async delete(key: KvKey): Promise<void> {
+  }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> {
   }
 }
 // ---cut-before---
