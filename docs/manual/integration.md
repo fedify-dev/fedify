@@ -756,6 +756,100 @@ found in the Next.js official documentation [`config` in `middleware.js`].
 [Next.js]: https://nextjs.org/
 [`config` in `middleware.js`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 
+Fresh
+-----
+
+*This API is available since Fedify 2.0.0.*
+
+[Fresh] is a full stack modern web framework for Deno.  Fedify has the
+`@fedify/fresh` module that provides a middleware to integrate Fedify
+with Fresh.
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/fresh
+~~~~
+
+:::
+
+> [!NOTE]
+> The `@fedify/fresh` package only supports Fresh 2.x.
+
+> [!WARNING]
+> Due to `@fedify/fedify`'s `multicodec` dependency CJS issue, you should externalize `@fedify/fedify` in `vite.config.ts`.
+>
+> ~~~~typescript
+> import { fresh } from "@fresh/plugin-vite";
+> import { defineConfig } from "vite";
+> 
+> export default defineConfig({
+>   plugins: [fresh()],
+>   ssr: {
+>     external: [
+>       "@fedify/fedify",
+>     ],
+>   },
+>   build: {
+>     rollupOptions: {
+>       external: [
+>         "@fedify/fedify",
+>       ],
+>     },
+>   },
+> });
+> ~~~~
+
+> [!WARNING]
+> Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable` to `compilerOptions.libs` field of `deno.json`.
+> ~~~~json
+>  "compilerOptions": {
+>    "lib": [
+>      "dom",
+>      "dom.asynciterable",
+>      "dom.iterable",
+>      "deno.ns",
+>      "deno.unstable"
+>    ],
+> ...
+> ~~~~
+
+Put the following code in your *routes/_middleware.ts* file:
+
+~~~~ typescript [_middelware.ts]
+import { createFederation } from "@fedify/fedify";
+import { integrateHandler } from "@fedify/fresh";
+import { define } from "../utils.ts";
+
+const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+
+// This is the entry point to the Fedify middleware from the Fresh framework:
+export default define.middleware(
+  integrateHandler(federation, () => undefined),
+);
+~~~~
+
+Or you can use `app.use()` in your `main.ts` to register the middleware globally:
+
+~~~~ typescript [main.ts]
+import { App } from "fresh";
+import { createFederation } from "@fedify/fedify";
+import { integrateHandler } from "@fedify/fresh";
+import { define } from "./utils.ts";
+const app = new App();
+const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+// This is the entry point to the Fedify middleware from the Fresh framework:
+const fedifyMiddleware = define.middleware(
+  integrateHandler(federation, () => undefined),
+);
+app.use(fedifyMiddleware);
+~~~~
+
+[Fresh]: https://fresh.deno.dev/
 
 Custom middleware
 -----------------

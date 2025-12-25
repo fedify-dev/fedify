@@ -196,6 +196,15 @@ To be released.
     consistent code style across Fedify packages and user projects. 
     [[#297], [#494] by ChanHaeng Lee]
 
+### @fedify/fresh
+
+ -  Created a new @fedify/fresh package that provides seamless integration 
+    between Fedify and Fresh 2.0, replacing the deprecated `@fedify/fedify/x/fresh`
+    module that was designed for Fresh 1.x.
+    [[#466], [#478] by Hyeonseo Kim]
+
+[#466]: https://github.com/fedify-dev/fedify/issues/466
+[#478]: https://github.com/fedify-dev/fedify/pull/478
 
 Version 1.10.0
 --------------
