@@ -46,10 +46,15 @@ Key features:
 
 ### LitePub-style relay
 
-*LitePub relay support is planned for a future release.*
-
 The LitePub-style relay protocol uses bidirectional following relationships
 and wraps activities in `Announce` activities for distribution.
+
+Key features:
+
+ -  Reciprocal following between relay and subscribers
+ -  Activities wrapped in `Announce` for distribution
+ -  Two-phase subscription (pending → accepted)
+ -  Enhanced federation capabilities
 
 
 Installation
@@ -83,43 +88,56 @@ bun add @fedify/relay
 Usage
 -----
 
-### Creating a Mastodon-style relay
+### Creating a relay
 
-Here's a simple example of creating a Mastodon-compatible relay server:
+Here's a simple example of creating a relay server using the factory function:
 
 ~~~~ typescript
-import { MastodonRelay } from "@fedify/relay";
+import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
 
-const relay = new MastodonRelay({
+// Create a Mastodon-style relay
+const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
   domain: "relay.example.com",
-});
-
-// Optional: Set a custom subscription handler to approve/reject subscriptions
-relay.setSubscriptionHandler(async (ctx, actor) => {
-  // Implement your approval logic here
-  // Return true to approve, false to reject
-  const domain = new URL(actor.id!).hostname;
-  const blockedDomains = ["spam.example", "blocked.example"];
-  return !blockedDomains.includes(domain);
+  // Optional: Set a custom subscription handler to approve/reject subscriptions
+  subscriptionHandler: async (ctx, actor) => {
+    // Implement your approval logic here
+    // Return true to approve, false to reject
+    const domain = new URL(actor.id!).hostname;
+    const blockedDomains = ["spam.example", "blocked.example"];
+    return !blockedDomains.includes(domain);
+  },
 });
 
 // Serve the relay
 Deno.serve((request) => relay.fetch(request));
 ~~~~
 
+You can also create a LitePub-style relay by changing the type:
+
+~~~~ typescript
+const relay = createRelay("litepub", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+});
+~~~~
+
 ### Subscription handling
 
 By default, the relay automatically rejects all subscription requests.
-You can customize this behavior by setting a subscription handler:
+You can customize this behavior by providing a subscription handler in the options:
 
 ~~~~ typescript
-relay.setSubscriptionHandler(async (ctx, actor) => {
-  // Example: Only allow subscriptions from specific domains
-  const domain = new URL(actor.id!).hostname;
-  const allowedDomains = ["mastodon.social", "fosstodon.org"];
-  return allowedDomains.includes(domain);
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => {
+    // Example: Only allow subscriptions from specific domains
+    const domain = new URL(actor.id!).hostname;
+    const allowedDomains = ["mastodon.social", "fosstodon.org"];
+    return allowedDomains.includes(domain);
+  },
 });
 ~~~~
 
@@ -131,11 +149,11 @@ example with Hono:
 
 ~~~~ typescript
 import { Hono } from "hono";
-import { MastodonRelay } from "@fedify/relay";
+import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
 
 const app = new Hono();
-const relay = new MastodonRelay({
+const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
   domain: "relay.example.com",
 });
@@ -191,25 +209,47 @@ details.
 API reference
 -------------
 
-### `MastodonRelay`
+### `createRelay()`
 
-A Mastodon-compatible ActivityPub relay implementation.
-
-#### Constructor
+Factory function to create a relay instance.
 
 ~~~~ typescript
-new MastodonRelay(options: RelayOptions)
+function createRelay(
+  type: "mastodon" | "litepub",
+  options: RelayOptions
+): BaseRelay
 ~~~~
 
-#### Properties
+**Parameters:**
 
- -  `domain`: The relay's domain name (read-only)
+ -  `type`: The type of relay to create (`"mastodon"` or `"litepub"`)
+ -  `options`: Configuration options for the relay
+
+**Returns:** A relay instance (`MastodonRelay` or `LitePubRelay`)
+
+### `BaseRelay`
+
+Abstract base class for relay implementations.
 
 #### Methods
 
  -  `fetch(request: Request): Promise<Response>`: Handle incoming HTTP requests
- -  `setSubscriptionHandler(handler: SubscriptionRequestHandler): this`:
-    Set a custom handler for subscription approval/rejection
+
+### `MastodonRelay`
+
+A Mastodon-compatible ActivityPub relay implementation that extends `BaseRelay`.
+
+ -  Uses direct activity forwarding
+ -  Immediate subscription approval
+ -  Compatible with standard ActivityPub implementations
+
+### `LitePubRelay`
+
+A LitePub-compatible ActivityPub relay implementation that extends `BaseRelay`.
+
+ -  Uses bidirectional following
+ -  Activities wrapped in `Announce`
+ -  Two-phase subscription (pending → accepted)
 
 ### `RelayOptions`
 
@@ -217,12 +257,13 @@ Configuration options for the relay:
 
  -  `kv: KvStore` (required): Key–value store for persisting relay data
  -  `domain?: string`: Relay's domain name (defaults to `"localhost"`)
+ -  `name?: string`: Relay's display name (defaults to `"ActivityPub Relay"`)
+ -  `subscriptionHandler?: SubscriptionRequestHandler`: Custom handler for
+    subscription approval/rejection
  -  `documentLoaderFactory?: DocumentLoaderFactory`: Custom document loader
     factory
  -  `authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory`:
     Custom authenticated document loader factory
- -  `federation?: Federation<void>`: Custom Federation instance (for advanced
-    use cases)
  -  `queue?: MessageQueue`: Message queue for background activity processing
 
 ### `SubscriptionRequestHandler`
@@ -231,17 +272,17 @@ A function that determines whether to approve a subscription request:
 
 ~~~~ typescript
 type SubscriptionRequestHandler = (
-  ctx: Context<void>,
+  ctx: Context<RelayOptions>,
   clientActor: Actor,
 ) => Promise<boolean>
 ~~~~
 
-Parameters:
+**Parameters:**
 
- -  `ctx`: The Fedify context object
+ -  `ctx`: The Fedify context object with relay options
  -  `clientActor`: The actor requesting to subscribe
 
-Returns:
+**Returns:**
 
  -  `true` to approve the subscription
  -  `false` to reject the subscription

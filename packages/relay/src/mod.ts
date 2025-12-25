@@ -7,7 +7,14 @@
  *
  * @module
  */
-
-// Export relay functionality here
-export type { Relay, RelayOptions } from "./relay.ts";
-export { LitePubRelay, MastodonRelay } from "./relay.ts";
+export { relayBuilder } from "./builder.ts";
+export { createRelay } from "./factory.ts";
+export { LitePubRelay } from "./litepub.ts";
+export { MastodonRelay } from "./mastodon.ts";
+export {
+  RELAY_SERVER_ACTOR,
+  type RelayFollower,
+  type RelayOptions,
+  type RelayType,
+  type SubscriptionRequestHandler,
+} from "./types.ts";

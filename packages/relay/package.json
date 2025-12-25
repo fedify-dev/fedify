@@ -10,7 +10,7 @@
   ],
   "author": {
     "name": "Jiwon Kwon",
-    "email": "jiwonkwon@duck.com"
+    "email": "work@kwonjiwon.org"
   },
   "homepage": "https://fedify.dev/",
   "repository": {
@@ -47,6 +47,10 @@
     "dist/",
     "package.json"
   ],
+  "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:"
+  },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"
   },
@@ -61,7 +65,6 @@
     "prepack": "deno task codegen && tsdown",
     "prepublish": "deno task codegen && tsdown",
     "test": "deno task codegen && tsdown && node --test",
-    "test:bun": "deno task codegen && tsdown && bun test --timeout 60000",
-    "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts"
+    "test:bun": "deno task codegen && tsdown && bun test --timeout 60000"
   }
 }
