@@ -3,19 +3,17 @@
   "version": "2.0.0",
   "license": "MIT",
   "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.13",
-    "es-toolkit": "npm:es-toolkit@^1.30.0",
-    "@cloudflare/workers-types/experimental": "npm:@cloudflare/workers-types@^4.20250529.0/experimental"
+    "@cloudflare/workers-types/experimental": "npm:@cloudflare/workers-types@^4.20250906.0/experimental"
   },
   "exports": {
     ".": "./src/mod.ts"
   },
   "exclude": [
     "dist",
-    "node_modules"
+    "node_modules",
+    "test"
   ],
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/*.ts",
-    "test": "deno test --allow-net --allow-env"
+    "check": "deno fmt --check && deno lint && deno check src/*.ts"
   }
 }

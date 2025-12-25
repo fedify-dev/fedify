@@ -7,6 +7,7 @@
     "./compat": "./src/compat/mod.ts",
     "./federation": "./src/federation/mod.ts",
     "./nodeinfo": "./src/nodeinfo/mod.ts",
+    "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
     "./testing": "./src/testing/mod.ts",
     "./vocab": "./src/vocab/mod.ts",

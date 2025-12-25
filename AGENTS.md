@@ -57,6 +57,7 @@ The repository is organized as a monorepo with the following packages:
     -  *src/compat/*: Compatibility layer
     -  *src/federation/*: Core federation functionality
     -  *src/nodeinfo/*: NodeInfo protocol implementation
+    -  *src/otel/*: OpenTelemetry integration utilities
     -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and `src/utils/*`. If user code imports from here, notice and suggest migration.
     -  *src/shim/*: Platform abstraction layer
     -  *src/sig/*: Signature implementation

@@ -200,7 +200,7 @@ To be released.
 Version 1.10.0
 --------------
 
-To be released.
+Released on December 24, 2025.
 
 ### @fedify/fedify
 
@@ -230,16 +230,68 @@ To be released.
         key ownership verification, recording actor ID, key ID, verification
         result, and the verification method used.
 
+ -  Added optional `list()` method to the `KvStore` interface for enumerating
+    entries by key prefix.  This method takes an optional `prefix` parameter;
+    when omitted or empty, it returns all entries.  This enables efficient
+    prefix scanning which is useful for implementing features like distributed
+    trace storage, cache invalidation by prefix, and listing related entries.
+    [[#498], [#500]]
+
+     -  Added `KvStoreListEntry` interface.
+     -  Implemented in `MemoryKvStore`.
+
+ -  Added `FedifySpanExporter` class that persists ActivityPub activity traces
+    to a `KvStore` for distributed tracing support.  This enables aggregating
+    trace data across multiple nodes in a distributed deployment, making it
+    possible to build debug dashboards that show complete request flows across
+    web servers and background workers.  [[#497], [#502]]
+
+     -  Added `@fedify/fedify/otel` module.
+     -  Added `FedifySpanExporter` class implementing OpenTelemetry's
+        `SpanExporter` interface.
+     -  Added `TraceActivityRecord` interface for stored activity data,
+        including `actorId` and `signatureDetails` fields for debug dashboard
+        support.
+     -  Added `SignatureVerificationDetails` interface for detailed signature
+        verification information.
+     -  Added `TraceSummary` interface for trace listing.
+     -  Added `FedifySpanExporterOptions` interface.
+     -  Added `GetRecentTracesOptions` interface.
+     -  Added `ActivityDirection` type.
+
 [#323]: https://github.com/fedify-dev/fedify/issues/323
+[#497]: https://github.com/fedify-dev/fedify/issues/497
+[#498]: https://github.com/fedify-dev/fedify/issues/498
+[#500]: https://github.com/fedify-dev/fedify/pull/500
+[#502]: https://github.com/fedify-dev/fedify/pull/502
 
 ### @fedify/nestjs
 
  -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
     [[#492], [#493] by Cho Hasang]
 
-
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
+
+### @fedify/sqlite
+
+ -  Implemented `list()` method in `SqliteKvStore`.  [[#498], [#500]]
+
+### @fedify/postgres
+
+ -  Implemented `list()` method in `PostgresKvStore`.  [[#498], [#500]]
+
+### @fedify/redis
+
+ -  Implemented `list()` method in `RedisKvStore`.  [[#498], [#500]]
+
+### @fedify/denokv
+
+ -  Implemented `list()` method in `DenoKvStore`.  [[#498], [#500]]
+
+### @fedify/cfworkers
+
+ -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
 
 
 Version 1.9.2
@@ -1036,6 +1088,25 @@ the versioning.
 [iTerm]: https://iterm2.com/
 
 
+Version 1.7.16
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where the npm package failed to load at runtime with an error
+    like `SyntaxError: The requested module '../types.js' does not provide an
+    export named 'i'`.  This was a regression introduced in version 1.7.15.
+
+
+Version 1.7.15
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
+    in the npm package, causing type errors when importing the package.
+
+
 Version 1.7.14
 --------------
 
@@ -1230,6 +1301,25 @@ Released on June 25, 2025.
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
+
+
+Version 1.6.15
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where the npm package failed to load at runtime with an error
+    like `SyntaxError: The requested module '../types.js' does not provide an
+    export named 'i'`.  This was a regression introduced in version 1.6.14.
+
+
+Version 1.6.14
+--------------
+
+Released on December 20, 2025.
+
+ -  Fixed a bug where TypeScript declaration files (*.d.ts*) were not included
+    in the npm package, causing type errors when importing the package.
 
 
 Version 1.6.13

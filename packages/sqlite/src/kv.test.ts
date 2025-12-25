@@ -310,3 +310,96 @@ test("SqliteKvStore.set() - preserves created timestamp on update", async () => 
     await db.close();
   }
 });
+
+test("SqliteKvStore.list()", async () => {
+  const { db, store } = getStore();
+  try {
+    await store.set(["prefix", "a"], "value-a");
+    await store.set(["prefix", "b"], "value-b");
+    await store.set(["prefix", "nested", "c"], "value-c");
+    await store.set(["other", "x"], "value-x");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!(["prefix"])) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+    assert(
+      entries.some((e) => e.key[1] === "a" && e.value === "value-a"),
+    );
+    assert(entries.some((e) => e.key[1] === "b"));
+    assert(entries.some((e) => e.key[1] === "nested"));
+  } finally {
+    await store.drop();
+    await db.close();
+  }
+});
+
+test("SqliteKvStore.list() - excludes expired", async () => {
+  const { db, tableName, store } = getStore();
+  try {
+    await store.initialize();
+    const now = Temporal.Now.instant().epochMilliseconds;
+
+    // Insert expired entry directly
+    db.prepare(`
+      INSERT INTO "${tableName}" (key, value, created, expires)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      JSON.stringify(["list-test", "expired"]),
+      JSON.stringify("expired-value"),
+      now - 1000,
+      now - 500,
+    );
+    await store.set(["list-test", "valid"], "valid-value");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!(["list-test"])) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 1);
+    assert.deepStrictEqual(entries[0].key, ["list-test", "valid"]);
+  } finally {
+    await store.drop();
+    await db.close();
+  }
+});
+
+test("SqliteKvStore.list() - single element key", async () => {
+  const { db, store } = getStore();
+  try {
+    await store.set(["a"], "value-a");
+    await store.set(["b"], "value-b");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!(["a"])) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 1);
+  } finally {
+    await store.drop();
+    await db.close();
+  }
+});
+
+test("SqliteKvStore.list() - empty prefix", async () => {
+  const { db, store } = getStore();
+  try {
+    await store.set(["a"], "value-a");
+    await store.set(["b", "c"], "value-bc");
+    await store.set(["d", "e", "f"], "value-def");
+
+    const entries: { key: readonly string[]; value: unknown }[] = [];
+    for await (const entry of store.list!()) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    assert.strictEqual(entries.length, 3);
+  } finally {
+    await store.drop();
+    await db.close();
+  }
+});

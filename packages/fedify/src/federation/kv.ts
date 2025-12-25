@@ -20,6 +20,23 @@ export interface KvStoreSetOptions {
 }
 
 /**
+ * An entry returned by the {@link KvStore.list} method.
+ *
+ * @since 1.10.0
+ */
+export interface KvStoreListEntry {
+  /**
+   * The key of the entry.
+   */
+  key: KvKey;
+
+  /**
+   * The value of the entry.
+   */
+  value: unknown;
+}
+
+/**
  * An abstract interface for a key–value store.
  *
  * @since 0.5.0
@@ -62,6 +79,16 @@ export interface KvStore {
     newValue: unknown,
     options?: KvStoreSetOptions,
   ) => Promise<boolean>;
+
+  /**
+   * Lists all entries in the store that match the given prefix.
+   * If no prefix is given, all entries are returned.
+   * @param prefix The prefix to filter keys by.  If not specified, all entries
+   *               are returned.
+   * @returns An async iterable of entries matching the prefix.
+   * @since 1.10.0
+   */
+  list?: (prefix?: KvKey) => AsyncIterable<KvStoreListEntry>;
 }
 
 /**
@@ -147,5 +174,27 @@ export class MemoryKvStore implements KvStore {
       : Temporal.Now.instant().add(options.ttl.round({ largestUnit: "hour" }));
     this.#values[encodedKey] = [newValue, expiration];
     return Promise.resolve(true);
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    const now = Temporal.Now.instant();
+    for (const [encodedKey, entry] of Object.entries(this.#values)) {
+      const key = JSON.parse(encodedKey) as KvKey;
+      // Check prefix match
+      if (prefix != null) {
+        if (key.length < prefix.length) continue;
+        if (!prefix.every((p, i) => key[i] === p)) continue;
+      }
+
+      const [value, expiration] = entry;
+      if (expiration != null && now.until(expiration).sign < 0) {
+        delete this.#values[encodedKey];
+        continue;
+      }
+      yield { key, value };
+    }
   }
 }

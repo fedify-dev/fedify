@@ -1,5 +1,10 @@
 import { type PlatformDatabase, SqliteDatabase } from "#sqlite";
-import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import { isEqual } from "es-toolkit";
 import type { SqliteDatabaseAdapter } from "./adapter.ts";
@@ -209,6 +214,51 @@ export class SqliteKvStore implements KvStore {
     } catch (error) {
       this.#db.exec("ROLLBACK");
       throw error;
+    }
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    this.initialize();
+
+    const now = Temporal.Now.instant().epochMilliseconds;
+
+    let results: { key: string; value: string }[];
+
+    if (prefix == null || prefix.length === 0) {
+      // Empty prefix: return all entries
+      results = this.#db
+        .prepare(`
+          SELECT key, value
+          FROM "${this.#tableName}"
+          WHERE expires IS NULL OR expires > ?
+          ORDER BY key
+        `)
+        .all(now) as { key: string; value: string }[];
+    } else {
+      // JSON pattern: '["prefix","' matches keys starting with prefix
+      const pattern = JSON.stringify(prefix).slice(0, -1) + ",%";
+      const exactKey = JSON.stringify(prefix);
+
+      results = this.#db
+        .prepare(`
+          SELECT key, value
+          FROM "${this.#tableName}"
+          WHERE (key LIKE ? ESCAPE '\\' OR key = ?)
+            AND (expires IS NULL OR expires > ?)
+          ORDER BY key
+        `)
+        .all(pattern, exactKey, now) as { key: string; value: string }[];
+    }
+
+    for (const row of results) {
+      yield {
+        key: this.#decodeKey(row.key),
+        value: this.#decodeValue(row.value),
+      };
     }
   }
 

@@ -16,6 +16,7 @@ import type {
 import type {
   KvKey,
   KvStore,
+  KvStoreListEntry,
   KvStoreSetOptions,
   MessageQueue,
   MessageQueueEnqueueOptions,
@@ -82,6 +83,69 @@ export class WorkersKvStore implements KvStore {
 
   delete(key: KvKey): Promise<void> {
     return this.#namespace.delete(this.#encodeKey(key));
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    let pattern: string;
+    let exactKey: string | null = null;
+
+    if (prefix == null || prefix.length === 0) {
+      // Empty prefix: list all entries
+      // JSON encoded keys start with '[', so prefix with '[' to match all arrays
+      pattern = "[";
+    } else {
+      // Keys are JSON encoded: '["prefix","a"]'
+      // Pattern to match keys starting with prefix: '["prefix",' matches children
+      exactKey = this.#encodeKey(prefix);
+      pattern = JSON.stringify(prefix).slice(0, -1) + ",";
+    }
+
+    // First, check if the exact prefix key exists
+    if (exactKey != null) {
+      const { value, metadata } = await this.#namespace.getWithMetadata(
+        exactKey,
+        "json",
+      );
+      if (
+        value != null &&
+        (metadata == null || (metadata as KvMetadata).expires == null ||
+          (metadata as KvMetadata).expires! >= Date.now())
+      ) {
+        yield {
+          key: prefix!,
+          value,
+        };
+      }
+    }
+
+    // List all keys matching the pattern
+    let cursor: string | undefined;
+    do {
+      const result = await this.#namespace.list<KvMetadata>({
+        prefix: pattern,
+        cursor,
+      });
+      cursor = result.list_complete ? undefined : result.cursor;
+
+      for (const keyInfo of result.keys) {
+        const metadata = keyInfo.metadata as KvMetadata | undefined;
+        if (metadata?.expires != null && metadata.expires < Date.now()) {
+          continue;
+        }
+
+        const value = await this.#namespace.get(keyInfo.name, "json");
+        if (value == null) continue;
+
+        yield {
+          key: JSON.parse(keyInfo.name) as KvKey,
+          value,
+        };
+      }
+    } while (cursor != null);
   }
 }
 

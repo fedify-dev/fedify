@@ -55,13 +55,16 @@
     "@cloudflare/workers-types": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.31",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "~3.2.0",
+    "wrangler": "^4.21.1"
   },
   "scripts": {
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "deno task codegen && tsdown && cd dist/ && node --test"
+    "test": "vitest run"
   }
 }

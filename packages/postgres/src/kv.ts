@@ -1,4 +1,9 @@
-import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import type { JSONValue, Parameter, Sql } from "postgres";
 import { driverSerializesJson } from "./utils.ts";
@@ -105,6 +110,41 @@ export class PostgresKvStore implements KvStore {
       WHERE key = ${key};
     `;
     await this.#expire();
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    await this.initialize();
+
+    let results;
+    if (prefix == null || prefix.length === 0) {
+      results = await this.#sql`
+        SELECT key, value
+        FROM ${this.#sql(this.#tableName)}
+        WHERE ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP
+        ORDER BY key
+      `;
+    } else {
+      const prefixLength = prefix.length;
+      results = await this.#sql`
+        SELECT key, value
+        FROM ${this.#sql(this.#tableName)}
+        WHERE array_length(key, 1) >= ${prefixLength}
+          AND key[1:${prefixLength}] = ${prefix}::text[]
+          AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP)
+        ORDER BY key
+      `;
+    }
+
+    for (const row of results) {
+      yield {
+        key: row.key as KvKey,
+        value: row.value,
+      };
+    }
   }
 
   /**

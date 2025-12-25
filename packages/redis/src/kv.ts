@@ -1,4 +1,9 @@
-import type { KvKey, KvStore, KvStoreSetOptions } from "@fedify/fedify";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "@fedify/fedify";
 import type { Cluster, Redis, RedisKey } from "ioredis";
 import { Buffer } from "node:buffer";
 import { type Codec, JsonCodec } from "./codec.ts";
@@ -50,6 +55,7 @@ export interface RedisKvStoreOptions {
 export class RedisKvStore implements KvStore {
   #redis: Redis | Cluster;
   #keyPrefix: RedisKey;
+  #keyPrefixStr: string;
   #codec: Codec;
   #textEncoder = new TextEncoder();
 
@@ -61,6 +67,9 @@ export class RedisKvStore implements KvStore {
   constructor(redis: Redis | Cluster, options: RedisKvStoreOptions = {}) {
     this.#redis = redis;
     this.#keyPrefix = options.keyPrefix ?? "fedify::";
+    this.#keyPrefixStr = typeof this.#keyPrefix === "string"
+      ? this.#keyPrefix
+      : new TextDecoder().decode(new Uint8Array(this.#keyPrefix));
     this.#codec = options.codec ?? new JsonCodec();
   }
 
@@ -103,5 +112,66 @@ export class RedisKvStore implements KvStore {
   async delete(key: KvKey): Promise<void> {
     const serializedKey = this.#serializeKey(key);
     await this.#redis.del(serializedKey);
+  }
+
+  #deserializeKey(redisKey: string): KvKey {
+    const suffix = redisKey.slice(this.#keyPrefixStr.length);
+    return suffix.split("::").map((p) =>
+      p.replaceAll("_:", ":")
+    ) as unknown as KvKey;
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   * @since 1.10.0
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    let pattern: string;
+    let exactKey: string | Buffer | null = null;
+
+    if (prefix == null || prefix.length === 0) {
+      // Empty prefix: scan for all keys with the key prefix
+      pattern = `${this.#keyPrefixStr}*`;
+    } else {
+      const prefixKey = this.#serializeKey(prefix);
+      const prefixKeyFullStr = typeof prefixKey === "string"
+        ? prefixKey
+        : new TextDecoder().decode(new Uint8Array(prefixKey));
+      exactKey = prefixKey;
+      pattern = `${prefixKeyFullStr}::*`;
+    }
+
+    // First, check if the exact prefix key exists
+    if (exactKey != null) {
+      const exactValue = await this.#redis.getBuffer(exactKey);
+      if (exactValue != null) {
+        yield {
+          key: prefix!,
+          value: this.#codec.decode(exactValue),
+        };
+      }
+    }
+
+    // Scan for all keys matching the pattern
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await this.#redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+
+      for (const key of keys) {
+        const encodedValue = await this.#redis.getBuffer(key);
+        if (encodedValue == null) continue;
+        yield {
+          key: this.#deserializeKey(key),
+          value: this.#codec.decode(encodedValue),
+        };
+      }
+    } while (cursor !== "0");
   }
 }
