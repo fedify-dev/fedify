@@ -690,10 +690,10 @@ async cas(
 
 *Since Fedify 2.0.0, this method is required instead of optional.*
 
-If your storage backend supports prefix scanning, implement the
-`~KvStore.list()` method.  This method allows you to enumerate all entries
-whose keys start with a given prefix.  This is useful for implementing
-batch operations or iterating over related entries.
+The `~KvStore.list()` method allows you to enumerate all entries whose keys
+start with a given prefix.  This is useful for implementing batch operations
+or iterating over related entries.  If your storage backend supports prefix
+scanning, you can use it to implement this method efficiently.
 
 ~~~~ typescript twoslash
 import type {
