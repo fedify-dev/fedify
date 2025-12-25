@@ -534,6 +534,7 @@ export interface InboxHandlerParameters<TContextData> {
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
+  requireHttpSignature?: boolean;
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
@@ -601,6 +602,7 @@ async function handleInboxInternal<TContextData>(
     onNotFound,
     signatureTimeWindow,
     skipSignatureVerification,
+    requireHttpSignature,
     tracerProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
@@ -737,7 +739,10 @@ async function handleInboxInternal<TContextData>(
     }
   }
   let httpSigKey: CryptographicKey | null = null;
-  if (activity == null) {
+  // Check if HTTP Signature verification is needed
+  const needsHttpSigVerification = activity == null ||
+    (requireHttpSignature ?? false);
+  if (needsHttpSigVerification) {
     if (!skipSignatureVerification) {
       const key = await verifyRequest(request, {
         contextLoader: ctx.contextLoader,
@@ -768,6 +773,9 @@ async function handleInboxInternal<TContextData>(
       }
       httpSigKey = key;
     }
+  }
+  // Parse activity if not already parsed
+  if (activity == null) {
     activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
   }
   if (activity.id != null) {

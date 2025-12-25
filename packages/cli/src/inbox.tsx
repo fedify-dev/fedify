@@ -103,6 +103,14 @@ export const inboxCommand = command(
         }),
         "An ephemeral ActivityPub inbox for testing purposes.",
       ),
+      authorizedFetch: option(
+        "-A",
+        "--authorized-fetch",
+        {
+          description:
+            message`Require HTTP Signatures for all incoming requests. Returns 401 for unsigned requests.`,
+        },
+      ),
     }),
     debugOption,
   ),
@@ -119,6 +127,7 @@ export async function runInbox(
   const fetch = createFetchHandler({
     actorName: command.actorName,
     actorSummary: command.actorSummary,
+    requireHttpSignature: command.authorizedFetch,
   });
   const sendDeleteToPeers = createSendDeleteToPeers({
     actorName: command.actorName,
@@ -499,7 +508,11 @@ app.get("/r/:idx{[0-9]+}", (c) => {
 });
 
 function createFetchHandler(
-  actorOptions: { actorName: string; actorSummary: string },
+  actorOptions: {
+    actorName: string;
+    actorSummary: string;
+    requireHttpSignature?: boolean;
+  },
 ): (request: Request) => Promise<Response> {
   return async function fetch(request: Request): Promise<Response> {
     const timestamp = Temporal.Now.instant();
@@ -521,6 +534,7 @@ function createFetchHandler(
         actorName: actorOptions.actorName,
         actorSummary: actorOptions.actorSummary,
       },
+      requireHttpSignature: actorOptions.requireHttpSignature,
       onNotAcceptable: app.fetch.bind(app),
       onNotFound: app.fetch.bind(app),
       onUnauthorized: app.fetch.bind(app),
