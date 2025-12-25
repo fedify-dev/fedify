@@ -93,7 +93,7 @@ To be released.
  -  The `KvStore.list()` method is now required instead of optional.
     This method was added as optional in version 1.10.0 to give existing
     implementations time to add support.  All official `KvStore` implementations
-    already support this method.  [[#499]]
+    already support this method.  [[#499], [#506]]
 
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
@@ -108,6 +108,7 @@ To be released.
 [#391]: https://github.com/fedify-dev/fedify/pull/391
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
+[#506]: https://github.com/fedify-dev/fedify/pull/506
 
 ### @fedify/cli
 
