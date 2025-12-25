@@ -27,4 +27,4 @@ app.use(fedifyMiddleware);
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
-[Elysia]: https://fresh.deno.dev/
+[Fresh]: https://fresh.deno.dev/
