@@ -210,30 +210,17 @@ export class FedifySpanExporter implements SpanExporter {
   readonly #kv: KvStore;
   readonly #ttl?: Temporal.Duration;
   readonly #keyPrefix: KvKey;
-  readonly #useList: boolean;
 
   /**
    * Creates a new FedifySpanExporter.
    *
-   * @param kv The KvStore to persist trace data to.  Must support either
-   *           `list()` or `cas()` method.
+   * @param kv The KvStore to persist trace data to.
    * @param options Configuration options.
-   * @throws {Error} If the KvStore supports neither `list()` nor `cas()`.
    */
   constructor(kv: KvStore, options?: FedifySpanExporterOptions) {
-    if (kv.list == null && kv.cas == null) {
-      throw new Error(
-        "KvStore must support either list() or cas() method to use " +
-          "FedifySpanExporter. Consider using a KvStore implementation " +
-          "that supports these operations, such as MemoryKvStore, " +
-          "RedisKvStore, PostgresKvStore, or SqliteKvStore.",
-      );
-    }
-
     this.#kv = kv;
     this.#ttl = options?.ttl;
     this.#keyPrefix = options?.keyPrefix ?? ["fedify", "traces"];
-    this.#useList = kv.list != null;
   }
 
   /**
@@ -437,21 +424,15 @@ export class FedifySpanExporter implements SpanExporter {
       ? { ttl: this.#ttl }
       : undefined;
 
-    if (this.#useList) {
-      // Use individual keys when list() is available
-      const key: KvKey = [
-        ...this.#keyPrefix,
-        record.traceId,
-        record.spanId,
-      ] as KvKey;
-      await this.#kv.set(key, record, options);
+    const key: KvKey = [
+      ...this.#keyPrefix,
+      record.traceId,
+      record.spanId,
+    ] as KvKey;
+    await this.#kv.set(key, record, options);
 
-      // Also store trace summary for getRecentTraces()
-      await this.#updateTraceSummary(record, options);
-    } else {
-      // Use CAS when only cas() is available
-      await this.#storeWithCas(record, options);
-    }
+    // Also store trace summary for getRecentTraces()
+    await this.#updateTraceSummary(record, options);
   }
 
   async #setWithCasRetry<T>(
@@ -511,20 +492,6 @@ export class FedifySpanExporter implements SpanExporter {
     );
   }
 
-  async #storeWithCas(
-    record: TraceActivityRecord,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    const key: KvKey = [...this.#keyPrefix, record.traceId] as KvKey;
-
-    await this.#setWithCasRetry<TraceActivityRecord[]>(
-      key,
-      (existing) => (existing ? [...existing, record] : [record]),
-      options,
-    );
-    await this.#updateTraceSummary(record, options);
-  }
-
   /**
    * Gets all activity records for a specific trace ID.
    *
@@ -534,20 +501,14 @@ export class FedifySpanExporter implements SpanExporter {
   async getActivitiesByTraceId(
     traceId: string,
   ): Promise<TraceActivityRecord[]> {
-    if (this.#useList) {
-      const prefix: KvKey = [...this.#keyPrefix, traceId] as KvKey;
-      const records: TraceActivityRecord[] = [];
+    const prefix: KvKey = [...this.#keyPrefix, traceId] as KvKey;
+    const records: TraceActivityRecord[] = [];
 
-      for await (const entry of this.#kv.list!(prefix)) {
-        records.push(entry.value as TraceActivityRecord);
-      }
-
-      return records;
-    } else {
-      const key: KvKey = [...this.#keyPrefix, traceId] as KvKey;
-      const records = await this.#kv.get<TraceActivityRecord[]>(key);
-      return records ?? [];
+    for await (const entry of this.#kv.list(prefix)) {
+      records.push(entry.value as TraceActivityRecord);
     }
+
+    return records;
   }
 
   /**
@@ -562,10 +523,8 @@ export class FedifySpanExporter implements SpanExporter {
     const summaryPrefix = [...this.#keyPrefix, "_summaries"] as KvKey;
     const summaries: TraceSummary[] = [];
 
-    if (this.#kv.list != null) {
-      for await (const entry of this.#kv.list(summaryPrefix)) {
-        summaries.push(entry.value as TraceSummary);
-      }
+    for await (const entry of this.#kv.list(summaryPrefix)) {
+      summaries.push(entry.value as TraceSummary);
     }
 
     // Sort by timestamp descending (most recent first)

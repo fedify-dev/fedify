@@ -49,7 +49,7 @@ describe("WorkersKvStore", () => {
     await store.set(["list-other", "x"], "value-x");
 
     const entries: { key: readonly unknown[]; value: unknown }[] = [];
-    for await (const entry of store.list!(["list-prefix"])) {
+    for await (const entry of store.list(["list-prefix"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -68,7 +68,7 @@ describe("WorkersKvStore", () => {
     await store.set(["single-b"], "value-b");
 
     const entries: { key: readonly unknown[]; value: unknown }[] = [];
-    for await (const entry of store.list!(["single-a"])) {
+    for await (const entry of store.list(["single-a"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -85,7 +85,7 @@ describe("WorkersKvStore", () => {
     await store.set(["empty-test", "d", "e", "f"], "value-def");
 
     const entries: { key: readonly unknown[]; value: unknown }[] = [];
-    for await (const entry of store.list!()) {
+    for await (const entry of store.list()) {
       // Only count our test entries
       if (
         Array.isArray(entry.key) && entry.key[0] === "empty-test"

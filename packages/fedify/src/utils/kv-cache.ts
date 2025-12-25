@@ -5,7 +5,12 @@ import type {
 } from "@fedify/vocab-runtime";
 import { preloadedContexts } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
-import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
+import type {
+  KvKey,
+  KvStore,
+  KvStoreListEntry,
+  KvStoreSetOptions,
+} from "../federation/kv.ts";
 
 const logger = getLogger(["fedify", "utils", "kv-cache"]);
 
@@ -30,6 +35,16 @@ export class MockKvStore implements KvStore {
     ..._: [KvKey, unknown, unknown]
   ): Promise<boolean> {
     return Promise.resolve(false);
+  }
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    for (const [encodedKey, value] of Object.entries(this.#values)) {
+      const key = JSON.parse(encodedKey) as KvKey;
+      if (prefix != null) {
+        if (key.length < prefix.length) continue;
+        if (!prefix.every((p, i) => key[i] === p)) continue;
+      }
+      yield { key, value };
+    }
   }
 }
 

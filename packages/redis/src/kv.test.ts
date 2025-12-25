@@ -58,7 +58,7 @@ test("RedisKvStore.list()", { skip }, async () => {
     await store.set(["other", "x"], "value-x");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!(["prefix"])) {
+    for await (const entry of store.list(["prefix"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -80,7 +80,7 @@ test("RedisKvStore.list() - single element key", { skip }, async () => {
     await store.set(["b"], "value-b");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!(["a"])) {
+    for await (const entry of store.list(["a"])) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
@@ -101,7 +101,7 @@ test("RedisKvStore.list() - empty prefix", { skip }, async () => {
     await store.set(["d", "e", "f"], "value-def");
 
     const entries: { key: readonly string[]; value: unknown }[] = [];
-    for await (const entry of store.list!()) {
+    for await (const entry of store.list()) {
       entries.push({ key: entry.key, value: entry.value });
     }
 
