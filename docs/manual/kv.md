@@ -506,6 +506,7 @@ class MyCustomKvStore implements KvStore {
     options?: KvStoreSetOptions
   ): Promise<void> { }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async get<T = unknown>(key: KvKey): Promise<T | undefined> {
   const serializedKey = this.serializeKey(key);
@@ -555,6 +556,7 @@ class MyCustomKvStore implements KvStore {
     return undefined;
   }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async set(
   key: KvKey,
@@ -611,6 +613,7 @@ class MyCustomKvStore implements KvStore {
     value: unknown,
     options?: KvStoreSetOptions
   ): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async delete(key: KvKey): Promise<void> {
   const serializedKey = this.serializeKey(key);
@@ -667,6 +670,7 @@ class MyCustomKvStore implements KvStore {
     options?: KvStoreSetOptions
   ): Promise<void> { }
   async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
 // ---cut-before---
 async cas(
   key: KvKey,
@@ -779,6 +783,8 @@ class MyCustomKvStore implements KvStore {
   ): Promise<void> {
   }
   async delete(key: KvKey): Promise<void> {
+  }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> {
   }
 }
 // ---cut-before---
