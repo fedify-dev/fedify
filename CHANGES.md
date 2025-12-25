@@ -96,8 +96,10 @@ To be released.
     already support this method.  [[#499], [#506]]
 
 [#280]: https://github.com/fedify-dev/fedify/issues/280
+[#297]: https://github.com/fedify-dev/fedify/issues/297
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
+[#391]: https://github.com/fedify-dev/fedify/pull/391
 [#392]: https://github.com/fedify-dev/fedify/pull/392
 [#393]: https://github.com/fedify-dev/fedify/pulls/393
 [#433]: https://github.com/fedify-dev/fedify/pull/433
@@ -105,9 +107,9 @@ To be released.
 [#444]: https://github.com/fedify-dev/fedify/issues/444
 [#445]: https://github.com/fedify-dev/fedify/pull/445
 [#451]: https://github.com/fedify-dev/fedify/pull/451
-[#391]: https://github.com/fedify-dev/fedify/pull/391
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
+[#494]: https://github.com/fedify-dev/fedify/pull/494
 [#506]: https://github.com/fedify-dev/fedify/pull/506
 
 ### @fedify/cli
@@ -133,6 +135,15 @@ To be released.
     `-t`/`--traverse` option, allowing users to traverse multiple collections
     in a single command.  [[#408], [#449] by Jiwon Kwon]
 
+ -  The `fedify init` command now supports [Elysia] as a web framework option,
+    with runtime-specific templates for Deno, Bun, and Node.js environments.
+    [[#460], [#496] by Hyeonseo Kim]
+
+ -  Fixed a bug in the `fedify init` command where Deno import map generation
+    incorrectly handled dependencies with registry prefixes (e.g., `npm:`),
+    creating invalid specifiers in *deno.json*.  [[#460], [#496] by Hyeonseo Kim]
+
+[Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374
 [#397]: https://github.com/fedify-dev/fedify/issues/397
 [#408]: https://github.com/fedify-dev/fedify/issues/408
@@ -141,6 +152,8 @@ To be released.
 [#456]: https://github.com/fedify-dev/fedify/issues/456
 [#457]: https://github.com/fedify-dev/fedify/pull/457
 [#458]: https://github.com/fedify-dev/fedify/pull/458
+[#460]: https://github.com/fedify-dev/fedify/issues/460
+[#496]: https://github.com/fedify-dev/fedify/pull/496
 
 ### @fedify/relay
 
@@ -196,11 +209,19 @@ To be released.
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
 
+### @fedify/elysia
+
+ -  Added *deno.json* configuration file to enable proper Deno tooling support
+    in the package.  [[#460], [#496]]
+
+[#460]: https://github.com/fedify-dev/fedify/issues/460
+[#496]: https://github.com/fedify-dev/fedify/pull/496
+
 ### @fedify/lint
 
  -  Created Fedify linting tools as the *@fedify/lint* package.
     This package provides shared Deno Lint and ESLint configurations for
-    consistent code style across Fedify packages and user projects. 
+    consistent code style across Fedify packages and user projects.
     [[#297], [#494] by ChanHaeng Lee]
 
 ### @fedify/fresh

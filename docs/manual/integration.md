@@ -594,6 +594,23 @@ a seamless plugin for integrating Fedify with Elysia:
 bun add @fedify/elysia
 ~~~~
 
+~~~~ sh [Deno]
+deno add npm:@fedify/elysia
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/elysia
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/elysia
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/elysia
+~~~~
+
+
 ~~~~ typescript
 import { fedify } from "@fedify/elysia";
 import { federation } from "./federation.ts";  // Your `Federation` instance
