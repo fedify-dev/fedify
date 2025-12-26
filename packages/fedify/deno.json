@@ -21,7 +21,7 @@
     "@opentelemetry/semantic-conventions": "npm:@opentelemetry/semantic-conventions@^1.27.0",
     "@std/assert": "jsr:@std/assert@^0.226.0",
     "@std/url": "jsr:@std/url@^0.225.1",
-    "asn1js": "npm:asn1js@^3.0.5",
+    "asn1js": "npm:asn1js@^3.0.7",
     "es-toolkit": "jsr:@es-toolkit/es-toolkit@^1.39.5",
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
