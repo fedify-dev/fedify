@@ -140,7 +140,7 @@
     "@opentelemetry/semantic-conventions": "^1.27.0",
     "asn1js": "^3.0.7",
     "byte-encodings": "catalog:",
-    "es-toolkit": "^1.39.5",
+    "es-toolkit": "catalog:",
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
     "multicodec": "^3.2.1",

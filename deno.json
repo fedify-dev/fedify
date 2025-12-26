@@ -44,7 +44,7 @@
     "@types/node": "npm:@types/node@^22.16.0",
     "amqplib": "npm:amqplib@^0.10.9",
     "byte-encodings": "npm:byte-encodings@^1.0.11",
-    "es-toolkit": "npm:es-toolkit@^1.42.0",
+    "es-toolkit": "npm:es-toolkit@^1.43.0",
     "h3": "npm:h3@^1.15.0",
     "ioredis": "npm:ioredis@^5.8.2",
     "json-preserve-indent": "npm:json-preserve-indent@^1.1.3",
