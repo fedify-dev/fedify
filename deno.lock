@@ -76,9 +76,9 @@
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.10_reflect-metadata@0.2.2_rxjs@7.8.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
-    "npm:@opentelemetry/core@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
-    "npm:@opentelemetry/sdk-trace-base@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
-    "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.28.0",
+    "npm:@opentelemetry/core@2": "2.2.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/sdk-trace-base@2": "2.2.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.38.0",
     "npm:@optique/core@~0.8.2": "0.8.2",
     "npm:@optique/run@~0.8.2": "0.8.2",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
@@ -94,7 +94,7 @@
     "npm:@types/node@^24.2.1": "24.10.4",
     "npm:@typescript-eslint/parser@^8.49.0": "8.50.1_eslint@9.39.2_typescript@5.9.3",
     "npm:@typescript-eslint/utils@8": "8.50.1_eslint@9.39.2_typescript@5.9.3",
-    "npm:amqplib@~0.10.8": "0.10.9",
+    "npm:amqplib@~0.10.9": "0.10.9",
     "npm:asn1js@^3.0.5": "3.0.7",
     "npm:asn1js@^3.0.6": "3.0.7",
     "npm:byte-encodings@^1.0.11": "1.0.11",
@@ -123,7 +123,7 @@
     "npm:icojs@~0.19.5": "0.19.5",
     "npm:inquirer-toggle@^1.0.1": "1.0.1",
     "npm:inquirer@^12.9.4": "12.11.1_@types+node@22.19.3",
-    "npm:ioredis@^5.6.1": "5.8.2",
+    "npm:ioredis@^5.8.2": "5.8.2",
     "npm:jimp@^1.6.0": "1.6.0",
     "npm:json-canon@^1.0.1": "1.0.1",
     "npm:json-preserve-indent@^1.1.3": "1.1.3",
@@ -2044,23 +2044,23 @@
     "@opentelemetry/api@1.9.0": {
       "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
     },
-    "@opentelemetry/core@1.30.1_@opentelemetry+api@1.9.0": {
-      "integrity": "sha512-OOCM2C/QIURhJMuKaekP3TRBxBKxG/TWWA0TL2J6nXUtDnuCtccy49LUJF8xPFXMX+0LMcxFpCo8M9cGY1W6rQ==",
+    "@opentelemetry/core@2.2.0_@opentelemetry+api@1.9.0": {
+      "integrity": "sha512-FuabnnUm8LflnieVxs6eP7Z383hgQU4W1e3KJS6aOG3RxWxcHyBxH8fDMHNgu/gFx/M2jvTOW/4/PHhLz6bjWw==",
       "dependencies": [
         "@opentelemetry/api",
         "@opentelemetry/semantic-conventions"
       ]
     },
-    "@opentelemetry/resources@1.30.1_@opentelemetry+api@1.9.0": {
-      "integrity": "sha512-5UxZqiAgLYGFjS4s9qm5mBVo433u+dSPUFWVWXmLAD4wB65oMCoXaJP1KJa9DIYYMeHu3z4BZcStG3LC593cWA==",
+    "@opentelemetry/resources@2.2.0_@opentelemetry+api@1.9.0": {
+      "integrity": "sha512-1pNQf/JazQTMA0BiO5NINUzH0cbLbbl7mntLa4aJNmCCXSj0q03T5ZXXL0zw4G55TjdL9Tz32cznGClf+8zr5A==",
       "dependencies": [
         "@opentelemetry/api",
         "@opentelemetry/core",
         "@opentelemetry/semantic-conventions"
       ]
     },
-    "@opentelemetry/sdk-trace-base@1.30.1_@opentelemetry+api@1.9.0": {
-      "integrity": "sha512-jVPgBbH1gCy2Lb7X0AVQ8XAfgg0pJ4nvl8/IiQA6nxOsPvS+0zMJaFSs2ltXe0J6C8dqjcnpyqINDJmU30+uOg==",
+    "@opentelemetry/sdk-trace-base@2.2.0_@opentelemetry+api@1.9.0": {
+      "integrity": "sha512-xWQgL0Bmctsalg6PaXExmzdedSp3gyKV8mQBwK/j9VGdCDu2fmXIb2gAehBKbkXCpJ4HPkgv3QfoJWRT4dHWbw==",
       "dependencies": [
         "@opentelemetry/api",
         "@opentelemetry/core",
@@ -2068,8 +2068,8 @@
         "@opentelemetry/semantic-conventions"
       ]
     },
-    "@opentelemetry/semantic-conventions@1.28.0": {
-      "integrity": "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="
+    "@opentelemetry/semantic-conventions@1.38.0": {
+      "integrity": "sha512-kocjix+/sSggfJhwXqClZ3i9Y/MI0fp7b+g7kCRm6psy2dsf8uApTRclwG18h8Avm7C9+fnt+O36PspJ/OzoWg=="
     },
     "@optique/core@0.8.2": {
       "integrity": "sha512-1HpMeh8RQEYXIfWbcjmGYTbSwLE5qw6VwFWNMhkXQFkIGvWdWv7KNL2CM5dUW3Ku7vU0TCwIgM5GlAD7cmm5fg=="
@@ -5782,12 +5782,14 @@
       "npm:@js-temporal/polyfill@~0.5.1",
       "npm:@nestjs/common@^11.0.1",
       "npm:@opentelemetry/api@^1.9.0",
+      "npm:@opentelemetry/core@2",
+      "npm:@opentelemetry/sdk-trace-base@2",
       "npm:@types/node@^22.16.0",
-      "npm:amqplib@~0.10.8",
+      "npm:amqplib@~0.10.9",
       "npm:byte-encodings@^1.0.11",
       "npm:es-toolkit@^1.42.0",
       "npm:h3@^1.15.0",
-      "npm:ioredis@^5.6.1",
+      "npm:ioredis@^5.8.2",
       "npm:json-preserve-indent@^1.1.3",
       "npm:postgres@^3.4.7",
       "npm:preact@10.19.6",
@@ -5898,8 +5900,8 @@
           "jsr:@std/assert@0.226",
           "jsr:@std/url@~0.225.1",
           "npm:@multiformats/base-x@^4.0.1",
-          "npm:@opentelemetry/core@^1.30.1",
-          "npm:@opentelemetry/sdk-trace-base@^1.30.1",
+          "npm:@opentelemetry/core@2",
+          "npm:@opentelemetry/sdk-trace-base@2",
           "npm:@opentelemetry/semantic-conventions@^1.27.0",
           "npm:asn1js@^3.0.5",
           "npm:fast-check@^3.22.0",
@@ -5916,7 +5918,7 @@
           "dependencies": [
             "npm:@js-temporal/polyfill@~0.5.1",
             "npm:@multiformats/base-x@^4.0.1",
-            "npm:@opentelemetry/core@^1.30.1",
+            "npm:@opentelemetry/core@2",
             "npm:@opentelemetry/semantic-conventions@^1.27.0",
             "npm:@types/node@^24.2.1",
             "npm:asn1js@^3.0.5",

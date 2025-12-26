@@ -19,8 +19,9 @@
  *   ttl: Temporal.Duration.from({ hours: 1 }),
  * });
  *
- * const provider = new BasicTracerProvider();
- * provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+ * const provider = new BasicTracerProvider({
+ *   spanProcessors: [new SimpleSpanProcessor(exporter)],
+ * });
  * ```
  *
  * @module

@@ -16,8 +16,8 @@
   },
   "imports": {
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
-    "@opentelemetry/core": "npm:@opentelemetry/core@^1.30.1",
-    "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^1.30.1",
+    "@opentelemetry/core": "npm:@opentelemetry/core@^2.0.0",
+    "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.0.0",
     "@opentelemetry/semantic-conventions": "npm:@opentelemetry/semantic-conventions@^1.27.0",
     "@std/assert": "jsr:@std/assert@^0.226.0",
     "@std/url": "jsr:@std/url@^0.225.1",
