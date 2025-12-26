@@ -705,11 +705,11 @@ importers:
         specifier: 'catalog:'
         version: 1.3.5
       '@optique/core':
-        specifier: ^0.6.1
-        version: 0.6.2
+        specifier: ^0.8.2
+        version: 0.8.2
       '@optique/run':
-        specifier: ^0.6.1
-        version: 0.6.2
+        specifier: ^0.8.2
+        version: 0.8.2
       '@poppanator/http-constants':
         specifier: ^1.1.1
         version: 1.1.1
@@ -3290,12 +3290,12 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
 
-  '@optique/core@0.6.2':
-    resolution: {integrity: sha512-HTxIHJ8xLOSZotiU6Zc5BCJv+SJ8DMYmuiQM+7tjF7RolJn/pdZNe7M78G3+DgXL9lIf82l8aGcilmgVYRQnGQ==}
+  '@optique/core@0.8.2':
+    resolution: {integrity: sha512-1HpMeh8RQEYXIfWbcjmGYTbSwLE5qw6VwFWNMhkXQFkIGvWdWv7KNL2CM5dUW3Ku7vU0TCwIgM5GlAD7cmm5fg==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
-  '@optique/run@0.6.2':
-    resolution: {integrity: sha512-ERksB5bHozwEUVlTPToIc8UjZZBOgLeBhFZYh2lgldUbNDt7LItzgcErsPq5au5i5IBmmyCti4+2A3x+MRI4Xw==}
+  '@optique/run@0.8.2':
+    resolution: {integrity: sha512-f1uamI8f/OUgblA12CQue0Gyhw4QWXh9ZiqRXktycnRD5XRS7yb+YxTPz3vbwQ4JePkmFwt/ZTbYvXNr+PrT+Q==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
   '@oxc-project/runtime@0.75.0':
@@ -10764,11 +10764,11 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 1.30.1(@opentelemetry/api@1.9.0)
 
-  '@optique/core@0.6.2': {}
+  '@optique/core@0.8.2': {}
 
-  '@optique/run@0.6.2':
+  '@optique/run@0.8.2':
     dependencies:
-      '@optique/core': 0.6.2
+      '@optique/core': 0.8.2
 
   '@oxc-project/runtime@0.75.0': {}
 

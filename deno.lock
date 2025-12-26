@@ -20,9 +20,8 @@
     "jsr:@logtape/file@^1.3.5": "1.3.5",
     "jsr:@logtape/logtape@^1.0.4": "1.3.5",
     "jsr:@logtape/logtape@^1.3.5": "1.3.5",
-    "jsr:@optique/core@~0.6.1": "0.6.6",
-    "jsr:@optique/core@~0.6.6": "0.6.6",
-    "jsr:@optique/run@~0.6.1": "0.6.6",
+    "jsr:@optique/core@~0.8.2": "0.8.2",
+    "jsr:@optique/run@~0.8.2": "0.8.2",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
     "jsr:@std/assert@^1.0.13": "1.0.16",
@@ -80,8 +79,8 @@
     "npm:@opentelemetry/core@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/sdk-trace-base@^1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.28.0",
-    "npm:@optique/core@~0.6.1": "0.6.6",
-    "npm:@optique/run@~0.6.1": "0.6.6",
+    "npm:@optique/core@~0.8.2": "0.8.2",
+    "npm:@optique/run@~0.8.2": "0.8.2",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
     "npm:@preact/signals@^2.2.1": "2.5.1_preact@10.19.6",
     "npm:@preact/signals@^2.3.2": "2.5.1_preact@10.19.6",
@@ -282,13 +281,13 @@
     "@logtape/logtape@1.3.5": {
       "integrity": "a5cdb130daf1a9d384006b0f850cc4443bfc2e163dadc6fa667875e79770beb3"
     },
-    "@optique/core@0.6.6": {
-      "integrity": "8043acec7e1a1732ac74c7159255a2935bc1de541f648e0021703863d4624501"
+    "@optique/core@0.8.2": {
+      "integrity": "d4ea04f257072366995b2e84420fb42833e588ac56b5ca7437f03b84fed361dd"
     },
-    "@optique/run@0.6.6": {
-      "integrity": "11fc826cecd8aab73c96ce9054eaf9139009e0b106b728686269b7fbe6aa0ffc",
+    "@optique/run@0.8.2": {
+      "integrity": "17af37104091513293d32a40197201886324aa89306589869475c5967b5033d5",
       "dependencies": [
-        "jsr:@optique/core@~0.6.6"
+        "jsr:@optique/core@~0.8.2"
       ]
     },
     "@std/assert@0.224.0": {
@@ -2072,11 +2071,11 @@
     "@opentelemetry/semantic-conventions@1.28.0": {
       "integrity": "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="
     },
-    "@optique/core@0.6.6": {
-      "integrity": "sha512-rllp+mWPhkQcbpY1L8AQJCHPDUEJ/TVBEsAvx3HkPAnJXp4LNlLS25KF0S7qqsuy47cwmpW8Tkme27CzA5iazA=="
+    "@optique/core@0.8.2": {
+      "integrity": "sha512-1HpMeh8RQEYXIfWbcjmGYTbSwLE5qw6VwFWNMhkXQFkIGvWdWv7KNL2CM5dUW3Ku7vU0TCwIgM5GlAD7cmm5fg=="
     },
-    "@optique/run@0.6.6": {
-      "integrity": "sha512-VaEIAbTyer76ywpAKcoBzhrvhVUp/inRxEuesrYMlxRc/5uTJNUTGCngUBy/+ClYHtHpCW9BvhM4i53lmJ7gIw==",
+    "@optique/run@0.8.2": {
+      "integrity": "sha512-f1uamI8f/OUgblA12CQue0Gyhw4QWXh9ZiqRXktycnRD5XRS7yb+YxTPz3vbwQ4JePkmFwt/ZTbYvXNr+PrT+Q==",
       "dependencies": [
         "@optique/core"
       ]
@@ -5835,8 +5834,8 @@
         "dependencies": [
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
-          "jsr:@optique/core@~0.6.1",
-          "jsr:@optique/run@~0.6.1",
+          "jsr:@optique/core@~0.8.2",
+          "jsr:@optique/run@~0.8.2",
           "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.0",
           "npm:@jimp/wasm-webp@^1.6.0",
@@ -5857,8 +5856,8 @@
             "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.0",
             "npm:@jimp/wasm-webp@^1.6.0",
-            "npm:@optique/core@~0.6.1",
-            "npm:@optique/run@~0.6.1",
+            "npm:@optique/core@~0.8.2",
+            "npm:@optique/run@~0.8.2",
             "npm:@poppanator/http-constants@^1.1.1",
             "npm:chalk@^5.6.2",
             "npm:cli-highlight@^2.1.11",
