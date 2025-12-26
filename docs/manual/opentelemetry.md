@@ -380,8 +380,9 @@ import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { createFederation } from "@fedify/fedify";
 
 const debugExporter = new FedifyDebugExporter();
-const tracerProvider = new NodeTracerProvider();
-tracerProvider.addSpanProcessor(new SimpleSpanProcessor(debugExporter));
+const tracerProvider = new NodeTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(debugExporter)],
+});
 
 const federation = createFederation({
   kv: /* your KV store */,
@@ -446,8 +447,9 @@ const fedifyExporter = new FedifySpanExporter(kv, {
   ttl: Temporal.Duration.from({ hours: 1 }),
 });
 
-const tracerProvider = new BasicTracerProvider();
-tracerProvider.addSpanProcessor(new SimpleSpanProcessor(fedifyExporter));
+const tracerProvider = new BasicTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(fedifyExporter)],
+});
 
 const federation = createFederation<void>({
   kv,
@@ -474,8 +476,9 @@ const fedifyExporter = new FedifySpanExporter(kv, {
   ttl: Temporal.Duration.from({ hours: 1 }),
 });
 
-const tracerProvider = new NodeTracerProvider();
-tracerProvider.addSpanProcessor(new SimpleSpanProcessor(fedifyExporter));
+const tracerProvider = new NodeTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(fedifyExporter)],
+});
 
 const federation = createFederation({
   kv,

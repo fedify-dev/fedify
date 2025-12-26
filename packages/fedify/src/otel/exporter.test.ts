@@ -27,11 +27,19 @@ function createMockSpan(options: {
     traceFlags: TraceFlags.SAMPLED,
   };
 
+  const parentSpanContext: SpanContext | undefined = options.parentSpanId
+    ? {
+      traceId,
+      spanId: options.parentSpanId,
+      traceFlags: TraceFlags.SAMPLED,
+    }
+    : undefined;
+
   return {
     name: options.name ?? "test-span",
     kind: SpanKind.INTERNAL,
     spanContext: () => spanContext,
-    parentSpanId: options.parentSpanId,
+    parentSpanContext,
     startTime: [1700000000, 0] as HrTime,
     endTime: [1700000001, 0] as HrTime,
     status: { code: SpanStatusCode.OK } as SpanStatus,
@@ -42,12 +50,14 @@ function createMockSpan(options: {
     ended: true,
     resource: {
       attributes: {},
+      getRawAttributes: () => [],
       merge: () => ({
         attributes: {},
+        getRawAttributes: () => [],
         merge: () => null as unknown as ReturnType<typeof Object.assign>,
       }),
     },
-    instrumentationLibrary: { name: "test" },
+    instrumentationScope: { name: "test" },
     droppedAttributesCount: 0,
     droppedEventsCount: 0,
     droppedLinksCount: 0,

@@ -184,8 +184,9 @@ export interface GetRecentTracesOptions {
  *   ttl: Temporal.Duration.from({ hours: 1 }),
  * });
  *
- * const provider = new BasicTracerProvider();
- * provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+ * const provider = new BasicTracerProvider({
+ *   spanProcessors: [new SimpleSpanProcessor(exporter)],
+ * });
  * ```
  *
  * @example Querying stored traces
@@ -269,7 +270,7 @@ export class FedifySpanExporter implements SpanExporter {
     const spanContext = span.spanContext();
     const traceId = spanContext.traceId;
     const spanId = spanContext.spanId;
-    const parentSpanId = span.parentSpanId;
+    const parentSpanId = span.parentSpanContext?.spanId;
 
     for (const event of span.events) {
       if (event.name === "activitypub.activity.received") {
