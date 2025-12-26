@@ -144,7 +144,7 @@
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
     "multicodec": "^3.2.1",
-    "pkijs": "^3.2.4",
+    "pkijs": "^3.3.3",
     "structured-field-values": "^2.0.4",
     "uri-template-router": "^1.0.0",
     "url-template": "^3.1.1",

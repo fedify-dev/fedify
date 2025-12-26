@@ -28,7 +28,7 @@
     "json-canon": "npm:json-canon@^1.0.1",
     "jsonld": "npm:jsonld@^9.0.0",
     "multicodec": "npm:multicodec@^3.2.1",
-    "pkijs": "npm:pkijs@^3.2.4",
+    "pkijs": "npm:pkijs@^3.3.3",
     "structured-field-values": "npm:structured-field-values@^2.0.4",
     "uri-template-router": "npm:uri-template-router@^1.0.0",
     "url-template": "npm:url-template@^3.1.1"

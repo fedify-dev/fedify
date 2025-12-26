@@ -883,8 +883,8 @@ importers:
         specifier: ^3.2.1
         version: 3.2.1
       pkijs:
-        specifier: ^3.2.4
-        version: 3.2.5
+        specifier: ^3.3.3
+        version: 3.3.3
       structured-field-values:
         specifier: ^2.0.4
         version: 2.0.4
@@ -2925,6 +2925,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@noble/hashes@1.4.0':
+    resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
+    engines: {node: '>= 16'}
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -7294,6 +7298,10 @@ packages:
     resolution: {integrity: sha512-WX0la7n7CbnguuaIQoT4Fc0IJckPDOUldzOwlZ0nwpOcySS+Six/tXBdc0RX17J5o1To0SAr3xDJjDLsOfDFQA==}
     engines: {node: '>=12.0.0'}
 
+  pkijs@3.3.3:
+    resolution: {integrity: sha512-+KD8hJtqQMYoTuL1bbGOqxb4z+nZkTAwVdNtWwe8Tc2xNbEmdJYIYoc6Qt0uF55e6YW6KuTHw1DjQ18gMhzepw==}
+    engines: {node: '>=16.0.0'}
+
   pngjs@3.4.0:
     resolution: {integrity: sha512-NCrCHhWmnQklfH4MtJMRjZ2a8c80qXeMlQMv2uVp9ISJMTt562SbGd6n2oq0PaPgKm7Z6pL9E2UlLIhC+SHL3w==}
     engines: {node: '>=4.0.0'}
@@ -10306,6 +10314,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@15.5.0':
     optional: true
+
+  '@noble/hashes@1.4.0': {}
 
   '@noble/hashes@1.8.0': {}
 
@@ -15789,6 +15799,15 @@ snapshots:
   pkijs@3.2.5:
     dependencies:
       '@noble/hashes': 1.8.0
+      asn1js: 3.0.6
+      bytestreamjs: 2.0.1
+      pvtsutils: 1.3.6
+      pvutils: 1.1.3
+      tslib: 2.8.1
+
+  pkijs@3.3.3:
+    dependencies:
+      '@noble/hashes': 1.4.0
       asn1js: 3.0.6
       bytestreamjs: 2.0.1
       pvtsutils: 1.3.6
