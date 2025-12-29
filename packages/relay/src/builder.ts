@@ -80,6 +80,7 @@ async function getFollowerActors(
 
   for await (const { value } of ctx.data.kv.list(["follower"])) {
     if (!isRelayFollower(value)) continue;
+    if (value.state !== "accepted") continue;
     const actor = await Object.fromJsonLd(value.actor);
     if (!isActor(actor)) continue;
     actors.push(actor);

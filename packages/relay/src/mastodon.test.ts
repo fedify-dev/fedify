@@ -17,7 +17,7 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, type RelayOptions } from "@fedify/relay";
+import { createRelay, isRelayFollower, type RelayOptions } from "@fedify/relay";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
@@ -808,8 +808,8 @@ describe("MastodonRelay", () => {
       strictEqual(key.length, 2);
       strictEqual(key[0], "follower");
       retrievedIds.push(key[1] as string);
-      ok(value);
-      strictEqual((value as any).state, "accepted");
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
     }
 
     strictEqual(retrievedIds.length, 3);
@@ -872,12 +872,12 @@ describe("MastodonRelay", () => {
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {
       strictEqual(key[1], followerId);
-      ok(value);
-      const followerData = value as any;
-      strictEqual(followerData.state, "accepted");
-      ok(followerData.actor);
-      strictEqual(followerData.actor.preferredUsername, "alice");
-      strictEqual(followerData.actor.name, "Alice Wonderland");
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
+      ok(value.actor && typeof value.actor === "object");
+      const actor = value.actor as Record<string, unknown>;
+      strictEqual(actor.preferredUsername, "alice");
+      strictEqual(actor.name, "Alice Wonderland");
     }
   });
 });

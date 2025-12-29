@@ -19,7 +19,7 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, type RelayOptions } from "@fedify/relay";
+import { createRelay, isRelayFollower, type RelayOptions } from "@fedify/relay";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
@@ -310,8 +310,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "pending");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "pending");
   });
 
   test("handles Follow activity with subscription rejection", async () => {
@@ -412,8 +412,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "pending");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "pending");
   });
 
   test("ignores Follow activity without required fields", async () => {
@@ -571,8 +571,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "accepted");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "accepted");
   });
 
   test("handles Undo Follow activity", async () => {
@@ -917,8 +917,8 @@ describe("LitePubRelay", () => {
       strictEqual(key.length, 2);
       strictEqual(key[0], "follower");
       retrievedIds.push(key[1] as string);
-      ok(value);
-      strictEqual((value as any).state, "accepted");
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
     }
 
     strictEqual(retrievedIds.length, 3);
@@ -994,10 +994,10 @@ describe("LitePubRelay", () => {
     // Verify list returns both with correct states
     const followers: { id: string; state: string }[] = [];
     for await (const { key, value } of kv.list(["follower"])) {
-      const followerData = value as any;
+      if (!isRelayFollower(value)) continue;
       followers.push({
         id: key[1] as string,
-        state: followerData.state,
+        state: value.state,
       });
     }
 
@@ -1031,12 +1031,12 @@ describe("LitePubRelay", () => {
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {
       strictEqual(key[1], followerId);
-      ok(value);
-      const followerData = value as any;
-      strictEqual(followerData.state, "accepted");
-      ok(followerData.actor);
-      strictEqual(followerData.actor.preferredUsername, "alice");
-      strictEqual(followerData.actor.name, "Alice Wonderland");
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
+      ok(value.actor && typeof value.actor === "object");
+      const actor = value.actor as Record<string, unknown>;
+      strictEqual(actor.preferredUsername, "alice");
+      strictEqual(actor.name, "Alice Wonderland");
     }
   });
 });
