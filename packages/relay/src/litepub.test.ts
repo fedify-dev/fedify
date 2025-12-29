@@ -19,7 +19,7 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, type RelayOptions } from "@fedify/relay";
+import { createRelay, isRelayFollower, type RelayOptions } from "@fedify/relay";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
@@ -191,7 +191,6 @@ describe("LitePubRelay", () => {
     const follower1Id = "https://remote1.example.com/users/alice";
     const follower2Id = "https://remote2.example.com/users/bob";
 
-    await kv.set(["followers"], [follower1Id, follower2Id]);
     await kv.set(
       ["follower", follower1Id],
       { actor: await follower1.toJsonLd(), state: "accepted" },
@@ -311,8 +310,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "pending");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "pending");
   });
 
   test("handles Follow activity with subscription rejection", async () => {
@@ -364,10 +363,6 @@ describe("LitePubRelay", () => {
       "https://remote.example.com/users/alice",
     ]);
     strictEqual(followerData, undefined);
-
-    // Verify followers list is empty
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(!followers || followers.length === 0);
   });
 
   test("handles public Follow activity", async () => {
@@ -417,8 +412,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "pending");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "pending");
   });
 
   test("ignores Follow activity without required fields", async () => {
@@ -576,14 +571,8 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
-    strictEqual((followerData as any).state, "accepted");
-
-    // Verify follower was added to followers list
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(followers);
-    strictEqual(followers.length, 1);
-    strictEqual(followers[0], "https://remote.example.com/users/alice");
+    ok(isRelayFollower(followerData));
+    strictEqual(followerData.state, "accepted");
   });
 
   test("handles Undo Follow activity", async () => {
@@ -597,7 +586,6 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    await kv.set(["followers"], [followerId]);
     await kv.set(
       ["follower", followerId],
       { actor: await follower.toJsonLd(), state: "accepted" },
@@ -641,10 +629,6 @@ describe("LitePubRelay", () => {
     await relay.fetch(request);
 
     // Verify follower was removed
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(followers);
-    strictEqual(followers.length, 0);
-
     const followerData = await kv.get(["follower", followerId]);
     strictEqual(followerData, undefined);
   });
@@ -660,7 +644,6 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    await kv.set(["followers"], [followerId]);
     await kv.set(
       ["follower", followerId],
       { actor: await follower.toJsonLd(), state: "accepted" },
@@ -868,29 +851,192 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
 
     // Simulate multiple accepted followers
-    const followIds = [
+    const followerIds = [
       "https://remote1.example.com/users/user1",
       "https://remote2.example.com/users/user2",
       "https://remote3.example.com/users/user3",
     ];
 
-    const followers: string[] = [];
-    for (const followId of followIds) {
-      followers.push(followId);
+    for (let i = 0; i < followerIds.length; i++) {
+      const followerId = followerIds[i];
       const actor = new Person({
-        id: new URL(followId),
-        preferredUsername: `user${followers.length}`,
-        inbox: new URL(`${followId}/inbox`),
+        id: new URL(followerId),
+        preferredUsername: `user${i + 1}`,
+        inbox: new URL(`${followerId}/inbox`),
       });
       await kv.set(
-        ["follower", followId],
+        ["follower", followerId],
         { actor: await actor.toJsonLd(), state: "accepted" },
       );
     }
-    await kv.set(["followers"], followers);
 
-    const storedFollowers = await kv.get<string[]>(["followers"]);
-    ok(storedFollowers);
-    strictEqual(storedFollowers.length, 3);
+    // Verify all followers are stored
+    let count = 0;
+    for await (const _ of kv.list(["follower"])) {
+      count++;
+    }
+    strictEqual(count, 3);
+  });
+
+  test("list() returns empty when no followers exist", async () => {
+    const kv = new MemoryKvStore();
+
+    // Verify list is initially empty
+    let count = 0;
+    for await (const _ of kv.list(["follower"])) {
+      count++;
+    }
+    strictEqual(count, 0);
+  });
+
+  test("list() returns all followers after additions", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add multiple followers
+    const followerIds = [
+      "https://server1.example.com/users/alice",
+      "https://server2.example.com/users/bob",
+      "https://server3.example.com/users/carol",
+    ];
+
+    for (const followerId of followerIds) {
+      const actor = new Person({
+        id: new URL(followerId),
+        preferredUsername: followerId.split("/").pop(),
+        inbox: new URL(`${followerId}/inbox`),
+      });
+      await kv.set(
+        ["follower", followerId],
+        { actor: await actor.toJsonLd(), state: "accepted" },
+      );
+    }
+
+    // Verify list returns all followers
+    const retrievedIds: string[] = [];
+    for await (const { key, value } of kv.list(["follower"])) {
+      strictEqual(key.length, 2);
+      strictEqual(key[0], "follower");
+      retrievedIds.push(key[1] as string);
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
+    }
+
+    strictEqual(retrievedIds.length, 3);
+    for (const id of followerIds) {
+      ok(retrievedIds.includes(id));
+    }
+  });
+
+  test("list() excludes followers after deletion", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add three followers
+    const follower1Id = "https://server1.example.com/users/alice";
+    const follower2Id = "https://server2.example.com/users/bob";
+    const follower3Id = "https://server3.example.com/users/carol";
+
+    for (const followerId of [follower1Id, follower2Id, follower3Id]) {
+      const actor = new Person({
+        id: new URL(followerId),
+        preferredUsername: followerId.split("/").pop(),
+        inbox: new URL(`${followerId}/inbox`),
+      });
+      await kv.set(
+        ["follower", followerId],
+        { actor: await actor.toJsonLd(), state: "accepted" },
+      );
+    }
+
+    // Delete one follower
+    await kv.delete(["follower", follower2Id]);
+
+    // Verify list only returns remaining followers
+    const retrievedIds: string[] = [];
+    for await (const { key } of kv.list(["follower"])) {
+      retrievedIds.push(key[1] as string);
+    }
+
+    strictEqual(retrievedIds.length, 2);
+    ok(retrievedIds.includes(follower1Id));
+    ok(!retrievedIds.includes(follower2Id)); // Deleted follower not in list
+    ok(retrievedIds.includes(follower3Id));
+  });
+
+  test("list() distinguishes between pending and accepted followers", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add followers with different states
+    const pendingFollowerId = "https://server1.example.com/users/alice";
+    const acceptedFollowerId = "https://server2.example.com/users/bob";
+
+    const pendingFollower = new Person({
+      id: new URL(pendingFollowerId),
+      preferredUsername: "alice",
+      inbox: new URL("https://server1.example.com/users/alice/inbox"),
+    });
+
+    const acceptedFollower = new Person({
+      id: new URL(acceptedFollowerId),
+      preferredUsername: "bob",
+      inbox: new URL("https://server2.example.com/users/bob/inbox"),
+    });
+
+    await kv.set(
+      ["follower", pendingFollowerId],
+      { actor: await pendingFollower.toJsonLd(), state: "pending" },
+    );
+
+    await kv.set(
+      ["follower", acceptedFollowerId],
+      { actor: await acceptedFollower.toJsonLd(), state: "accepted" },
+    );
+
+    // Verify list returns both with correct states
+    const followers: { id: string; state: string }[] = [];
+    for await (const { key, value } of kv.list(["follower"])) {
+      if (!isRelayFollower(value)) continue;
+      followers.push({
+        id: key[1] as string,
+        state: value.state,
+      });
+    }
+
+    strictEqual(followers.length, 2);
+
+    const pendingEntry = followers.find((f) => f.id === pendingFollowerId);
+    ok(pendingEntry);
+    strictEqual(pendingEntry.state, "pending");
+
+    const acceptedEntry = followers.find((f) => f.id === acceptedFollowerId);
+    ok(acceptedEntry);
+    strictEqual(acceptedEntry.state, "accepted");
+  });
+
+  test("list() returns correct actor data", async () => {
+    const kv = new MemoryKvStore();
+
+    const followerId = "https://remote.example.com/users/alice";
+    const follower = new Person({
+      id: new URL(followerId),
+      preferredUsername: "alice",
+      name: "Alice Wonderland",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    await kv.set(
+      ["follower", followerId],
+      { actor: await follower.toJsonLd(), state: "accepted" },
+    );
+
+    // Verify list returns complete actor data
+    for await (const { key, value } of kv.list(["follower"])) {
+      strictEqual(key[1], followerId);
+      ok(isRelayFollower(value));
+      strictEqual(value.state, "accepted");
+      ok(value.actor && typeof value.actor === "object");
+      const actor = value.actor as Record<string, unknown>;
+      strictEqual(actor.preferredUsername, "alice");
+      strictEqual(actor.name, "Alice Wonderland");
+    }
   });
 });

@@ -58,12 +58,7 @@ export class MastodonRelay extends BaseRelay {
           }
 
           if (approved) {
-            // Mastodon-specific: immediately add to followers list
-            const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-              [];
-            followers.push(follower.id.href);
-            await ctx.data.kv.set(["followers"], followers);
-
+            // Mastodon-specific: immediately add to followers list with accepted state
             await ctx.data.kv.set(
               ["follower", follower.id.href],
               { actor: await follower.toJsonLd(), state: "accepted" },

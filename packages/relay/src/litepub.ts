@@ -126,18 +126,12 @@ export class LitePubRelay extends BaseRelay {
           ]);
           if (followerData == null) return;
 
-          // Update follower state
+          // Update follower state to accepted
           const updatedFollowerData = { ...followerData, state: "accepted" };
           await ctx.data.kv.set(
             ["follower", followerActor.id.href],
             updatedFollowerData,
           );
-
-          // Update followers list
-          const followers = await ctx.data.kv.get<string[]>(["followers"]) ??
-            [];
-          followers.push(followerActor.id.href);
-          await ctx.data.kv.set(["followers"], followers);
         })
         .on(
           Undo,
