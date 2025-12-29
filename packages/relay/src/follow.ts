@@ -89,13 +89,7 @@ export async function handleUndoFollow(
   if (activity instanceof Follow) {
     if (activity.id == null || activity.actorId == null) return;
 
-    const followers = await ctx.data.kv.get<string[]>(["followers"]) ?? [];
-    const updatedFollowers = followers.filter((id) =>
-      id !== activity.actorId?.href
-    );
-
-    await ctx.data.kv.set(["followers"], updatedFollowers);
-    await ctx.data.kv.delete(["follower", activity.actorId?.href]);
+    await ctx.data.kv.delete(["follower", activity.actorId.href]);
   } else {
     logger.warn(
       "Unsupported object type ({type}) for Undo activity: {object}",

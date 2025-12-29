@@ -191,7 +191,6 @@ describe("LitePubRelay", () => {
     const follower1Id = "https://remote1.example.com/users/alice";
     const follower2Id = "https://remote2.example.com/users/bob";
 
-    await kv.set(["followers"], [follower1Id, follower2Id]);
     await kv.set(
       ["follower", follower1Id],
       { actor: await follower1.toJsonLd(), state: "accepted" },
@@ -364,10 +363,6 @@ describe("LitePubRelay", () => {
       "https://remote.example.com/users/alice",
     ]);
     strictEqual(followerData, undefined);
-
-    // Verify followers list is empty
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(!followers || followers.length === 0);
   });
 
   test("handles public Follow activity", async () => {
@@ -578,12 +573,6 @@ describe("LitePubRelay", () => {
     ]);
     ok(followerData);
     strictEqual((followerData as any).state, "accepted");
-
-    // Verify follower was added to followers list
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(followers);
-    strictEqual(followers.length, 1);
-    strictEqual(followers[0], "https://remote.example.com/users/alice");
   });
 
   test("handles Undo Follow activity", async () => {
@@ -597,7 +586,6 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    await kv.set(["followers"], [followerId]);
     await kv.set(
       ["follower", followerId],
       { actor: await follower.toJsonLd(), state: "accepted" },
@@ -641,10 +629,6 @@ describe("LitePubRelay", () => {
     await relay.fetch(request);
 
     // Verify follower was removed
-    const followers = await kv.get<string[]>(["followers"]);
-    ok(followers);
-    strictEqual(followers.length, 0);
-
     const followerData = await kv.get(["follower", followerId]);
     strictEqual(followerData, undefined);
   });
@@ -660,7 +644,6 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://remote.example.com/users/alice/inbox"),
     });
 
-    await kv.set(["followers"], [followerId]);
     await kv.set(
       ["follower", followerId],
       { actor: await follower.toJsonLd(), state: "accepted" },
@@ -868,29 +851,30 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
 
     // Simulate multiple accepted followers
-    const followIds = [
+    const followerIds = [
       "https://remote1.example.com/users/user1",
       "https://remote2.example.com/users/user2",
       "https://remote3.example.com/users/user3",
     ];
 
-    const followers: string[] = [];
-    for (const followId of followIds) {
-      followers.push(followId);
+    for (let i = 0; i < followerIds.length; i++) {
+      const followerId = followerIds[i];
       const actor = new Person({
-        id: new URL(followId),
-        preferredUsername: `user${followers.length}`,
-        inbox: new URL(`${followId}/inbox`),
+        id: new URL(followerId),
+        preferredUsername: `user${i + 1}`,
+        inbox: new URL(`${followerId}/inbox`),
       });
       await kv.set(
-        ["follower", followId],
+        ["follower", followerId],
         { actor: await actor.toJsonLd(), state: "accepted" },
       );
     }
-    await kv.set(["followers"], followers);
 
-    const storedFollowers = await kv.get<string[]>(["followers"]);
-    ok(storedFollowers);
-    strictEqual(storedFollowers.length, 3);
+    // Verify all followers are stored
+    let count = 0;
+    for await (const _ of kv.list(["follower"])) {
+      count++;
+    }
+    strictEqual(count, 3);
   });
 });

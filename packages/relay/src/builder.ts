@@ -76,19 +76,16 @@ relayBuilder.setActorDispatcher(
 async function getFollowerActors(
   ctx: Context<RelayOptions>,
 ): Promise<Actor[]> {
-  const followers = await ctx.data.kv.get<string[]>(["followers"]) ?? [];
-
   const actors: Actor[] = [];
-  for (const followerId of followers) {
-    const follower = await ctx.data.kv.get<RelayFollower>([
-      "follower",
-      followerId,
-    ]);
+
+  for await (const { value } of ctx.data.kv.list(["follower"])) {
+    const follower = value as RelayFollower;
     if (!follower) continue;
     const actor = await Object.fromJsonLd(follower.actor);
     if (!isActor(actor)) continue;
     actors.push(actor);
   }
+
   return actors;
 }
 
