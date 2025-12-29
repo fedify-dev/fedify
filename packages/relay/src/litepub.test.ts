@@ -877,4 +877,166 @@ describe("LitePubRelay", () => {
     }
     strictEqual(count, 3);
   });
+
+  test("list() returns empty when no followers exist", async () => {
+    const kv = new MemoryKvStore();
+
+    // Verify list is initially empty
+    let count = 0;
+    for await (const _ of kv.list(["follower"])) {
+      count++;
+    }
+    strictEqual(count, 0);
+  });
+
+  test("list() returns all followers after additions", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add multiple followers
+    const followerIds = [
+      "https://server1.example.com/users/alice",
+      "https://server2.example.com/users/bob",
+      "https://server3.example.com/users/carol",
+    ];
+
+    for (const followerId of followerIds) {
+      const actor = new Person({
+        id: new URL(followerId),
+        preferredUsername: followerId.split("/").pop(),
+        inbox: new URL(`${followerId}/inbox`),
+      });
+      await kv.set(
+        ["follower", followerId],
+        { actor: await actor.toJsonLd(), state: "accepted" },
+      );
+    }
+
+    // Verify list returns all followers
+    const retrievedIds: string[] = [];
+    for await (const { key, value } of kv.list(["follower"])) {
+      strictEqual(key.length, 2);
+      strictEqual(key[0], "follower");
+      retrievedIds.push(key[1] as string);
+      ok(value);
+      strictEqual((value as any).state, "accepted");
+    }
+
+    strictEqual(retrievedIds.length, 3);
+    for (const id of followerIds) {
+      ok(retrievedIds.includes(id));
+    }
+  });
+
+  test("list() excludes followers after deletion", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add three followers
+    const follower1Id = "https://server1.example.com/users/alice";
+    const follower2Id = "https://server2.example.com/users/bob";
+    const follower3Id = "https://server3.example.com/users/carol";
+
+    for (const followerId of [follower1Id, follower2Id, follower3Id]) {
+      const actor = new Person({
+        id: new URL(followerId),
+        preferredUsername: followerId.split("/").pop(),
+        inbox: new URL(`${followerId}/inbox`),
+      });
+      await kv.set(
+        ["follower", followerId],
+        { actor: await actor.toJsonLd(), state: "accepted" },
+      );
+    }
+
+    // Delete one follower
+    await kv.delete(["follower", follower2Id]);
+
+    // Verify list only returns remaining followers
+    const retrievedIds: string[] = [];
+    for await (const { key } of kv.list(["follower"])) {
+      retrievedIds.push(key[1] as string);
+    }
+
+    strictEqual(retrievedIds.length, 2);
+    ok(retrievedIds.includes(follower1Id));
+    ok(!retrievedIds.includes(follower2Id)); // Deleted follower not in list
+    ok(retrievedIds.includes(follower3Id));
+  });
+
+  test("list() distinguishes between pending and accepted followers", async () => {
+    const kv = new MemoryKvStore();
+
+    // Add followers with different states
+    const pendingFollowerId = "https://server1.example.com/users/alice";
+    const acceptedFollowerId = "https://server2.example.com/users/bob";
+
+    const pendingFollower = new Person({
+      id: new URL(pendingFollowerId),
+      preferredUsername: "alice",
+      inbox: new URL("https://server1.example.com/users/alice/inbox"),
+    });
+
+    const acceptedFollower = new Person({
+      id: new URL(acceptedFollowerId),
+      preferredUsername: "bob",
+      inbox: new URL("https://server2.example.com/users/bob/inbox"),
+    });
+
+    await kv.set(
+      ["follower", pendingFollowerId],
+      { actor: await pendingFollower.toJsonLd(), state: "pending" },
+    );
+
+    await kv.set(
+      ["follower", acceptedFollowerId],
+      { actor: await acceptedFollower.toJsonLd(), state: "accepted" },
+    );
+
+    // Verify list returns both with correct states
+    const followers: { id: string; state: string }[] = [];
+    for await (const { key, value } of kv.list(["follower"])) {
+      const followerData = value as any;
+      followers.push({
+        id: key[1] as string,
+        state: followerData.state,
+      });
+    }
+
+    strictEqual(followers.length, 2);
+
+    const pendingEntry = followers.find((f) => f.id === pendingFollowerId);
+    ok(pendingEntry);
+    strictEqual(pendingEntry.state, "pending");
+
+    const acceptedEntry = followers.find((f) => f.id === acceptedFollowerId);
+    ok(acceptedEntry);
+    strictEqual(acceptedEntry.state, "accepted");
+  });
+
+  test("list() returns correct actor data", async () => {
+    const kv = new MemoryKvStore();
+
+    const followerId = "https://remote.example.com/users/alice";
+    const follower = new Person({
+      id: new URL(followerId),
+      preferredUsername: "alice",
+      name: "Alice Wonderland",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    await kv.set(
+      ["follower", followerId],
+      { actor: await follower.toJsonLd(), state: "accepted" },
+    );
+
+    // Verify list returns complete actor data
+    for await (const { key, value } of kv.list(["follower"])) {
+      strictEqual(key[1], followerId);
+      ok(value);
+      const followerData = value as any;
+      strictEqual(followerData.state, "accepted");
+      ok(followerData.actor);
+      strictEqual(followerData.actor.preferredUsername, "alice");
+      strictEqual(followerData.actor.name, "Alice Wonderland");
+    }
+  });
 });
