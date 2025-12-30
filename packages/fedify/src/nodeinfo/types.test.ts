@@ -1,5 +1,5 @@
+import { test } from "@fedify/fixture";
 import { assertEquals, assertThrows } from "@std/assert";
-import { test } from "../testing/mod.ts";
 import { type NodeInfo, nodeInfoToJson } from "./types.ts";
 
 test("nodeInfoToJson()", () => {

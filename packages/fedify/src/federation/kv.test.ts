@@ -1,5 +1,5 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
-import { test } from "../testing/mod.ts";
 import { MemoryKvStore } from "./kv.ts";
 
 test("MemoryKvStore", async (t) => {

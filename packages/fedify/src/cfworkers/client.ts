@@ -20,7 +20,7 @@ const mf = new Miniflare({
       const host = url.hostname.slice(0, -5);
       try {
         const { default: document } = await import(
-          "../testing/fixtures/" + host + url.pathname + ".json"
+          "../../../fixture/src/fixtures/" + host + url.pathname + ".json"
         );
         return new Response(JSON.stringify(document), {
           headers: {

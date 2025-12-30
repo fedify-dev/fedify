@@ -1,6 +1,6 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
 import { decodeHex } from "byte-encodings/hex";
-import { test } from "../testing/mod.ts";
 import { buildCollectionSynchronizationHeader, digest } from "./collection.ts";
 
 test("digest()", async () => {

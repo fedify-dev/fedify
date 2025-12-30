@@ -1,7 +1,7 @@
+import { test } from "@fedify/fixture";
 import { DecodingError, EncodingError, JsonCodec } from "@fedify/redis/codec";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
-import { test } from "node:test";
 
 test("JsonCodec.encode()", () => {
   const codec = new JsonCodec();

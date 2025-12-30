@@ -1,14 +1,14 @@
-import { assertEquals } from "@std/assert";
+import { test } from "@fedify/fixture";
 import type { HrTime, SpanContext, SpanStatus } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, TraceFlags } from "@opentelemetry/api";
 import type { ReadableSpan, TimedEvent } from "@opentelemetry/sdk-trace-base";
+import { assertEquals } from "@std/assert";
 import {
   type KvKey,
   type KvStore,
   type KvStoreListEntry,
   MemoryKvStore,
 } from "../federation/kv.ts";
-import { test } from "../testing/mod.ts";
 import { FedifySpanExporter } from "./exporter.ts";
 
 function createMockSpan(options: {

@@ -1,11 +1,11 @@
+import { test } from "@fedify/fixture";
 import { RedisKvStore } from "@fedify/redis/kv";
 import { Redis } from "ioredis";
 import assert from "node:assert/strict";
 import process from "node:process";
-import { test } from "node:test";
 
 const redisUrl = process.env.REDIS_URL;
-const skip = redisUrl == null;
+const ignore = redisUrl == null;
 
 function getRedis(): { redis: Redis; keyPrefix: string; store: RedisKvStore } {
   const redis = new Redis(redisUrl!);
@@ -14,8 +14,8 @@ function getRedis(): { redis: Redis; keyPrefix: string; store: RedisKvStore } {
   return { redis, keyPrefix, store };
 }
 
-test("RedisKvStore.get()", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.get()", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::bar`, '"foobar"');
@@ -25,8 +25,8 @@ test("RedisKvStore.get()", { skip }, async () => {
   }
 });
 
-test("RedisKvStore.set()", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.set()", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await store.set(["foo", "baz"], "baz");
@@ -36,8 +36,8 @@ test("RedisKvStore.set()", { skip }, async () => {
   }
 });
 
-test("RedisKvStore.delete()", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.delete()", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, keyPrefix, store } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::baz`, '"baz"');
@@ -48,8 +48,8 @@ test("RedisKvStore.delete()", { skip }, async () => {
   }
 });
 
-test("RedisKvStore.list()", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.list()", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, store } = getRedis();
   try {
     await store.set(["prefix", "a"], "value-a");
@@ -72,8 +72,8 @@ test("RedisKvStore.list()", { skip }, async () => {
   }
 });
 
-test("RedisKvStore.list() - single element key", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.list() - single element key", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, store } = getRedis();
   try {
     await store.set(["a"], "value-a");
@@ -92,8 +92,8 @@ test("RedisKvStore.list() - single element key", { skip }, async () => {
   }
 });
 
-test("RedisKvStore.list() - empty prefix", { skip }, async () => {
-  if (skip) return; // see https://github.com/oven-sh/bun/issues/19412
+test("RedisKvStore.list() - empty prefix", { ignore }, async () => {
+  if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
   const { redis, store } = getRedis();
   try {
     await store.set(["a"], "value-a");

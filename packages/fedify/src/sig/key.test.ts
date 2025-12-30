@@ -1,5 +1,5 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   ed25519Multikey,
   rsaPrivateKey2,
@@ -7,7 +7,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import {
   exportJwk,

@@ -1,17 +1,19 @@
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { assert, assertEquals } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import {
   createInboxContext,
   createRequestContext,
 } from "../testing/context.ts";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   rsaPrivateKey3,
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
-import { createTestTracerProvider } from "../testing/otel.ts";
 import {
   type Activity,
   Create,

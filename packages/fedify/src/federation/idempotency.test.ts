@@ -1,12 +1,11 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
 import { signObject } from "../sig/proof.ts";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
   ed25519PublicKey,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import { type Activity, Create, Follow, Person } from "../vocab/vocab.ts";
 import type { Federation, FederationOptions } from "./federation.ts";
 import { MemoryKvStore } from "./kv.ts";

@@ -1,7 +1,7 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertNotEquals } from "@std/assert/assert-not-equals";
 import { AssertionError } from "@std/assert/assertion-error";
-import { test } from "../testing/mod.ts";
 import { createExponentialBackoffPolicy } from "./retry.ts";
 
 test("createExponentialBackoffPolicy()", () => {

@@ -1,3 +1,4 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { decodeMultibase, LanguageString } from "@fedify/vocab-runtime";
 import {
   areAllScalarTypes,
@@ -15,9 +16,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { pascalCase } from "es-toolkit";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import { ed25519PublicKey, rsaPublicKey1 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import * as vocab from "./vocab.ts";
 import {
   Activity,

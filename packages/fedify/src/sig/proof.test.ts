@@ -1,7 +1,7 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
 import { decodeHex, encodeHex } from "byte-encodings/hex";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -9,7 +9,6 @@ import {
   rsaPrivateKey2,
   rsaPublicKey2,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import {
   Create,
   type CryptographicKey,

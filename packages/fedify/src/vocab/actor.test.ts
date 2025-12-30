@@ -1,3 +1,4 @@
+import { test } from "@fedify/fixture";
 import {
   assert,
   assertEquals,
@@ -8,7 +9,6 @@ import {
 } from "@std/assert";
 import * as fc from "fast-check";
 import fetchMock from "fetch-mock";
-import { test } from "../testing/mod.ts";
 import {
   type Actor,
   getActorClassByTypeName,

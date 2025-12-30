@@ -1,3 +1,4 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { exportSpki } from "@fedify/vocab-runtime";
 import {
   assert,
@@ -10,14 +11,12 @@ import {
 } from "@std/assert";
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   rsaPrivateKey2,
   rsaPublicKey1,
   rsaPublicKey2,
   rsaPublicKey5,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import type { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import {
   createRfc9421SignatureBase,

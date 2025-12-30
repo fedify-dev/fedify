@@ -1,7 +1,7 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
 import { withTimeout } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import { test } from "../testing/mod.ts";
 import type { ResourceDescriptor } from "./jrd.ts";
 import { lookupWebFinger } from "./lookup.ts";
 

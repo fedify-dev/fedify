@@ -1,13 +1,15 @@
 import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
+import {
   assert,
   assertEquals,
   assertInstanceOf,
   assertRejects,
 } from "@std/assert";
 import fetchMock from "fetch-mock";
-import { mockDocumentLoader } from "../testing/docloader.ts";
-import { test } from "../testing/mod.ts";
-import { createTestTracerProvider } from "../testing/otel.ts";
 import { lookupObject, traverseCollection } from "./lookup.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 

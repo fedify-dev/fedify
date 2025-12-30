@@ -1,3 +1,4 @@
+import { test } from "@fedify/fixture";
 import {
   assert,
   assertEquals,
@@ -6,7 +7,6 @@ import {
   assertGreaterOrEqual,
 } from "@std/assert";
 import { delay } from "es-toolkit";
-import { test } from "../testing/mod.ts";
 import {
   InProcessMessageQueue,
   type MessageQueue,
