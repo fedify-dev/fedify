@@ -30,7 +30,7 @@ export interface RelayOptions {
   documentLoaderFactory?: DocumentLoaderFactory;
   authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory;
   queue?: MessageQueue;
-  subscriptionHandler?: SubscriptionRequestHandler;
+  subscriptionHandler: SubscriptionRequestHandler;
 }
 
 export interface RelayFollower {

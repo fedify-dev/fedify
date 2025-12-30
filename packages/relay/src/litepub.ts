@@ -74,10 +74,10 @@ export class LitePubRelay extends BaseRelay {
           ]);
           if (existingFollow?.state === "pending") return;
 
-          let approved = false;
-          if (this.options.subscriptionHandler) {
-            approved = await this.options.subscriptionHandler(ctx, follower);
-          }
+          const approved = await this.options.subscriptionHandler(
+            ctx,
+            follower,
+          );
 
           if (approved) {
             // Litepub-specific: save with "pending" state

@@ -52,10 +52,10 @@ export class MastodonRelay extends BaseRelay {
           const follower = await validateFollowActivity(ctx, follow);
           if (!follower || !follower.id) return;
 
-          let approved = false;
-          if (this.options.subscriptionHandler) {
-            approved = await this.options.subscriptionHandler(ctx, follower);
-          }
+          const approved = await this.options.subscriptionHandler(
+            ctx,
+            follower,
+          );
 
           if (approved) {
             // Mastodon-specific: immediately add to followers list with accepted state

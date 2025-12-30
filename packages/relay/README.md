@@ -13,6 +13,9 @@ This package provides ActivityPub relay functionality for the [Fedify]
 ecosystem, enabling the creation and management of relay servers that can
 forward activities between federated instances.
 
+For comprehensive documentation on building and operating relay servers,
+see the [*Relay server* section in the Fedify manual][manual].
+
 
 What is an ActivityPub relay?
 ------------------------------
@@ -33,7 +36,7 @@ This package supports two popular relay protocols used in the fediverse:
 ### Mastodon-style relay
 
 The Mastodon-style relay protocol uses LD signatures for activity
-verification and follows the Public collection.  This protocol is widely
+verification and follows the Public collection. This protocol is widely
 supported by Mastodon and many other ActivityPub implementations.
 
 Key features:
@@ -100,10 +103,12 @@ import { MemoryKvStore } from "@fedify/fedify";
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
   domain: "relay.example.com",
-  // Optional: Set a custom subscription handler to approve/reject subscriptions
+  // Required: Set a subscription handler to approve/reject subscriptions
   subscriptionHandler: async (ctx, actor) => {
-    // Implement your approval logic here
-    // Return true to approve, false to reject
+    // For an open relay, simply return true
+    // return true;
+
+    // Or implement custom approval logic:
     const domain = new URL(actor.id!).hostname;
     const blockedDomains = ["spam.example", "blocked.example"];
     return !blockedDomains.includes(domain);
@@ -120,13 +125,24 @@ You can also create a LitePub-style relay by changing the type:
 const relay = createRelay("litepub", {
   kv: new MemoryKvStore(),
   domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,
 });
 ~~~~
 
 ### Subscription handling
 
-By default, the relay automatically rejects all subscription requests.
-You can customize this behavior by providing a subscription handler in the options:
+The `subscriptionHandler` is required and determines whether to approve or reject
+subscription requests.  For an open relay that accepts all subscriptions:
+
+~~~~ typescript
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,  // Accept all
+});
+~~~~
+
+You can also implement custom approval logic:
 
 ~~~~ typescript
 const relay = createRelay("mastodon", {
@@ -156,6 +172,7 @@ const app = new Hono();
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
   domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,
 });
 
 app.use("*", async (c) => {
@@ -258,7 +275,7 @@ Configuration options for the relay:
  -  `kv: KvStore` (required): Key–value store for persisting relay data
  -  `domain?: string`: Relay's domain name (defaults to `"localhost"`)
  -  `name?: string`: Relay's display name (defaults to `"ActivityPub Relay"`)
- -  `subscriptionHandler?: SubscriptionRequestHandler`: Custom handler for
+ -  `subscriptionHandler: SubscriptionRequestHandler` (required): Handler for
     subscription approval/rejection
  -  `documentLoaderFactory?: DocumentLoaderFactory`: Custom document loader
     factory
@@ -296,3 +313,4 @@ type SubscriptionRequestHandler = (
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Fedify documentation on key–value stores]: https://fedify.dev/manual/kv
+[manual]: https://fedify.dev/manual/relay

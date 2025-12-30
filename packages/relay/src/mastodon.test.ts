@@ -99,6 +99,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request("https://relay.example.com/users/relay", {
@@ -115,6 +116,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request("https://relay.example.com/users/relay", {
@@ -135,6 +137,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request(
@@ -154,6 +157,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request(
@@ -203,6 +207,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request(
@@ -275,6 +280,7 @@ describe("MastodonRelay", () => {
       kv,
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const request = new Request("https://relay.example.com/users/relay", {
@@ -463,6 +469,7 @@ describe("MastodonRelay", () => {
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const originalFollow = new Follow({
@@ -521,6 +528,7 @@ describe("MastodonRelay", () => {
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const note = new Note({
@@ -564,6 +572,7 @@ describe("MastodonRelay", () => {
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const deleteActivity = new Delete({
@@ -602,6 +611,7 @@ describe("MastodonRelay", () => {
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const note = new Note({
@@ -645,6 +655,7 @@ describe("MastodonRelay", () => {
       domain: "relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
     });
 
     const moveActivity = new Move({
