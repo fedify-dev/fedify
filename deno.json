@@ -7,6 +7,7 @@
     "./packages/express",
     "./packages/fastify",
     "./packages/fedify",
+    "./packages/fixture",
     "./packages/fresh",
     "./packages/h3",
     "./packages/hono",
