@@ -157,6 +157,44 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
+### Managing followers
+
+The relay provides methods to query and manage followers without exposing
+internal storage details.
+
+#### Listing all followers
+
+~~~~ typescript
+for await (const follower of relay.listFollowers()) {
+  console.log(`Follower: ${follower.actorId}`);
+  console.log(`State: ${follower.state}`);
+  console.log(`Actor data:`, follower.actor);
+}
+~~~~
+
+#### Getting a specific follower
+
+~~~~ typescript
+const follower = await relay.getFollower("https://mastodon.example.com/users/alice");
+if (follower) {
+  console.log(`Found follower in state: ${follower.state}`);
+} else {
+  console.log("Follower not found");
+}
+~~~~
+
+#### Validating follower objects
+
+~~~~ typescript
+import { isRelayFollower } from "@fedify/relay";
+
+for await (const follower of relay.listFollowers()) {
+  if (isRelayFollower(follower)) {
+    console.log(`Valid follower in state: ${follower.state}`);
+  }
+}
+~~~~
+
 ### Integration with web frameworks
 
 The relay's `fetch()` method returns a standard `Response` object, making it
@@ -251,6 +289,10 @@ Abstract base class for relay implementations.
 #### Methods
 
  -  `fetch(request: Request): Promise<Response>`: Handle incoming HTTP requests
+ -  `listFollowers(): AsyncIterableIterator<RelayFollowerEntry>`: Lists all
+    followers of the relay
+ -  `getFollower(actorId: string): Promise<RelayFollowerEntry | null>`: Gets
+    a specific follower by actor ID
 
 ### `MastodonRelay`
 
@@ -303,6 +345,24 @@ type SubscriptionRequestHandler = (
 
  -  `true` to approve the subscription
  -  `false` to reject the subscription
+
+### `RelayFollowerEntry`
+
+An entry representing a follower of the relay:
+
+~~~~ typescript
+interface RelayFollowerEntry {
+  readonly actorId: string;
+  readonly actor: unknown;
+  readonly state: "pending" | "accepted";
+}
+~~~~
+
+**Properties:**
+
+ -  `actorId`: The actor ID (URL) of the follower
+ -  `actor`: The actor's JSON-LD data
+ -  `state`: The follower's state (`"pending"` or `"accepted"`)
 
 
 [JSR]: https://jsr.io/@fedify/relay

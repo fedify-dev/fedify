@@ -891,4 +891,92 @@ describe("MastodonRelay", () => {
       strictEqual(actor.name, "Alice Wonderland");
     }
   });
+
+  test("listFollowers() returns all followers", async () => {
+    const kv = new MemoryKvStore();
+    const relay = createRelay("mastodon", {
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
+    });
+
+    // Add multiple followers
+    const follower1 = new Person({
+      id: new URL("https://remote.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+    const follower2 = new Person({
+      id: new URL("https://remote.example.com/users/bob"),
+      preferredUsername: "bob",
+      inbox: new URL("https://remote.example.com/users/bob/inbox"),
+    });
+
+    await kv.set(
+      ["follower", "https://remote.example.com/users/alice"],
+      { actor: await follower1.toJsonLd(), state: "accepted" },
+    );
+    await kv.set(
+      ["follower", "https://remote.example.com/users/bob"],
+      { actor: await follower2.toJsonLd(), state: "pending" },
+    );
+
+    // Test listFollowers
+    const followers = [];
+    for await (const follower of relay.listFollowers()) {
+      followers.push(follower);
+    }
+
+    strictEqual(followers.length, 2);
+    ok(
+      followers.some((f) =>
+        f.actorId === "https://remote.example.com/users/alice"
+      ),
+    );
+    ok(
+      followers.some((f) =>
+        f.actorId === "https://remote.example.com/users/bob"
+      ),
+    );
+    ok(followers.some((f) => f.state === "accepted"));
+    ok(followers.some((f) => f.state === "pending"));
+  });
+
+  test("getFollower() returns specific follower", async () => {
+    const kv = new MemoryKvStore();
+    const relay = createRelay("mastodon", {
+      kv,
+      domain: "relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
+    });
+
+    // Add a follower
+    const follower = new Person({
+      id: new URL("https://remote.example.com/users/alice"),
+      preferredUsername: "alice",
+      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+    });
+
+    await kv.set(
+      ["follower", "https://remote.example.com/users/alice"],
+      { actor: await follower.toJsonLd(), state: "accepted" },
+    );
+
+    // Test getFollower
+    const result = await relay.getFollower(
+      "https://remote.example.com/users/alice",
+    );
+    ok(result);
+    strictEqual(result.actorId, "https://remote.example.com/users/alice");
+    strictEqual(result.state, "accepted");
+    ok(result.actor);
+
+    // Test non-existent follower
+    const nonExistent = await relay.getFollower(
+      "https://remote.example.com/users/nonexistent",
+    );
+    strictEqual(nonExistent, null);
+  });
 });

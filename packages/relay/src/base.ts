@@ -1,5 +1,9 @@
 import type { Federation, FederationBuilder } from "@fedify/fedify";
-import type { RelayOptions } from "./types.ts";
+import type {
+  RelayFollower,
+  RelayFollowerEntry,
+  RelayOptions,
+} from "./types.ts";
 
 /**
  * Abstract base class for relay implementations.
@@ -29,6 +33,65 @@ export abstract class BaseRelay {
     return await this.federation.fetch(request, {
       contextData: this.options,
     });
+  }
+
+  /**
+   * Lists all followers of the relay.
+   *
+   * @returns An async iterator of follower entries
+   *
+   * @example
+   * ```ts
+   * for await (const follower of relay.listFollowers()) {
+   *   console.log(`Follower: ${follower.actorId}`);
+   *   console.log(`State: ${follower.state}`);
+   * }
+   * ```
+   *
+   * @since 2.0.0
+   */
+  async *listFollowers(): AsyncIterableIterator<RelayFollowerEntry> {
+    for await (const entry of this.options.kv.list(["follower"])) {
+      const actorId = entry.key[1];
+      const follower = entry.value as RelayFollower;
+      if (typeof actorId === "string" && follower?.actor && follower?.state) {
+        yield {
+          actorId,
+          actor: follower.actor,
+          state: follower.state,
+        };
+      }
+    }
+  }
+
+  /**
+   * Gets a specific follower by actor ID.
+   *
+   * @param actorId The actor ID (URL) of the follower to retrieve
+   * @returns The follower entry if found, null otherwise
+   *
+   * @example
+   * ```ts
+   * const follower = await relay.getFollower("https://mastodon.example.com/users/alice");
+   * if (follower) {
+   *   console.log(`State: ${follower.state}`);
+   * }
+   * ```
+   *
+   * @since 2.0.0
+   */
+  async getFollower(actorId: string): Promise<RelayFollowerEntry | null> {
+    const follower = await this.options.kv.get<RelayFollower>([
+      "follower",
+      actorId,
+    ]);
+    if (follower == null) return null;
+
+    return {
+      actorId,
+      actor: follower.actor,
+      state: follower.state,
+    };
   }
 
   /**

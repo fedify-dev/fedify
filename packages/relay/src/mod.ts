@@ -15,6 +15,7 @@ export {
   isRelayFollower,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
+  type RelayFollowerEntry,
   type RelayOptions,
   type RelayType,
   type SubscriptionRequestHandler,

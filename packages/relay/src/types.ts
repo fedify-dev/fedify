@@ -39,6 +39,20 @@ export interface RelayFollower {
 }
 
 /**
+ * An entry representing a follower of the relay.
+ *
+ * @since 2.0.0
+ */
+export interface RelayFollowerEntry {
+  /** The actor ID (URL) of the follower. */
+  readonly actorId: string;
+  /** The actor's JSON-LD data. */
+  readonly actor: unknown;
+  /** The follower's state. */
+  readonly state: "pending" | "accepted";
+}
+
+/**
  * Type predicate to check if a value is a valid RelayFollower.
  * Provides both runtime validation and compile-time type narrowing.
  *
