@@ -4,7 +4,7 @@ import type {
 } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 
-const logger = getLogger(["fedify", "testing", "docloader"]);
+const logger = getLogger(["fixture", "docloader"]);
 
 /**
  * A mock of the document loader.  This does not make any actual HTTP requests
@@ -45,14 +45,15 @@ export async function mockDocumentLoader(
     });
     throw new Error(error);
   }
-  const path = `./fixtures/${url.host}${url.pathname}.json`;
+  const pkg = "Deno" in globalThis ? "." : "@fedify/fixture";
+  const fixturePath = `${pkg}/fixtures/${url.host}${url.pathname}.json`;
   // deno-lint-ignore no-explicit-any
   let document: any;
   try {
-    document = (await import(path, { with: { type: "json" } })).default;
+    document = (await import(fixturePath, { with: { type: "json" } })).default;
   } catch (error) {
     logger.error("Failed to read fixture file {path}: {error}", {
-      path,
+      path: fixturePath,
       error,
     });
     throw error;

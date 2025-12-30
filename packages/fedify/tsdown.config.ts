@@ -1,4 +1,4 @@
-import { cp, glob } from "node:fs/promises";
+import { glob } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
@@ -67,23 +67,7 @@ export default [
       globalThis.addEventListener = () => {};
     `,
     },
-    hooks: {
-      "build:done": async (ctx) => {
-        await cp(
-          join("src", "testing", "fixtures"),
-          join(ctx.options.outDir, "fixtures"),
-          { recursive: true },
-        );
-        for await (const file of glob("src/vocab/**/*.yaml")) {
-          await cp(
-            file,
-            join(ctx.options.outDir, file),
-            { force: true },
-          );
-        }
-      },
-    },
   }),
 ];
 
-// cSpell: ignore unbundle
+// cSpell: ignore onwarn

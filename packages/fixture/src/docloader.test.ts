@@ -1,10 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { deepStrictEqual } from "node:assert";
 import { mockDocumentLoader } from "./docloader.ts";
-import { test } from "./mod.ts";
+import { test } from "./test.ts";
 
 test("mockDocumentLoader()", async () => {
   const response = await mockDocumentLoader("https://example.com/test");
-  assertEquals(await response.document, {
+  deepStrictEqual(await response.document, {
     "https://example.com/prop/test": {
       "@value": "foo",
     },

@@ -131,11 +131,12 @@
   },
   "dependencies": {
     "@fedify/vocab-runtime": "workspace:*",
+    "@fedify/fixture": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
     "@multiformats/base-x": "^4.0.1",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "^1.27.0",
     "asn1js": "^3.0.7",
