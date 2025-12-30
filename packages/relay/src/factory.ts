@@ -19,6 +19,7 @@ import type { RelayOptions, RelayType } from "./types.ts";
  * const relay = createRelay("mastodon", {
  *   kv: new MemoryKvStore(),
  *   domain: "relay.example.com",
+ *   subscriptionHandler: async (ctx, actor) => true,
  * });
  * ```
  *
