@@ -63,6 +63,37 @@ export interface RelayFollower {
 }
 
 /**
+ * Public interface for ActivityPub relay implementations.
+ * Use {@link createRelay} to create a relay instance.
+ *
+ * @since 2.0.0
+ */
+export interface Relay {
+  /**
+   * Handle incoming HTTP requests.
+   *
+   * @param request The incoming HTTP request
+   * @returns The HTTP response
+   */
+  fetch(request: Request): Promise<Response>;
+
+  /**
+   * Lists all followers of the relay.
+   *
+   * @returns An async iterator of follower entries
+   */
+  listFollowers(): AsyncIterableIterator<RelayFollower>;
+
+  /**
+   * Gets a specific follower by actor ID.
+   *
+   * @param actorId The actor ID (URL) of the follower to retrieve
+   * @returns The follower entry if found, null otherwise
+   */
+  getFollower(actorId: string): Promise<RelayFollower | null>;
+}
+
+/**
  * Type predicate to check if a value is valid RelayFollowerData from KV store.
  * Validates the storage format (JSON-LD), not the deserialized Actor instance.
  *

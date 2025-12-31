@@ -2,6 +2,7 @@ import type { Federation, FederationBuilder } from "@fedify/fedify";
 import { isActor, Object as APObject } from "@fedify/fedify/vocab";
 import {
   isRelayFollowerData,
+  type Relay,
   type RelayFollower,
   type RelayOptions,
 } from "./types.ts";
@@ -10,9 +11,9 @@ import {
  * Abstract base class for relay implementations.
  * Provides common infrastructure for both Mastodon and LitePub relays.
  *
- * @since 2.0.0
+ * @internal
  */
-export abstract class BaseRelay {
+export abstract class BaseRelay implements Relay {
   protected federationBuilder: FederationBuilder<RelayOptions>;
   protected options: RelayOptions;
   protected federation?: Federation<RelayOptions>;
@@ -49,14 +50,11 @@ export abstract class BaseRelay {
     actorId: string,
     data: unknown,
   ): Promise<RelayFollower | null> {
-    // Validate storage format
     if (!isRelayFollowerData(data)) return null;
 
-    // Deserialize and validate actor
     const actor = await APObject.fromJsonLd(data.actor);
     if (!isActor(actor)) return null;
 
-    // Construct and return RelayFollower
     return {
       actorId,
       actor,

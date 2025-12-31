@@ -8,9 +8,8 @@
  * @module
  */
 export { createRelay } from "./factory.ts";
-export { LitePubRelay } from "./litepub.ts";
-export { MastodonRelay } from "./mastodon.ts";
 export {
+  type Relay,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,

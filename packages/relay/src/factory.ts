@@ -1,8 +1,7 @@
-import type { BaseRelay } from "./base.ts";
 import { relayBuilder } from "./builder.ts";
 import { LitePubRelay } from "./litepub.ts";
 import { MastodonRelay } from "./mastodon.ts";
-import type { RelayOptions, RelayType } from "./types.ts";
+import type { Relay, RelayOptions, RelayType } from "./types.ts";
 
 /**
  * Factory function to create a relay instance.
@@ -28,7 +27,7 @@ import type { RelayOptions, RelayType } from "./types.ts";
 export function createRelay(
   type: RelayType,
   options: RelayOptions,
-): BaseRelay {
+): Relay {
   switch (type) {
     case "mastodon":
       return new MastodonRelay(options, relayBuilder);
