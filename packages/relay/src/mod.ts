@@ -7,7 +7,6 @@
  *
  * @module
  */
-export { relayBuilder } from "./builder.ts";
 export { createRelay } from "./factory.ts";
 export { LitePubRelay } from "./litepub.ts";
 export { MastodonRelay } from "./mastodon.ts";
