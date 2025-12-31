@@ -87,21 +87,25 @@ const MANUAL = {
 const REFERENCES = {
   text: "References",
   items: [
+    // Don't include @fedify/cli and @fedify/lint here
     { text: "@fedify/fedify", link: "https://jsr.io/@fedify/fedify/doc" },
     { text: "@fedify/amqp", link: "https://jsr.io/@fedify/amqp/doc" },
     { text: "@fedify/cfworkers", link: "https://jsr.io/@fedify/cfworkers/doc" },
     { text: "@fedify/denokv", link: "https://jsr.io/@fedify/denokv/doc" },
     { text: "@fedify/express", link: "https://jsr.io/@fedify/express/doc" },
     { text: "@fedify/fastify", link: "https://jsr.io/@fedify/fastify/doc" },
+    { text: "@fedify/fresh", link: "https://jsr.io/@fedify/fresh/doc" },
     { text: "@fedify/h3", link: "https://jsr.io/@fedify/h3/doc" },
     { text: "@fedify/hono", link: "https://jsr.io/@fedify/hono/doc" },
     { text: "@fedify/koa", link: "https://jsr.io/@fedify/koa/doc" },
     { text: "@fedify/postgres", link: "https://jsr.io/@fedify/postgres/doc" },
     { text: "@fedify/redis", link: "https://jsr.io/@fedify/redis/doc" },
+    { text: "@fedify/relay", link: "https://jsr.io/@fedify/relay/doc" },
     { text: "@fedify/sqlite", link: "https://jsr.io/@fedify/sqlite/doc" },
     { text: "@fedify/sveltekit", link: "https://jsr.io/@fedify/sveltekit/doc" },
     { text: "@fedify/testing", link: "https://jsr.io/@fedify/testing/doc" },
-    { text: "@fedify/lint", link: "https://jsr.io/@fedify/lint/doc" },
+    { text: "@fedify/vocab-runtime", link: "https://jsr.io/@fedify/vocab-runtime/doc" },
+    { text: "@fedify/vocab-tools", link: "https://jsr.io/@fedify/vocab-tools/doc" },
   ],
 };
 

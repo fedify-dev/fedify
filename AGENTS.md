@@ -73,11 +73,13 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/elysia/*: Elysia integration (@fedify/elysia)
  -  *packages/express/*: Express.js integration (@fedify/express)
  -  *packages/fastify/*: Fastify integration (@fedify/fastify)
+ -  *packages/fresh/*: Fresh integration (@fedify/fresh)
  -  *packages/h3/*: h3 framework integration (@fedify/h3)
  -  *packages/hono/*: Hono integration (@fedify/hono)
  -  *packages/koa/*: Koa integration (@fedify/koa)
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres)
  -  *packages/redis/*: Redis drivers (@fedify/redis)
+ -  *packages/relay/*: ActivityPub relay support (@fedify/relay)
  -  *packages/lint/*: Linting utilities (@fedify/lint)
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs)
  -  *packages/next/*: Next.js integration (@fedify/next)
@@ -192,7 +194,8 @@ When adding a new package to the monorepo, the following files must be updated:
  -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*
  -  If the package is published to JSR: Add JSR link to the `REFERENCES` data
     in *docs/.vitepress/config.mts* (note: only JSR links are added here,
-    not npm links)
+    not npm links; *@fedify/cli* and *@fedify/lint* are excluded from
+    REFERENCES)
 
 **Optional updates:**
 
