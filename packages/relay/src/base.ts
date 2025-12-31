@@ -71,9 +71,19 @@ export abstract class BaseRelay {
    *
    * @example
    * ```ts
+   * import { createRelay } from "@fedify/relay";
+   * import { MemoryKvStore } from "@fedify/fedify";
+   *
+   * const relay = createRelay("mastodon", {
+   *   kv: new MemoryKvStore(),
+   *   domain: "relay.example.com",
+   *   subscriptionHandler: async (ctx, actor) => true,
+   * });
+   *
    * for await (const follower of relay.listFollowers()) {
    *   console.log(`Follower: ${follower.actorId}`);
    *   console.log(`State: ${follower.state}`);
+   *   console.log(`Actor: ${follower.actor.name}`);
    * }
    * ```
    *
@@ -97,9 +107,21 @@ export abstract class BaseRelay {
    *
    * @example
    * ```ts
-   * const follower = await relay.getFollower("https://mastodon.example.com/users/alice");
+   * import { createRelay } from "@fedify/relay";
+   * import { MemoryKvStore } from "@fedify/fedify";
+   *
+   * const relay = createRelay("mastodon", {
+   *   kv: new MemoryKvStore(),
+   *   domain: "relay.example.com",
+   *   subscriptionHandler: async (ctx, actor) => true,
+   * });
+   *
+   * const follower = await relay.getFollower(
+   *   "https://mastodon.example.com/users/alice"
+   * );
    * if (follower) {
    *   console.log(`State: ${follower.state}`);
+   *   console.log(`Actor: ${follower.actor.preferredUsername}`);
    * }
    * ```
    *
