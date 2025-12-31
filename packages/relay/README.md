@@ -168,7 +168,8 @@ internal storage details.
 for await (const follower of relay.listFollowers()) {
   console.log(`Follower: ${follower.actorId}`);
   console.log(`State: ${follower.state}`);
-  console.log(`Actor data:`, follower.actor);
+  console.log(`Actor name: ${follower.actor.name}`);
+  console.log(`Actor type: ${follower.actor.constructor.name}`);
 }
 ~~~~
 
@@ -178,20 +179,10 @@ for await (const follower of relay.listFollowers()) {
 const follower = await relay.getFollower("https://mastodon.example.com/users/alice");
 if (follower) {
   console.log(`Found follower in state: ${follower.state}`);
+  console.log(`Actor username: ${follower.actor.preferredUsername}`);
+  console.log(`Inbox: ${follower.actor.inboxId?.href}`);
 } else {
   console.log("Follower not found");
-}
-~~~~
-
-#### Validating follower objects
-
-~~~~ typescript
-import { isRelayFollower } from "@fedify/relay";
-
-for await (const follower of relay.listFollowers()) {
-  if (isRelayFollower(follower)) {
-    console.log(`Valid follower in state: ${follower.state}`);
-  }
 }
 ~~~~
 
@@ -289,9 +280,9 @@ Abstract base class for relay implementations.
 #### Methods
 
  -  `fetch(request: Request): Promise<Response>`: Handle incoming HTTP requests
- -  `listFollowers(): AsyncIterableIterator<RelayFollowerEntry>`: Lists all
+ -  `listFollowers(): AsyncIterableIterator<RelayFollower>`: Lists all
     followers of the relay
- -  `getFollower(actorId: string): Promise<RelayFollowerEntry | null>`: Gets
+ -  `getFollower(actorId: string): Promise<RelayFollower | null>`: Gets
     a specific follower by actor ID
 
 ### `MastodonRelay`
@@ -346,14 +337,14 @@ type SubscriptionRequestHandler = (
  -  `true` to approve the subscription
  -  `false` to reject the subscription
 
-### `RelayFollowerEntry`
+### `RelayFollower`
 
-An entry representing a follower of the relay:
+A follower of the relay with validated Actor instance:
 
 ~~~~ typescript
-interface RelayFollowerEntry {
+interface RelayFollower {
   readonly actorId: string;
-  readonly actor: unknown;
+  readonly actor: Actor;
   readonly state: "pending" | "accepted";
 }
 ~~~~
@@ -361,7 +352,7 @@ interface RelayFollowerEntry {
 **Properties:**
 
  -  `actorId`: The actor ID (URL) of the follower
- -  `actor`: The actor's JSON-LD data
+ -  `actor`: The validated Actor object
  -  `state`: The follower's state (`"pending"` or `"accepted"`)
 
 

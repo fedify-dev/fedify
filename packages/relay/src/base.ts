@@ -1,8 +1,9 @@
 import type { Federation, FederationBuilder } from "@fedify/fedify";
-import type {
-  RelayFollower,
-  RelayFollowerEntry,
-  RelayOptions,
+import { isActor, Object as APObject } from "@fedify/fedify/vocab";
+import {
+  isRelayFollowerData,
+  type RelayFollower,
+  type RelayOptions,
 } from "./types.ts";
 
 /**
@@ -36,6 +37,34 @@ export abstract class BaseRelay {
   }
 
   /**
+   * Helper method to parse and validate follower data from storage.
+   * Deserializes JSON-LD actor data and validates it.
+   *
+   * @param actorId The actor ID of the follower
+   * @param data Raw data from KV store
+   * @returns RelayFollower object if valid, null otherwise
+   * @internal
+   */
+  private async parseFollowerData(
+    actorId: string,
+    data: unknown,
+  ): Promise<RelayFollower | null> {
+    // Validate storage format
+    if (!isRelayFollowerData(data)) return null;
+
+    // Deserialize and validate actor
+    const actor = await APObject.fromJsonLd(data.actor);
+    if (!isActor(actor)) return null;
+
+    // Construct and return RelayFollower
+    return {
+      actorId,
+      actor,
+      state: data.state,
+    };
+  }
+
+  /**
    * Lists all followers of the relay.
    *
    * @returns An async iterator of follower entries
@@ -50,17 +79,13 @@ export abstract class BaseRelay {
    *
    * @since 2.0.0
    */
-  async *listFollowers(): AsyncIterableIterator<RelayFollowerEntry> {
+  async *listFollowers(): AsyncIterableIterator<RelayFollower> {
     for await (const entry of this.options.kv.list(["follower"])) {
       const actorId = entry.key[1];
-      const follower = entry.value as RelayFollower;
-      if (typeof actorId === "string" && follower?.actor && follower?.state) {
-        yield {
-          actorId,
-          actor: follower.actor,
-          state: follower.state,
-        };
-      }
+      if (typeof actorId !== "string") continue;
+
+      const follower = await this.parseFollowerData(actorId, entry.value);
+      if (follower) yield follower;
     }
   }
 
@@ -80,18 +105,9 @@ export abstract class BaseRelay {
    *
    * @since 2.0.0
    */
-  async getFollower(actorId: string): Promise<RelayFollowerEntry | null> {
-    const follower = await this.options.kv.get<RelayFollower>([
-      "follower",
-      actorId,
-    ]);
-    if (follower == null) return null;
-
-    return {
-      actorId,
-      actor: follower.actor,
-      state: follower.state,
-    };
+  async getFollower(actorId: string): Promise<RelayFollower | null> {
+    const followerData = await this.options.kv.get(["follower", actorId]);
+    return await this.parseFollowerData(actorId, followerData);
   }
 
   /**

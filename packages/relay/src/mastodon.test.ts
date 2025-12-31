@@ -17,7 +17,8 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, isRelayFollower, type RelayOptions } from "@fedify/relay";
+import { createRelay, type RelayOptions } from "@fedify/relay";
+import { isRelayFollowerData } from "./types.ts";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
@@ -819,7 +820,7 @@ describe("MastodonRelay", () => {
       strictEqual(key.length, 2);
       strictEqual(key[0], "follower");
       retrievedIds.push(key[1] as string);
-      ok(isRelayFollower(value));
+      ok(isRelayFollowerData(value));
       strictEqual(value.state, "accepted");
     }
 
@@ -883,7 +884,7 @@ describe("MastodonRelay", () => {
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {
       strictEqual(key[1], followerId);
-      ok(isRelayFollower(value));
+      ok(isRelayFollowerData(value));
       strictEqual(value.state, "accepted");
       ok(value.actor && typeof value.actor === "object");
       const actor = value.actor as Record<string, unknown>;
@@ -941,6 +942,21 @@ describe("MastodonRelay", () => {
     );
     ok(followers.some((f) => f.state === "accepted"));
     ok(followers.some((f) => f.state === "pending"));
+
+    // Verify actors are properly typed
+    const alice = followers.find((f) =>
+      f.actorId === "https://remote.example.com/users/alice"
+    );
+    ok(alice);
+    strictEqual(alice.actor.preferredUsername, "alice");
+    ok(alice.actor.inboxId);
+
+    const bob = followers.find((f) =>
+      f.actorId === "https://remote.example.com/users/bob"
+    );
+    ok(bob);
+    strictEqual(bob.actor.preferredUsername, "bob");
+    ok(bob.actor.inboxId);
   });
 
   test("getFollower() returns specific follower", async () => {
@@ -972,6 +988,11 @@ describe("MastodonRelay", () => {
     strictEqual(result.actorId, "https://remote.example.com/users/alice");
     strictEqual(result.state, "accepted");
     ok(result.actor);
+    strictEqual(result.actor.preferredUsername, "alice");
+    strictEqual(
+      result.actor.inboxId?.href,
+      "https://remote.example.com/users/alice/inbox",
+    );
 
     // Test non-existent follower
     const nonExistent = await relay.getFollower(

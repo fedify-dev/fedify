@@ -12,10 +12,8 @@ export { createRelay } from "./factory.ts";
 export { LitePubRelay } from "./litepub.ts";
 export { MastodonRelay } from "./mastodon.ts";
 export {
-  isRelayFollower,
   RELAY_SERVER_ACTOR,
   type RelayFollower,
-  type RelayFollowerEntry,
   type RelayOptions,
   type RelayType,
   type SubscriptionRequestHandler,

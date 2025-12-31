@@ -19,7 +19,8 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, isRelayFollower, type RelayOptions } from "@fedify/relay";
+import { createRelay, type RelayOptions } from "@fedify/relay";
+import { isRelayFollowerData } from "./types.ts";
 
 // Simple mock document loader that returns a minimal context
 const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
@@ -316,7 +317,7 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(isRelayFollower(followerData));
+    ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "pending");
   });
 
@@ -418,7 +419,7 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(isRelayFollower(followerData));
+    ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "pending");
   });
 
@@ -578,7 +579,7 @@ describe("LitePubRelay", () => {
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(isRelayFollower(followerData));
+    ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "accepted");
   });
 
@@ -930,7 +931,7 @@ describe("LitePubRelay", () => {
       strictEqual(key.length, 2);
       strictEqual(key[0], "follower");
       retrievedIds.push(key[1] as string);
-      ok(isRelayFollower(value));
+      ok(isRelayFollowerData(value));
       strictEqual(value.state, "accepted");
     }
 
@@ -1007,7 +1008,7 @@ describe("LitePubRelay", () => {
     // Verify list returns both with correct states
     const followers: { id: string; state: string }[] = [];
     for await (const { key, value } of kv.list(["follower"])) {
-      if (!isRelayFollower(value)) continue;
+      if (!isRelayFollowerData(value)) continue;
       followers.push({
         id: key[1] as string,
         state: value.state,
@@ -1044,7 +1045,7 @@ describe("LitePubRelay", () => {
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {
       strictEqual(key[1], followerId);
-      ok(isRelayFollower(value));
+      ok(isRelayFollowerData(value));
       strictEqual(value.state, "accepted");
       ok(value.actor && typeof value.actor === "object");
       const actor = value.actor as Record<string, unknown>;

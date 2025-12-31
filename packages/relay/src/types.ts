@@ -33,33 +33,46 @@ export interface RelayOptions {
   subscriptionHandler: SubscriptionRequestHandler;
 }
 
-export interface RelayFollower {
-  readonly actor: unknown;
-  readonly state: "pending" | "accepted";
-}
-
 /**
- * An entry representing a follower of the relay.
+ * Internal storage format for follower data in KV store.
+ * Contains JSON-LD representation of the actor.
+ * Exported for internal package use but not re-exported from mod.ts.
  *
- * @since 2.0.0
+ * @internal
  */
-export interface RelayFollowerEntry {
-  /** The actor ID (URL) of the follower. */
-  readonly actorId: string;
-  /** The actor's JSON-LD data. */
+export interface RelayFollowerData {
+  /** The actor's JSON-LD representation (serialized for storage). */
   readonly actor: unknown;
   /** The follower's state. */
   readonly state: "pending" | "accepted";
 }
 
 /**
- * Type predicate to check if a value is a valid RelayFollower.
- * Provides both runtime validation and compile-time type narrowing.
+ * A follower of the relay with validated Actor instance.
+ * This is the public API type returned by follower query methods.
+ *
+ * @since 2.0.0
+ */
+export interface RelayFollower {
+  /** The actor ID (URL) of the follower. */
+  readonly actorId: string;
+  /** The validated Actor object. */
+  readonly actor: Actor;
+  /** The follower's state. */
+  readonly state: "pending" | "accepted";
+}
+
+/**
+ * Type predicate to check if a value is valid RelayFollowerData from KV store.
+ * Validates the storage format (JSON-LD), not the deserialized Actor instance.
  *
  * @param value The value to check
- * @returns true if the value is a RelayFollower
+ * @returns true if the value is a RelayFollowerData
+ * @internal
  */
-export function isRelayFollower(value: unknown): value is RelayFollower {
+export function isRelayFollowerData(
+  value: unknown,
+): value is RelayFollowerData {
   if (!value || typeof value !== "object") return false;
   const obj = value as Record<string, unknown>;
   return (
