@@ -222,6 +222,7 @@ Return `true` to approve or `false` to reject.  Rejected requests receive a
 Managing followers
 ------------------
 
+<<<<<<< HEAD
 The relay provides methods to query and manage followers through the `Relay`
 interface.
 
@@ -280,6 +281,48 @@ Each follower entry contains:
 > supports listing by prefix (Redis, PostgreSQL, SQLite, Deno KV all support
 > this).
 
+=======
+Follower data is stored in the [`KvStore`](./kv.md) with keys following the
+pattern `["follower", actorId]`.  Each entry contains:
+
+ -  `actor`: The actor's JSON-LD data
+ -  `state`: Either `"pending"` or `"accepted"`
+
+### Querying followers
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+const kv = null as unknown as KvStore;
+// ---cut-before---
+import type { RelayFollower } from "@fedify/relay";
+
+for await (const entry of kv.list<RelayFollower>(["follower"])) {
+  console.log(`Follower: ${entry.value.actor["@id"]}`);
+  console.log(`State: ${entry.value.state}`);
+}
+~~~~
+
+> [!NOTE]
+> The `~KvStore.list()` method requires a `KvStore` implementation that
+> supports listing by prefix (Redis, PostgreSQL, SQLite, Deno KV all support
+> this).
+
+### Validating follower objects
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+const kv = null as unknown as KvStore;
+// ---cut-before---
+import { isRelayFollower } from "@fedify/relay";
+
+for await (const entry of kv.list(["follower"])) {
+  if (isRelayFollower(entry.value)) {
+    console.log(`Valid follower in state: ${entry.value.state}`);
+  }
+}
+~~~~
+
+>>>>>>> cbb51460362eba2c9ccf5d639f9d25899bad64a4
 
 Storage requirements
 --------------------
