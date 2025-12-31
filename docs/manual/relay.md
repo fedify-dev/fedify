@@ -222,45 +222,63 @@ Return `true` to approve or `false` to reject.  Rejected requests receive a
 Managing followers
 ------------------
 
-Follower data is stored in the [`KvStore`](./kv.md) with keys following the
-pattern `["follower", actorId]`.  Each entry contains:
+The relay provides methods to query and manage followers through the `Relay`
+interface.
 
- -  `actor`: The actor's JSON-LD data
+### Listing all followers
+
+Use `listFollowers()` to iterate over all followers:
+
+~~~~ typescript twoslash
+import { createRelay } from "@fedify/relay";
+import { MemoryKvStore } from "@fedify/fedify";
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,
+});
+// ---cut-before---
+for await (const follower of relay.listFollowers()) {
+  console.log(`Follower: ${follower.actorId}`);
+  console.log(`State: ${follower.state}`);
+  console.log(`Actor name: ${follower.actor.name}`);
+}
+~~~~
+
+### Getting a specific follower
+
+Use `getFollower()` to retrieve a specific follower by actor ID:
+
+~~~~ typescript twoslash
+import { createRelay } from "@fedify/relay";
+import { MemoryKvStore } from "@fedify/fedify";
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,
+});
+// ---cut-before---
+const follower = await relay.getFollower(
+  "https://mastodon.example.com/users/alice"
+);
+if (follower != null) {
+  console.log(`State: ${follower.state}`);
+  console.log(`Actor: ${follower.actor.preferredUsername}`);
+}
+~~~~
+
+### RelayFollower type
+
+Each follower entry contains:
+
+ -  `actorId`: The actor's ID (URL) as a string
+ -  `actor`: The validated `Actor` object
  -  `state`: Either `"pending"` or `"accepted"`
 
-### Querying followers
-
-~~~~ typescript twoslash
-import type { KvStore } from "@fedify/fedify";
-const kv = null as unknown as KvStore;
-// ---cut-before---
-import type { RelayFollower } from "@fedify/relay";
-
-for await (const entry of kv.list<RelayFollower>(["follower"])) {
-  console.log(`Follower: ${entry.value.actor["@id"]}`);
-  console.log(`State: ${entry.value.state}`);
-}
-~~~~
-
 > [!NOTE]
-> The `~KvStore.list()` method requires a `KvStore` implementation that
+> The `listFollowers()` method requires a `KvStore` implementation that
 > supports listing by prefix (Redis, PostgreSQL, SQLite, Deno KV all support
 > this).
-
-### Validating follower objects
-
-~~~~ typescript twoslash
-import type { KvStore } from "@fedify/fedify";
-const kv = null as unknown as KvStore;
-// ---cut-before---
-import { isRelayFollower } from "@fedify/relay";
-
-for await (const entry of kv.list(["follower"])) {
-  if (isRelayFollower(entry.value)) {
-    console.log(`Valid follower in state: ${entry.value.state}`);
-  }
-}
-~~~~
 
 
 Storage requirements
