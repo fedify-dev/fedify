@@ -48,7 +48,7 @@ Fedify is licensed under the [MIT License].  By opening a pull request,
 you agree to license your contribution under the MIT License.  If you cannot
 agree to this license, please do not open a pull request.
 
-[MIT License]: https://minhee.mit-license.org/2024-2025/
+[MIT License]: https://minhee.mit-license.org/2024-2026/
 
 ### Building
 
