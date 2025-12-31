@@ -1,6 +1,6 @@
 {
   "name": "@fedify/next",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Integrate Fedify with Next.js",
   "keywords": [
     "Fedify",
