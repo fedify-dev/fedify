@@ -72,6 +72,8 @@ For Markdown, we have the following conventions:
  -  80 characters at most per line, except for code blocks and URLs.
  -  Prefer [reference links] over [inline links].
  -  Prefer [setext headings] over [ATX headings].
+ -  Use sentence case for headings (capitalize only the first word and proper
+    nouns), not Title Case.
  -  Two new lines before opening an H1/H2 heading.
  -  One space before and two spaces after a bullet.
  -  Wrap file paths in asterisks.
@@ -223,6 +225,45 @@ pnpm install
 
 When reviewing pull requests, please check that lockfile changes are included
 for any dependency-related changes.
+
+### Commit messages
+
+ -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
+    Keep the first line under 50 characters when possible.
+ -  Focus on *why* the change was made, not just *what* changed.
+ -  When referencing issues or PRs, use permalink URLs instead of just
+    numbers (e.g., `#123`).  This preserves context if the repository
+    is moved later.
+ -  When listing items after a colon, add a blank line after the colon:
+
+    ~~~~
+    This commit includes the following changes:
+
+    - Added foo
+    - Fixed bar
+    ~~~~
+
+### Changelog entries
+
+When adding entries to *CHANGES.md*, follow these conventions:
+
+ -  Use ` -  ` (one space, hyphen, two spaces) for list items.
+ -  Wrap lines at approximately 80 characters, and indent continuation lines
+    by 4 spaces so they align with the bullet text.
+ -  Write concrete, user-facing descriptions.  Include what changed, why it
+    changed, and what users should do differently (especially for breaking
+    changes).
+ -  Use `[[#123]]` markers for issue/PR references, with reference links at
+    the end of the version section:
+
+    ~~~~
+     -  Fixed a bug where foo would bar.  [[#123]]
+
+    [#123]: https://github.com/fedify-dev/fedify/pull/123
+    ~~~~
+
+ -  When the reference is for a PR authored by an external contributor, append
+    `by <NAME>` after the reference marker (e.g., `[[#123] by John Doe]`).
 
 ### Pull request builds
 
