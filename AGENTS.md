@@ -1,13 +1,13 @@
 <!-- deno-fmt-ignore-file -->
 
-Fedify LLM Coding Agent Instructions
+Fedify LLM coding agent instructions
 ====================================
 
 This file contains instructions for LLM coding agents working with the Fedify
 codebase.
 
 
-Project Overview
+Project overview
 ----------------
 
 Fedify is a TypeScript library for building federated server applications
@@ -29,7 +29,7 @@ Main features:
  -  CLI toolchain for testing and debugging
 
 
-Development Environment
+Development environment
 -----------------------
 
  -  Primary development environment: [Deno]
@@ -47,7 +47,7 @@ Development Environment
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 
 
-Repository Structure
+Repository structure
 --------------------
 
 The repository is organized as a monorepo with the following packages:
@@ -90,7 +90,7 @@ The repository is organized as a monorepo with the following packages:
  -  *examples/*: Example projects demonstrating Fedify usage
 
 
-Code Patterns and Principles
+Code patterns and principles
 ----------------------------
 
 1. **Builder Pattern**: The `FederationBuilder` class follows a fluent builder
@@ -112,7 +112,7 @@ Code Patterns and Principles
    established in the *vocab/* directory.
 
 
-Development Workflow
+Development workflow
 --------------------
 
 1. **Code Generation**: Run `deno task codegen` whenever vocabulary YAML files
@@ -133,7 +133,7 @@ Development Workflow
     -  Code blocks should use quadruple tildes with language specified
 
 
-Federation Handling
+Federation handling
 -------------------
 
 When working with federation code:
@@ -145,23 +145,23 @@ When working with federation code:
 5. Use the queue system for background processing of federation activities
 
 
-Common Tasks
+Common tasks
 ------------
 
-### Adding ActivityPub Vocabulary Types
+### Adding ActivityPub vocabulary types
 
 1. Create a new YAML file in *packages/fedify/src/vocab/* following existing patterns
 2. Run `deno task codegen` to generate TypeScript classes
 3. Export the new types from appropriate module files
 
-### Implementing Framework Integrations
+### Implementing framework integrations
 
 1. Create a new package in *packages/* directory for new integrations
 2. Follow pattern from existing integration packages (*packages/hono/*, *packages/sveltekit/*)
 3. Use standard request/response interfaces for compatibility
 4. Consider creating example applications in *examples/* that demonstrate usage
 
-### Creating Database Adapters
+### Creating database adapters
 
 1. For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
    and *packages/fedify/src/federation/mq.ts*
@@ -170,7 +170,7 @@ Common Tasks
 3. Follow the pattern from existing database adapter packages
 4. Implement both KV store and message queue interfaces as needed
 
-### Adding a New Package
+### Adding a new package
 
 When adding a new package to the monorepo, the following files must be updated:
 
@@ -201,7 +201,7 @@ When adding a new package to the monorepo, the following files must be updated:
     *pnpm-workspace.yaml*
 
 
-Important Security Considerations
+Important security considerations
 ---------------------------------
 
 1. **HTTP Signatures**: Always verify HTTP signatures for incoming federation
@@ -212,7 +212,7 @@ Important Security Considerations
 5. **Input Validation**: Validate all input from federated sources
 
 
-Testing Requirements
+Testing requirements
 --------------------
 
 1. Write unit tests for all new functionality
@@ -222,7 +222,7 @@ Testing Requirements
 5. For package-specific tests, follow the testing patterns in each package
 
 
-Documentation Standards
+Documentation standards
 -----------------------
 
 1. Include JSDoc comments for public APIs
@@ -231,27 +231,27 @@ Documentation Standards
 4. Include examples for new features
 
 
-Branch Policy
+Branch policy
 -------------
 
 Fedify follows a structured branching strategy for managing releases and
 maintenance:
 
-### Branch Types
+### Branch types
 
 1. **next**: Contains unreleased development for the next major version
 2. **main**: Contains unreleased development for the next minor version
 3. **x.y-maintenance**: Maintenance branches for released major/minor versions
    (e.g., `1.5-maintenance`, `1.6-maintenance`)
 
-### Development Workflow
+### Development workflow
 
 - **Breaking changes**: Target the `next` branch
 - **New features**: Target the `main` branch
 - **Bug fixes**: Target the oldest applicable maintenance branch that contains
   the bug
 
-### Release and Merge Strategy
+### Release and merge strategy
 
 When a bug is fixed in a maintenance branch:
 
@@ -267,7 +267,7 @@ This ensures that all maintenance branches and the development branches
 include the fix.
 
 
-Bugfix Process
+Bugfix process
 --------------
 
 When fixing bugs:
@@ -278,7 +278,7 @@ When fixing bugs:
 4. Target the oldest applicable maintenance branch
 
 
-Feature Implementation Process
+Feature implementation process
 ------------------------------
 
 When adding features:
@@ -291,7 +291,117 @@ When adding features:
 6. Target the main branch for non-breaking changes, or the next branch for breaking changes
 
 
-Build and Distribution
+Commit messages
+---------------
+
+ -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
+    Keep the first line under 50 characters when possible.
+ -  Focus on *why* the change was made, not just *what* changed.
+ -  When referencing issues or PRs, use permalink URLs instead of just
+    numbers (e.g., `#123`).  This preserves context if the repository
+    is moved later.
+ -  When listing items after a colon, add a blank line after the colon:
+
+    ~~~~
+    This commit includes the following changes:
+
+    - Added foo
+    - Fixed bar
+    ~~~~
+
+ -  When using LLMs or coding agents, include credit via `Co-Authored-By:`.
+    Include a permalink to the agent session if available.
+
+
+Changelog (*CHANGES.md*)
+------------------------
+
+This repository uses *CHANGES.md* as a human-readable changelog.  Follow these
+conventions:
+
+ -  *Structure*: Keep entries in reverse chronological order (newest version at
+    the top).
+
+ -  *Version sections*: Each release is a top-level section:
+
+    ~~~~
+    Version 1.5.0
+    -------------
+    ~~~~
+
+ -  *Unreleased version*: The next version should start with:
+
+    ~~~~
+    To be released.
+    ~~~~
+
+ -  *Released versions*: Use a release-date line right after the version header:
+
+    ~~~~
+    Released on December 30, 2025.
+    ~~~~
+
+ -  *Bullets and wrapping*: Use ` -  ` list items, wrap around ~80 columns, and
+    indent continuation lines by 4 spaces so they align with the bullet text.
+
+ -  *Write useful change notes*: Prefer concrete, user-facing descriptions.
+    Include what changed, why it changed, and what users should do differently
+    (especially for breaking changes, deprecations, and security fixes).
+
+ -  *Multi-paragraph items*: For longer explanations, keep paragraphs inside the
+    same bullet item by indenting them by 4 spaces and separating paragraphs
+    with a blank line (also indented).
+
+ -  *Code blocks in bullets*: If a bullet includes code, indent the entire code
+    fence by 4 spaces so it remains part of that list item.  Use `~~~~` fences
+    and specify a language (e.g., `~~~~ typescript`).
+
+ -  *Nested lists*: If you need sub-items (e.g., a list of added exports), use a
+    nested list inside the parent bullet, indented by 4 spaces.
+
+ -  *Issue and PR references*: Use `[[#123]]` markers in the text and add
+    reference links at the end of the version section.
+
+    When listing multiple issues/PRs, list them like `[[#123], [#124]]`.
+
+    When the reference is for a PR authored by an external contributor, append
+    `by <NAME>` after the last reference marker (e.g., `[[#123] by Hong Minhee]`
+    or `[[#123], [#124] by Hong Minhee]`).
+
+    ~~~~
+    [#123]: https://github.com/fedify-dev/fedify/issues/123
+    [#124]: https://github.com/fedify-dev/fedify/pull/124
+    ~~~~
+
+
+Adding dependencies
+-------------------
+
+When adding new dependencies, always check for the latest version:
+
+ -  *npm packages*: Use `npm view <package> version` to find the latest version
+ -  *JSR packages*: Use the [JSR API] to find the latest version
+
+Always prefer the latest stable version unless there is a specific reason
+to use an older version.
+
+Because this project supports both Deno and Node.js/Bun, dependencies must
+be added to *both* configuration files:
+
+ -  *deno.json*: Add to the `imports` field (for Deno)
+ -  *package.json*: Add to `dependencies` or `devDependencies` (for Node.js/Bun)
+
+For workspace packages, use the pnpm catalog (*pnpm-workspace.yaml*) to manage
+versions centrally.  In *package.json*, reference catalog versions with
+`"catalog:"` instead of hardcoding version numbers.
+
+Forgetting to add a dependency to *package.json* will cause Node.js and Bun
+tests to fail with `ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
+
+[JSR API]: https://jsr.io/docs/api
+
+
+Build and distribution
 ----------------------
 
 The monorepo uses different build processes for different packages:
@@ -310,3 +420,179 @@ The monorepo uses different build processes for different packages:
    - Built to support Node.js and Bun environments
 
 Ensure changes work across all distribution formats and target environments.
+
+
+Markdown style guide
+--------------------
+
+When creating or editing Markdown documentation files in this project,
+follow these style conventions to maintain consistency with existing
+documentation:
+
+### Headings
+
+ -  *Setext-style headings*: Use underline-style for the document title
+    (with `=`) and sections (with `-`):
+
+    ~~~~
+    Document title
+    ==============
+
+    Section name
+    ------------
+    ~~~~
+
+ -  *ATX-style headings*: Use only for subsections within a section:
+
+    ~~~~
+    ### Subsection name
+    ~~~~
+
+ -  *Heading case*: Use sentence case (capitalize only the first word and
+    proper nouns) rather than Title Case:
+
+    ~~~~
+    Development commands    ← Correct
+    Development Commands    ← Incorrect
+    ~~~~
+
+### Text formatting
+
+ -  *Italics* (`*text*`): Use for package names (*@fedify/fedify*,
+    *@fedify/hono*), file paths (*packages/fedify/*), emphasis, and to
+    distinguish concepts
+ -  *Bold* (`**text**`): Use sparingly for strong emphasis
+ -  *Inline code* (`` `code` ``): Use for code spans, function names,
+    and command-line options
+
+### Lists
+
+ -  Use ` -  ` (space-hyphen-two spaces) for unordered list items
+ -  Indent nested items with 4 spaces
+ -  Align continuation text with the item content:
+
+    ~~~~
+     -  *First item*: Description text that continues
+        on the next line with proper alignment
+     -  *Second item*: Another item
+    ~~~~
+
+### Code blocks
+
+ -  Use four tildes (`~~~~`) for code fences instead of backticks
+ -  Always specify the language identifier:
+
+    ~~~~~
+    ~~~~ typescript
+    const example = "Hello, world!";
+    ~~~~
+    ~~~~~
+
+ -  For shell commands, use `bash`:
+
+    ~~~~~
+    ~~~~ bash
+    deno test
+    ~~~~
+    ~~~~~
+
+### Links
+
+ -  Use reference-style links placed at the *end of each section*
+    (not at document end)
+ -  Format reference links with consistent spacing:
+
+    ~~~~
+    See the [Deno] runtime for more information.
+
+    [Deno]: https://deno.com/
+    ~~~~
+
+### Spacing and line length
+
+ -  Wrap lines at approximately 80 characters for readability
+ -  Use one blank line between sections and major elements
+ -  Use two blank lines before setext-style section headings
+ -  Place one blank line before and after code blocks
+ -  End sections with reference links (if any) followed by a blank line
+
+
+VitePress documentation
+-----------------------
+
+The *docs/* directory contains VitePress documentation with additional features
+beyond standard Markdown.
+
+### Twoslash code blocks
+
+Use the `twoslash` modifier to enable TypeScript type checking and hover
+information in code blocks:
+
+~~~~~
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation({ kv: undefined! });
+~~~~
+~~~~~
+
+### Fixture variables
+
+When code examples need variables that shouldn't be shown to readers,
+declare them *before* the `// ---cut-before---` directive.  Content before
+this directive is compiled but hidden from display:
+
+~~~~~
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+declare const kv: KvStore;
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation({ kv });
+~~~~
+~~~~~
+
+The reader sees only the code after `---cut-before---`, but TypeScript
+checks the entire block including the hidden fixture.
+
+### Code groups
+
+Use code groups to show the same content for different package managers
+or environments:
+
+~~~~
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/fedify
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/fedify
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/fedify
+~~~~
+
+:::
+~~~~
+
+### Links
+
+ -  *Internal links*: When linking to other VitePress documents within
+    the *docs/* directory, use inline link syntax (e.g.,
+    `[text](./path/to/file.md)`) instead of reference-style links.
+ -  *Relative paths*: Always use relative paths for internal links.
+ -  *File extensions*: Include the `.md` extension in internal link paths.
+
+### Building documentation
+
+~~~~ bash
+cd docs
+pnpm build    # Build for production (runs Twoslash type checking)
+pnpm dev      # Start development server
+~~~~
+
+Always run `pnpm build` before committing to catch Twoslash type errors.
