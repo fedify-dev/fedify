@@ -157,6 +157,35 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
+### Managing followers
+
+The relay provides methods to query and manage followers without exposing
+internal storage details.
+
+#### Listing all followers
+
+~~~~ typescript
+for await (const follower of relay.listFollowers()) {
+  console.log(`Follower: ${follower.actorId}`);
+  console.log(`State: ${follower.state}`);
+  console.log(`Actor name: ${follower.actor.name}`);
+  console.log(`Actor type: ${follower.actor.constructor.name}`);
+}
+~~~~
+
+#### Getting a specific follower
+
+~~~~ typescript
+const follower = await relay.getFollower("https://mastodon.example.com/users/alice");
+if (follower) {
+  console.log(`Found follower in state: ${follower.state}`);
+  console.log(`Actor username: ${follower.actor.preferredUsername}`);
+  console.log(`Inbox: ${follower.actor.inboxId?.href}`);
+} else {
+  console.log("Follower not found");
+}
+~~~~
+
 ### Integration with web frameworks
 
 The relay's `fetch()` method returns a standard `Response` object, making it
@@ -234,7 +263,7 @@ Factory function to create a relay instance.
 function createRelay(
   type: "mastodon" | "litepub",
   options: RelayOptions
-): BaseRelay
+): Relay
 ~~~~
 
 **Parameters:**
@@ -242,31 +271,28 @@ function createRelay(
  -  `type`: The type of relay to create (`"mastodon"` or `"litepub"`)
  -  `options`: Configuration options for the relay
 
-**Returns:** A relay instance (`MastodonRelay` or `LitePubRelay`)
+**Returns:** A `Relay` instance
 
-### `BaseRelay`
+### `Relay`
 
-Abstract base class for relay implementations.
+Public interface for ActivityPub relay implementations.
 
 #### Methods
 
  -  `fetch(request: Request): Promise<Response>`: Handle incoming HTTP requests
+ -  `listFollowers(): AsyncIterableIterator<RelayFollower>`: Lists all
+    followers of the relay
+ -  `getFollower(actorId: string): Promise<RelayFollower | null>`: Gets
+    a specific follower by actor ID
 
-### `MastodonRelay`
+#### Relay types
 
-A Mastodon-compatible ActivityPub relay implementation that extends `BaseRelay`.
+The relay type is specified when calling `createRelay()`:
 
- -  Uses direct activity forwarding
- -  Immediate subscription approval
- -  Compatible with standard ActivityPub implementations
-
-### `LitePubRelay`
-
-A LitePub-compatible ActivityPub relay implementation that extends `BaseRelay`.
-
- -  Uses bidirectional following
- -  Activities wrapped in `Announce`
- -  Two-phase subscription (pending → accepted)
+ -  `"mastodon"`: Mastodon-compatible relay using direct activity forwarding,
+    immediate subscription approval, and LD signatures
+ -  `"litepub"`: LitePub-compatible relay using bidirectional following,
+    activities wrapped in `Announce`, and two-phase subscription
 
 ### `RelayOptions`
 
@@ -303,6 +329,24 @@ type SubscriptionRequestHandler = (
 
  -  `true` to approve the subscription
  -  `false` to reject the subscription
+
+### `RelayFollower`
+
+A follower of the relay with validated Actor instance:
+
+~~~~ typescript
+interface RelayFollower {
+  readonly actorId: string;
+  readonly actor: Actor;
+  readonly state: "pending" | "accepted";
+}
+~~~~
+
+**Properties:**
+
+ -  `actorId`: The actor ID (URL) of the follower
+ -  `actor`: The validated Actor object
+ -  `state`: The follower's state (`"pending"` or `"accepted"`)
 
 
 [JSR]: https://jsr.io/@fedify/relay

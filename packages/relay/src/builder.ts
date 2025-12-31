@@ -9,7 +9,7 @@ import {
 import { Application, isActor, Object } from "@fedify/fedify/vocab";
 import type { Actor } from "@fedify/fedify/vocab";
 import {
-  isRelayFollower,
+  isRelayFollowerData,
   RELAY_SERVER_ACTOR,
   type RelayOptions,
 } from "./types.ts";
@@ -79,7 +79,7 @@ async function getFollowerActors(
   const actors: Actor[] = [];
 
   for await (const { value } of ctx.data.kv.list(["follower"])) {
-    if (!isRelayFollower(value)) continue;
+    if (!isRelayFollowerData(value)) continue;
     if (value.state !== "accepted") continue;
     const actor = await Object.fromJsonLd(value.actor);
     if (!isActor(actor)) continue;

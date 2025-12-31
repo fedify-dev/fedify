@@ -20,7 +20,7 @@ import {
 } from "./follow.ts";
 import {
   RELAY_SERVER_ACTOR,
-  type RelayFollower,
+  type RelayFollowerData,
   type RelayOptions,
 } from "./types.ts";
 
@@ -68,7 +68,7 @@ export class LitePubRelay extends BaseRelay {
           if (!follower || !follower.id) return;
 
           // Litepub-specific: check if already in pending state
-          const existingFollow = await ctx.data.kv.get<RelayFollower>([
+          const existingFollow = await ctx.data.kv.get<RelayFollowerData>([
             "follower",
             follower.id.href,
           ]);

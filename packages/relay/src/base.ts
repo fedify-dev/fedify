@@ -1,13 +1,19 @@
 import type { Federation, FederationBuilder } from "@fedify/fedify";
-import type { RelayOptions } from "./types.ts";
+import { isActor, Object as APObject } from "@fedify/fedify/vocab";
+import {
+  isRelayFollowerData,
+  type Relay,
+  type RelayFollower,
+  type RelayOptions,
+} from "./types.ts";
 
 /**
  * Abstract base class for relay implementations.
  * Provides common infrastructure for both Mastodon and LitePub relays.
  *
- * @since 2.0.0
+ * @internal
  */
-export abstract class BaseRelay {
+export abstract class BaseRelay implements Relay {
   protected federationBuilder: FederationBuilder<RelayOptions>;
   protected options: RelayOptions;
   protected federation?: Federation<RelayOptions>;
@@ -29,6 +35,99 @@ export abstract class BaseRelay {
     return await this.federation.fetch(request, {
       contextData: this.options,
     });
+  }
+
+  /**
+   * Helper method to parse and validate follower data from storage.
+   * Deserializes JSON-LD actor data and validates it.
+   *
+   * @param actorId The actor ID of the follower
+   * @param data Raw data from KV store
+   * @returns RelayFollower object if valid, null otherwise
+   * @internal
+   */
+  private async parseFollowerData(
+    actorId: string,
+    data: unknown,
+  ): Promise<RelayFollower | null> {
+    if (!isRelayFollowerData(data)) return null;
+
+    const actor = await APObject.fromJsonLd(data.actor);
+    if (!isActor(actor)) return null;
+
+    return {
+      actorId,
+      actor,
+      state: data.state,
+    };
+  }
+
+  /**
+   * Lists all followers of the relay.
+   *
+   * @returns An async iterator of follower entries
+   *
+   * @example
+   * ```ts
+   * import { createRelay } from "@fedify/relay";
+   * import { MemoryKvStore } from "@fedify/fedify";
+   *
+   * const relay = createRelay("mastodon", {
+   *   kv: new MemoryKvStore(),
+   *   domain: "relay.example.com",
+   *   subscriptionHandler: async (ctx, actor) => true,
+   * });
+   *
+   * for await (const follower of relay.listFollowers()) {
+   *   console.log(`Follower: ${follower.actorId}`);
+   *   console.log(`State: ${follower.state}`);
+   *   console.log(`Actor: ${follower.actor.name}`);
+   * }
+   * ```
+   *
+   * @since 2.0.0
+   */
+  async *listFollowers(): AsyncIterableIterator<RelayFollower> {
+    for await (const entry of this.options.kv.list(["follower"])) {
+      const actorId = entry.key[1];
+      if (typeof actorId !== "string") continue;
+
+      const follower = await this.parseFollowerData(actorId, entry.value);
+      if (follower) yield follower;
+    }
+  }
+
+  /**
+   * Gets a specific follower by actor ID.
+   *
+   * @param actorId The actor ID (URL) of the follower to retrieve
+   * @returns The follower entry if found, null otherwise
+   *
+   * @example
+   * ```ts
+   * import { createRelay } from "@fedify/relay";
+   * import { MemoryKvStore } from "@fedify/fedify";
+   *
+   * const relay = createRelay("mastodon", {
+   *   kv: new MemoryKvStore(),
+   *   domain: "relay.example.com",
+   *   subscriptionHandler: async (ctx, actor) => true,
+   * });
+   *
+   * const follower = await relay.getFollower(
+   *   "https://mastodon.example.com/users/alice"
+   * );
+   * if (follower) {
+   *   console.log(`State: ${follower.state}`);
+   *   console.log(`Actor: ${follower.actor.preferredUsername}`);
+   * }
+   * ```
+   *
+   * @since 2.0.0
+   */
+  async getFollower(actorId: string): Promise<RelayFollower | null> {
+    const followerData = await this.options.kv.get(["follower", actorId]);
+    return await this.parseFollowerData(actorId, followerData);
   }
 
   /**
