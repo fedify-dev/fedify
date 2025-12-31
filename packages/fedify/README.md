@@ -90,27 +90,31 @@ which provides the core functionality of the framework.  Other packages provide
 integrations with various web frameworks, database drivers, and other features.
 Here is the list of packages:
 
-| Package                                   | JSR                          | npm                          | Description                             |
-| ---------------------------------------   | ---------------------------- | ---------------------------- | --------------------------------------- |
-| [@fedify/fedify](/packages/fedify/)       | [JSR]                        | [npm]                        | The core framework of Fedify            |
-| [@fedify/cli](/packages/cli/)             | [JSR][jsr:@fedify/cli]       | [npm][npm:@fedify/cli]       | CLI toolchain for testing and debugging |
-| [@fedify/amqp](/packages/amqp/)           | [JSR][jsr:@fedify/amqp]      | [npm][npm:@fedify/amqp]      | AMQP/RabbitMQ driver                    |
-| [@fedify/cfworkers](/packages/cfworkers/) | [JSR][jsr:@fedify/cfworkers] | [npm][npm:@fedify/cfworkers] | Cloudflare Workers integration          |
-| [@fedify/denokv](/packages/denokv/)       | [JSR][jsr:@fedify/denokv]    |                              | Deno KV integration                     |
-| [@fedify/elysia](/packages/elysia/)       |                              | [npm][npm:@fedify/elysia]    | Elysia integration                      |
-| [@fedify/express](/packages/express/)     | [JSR][jsr:@fedify/express]   | [npm][npm:@fedify/express]   | Express integration                     |
-| [@fedify/fastify](/packages/fastify/)     | [JSR][jsr:@fedify/fastify]   | [npm][npm:@fedify/fastify]   | Fastify integration                     |
-| [@fedify/h3](/packages/h3/)               | [JSR][jsr:@fedify/h3]        | [npm][npm:@fedify/h3]        | H3 integration                          |
-| [@fedify/hono](/packages/hono/)           | [JSR][jsr:@fedify/hono]      | [npm][npm:@fedify/hono]      | Hono integration                        |
-| [@fedify/koa](/packages/koa/)             | [JSR][jsr:@fedify/koa]       | [npm][npm:@fedify/koa]       | Koa integration                         |
-| [@fedify/nestjs](/packages/nestjs/)       |                              | [npm][npm:@fedify/nestjs]    | NestJS integration                      |
-| [@fedify/next](/packages/next/)           |                              | [npm][npm:@fedify/next]      | Next.js integration                     |
-| [@fedify/postgres](/packages/postgres/)   | [JSR][jsr:@fedify/postgres]  | [npm][npm:@fedify/postgres]  | PostgreSQL driver                       |
-| [@fedify/redis](/packages/redis/)         | [JSR][jsr:@fedify/redis]     | [npm][npm:@fedify/redis]     | Redis driver                            |
-| [@fedify/relay](/packages/relay/)         | [JSR][jsr:@fedify/relay]     | [npm][npm:@fedify/relay]     | ActivityPub relay support               |
-| [@fedify/sqlite](/packages/sqlite/)       | [JSR][jsr:@fedify/sqlite]    | [npm][npm:@fedify/sqlite]    | SQLite driver                           |
-| [@fedify/sveltekit](/packages/sveltekit/) | [JSR][jsr:@fedify/sveltekit] | [npm][npm:@fedify/sveltekit] | SvelteKit integration                   |
-| [@fedify/testing](/packages/testing/)     | [JSR][jsr:@fedify/testing]   | [npm][npm:@fedify/testing]   | Testing utilities                       |
+| Package                                             | JSR                                | npm                                | Description                                  |
+| --------------------------------------------------- | ---------------------------------- | ---------------------------------- | -------------------------------------------- |
+| [@fedify/fedify](/packages/fedify/)                 | [JSR]                              | [npm]                              | The core framework of Fedify                 |
+| [@fedify/cli](/packages/cli/)                       | [JSR][jsr:@fedify/cli]             | [npm][npm:@fedify/cli]             | CLI toolchain for testing and debugging      |
+| [@fedify/amqp](/packages/amqp/)                     | [JSR][jsr:@fedify/amqp]            | [npm][npm:@fedify/amqp]            | AMQP/RabbitMQ driver                         |
+| [@fedify/cfworkers](/packages/cfworkers/)           | [JSR][jsr:@fedify/cfworkers]       | [npm][npm:@fedify/cfworkers]       | Cloudflare Workers integration               |
+| [@fedify/denokv](/packages/denokv/)                 | [JSR][jsr:@fedify/denokv]          |                                    | Deno KV integration                          |
+| [@fedify/elysia](/packages/elysia/)                 |                                    | [npm][npm:@fedify/elysia]          | Elysia integration                           |
+| [@fedify/express](/packages/express/)               | [JSR][jsr:@fedify/express]         | [npm][npm:@fedify/express]         | Express integration                          |
+| [@fedify/fastify](/packages/fastify/)               | [JSR][jsr:@fedify/fastify]         | [npm][npm:@fedify/fastify]         | Fastify integration                          |
+| [@fedify/fresh](/packages/fresh/)                   | [JSR][jsr:@fedify/fresh]           |                                    | Fresh integration                            |
+| [@fedify/h3](/packages/h3/)                         | [JSR][jsr:@fedify/h3]              | [npm][npm:@fedify/h3]              | H3 integration                               |
+| [@fedify/hono](/packages/hono/)                     | [JSR][jsr:@fedify/hono]            | [npm][npm:@fedify/hono]            | Hono integration                             |
+| [@fedify/koa](/packages/koa/)                       | [JSR][jsr:@fedify/koa]             | [npm][npm:@fedify/koa]             | Koa integration                              |
+| [@fedify/lint](/packages/lint/)                     | [JSR][jsr:@fedify/lint]            | [npm][npm:@fedify/lint]            | Linting utilities                            |
+| [@fedify/nestjs](/packages/nestjs/)                 |                                    | [npm][npm:@fedify/nestjs]          | NestJS integration                           |
+| [@fedify/next](/packages/next/)                     |                                    | [npm][npm:@fedify/next]            | Next.js integration                          |
+| [@fedify/postgres](/packages/postgres/)             | [JSR][jsr:@fedify/postgres]        | [npm][npm:@fedify/postgres]        | PostgreSQL driver                            |
+| [@fedify/redis](/packages/redis/)                   | [JSR][jsr:@fedify/redis]           | [npm][npm:@fedify/redis]           | Redis driver                                 |
+| [@fedify/relay](/packages/relay/)                   | [JSR][jsr:@fedify/relay]           | [npm][npm:@fedify/relay]           | ActivityPub relay support                    |
+| [@fedify/sqlite](/packages/sqlite/)                 | [JSR][jsr:@fedify/sqlite]          | [npm][npm:@fedify/sqlite]          | SQLite driver                                |
+| [@fedify/sveltekit](/packages/sveltekit/)           | [JSR][jsr:@fedify/sveltekit]       | [npm][npm:@fedify/sveltekit]       | SvelteKit integration                        |
+| [@fedify/testing](/packages/testing/)               | [JSR][jsr:@fedify/testing]         | [npm][npm:@fedify/testing]         | Testing utilities                            |
+| [@fedify/vocab-runtime](/packages/vocab-runtime/)   | [JSR][jsr:@fedify/vocab-runtime]   | [npm][npm:@fedify/vocab-runtime]   | Runtime library for code-generated vocab     |
+| [@fedify/vocab-tools](/packages/vocab-tools/)       | [JSR][jsr:@fedify/vocab-tools]     | [npm][npm:@fedify/vocab-tools]     | Code generation tools for Activity Vocab     |
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
@@ -124,12 +128,15 @@ Here is the list of packages:
 [npm:@fedify/express]: https://www.npmjs.com/package/@fedify/express
 [jsr:@fedify/fastify]: https://jsr.io/@fedify/fastify
 [npm:@fedify/fastify]: https://www.npmjs.com/package/@fedify/fastify
+[jsr:@fedify/fresh]: https://jsr.io/@fedify/fresh
 [jsr:@fedify/h3]: https://jsr.io/@fedify/h3
 [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3
 [jsr:@fedify/hono]: https://jsr.io/@fedify/hono
 [npm:@fedify/hono]: https://www.npmjs.com/package/@fedify/hono
 [jsr:@fedify/koa]: https://jsr.io/@fedify/koa
 [npm:@fedify/koa]: https://www.npmjs.com/package/@fedify/koa
+[jsr:@fedify/lint]: https://jsr.io/@fedify/lint
+[npm:@fedify/lint]: https://www.npmjs.com/package/@fedify/lint
 [npm:@fedify/nestjs]: https://www.npmjs.com/package/@fedify/nestjs
 [npm:@fedify/next]: https://www.npmjs.com/package/@fedify/next
 [jsr:@fedify/postgres]: https://jsr.io/@fedify/postgres
@@ -144,6 +151,10 @@ Here is the list of packages:
 [npm:@fedify/sveltekit]: https://www.npmjs.com/package/@fedify/sveltekit
 [jsr:@fedify/testing]: https://jsr.io/@fedify/testing
 [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing
+[jsr:@fedify/vocab-runtime]: https://jsr.io/@fedify/vocab-runtime
+[npm:@fedify/vocab-runtime]: https://www.npmjs.com/package/@fedify/vocab-runtime
+[jsr:@fedify/vocab-tools]: https://jsr.io/@fedify/vocab-tools
+[npm:@fedify/vocab-tools]: https://www.npmjs.com/package/@fedify/vocab-tools
 
 
 Sponsors

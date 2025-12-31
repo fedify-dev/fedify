@@ -72,6 +72,8 @@ For Markdown, we have the following conventions:
  -  80 characters at most per line, except for code blocks and URLs.
  -  Prefer [reference links] over [inline links].
  -  Prefer [setext headings] over [ATX headings].
+ -  Use sentence case for headings (capitalize only the first word and proper
+    nouns), not Title Case.
  -  Two new lines before opening an H1/H2 heading.
  -  One space before and two spaces after a bullet.
  -  Wrap file paths in asterisks.
@@ -189,7 +191,8 @@ When adding a new package to the monorepo, the following files must be updated:
  -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*.
  -  If the package is published to JSR: Add JSR link to the `REFERENCES` data
     in *docs/.vitepress/config.mts* (note: only JSR links are added here,
-    not npm links).
+    not npm links; *@fedify/cli* and *@fedify/lint* are excluded from
+    REFERENCES).
 
 **Optional updates:**
 
@@ -224,6 +227,45 @@ pnpm install
 When reviewing pull requests, please check that lockfile changes are included
 for any dependency-related changes.
 
+### Commit messages
+
+ -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
+    Keep the first line under 50 characters when possible.
+ -  Focus on *why* the change was made, not just *what* changed.
+ -  When referencing issues or PRs, use permalink URLs instead of just
+    numbers (e.g., `#123`).  This preserves context if the repository
+    is moved later.
+ -  When listing items after a colon, add a blank line after the colon:
+
+    ~~~~
+    This commit includes the following changes:
+
+    - Added foo
+    - Fixed bar
+    ~~~~
+
+### Changelog entries
+
+When adding entries to *CHANGES.md*, follow these conventions:
+
+ -  Use ` -  ` (one space, hyphen, two spaces) for list items.
+ -  Wrap lines at approximately 80 characters, and indent continuation lines
+    by 4 spaces so they align with the bullet text.
+ -  Write concrete, user-facing descriptions.  Include what changed, why it
+    changed, and what users should do differently (especially for breaking
+    changes).
+ -  Use `[[#123]]` markers for issue/PR references, with reference links at
+    the end of the version section:
+
+    ~~~~
+     -  Fixed a bug where foo would bar.  [[#123]]
+
+    [#123]: https://github.com/fedify-dev/fedify/pull/123
+    ~~~~
+
+ -  When the reference is for a PR authored by an external contributor, append
+    `by <NAME>` after the reference marker (e.g., `[[#123] by John Doe]`).
+
 ### Pull request builds
 
 Pre-release versions can be published for pull requests on request.  If you need
@@ -254,16 +296,23 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.
  -  *packages/fastify/*: Fastify integration (@fedify/fastify) for Fedify.
+ -  *packages/fresh/*: Fresh integration (@fedify/fresh) for Fedify.
  -  *packages/h3/*: h3 framework integration (@fedify/h3) for Fedify.
  -  *packages/hono/*: Hono integration (@fedify/hono) for Fedify.
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
+ -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
  -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
+ -  *packages/relay/*: ActivityPub relay support (@fedify/relay) for Fedify.
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
  -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite) for Fedify.
  -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit) for Fedify.
  -  *packages/testing/*: Testing utilities (@fedify/testing) for Fedify.
+ -  *packages/vocab-runtime/*: Runtime library for code-generated vocab
+    (@fedify/vocab-runtime) for Fedify.
+ -  *packages/vocab-tools/*: Code generation tools for Activity Vocabulary
+    (@fedify/vocab-tools) for Fedify.
  -  *docs/*: The Fedify docs.  The docs are built with [Node.js] and
     [VitePress].
  -  *examples/*: The example projects.  Some examples are built with Deno, and
