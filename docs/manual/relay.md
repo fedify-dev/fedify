@@ -5,11 +5,11 @@ description: >-
 ---
 
 Relay
-============
+=====
 
 *This API is available since Fedify 2.0.0.*
 
-Fedify provides the `@fedify/relay` package for building [ActivityPub relay
+Fedify provides the *@fedify/relay* package for building [ActivityPub relay
 servers]—services that forward activities between instances without requiring
 individual actor-following relationships.
 
@@ -19,7 +19,7 @@ individual actor-following relationships.
 Setting up a relay server
 -------------------------
 
-First, install the `@fedify/relay` package.
+First, install the *@fedify/relay* package.
 
 ::: code-group
 
@@ -27,8 +27,16 @@ First, install the `@fedify/relay` package.
 deno add @fedify/relay
 ~~~~
 
-~~~~ sh [Node.js]
-npm add @fedify/relay
+~~~~ sh [npm]
+npm add @fedify/relay @hono/node-server
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/relay @hono/node-server
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/relay @hono/node-server
 ~~~~
 
 ~~~~ sh [Bun]
@@ -39,7 +47,9 @@ bun add @fedify/relay
 
 Then create a relay using the `createRelay()` function.
 
-~~~~ typescript twoslash
+::: code-group
+
+~~~~ typescript twoslash [Deno]
 import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
 
@@ -48,7 +58,7 @@ const relay = createRelay("mastodon", {
   domain: "relay.example.com",
   name: "My ActivityPub Relay",
   subscriptionHandler: async (ctx, actor) => {
-    // Approve all subscriptions 
+    // Approve all subscriptions
     return true;
   },
 });
@@ -56,16 +66,61 @@ const relay = createRelay("mastodon", {
 Deno.serve((request) => relay.fetch(request));
 ~~~~
 
+~~~~ typescript twoslash [Bun]
+import "@types/bun";
+// ---cut-before---
+import { createRelay } from "@fedify/relay";
+import { MemoryKvStore } from "@fedify/fedify";
+
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  name: "My ActivityPub Relay",
+  subscriptionHandler: async (ctx, actor) => {
+    // Approve all subscriptions
+    return true;
+  },
+});
+
+Bun.serve({
+  port: 8000,
+  fetch(request) {
+    return relay.fetch(request);
+  },
+});
+~~~~
+
+~~~~ typescript twoslash [Node.js]
+import { createRelay } from "@fedify/relay";
+import { MemoryKvStore } from "@fedify/fedify";
+import { serve } from "@hono/node-server";
+
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  domain: "relay.example.com",
+  name: "My ActivityPub Relay",
+  subscriptionHandler: async (ctx, actor) => {
+    // Approve all subscriptions
+    return true;
+  },
+});
+
+serve({
+  port: 8000,
+  fetch(request) {
+    return relay.fetch(request);
+  },
+});
+~~~~
+
+:::
+
 > [!WARNING]
 > `MemoryKvStore` is for development only. For production, use a persistent
-> store like `RedisKvStore` from [`@fedify/redis`], `PostgresKvStore` from
-> [`@fedify/postgres`], or `DenoKvStore` from [`@fedify/denokv`].
+> store like `RedisKvStore` from *@fedify/redis*, `PostgresKvStore` from
+> *@fedify/postgres*, or `DenoKvStore` from *@fedify/denokv*.
 >
-> See the [*Key-value store* section](./kv.md) for details.
-
-[`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
-[`@fedify/postgres`]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres
-[`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
+> See the [*Key–value store* section](./kv.md) for details.
 
 
 Configuration options
@@ -105,7 +160,8 @@ Configuration options
 
 `subscriptionHandler` (required)
 :   Callback to approve or reject subscription requests. See
-    [*Handling subscriptions*](#handling-subscriptions). To create an open relay that accepts all subscriptions:
+    [*Handling subscriptions*](#handling-subscriptions). To create an open relay
+    that accepts all subscriptions:
 
     ~~~~ typescript
     subscriptionHandler: async (ctx, actor) => true
@@ -124,14 +180,17 @@ Configuration options
 Relay types
 -----------
 
-The first parameter to `createRelay()` specifies the relay protocol:
+The first parameter to `createRelay()` specifies the relay protocol.
+For detailed protocol specifications, see [FEP-ae0c].
 
-| Feature | `"mastodon"` | `"litepub"` |
-|---------|--------------|-------------|
-| Activity forwarding | Direct | Wrapped in `Announce` |
-| Following relationship | One-way | Bidirectional |
-| Subscription state | Immediate `"accepted"` | `"pending"` → `"accepted"` |
-| Compatibility | Broad (most implementations) | LitePub-aware servers |
+[FEP-ae0c]: https://w3id.org/fep/ae0c
+
+| Feature                | `"mastodon"`                 | `"litepub"`                  |
+|------------------------|------------------------------|------------------------------|
+| Activity forwarding    | Direct                       | Wrapped in `Announce`        |
+| Following relationship | One-way                      | Bidirectional                |
+| Subscription state     | Immediate `"accepted"`       | `"pending"` → `"accepted"`   |
+| Compatibility          | Broad (most implementations) | LitePub-aware servers        |
 
 > [!TIP]
 > Use `"mastodon"` for broader compatibility. Switch to `"litepub"` only if
@@ -157,7 +216,7 @@ Forwards `Create`, `Update`, `Delete`, `Move`, and `Announce` activities.
 
 ### LitePub-style relay
 
-The relay server follows back instances that subscribe to it. Forwarded 
+The relay server follows back instances that subscribe to it. Forwarded
 activities are wrapped in `Announce` objects.
 
 ~~~~ typescript twoslash
@@ -170,6 +229,58 @@ const relay = createRelay("litepub", {
   subscriptionHandler: async (ctx, actor) => true,
 });
 ~~~~
+
+
+Subscribing to a relay
+----------------------
+
+Instance administrators can subscribe to your relay by adding the relay URL
+in their server settings.  The URL format differs depending on the relay type.
+
+### Subscription URL
+
+The subscription URL differs between Mastodon-style and LitePub-style relays:
+
+| Relay type   | Subscription URL                       | Example                           |
+|--------------|----------------------------------------|-----------------------------------|
+| `"mastodon"` | Inbox URL: `https://{domain}/inbox`    | `https://relay.example.com/inbox` |
+| `"litepub"`  | Actor URL: `https://{domain}/actor`    | `https://relay.example.com/actor` |
+
+For more details on the protocol differences, see [FEP-ae0c].
+
+### Subscribing from Mastodon
+
+To subscribe from a Mastodon instance:
+
+ 1. Go to **Preferences** → **Administration** → **Relays**
+ 2. Click **Add new relay**
+ 3. Enter the relay inbox URL (e.g., `https://relay.example.com/inbox`)
+ 4. Click **Save and enable**
+
+The relay will receive a `Follow` activity from the instance.  If the
+`subscriptionHandler` approves the request, the relay sends back an `Accept`
+activity, and the instance becomes a subscriber.
+
+> [!NOTE]
+> Mastodon only supports Mastodon-style relays.  Use the inbox URL
+> (`https://{domain}/inbox`) when subscribing from Mastodon.
+
+### Subscribing from Pleroma/Akkoma
+
+Pleroma and Akkoma use LitePub-style relays by default.  To subscribe:
+
+ 1. Use the admin CLI or MIX task to add the relay
+ 2. Enter the relay actor URL (e.g., `https://relay.example.com/actor`)
+
+### Subscribing from other software
+
+Consult your server software's documentation for specific instructions.
+The general process is:
+
+ 1. Find the relay settings in your server's administration panel
+ 2. Add the appropriate relay URL (inbox URL for Mastodon-style, actor URL
+    for LitePub-style)
+ 3. Wait for the subscription to be approved
 
 
 Handling subscriptions
@@ -293,10 +404,10 @@ Stored with keys `["follower", actorId]`.  Actor objects typically range from
 
 Two key pairs are generated and stored:
 
-| Key | Purpose |
-|-----|---------|
-| `["keypair", "rsa", "relay"]` | HTTP Signatures |
-| `["keypair", "ed25519", "relay"]` | Linked Data Signatures, Object Integrity Proofs |
+| Key                                | Purpose                                          |
+|------------------------------------|--------------------------------------------------|
+| `["keypair", "rsa", "relay"]`      | HTTP Signatures                                  |
+| `["keypair", "ed25519", "relay"]`  | Linked Data Signatures, Object Integrity Proofs  |
 
 > [!NOTE]
 > These keys are critical for the relay's identity.  Back up your `KvStore`
@@ -366,21 +477,21 @@ await configure({
 
 Key log categories:
 
-| Category | Description |
-|----------|-------------|
-| `["fedify", "federation", "inbox"]` | Incoming activities |
-| `["fedify", "federation", "outbox"]` | Outgoing activities |
-| `["fedify", "sig"]` | Signature verification |
+| Category                               | Description            |
+|----------------------------------------|------------------------|
+| `["fedify", "federation", "inbox"]`    | Incoming activities    |
+| `["fedify", "federation", "outbox"]`   | Outgoing activities    |
+| `["fedify", "sig"]`                    | Signature verification |
 
 ### OpenTelemetry
 
 The relay supports [OpenTelemetry](./opentelemetry.md) tracing. Key spans:
 
-| Span | Description |
-|------|-------------|
-| `activitypub.inbox` | Receiving activities |
-| `activitypub.send_activity` | Forwarding activities |
-| `activitypub.dispatch_inbox_listener` | Processing inbox events |
+| Span                                    | Description              |
+|-----------------------------------------|--------------------------|
+| `activitypub.inbox`                     | Receiving activities     |
+| `activitypub.send_activity`             | Forwarding activities    |
+| `activitypub.dispatch_inbox_listener`   | Processing inbox events  |
 
 
 <!-- cSpell: ignore LitePub -->
