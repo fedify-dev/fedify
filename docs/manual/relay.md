@@ -117,8 +117,8 @@ Configuration options
     object*](./federation.md#documentloaderfactory).
 
 `authenticatedDocumentLoaderFactory`
- :   A factory function for creating an authenticated document loader.
-     See [`authenticatedDocumentLoaderFactory`](./federation.md#authenticateddocumentloaderfactory).
+:   A factory function for creating an authenticated document loader.
+    See [`authenticatedDocumentLoaderFactory`](./federation.md#authenticateddocumentloaderfactory).
 
 
 Relay types
