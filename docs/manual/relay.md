@@ -113,7 +113,7 @@ Configuration options
 
 `documentLoaderFactory`
 :   A factory function for creating a document loader to fetch remote
-      ActivityPub objects. See [*Getting a `Federation`
+    ActivityPub objects. See [*Getting a `Federation`
     object*](./federation.md#documentloaderfactory).
 
 `authenticatedDocumentLoaderFactory`
@@ -222,7 +222,6 @@ Return `true` to approve or `false` to reject.  Rejected requests receive a
 Managing followers
 ------------------
 
-<<<<<<< HEAD
 The relay provides methods to query and manage followers through the `Relay`
 interface.
 
@@ -281,7 +280,6 @@ Each follower entry contains:
 > supports listing by prefix (Redis, PostgreSQL, SQLite, Deno KV all support
 > this).
 
-=======
 Follower data is stored in the [`KvStore`](./kv.md) with keys following the
 pattern `["follower", actorId]`.  Each entry contains:
 
@@ -322,7 +320,6 @@ for await (const entry of kv.list(["follower"])) {
 }
 ~~~~
 
->>>>>>> cbb51460362eba2c9ccf5d639f9d25899bad64a4
 
 Storage requirements
 --------------------
