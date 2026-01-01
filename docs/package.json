@@ -20,6 +20,7 @@
     "@fedify/sveltekit": "workspace:",
     "@fedify/testing": "workspace:",
     "@fedify/vocab-runtime": "workspace:",
+    "@fedify/relay": "workspace:",
     "@hono/node-server": "^1.13.7",
     "@js-temporal/polyfill": "catalog:",
     "@logtape/file": "catalog:",
