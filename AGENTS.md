@@ -61,7 +61,7 @@ The repository is organized as a monorepo with the following packages:
     -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and `src/utils/*`. If user code imports from here, notice and suggest migration.
     -  *src/shim/*: Platform abstraction layer
     -  *src/sig/*: Signature implementation
-    -  *src/testing/*: Testing utilities
+    -  *src/testing/*: Testing utilities. Most have been migrated to `packages/fixtures`(`@fedify/fixture`), except for modules that have dependencies on `@fedify/fedify`.
     -  *src/utils/*: Utility functions
     -  *src/vocab/*: ActivityPub vocabulary implementation
     -  *src/webfinger/*: WebFinger protocol implementation
@@ -72,6 +72,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/denokv/*: Deno KV integration (@fedify/denokv)
  -  *packages/elysia/*: Elysia integration (@fedify/elysia)
  -  *packages/express/*: Express.js integration (@fedify/express)
+ -  *packages/fixture/*: Testing utilities (@fedify/fixture)
  -  *packages/fastify/*: Fastify integration (@fedify/fastify)
  -  *packages/fresh/*: Fresh integration (@fedify/fresh)
  -  *packages/h3/*: h3 framework integration (@fedify/h3)
