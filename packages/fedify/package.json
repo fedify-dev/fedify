@@ -153,6 +153,7 @@
   },
   "devDependencies": {
     "@fedify/vocab-tools": "workspace:^",
+    "@fedify/denokv": "workspace:^",
     "@std/assert": "jsr:^0.226.0",
     "@std/path": "catalog:",
     "@types/node": "^24.2.1",
