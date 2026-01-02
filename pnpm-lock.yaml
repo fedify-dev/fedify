@@ -111,6 +111,8 @@ catalogs:
 
 importers:
 
+  .: {}
+
   docs:
     devDependencies:
       '@braintree/sanitize-url':
