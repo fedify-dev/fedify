@@ -9,8 +9,7 @@
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
-    "./utils": "./src/utils/mod.ts",
-    "./webfinger": "./src/webfinger/mod.ts"
+    "./utils": "./src/utils/mod.ts"
   },
   "imports": {
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
@@ -101,18 +100,8 @@
         "pnpm:build-fixture"
       ]
     },
-    "pnpm:build-vocab-runtime": {
-      "command": "cd ../vocab-runtime && pnpm build"
-    },
-    "pnpm:build-vocab-tools": {
-      "command": "cd ../vocab-tools && pnpm build"
-    },
     "pnpm:build-vocab": {
-      "command": "cd ../vocab && pnpm build",
-      "dependencies": [
-        "pnpm:build-vocab-runtime",
-        "pnpm:build-vocab-tools"
-      ]
+      "command": "pnpm run --filter vocab build"
     },
     "test:node": {
       "command": "cd dist/ && node --test",

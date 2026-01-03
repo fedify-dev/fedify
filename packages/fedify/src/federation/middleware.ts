@@ -23,6 +23,11 @@ import type {
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
 import { getDocumentLoader } from "@fedify/vocab-runtime";
+import type {
+  LookupWebFingerOptions,
+  ResourceDescriptor,
+} from "@fedify/webfinger";
+import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger, withContext } from "@logtape/logtape";
 import {
   context,
@@ -58,12 +63,6 @@ import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
-import { handleWebFinger } from "../webfinger/handler.ts";
-import type { ResourceDescriptor } from "../webfinger/jrd.ts";
-import {
-  lookupWebFinger,
-  type LookupWebFingerOptions,
-} from "../webfinger/lookup.ts";
 import { FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
@@ -108,6 +107,7 @@ import type {
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import { RouterError } from "./router.ts";
 import { extractInboxes, sendActivity, type SenderKeyPair } from "./send.ts";
+import { handleWebFinger } from "./webfinger.ts";
 
 /**
  * Options for {@link createFederation} function.

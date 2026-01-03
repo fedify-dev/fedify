@@ -1,5 +1,5 @@
 import type { Context, KvStore, MessageQueue } from "@fedify/fedify";
-import type { Actor } from "@fedify/fedify/vocab";
+import type { Actor } from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoaderFactory,

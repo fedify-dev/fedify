@@ -6,8 +6,8 @@ import {
   generateCryptoKeyPair,
   importJwk,
 } from "@fedify/fedify";
-import { Application, isActor, Object } from "@fedify/fedify/vocab";
-import type { Actor } from "@fedify/fedify/vocab";
+import type { Actor } from "@fedify/vocab";
+import { Application, isActor, Object } from "@fedify/vocab";
 import {
   isRelayFollowerData,
   RELAY_SERVER_ACTOR,
