@@ -1,3 +1,4 @@
+import { mockDocumentLoader } from "@fedify/fixture";
 import { trace } from "@opentelemetry/api";
 import type {
   Context,
@@ -11,7 +12,6 @@ import {
   traverseCollection as globalTraverseCollection,
 } from "../vocab/lookup.ts";
 import { lookupWebFinger as globalLookupWebFinger } from "../webfinger/lookup.ts";
-import { mockDocumentLoader } from "./docloader.ts";
 
 export function createContext<TContextData>(
   values: Partial<Context<TContextData>> & {

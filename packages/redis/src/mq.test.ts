@@ -1,10 +1,10 @@
+import { test } from "@fedify/fixture";
 import { RedisMessageQueue } from "@fedify/redis/mq";
 import * as temporal from "@js-temporal/polyfill";
 import { delay } from "@std/async/delay";
 import { Redis } from "ioredis";
 import assert from "node:assert/strict";
 import process from "node:process";
-import { test } from "node:test";
 
 let Temporal: typeof temporal.Temporal;
 if ("Temporal" in globalThis) {
@@ -15,7 +15,7 @@ if ("Temporal" in globalThis) {
 
 const redisUrl = process.env.REDIS_URL;
 
-test("RedisMessageQueue", { skip: redisUrl == null }, async () => {
+test("RedisMessageQueue", { ignore: redisUrl == null }, async () => {
   const channelKey = `fedify_test_channel_${crypto.randomUUID()}`;
   const queueKey = `fedify_test_queue_${crypto.randomUUID()}`;
   const lockKey = `fedify_test_lock_${crypto.randomUUID()}`;

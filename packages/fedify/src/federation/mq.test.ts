@@ -1,3 +1,4 @@
+import { test } from "@fedify/fixture";
 import {
   assert,
   assertEquals,
@@ -6,7 +7,6 @@ import {
   assertGreaterOrEqual,
 } from "@std/assert";
 import { delay } from "es-toolkit";
-import { test } from "../testing/mod.ts";
 import {
   InProcessMessageQueue,
   type MessageQueue,
@@ -113,8 +113,8 @@ test("MessageQueue.nativeRetrial", async (t) => {
   ) {
     await t.step("DenoKvMessageQueue", async () => {
       // Import dynamically to avoid error in static check on cfworkers test
-      const packageName = "@fedify/denokv";
-      const { DenoKvMessageQueue } = await import(packageName);
+      const packageName = () => "@fedify/denokv";
+      const { DenoKvMessageQueue } = await import(packageName());
       const mq = new DenoKvMessageQueue(
         // @ts-ignore: Works on Deno
         await globalThis.Deno.openKv(":memory:"),
@@ -176,8 +176,8 @@ if (
   typeof globalThis.Deno.openKv === "function"
 ) {
   // Import dynamically to avoid error in static check on cfworkers test
-  const packageName = "@fedify/denokv";
-  const { DenoKvMessageQueue } = await import(packageName);
+  const packageName = () => "@fedify/denokv";
+  const { DenoKvMessageQueue } = await import(packageName());
   queues.DenoKvMessageQueue = async () =>
     new DenoKvMessageQueue(
       // @ts-ignore: Works on Deno

@@ -1,4 +1,9 @@
 import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
+import {
   assert,
   assertEquals,
   assertFalse,
@@ -8,15 +13,12 @@ import {
 import fetchMock from "fetch-mock";
 import { verifyRequest } from "../sig/http.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
   rsaPrivateKey2,
   rsaPublicKey2,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
-import { createTestTracerProvider } from "../testing/otel.ts";
 import type { Actor } from "../vocab/actor.ts";
 import {
   Activity,

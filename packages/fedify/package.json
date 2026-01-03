@@ -135,7 +135,7 @@
     "@logtape/logtape": "catalog:",
     "@multiformats/base-x": "^4.0.1",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "^1.27.0",
     "asn1js": "^3.0.7",
@@ -151,6 +151,7 @@
     "urlpattern-polyfill": "^10.1.0"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:*",
     "@fedify/vocab-tools": "workspace:^",
     "@std/assert": "jsr:^0.226.0",
     "@std/path": "catalog:",
@@ -164,11 +165,11 @@
     "wrangler": "^4.17.0"
   },
   "scripts": {
-    "build": "deno task codegen && pnpm run --filter vocab-runtime build && pnpm run --filter vocab-tools build && tsdown",
+    "build": "deno task codegen && pnpm run --filter vocab-runtime build && pnpm run --filter vocab-tools build && pnpm run --filter fixture build && tsdown",
     "prepack": "pnpm run build",
     "prepublish": "pnpm run build",
     "test": "deno task codegen && tsdown && cd dist/ && node --test",
-    "test:bun": "deno task codegen && deno task pnpm:build-vocab && tsdown && cd dist/ && bun test --timeout 60000",
+    "test:bun": "deno task pnpm:build && cd dist/ && bun test --timeout 60000",
     "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts"
   }
 }

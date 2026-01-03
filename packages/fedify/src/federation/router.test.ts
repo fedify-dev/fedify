@@ -1,5 +1,5 @@
+import { test } from "@fedify/fixture";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
-import { test } from "../testing/mod.ts";
 import { Router, RouterError, type RouterOptions } from "./router.ts";
 
 function setUp(options: RouterOptions = {}): Router {

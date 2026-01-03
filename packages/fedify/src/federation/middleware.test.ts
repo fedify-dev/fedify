@@ -1,3 +1,4 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   assert,
   assertEquals,
@@ -9,21 +10,20 @@ import {
   assertThrows,
 } from "@std/assert";
 import fetchMock from "fetch-mock";
+import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
+  type: "json",
+};
+import personFixture from "../../../fixture/src/fixtures/example.com/person.json" with {
+  type: "json",
+};
+import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.json" with {
+  type: "json",
+};
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
 import { detachSignature, signJsonLd, verifyJsonLd } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
-import { mockDocumentLoader } from "../testing/docloader.ts";
-import createFixture from "../testing/fixtures/example.com/create.json" with {
-  type: "json",
-};
-import personFixture from "../testing/fixtures/example.com/person.json" with {
-  type: "json",
-};
-import person2Fixture from "../testing/fixtures/example.com/person2.json" with {
-  type: "json",
-};
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -33,7 +33,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import {
   fetchDocumentLoader,
   getAuthenticatedDocumentLoader,

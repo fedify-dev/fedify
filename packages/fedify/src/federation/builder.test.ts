@@ -1,6 +1,6 @@
+import { test } from "@fedify/fixture";
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import type { Protocol } from "../nodeinfo/types.ts";
-import { test } from "../testing/mod.ts";
 import { Activity, Note, Person } from "../vocab/vocab.ts";
 import { createFederationBuilder } from "./builder.ts";
 import type {

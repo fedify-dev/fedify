@@ -30,7 +30,7 @@ export const rsaPublicKey1 = new CryptographicKey({
   ),
 }) as CryptographicKey & { publicKey: CryptoKey };
 
-export const rsaPrivateKey2 = await crypto.subtle.importKey(
+export const rsaPrivateKey2: CryptoKey = await crypto.subtle.importKey(
   "jwk",
   {
     kty: "RSA",
@@ -98,7 +98,7 @@ export const rsaPublicKey2 = new CryptographicKey({
   ),
 }) as CryptographicKey & { publicKey: CryptoKey };
 
-export const rsaPrivateKey3 = await crypto.subtle.importKey(
+export const rsaPrivateKey3: CryptoKey = await crypto.subtle.importKey(
   "jwk",
   {
     kty: "RSA",
@@ -216,7 +216,7 @@ export const rsaPublicKey5 = new CryptographicKey({
   ),
 }) as CryptographicKey & { publicKey: CryptoKey };
 
-export const ed25519PrivateKey = await crypto.subtle.importKey(
+export const ed25519PrivateKey: CryptoKey = await crypto.subtle.importKey(
   "jwk",
   {
     crv: "Ed25519",

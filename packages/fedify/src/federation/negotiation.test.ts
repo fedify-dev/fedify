@@ -1,5 +1,5 @@
+import { test } from "@fedify/fixture";
 import { assert, assertFalse } from "@std/assert";
-import { test } from "../testing/mod.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 
 test("acceptsJsonLd()", () => {

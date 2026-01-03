@@ -1,9 +1,9 @@
+import { test } from "@fedify/fixture";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertInstanceOf } from "@std/assert/assert-instance-of";
 import { MemoryKvStore } from "../federation/kv.ts";
 import { FederationImpl } from "../federation/middleware.ts";
-import { test } from "../testing/mod.ts";
 import { Follow, Person } from "../vocab/vocab.ts";
 import { actorDehydrator, autoIdAssigner } from "./transformers.ts";
 

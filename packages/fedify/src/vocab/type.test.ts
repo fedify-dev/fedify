@@ -1,5 +1,5 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert/assert-equals";
-import { test } from "../testing/mod.ts";
 import { getTypeId } from "./type.ts";
 import { Person } from "./vocab.ts";
 

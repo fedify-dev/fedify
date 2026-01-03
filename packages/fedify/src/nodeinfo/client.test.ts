@@ -1,6 +1,6 @@
+import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
 import fetchMock from "fetch-mock";
-import { test } from "../testing/mod.ts";
 import {
   getNodeInfo,
   parseInboundService,

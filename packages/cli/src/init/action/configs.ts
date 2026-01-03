@@ -62,7 +62,7 @@ const getLinks = <
     merge(initializer.dependencies),
     merge(kv.dependencies),
     merge(mq.dependencies),
-    keys,
+    keys as (obj: object) => Iterable<string>,
     filter((dep) => dep.includes("@fedify/")),
     map((dep) => dep.replace("@fedify/", "")),
     map((dep) => joinPath(PACKAGES_PATH, dep)),

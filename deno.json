@@ -7,6 +7,7 @@
     "./packages/express",
     "./packages/fastify",
     "./packages/fedify",
+    "./packages/fixture",
     "./packages/fresh",
     "./packages/h3",
     "./packages/hono",
@@ -92,6 +93,9 @@
         "codegen"
       ]
     },
+    "pnpm:build-fixture": {
+      "command": "cd packages/fixture && pnpm build"
+    },
     "test": {
       "command": "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel",
       "dependencies": [
@@ -102,14 +106,16 @@
       "command": "pnpm run --recursive --filter '!{docs}' test",
       "dependencies": [
         "codegen",
-        "install"
+        "install",
+        "pnpm:build-fixture"
       ]
     },
     "test:bun": {
       "command": "pnpm run --recursive --filter '!{docs}' test:bun",
       "dependencies": [
         "codegen",
-        "install"
+        "install",
+        "pnpm:build-fixture"
       ]
     },
     "test-all": {

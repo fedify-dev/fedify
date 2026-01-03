@@ -1,10 +1,10 @@
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
 import { assertRejects } from "@std/assert/assert-rejects";
 import { assertThrows } from "@std/assert/assert-throws";
 import { encodeBase64 } from "byte-encodings/base64";
-import { mockDocumentLoader } from "../testing/docloader.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -13,7 +13,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { test } from "../testing/mod.ts";
 import { CryptographicKey } from "../vocab/vocab.ts";
 import { generateCryptoKeyPair } from "./key.ts";
 import {

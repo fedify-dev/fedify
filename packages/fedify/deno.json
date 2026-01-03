@@ -97,7 +97,8 @@
       "dependencies": [
         "codegen",
         "pnpm:install",
-        "pnpm:build-vocab"
+        "pnpm:build-vocab",
+        "pnpm:build-fixture"
       ]
     },
     "pnpm:build-vocab-runtime": {
@@ -121,14 +122,12 @@
     "test:bun": {
       "command": "cd dist/ && bun test --timeout 60000",
       "dependencies": [
-        "pnpm:build-vocab",
         "pnpm:build"
       ]
     },
     "test:cfworkers": {
       "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts",
       "dependencies": [
-        "pnpm:build-vocab",
         "pnpm:build"
       ]
     },
