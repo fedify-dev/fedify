@@ -1,5 +1,6 @@
 {
   "name": "@fedify/fixture",
+  "version": "2.0.0",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
@@ -26,7 +27,6 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^",
     "@fedify/vocab-runtime": "workspace:^",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/core": "catalog:",

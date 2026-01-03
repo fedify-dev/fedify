@@ -841,9 +841,6 @@ importers:
 
   packages/fedify:
     dependencies:
-      '@fedify/fixture':
-        specifier: workspace:*
-        version: link:../fixture
       '@fedify/vocab-runtime':
         specifier: workspace:*
         version: link:../vocab-runtime
@@ -902,6 +899,9 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:*
+        version: link:../fixture
       '@fedify/vocab-tools':
         specifier: workspace:^
         version: link:../vocab-tools
@@ -938,9 +938,6 @@ importers:
 
   packages/fixture:
     dependencies:
-      '@fedify/fedify':
-        specifier: workspace:^
-        version: link:../fedify
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../vocab-runtime
