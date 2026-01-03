@@ -169,7 +169,7 @@
     "prepack": "pnpm run build",
     "prepublish": "pnpm run build",
     "test": "deno task codegen && tsdown && cd dist/ && node --test",
-    "test:bun": "deno task pnpm:build && tsdown && cd dist/ && bun test --timeout 60000",
+    "test:bun": "deno task pnpm:build && cd dist/ && bun test --timeout 60000",
     "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts"
   }
 }

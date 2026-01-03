@@ -61,7 +61,7 @@ The repository is organized as a monorepo with the following packages:
     -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and `src/utils/*`. If user code imports from here, notice and suggest migration.
     -  *src/shim/*: Platform abstraction layer
     -  *src/sig/*: Signature implementation
-    -  *src/testing/*: Testing utilities. Most have been migrated to `packages/fixtures`(`@fedify/fixture`), except for modules that have dependencies on `@fedify/fedify`.
+    -  *src/testing/*: Testing utilities. Most have been migrated to `packages/fixture`(`@fedify/fixture`), except for modules that have dependencies on `@fedify/fedify`.
     -  *src/utils/*: Utility functions
     -  *src/vocab/*: ActivityPub vocabulary implementation
     -  *src/webfinger/*: WebFinger protocol implementation
