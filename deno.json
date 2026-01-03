@@ -109,7 +109,7 @@
       ]
     },
     "test:bun": {
-      "command": "pnpm run --recursive --filter '!{docs}' test:bun",
+      "command": "pnpm run --recursive --filter 'packages' build && pnpm run --recursive --filter '!{docs}' test:bun",
       "dependencies": [
         "codegen",
         "install"

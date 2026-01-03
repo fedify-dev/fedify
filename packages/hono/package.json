@@ -60,6 +60,6 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "deno task codegen && tsdown && cd dist/ && node --test"
+    "test": "node --experimental-transform-types --test"
   }
 }

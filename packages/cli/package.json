@@ -90,10 +90,10 @@
     "prepublish": "pnpm run build",
     "test": "pnpm build && node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
     "test-init": "deno task test-init",
-    "test:bun": "pnpm build && bun test",
-    "run": "pnpm build && node dist/mod.js",
+    "test:bun": "tsdown && bun test",
+    "run": "tsdown && node dist/mod.js",
     "runi": "tsdown && node dist/mod.js",
-    "run:bun": "pnpm build && bun dist/mod.js",
+    "run:bun": "tsdown && bun dist/mod.js",
     "runi:bun": "tsdown && bun dist/mod.js"
   }
 }

@@ -1,7 +1,7 @@
 import { test } from "@fedify/fixture";
-import { assertEquals } from "@std/assert";
 import { withTimeout } from "es-toolkit";
 import fetchMock from "fetch-mock";
+import { deepStrictEqual } from "node:assert";
 import type { ResourceDescriptor } from "./jrd.ts";
 import { lookupWebFinger } from "./lookup.ts";
 
@@ -11,18 +11,18 @@ test({
   sanitizeResources: false,
   async fn(t) {
     await t.step("invalid resource", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe"), null);
-      assertEquals(await lookupWebFinger(new URL("acct:johndoe")), null);
-      assertEquals(await lookupWebFinger("acct:johndoe@"), null);
-      assertEquals(await lookupWebFinger(new URL("acct:johndoe@")), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe"), null);
+      deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe")), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe@"), null);
+      deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe@")), null);
     });
 
     await t.step("connection refused", async () => {
-      assertEquals(
+      deepStrictEqual(
         await lookupWebFinger("acct:johndoe@fedify-test.internal"),
         null,
       );
-      assertEquals(
+      deepStrictEqual(
         await lookupWebFinger("https://fedify-test.internal/foo"),
         null,
       );
@@ -35,8 +35,8 @@ test({
     );
 
     await t.step("not found", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), null);
-      assertEquals(await lookupWebFinger("https://example.com/foo"), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
+      deepStrictEqual(await lookupWebFinger("https://example.com/foo"), null);
     });
 
     const expected: ResourceDescriptor = {
@@ -50,7 +50,10 @@ test({
     );
 
     await t.step("acct", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), expected);
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com"),
+        expected,
+      );
     });
 
     const expected2: ResourceDescriptor = {
@@ -64,7 +67,10 @@ test({
     );
 
     await t.step("https", async () => {
-      assertEquals(await lookupWebFinger("https://example.com/foo"), expected2);
+      deepStrictEqual(
+        await lookupWebFinger("https://example.com/foo"),
+        expected2,
+      );
     });
 
     fetchMock.removeRoutes();
@@ -74,7 +80,7 @@ test({
     );
 
     await t.step("invalid response", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
     });
 
     fetchMock.removeRoutes();
@@ -93,8 +99,8 @@ test({
     );
 
     await t.step("private address", async () => {
-      assertEquals(await lookupWebFinger("acct:test@localhost"), null);
-      assertEquals(
+      deepStrictEqual(await lookupWebFinger("acct:test@localhost"), null);
+      deepStrictEqual(
         await lookupWebFinger("acct:test@localhost", {
           allowPrivateAddress: true,
         }),
@@ -125,7 +131,10 @@ test({
     );
 
     await t.step("redirection", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), expected);
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com"),
+        expected,
+      );
     });
 
     fetchMock.removeRoutes();
@@ -142,7 +151,7 @@ test({
         () => lookupWebFinger("acct:johndoe@example.com"),
         2000,
       );
-      assertEquals(result, null);
+      deepStrictEqual(result, null);
     });
 
     fetchMock.removeRoutes();
@@ -155,7 +164,7 @@ test({
     );
 
     await t.step("redirection to different protocol", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
     });
 
     fetchMock.removeRoutes();
@@ -168,7 +177,7 @@ test({
     );
 
     await t.step("redirection to private address", async () => {
-      assertEquals(await lookupWebFinger("acct:johndoe@example.com"), null);
+      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
     });
 
     fetchMock.removeRoutes();
@@ -192,7 +201,7 @@ test({
     await t.step("custom maxRedirection", async () => {
       // Test with maxRedirection: 2 (should fail)
       redirectCount = 0;
-      assertEquals(
+      deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com", {
           maxRedirection: 2,
         }),
@@ -201,7 +210,7 @@ test({
 
       // Test with maxRedirection: 3 (should succeed)
       redirectCount = 0;
-      assertEquals(
+      deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com", {
           maxRedirection: 3,
         }),
@@ -210,7 +219,7 @@ test({
 
       // Test with default maxRedirection: 5 (should succeed)
       redirectCount = 0;
-      assertEquals(
+      deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com"),
         expected,
       );
@@ -238,7 +247,7 @@ test({
 
       // Abort the request right after starting it
       controller.abort();
-      assertEquals(await promise, null);
+      deepStrictEqual(await promise, null);
     });
 
     fetchMock.removeRoutes();
@@ -272,7 +281,7 @@ test({
 
       // Cancel during the delayed second request after redirection
       setTimeout(() => controller.abort(), 100);
-      assertEquals(await promise, null);
+      deepStrictEqual(await promise, null);
     });
 
     fetchMock.removeRoutes();
@@ -297,7 +306,7 @@ test({
       const result = await lookupWebFinger("acct:johndoe@example.com", {
         signal: controller.signal,
       });
-      assertEquals(result, null);
+      deepStrictEqual(result, null);
     });
 
     fetchMock.removeRoutes();
@@ -312,7 +321,7 @@ test({
       const result = await lookupWebFinger("acct:johndoe@example.com", {
         signal: controller.signal,
       });
-      assertEquals(result, expected);
+      deepStrictEqual(result, expected);
     });
 
     fetchMock.hardReset();

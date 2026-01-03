@@ -96,8 +96,7 @@
       "dependencies": [
         "codegen",
         "pnpm:install",
-        "pnpm:build-vocab",
-        "pnpm:build-fixture"
+        "pnpm:build-vocab"
       ]
     },
     "pnpm:build-vocab": {
