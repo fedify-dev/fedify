@@ -4,11 +4,11 @@ import {
   getDocumentLoader,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
+import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { delay } from "es-toolkit";
 import metadata from "../deno.json" with { type: "json" };
-import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { toAcctUrl } from "./handle.ts";
 import { getTypeId } from "./type.ts";
 import { type Collection, type Link, Object } from "./vocab.ts";

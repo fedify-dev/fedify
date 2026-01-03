@@ -39,8 +39,19 @@
   },
   "dependencies": {
     "@fedify/vocab-tools": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "jsonld": "^9.0.0"
+    "@fedify/webfinger": "workspace:*",
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "jsonld": "^9.0.0",
+    "multicodec": "^3.2.1"
+  },
+  "devDependencies": {
+    "@fedify/fixture": "workspace:*",
+    "@fedify/vocab-runtime": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   },
   "scripts": {
     "build": "tsdown",

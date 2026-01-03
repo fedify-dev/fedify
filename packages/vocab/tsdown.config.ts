@@ -15,22 +15,18 @@ export default [
       if (format === "cjs") {
         outputOptions.intro = `
           const { Temporal } = require("@js-temporal/polyfill");
-          const { URLPattern } = require("urlpattern-polyfill");
         `;
       } else {
         outputOptions.intro = `
           import { Temporal } from "@js-temporal/polyfill";
-          import { URLPattern } from "urlpattern-polyfill";
         `;
       }
       return outputOptions;
     },
   }),
   defineConfig({
-    entry: [
-      ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
-        .map((f) => f.replace(sep, "/")),
-    ],
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
+      .map((f) => f.replace(sep, "/")),
     dts: true,
     external: [/^node:/],
     inputOptions: {
@@ -48,7 +44,6 @@ export default [
     outputOptions: {
       intro: `
       import { Temporal } from "@js-temporal/polyfill";
-      import { URLPattern } from "urlpattern-polyfill";
       globalThis.addEventListener = () => {};
     `,
     },

@@ -1,8 +1,8 @@
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
+import { lookupWebFinger } from "@fedify/webfinger";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { domainToASCII, domainToUnicode } from "node:url";
 import metadata from "../deno.json" with { type: "json" };
-import { lookupWebFinger } from "../webfinger/lookup.ts";
 import { getTypeId } from "./type.ts";
 import { Application, Group, Organization, Person, Service } from "./vocab.ts";
 

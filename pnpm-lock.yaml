@@ -1178,6 +1178,9 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
@@ -1185,9 +1188,6 @@ importers:
         specifier: 'catalog:'
         version: 1.3.5
     devDependencies:
-      '@fedify/testing':
-        specifier: workspace:^
-        version: link:../testing
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../vocab-runtime
@@ -1266,12 +1266,40 @@ importers:
       '@fedify/vocab-tools':
         specifier: workspace:*
         version: link:../vocab-tools
+      '@fedify/webfinger':
+        specifier: workspace:*
+        version: link:../webfinger
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 1.3.5
       '@opentelemetry/api':
-        specifier: ^1.9.0
+        specifier: 'catalog:'
         version: 1.9.0
       jsonld:
         specifier: ^9.0.0
         version: 9.0.0
+      multicodec:
+        specifier: ^3.2.1
+        version: 3.2.1
+    devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:*
+        version: link:../fixture
+      '@fedify/vocab-runtime':
+        specifier: workspace:*
+        version: link:../vocab-runtime
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.3
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/vocab-runtime:
     dependencies:
@@ -1328,6 +1356,31 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.3
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.12.9(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/webfinger:
+    dependencies:
+      '@fedify/vocab-runtime':
+        specifier: workspace:*
+        version: link:../vocab-runtime
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 1.3.5
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.2.1
+        version: 24.10.4
+      fetch-mock:
+        specifier: 'catalog:'
+        version: 12.6.0
       tsdown:
         specifier: 'catalog:'
         version: 0.12.9(typescript@5.9.3)
@@ -5058,8 +5111,8 @@ packages:
   chardet@2.1.1:
     resolution: {integrity: sha512-PsezH1rqdV9VvyNhxxOW32/d75r01NY7TQCmOqomRo15ZSOKbpTFVsfjghxo6JloQUCGnH4k1LGu0R4yCLlWQQ==}
 
-  check-error@2.1.1:
-    resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
+  check-error@2.1.3:
+    resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
     engines: {node: '>= 16'}
 
   chevrotain-allstar@0.3.1:
@@ -12581,7 +12634,7 @@ snapshots:
   chai@5.3.3:
     dependencies:
       assertion-error: 2.0.1
-      check-error: 2.1.1
+      check-error: 2.1.3
       deep-eql: 5.0.2
       loupe: 3.2.1
       pathval: 2.0.1
@@ -12601,7 +12654,7 @@ snapshots:
 
   chardet@2.1.1: {}
 
-  check-error@2.1.1: {}
+  check-error@2.1.3: {}
 
   chevrotain-allstar@0.3.1(chevrotain@11.0.3):
     dependencies:

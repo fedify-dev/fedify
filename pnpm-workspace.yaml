@@ -22,6 +22,7 @@ packages:
 - packages/vocab
 - packages/vocab-runtime
 - packages/vocab-tools
+- packages/webfinger
 - docs
 - examples/cloudflare-workers
 - examples/elysia
