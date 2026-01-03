@@ -11,7 +11,10 @@ import type {
   TraverseCollectionOptions,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
-import type { LookupWebFingerOptions, ResourceDescriptor } from "@fedify/webfinger";
+import type {
+  LookupWebFingerOptions,
+  ResourceDescriptor,
+} from "@fedify/webfinger";
 import type { TracerProvider } from "@opentelemetry/api";
 import type { GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
