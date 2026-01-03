@@ -54,10 +54,11 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown",
-    "test": "tsdown && cd dist/ && node --test"
+    "build": "deno task compile && tsdown",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "pnpm build && cd dist/ && node --test",
+    "test:bun": "pnpm build && cd dist/ && bun test --timeout 60000"
   },
   "keywords": [
     "Fedify",

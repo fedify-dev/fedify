@@ -95,12 +95,8 @@
       "command": "pnpm exec tsdown",
       "dependencies": [
         "codegen",
-        "pnpm:install",
-        "pnpm:build-vocab"
+        "pnpm:install"
       ]
-    },
-    "pnpm:build-vocab": {
-      "command": "pnpm run --filter vocab build"
     },
     "test:node": {
       "command": "cd dist/ && node --test",
