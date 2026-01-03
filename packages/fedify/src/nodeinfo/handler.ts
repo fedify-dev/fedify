@@ -1,7 +1,7 @@
+import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import type { NodeInfoDispatcher } from "../federation/callback.ts";
 import type { RequestContext } from "../federation/context.ts";
 import { RouterError } from "../federation/router.ts";
-import type { Link, ResourceDescriptor } from "../webfinger/jrd.ts";
 import { nodeInfoToJson } from "./types.ts";
 
 /**

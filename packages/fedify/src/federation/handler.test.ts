@@ -21,7 +21,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { createTestTracerProvider } from "../testing/otel.ts";
 import type {
   ActorDispatcher,
   CollectionCounter,

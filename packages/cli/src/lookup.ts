@@ -1,7 +1,6 @@
 import {
   generateCryptoKeyPair,
   getAuthenticatedDocumentLoader,
-  type ResourceDescriptor,
   respondWithObject,
 } from "@fedify/fedify";
 import {
@@ -14,6 +13,7 @@ import {
   traverseCollection,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import {
   argument,

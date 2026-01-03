@@ -3,6 +3,7 @@ import {
   lookupObject as globalLookupObject,
   traverseCollection as globalTraverseCollection,
 } from "@fedify/vocab";
+import { lookupWebFinger as globalLookupWebFinger } from "@fedify/webfinger";
 import { trace } from "@opentelemetry/api";
 import type {
   Context,
@@ -11,7 +12,6 @@ import type {
 } from "../federation/context.ts";
 import type { Federation } from "../federation/federation.ts";
 import { RouterError } from "../federation/router.ts";
-import { lookupWebFinger as globalLookupWebFinger } from "../webfinger/lookup.ts";
 
 export function createContext<TContextData>(
   values: Partial<Context<TContextData>> & {

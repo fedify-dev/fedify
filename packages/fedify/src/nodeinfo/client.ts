@@ -1,6 +1,6 @@
 import { getUserAgent, type GetUserAgentOptions } from "@fedify/vocab-runtime";
+import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
-import type { ResourceDescriptor } from "../webfinger/jrd.ts";
 import type {
   InboundService,
   JsonValue,

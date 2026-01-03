@@ -1,6 +1,6 @@
 import type { Activity, Actor, CryptographicKey, Object } from "@fedify/vocab";
+import type { Link } from "@fedify/webfinger";
 import type { NodeInfo } from "../nodeinfo/types.ts";
-import type { Link } from "../webfinger/mod.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { SenderKeyPair } from "./send.ts";

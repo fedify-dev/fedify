@@ -3,7 +3,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
-import { Create, lookupObject } from "@fedify/vocab";
+import { Create, CryptographicKey, lookupObject } from "@fedify/vocab";
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { rsaPublicKey1, rsaPublicKey2 } from "../testing/keys.ts";
 import { doesActorOwnKey, getKeyOwner } from "./owner.ts";
