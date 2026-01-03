@@ -1,14 +1,7 @@
 import { test } from "@fedify/fixture";
-import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertRejects,
-  assertStrictEquals,
-  assertThrows,
-} from "@std/assert";
 import * as fc from "fast-check";
 import fetchMock from "fetch-mock";
+import { deepStrictEqual, ok, rejects, strictEqual, throws } from "node:assert";
 import {
   type Actor,
   getActorClassByTypeName,
@@ -52,7 +45,7 @@ function actor(): fc.Arbitrary<Actor> {
 }
 
 test("isActor()", () => {
-  fc.assert(fc.property(actor(), (actor) => assert(isActor(actor))));
+  fc.assert(fc.property(actor(), (actor) => ok(isActor(actor))));
   fc.assert(
     fc.property(
       fc.anything({
@@ -66,7 +59,7 @@ test("isActor()", () => {
         withTypedArray: true,
         withSparseArray: true,
       }),
-      (nonActor) => assertFalse(isActor(nonActor)),
+      (nonActor) => ok(!isActor(nonActor)),
     ),
   );
 });
@@ -75,7 +68,8 @@ test("getActorTypeName()", () => {
   fc.assert(
     fc.property(
       actorClassAndInstance(),
-      ([cls, instance]) => assertEquals(getActorTypeName(instance), cls.name),
+      ([cls, instance]) =>
+        deepStrictEqual(getActorTypeName(instance), cls.name),
     ),
   );
 });
@@ -85,7 +79,7 @@ test("getActorClassByTypeName()", () => {
     fc.property(
       actorClassAndInstance(),
       ([cls, instance]) =>
-        assertStrictEquals(
+        strictEqual(
           getActorClassByTypeName(getActorTypeName(instance)),
           cls,
         ),
@@ -114,13 +108,16 @@ test({
     });
 
     await t.step("WebFinger subject", async () => {
-      assertEquals(await getActorHandle(actor), "@johndoe@foo.example.com");
-      assertEquals(
+      deepStrictEqual(await getActorHandle(actor), "@johndoe@foo.example.com");
+      deepStrictEqual(
         await getActorHandle(actor, { trimLeadingAt: true }),
         "johndoe@foo.example.com",
       );
-      assertEquals(await getActorHandle(actorId), "@johndoe@foo.example.com");
-      assertEquals(
+      deepStrictEqual(
+        await getActorHandle(actorId),
+        "@johndoe@foo.example.com",
+      );
+      deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
         "johndoe@foo.example.com",
       );
@@ -142,13 +139,16 @@ test({
     );
 
     await t.step("WebFinger aliases", async () => {
-      assertEquals(await getActorHandle(actor), "@johndoe@foo.example.com");
-      assertEquals(
+      deepStrictEqual(await getActorHandle(actor), "@johndoe@foo.example.com");
+      deepStrictEqual(
         await getActorHandle(actor, { trimLeadingAt: true }),
         "johndoe@foo.example.com",
       );
-      assertEquals(await getActorHandle(actorId), "@johndoe@foo.example.com");
-      assertEquals(
+      deepStrictEqual(
+        await getActorHandle(actorId),
+        "@johndoe@foo.example.com",
+      );
+      deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
         "johndoe@foo.example.com",
       );
@@ -168,7 +168,7 @@ test({
     );
 
     await t.step("cross-origin WebFinger resources", async () => {
-      assertEquals(await getActorHandle(actor), "@john@bar.example.com");
+      deepStrictEqual(await getActorHandle(actor), "@john@bar.example.com");
     });
 
     fetchMock.removeRoutes();
@@ -178,8 +178,8 @@ test({
     );
 
     await t.step("no WebFinger", async () => {
-      assertEquals(await getActorHandle(actor), "@john@foo.example.com");
-      assertRejects(() => getActorHandle(actorId), TypeError);
+      deepStrictEqual(await getActorHandle(actor), "@john@foo.example.com");
+      rejects(() => getActorHandle(actorId), TypeError);
     });
 
     fetchMock.hardReset();
@@ -187,71 +187,71 @@ test({
 });
 
 test("normalizeActorHandle()", () => {
-  assertEquals(normalizeActorHandle("@foo@BAR.COM"), "@foo@bar.com");
-  assertEquals(normalizeActorHandle("@BAZ@☃-⌘.com"), "@BAZ@☃-⌘.com");
-  assertEquals(
+  deepStrictEqual(normalizeActorHandle("@foo@BAR.COM"), "@foo@bar.com");
+  deepStrictEqual(normalizeActorHandle("@BAZ@☃-⌘.com"), "@BAZ@☃-⌘.com");
+  deepStrictEqual(
     normalizeActorHandle("@qux@xn--maana-pta.com"),
     "@qux@mañana.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@XN--MAANA-PTA.COM"),
     "@quux@mañana.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@MAÑANA.COM"),
     "@quux@mañana.com",
   );
 
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@foo@BAR.COM", { trimLeadingAt: true }),
     "foo@bar.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@BAZ@☃-⌘.com", { trimLeadingAt: true }),
     "BAZ@☃-⌘.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@qux@xn--maana-pta.com", { trimLeadingAt: true }),
     "qux@mañana.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@XN--MAANA-PTA.COM", { trimLeadingAt: true }),
     "quux@mañana.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@MAÑANA.COM", { trimLeadingAt: true }),
     "quux@mañana.com",
   );
 
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@foo@BAR.COM", { punycode: true }),
     "@foo@bar.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@BAZ@☃-⌘.com", { punycode: true }),
     "@BAZ@xn----dqo34k.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@qux@xn--maana-pta.com", { punycode: true }),
     "@qux@xn--maana-pta.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@XN--MAANA-PTA.COM", { punycode: true }),
     "@quux@xn--maana-pta.com",
   );
-  assertEquals(
+  deepStrictEqual(
     normalizeActorHandle("@quux@MAÑANA.COM", { punycode: true }),
     "@quux@xn--maana-pta.com",
   );
 
-  assertThrows(() => normalizeActorHandle(""));
-  assertThrows(() => normalizeActorHandle("@"));
-  assertThrows(() => normalizeActorHandle("foo"));
-  assertThrows(() => normalizeActorHandle("@foo"));
-  assertThrows(() => normalizeActorHandle("@@foo.com"));
-  assertThrows(() => normalizeActorHandle("@foo@"));
-  assertThrows(() => normalizeActorHandle("foo@bar.com@baz.com"));
-  assertThrows(() => normalizeActorHandle("@foo@bar.com@baz.com"));
+  throws(() => normalizeActorHandle(""));
+  throws(() => normalizeActorHandle("@"));
+  throws(() => normalizeActorHandle("foo"));
+  throws(() => normalizeActorHandle("@foo"));
+  throws(() => normalizeActorHandle("@@foo.com"));
+  throws(() => normalizeActorHandle("@foo@"));
+  throws(() => normalizeActorHandle("foo@bar.com@baz.com"));
+  throws(() => normalizeActorHandle("@foo@bar.com@baz.com"));
 });
 
 // cSpell: ignore maana

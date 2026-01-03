@@ -3,14 +3,10 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
-import {
-  assert,
-  assertEquals,
-  assertInstanceOf,
-  assertRejects,
-} from "@std/assert";
 import fetchMock from "fetch-mock";
+import { deepStrictEqual, equal, ok, rejects } from "node:assert";
 import { lookupObject, traverseCollection } from "./lookup.ts";
+import { assertInstanceOf } from "./utils.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
 test("lookupObject()", {
@@ -51,18 +47,18 @@ test("lookupObject()", {
   await t.step("actor", async () => {
     const person = await lookupObject("@johndoe@example.com", options);
     assertInstanceOf(person, Person);
-    assertEquals(person.id, new URL("https://example.com/person"));
-    assertEquals(person.name, "John Doe");
+    deepStrictEqual(person.id, new URL("https://example.com/person"));
+    equal(person.name, "John Doe");
     const person2 = await lookupObject("johndoe@example.com", options);
-    assertEquals(person2, person);
+    deepStrictEqual(person2, person);
     const person3 = await lookupObject("acct:johndoe@example.com", options);
-    assertEquals(person3, person);
+    deepStrictEqual(person3, person);
   });
 
   await t.step("object", async () => {
     const object = await lookupObject("https://example.com/object", options);
     assertInstanceOf(object, Object);
-    assertEquals(
+    deepStrictEqual(
       object,
       new Object({
         id: new URL("https://example.com/object"),
@@ -74,7 +70,7 @@ test("lookupObject()", {
       options,
     );
     assertInstanceOf(person, Person);
-    assertEquals(
+    deepStrictEqual(
       person,
       new Person({
         id: new URL("https://example.com/hong-gildong"),
@@ -96,8 +92,11 @@ test("lookupObject()", {
   });
 
   await t.step("not found", async () => {
-    assertEquals(await lookupObject("janedoe@example.com", options), null);
-    assertEquals(await lookupObject("https://example.com/404", options), null);
+    deepStrictEqual(await lookupObject("janedoe@example.com", options), null);
+    deepStrictEqual(
+      await lookupObject("https://example.com/404", options),
+      null,
+    );
   });
 
   fetchMock.removeRoutes();
@@ -128,7 +127,7 @@ test("lookupObject()", {
     });
 
     controller.abort();
-    assertEquals(await promise, null);
+    deepStrictEqual(await promise, null);
   });
 
   fetchMock.removeRoutes();
@@ -153,7 +152,7 @@ test("lookupObject()", {
       signal: controller.signal,
     });
     assertInstanceOf(person, Person);
-    assertEquals(person.id, new URL("https://example.com/person"));
+    deepStrictEqual(person.id, new URL("https://example.com/person"));
   });
 
   fetchMock.removeRoutes();
@@ -184,7 +183,7 @@ test("lookupObject()", {
       ...options,
       signal: controller.signal,
     });
-    assertEquals(result, null);
+    deepStrictEqual(result, null);
   });
 
   fetchMock.removeRoutes();
@@ -214,7 +213,7 @@ test("lookupObject()", {
     });
 
     controller.abort();
-    assertEquals(await promise, null);
+    deepStrictEqual(await promise, null);
   });
 
   fetchMock.hardReset();
@@ -234,7 +233,7 @@ test("traverseCollection()", {
     options,
   );
   assertInstanceOf(collection, Collection);
-  assertEquals(
+  deepStrictEqual(
     await Array.fromAsync(traverseCollection(collection, options)),
     [
       new Note({ content: "This is a simple note" }),
@@ -247,7 +246,7 @@ test("traverseCollection()", {
     options,
   );
   assertInstanceOf(pagedCollection, Collection);
-  assertEquals(
+  deepStrictEqual(
     await Array.fromAsync(traverseCollection(pagedCollection, options)),
     [
       new Note({ content: "This is a simple note" }),
@@ -255,7 +254,7 @@ test("traverseCollection()", {
       new Note({ content: "This is a third simple note" }),
     ],
   );
-  assertEquals(
+  deepStrictEqual(
     await Array.fromAsync(
       traverseCollection(pagedCollection, {
         ...options,
@@ -301,7 +300,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       });
 
       // Should return null and log a warning (default behavior)
-      assertEquals(result, null);
+      deepStrictEqual(result, null);
     },
   );
 
@@ -325,7 +324,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
         throw new Error(`Unexpected URL: ${url}`);
       };
 
-      await assertRejects(
+      await rejects(
         () =>
           lookupObject("https://example.com/note", {
             documentLoader: crossOriginDocumentLoader,
@@ -363,8 +362,8 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     });
 
     assertInstanceOf(result, Note);
-    assertEquals(result.id, new URL("https://malicious.com/fake-note"));
-    assertEquals(
+    deepStrictEqual(result.id, new URL("https://malicious.com/fake-note"));
+    deepStrictEqual(
       result.content,
       "This is a spoofed note from a different origin",
     );
@@ -394,8 +393,8 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     });
 
     assertInstanceOf(result, Note);
-    assertEquals(result.id, new URL("https://example.com/note"));
-    assertEquals(
+    deepStrictEqual(result.id, new URL("https://example.com/note"));
+    deepStrictEqual(
       result.content,
       "This is a legitimate note from the same origin",
     );
@@ -425,8 +424,8 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     });
 
     assertInstanceOf(result, Note);
-    assertEquals(result.id, null);
-    assertEquals(result.content, "This is a note without an ID");
+    deepStrictEqual(result.id, null);
+    deepStrictEqual(result.content, "This is a note without an ID");
   });
 
   await t.step("WebFinger lookup with cross-origin actor URL", async () => {
@@ -467,10 +466,10 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       documentLoader: webfingerDocumentLoader,
       contextLoader: mockDocumentLoader,
     });
-    assertEquals(result1, null);
+    deepStrictEqual(result1, null);
 
     // With crossOrigin: throw, should throw error
-    await assertRejects(
+    await rejects(
       () =>
         lookupObject("@user@example.com", {
           documentLoader: webfingerDocumentLoader,
@@ -488,7 +487,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       crossOrigin: "trust",
     });
     assertInstanceOf(result2, Person);
-    assertEquals(result2.id, new URL("https://malicious.com/fake-actor"));
+    deepStrictEqual(result2.id, new URL("https://malicious.com/fake-actor"));
 
     fetchMock.removeRoutes();
     fetchMock.hardReset();
@@ -518,7 +517,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       contextLoader: mockDocumentLoader,
     });
 
-    assertEquals(result, null); // Should be blocked
+    deepStrictEqual(result, null); // Should be blocked
   });
 
   await t.step("different port same-origin check", async () => {
@@ -545,7 +544,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       contextLoader: mockDocumentLoader,
     });
 
-    assertEquals(result, null); // Should be blocked
+    deepStrictEqual(result, null); // Should be blocked
   });
 
   await t.step("protocol difference same-origin check", async () => {
@@ -572,7 +571,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       contextLoader: mockDocumentLoader,
     });
 
-    assertEquals(result, null); // Should be blocked
+    deepStrictEqual(result, null); // Should be blocked
   });
 
   await t.step("error handling with crossOrigin throw option", async () => {
@@ -591,7 +590,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
     // Should return null because the document loader failed,
     // not because of cross-origin policy
-    assertEquals(result, null);
+    deepStrictEqual(result, null);
   });
 
   await t.step("malformed JSON handling with cross-origin policy", async () => {
@@ -608,7 +607,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     };
 
     // Should return null for malformed JSON regardless of crossOrigin setting
-    assertEquals(
+    deepStrictEqual(
       await lookupObject("https://example.com/note", {
         documentLoader: malformedJsonDocumentLoader,
         contextLoader: mockDocumentLoader,
@@ -617,7 +616,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       null,
     );
 
-    assertEquals(
+    deepStrictEqual(
       await lookupObject("https://example.com/note", {
         documentLoader: malformedJsonDocumentLoader,
         contextLoader: mockDocumentLoader,
@@ -626,7 +625,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       null,
     );
 
-    assertEquals(
+    deepStrictEqual(
       await lookupObject("https://example.com/note", {
         documentLoader: malformedJsonDocumentLoader,
         contextLoader: mockDocumentLoader,
@@ -650,11 +649,11 @@ test("lookupObject() records OpenTelemetry span events", async () => {
 
   // Check that the span was recorded
   const spans = exporter.getSpans("activitypub.lookup_object");
-  assertEquals(spans.length, 1);
+  deepStrictEqual(spans.length, 1);
   const span = spans[0];
 
   // Check span attributes
-  assertEquals(
+  deepStrictEqual(
     span.attributes["activitypub.object.id"],
     "https://example.com/object",
   );
@@ -664,19 +663,19 @@ test("lookupObject() records OpenTelemetry span events", async () => {
     "activitypub.lookup_object",
     "activitypub.object.fetched",
   );
-  assertEquals(events.length, 1);
+  deepStrictEqual(events.length, 1);
   const event = events[0];
 
   // Verify event attributes
-  assert(event.attributes != null);
-  assert(typeof event.attributes["activitypub.object.type"] === "string");
-  assert(typeof event.attributes["activitypub.object.json"] === "string");
+  ok(event.attributes != null);
+  ok(typeof event.attributes["activitypub.object.type"] === "string");
+  ok(typeof event.attributes["activitypub.object.json"] === "string");
 
   // Verify the JSON contains the object
   const recordedObject = JSON.parse(
     event.attributes["activitypub.object.json"] as string,
   );
-  assertEquals(recordedObject.id, "https://example.com/object");
+  deepStrictEqual(recordedObject.id, "https://example.com/object");
 });
 
 // cSpell: ignore gildong
