@@ -26,3 +26,7 @@ export type { Message } from "./queue.ts";
 export * from "./retry.ts";
 export * from "./router.ts";
 export { type SenderKeyPair } from "./send.ts";
+export {
+  handleWebFinger,
+  type WebFingerHandlerParameters,
+} from "./webfinger.ts";

@@ -201,7 +201,7 @@ Here's a basic example of using `createFederation()`:
 
 ~~~~ typescript twoslash
 import { createFederation } from "@fedify/testing";
-import { Create, Note } from "@fedify/fedify/vocab";
+import { Create, Note } from "@fedify/vocab";
 
 // Create a mock federation with context data
 const federation = createFederation<{ userId: string }>({
@@ -240,7 +240,7 @@ sent activities and provides mock implementations of URI generation methods:
 
 ~~~~ typescript twoslash
 import { createFederation } from "@fedify/testing";
-import { Create, Note, Person } from "@fedify/fedify/vocab";
+import { Create, Note, Person } from "@fedify/vocab";
 
 // Create a mock federation and context
 const federation = createFederation<{ userId: string }>();
@@ -281,7 +281,7 @@ configured in your test federation:
 
 ~~~~ typescript twoslash
 import { createFederation } from "@fedify/testing";
-import { Note } from "@fedify/fedify/vocab";
+import { Note } from "@fedify/vocab";
 
 const federation = createFederation();
 

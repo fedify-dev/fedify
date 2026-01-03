@@ -71,6 +71,7 @@
     "npm:es-toolkit@^1.30.0": "1.43.0",
     "npm:es-toolkit@^1.31.0": "1.43.0",
     "npm:es-toolkit@^1.39.10": "1.43.0",
+    "npm:es-toolkit@^1.42.0": "1.43.0",
     "npm:es-toolkit@^1.43.0": "1.43.0",
     "npm:eslint@9": "9.39.2",
     "npm:express@4": "4.22.1",
@@ -5205,6 +5206,20 @@
           "npm:@sveltejs/kit@2"
         ]
       },
+      "packages/vocab": {
+        "dependencies": [
+          "npm:@opentelemetry/api@^1.9.0",
+          "npm:fast-check@^3.22.0",
+          "npm:fetch-mock@^12.5.2",
+          "npm:jsonld@9"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:jsonld@9",
+            "npm:multicodec@^3.2.1"
+          ]
+        }
+      },
       "packages/vocab-runtime": {
         "dependencies": [
           "npm:@multiformats/base-x@^4.0.1",
@@ -5234,6 +5249,17 @@
             "npm:@cfworker/json-schema@^4.1.1",
             "npm:es-toolkit@^1.39.10",
             "npm:yaml@^2.8.1"
+          ]
+        }
+      },
+      "packages/webfinger": {
+        "dependencies": [
+          "npm:es-toolkit@^1.42.0",
+          "npm:fetch-mock@^12.5.4"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@types/node@^24.2.1"
           ]
         }
       }

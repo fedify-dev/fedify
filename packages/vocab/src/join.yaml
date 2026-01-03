@@ -1,0 +1,14 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Join
+compactName: Join
+uri: "https://www.w3.org/ns/activitystreams#Join"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the `actor` has joined the `object`.
+  The `target` and `origin` typically have no defined meaning.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

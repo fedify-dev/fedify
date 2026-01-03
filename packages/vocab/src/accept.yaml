@@ -1,0 +1,15 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Accept
+compactName: Accept
+uri: "https://www.w3.org/ns/activitystreams#Accept"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the `actor` accepts the `object`.  The `target` property can be
+  used in certain circumstances to indicate the context into which the `object`
+  has been accepted.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

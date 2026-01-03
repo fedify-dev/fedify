@@ -1,16 +1,16 @@
+import type { InboxContext } from "@fedify/fedify";
 import {
   Accept,
   Announce,
   Create,
   Delete,
   Follow,
-  type InboxContext,
   isActor,
   Move,
   PUBLIC_COLLECTION,
   Undo,
   Update,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { BaseRelay } from "./base.ts";
 import {

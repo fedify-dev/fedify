@@ -1,5 +1,5 @@
+import type { Activity } from "@fedify/vocab";
 import type { Context } from "../federation/context.ts";
-import type { Activity } from "../vocab/vocab.ts";
 
 /**
  * A function that transforms an activity object.

@@ -228,7 +228,7 @@ type Env = {
   KV_NAMESPACE: KVNamespace<string>;
   QUEUE: Queue;
 };
-import { Person } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 // ---cut-before---
 import { createFederationBuilder } from "@fedify/fedify";
 import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
@@ -265,7 +265,8 @@ must manually connect queue handlers:
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederationBuilder, Person, type Message } from "@fedify/fedify";
+import { createFederationBuilder, type Message } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
 type Env = {

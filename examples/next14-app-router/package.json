@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:",
+    "@fedify/vocab": "workspace:",
     "@logtape/logtape": "catalog:",
     "next": "^14.0.0",
     "react": "19.0.0-rc-7771d3a7-20240827",

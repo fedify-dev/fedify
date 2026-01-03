@@ -1,0 +1,36 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Multikey
+compactName: Multikey
+uri: "https://w3id.org/security#Multikey"
+entity: true
+description: |
+  Represents a key owned by an actor according to [FEP-521a: Representing
+  actor's public keys.][1]
+
+  [1]: https://w3id.org/fep/521a
+defaultContext: "https://w3id.org/security/multikey/v1"
+
+properties:
+- singularName: controller
+  functional: true
+  compactName: controller
+  uri: "https://w3id.org/security#controller"
+  description: An actor who owns this key.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Application"
+  - "https://www.w3.org/ns/activitystreams#Group"
+  - "https://www.w3.org/ns/activitystreams#Organization"
+  - "https://www.w3.org/ns/activitystreams#Person"
+  - "https://www.w3.org/ns/activitystreams#Service"
+
+- singularName: publicKey
+  functional: true
+  compactName: publicKeyMultibase
+  uri: "https://w3id.org/security#publicKeyMultibase"
+  description: |
+    A [Multibase]-encoded value of a [Multicodec] prefix and the key.
+
+    [Multibase]: https://www.w3.org/TR/vc-data-integrity/#multibase-0
+    [Multicodec]: https://github.com/multiformats/multicodec/
+  range:
+  - "fedify:multibaseKey"

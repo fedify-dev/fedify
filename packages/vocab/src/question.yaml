@@ -1,0 +1,103 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Question
+compactName: Question
+uri: "https://www.w3.org/ns/activitystreams#Question"
+extends: "https://www.w3.org/ns/activitystreams#IntransitiveActivity"
+entity: true
+description: |
+  Represents a question being asked.  Question objects are an extension of
+  {@link IntransitiveActivity}.  That is, the Question object is an Activity,
+  but the direct object is the question itself and therefore it would not
+  contain an `object` property.
+
+  Either of the `inclusiveOptions` and `exclusiveOptions` properties *may* be
+  used to express possible answers, but a Question object *must not* have both
+  properties.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  misskey: "https://misskey-hub.net/ns#"
+  fedibird: "http://fedibird.com/ns#"
+  sensitive: "as:sensitive"
+  votersCount:
+    "@id": "toot:votersCount"
+    "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  quoteUrl: "as:quoteUrl"
+  _misskey_quote: "misskey:_misskey_quote"
+  quoteUri: "fedibird:quoteUri"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+
+properties:
+- pluralName: exclusiveOptions
+  singularName: exclusiveOption
+  singularAccessor: false
+  compactName: oneOf
+  uri: "https://www.w3.org/ns/activitystreams#oneOf"
+  description: |
+    Identifies an exclusive option for a Question.  Use of `exclusiveOptions`
+    implies that the Question can have only a single answer.  To indicate that
+    a Question can have multiple answers, use `inclusiveOptions`.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: inclusiveOptions
+  singularName: inclusiveOption
+  singularAccessor: false
+  compactName: anyOf
+  uri: "https://www.w3.org/ns/activitystreams#anyOf"
+  description: |
+    Identifies an inclusive option for a Question.  Use of `inclusiveOptions`
+    implies that the Question can have multiple answers.  To indicate that
+    a Question can have only one answer, use `exclusiveOptions`.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: closed
+  functional: true
+  compactName: closed
+  uri: "https://www.w3.org/ns/activitystreams#closed"
+  description: |
+    Indicates that a question has been closed, and answers are no longer
+    accepted.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#dateTime"
+  - "http://www.w3.org/2001/XMLSchema#boolean"
+
+- singularName: voters
+  functional: true
+  compactName: votersCount
+  uri: "http://joinmastodon.org/ns#votersCount"
+  description: |
+    How many people have voted in the poll.  Distinct from how many votes have
+    been cast (in the case of multiple-choice polls).
+  range:
+  - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+
+- singularName: quoteUrl
+  functional: true
+  compactName: quoteUrl
+  uri: "https://www.w3.org/ns/activitystreams#quoteUrl"
+  redundantProperties:
+  - compactName: _misskey_quote
+    uri: "https://misskey-hub.net/ns#_misskey_quote"
+  - compactName: quoteUri
+    uri: "http://fedibird.com/ns#quoteUri"
+  description: |
+    The URI of the ActivityStreams object that this object quotes.
+
+    This property sets three JSON-LD properties at once under the hood:
+
+    1. https://www.w3.org/ns/activitystreams#quoteUrl
+    2. https://misskey-hub.net/ns#_misskey_quote
+    3. http://fedibird.com/ns#quoteUri
+
+    When a JSON-LD object is parsed, this property is filled with one of
+    the values of those three properties in order.
+  range:
+  - "fedify:url"

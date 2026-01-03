@@ -1,0 +1,75 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Place
+compactName: Place
+uri: "https://www.w3.org/ns/activitystreams#Place"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  Represents a logical or physical location.  See [5.3 Representing
+  Places](https://www.w3.org/TR/activitystreams-vocabulary/#places)
+  for additional information.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+
+properties:
+- singularName: accuracy
+  functional: true
+  compactName: accuracy
+  uri: "https://www.w3.org/ns/activitystreams#accuracy"
+  description: |
+    Indicates the accuracy of position coordinates on a {@link Place} objects.
+    Expressed in properties of percentage. e.g. "94.0" means "94.0% accurate".
+  range:
+  - "http://www.w3.org/2001/XMLSchema#float"
+
+- singularName: altitude
+  functional: true
+  compactName: altitude
+  uri: "https://www.w3.org/ns/activitystreams#altitude"
+  description: |
+    Indicates the altitude of a place.  The measurement units is indicated
+    using the {@link Place.units} property.  If {@link Place.units} is not
+    specified, the default is assumed to be "`m`" indicating meters.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#float"
+
+- singularName: latitude
+  functional: true
+  compactName: latitude
+  uri: "https://www.w3.org/ns/activitystreams#latitude"
+  description: The latitude of a place.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#float"
+
+- singularName: longitude
+  functional: true
+  compactName: longitude
+  uri: "https://www.w3.org/ns/activitystreams#longitude"
+  description: The longitude of a place.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#float"
+
+- singularName: radius
+  functional: true
+  compactName: radius
+  uri: "https://www.w3.org/ns/activitystreams#radius"
+  description: |
+    The radius from the given latitude and longitude for a {@link Place}.
+    The units is expressed by the {@link Place.units} property.
+    If {@link Place.units} is not specified, the default is assumed to be
+    "`m`" indicating "meters".
+  range:
+  - "http://www.w3.org/2001/XMLSchema#float"
+
+- singularName: units
+  functional: true
+  compactName: units
+  uri: "https://www.w3.org/ns/activitystreams#units"
+  description: |
+    Specifies the measurement units for the {@link Place.radius} and
+    {@link Place.altitude} properties on a {@link Place} object.
+    If not specified, the default is assumed to be "`m`" for "meters".
+  range:
+  - "fedify:units"
+  - "http://www.w3.org/2001/XMLSchema#anyURI"

@@ -1,11 +1,5 @@
-import {
-  Accept,
-  type Context,
-  Follow,
-  Reject,
-  type Undo,
-} from "@fedify/fedify";
-import type { Actor } from "@fedify/fedify/vocab";
+import type { Context } from "@fedify/fedify";
+import { Accept, type Actor, Follow, Reject, type Undo } from "@fedify/vocab";
 import type { getLogger } from "@logtape/logtape";
 import { RELAY_SERVER_ACTOR, type RelayOptions } from "./types.ts";
 

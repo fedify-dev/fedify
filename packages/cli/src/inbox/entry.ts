@@ -1,4 +1,4 @@
-import type { Activity } from "@fedify/fedify";
+import type { Activity } from "@fedify/vocab";
 import type { LogRecord } from "@logtape/logtape";
 
 export interface ActivityEntry {

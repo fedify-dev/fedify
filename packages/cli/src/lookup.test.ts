@@ -1,7 +1,7 @@
-import { Activity, Note } from "@fedify/fedify";
+import { Activity, Note } from "@fedify/vocab";
 import assert from "node:assert/strict";
-import test from "node:test";
 import { mkdir, readFile, rm } from "node:fs/promises";
+import test from "node:test";
 import { getContextLoader } from "./docloader.ts";
 import {
   clearTimeoutSignal,

@@ -1,4 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import type { CryptographicKey, Multikey } from "@fedify/vocab";
 import { exportSpki } from "@fedify/vocab-runtime";
 import {
   assert,
@@ -17,7 +18,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey5,
 } from "../testing/keys.ts";
-import type { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import {
   createRfc9421SignatureBase,
   doubleKnock,

@@ -3,6 +3,15 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import type { Actor } from "@fedify/vocab";
+import {
+  Activity,
+  Application,
+  Endpoints,
+  Group,
+  Person,
+  Service,
+} from "@fedify/vocab";
 import {
   assert,
   assertEquals,
@@ -19,15 +28,7 @@ import {
   rsaPrivateKey2,
   rsaPublicKey2,
 } from "../testing/keys.ts";
-import type { Actor } from "../vocab/actor.ts";
-import {
-  Activity,
-  Application,
-  Endpoints,
-  Group,
-  Person,
-  Service,
-} from "../vocab/vocab.ts";
+
 import { extractInboxes, sendActivity } from "./send.ts";
 
 test("extractInboxes()", () => {

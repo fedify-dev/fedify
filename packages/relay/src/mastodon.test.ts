@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { MemoryKvStore, signRequest } from "@fedify/fedify";
+import { createRelay, type RelayOptions } from "@fedify/relay";
 import {
   Create,
   Delete,
@@ -9,7 +10,7 @@ import {
   Person,
   Undo,
   Update,
-} from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 import {
   exportSpki,
   getDocumentLoader,
@@ -17,7 +18,6 @@ import {
 } from "@fedify/vocab-runtime";
 import { ok, strictEqual } from "node:assert";
 import test, { describe } from "node:test";
-import { createRelay, type RelayOptions } from "@fedify/relay";
 import { isRelayFollowerData } from "./types.ts";
 
 // Simple mock document loader that returns a minimal context

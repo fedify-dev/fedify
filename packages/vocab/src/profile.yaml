@@ -1,0 +1,26 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Profile
+compactName: Profile
+uri: "https://www.w3.org/ns/activitystreams#Profile"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  A {@link Profile} is a content object that describes another {@link Object},
+  typically used to describe [Actor
+  Type](https://www.w3.org/TR/activitystreams-vocabulary/#actor-types) objects.
+  The {@link Profile.describes} property is used to reference the object being
+  described by the profile.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+
+properties:
+- singularName: describes
+  functional: true
+  compactName: describes
+  uri: "https://www.w3.org/ns/activitystreams#describes"
+  description: |
+    On a {@link Profile} object, the {@link Profile.describes} property
+    identifies the object described by the {@link Profile}.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"

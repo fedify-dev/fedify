@@ -1,8 +1,8 @@
-import type { ResourceDescriptor } from "@fedify/fedify";
+import type { ResourceDescriptor } from "@fedify/webfinger";
 import {
   lookupWebFinger,
   type LookupWebFingerOptions,
-} from "@fedify/fedify/webfinger";
+} from "@fedify/webfinger";
 import { formatMessage, message } from "@optique/core/message";
 import { print } from "@optique/run";
 import ora from "ora";

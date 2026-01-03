@@ -88,7 +88,7 @@ if ("Deno" in globalThis) {
 
 async function getEntireCode() {
   const packagesDir = dirname(dirname(import.meta.dirname!));
-  const schemaDir = join(packagesDir, "fedify", "src", "vocab");
+  const schemaDir = join(packagesDir, "vocab");
   const types = await loadSchemaFiles(schemaDir);
   const entireCode = (await Array.fromAsync(generateClasses(types)))
     .join("")

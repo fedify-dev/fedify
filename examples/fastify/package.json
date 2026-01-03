@@ -10,6 +10,7 @@
   "dependencies": {
     "@fedify/fastify": "workspace:",
     "@fedify/fedify": "workspace:",
+    "@fedify/vocab": "workspace:",
     "fastify": "catalog:"
   },
   "devDependencies": {

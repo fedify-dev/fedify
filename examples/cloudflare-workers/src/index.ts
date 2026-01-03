@@ -17,7 +17,7 @@ import {
   Object,
   Person,
   Undo,
-} from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 
 interface ContextData {
   kv: KVNamespace<string>;

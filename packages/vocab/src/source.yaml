@@ -1,0 +1,26 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Source
+compactName: as:Source
+uri: "https://www.w3.org/ns/activitystreams#Source"
+entity: false
+description: Contents of {@link Object}'s `source`.
+defaultContext: "https://www.w3.org/ns/activitystreams"
+
+properties:
+- pluralName: contents
+  singularName: content
+  singularAccessor: true
+  compactName: content
+  uri: "https://www.w3.org/ns/activitystreams#content"
+  description: The source content.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+  - "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"
+
+- singularName: mediaType
+  functional: true
+  compactName: mediaType
+  uri: "https://www.w3.org/ns/activitystreams#mediaType"
+  description: The MIME media type of the source content.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"

@@ -1,4 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import { CryptographicKey } from "@fedify/vocab";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
@@ -13,7 +14,6 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { CryptographicKey } from "../vocab/vocab.ts";
 import { generateCryptoKeyPair } from "./key.ts";
 import {
   attachSignature,
