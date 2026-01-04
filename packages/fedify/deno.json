@@ -98,6 +98,13 @@
         "pnpm:install"
       ]
     },
+    "pnpm:build-all": {
+      "command": "cd ../.. && deno task build",
+      "dependencies": [
+        "codegen",
+        "pnpm:install"
+      ]
+    },
     "test:node": {
       "command": "cd dist/ && node --test",
       "dependencies": [
@@ -113,7 +120,7 @@
     "test:cfworkers": {
       "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts",
       "dependencies": [
-        "pnpm:build"
+        "pnpm:build-all"
       ]
     },
     "test-all": {
