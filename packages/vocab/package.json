@@ -54,7 +54,7 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "deno task compile && tsdown",
+    "build": "tsdown",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "test": "pnpm build && cd dist/ && node --test",

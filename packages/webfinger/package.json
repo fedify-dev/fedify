@@ -65,6 +65,7 @@
   "dependencies": {
     "@fedify/vocab-runtime": "workspace:*",
     "@logtape/logtape": "catalog:",
-    "@opentelemetry/api": "catalog:"
+    "@opentelemetry/api": "catalog:",
+    "es-toolkit": "catalog:"
   }
 }

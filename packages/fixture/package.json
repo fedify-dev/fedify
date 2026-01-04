@@ -26,7 +26,7 @@
     "dist/",
     "package.json"
   ],
-  "peerDependencies": {
+  "dependencies": {
     "@fedify/vocab-runtime": "workspace:^",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/core": "catalog:",

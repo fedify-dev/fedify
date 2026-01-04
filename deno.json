@@ -80,6 +80,12 @@
   },
   "nodeModulesDir": "auto",
   "tasks": {
+    "build": {
+      "command": "pnpm --recursive --filter '@fedify/*' --parallel build",
+      "dependencies": [
+        "install"
+      ]
+    },
     "codegen": "deno task -f @fedify/vocab compile",
     "check-versions": "deno run --allow-read --allow-write scripts/check_versions.ts",
     "check-all": {
@@ -104,15 +110,13 @@
     "test:node": {
       "command": "pnpm run --recursive --filter '!{docs}' test",
       "dependencies": [
-        "codegen",
-        "install"
+        "build"
       ]
     },
     "test:bun": {
-      "command": "pnpm run --recursive --filter 'packages' build && pnpm run --recursive --filter '!{docs}' test:bun",
+      "command": "pnpm run --recursive --filter '!{docs}' test:bun",
       "dependencies": [
-        "codegen",
-        "install"
+        "build"
       ]
     },
     "test-all": {
