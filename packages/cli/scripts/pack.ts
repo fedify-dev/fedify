@@ -11,9 +11,7 @@ const triplets: Record<OS, Partial<Record<Arch, string>>> = {
     aarch64: "aarch64-unknown-linux-gnu",
   },
   macos: {
-    // TODO: Temporarily disabled due to Deno cross-compile bug:
-    // https://github.com/denoland/deno/issues/31664#issuecomment-3706946901
-    // x86_64: "x86_64-apple-darwin",
+    x86_64: "x86_64-apple-darwin",
     aarch64: "aarch64-apple-darwin",
   },
   windows: {
