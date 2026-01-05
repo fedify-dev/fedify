@@ -250,6 +250,36 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#478]: https://github.com/fedify-dev/fedify/pull/478
 
+### @fedify/fixture
+
+ -  Created Fedify test fixture utilities as the *@fedify/fixture* package.
+    This package provides reusable test fixtures for Fedify applications,
+    simplifying the setup of common test scenarios.
+    [[#508], [#516] by ChanHaeng Lee]
+
+[#508]: https://github.com/fedify-dev/fedify/issues/508
+[#516]: https://github.com/fedify-dev/fedify/pull/516
+
+### @fedify/webfinger
+
+ -  Created WebFinger utilities as the *@fedify/webfinger* package.
+    This package provides tools for working with WebFinger resources,
+    including parsing and generating WebFinger documents.
+    [[#517] by ChanHaeng Lee]
+
+[#517]: https://github.com/fedify-dev/fedify/pull/517
+
+### @fedify/vocab
+
+ -  Created ActivityPub Vocabulary API package as the *@fedify/vocab* package.
+    This package contains the generated Activity Vocabulary classes and
+    related types, separated from the main *@fedify/fedify* package to
+    improve modularity and enable custom vocabulary extensions.
+    [[#437], [#517] by ChanHaeng Lee]
+
+[#437]: https://github.com/fedify-dev/fedify/issues/437
+[#517]: https://github.com/fedify-dev/fedify/pull/517
+
 Version 1.10.0
 --------------
 
