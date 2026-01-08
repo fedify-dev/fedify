@@ -16,13 +16,13 @@ export interface RedisKvStoreOptions {
    * The prefix to use for all keys in the key–value store in Redis.
    * Defaults to `"fedify::"`.
    */
-  keyPrefix?: RedisKey;
+  readonly keyPrefix?: RedisKey;
 
   /**
    * The codec to use for encoding and decoding values in the key–value store.
    * Defaults to {@link JsonCodec}.
    */
-  codec?: Codec;
+  readonly codec?: Codec;
 }
 
 /**

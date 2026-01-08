@@ -470,24 +470,18 @@ export class FedifySpanExporter implements SpanExporter {
     await this.#setWithCasRetry<TraceSummary>(
       summaryKey,
       (existing) => {
-        const summary: TraceSummary = existing != null
-          ? {
-            traceId: existing.traceId,
-            timestamp: existing.timestamp,
-            activityCount: existing.activityCount,
-            activityTypes: [...existing.activityTypes],
-          }
-          : {
-            traceId: record.traceId,
-            timestamp: record.timestamp,
-            activityCount: 0,
-            activityTypes: [],
-          };
-        summary.activityCount += 1;
-        if (!summary.activityTypes.includes(record.activityType)) {
-          summary.activityTypes.push(record.activityType);
-        }
-        return summary;
+        const activityCount = existing != null ? existing.activityCount + 1 : 1;
+        const activityTypes = existing != null
+          ? existing.activityTypes.includes(record.activityType)
+            ? [...existing.activityTypes]
+            : [...existing.activityTypes, record.activityType]
+          : [record.activityType];
+        return {
+          traceId: existing?.traceId ?? record.traceId,
+          timestamp: existing?.timestamp ?? record.timestamp,
+          activityCount,
+          activityTypes,
+        };
       },
       options,
     );

@@ -152,8 +152,8 @@ test("MessageQueue.nativeRetrial", async (t) => {
         return this.#queue.send(message);
       }
 
-      enqueueMany(messages: unknown[]): Promise<void> {
-        return this.#queue.sendBatch(messages);
+      enqueueMany(messages: readonly unknown[]): Promise<void> {
+        return this.#queue.sendBatch(messages as unknown[]);
       }
 
       listen(): Promise<void> {

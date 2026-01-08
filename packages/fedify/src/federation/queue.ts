@@ -19,7 +19,12 @@ export interface FanoutMessage {
   readonly id: ReturnType<typeof crypto.randomUUID>;
   readonly baseUrl: string;
   readonly keys: readonly SenderKeyJwkPair[];
-  readonly inboxes: Readonly<Record<string, { readonly actorIds: readonly string[]; readonly sharedInbox: boolean }>>;
+  readonly inboxes: Readonly<
+    Record<
+      string,
+      { readonly actorIds: readonly string[]; readonly sharedInbox: boolean }
+    >
+  >;
   readonly activity: unknown;
   readonly activityId?: string;
   readonly activityType: string;

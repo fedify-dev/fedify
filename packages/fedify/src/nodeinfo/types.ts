@@ -250,10 +250,12 @@ export function nodeInfoToJson(nodeInfo: NodeInfo): JsonValue {
       repository: nodeInfo.software.repository?.href,
       homepage: nodeInfo.software.homepage?.href,
     },
-    protocols: nodeInfo.protocols,
+    protocols: [...nodeInfo.protocols],
     services: nodeInfo.services == null ? { inbound: [], outbound: [] } : {
-      inbound: nodeInfo.services.inbound ?? [],
-      outbound: nodeInfo.services.outbound ?? [],
+      inbound: nodeInfo.services.inbound ? [...nodeInfo.services.inbound] : [],
+      outbound: nodeInfo.services.outbound
+        ? [...nodeInfo.services.outbound]
+        : [],
     },
     openRegistrations: nodeInfo.openRegistrations ?? false,
     usage: {

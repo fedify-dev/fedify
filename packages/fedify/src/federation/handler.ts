@@ -480,7 +480,7 @@ export async function handleCollection<
  * @returns The filtered items as Objects, Links, or URLs.
  */
 function filterCollectionItems<TItem extends Object | Link | Recipient | URL>(
-  items: TItem[],
+  items: readonly TItem[],
   collectionName: string,
   filterPredicate?: (item: TItem) => boolean,
 ): (Object | Link | URL)[] {
@@ -1319,7 +1319,7 @@ class CustomCollectionHandler<
    * @param items The items to filter.
    * @returns The filtered items.
    */
-  filterItems(items: TItem[]): (Object | Link | URL)[] {
+  filterItems(items: readonly TItem[]): (Object | Link | URL)[] {
     return filterCollectionItems(items, this.name, this.filterPredicate);
   }
 

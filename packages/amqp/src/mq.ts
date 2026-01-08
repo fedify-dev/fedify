@@ -15,20 +15,20 @@ export interface AmqpMessageQueueOptions {
    * The name of the queue to use.  Defaults to `"fedify_queue"`.
    * @default `"fedify_queue"`
    */
-  queue?: string;
+  readonly queue?: string;
 
   /**
    * The prefix to use for the delayed queue.  Defaults to `"fedify_delayed_"`.
    * Defaults to `"fedify_delayed_"`.
    * @default `"fedify_delayed_"`
    */
-  delayedQueuePrefix?: string;
+  readonly delayedQueuePrefix?: string;
 
   /**
    * Whether the queue will survive a broker restart.  Defaults to `true`.
    * @default `true`
    */
-  durable?: boolean;
+  readonly durable?: boolean;
 
   /**
    * Whether to use native retrial mechanism. If set to `true`, the queue will
@@ -45,7 +45,7 @@ export interface AmqpMessageQueueOptions {
    * @default `false`
    * @since 0.3.0
    */
-  nativeRetrial?: boolean;
+  readonly nativeRetrial?: boolean;
 }
 
 /**
@@ -135,7 +135,7 @@ export class AmqpMessageQueue implements MessageQueue {
 
   async enqueueMany(
     // deno-lint-ignore no-explicit-any
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     const channel = await this.#getSenderChannel();

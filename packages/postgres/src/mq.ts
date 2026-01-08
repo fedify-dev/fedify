@@ -19,26 +19,26 @@ export interface PostgresMessageQueueOptions {
    * `"fedify_message_v2"` by default.
    * @default `"fedify_message_v2"`
    */
-  tableName?: string;
+  readonly tableName?: string;
 
   /**
    * The channel name to use for the message queue.
    * `"fedify_channel"` by default.
    * @default `"fedify_channel"`
    */
-  channelName?: string;
+  readonly channelName?: string;
 
   /**
    * Whether the table has been initialized.  `false` by default.
    * @default `false`
    */
-  initialized?: boolean;
+  readonly initialized?: boolean;
 
   /**
    * The poll interval for the message queue.  5 seconds by default.
    * @default `{ seconds: 5 }`
    */
-  pollInterval?: Temporal.Duration | Temporal.DurationLike;
+  readonly pollInterval?: Temporal.Duration | Temporal.DurationLike;
 }
 
 /**
@@ -113,7 +113,7 @@ export class PostgresMessageQueue implements MessageQueue {
 
   async enqueueMany(
     // deno-lint-ignore no-explicit-any
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (messages.length === 0) return;

@@ -149,7 +149,7 @@ export function kvCache(
 
 function matchRule(
   url: string,
-  rules: [
+  rules: readonly [
     string | URL | URLPattern,
     Temporal.Duration | Temporal.DurationLike,
   ][],

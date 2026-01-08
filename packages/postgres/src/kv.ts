@@ -19,13 +19,13 @@ export interface PostgresKvStoreOptions {
    * `"fedify_kv_v2"` by default.
    * @default `"fedify_kv_v2"`
    */
-  tableName?: string;
+  readonly tableName?: string;
 
   /**
    * Whether the table has been initialized.  `false` by default.
    * @default `false`
    */
-  initialized?: boolean;
+  readonly initialized?: boolean;
 }
 
 /**
