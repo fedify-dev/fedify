@@ -16,34 +16,34 @@ export interface NodeInfo {
   /**
    * Metadata about server software in use.
    */
-  software: Software;
+  readonly software: Software;
 
   /**
    * The protocols supported on this server.  At least one protocol must be
    * supported.
    */
-  protocols: Protocol[];
+  readonly protocols: readonly Protocol[];
 
   /**
    * The third party sites this server can connect to via their application API.
    */
-  services?: Services;
+  readonly services?: Services;
 
   /**
    * Whether this server allows open self-registration.  Defaults to `false`.
    */
-  openRegistrations?: boolean;
+  readonly openRegistrations?: boolean;
 
   /**
    * Usage statistics for this server.
    */
-  usage: Usage;
+  readonly usage: Usage;
 
   /**
    * Free form key value pairs for software specific values.
    * Clients should not rely on any specific key present.
    */
-  metadata?: Record<string, JsonValue>;
+  readonly metadata?: Readonly<Record<string, JsonValue>>;
 }
 
 /**
@@ -54,22 +54,22 @@ export interface Software {
    * The canonical name of this server software.  This must comply with
    * pattern `/^[a-z0-9-]+$/`.
    */
-  name: string;
+  readonly name: string;
 
   /**
    * The version of this server software.
    */
-  version: string;
+  readonly version: string;
 
   /**
    * The URL of the source code repository of this server software.
    */
-  repository?: URL;
+  readonly repository?: URL;
 
   /**
    * The URL of the homepage of this server software.
    */
-  homepage?: URL;
+  readonly homepage?: URL;
 }
 
 /**
@@ -96,13 +96,13 @@ export interface Services {
    * The third party sites this server can retrieve messages from for combined
    * display with regular traffic.
    */
-  inbound?: InboundService[];
+  readonly inbound?: readonly InboundService[];
 
   /**
    * The third party sites this server can publish messages to on the behalf
    * of a user.
    */
-  outbound?: OutboundService[];
+  readonly outbound?: readonly OutboundService[];
 }
 
 /**
@@ -162,37 +162,37 @@ export interface Usage {
   /**
    * Statistics about the users of this server.
    */
-  users: {
+  readonly users: {
     /**
      * The total amount of on this server registered users.  This number
      * has to be an integer greater than or equal to zero.
      */
-    total?: number;
+    readonly total?: number;
 
     /**
      * The amount of users that signed in at least once in the last 180 days.
      * This number has to be an integer greater than or equal to zero.
      */
-    activeHalfyear?: number;
+    readonly activeHalfyear?: number;
 
     /**
      * The amount of users that signed in at least once in the last 30 days.
      * This number has to be an integer greater than or equal to zero.
      */
-    activeMonth?: number;
+    readonly activeMonth?: number;
   };
 
   /**
    * The amount of posts that were made by users that are registered on this
    * server.  This number has to be an integer greater than or equal to zero.
    */
-  localPosts: number;
+  readonly localPosts: number;
 
   /**
    * The amount of comments that were made by users that are registered on this
    * server.  This number has to be an integer greater than or equal to zero.
    */
-  localComments: number;
+  readonly localComments: number;
 }
 
 /**

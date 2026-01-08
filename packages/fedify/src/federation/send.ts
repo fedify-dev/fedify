@@ -20,13 +20,13 @@ export interface ExtractInboxesParameters {
   /**
    * Actors to extract the inboxes from.
    */
-  recipients: Recipient[];
+  readonly recipients: readonly Recipient[];
 
   /**
    * Whether to prefer the shared inbox over the personal inbox.
    * Defaults to `false`.
    */
-  preferSharedInbox?: boolean;
+  readonly preferSharedInbox?: boolean;
 
   /**
    * The base URIs to exclude from the recipients' inboxes.  It is useful
@@ -36,7 +36,7 @@ export interface ExtractInboxesParameters {
    *
    * @since 0.9.0
    */
-  excludeBaseUris?: URL[];
+  readonly excludeBaseUris?: readonly URL[];
 }
 
 /**
@@ -83,12 +83,12 @@ export interface SenderKeyPair {
   /**
    * The actor's private key to sign the request.
    */
-  privateKey: CryptoKey;
+  readonly privateKey: CryptoKey;
 
   /**
    * The public key ID that corresponds to the private key.
    */
-  keyId: URL;
+  readonly keyId: URL;
 }
 
 /**
@@ -98,54 +98,54 @@ export interface SendActivityParameters {
   /**
    * The activity to send.
    */
-  activity: unknown;
+  readonly activity: unknown;
 
   /**
    * The activity ID to send.
    * @since 1.0.0
    */
-  activityId?: string | null;
+  readonly activityId?: string | null;
 
   /**
    * The qualified URI of the activity type.
    * @since 1.3.0
    */
-  activityType?: string;
+  readonly activityType?: string;
 
   /**
    * The key pairs of the sender to sign the request.  It must not be empty.
    * @since 0.10.0
    */
-  keys: SenderKeyPair[];
+  readonly keys: readonly SenderKeyPair[];
 
   /**
    * The inbox URL to send the activity to.
    */
-  inbox: URL;
+  readonly inbox: URL;
 
   /**
    * Whether the inbox is a shared inbox.
    * @since 1.3.0
    */
-  sharedInbox?: boolean;
+  readonly sharedInbox?: boolean;
 
   /**
    * Additional headers to include in the request.
    */
-  headers?: Headers;
+  readonly headers?: Headers;
 
   /**
    * The spec determiner to use for signing requests with double-knocking.
    * @since 1.6.0
    */
-  specDeterminer?: HttpMessageSignaturesSpecDeterminer;
+  readonly specDeterminer?: HttpMessageSignaturesSpecDeterminer;
 
   /**
    * The tracer provider for tracing the request.
    * If omitted, the global tracer provider is used.
    * @since 1.3.0
    */
-  tracerProvider?: TracerProvider;
+  readonly tracerProvider?: TracerProvider;
 }
 
 /**

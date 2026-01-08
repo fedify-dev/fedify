@@ -55,18 +55,18 @@ export interface KvCacheParameters {
   /**
    * The document loader to decorate with a cache.
    */
-  loader: DocumentLoader;
+  readonly loader: DocumentLoader;
 
   /**
    * The key–value store to use for backing the cache.
    */
-  kv: KvStore;
+  readonly kv: KvStore;
 
   /**
    * The key prefix to use for namespacing the cache.
    * `["_fedify", "remoteDocument"]` by default.
    */
-  prefix?: KvKey;
+  readonly prefix?: KvKey;
 
   /**
    * The per-URL cache rules in the array of `[urlPattern, duration]` pairs
@@ -76,7 +76,7 @@ export interface KvCacheParameters {
    *
    * By default, 5 minutes for all URLs.
    */
-  rules?: [
+  readonly rules?: readonly [
     string | URL | URLPattern,
     Temporal.Duration | Temporal.DurationLike,
   ][];

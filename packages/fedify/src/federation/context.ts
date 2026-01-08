@@ -570,7 +570,7 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    * inbox, it is `null`.
    * @since 1.2.0
    */
-  recipient: string | null;
+  readonly recipient: string | null;
 
   /**
    * Creates a new context with the same properties as this one,
@@ -783,7 +783,7 @@ export interface SendActivityOptions {
    *
    * @since 0.9.0
    */
-  excludeBaseUris?: URL[];
+  readonly excludeBaseUris?: readonly URL[];
 }
 
 /**
@@ -876,15 +876,15 @@ export interface ActorKeyPair extends CryptoKeyPair {
   /**
    * The URI of the public key, which is used for verifying HTTP Signatures.
    */
-  keyId: URL;
+  readonly keyId: URL;
 
   /**
    * A {@link CryptographicKey} instance of the public key.
    */
-  cryptographicKey: CryptographicKey;
+  readonly cryptographicKey: CryptographicKey;
 
   /**
    * A {@link Multikey} instance of the public key.
    */
-  multikey: Multikey;
+  readonly multikey: Multikey;
 }

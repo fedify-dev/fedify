@@ -28,12 +28,12 @@ export interface KvStoreListEntry {
   /**
    * The key of the entry.
    */
-  key: KvKey;
+  readonly key: KvKey;
 
   /**
    * The value of the entry.
    */
-  value: unknown;
+  readonly value: unknown;
 }
 
 /**
