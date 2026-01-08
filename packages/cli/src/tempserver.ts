@@ -6,6 +6,7 @@ const logger = getLogger(["fedify", "cli", "tempserver"]);
 
 export type SpawnTemporaryServerOptions = {
   noTunnel?: boolean;
+  port?: number;
 };
 
 export type TemporaryServer = {
@@ -17,9 +18,10 @@ export async function spawnTemporaryServer(
   fetch: (request: Request) => Promise<Response> | Response,
   options: SpawnTemporaryServerOptions = {},
 ): Promise<TemporaryServer> {
+  const serverPort = options.port ?? 0;
   if (options.noTunnel) {
     const server = serve({
-      port: 0,
+      port: serverPort,
       hostname: "::",
       fetch: fetch,
     });
@@ -61,7 +63,7 @@ export async function spawnTemporaryServer(
 
       return new Response();
     },
-    port: 0,
+    port: serverPort,
     hostname: "::",
   });
 
