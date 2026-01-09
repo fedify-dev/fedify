@@ -42,7 +42,7 @@ export async function matchesActor(
       uri = new URL(uri).href;
       if (uri === actorUri.href) return true;
     }
-    if (actorHandle == null) actorHandle = await getActorHandle(actorUri);
+    if (actorHandle == null) actorHandle = await getActorHandle(actor);
     if (actorHandle === uri) return true;
   }
   return false;

@@ -5794,7 +5794,6 @@
       },
       "packages/cli": {
         "dependencies": [
-          "jsr:@fedify/relay@2",
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
           "jsr:@optique/core@~0.8.2",

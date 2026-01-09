@@ -138,7 +138,7 @@ export async function runRelay(
   relay = createRelay(
     command.protocol as RelayType,
     {
-      origin: server?.url.origin ?? "http://localhost",
+      origin: server?.url.origin,
       name: command.name,
       kv: kv,
       subscriptionHandler: async (_ctx, actor) => {
