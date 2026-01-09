@@ -25,7 +25,7 @@ export type SubscriptionRequestHandler = (
  */
 export interface RelayOptions {
   kv: KvStore;
-  domain?: string;
+  origin: string;
   name?: string;
   documentLoaderFactory?: DocumentLoaderFactory;
   authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory;
@@ -91,6 +91,20 @@ export interface Relay {
    * @returns The follower entry if found, null otherwise
    */
   getFollower(actorId: string): Promise<RelayFollower | null>;
+
+  /**
+   * Gets the URI of the relay actor.
+   *
+   * @returns The URI of the relay actor
+   */
+  getActorUri(): Promise<URL>;
+
+  /**
+   * Gets the shared inbox URI of the relay.
+   *
+   * @returns The shared inbox URI
+   */
+  getSharedInboxUri(): Promise<URL>;
 }
 
 /**

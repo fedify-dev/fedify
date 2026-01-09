@@ -1,8 +1,9 @@
-import type { Federation, FederationBuilder } from "@fedify/fedify";
+import type { Context, Federation, FederationBuilder } from "@fedify/fedify";
 import { isActor, Object as APObject } from "@fedify/fedify/vocab";
 import {
   isRelayFollowerData,
   type Relay,
+  RELAY_SERVER_ACTOR,
   type RelayFollower,
   type RelayOptions,
 } from "./types.ts";
@@ -27,12 +28,7 @@ export abstract class BaseRelay implements Relay {
   }
 
   async fetch(request: Request): Promise<Response> {
-    if (this.federation == null) {
-      this.federation = await this.federationBuilder.build(this.options);
-      this.setupInboxListeners();
-    }
-
-    return await this.federation.fetch(request, {
+    return await (await this.#getFederation()).fetch(request, {
       contextData: this.options,
     });
   }
@@ -74,7 +70,7 @@ export abstract class BaseRelay implements Relay {
    *
    * const relay = createRelay("mastodon", {
    *   kv: new MemoryKvStore(),
-   *   domain: "relay.example.com",
+   *   origin: "https://relay.example.com",
    *   subscriptionHandler: async (ctx, actor) => true,
    * });
    *
@@ -110,7 +106,7 @@ export abstract class BaseRelay implements Relay {
    *
    * const relay = createRelay("mastodon", {
    *   kv: new MemoryKvStore(),
-   *   domain: "relay.example.com",
+   *   origin: "https://relay.example.com",
    *   subscriptionHandler: async (ctx, actor) => true,
    * });
    *
@@ -135,4 +131,30 @@ export abstract class BaseRelay implements Relay {
    * Each relay type implements this method with protocol-specific logic.
    */
   protected abstract setupInboxListeners(): void;
+
+  async #getFederation(): Promise<Federation<RelayOptions>> {
+    if (this.federation == null) {
+      this.federation = await this.federationBuilder.build(this.options);
+      this.setupInboxListeners();
+    }
+    return this.federation;
+  }
+
+  async #createContext(): Promise<Context<RelayOptions>> {
+    const context = (await this.#getFederation()).createContext(
+      new URL(this.options.origin),
+      this.options,
+    );
+    return context;
+  }
+
+  async getActorUri(): Promise<URL> {
+    const context = await this.#createContext();
+    return context.getActorUri(RELAY_SERVER_ACTOR);
+  }
+
+  async getSharedInboxUri(): Promise<URL> {
+    const context = await this.#createContext();
+    return context.getInboxUri();
+  }
 }
