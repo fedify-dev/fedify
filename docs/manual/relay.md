@@ -55,7 +55,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   name: "My ActivityPub Relay",
   subscriptionHandler: async (ctx, actor) => {
     // Approve all subscriptions
@@ -74,7 +74,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   name: "My ActivityPub Relay",
   subscriptionHandler: async (ctx, actor) => {
     // Approve all subscriptions
@@ -97,7 +97,7 @@ import { serve } from "@hono/node-server";
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   name: "My ActivityPub Relay",
   subscriptionHandler: async (ctx, actor) => {
     // Approve all subscriptions
@@ -130,8 +130,8 @@ Configuration options
 :   A [`KvStore`](./kv.md) for storing subscriber information and cryptographic
     keys.
 
-`domain`
-:   The domain name where the relay is hosted. Defaults to `"localhost"`.
+`origin` (required)
+:   The origin URL where the relay is hosted (e.g., `"https://relay.example.com"`).
 
 `name`
 :   Display name for the relay actor. Defaults to `"ActivityPub Relay"`.
@@ -146,7 +146,7 @@ Configuration options
     // ---cut-before---
     const relay = createRelay("mastodon", {
       kv: new MemoryKvStore(),
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       queue: new InProcessMessageQueue(),
       subscriptionHandler: async (ctx, actor) => true,
     });
@@ -207,7 +207,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 // ---cut-before---
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 ~~~~
@@ -225,7 +225,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 // ---cut-before---
 const relay = createRelay("litepub", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 ~~~~
@@ -243,8 +243,8 @@ The subscription URL differs between Mastodon-style and LitePub-style relays:
 
 | Relay type   | Subscription URL                       | Example                           |
 |--------------|----------------------------------------|-----------------------------------|
-| `"mastodon"` | Inbox URL: `https://{domain}/inbox`    | `https://relay.example.com/inbox` |
-| `"litepub"`  | Actor URL: `https://{domain}/actor`    | `https://relay.example.com/actor` |
+| `"mastodon"` | Inbox URL: `{origin}/inbox`            | `https://relay.example.com/inbox` |
+| `"litepub"`  | Actor URL: `{origin}/actor`            | `https://relay.example.com/actor` |
 
 For more details on the protocol differences, see [FEP-ae0c].
 
@@ -295,7 +295,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 // ---cut-before---
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,  // Accept all
 });
 ~~~~
@@ -310,7 +310,7 @@ const blockedDomains = ["spam.example", "blocked.example"];
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => {
     const domain = new URL(actor.id!).hostname;
     if (blockedDomains.includes(domain)) {
@@ -345,7 +345,7 @@ import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 // ---cut-before---
@@ -365,7 +365,7 @@ import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 // ---cut-before---
