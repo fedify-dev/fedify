@@ -4,6 +4,7 @@
   "license": "MIT",
   "exports": "./src/mod.ts",
   "imports": {
+    "@fedify/relay": "jsr:@fedify/relay@^2.0.0",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "@inquirer/prompts": "npm:@inquirer/prompts@^7.8.4",
     "@jimp/core": "npm:@jimp/core@^1.6.0",

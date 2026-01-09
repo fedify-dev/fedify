@@ -117,7 +117,8 @@ export async function runRelay(
     kv = new MemoryKvStore();
   }
 
-  let relay: Relay | null = null;
+  // deno-lint-ignore prefer-const
+  let relay: Relay;
   let server: TemporaryServer | null = null;
   const acceptFollows: string[] = [];
   const rejectFollows: string[] = [];
@@ -131,34 +132,33 @@ export async function runRelay(
   }
 
   server = await spawnTemporaryServer(async (request) => {
-    relay = relay ?? createRelay(
-      command.protocol as RelayType,
-      {
-        origin: server?.url.origin ?? "http://localhost",
-        name: command.name,
-        kv: kv,
-        subscriptionHandler: async (_ctx, actor) => {
-          const isInAcceptList = await matchesActor(actor, acceptFollows);
-          const isInRejectList = await matchesActor(actor, rejectFollows);
-
-          return isInAcceptList && !isInRejectList;
-        },
-      },
-    );
     return await relay.fetch(request);
   }, { noTunnel: command.noTunnel, port: command.port });
+
+  relay = createRelay(
+    command.protocol as RelayType,
+    {
+      origin: server?.url.origin ?? "http://localhost",
+      name: command.name,
+      kv: kv,
+      subscriptionHandler: async (_ctx, actor) => {
+        const isInAcceptList = await matchesActor(actor, acceptFollows);
+        const isInRejectList = await matchesActor(actor, rejectFollows);
+
+        return isInAcceptList && !isInRejectList;
+      },
+    },
+  );
 
   spinner.succeed(
     `Relay server is running: ${colors.green(server.url.href)}`,
   );
 
-  if (relay != null) {
-    await printRelayInfo(relay, {
-      protocol: command.protocol,
-      name: command.name,
-      persistent: command.persistent,
-    });
-  }
+  await printRelayInfo(relay, {
+    protocol: command.protocol,
+    name: command.name,
+    persistent: command.persistent,
+  });
 
   // Handle graceful shutdown
   process.on("SIGINT", async () => {
