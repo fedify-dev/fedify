@@ -102,7 +102,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 // Create a Mastodon-style relay
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   // Required: Set a subscription handler to approve/reject subscriptions
   subscriptionHandler: async (ctx, actor) => {
     // For an open relay, simply return true
@@ -124,7 +124,7 @@ You can also create a LitePub-style relay by changing the type:
 ~~~~ typescript
 const relay = createRelay("litepub", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 ~~~~
@@ -137,7 +137,7 @@ subscription requests.  For an open relay that accepts all subscriptions:
 ~~~~ typescript
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,  // Accept all
 });
 ~~~~
@@ -147,7 +147,7 @@ You can also implement custom approval logic:
 ~~~~ typescript
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => {
     // Example: Only allow subscriptions from specific domains
     const domain = new URL(actor.id!).hostname;
@@ -200,7 +200,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 const app = new Hono();
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
-  domain: "relay.example.com",
+  origin: "https://relay.example.com",
   subscriptionHandler: async (ctx, actor) => true,
 });
 
@@ -284,6 +284,8 @@ Public interface for ActivityPub relay implementations.
     followers of the relay
  -  `getFollower(actorId: string): Promise<RelayFollower | null>`: Gets
     a specific follower by actor ID
+ -  `getActorUri(): Promise<URL>`: Gets the URI of the relay actor
+ -  `getSharedInboxUri(): Promise<URL>`: Gets the shared inbox URI of the relay
 
 #### Relay types
 
@@ -299,7 +301,8 @@ The relay type is specified when calling `createRelay()`:
 Configuration options for the relay:
 
  -  `kv: KvStore` (required): Key–value store for persisting relay data
- -  `domain?: string`: Relay's domain name (defaults to `"localhost"`)
+ -  `origin: string` (required): Relay's origin URL (e.g.,
+    `"https://relay.example.com"`)
  -  `name?: string`: Relay's display name (defaults to `"ActivityPub Relay"`)
  -  `subscriptionHandler: SubscriptionRequestHandler` (required): Handler for
     subscription approval/rejection
