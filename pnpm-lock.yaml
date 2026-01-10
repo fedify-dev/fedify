@@ -708,6 +708,9 @@ importers:
       '@fedify/sqlite':
         specifier: workspace:*
         version: link:../sqlite
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
       '@fedify/vocab-runtime':
         specifier: workspace:*
         version: link:../vocab-runtime
