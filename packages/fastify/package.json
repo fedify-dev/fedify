@@ -59,6 +59,6 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "tsdown && node --experimental-transform-types --test"
+    "test": "node --experimental-transform-types --test"
   }
 }

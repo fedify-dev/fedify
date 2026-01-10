@@ -112,6 +112,7 @@
   "dependencies": {
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
+    "@fedify/webfinger": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
     "@multiformats/base-x": "^4.0.1",

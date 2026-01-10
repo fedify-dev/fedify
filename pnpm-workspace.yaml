@@ -67,5 +67,5 @@ catalog:
   koa: ^2.16.0
   next: ^15.4.6
   postgres: ^3.4.7
-  tsdown: ^0.12.9
+  tsdown: ^0.18.4
   typescript: ^5.9.3

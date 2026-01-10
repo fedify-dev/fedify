@@ -1,7 +1,7 @@
 import type { InboxContext } from "@fedify/fedify/federation";
+import { test } from "@fedify/fixture";
 import { Create, Note, Person } from "@fedify/vocab";
 import { assertEquals, assertRejects } from "@std/assert";
-import { test } from "../../fedify/src/testing/mod.ts";
 import { createFederation } from "./mock.ts";
 
 test("getSentActivities returns sent activities", async () => {
