@@ -1,4 +1,4 @@
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual } from "node:assert/strict";
 import { mockDocumentLoader } from "./docloader.ts";
 import { test } from "./test.ts";
 

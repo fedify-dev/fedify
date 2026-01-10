@@ -1,7 +1,13 @@
 import { test } from "@fedify/fixture";
 import * as fc from "fast-check";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, ok, rejects, strictEqual, throws } from "node:assert";
+import {
+  deepStrictEqual,
+  ok,
+  rejects,
+  strictEqual,
+  throws,
+} from "node:assert/strict";
 import {
   type Actor,
   getActorClassByTypeName,

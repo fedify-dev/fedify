@@ -13,7 +13,7 @@ import {
   ok,
   rejects,
   throws,
-} from "node:assert";
+} from "node:assert/strict";
 import { assertInstanceOf } from "./utils.ts";
 import * as vocab from "./vocab.ts";
 import {

@@ -4,7 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, equal, ok, rejects } from "node:assert";
+import { deepStrictEqual, equal, ok, rejects } from "node:assert/strict";
 import { lookupObject, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";

@@ -1,7 +1,7 @@
 import { test } from "@fedify/fixture";
 import { withTimeout } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual } from "node:assert/strict";
 import type { ResourceDescriptor } from "./jrd.ts";
 import { lookupWebFinger } from "./lookup.ts";
 

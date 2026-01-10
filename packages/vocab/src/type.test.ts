@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual } from "node:assert/strict";
 import { getTypeId } from "./type.ts";
 import { Person } from "./vocab.ts";
 
