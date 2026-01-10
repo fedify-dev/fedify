@@ -61,7 +61,7 @@ jobs:
       with:
         version: 2025.12.12
     - run: mise run install
-    - run: deno task test --coverage=.cov --junit-path=.test-report.xml
+    - run: mise run test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
         LOG: ${{ runner.debug && 'always' || '' }}
