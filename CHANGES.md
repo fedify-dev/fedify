@@ -143,6 +143,18 @@ To be released.
     incorrectly handled dependencies with registry prefixes (e.g., `npm:`),
     creating invalid specifiers in *deno.json*.  [[#460], [#496] by Hyeonseo Kim]
 
+ -  Added `fedify relay` command to run an ephemeral ActivityPub relay server.
+    [[#510], [#518] by Jiwon Kwon]
+
+     -  Supports both Mastodon and LitePub relay protocols via `--protocol`
+        option.
+     -  Provides optional persistent storage via `--persistent` option with
+        SQLite database.
+     -  Allows configuring subscription approval/rejection via `--accept-follow`
+        and `--reject-follow` options.
+     -  Tunnels the relay server to the public internet by default for external
+        access, with `--no-tunnel` option to run locally only.
+
 [Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374
 [#397]: https://github.com/fedify-dev/fedify/issues/397
@@ -154,6 +166,8 @@ To be released.
 [#458]: https://github.com/fedify-dev/fedify/pull/458
 [#460]: https://github.com/fedify-dev/fedify/issues/460
 [#496]: https://github.com/fedify-dev/fedify/pull/496
+[#510]: https://github.com/fedify-dev/fedify/issues/510
+[#518]: https://github.com/fedify-dev/fedify/pull/518
 
 ### @fedify/relay
 
@@ -172,10 +186,20 @@ To be released.
      -  Added `RelayType` type alias to document the type-safe parameter
      -  Added `createRelay()` factory function as a key public API
 
+ -  Changed `RelayOptions.domain` to `RelayOptions.origin` and made it required.
+    The `origin` option now expects a full URL instead of just a hostname.
+    (e.g.`"https://relay.example.com"`) [[#510], [#518] by Jiwon Kwon]
+
+ -  Added `Relay.getActorUri()` and `Relay.getSharedInboxUri()` methods to
+    retrieve the relay actor's URI and shared inbox URI respectively.
+    [[#510], [#518] by Jiwon Kwon]
+
 [#359]: https://github.com/fedify-dev/fedify/issues/359
 [#459]: https://github.com/fedify-dev/fedify/pull/459
 [#471]: https://github.com/fedify-dev/fedify/pull/471
 [#490]: https://github.com/fedify-dev/fedify/pull/490
+[#510]: https://github.com/fedify-dev/fedify/issues/510
+[#518]: https://github.com/fedify-dev/fedify/pull/518
 
 ### @fedify/vocab-tools
 
