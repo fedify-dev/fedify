@@ -84,7 +84,7 @@ export const relayCommand = command(
       )),
       noTunnel: option("-T", "--no-tunnel", {
         description:
-          message`Disable tunneling the relay server to the public Internet. Local access only.`,
+          message`Disable tunneling the relay server to the public internet. Local access only.`,
       }),
     }),
     debugOption,

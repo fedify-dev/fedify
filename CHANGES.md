@@ -172,7 +172,7 @@ To be released.
 ### @fedify/relay
 
  -  Created ActivityPub relay integration as the *@fedify/relay* package.
-    [[#359], [#459], [#471], [#490] by Jiwon Kwon]
+    [[#359], [#459], [#471], [#490], [#510], [#518] by Jiwon Kwon]
 
      -  Added `Relay` interface defining the common contract for relay
         implementations.
@@ -185,14 +185,6 @@ To be released.
      -  Added `RelayOptions` interface for relay configuration.
      -  Added `RelayType` type alias to document the type-safe parameter
      -  Added `createRelay()` factory function as a key public API
-
- -  Changed `RelayOptions.domain` to `RelayOptions.origin` and made it required.
-    The `origin` option now expects a full URL instead of just a hostname.
-    (e.g.`"https://relay.example.com"`) [[#510], [#518] by Jiwon Kwon]
-
- -  Added `Relay.getActorUri()` and `Relay.getSharedInboxUri()` methods to
-    retrieve the relay actor's URI and shared inbox URI respectively.
-    [[#510], [#518] by Jiwon Kwon]
 
 [#359]: https://github.com/fedify-dev/fedify/issues/359
 [#459]: https://github.com/fedify-dev/fedify/pull/459
