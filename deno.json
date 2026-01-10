@@ -127,7 +127,8 @@
       ]
     },
     "cli": "deno task -f @fedify/cli run",
-    "hooks:install": "mise generate git-pre-commit --write --task=check"
+    "hooks:install": "mise generate git-pre-commit --write --task=check",
+    "hooks:pre-commit": "mise run check"
   },
   "test": {
     "include": [

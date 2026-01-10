@@ -57,7 +57,10 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run install
     - run: deno task test --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -120,10 +123,11 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: pnpm install
-    - run: pnpm run --recursive test
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run install
+    - run: mise run test:node
 
   test-bun:
     runs-on: ubuntu-latest
@@ -163,21 +167,20 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - uses: oven-sh/setup-bun@v1
+    - uses: jdx/mise-action@v2
       with:
-        bun-version: 1.2.22
-    - run: pnpm install
-    - run: pnpm run --recursive test:bun
+        version: 2025.12.12
+    - run: mise run install
+    - run: mise run test:bun
 
   test-cfworkers:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
-    - run: pnpm install
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run install
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
 
@@ -185,8 +188,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - run: deno task hooks:pre-commit
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run check
 
   release-test:
     runs-on: ubuntu-latest
@@ -195,13 +200,14 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run install
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: deno task -f @fedify/fedify codegen
+    - run: mise run codegen
     - run: deno publish --dry-run
-    - run: pnpm install
     - run: pnpm publish --recursive --dry-run --no-git-checks
 
   publish-jsr:
@@ -216,10 +222,9 @@ jobs:
       short_version: ${{ steps.versioning.outputs.short_version }}
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
+    - uses: jdx/mise-action@v2
       with:
-        pnpm-version: latest
+        version: 2025.12.12
     - run: sudo npm install -g npm@latest && npm --version
     - if: github.ref_type == 'branch'
       run: |
@@ -236,7 +241,7 @@ jobs:
         echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
         echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
       working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: deno task check-versions --fix
+    - run: mise run check-versions -- --fix
     - if: github.ref_type == 'tag'
       run: |
         set -ex
@@ -248,7 +253,7 @@ jobs:
     - run: rm src/vocab/.gitignore
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: |
-        pnpm install
+        mise run install
         pnpm pack --recursive --filter='!./examples/**'
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
@@ -289,7 +294,7 @@ jobs:
         generate_release_notes: false
     - run: |
         set -ex
-        deno task -f @fedify/fedify codegen
+        mise run codegen
         max_attempts=5
         attempt=1
         until deno publish --allow-dirty; do
@@ -352,8 +357,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
+    - uses: jdx/mise-action@v2
+      with:
+        version: 2025.12.12
+    - run: mise run install
     - run: |
         set -ex
         pnpm install
