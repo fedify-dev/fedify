@@ -363,7 +363,6 @@ jobs:
     - run: mise run install
     - run: |
         set -ex
-        pnpm install
         if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
           EXTRA_NAV_TEXT=Unstable \
           EXTRA_NAV_LINK="$UNSTABLE_DOCS_URL" \

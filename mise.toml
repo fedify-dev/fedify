@@ -21,7 +21,7 @@ run = "deno task install && deno task pnpm:build-fixture"
 # Code quality
 [tasks.check]
 description = "Check code formatting, linting, and type checking"
-depends = ["prepare"]
+depends = ["prepare", "check-versions"]
 run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
 
 [tasks.check-versions]
