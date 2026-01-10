@@ -8,6 +8,7 @@ import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
+import { type Actor, getActorHandle } from "@fedify/fedify";
 
 export const colorEnabled: boolean = process.stdout.isTTY &&
   !("NO_COLOR" in process.env && process.env.NO_COLOR !== "");
@@ -26,6 +27,25 @@ export function formatObject(
     return highlight(formatted, { language: "json" });
   }
   return formatted;
+}
+
+export async function matchesActor(
+  actor: Actor,
+  actorList: string[],
+): Promise<boolean> {
+  const actorUri = actor.id;
+  let actorHandle: string | undefined = undefined;
+  if (actorUri == null) return false;
+  for (let uri of actorList) {
+    if (uri == "*") return true;
+    if (uri.startsWith("http:") || uri.startsWith("https:")) {
+      uri = new URL(uri).href;
+      if (uri === actorUri.href) return true;
+    }
+    if (actorHandle == null) actorHandle = await getActorHandle(actor);
+    if (actorHandle === uri) return true;
+  }
+  return false;
 }
 
 export const isPromise = <T>(a: unknown): a is Promise<T> =>

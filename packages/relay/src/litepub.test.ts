@@ -85,7 +85,7 @@ describe("LitePubRelay", () => {
   test("constructor with required options", () => {
     const options: RelayOptions = {
       kv: new MemoryKvStore(),
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, _actor) => {
         return await Promise.resolve(true);
@@ -100,7 +100,7 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -117,7 +117,7 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -138,7 +138,7 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -158,7 +158,7 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -207,7 +207,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -233,7 +233,7 @@ describe("LitePubRelay", () => {
     const kv = new MemoryKvStore();
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
     });
@@ -268,7 +268,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, actor) => {
@@ -326,7 +326,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, _actor) => {
@@ -377,7 +377,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, _actor) => await Promise.resolve(true),
@@ -428,7 +428,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, _actor) => await Promise.resolve(true),
@@ -472,7 +472,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: async (_ctx, _actor) => {
@@ -538,7 +538,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -601,7 +601,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -660,7 +660,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -704,7 +704,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -748,7 +748,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -788,7 +788,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),
@@ -827,7 +827,7 @@ describe("LitePubRelay", () => {
 
     const relay = createRelay("litepub", {
       kv,
-      domain: "relay.example.com",
+      origin: "https://relay.example.com",
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
       subscriptionHandler: () => Promise.resolve(true),

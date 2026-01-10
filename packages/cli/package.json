@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:*",
+    "@fedify/relay": "workspace:*",
     "@fedify/sqlite": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/vocab-tools": "workspace:*",
@@ -84,7 +85,7 @@
   },
   "scripts": {
     "codegen": "deno task -f @fedify/fedify codegen",
-    "build": "pnpm run codegen && pnpm run --filter fedify build && pnpm run --filter sqlite build && tsdown",
+    "build": "pnpm run codegen && pnpm run --filter fedify build && pnpm run --filter relay build && pnpm run --filter sqlite build && tsdown",
     "prepack": "pnpm run build",
     "prepublish": "pnpm run build",
     "test": "pnpm build && node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",

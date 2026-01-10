@@ -11,7 +11,6 @@ import {
   Endpoints,
   Follow,
   generateCryptoKeyPair,
-  getActorHandle,
   Image,
   isActor,
   lookupObject,
@@ -46,7 +45,7 @@ import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { recordingSink } from "./log.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colors } from "./utils.ts";
+import { colors, matchesActor } from "./utils.ts";
 
 /**
  * Context data for the ephemeral ActivityPub inbox server.
@@ -256,22 +255,6 @@ const activities: ActivityEntry[] = [];
 
 const acceptFollows: string[] = [];
 
-async function acceptsFollowFrom(actor: Actor): Promise<boolean> {
-  const actorUri = actor.id;
-  let actorHandle: string | undefined = undefined;
-  if (actorUri == null) return false;
-  for (let uri of acceptFollows) {
-    if (uri === "*") return true;
-    if (uri.startsWith("http:") || uri.startsWith("https:")) {
-      uri = new URL(uri).href; // normalize
-      if (uri === actorUri.href) return true;
-    }
-    if (actorHandle == null) actorHandle = await getActorHandle(actor);
-    if (actorHandle === uri) return true;
-  }
-  return false;
-}
-
 const peers: Record<string, Actor> = {};
 
 function createSendDeleteToPeers(
@@ -329,7 +312,7 @@ federation
       const { identifier } = parsed;
       const follower = await activity.getActor();
       if (!isActor(follower)) return;
-      const accepts = await acceptsFollowFrom(follower);
+      const accepts = await matchesActor(follower, acceptFollows);
       if (!accepts || activity.id == null) {
         logger.debug("Does not accept follow from {actor}.", {
           actor: follower.id?.href,

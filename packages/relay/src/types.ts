@@ -24,12 +24,47 @@ export type SubscriptionRequestHandler = (
  * Configuration options for the ActivityPub relay.
  */
 export interface RelayOptions {
+  /**
+   * Key-value store for persisting relay data such as follower information
+   * and cryptographic keys.
+   */
   kv: KvStore;
-  domain?: string;
+
+  /**
+   * The origin URL where the relay is hosted.
+   * Must be a full URL including the protocol (e.g., `"https://relay.example.com"`).
+   */
+  origin: string;
+
+  /**
+   * Display name for the relay actor.
+   * Defaults to `"ActivityPub Relay"`.
+   */
   name?: string;
+
+  /**
+   * Factory function for creating a document loader to fetch remote
+   * ActivityPub objects.
+   */
   documentLoaderFactory?: DocumentLoaderFactory;
+
+  /**
+   * Factory function for creating an authenticated document loader
+   * that signs HTTP requests when fetching remote objects.
+   */
   authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory;
+
+  /**
+   * Message queue for background activity processing.
+   * Recommended for production to handle activity forwarding asynchronously.
+   */
   queue?: MessageQueue;
+
+  /**
+   * Handler function that determines whether to approve or reject
+   * subscription requests from remote actors.
+   * Return `true` to approve or `false` to reject.
+   */
   subscriptionHandler: SubscriptionRequestHandler;
 }
 
@@ -91,6 +126,20 @@ export interface Relay {
    * @returns The follower entry if found, null otherwise
    */
   getFollower(actorId: string): Promise<RelayFollower | null>;
+
+  /**
+   * Gets the URI of the relay actor.
+   *
+   * @returns The URI of the relay actor
+   */
+  getActorUri(): Promise<URL>;
+
+  /**
+   * Gets the shared inbox URI of the relay.
+   *
+   * @returns The shared inbox URI
+   */
+  getSharedInboxUri(): Promise<URL>;
 }
 
 /**

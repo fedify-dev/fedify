@@ -11,6 +11,7 @@ import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
+import { relayCommand, runRelay } from "./relay.ts";
 
 const command = or(
   initCommand,
@@ -20,6 +21,7 @@ const command = or(
   nodeInfoCommand,
   tunnelCommand,
   generateVocabCommand,
+  relayCommand,
 );
 
 async function main() {
@@ -47,6 +49,9 @@ async function main() {
   }
   if (result.command === "generate-vocab") {
     await runGenerateVocab(result);
+  }
+  if (result.command === "relay") {
+    await runRelay(result);
   }
 }
 
