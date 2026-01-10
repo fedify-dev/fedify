@@ -13,7 +13,9 @@ import {
   object,
   option,
   optional,
+  optionName,
   string,
+  value,
   withDefault,
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
@@ -38,8 +40,11 @@ export const relayCommand = command(
         "--protocol",
         choice(["mastodon", "litepub"], { metavar: "TYPE" }),
         {
-          description:
-            message`The relay protocol to use. "mastodon" for Mastodon-compatible relay, "litepub" for LitePub-compatible relay.`,
+          description: message`The relay protocol to use. ${
+            value("mastodon")
+          } for Mastodon-compatible relay, ${
+            value("litepub")
+          } for LitePub-compatible relay.`,
         },
       ),
       persistent: optional(
@@ -89,7 +94,9 @@ export const relayCommand = command(
     description:
       message`Spins up an ActivityPub relay server that forwards activities between federated instances. The server can use either Mastodon or LitePub compatible relay protocol.
 
-By default, the server is tunneled to the public Internet for external access. Use --no-tunnel to run locally only.`,
+        By default, the server is tunneled to the public internet for external access. Use ${
+        optionName("--no-tunnel")
+      } to run locally only.`,
   },
 );
 
