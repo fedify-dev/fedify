@@ -2,7 +2,7 @@
 bun = "1.2.22"
 deno = "2.6.4"
 node = "22"
-"npm:pnpm" = "latest"
+"npm:pnpm" = "10.28.0"
 
 # Installation and setup
 [tasks.install]
