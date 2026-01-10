@@ -7,7 +7,7 @@ export default [
     entry: ["src/mod.ts"],
     dts: true,
     format: ["esm", "cjs"],
-    platform: "node",
+    platform: "neutral",
     outputOptions(outputOptions, format) {
       if (format === "cjs") {
         outputOptions.intro = `

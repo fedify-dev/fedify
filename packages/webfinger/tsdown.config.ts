@@ -4,6 +4,6 @@ export default defineConfig({
   entry: ["src/mod.ts"],
   dts: true,
   format: ["esm", "cjs"],
-  platform: "node",
+  platform: "neutral",
   external: [/^node:/],
 });

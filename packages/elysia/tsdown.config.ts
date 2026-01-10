@@ -4,5 +4,5 @@ export default defineConfig({
   entry: ["./src/index.ts"],
   dts: true,
   format: ["esm", "cjs"],
-  platform: "node",
+  platform: "neutral",
 });

@@ -5,7 +5,7 @@ export default defineConfig({
   dts: true,
   unbundle: true,
   format: ["esm", "cjs"],
-  platform: "node",
+  platform: "neutral",
   inputOptions: {
     onwarn(warning, defaultHandler) {
       if (
