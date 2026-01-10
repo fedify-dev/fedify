@@ -35,7 +35,7 @@ Development environment
  -  Primary development environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
- -  Important: Run `deno task codegen` before working with the codebase (for
+ -  Important: Run `mise run codegen` before working with the codebase (for
     code generation)
  -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed to the
     repository for reproducible builds.  Update them when changing dependencies.
@@ -118,14 +118,14 @@ Code patterns and principles
 Development workflow
 --------------------
 
-1. **Code Generation**: Run `deno task codegen` whenever vocabulary YAML files
+1. **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
    or code generation scripts change.
 
-2. **Checking Code**: Before committing, run `deno task check-all` from the
+2. **Checking Code**: Before committing, run `mise run check` from the
    root directory to check all packages.
 
-3. **Running Tests**: Use `deno task test` for basic tests or
-   `deno task test-all` to test across all environments and packages.
+3. **Running Tests**: Use `mise run test:deno` for Deno tests or
+   `mise run test` to test across all environments and packages.
 
 4. **Documentation**: Follow the Markdown conventions in CONTRIBUTING.md:
     -  80 characters per line (except for code blocks and URLs)
@@ -154,7 +154,7 @@ Common tasks
 ### Adding ActivityPub vocabulary types
 
 1. Create a new YAML file in *packages/fedify/src/vocab/* following existing patterns
-2. Run `deno task codegen` to generate TypeScript classes
+2. Run `mise run codegen` to generate TypeScript classes
 3. Export the new types from appropriate module files
 
 ### Implementing framework integrations
@@ -594,9 +594,9 @@ pnpm add @fedify/fedify
 ### Building documentation
 
 ~~~~ bash
-cd docs
-pnpm build    # Build for production (runs Twoslash type checking)
-pnpm dev      # Start development server
+mise run docs:build    # Build for production (runs Twoslash type checking)
+mise run docs          # Start development server
 ~~~~
 
-Always run `pnpm build` before committing to catch Twoslash type errors.
+Always run `mise run docs:build` before committing to catch Twoslash type
+errors.
