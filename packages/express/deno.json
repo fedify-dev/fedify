@@ -12,6 +12,9 @@
     "dist",
     "node_modules"
   ],
+  "publish": {
+    "exclude": ["**/*.test.ts"]
+  },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check *.ts"
   }

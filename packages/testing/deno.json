@@ -11,6 +11,9 @@
     "npm",
     "pnpm-lock.yaml"
   ],
+  "publish": {
+    "exclude": ["**/*.test.ts"]
+  },
   "tasks": {
     "build": "pnpm build",
     "check": "deno fmt --check && deno lint && deno check",

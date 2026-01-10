@@ -9,7 +9,6 @@
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
-    "./testing": "./src/testing/mod.ts",
     "./vocab": "./src/vocab/mod.ts",
     "./utils": "./src/utils/mod.ts",
     "./webfinger": "./src/webfinger/mod.ts"
@@ -52,6 +51,9 @@
     "src/vocab/*.yaml",
     "!src/vocab/vocab.ts"
   ],
+  "publish": {
+    "exclude": ["**/*.test.ts", "src/testing/"]
+  },
   "tasks": {
     "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab/vocab.ts && deno cache src/vocab/vocab.ts && deno check src/vocab/vocab.ts",
     "cache": {

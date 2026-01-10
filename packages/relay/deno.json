@@ -13,6 +13,9 @@
     "dist/",
     "node_modules/"
   ],
+  "publish": {
+    "exclude": ["**/*.test.ts"]
+  },
   "tasks": {
     "codegen": "deno task -f @fedify/fedify codegen",
     "check": {
