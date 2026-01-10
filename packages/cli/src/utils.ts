@@ -1,3 +1,4 @@
+import { type Actor, getActorHandle } from "@fedify/vocab";
 import { isObject } from "@fxts/core";
 import { message } from "@optique/core";
 import { print, printError } from "@optique/run";
@@ -8,7 +9,6 @@ import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
-import { type Actor, getActorHandle } from "@fedify/fedify";
 
 export const colorEnabled: boolean = process.stdout.isTTY &&
   !("NO_COLOR" in process.env && process.env.NO_COLOR !== "");

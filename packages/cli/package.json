@@ -47,6 +47,7 @@
     "@fedify/fedify": "workspace:*",
     "@fedify/relay": "workspace:*",
     "@fedify/sqlite": "workspace:*",
+    "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/vocab-tools": "workspace:*",
     "@fxts/core": "catalog:",
