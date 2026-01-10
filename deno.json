@@ -81,7 +81,7 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "build": {
-      "command": "pnpm --recursive --filter '@fedify/*' --parallel build",
+      "command": "pnpm --recursive --filter '@fedify/*' --parallel --silent build",
       "dependencies": [
         "install"
       ]
