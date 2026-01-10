@@ -127,12 +127,7 @@
       ]
     },
     "cli": "deno task -f @fedify/cli run",
-    "hooks:install": "deno run --allow-read=deno.json,.git/hooks/ --allow-write=.git/hooks/ jsr:@hongminhee/deno-task-hooks",
-    "hooks:pre-commit": {
-      "dependencies": [
-        "check-all"
-      ]
-    }
+    "hooks:install": "mise generate git-pre-commit --write --task=check"
   },
   "test": {
     "include": [

@@ -77,4 +77,4 @@ run = "deno task cli"
 
 [tasks."hooks:install"]
 description = "Install Git hooks for pre-commit checks"
-run = "deno task hooks:install"
+run = "mise generate git-pre-commit --write --task=check"

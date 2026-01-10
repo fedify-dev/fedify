@@ -319,21 +319,23 @@ The repository is organized as a monorepo with the following packages:
 
 ### Development environment
 
-Fedify uses [Deno] as the main development environment.  Therefore, you need to
-install Deno to hack on Fedify.
+Fedify uses [mise] to manage development tools and run tasks.  You need to
+install mise first, then run the following commands to set up the development
+environment:
 
-> [!TIP]
-> If you use [mise-en-place], a dev tools/env vars manager and a task runner,
-> you can easily install Deno, [Node.js], and [Bun] with following commands:
->
-> ~~~~ bash
-> mise trust
-> mise install
-> ~~~~
+~~~~ bash
+mise trust
+mise install
+~~~~
+
+This will install [Deno], [Node.js], and [Bun] with the correct versions
+specified in *mise.toml*.
 
 The recommended editor for Fedify is [Visual Studio Code] with
 the [Deno extension] installed.  Or you can use any editor that supports Deno;
 see the [*Set Up Your Environment* section][1] in the Deno manual.
+
+[mise]: https://mise.jdx.dev/
 
 > [!CAUTION]
 >
@@ -348,6 +350,15 @@ the following commands at the *root* of the repository:
 mise run codegen
 code .
 ~~~~
+
+> [!TIP]
+> It is recommended to install Git pre-commit hooks after cloning the
+> repository to ensure code quality checks run automatically before each
+> commit:
+>
+> ~~~~ bash
+> mise run hooks:install
+> ~~~~
 
 Note that the `mise run codegen` command is required to run only once at
 very first time, or when you update the code generation scripts.   Otherwise,
@@ -369,7 +380,6 @@ following message:
 
 Please click the *Install* button to install the Deno extension.
 
-[mise-en-place]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 [1]: https://docs.deno.com/runtime/manual/getting_started/setup_your_environment/
@@ -429,15 +439,8 @@ mise run test:bun
 ~~~~
 
 Of course, Node.js and Bun should be installed on your system to run the tests
-with Node.js and Bun.
-
-> [!TIP]
-> If you use [mise-en-place], a dev tools/env vars manager and a task runner,
-> you can easily install Deno, [Node.js], and [Bun] with a single command:
->
-> ~~~~ bash
-> mise install
-> ~~~~
+with Node.js and Bun.  If you followed the setup instructions above using
+`mise install`, these tools are already available.
 
 #### Testing the `init` command
 

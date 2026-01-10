@@ -32,6 +32,7 @@ Main features:
 Development environment
 -----------------------
 
+ -  Task runner and toolchain manager: [mise] (required)
  -  Primary development environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
@@ -40,6 +41,7 @@ Development environment
  -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed to the
     repository for reproducible builds.  Update them when changing dependencies.
 
+[mise]: https://mise.jdx.dev/
 [Deno]: https://deno.com/
 [Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
