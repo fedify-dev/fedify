@@ -2,7 +2,12 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
   "name": "Development Environment",
-  "image": "denoland/deno:ubuntu-1.46.3",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers-extra/features/mise:1": {
+      "version": "2025.12.12"
+    }
+  },
   "postCreateCommand": ".devcontainer/bin/postCreateCommand.sh",
   "postAttachCommand": ".devcontainer/bin/postAttachCommand.sh",
   "customizations": {
