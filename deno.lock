@@ -56,6 +56,7 @@
     "jsr:@std/semver@^1.0.6": "1.0.7",
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.0",
+    "jsr:@std/yaml@*": "1.0.10",
     "jsr:@std/yaml@^1.0.8": "1.0.10",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@babel/core@^7.28.0": "7.28.5",

@@ -1,0 +1,11 @@
+name: Setup mise
+description: Set up mise and install dependencies
+
+runs:
+  using: composite
+  steps:
+  - uses: jdx/mise-action@v2
+    with:
+      version: 2025.12.12
+  - run: mise run install
+    shell: bash

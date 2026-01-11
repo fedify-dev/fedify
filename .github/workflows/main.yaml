@@ -57,10 +57,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: mise run test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -123,10 +120,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: mise run test:node
 
   test-bun:
@@ -167,20 +161,14 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: mise run test:bun
 
   test-cfworkers:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
 
@@ -188,9 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
+    - uses: ./.github/actions/setup-mise
     - run: mise run check
 
   release-test:
@@ -200,98 +186,126 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: mise run codegen
     - run: deno publish --dry-run
     - run: pnpm publish --recursive --dry-run --no-git-checks
 
-  publish-jsr:
-    if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test]
+  # ===========================================================================
+  # PR-only jobs: Validate CLI and docs build
+  # ===========================================================================
+
+  build-cli-pr:
+    if: github.event_name == 'pull_request'
+    needs: [release-test]
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: write
-    outputs:
-      version: ${{ steps.versioning.outputs.version }}
-      short_version: ${{ steps.versioning.outputs.short_version }}
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
+    - uses: ./.github/actions/setup-mise
+    - run: mise run codegen
+    - run: deno task pack
+      working-directory: ${{ github.workspace }}/packages/cli/
+    - uses: actions/upload-artifact@v4
       with:
-        version: 2025.12.12
-    - run: sudo npm install -g npm@latest && npm --version
-    - if: github.ref_type == 'branch'
-      run: |
-        jq \
-          --arg build "$GITHUB_RUN_NUMBER" \
-          --arg commit "${GITHUB_SHA::8}" \
-          '.version = .version + "-dev." + $build + "+" + $commit' \
-          deno.json > deno.json.tmp
-        mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - id: versioning
-      run: |
-        set -ex
-        echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
-        echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: mise run check-versions --fix
+        name: cli-pr-${{ github.event.pull_request.number }}
+        path: |
+          packages/cli/fedify-cli-*.tar.xz
+          packages/cli/fedify-cli-*.zip
+
+  build-docs-pr:
+    if: github.event_name == 'pull_request'
+    needs: [release-test]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - run: pnpm run build
+      working-directory: ${{ github.workspace }}/docs/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: docs-pr-${{ github.event.pull_request.number }}
+        path: docs/.vitepress/dist
+
+  # ===========================================================================
+  # Push-only jobs: Determine version
+  # ===========================================================================
+
+  determine-version:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      short_version: ${{ steps.version.outputs.short_version }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - id: version
+      uses: ./.github/actions/determine-version
     - if: github.ref_type == 'tag'
       run: |
         set -ex
         [[ "$(jq -r .version deno.json)" = "$GITHUB_REF_NAME" ]]
         ! grep -i "to be released" CHANGES.md
       working-directory: ${{ github.workspace }}/packages/fedify/
-    # Don't know why, but the .gitignore list is not overridden by include list
-    # in deno.json:
-    - run: rm src/vocab/.gitignore
-      working-directory: ${{ github.workspace }}/packages/fedify/
+
+  # ===========================================================================
+  # Push-only jobs: Build artifacts (run in parallel after version determined)
+  # ===========================================================================
+
+  build-cli:
+    if: github.event_name == 'push'
+    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/determine-version
+    - run: mise run codegen
+    - run: deno task pack
+      working-directory: ${{ github.workspace }}/packages/cli/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cli
+        path: |
+          packages/cli/fedify-cli-*.tar.xz
+          packages/cli/fedify-cli-*.zip
+
+  build-packages:
+    if: github.event_name == 'push'
+    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/determine-version
+    - run: sudo npm install -g npm@latest && npm --version
     - run: |
-        mise run install
         pnpm pack --recursive --filter='!./examples/**'
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
         fi
-    - run: deno task pack
-      working-directory: ${{ github.workspace }}/packages/cli/
-    - id: extract-changelog
-      uses: dahlia/submark@5a5ff0a58382fb812616a5801402f5aef00f90ce
-      with:
-        input-file: CHANGES.md
-        heading-level: 2
-        heading-title-text: version ${{ github.ref_name }}
-        ignore-case: true
-        omit-heading: true
-    - run: 'cat "$CHANGES_FILE"'
-      env:
-        CHANGES_FILE: ${{ steps.extract-changelog.outputs.output-file }}
-    - uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: |
-          fedify-*.tgz
-          packages/cli/fedify-cli-*.tar.xz
-          packages/cli/fedify-cli-*.zip
     - uses: actions/upload-artifact@v4
       with:
         name: npm-packages
         path: fedify-*.tgz
-    - if: github.event_name == 'push' && github.ref_type == 'tag'
-      uses: softprops/action-gh-release@v1
-      with:
-        body_path: ${{ steps.extract-changelog.outputs.output-file }}
-        name: Fedify ${{ github.ref_name }}
-        files: |
-          fedify-*.tgz
-          packages/cli/fedify-cli-*.tar.xz
-          packages/cli/fedify-cli-*.zip
-        generate_release_notes: false
+
+  publish-jsr:
+    if: github.event_name == 'push'
+    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/determine-version
+    # Don't know why, but the .gitignore list is not overridden by include list
+    # in deno.json:
+    - run: rm src/vocab/.gitignore
+      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: |
         set -ex
         mise run codegen
@@ -308,6 +322,51 @@ jobs:
           ((attempt++))
         done
 
+  # ===========================================================================
+  # Push-only jobs: Create GitHub release (tag only)
+  # ===========================================================================
+
+  create-release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [build-cli, build-packages, publish-jsr]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: cli
+        path: cli-artifacts/
+    - uses: actions/download-artifact@v4
+      with:
+        name: npm-packages
+        path: npm-artifacts/
+    - id: extract-changelog
+      uses: dahlia/submark@5a5ff0a58382fb812616a5801402f5aef00f90ce
+      with:
+        input-file: CHANGES.md
+        heading-level: 2
+        heading-title-text: version ${{ github.ref_name }}
+        ignore-case: true
+        omit-heading: true
+    - run: 'cat "$CHANGES_FILE"'
+      env:
+        CHANGES_FILE: ${{ steps.extract-changelog.outputs.output-file }}
+    - uses: softprops/action-gh-release@v1
+      with:
+        body_path: ${{ steps.extract-changelog.outputs.output-file }}
+        name: Fedify ${{ github.ref_name }}
+        files: |
+          npm-artifacts/fedify-*.tgz
+          cli-artifacts/fedify-cli-*.tar.xz
+          cli-artifacts/fedify-cli-*.zip
+        generate_release_notes: false
+
+  # ===========================================================================
+  # Push-only jobs: Publish to npm and docs
+  # ===========================================================================
+
   # Trigger build.yaml via workflow_dispatch to publish to npm.
   # This is required because npm's trusted publishing (OIDC) validates
   # the directly triggered workflow, not reusable workflows called via
@@ -315,7 +374,7 @@ jobs:
   # as the entry point and validates against it.
   publish-npm:
     if: github.event_name == 'push'
-    needs: [publish-jsr]
+    needs: [build-packages]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -345,7 +404,8 @@ jobs:
           console.log(`Triggered build.yaml workflow with run_id=${{ github.run_id }}, tag=${tag}`);
 
   publish-docs:
-    needs: [publish-jsr]
+    if: github.event_name == 'push'
+    needs: [publish-jsr, determine-version]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -357,10 +417,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        version: 2025.12.12
-    - run: mise run install
+    - uses: ./.github/actions/setup-mise
     - run: |
         set -ex
         if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
@@ -377,7 +434,7 @@ jobs:
           pnpm run build
         fi
       env:
-        SHORT_VERSION: ${{ needs.publish-jsr.outputs.short_version }}
+        SHORT_VERSION: ${{ needs.determine-version.outputs.short_version }}
         PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}

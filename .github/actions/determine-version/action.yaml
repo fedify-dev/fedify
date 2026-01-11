@@ -1,0 +1,62 @@
+name: Determine version
+description: Determine package version based on git ref
+
+inputs:
+  pr_number:
+    description: 'PR number (for PR builds)'
+    required: false
+  head_sha:
+    description: 'Head SHA (for PR builds, defaults to GITHUB_SHA)'
+    required: false
+
+outputs:
+  version:
+    description: 'Full version string'
+    value: ${{ steps.version.outputs.version }}
+  short_version:
+    description: 'Version without commit hash'
+    value: ${{ steps.version.outputs.short_version }}
+
+runs:
+  using: composite
+  steps:
+  - name: Generate version for branch build
+    if: github.ref_type == 'branch' && inputs.pr_number == ''
+    shell: bash
+    working-directory: packages/fedify/
+    run: |
+      jq \
+        --arg build "$GITHUB_RUN_NUMBER" \
+        --arg commit "${GITHUB_SHA::8}" \
+        '.version = .version + "-dev." + $build + "+" + $commit' \
+        deno.json > deno.json.tmp
+      mv deno.json.tmp deno.json
+
+  - name: Generate version for PR build
+    if: inputs.pr_number != ''
+    shell: bash
+    working-directory: packages/fedify/
+    env:
+      PR_NUMBER: ${{ inputs.pr_number }}
+      HEAD_SHA: ${{ inputs.head_sha || github.sha }}
+    run: |
+      jq \
+        --arg pr_number "$PR_NUMBER" \
+        --arg build "$GITHUB_RUN_NUMBER" \
+        --arg commit "${HEAD_SHA::8}" \
+        '.version = .version + "-pr." + $pr_number + "." + $build + "+" + $commit' \
+        deno.json > deno.json.tmp
+      mv deno.json.tmp deno.json
+
+  - name: Output version
+    id: version
+    shell: bash
+    working-directory: packages/fedify/
+    run: |
+      set -ex
+      echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
+      echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
+
+  - name: Sync versions across packages
+    shell: bash
+    run: mise run check-versions --fix

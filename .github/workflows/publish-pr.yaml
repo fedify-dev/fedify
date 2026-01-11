@@ -1,3 +1,7 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# Workflow to manually publish pre-release packages from a pull request.
+# This is useful for testing changes before they are merged.
 name: Publish PR pre-release
 
 on:
@@ -17,6 +21,10 @@ on:
         default: true
 
 jobs:
+  # ===========================================================================
+  # Get PR information
+  # ===========================================================================
+
   get-pr-info:
     runs-on: ubuntu-latest
     outputs:
@@ -40,17 +48,38 @@ jobs:
           core.setOutput('head_sha', pr.data.head.sha);
           core.setOutput('head_repo', pr.data.head.repo.full_name);
 
-  publish-packages:
+  # ===========================================================================
+  # Determine version
+  # ===========================================================================
+
+  determine-version:
     if: inputs.publish_packages
     needs: [get-pr-info]
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: write
     outputs:
-      version: ${{ steps.versioning.outputs.version }}
-      short_version: ${{ steps.versioning.outputs.short_version }}
+      version: ${{ steps.version.outputs.version }}
+      short_version: ${{ steps.version.outputs.short_version }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ needs.get-pr-info.outputs.head_repo }}
+        ref: ${{ needs.get-pr-info.outputs.head_sha }}
+    - uses: ./.github/actions/setup-mise
+    - id: version
+      uses: ./.github/actions/determine-version
+      with:
+        pr_number: ${{ inputs.pr_number }}
+        head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
+
+  # ===========================================================================
+  # Build packages
+  # ===========================================================================
+
+  build-packages:
+    if: inputs.publish_packages
+    needs: [get-pr-info, determine-version]
+    runs-on: ubuntu-latest
+    outputs:
       packages_table: ${{ steps.packages-table.outputs.table }}
       packages_links: ${{ steps.packages-table.outputs.links }}
     steps:
@@ -58,64 +87,25 @@ jobs:
       with:
         repository: ${{ needs.get-pr-info.outputs.head_repo }}
         ref: ${{ needs.get-pr-info.outputs.head_sha }}
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
+    - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/determine-version
       with:
-        pnpm-version: latest
+        pr_number: ${{ inputs.pr_number }}
+        head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
     - run: sudo npm install -g npm@latest && npm --version
-    - name: Generate PR version
-      run: |
-        jq \
-          --arg pr_number "${{ inputs.pr_number }}" \
-          --arg build "$GITHUB_RUN_NUMBER" \
-          --arg commit "${HEAD_SHA::8}" \
-          '.version = .version + "-pr." + $pr_number + "." + $build + "+" + $commit' \
-          deno.json > deno.json.tmp
-        mv deno.json.tmp deno.json
-      working-directory: ${{ github.workspace }}/packages/fedify/
-      env:
-        HEAD_SHA: ${{ needs.get-pr-info.outputs.head_sha }}
-    - id: versioning
-      run: |
-        set -ex
-        echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
-        echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
-      working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: deno task check-versions --fix
-    # Don't know why, but the .gitignore list is not overridden by include list
-    # in deno.json:
-    - run: rm src/vocab/.gitignore
-      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: |
-        pnpm install
         pnpm pack --recursive --filter='!./examples/**'
         rm fedify-cli-*.tgz
     - uses: actions/upload-artifact@v4
       with:
         name: npm-packages
         path: fedify-*.tgz
-    - name: Publish to JSR
-      run: |
-        set -ex
-        deno task -f @fedify/fedify codegen
-        max_attempts=5
-        attempt=1
-        until deno publish --allow-dirty; do
-          exit_code=$?
-          if [[ $attempt -ge $max_attempts ]]; then
-            echo "deno publish failed after $max_attempts attempts"
-            exit $exit_code
-          fi
-          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
-          sleep 30
-          ((attempt++))
-        done
     - name: Generate packages table
       id: packages-table
       run: |
         set -e
-        VERSION="${{ steps.versioning.outputs.version }}"
-        SHORT_VERSION="${{ steps.versioning.outputs.short_version }}"
+        VERSION="${{ needs.determine-version.outputs.version }}"
+        SHORT_VERSION="${{ needs.determine-version.outputs.short_version }}"
 
         {
           echo 'table<<EOFTABLE'
@@ -129,6 +119,52 @@ jobs:
           echo 'EOFLINKS'
         } >> $GITHUB_OUTPUT
 
+  # ===========================================================================
+  # Publish to JSR
+  # ===========================================================================
+
+  publish-jsr:
+    if: inputs.publish_packages
+    needs: [get-pr-info, determine-version]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ needs.get-pr-info.outputs.head_repo }}
+        ref: ${{ needs.get-pr-info.outputs.head_sha }}
+    - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/determine-version
+      with:
+        pr_number: ${{ inputs.pr_number }}
+        head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
+    # Don't know why, but the .gitignore list is not overridden by include list
+    # in deno.json:
+    - run: rm src/vocab/.gitignore
+      working-directory: ${{ github.workspace }}/packages/fedify/
+    - name: Publish to JSR
+      run: |
+        set -ex
+        mise run codegen
+        max_attempts=5
+        attempt=1
+        until deno publish --allow-dirty; do
+          exit_code=$?
+          if [[ $attempt -ge $max_attempts ]]; then
+            echo "deno publish failed after $max_attempts attempts"
+            exit $exit_code
+          fi
+          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
+          sleep 30
+          ((attempt++))
+        done
+
+  # ===========================================================================
+  # Publish to npm (trigger build.yaml)
+  # ===========================================================================
+
   # Trigger build.yaml via workflow_dispatch to publish to npm.
   # This is required because npm's trusted publishing (OIDC) validates
   # the directly triggered workflow, not reusable workflows called via
@@ -136,7 +172,7 @@ jobs:
   # as the entry point and validates against it.
   publish-npm:
     if: inputs.publish_packages
-    needs: [publish-packages]
+    needs: [build-packages, publish-jsr]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -210,9 +246,13 @@ jobs:
 
           core.setFailed('Timed out waiting for npm publish workflow to complete');
 
+  # ===========================================================================
+  # Publish docs preview
+  # ===========================================================================
+
   publish-docs:
     if: inputs.publish_docs
-    needs: [get-pr-info, publish-packages]
+    needs: [get-pr-info, determine-version]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -223,11 +263,9 @@ jobs:
       with:
         repository: ${{ needs.get-pr-info.outputs.head_repo }}
         ref: ${{ needs.get-pr-info.outputs.head_sha }}
-    - uses: ./.github/actions/setup-deno
-    - uses: ./.github/actions/setup-node-and-pnpm
+    - uses: ./.github/actions/setup-mise
     - run: |
         set -ex
-        pnpm install
         EXTRA_NAV_TEXT=Stable \
         EXTRA_NAV_LINK="$STABLE_DOCS_URL" \
         SITEMAP_HOSTNAME="$UNSTABLE_DOCS_URL" \
@@ -251,8 +289,12 @@ jobs:
         packageManager: pnpm
         workingDirectory: ${{ github.workspace }}/docs/
 
+  # ===========================================================================
+  # Post comment on PR
+  # ===========================================================================
+
   comment-on-pr:
-    needs: [get-pr-info, publish-packages, publish-npm, publish-docs]
+    needs: [get-pr-info, determine-version, build-packages, publish-npm, publish-docs]
     if: always() && needs.get-pr-info.result == 'success' && (needs.publish-npm.result == 'success' || needs.publish-docs.result == 'success')
     runs-on: ubuntu-latest
     permissions:
@@ -278,7 +320,7 @@ jobs:
 
           {1}
 
-          ', needs.publish-packages.outputs.packages_table, needs.publish-packages.outputs.packages_links) || '' }}${{ needs.publish-docs.result == 'success' && format('## Documentation
+          ', needs.build-packages.outputs.packages_table, needs.build-packages.outputs.packages_links) || '' }}${{ needs.publish-docs.result == 'success' && format('## Documentation
 
           The docs for this pull request have been published:
 
