@@ -95,6 +95,13 @@ jobs:
     - run: sudo npm install -g npm@latest && npm --version
     - run: |
         pnpm pack --recursive --filter='!./examples/**'
+        # Remove private packages and CLI package
+        for pkg in fedify-*.tgz; do
+          if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
+            echo "Removing private package: $pkg"
+            rm "$pkg"
+          fi
+        done
         rm fedify-cli-*.tgz
     - uses: actions/upload-artifact@v4
       with:

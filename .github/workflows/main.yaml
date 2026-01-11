@@ -283,6 +283,13 @@ jobs:
     - run: sudo npm install -g npm@latest && npm --version
     - run: |
         pnpm pack --recursive --filter='!./examples/**'
+        # Remove private packages
+        for pkg in fedify-*.tgz; do
+          if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
+            echo "Removing private package: $pkg"
+            rm "$pkg"
+          fi
+        done
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
         fi

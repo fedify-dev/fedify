@@ -50,6 +50,11 @@ jobs:
         set -ex
         TAG="${{ inputs.tag }}"
         for pkg in fedify-*.tgz; do
+          # Skip private packages
+          if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
+            echo "Skipping private package: $pkg"
+            continue
+          fi
           if [[ "$TAG" = "latest" ]]; then
             npm publish --logs-dir=. --provenance --access public "$pkg" \
               || grep "Cannot publish over previously published version" *.log
