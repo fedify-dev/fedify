@@ -1,9 +1,13 @@
-import { cp } from "node:fs/promises";
-import { join } from "node:path";
+import { cp, glob } from "node:fs/promises";
+import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/mod.ts"],
+  entry: [
+    "src/mod.ts",
+    ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
+      .map((f) => f.replace(sep, "/")),
+  ],
   dts: true,
   format: ["esm"],
   platform: "neutral",

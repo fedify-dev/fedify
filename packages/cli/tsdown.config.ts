@@ -9,7 +9,7 @@ export default defineConfig({
     "src/kv.bun.ts",
     "src/kv.node.ts",
   ],
-  platform: "neutral",
+  platform: "node",
   unbundle: true,
   external: [/^node:/],
   inputOptions: {
