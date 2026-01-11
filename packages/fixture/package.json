@@ -33,8 +33,10 @@
     "@opentelemetry/sdk-trace-base": "catalog:"
   },
   "devDependencies": {
+    "@js-temporal/polyfill": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
     "build": "tsdown",

@@ -41,15 +41,21 @@
     "@fedify/vocab-tools": "workspace:*",
     "@fedify/webfinger": "workspace:*",
     "@js-temporal/polyfill": "catalog:",
+    "@multiformats/base-x": "catalog:",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
+    "asn1js": "catalog:",
+    "es-toolkit": "catalog:",
     "jsonld": "^9.0.0",
-    "multicodec": "^3.2.1"
+    "multicodec": "^3.2.1",
+    "pkijs": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "fetch-mock": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

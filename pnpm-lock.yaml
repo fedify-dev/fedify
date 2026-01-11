@@ -21,6 +21,9 @@ catalogs:
     '@logtape/logtape':
       specifier: ^1.3.5
       version: 1.3.6
+    '@multiformats/base-x':
+      specifier: ^4.0.1
+      version: 4.0.1
     '@nestjs/common':
       specifier: ^11.0.1
       version: 11.1.11
@@ -63,6 +66,9 @@ catalogs:
     amqplib:
       specifier: ^0.10.9
       version: 0.10.9
+    asn1js:
+      specifier: ^3.0.6
+      version: 3.0.7
     byte-encodings:
       specifier: ^1.0.11
       version: 1.0.11
@@ -75,6 +81,9 @@ catalogs:
     express:
       specifier: ^4.0.0
       version: 4.22.1
+    fast-check:
+      specifier: ^3.22.0
+      version: 3.23.2
     fastify:
       specifier: ^5.2.0
       version: 5.6.2
@@ -99,6 +108,9 @@ catalogs:
     next:
       specifier: ^15.4.6
       version: 15.5.0
+    pkijs:
+      specifier: ^3.3.3
+      version: 3.3.3
     postgres:
       specifier: ^3.4.7
       version: 3.4.8
@@ -108,6 +120,9 @@ catalogs:
     typescript:
       specifier: ^5.9.3
       version: 5.9.3
+    urlpattern-polyfill:
+      specifier: ^10.1.0
+      version: 10.1.0
 
 importers:
 
@@ -892,9 +907,6 @@ importers:
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.3.6
-      '@multiformats/base-x':
-        specifier: ^4.0.1
-        version: 4.0.1
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -907,9 +919,6 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.27.0
         version: 1.38.0
-      asn1js:
-        specifier: ^3.0.7
-        version: 3.0.7
       byte-encodings:
         specifier: 'catalog:'
         version: 1.0.11
@@ -925,9 +934,6 @@ importers:
       multicodec:
         specifier: ^3.2.1
         version: 3.2.1
-      pkijs:
-        specifier: ^3.3.3
-        version: 3.3.3
       structured-field-values:
         specifier: ^2.0.4
         version: 2.0.4
@@ -938,7 +944,7 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1
       urlpattern-polyfill:
-        specifier: ^10.1.0
+        specifier: 'catalog:'
         version: 10.1.0
     devDependencies:
       '@fedify/fixture':
@@ -956,9 +962,6 @@ importers:
       '@types/node':
         specifier: ^24.2.1
         version: 24.10.6
-      fast-check:
-        specifier: ^3.22.0
-        version: 3.23.2
       fetch-mock:
         specifier: 'catalog:'
         version: 12.6.0
@@ -993,12 +996,18 @@ importers:
         specifier: 'catalog:'
         version: 2.3.0(@opentelemetry/api@1.9.0)
     devDependencies:
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
       tsdown:
         specifier: 'catalog:'
         version: 0.18.4(typescript@5.9.3)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      urlpattern-polyfill:
+        specifier: 'catalog:'
+        version: 10.1.0
 
   packages/h3:
     dependencies:
@@ -1206,6 +1215,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      urlpattern-polyfill:
+        specifier: 'catalog:'
+        version: 10.1.0
 
   packages/sqlite:
     dependencies:
@@ -1284,15 +1296,27 @@ importers:
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 1.3.6
+      '@multiformats/base-x':
+        specifier: 'catalog:'
+        version: 4.0.1
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
+      asn1js:
+        specifier: 'catalog:'
+        version: 3.0.7
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.43.0
       jsonld:
         specifier: ^9.0.0
         version: 9.0.0
       multicodec:
         specifier: ^3.2.1
         version: 3.2.1
+      pkijs:
+        specifier: 'catalog:'
+        version: 3.3.3
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:*
@@ -1303,6 +1327,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.5
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
+      fetch-mock:
+        specifier: 'catalog:'
+        version: 12.6.0
       tsdown:
         specifier: 'catalog:'
         version: 0.18.4(typescript@5.9.3)
@@ -1316,13 +1346,13 @@ importers:
         specifier: 'catalog:'
         version: 1.3.6
       '@multiformats/base-x':
-        specifier: ^4.0.1
+        specifier: 'catalog:'
         version: 4.0.1
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
       asn1js:
-        specifier: ^3.0.6
+        specifier: 'catalog:'
         version: 3.0.7
       byte-encodings:
         specifier: 'catalog:'
@@ -1331,7 +1361,7 @@ importers:
         specifier: ^3.2.1
         version: 3.2.1
       pkijs:
-        specifier: ^3.2.5
+        specifier: 'catalog:'
         version: 3.3.3
     devDependencies:
       '@types/node':

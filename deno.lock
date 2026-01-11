@@ -107,7 +107,6 @@
     "npm:tsx@^4.19.4": "4.21.0",
     "npm:uri-template-router@1": "1.0.0",
     "npm:url-template@^3.1.1": "3.1.1",
-    "npm:urlpattern-polyfill@^10.1.0": "10.1.0",
     "npm:vite@^7.1.3": "7.3.1_@types+node@22.19.3_tsx@4.21.0_yaml@2.8.2_picomatch@4.0.3",
     "npm:vitest@3.2": "3.2.4_@types+node@22.19.3_vite@7.3.1__@types+node@22.19.3__tsx@4.21.0__yaml@2.8.2__picomatch@4.0.3_tsx@4.21.0_yaml@2.8.2",
     "npm:wrangler@^4.17.0": "4.35.0_@cloudflare+workers-types@4.20260109.0_unenv@2.0.0-rc.21_workerd@1.20250906.0",
@@ -4825,9 +4824,6 @@
     "url-template@3.1.1": {
       "integrity": "sha512-4oszoaEKE/mQOtAmdMWqIRHmkxWkUZMnXFnjQ5i01CuRSK3uluxcH1MRVVVWmhlnzT1SCDfKxxficm2G37qzCA=="
     },
-    "urlpattern-polyfill@10.1.0": {
-      "integrity": "sha512-IGjKp/o0NL3Bso1PymYURCJxMPNAf/ILOpendP9f5B6e1rTJgdgiOvgfoT8VxCAdY+Wisb9uhGaJJf3yZ2V9nw=="
-    },
     "utif2@4.1.0": {
       "integrity": "sha512-+oknB9FHrJ7oW7A2WZYajOcv4FcDR4CfoGB0dPNfxbi4GO05RRnFmt5oa23+9w32EanrYcSJWspUiJkLMs+37w==",
       "dependencies": [
@@ -5247,21 +5243,16 @@
         "packageJson": {
           "dependencies": [
             "npm:@js-temporal/polyfill@~0.5.1",
-            "npm:@multiformats/base-x@^4.0.1",
             "npm:@opentelemetry/semantic-conventions@^1.27.0",
             "npm:@types/node@^24.2.1",
-            "npm:asn1js@^3.0.7",
-            "npm:fast-check@^3.22.0",
             "npm:json-canon@^1.0.1",
             "npm:jsonld@9",
             "npm:miniflare@^4.20250523.0",
             "npm:multicodec@^3.2.1",
-            "npm:pkijs@^3.3.3",
             "npm:structured-field-values@^2.0.4",
             "npm:tsx@^4.19.4",
             "npm:uri-template-router@1",
             "npm:url-template@^3.1.1",
-            "npm:urlpattern-polyfill@^10.1.0",
             "npm:wrangler@^4.17.0"
           ]
         }
@@ -5339,11 +5330,8 @@
         ],
         "packageJson": {
           "dependencies": [
-            "npm:@multiformats/base-x@^4.0.1",
             "npm:@types/node@^24.2.1",
-            "npm:asn1js@^3.0.6",
-            "npm:multicodec@^3.2.1",
-            "npm:pkijs@^3.2.5"
+            "npm:multicodec@^3.2.1"
           ]
         }
       },

@@ -56,7 +56,8 @@
   "devDependencies": {
     "@fedify/vocab-runtime": "workspace:^",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
     "build": "tsdown",
