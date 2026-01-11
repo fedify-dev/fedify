@@ -1,7 +1,87 @@
 [tools]
-# Bun version should be kept in sync with GitHub Actions workflows
 bun = "1.2.22"
-# Deno version should be kept in sync with GitHub Actions workflows
 deno = "2.6.4"
 node = "22"
-"npm:pnpm" = "latest"
+"npm:pnpm" = "10.28.0"
+
+# Installation and setup
+[tasks.install]
+description = "Install all dependencies and set up the development environment"
+run = "deno task install"
+
+[tasks.codegen]
+description = "Generate ActivityPub vocabulary types from YAML definitions"
+run = "deno task codegen"
+
+[tasks.prepare]
+description = "Prepare the development environment (codegen, install, build fixtures)"
+env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
+run = "deno task install && deno task pnpm:build-fixture"
+
+# Code quality
+[tasks.check]
+description = "Check code formatting, linting, and type checking"
+depends = ["prepare", "check-versions"]
+run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
+
+[tasks.check-versions]
+description = "Check that all package versions are consistent across the monorepo"
+usage = 'flag "--fix" help="Automatically fix version mismatches"'
+run = '''
+if [[ "${usage_fix}" == "true" ]]; then
+  deno run --allow-read --allow-write scripts/check_versions.ts --fix
+else
+  deno task check-versions
+fi
+'''
+
+[tasks.fmt]
+description = "Format the codebase"
+run = "deno fmt"
+
+# Testing
+[tasks."test:deno"]
+description = "Run the test suite using Deno"
+depends = ["prepare"]
+run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
+
+[tasks."test:node"]
+description = "Run the test suite using Node.js"
+depends = ["prepare"]
+run = "pnpm run --recursive --filter '!{docs}' test"
+
+[tasks."test:bun"]
+description = "Run the test suite using Bun"
+depends = ["prepare"]
+run = "pnpm run --recursive --filter '!{docs}' test:bun"
+
+[tasks.test]
+description = "Run the test suite across all environments (Deno, Node.js, Bun)"
+depends = ["check", "test:deno", "test:node", "test:bun"]
+
+# Documentation
+[tasks.docs]
+description = "Start the documentation development server"
+run = "pnpm -C docs dev"
+
+[tasks."docs:build"]
+description = "Build the documentation for production"
+run = "pnpm -C docs build"
+
+[tasks."docs:preview"]
+description = "Preview the built documentation"
+run = "pnpm -C docs preview"
+
+# Benchmarks
+[tasks.bench]
+description = "Run benchmarks"
+run = "deno task -f @fedify/fedify bench"
+
+# CLI and utilities
+[tasks.cli]
+description = "Run the Fedify CLI tool"
+run = "deno task cli"
+
+[tasks."hooks:install"]
+description = "Install Git hooks for pre-commit checks"
+run = "mise generate git-pre-commit --write --task=check"

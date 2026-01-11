@@ -59,7 +59,7 @@ To build the project, see the [*Build* section](#build).
 Please run the following commands before opening a pull request:
 
 ~~~~ bash
-deno task check-all
+mise run check
 ~~~~
 
 ### Docs
@@ -212,16 +212,10 @@ consistent dependency resolution across all environments.  When you add, update,
 or remove dependencies, you must commit the updated lockfile(s) along with your
 changes.
 
-To update the Deno lockfile, run:
+To update both lockfiles at once, run:
 
 ~~~~ bash
-deno task install
-~~~~
-
-To update the pnpm lockfile, run:
-
-~~~~ bash
-pnpm install
+mise run install
 ~~~~
 
 When reviewing pull requests, please check that lockfile changes are included
@@ -325,37 +319,48 @@ The repository is organized as a monorepo with the following packages:
 
 ### Development environment
 
-Fedify uses [Deno] as the main development environment.  Therefore, you need to
-install Deno to hack on Fedify.
+Fedify uses [mise] to manage development tools and run tasks.  You need to
+install mise first, then run the following commands to set up the development
+environment:
 
-> [!TIP]
-> If you use [mise-en-place], a dev tools/env vars manager and a task runner,
-> you can easily install Deno, [Node.js], and [Bun] with following commands:
->
-> ~~~~ bash
-> mise trust
-> mise install
-> ~~~~
+~~~~ bash
+mise trust
+mise install
+~~~~
+
+This will install [Deno], [Node.js], and [Bun] with the correct versions
+specified in *mise.toml*.
 
 The recommended editor for Fedify is [Visual Studio Code] with
 the [Deno extension] installed.  Or you can use any editor that supports Deno;
 see the [*Set Up Your Environment* section][1] in the Deno manual.
 
+[mise]: https://mise.jdx.dev/
+
 > [!CAUTION]
 >
 > Fedify heavily depends on code generation, so you need to run
-> `deno task codegen` before coding or testing.
+> `mise run codegen` before coding or testing.
 
 Assuming you have Deno and Visual Studio Code installed, you can open
 the repository in Visual Studio Code and get ready to hack on Fedify by running
 the following commands at the *root* of the repository:
 
 ~~~~ bash
-deno task codegen
+mise run codegen
 code .
 ~~~~
 
-Note that the `deno task codegen` command is required to run only once at
+> [!TIP]
+> It is recommended to install Git pre-commit hooks after cloning the
+> repository to ensure code quality checks run automatically before each
+> commit:
+>
+> ~~~~ bash
+> mise run hooks:install
+> ~~~~
+
+Note that the `mise run codegen` command is required to run only once at
 very first time, or when you update the code generation scripts.   Otherwise,
 you can skip the command and just run:
 
@@ -375,7 +380,6 @@ following message:
 
 Please click the *Install* button to install the Deno extension.
 
-[mise-en-place]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 [1]: https://docs.deno.com/runtime/manual/getting_started/setup_your_environment/
@@ -383,18 +387,11 @@ Please click the *Install* button to install the Deno extension.
 ### Running the Fedify CLI
 
 If you want to test your changes in the Fedify CLI, you can run
-`deno task cli` command from the root, or `deno task -f @fedify/cli run`
-command.  For example, if you want to test the `fedify lookup` subcommand,
-you can run the following command:
+`mise run cli` command from the root.  For example, if you want to test
+the `fedify lookup` subcommand, you can run the following command:
 
 ~~~~ bash
-deno task cli lookup @fedify@hollo.social
-~~~~
-
-Or directly:
-
-~~~~ bash
-deno task -f @fedify/cli run lookup @fedify@hollo.social
+mise run cli -- lookup @fedify@hollo.social
 ~~~~
 
 > [!TIP]
@@ -408,7 +405,7 @@ If you want to test your changes in the Fedify library, you can run
 the following command from the root:
 
 ~~~~ bash
-deno task test
+mise run test:deno
 ~~~~
 
 Or you can test a specific package:
@@ -424,33 +421,26 @@ want to run the `verifyRequest` test:
 deno task -f @fedify/fedify test --filter verifyRequest
 ~~~~
 
-If the tests pass, you should run `deno task test-all` command to test
+If the tests pass, you should run `mise run test` command to test
 all packages with Deno, Node.js, and [Bun]:
 
 ~~~~ bash
-deno task test-all
+mise run test
 ~~~~
 
 To test individual packages with specific runtimes:
 
 ~~~~ bash
 # Test with Node.js
-deno task test:node
+mise run test:node
 
 # Test with Bun
-deno task test:bun
+mise run test:bun
 ~~~~
 
 Of course, Node.js and Bun should be installed on your system to run the tests
-with Node.js and Bun.
-
-> [!TIP]
-> If you use [mise-en-place], a dev tools/env vars manager and a task runner,
-> you can easily install Deno, [Node.js], and [Bun] with a single command:
->
-> ~~~~ bash
-> mise install
-> ~~~~
+with Node.js and Bun.  If you followed the setup instructions above using
+`mise install`, these tools are already available.
 
 #### Testing the `init` command
 
@@ -497,11 +487,11 @@ The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
 
 If you want to change the Fedify docs, you would like to preview the changes
 in the browser.  To do that, you need to install [Node.js] and [pnpm] first.
-Then you can run the following commands at the *docs/* directory:
+Then you can run the following commands at the repository root:
 
 ~~~~ bash
-pnpm install
-pnpm dev
+mise run install
+mise run docs
 ~~~~
 
 Once the development server is running, you can open your browser and navigate
