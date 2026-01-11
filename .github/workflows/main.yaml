@@ -241,7 +241,7 @@ jobs:
         echo version="$(jq -r .version deno.json)" >> $GITHUB_OUTPUT
         echo short_version="$(jq -r .version deno.json | sed 's/[+].*//')" >> $GITHUB_OUTPUT
       working-directory: ${{ github.workspace }}/packages/fedify/
-    - run: mise run check-versions -- --fix
+    - run: mise run check-versions --fix
     - if: github.ref_type == 'tag'
       run: |
         set -ex

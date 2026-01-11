@@ -28,7 +28,7 @@ run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno ev
 description = "Check that all package versions are consistent across the monorepo"
 usage = 'flag "--fix" help="Automatically fix version mismatches"'
 run = '''
-if [[ "${usage_fix}" == "true" ]]; then
+if [ "${usage_fix}" = "true" ]; then
   deno run --allow-read --allow-write scripts/check_versions.ts --fix
 else
   deno task check-versions
