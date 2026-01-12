@@ -41,7 +41,7 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "node --experimental-transform-types --test"
+    "test": "tsdown && cd dist/ && node --test"
   },
   "keywords": [
     "Fedify",

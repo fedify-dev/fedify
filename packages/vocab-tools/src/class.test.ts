@@ -1,5 +1,5 @@
 import { deepStrictEqual } from "node:assert";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 import { test } from "node:test";
 import metadata from "../deno.json" with { type: "json" };
 import { generateClasses, sortTopologically } from "./class.ts";
@@ -106,7 +106,7 @@ async function changeNodeSnapshotPath() {
       return join(
         dirname(path),
         "__snapshots__",
-        basename(path) + ".node.snap",
+        basename(path.replace(extname(path), ".ts")) + ".node.snap",
       );
     },
   );

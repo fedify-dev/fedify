@@ -33,7 +33,8 @@ export default [
       onwarn(warning, defaultHandler) {
         if (
           warning.code === "UNRESOLVED_IMPORT" &&
-          warning.id?.endsWith(join("vocab", "vocab.test.ts")) &&
+          warning.id?.endsWith("vocab.test.ts") &&
+          warning.exporter &&
           warning.exporter === "@std/testing/snapshot"
         ) {
           return;
@@ -52,7 +53,7 @@ export default [
         for await (const file of glob("src/**/*.yaml")) {
           await cp(
             file,
-            join(ctx.options.outDir, file),
+            join(ctx.options.outDir, file.replace(`src${sep}`, "")),
             { force: true },
           );
         }

@@ -15,6 +15,11 @@
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
       "import": "./dist/mod.js",
       "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
@@ -42,7 +47,7 @@
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "node --experimental-transform-types --test"
+    "test": "tsdown && cd dist/ && node --test"
   },
   "private": true
 }
