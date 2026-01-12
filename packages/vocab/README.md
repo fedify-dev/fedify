@@ -34,29 +34,13 @@ Features
 Installation
 ------------
 
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/vocab
+~~~~ bash
+deno add jsr:@fedify/vocab # Deno
+npm add @fedify/vocab # npm
+pnpm add @fedify/vocab # pnpm
+yarn add @fedify/vocab # Yarn
+bun add @fedify/vocab # Bun
 ~~~~
-
-~~~~ bash [npm]
-npm add @fedify/vocab
-~~~~
-
-~~~~ bash [pnpm]
-pnpm add @fedify/vocab
-~~~~
-
-~~~~ bash [Yarn]
-yarn add @fedify/vocab
-~~~~
-
-~~~~ bash [Bun]
-bun add @fedify/vocab
-~~~~
-
-:::
 
 
 Usage

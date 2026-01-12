@@ -50,6 +50,39 @@ list of the objects, please refer to the [API reference].
 [`Object`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object
 
 
+Installation
+------------
+
+The `@fedify/vocab` package is available on [JSR] and [npm].  You can install
+it using the following command:
+
+[JSR]: https://jsr.io/@fedify/vocab
+[npm]: https://www.npmjs.com/package/@fedify/vocab
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/vocab
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/vocab
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/vocab
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/vocab
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/vocab
+~~~~
+
+:::
+
 Instantiation
 -------------
 
