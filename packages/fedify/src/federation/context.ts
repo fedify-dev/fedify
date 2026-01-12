@@ -1,23 +1,24 @@
+import type {
+  Activity,
+  Actor,
+  Collection,
+  CryptographicKey,
+  Link,
+  LookupObjectOptions,
+  Multikey,
+  Object,
+  Recipient,
+  TraverseCollectionOptions,
+} from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type {
+  LookupWebFingerOptions,
+  ResourceDescriptor,
+} from "@fedify/webfinger";
 import type { TracerProvider } from "@opentelemetry/api";
 import type { GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import type { GetKeyOwnerOptions } from "../sig/owner.ts";
-import type { Actor, Recipient } from "../vocab/actor.ts";
-import type {
-  LookupObjectOptions,
-  TraverseCollectionOptions,
-} from "../vocab/lookup.ts";
-import type {
-  Activity,
-  Collection,
-  CryptographicKey,
-  Link,
-  Multikey,
-  Object,
-} from "../vocab/vocab.ts";
-import type { ResourceDescriptor } from "../webfinger/jrd.ts";
-import type { LookupWebFingerOptions } from "../webfinger/lookup.ts";
 import type { ConstructorWithTypeId, Federation } from "./federation.ts";
 import type { SenderKeyPair } from "./send.ts";
 

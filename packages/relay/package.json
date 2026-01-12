@@ -48,23 +48,22 @@
     "package.json"
   ],
   "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:*",
     "@js-temporal/polyfill": "catalog:",
     "@logtape/logtape": "catalog:"
   },
-  "peerDependencies": {
-    "@fedify/fedify": "workspace:^"
-  },
   "devDependencies": {
-    "@fedify/testing": "workspace:^",
     "@fedify/vocab-runtime": "workspace:^",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
-    "build": "deno task codegen && tsdown",
-    "prepack": "deno task codegen && tsdown",
-    "prepublish": "deno task codegen && tsdown",
-    "test": "deno task codegen && tsdown && node --test",
-    "test:bun": "deno task codegen && tsdown && bun test --timeout 60000"
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && cd dist/ && node --test",
+    "test:bun": "tsdown && cd dist/ && bun test --timeout 60000"
   }
 }

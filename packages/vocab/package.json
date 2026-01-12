@@ -1,0 +1,80 @@
+{
+  "name": "@fedify/vocab",
+  "version": "2.0.0",
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/vocab"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "engines": {
+    "deno": ">=2.0.0",
+    "node": ">=22.0.0",
+    "bun": ">=1.1.0"
+  },
+  "description": "Activity Vocabulary library",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@fedify/vocab-tools": "workspace:*",
+    "@fedify/webfinger": "workspace:*",
+    "@js-temporal/polyfill": "catalog:",
+    "@multiformats/base-x": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "asn1js": "catalog:",
+    "es-toolkit": "catalog:",
+    "jsonld": "^9.0.0",
+    "multicodec": "^3.2.1",
+    "pkijs": "catalog:"
+  },
+  "devDependencies": {
+    "@fedify/fixture": "workspace:*",
+    "@fedify/vocab-runtime": "workspace:*",
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "fetch-mock": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "pnpm build && cd dist/ && node --test",
+    "test:bun": "pnpm build && cd dist/ && bun test --timeout 60000"
+  },
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse"
+  ],
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "license": "MIT"
+}

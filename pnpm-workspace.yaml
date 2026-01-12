@@ -19,8 +19,10 @@ packages:
 - packages/sqlite
 - packages/sveltekit
 - packages/testing
+- packages/vocab
 - packages/vocab-runtime
 - packages/vocab-tools
+- packages/webfinger
 - docs
 - examples/cloudflare-workers
 - examples/elysia
@@ -38,6 +40,7 @@ catalog:
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^1.3.5
   "@logtape/logtape": ^1.3.5
+  "@multiformats/base-x": ^4.0.1
   "@opentelemetry/api": ^1.9.0
   "@opentelemetry/core": ^2.0.0
   "@opentelemetry/sdk-trace-base": ^2.0.0
@@ -52,18 +55,22 @@ catalog:
   "@types/node": ^22.17.0
   "@nestjs/common": ^11.0.1
   amqplib: ^0.10.9
+  asn1js: ^3.0.6
   byte-encodings: ^1.0.11
   elysia: ^1.3.8
   es-toolkit: 1.43.0
   express: ^4.0.0
-  fastify: ^5.2.0
+  fast-check: ^3.22.0
   fastify-plugin: ^5.0.1
+  fastify: ^5.2.0
   fetch-mock: ^12.5.4
   h3: ^1.15.0
   hono: ^4.0.0
   ioredis: ^5.8.2
   koa: ^2.16.0
   next: ^15.4.6
+  pkijs: ^3.3.3
   postgres: ^3.4.7
   tsdown: ^0.12.9
   typescript: ^5.9.3
+  urlpattern-polyfill: "^10.1.0"

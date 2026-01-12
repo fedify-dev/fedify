@@ -65,8 +65,8 @@ The repository is organized as a monorepo with the following packages:
     -  *src/sig/*: Signature implementation
     -  *src/testing/*: Testing utilities. Most have been migrated to `packages/fixture`(`@fedify/fixture`), except for modules that have dependencies on `@fedify/fedify`.
     -  *src/utils/*: Utility functions
-    -  *src/vocab/*: ActivityPub vocabulary implementation
-    -  *src/webfinger/*: WebFinger protocol implementation
+    -  ~~src/vocab/~~: **Don't use.** Moved to `@fedify/vocab`. If user code imports from here, notice and suggest migration.
+    -  ~~src/webfinger/~~: **Don't use.** Moved to `@fedify/webfinger`. If user code imports from here, notice and suggest migration.
     -  ~~src/x/~~: **Don't use.** This directory will be removed in version 2.0.0. Use packages from the `@fedify` scope, which are located in the `packages/` directory (e.g., `@fedify/hono` is in `packages/hono/`).
  -  *packages/cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
@@ -89,6 +89,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite)
  -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit)
  -  *packages/testing/*: Testing utilities (@fedify/testing)
+ -  *packages/vocab/*: Activity Vocabulary library (@fedify/vocab)
+ -  *packages/webfinger/*: WebFinger client library for ActivityPub (@fedify/webfinger)
  -  *packages/vocab-runtime/*: Runtime utilities and types (@fedify/vocab-runtime)
  -  *packages/vocab-tools/*: Utilities and types for code-generated Activity Vocabulary APIs (@fedify/vocab-runtime)
  -  *docs/*: Documentation built with Node.js and VitePress

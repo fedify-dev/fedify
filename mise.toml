@@ -16,7 +16,8 @@ run = "deno task codegen"
 [tasks.prepare]
 description = "Prepare the development environment (codegen, install, build fixtures)"
 env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
-run = "deno task install && deno task pnpm:build-fixture"
+depends = ["install"]
+run = "pnpm --filter '@fedify/*' --recursive --parallel build"
 
 # Code quality
 [tasks.check]

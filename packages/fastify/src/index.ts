@@ -39,7 +39,8 @@ export interface FedifyPluginOptions<TContextData>
  *
  * @example
  * ```typescript
- * import { createFederation, MemoryKvStore, Person } from "@fedify/fedify";
+ * import { createFederation, MemoryKvStore } from "@fedify/fedify";
+ * import { Person } from "@fedify/vocab";
  * import fedifyPlugin from "@fedify/fastify";
  * import Fastify from "fastify";
  *

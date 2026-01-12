@@ -1,0 +1,50 @@
+$schema: ../../vocab-tools/schema.yaml
+name: OrderedCollectionPage
+compactName: OrderedCollectionPage
+uri: "https://www.w3.org/ns/activitystreams#OrderedCollectionPage"
+extends: "https://www.w3.org/ns/activitystreams#CollectionPage"
+entity: true
+description: |
+  Used to represent ordered subsets of items from an `OrderedCollection`.
+  Refer to the Activity Streams 2.0 Core for a complete description of
+  the `OrderedCollectionPage` object.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  misskey: "https://misskey-hub.net/ns#"
+  fedibird: "http://fedibird.com/ns#"
+  ChatMessage: "http://litepub.social/ns#ChatMessage"
+  sensitive: "as:sensitive"
+  votersCount: "toot:votersCount"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  quoteUrl: "as:quoteUrl"
+  _misskey_quote: "misskey:_misskey_quote"
+  quoteUri: "fedibird:quoteUri"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+
+properties:
+- pluralName: items
+  singularName: item
+  compactName: orderedItems
+  uri: "https://www.w3.org/ns/activitystreams#items"
+  container: list
+  description: |
+    Identifies the items contained in a collection.  The items might be ordered
+    or unordered.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+  - "https://www.w3.org/ns/activitystreams#Link"
+
+- singularName: startIndex
+  functional: true
+  compactName: startIndex
+  uri: "https://www.w3.org/ns/activitystreams#startIndex"
+  description: |
+    A non-negative integer value identifying the relative position within
+    the logical view of a strictly ordered collection.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"

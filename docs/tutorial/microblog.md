@@ -950,8 +950,8 @@ First, let's take a look at the current implementation.
 Open the *src/federation.ts* file:
 
 ~~~~ typescript{12-18} twoslash [src/federation.ts]
-import { Person, createFederation } from "@fedify/fedify";
-import { InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
+import { createFederation, InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger("microblog");
@@ -1284,7 +1284,8 @@ Now that we've created the `actors` table and filled in a record, let's modify
 
 ~~~~ typescript twoslash [src/federation.ts]
 // @noErrors: 2307
-import { Endpoints, Person, createFederation } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 import db from "./db.ts";
 import type { Actor, User } from "./schema.ts";
 ~~~~
@@ -1293,7 +1294,8 @@ Now that we've `import`ed what we need, let's modify
 the `~Federatable.setActorDispatcher()` method:
 
 ~~~~ typescript{2-11,16-21} twoslash [src/federation.ts]
-import { Endpoints, Person, type Federation } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 import Database from "better-sqlite3";
 const db = new Database("");
 interface User {}
@@ -1488,13 +1490,12 @@ the `Key` type we defined earlier:
 ~~~~ typescript{5-7,9} twoslash [src/federation.ts]
 // @noErrors: 2307
 import {
-  Endpoints,
-  Person,
   createFederation,
   exportJwk,
   generateCryptoKeyPair,
   importJwk,
 } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 import type { Actor, Key, User } from "./schema.ts";
 ~~~~
 
@@ -1502,13 +1503,12 @@ Now let's modify the actor dispatcher part as follows:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
-  Endpoints,
   type Federation,
-  Person,
   exportJwk,
   generateCryptoKeyPair,
   importJwk,
 } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import { type Logger } from "@logtape/logtape";
 const logger = null as unknown as Logger;
@@ -1633,7 +1633,7 @@ Each element of the array is an object representing the key pair in various
 formats, which looks like this:
 
 ~~~~ typescript twoslash
-import type { CryptographicKey, Multikey } from "@fedify/fedify";
+import type { CryptographicKey, Multikey } from "@fedify/vocab";
 // ---cut-before---
 interface ActorKeyPair {
   privateKey: CryptoKey;              // Private key
@@ -1868,16 +1868,18 @@ and the `getActorHandle()` function provided by Fedify:
 
 ~~~~ typescript{2,4,9} twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
   Person,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Now let's modify the code calling the `~Federatable.setInboxListeners()` method
@@ -1885,16 +1887,18 @@ as follows:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
-  Accept,
-  Endpoints,
   type Federation,
-  Follow,
-  Person,
   exportJwk,
   generateCryptoKeyPair,
-  getActorHandle,
   importJwk,
 } from "@fedify/fedify";
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Person,
+  getActorHandle,
+} from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import type { Logger } from "@logtape/logtape";
 const logger = null as unknown as Logger;
@@ -2118,24 +2122,27 @@ class provided by Fedify:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
   Person,
   Undo,  // [!code highlight]
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Then add `on(Undo, ...)` in succession after `on(Follow, ...)`:
 
 ~~~~ typescript{6-23} twoslash [src/federation.ts]
 // @errors: 1160
-import { type Federation, Follow, Undo } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow, Undo } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
@@ -2460,24 +2467,27 @@ by Fedify:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
   Person,
   Undo,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
   type Recipient,  // [!code highlight]
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Then add a followers collection dispatcher at the bottom:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation, type Recipient } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import type { Recipient } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
@@ -2579,7 +2589,8 @@ servers know where the followers collection is. So we need to link to
 the followers collection in the actor dispatcher:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation, Person } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation
@@ -2802,25 +2813,28 @@ by Fedify:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
   Note,  // [!code highlight]
   Person,
   Undo,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
   type Recipient,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Add the following code:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation, Note } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setObjectDispatcher(
@@ -2855,14 +2869,15 @@ Also `import` the `Post` type and the `Note` class provided by Fedify:
 ~~~~ typescript twoslash [src/app.tsx]
 // @noErrors: 2307
 import type { Actor, Post, User } from "./schema.ts";
-import { Note } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 ~~~~
 
 And implement the `POST /users/{username}/posts` request handler:
 
 ~~~~ typescript twoslash [src/app.tsx]
 import { stringifyEntities } from "stringify-entities";
-import { type Federation, Note } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const fedi = null as unknown as Federation<void>;
 import { Hono } from "hono";
 const app = new Hono();
@@ -3134,6 +3149,12 @@ Fedify:
 ~~~~ typescript twoslash [src/federation.ts]
 // @noErrors: 2307
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
@@ -3141,13 +3162,9 @@ import {
   PUBLIC_COLLECTION,  // [!code highlight]
   Person,
   Undo,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
   type Recipient,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import type {
   Actor,
   Key,
@@ -3161,7 +3178,8 @@ ActivityPub. We've already created an empty implementation of the object
 dispatcher for the `Note` class:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { type Federation, Note } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 federation.setObjectDispatcher(
@@ -3177,7 +3195,8 @@ Let's modify this as follows:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import { Temporal } from "@js-temporal/polyfill";
-import { type Federation, Note, PUBLIC_COLLECTION } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
@@ -3248,14 +3267,15 @@ Let's modify the code to send a `Create(Note)` activity when creating a post.
 Open the *src/app.tsx* file and `import` the `Create` class provided by Fedify:
 
 ~~~~ typescript twoslash [src/app.tsx]
-import { Create, Note } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 ~~~~
 
 Then modify the `POST /users/{username}/posts` request handler as follows:
 
 ~~~~ typescript{4,24,26-40} twoslash [src/app.tsx]
 import { stringifyEntities } from "stringify-entities";
-import { Create, type Federation, Note } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 const fedi = null as unknown as Federation<void>;
 import { Hono } from "hono";
 const app = new Hono();
@@ -3507,13 +3527,14 @@ import {
   Follow,        // [!code highlight]
   isActor,       // [!code highlight]
   Note,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 Then add a `POST /users/{username}/following` request handler:
 
 ~~~~ typescript twoslash [src/app.tsx]
-import { type Federation, Follow, isActor } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Follow, isActor } from "@fedify/vocab";
 const fedi = null as unknown as Federation<void>;
 import { Hono } from "hono";
 const app = new Hono();
@@ -3599,6 +3620,12 @@ Open the *src/federation.ts* file and `import` the `isActor()` function and
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Endpoints,
   Follow,
@@ -3606,15 +3633,11 @@ import {
   PUBLIC_COLLECTION,
   Person,
   Undo,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
   isActor,                // [!code highlight]
   type Actor as APActor,  // [!code highlight]
   type Recipient,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 We've given the alias `APActor` to the `Actor` type because
@@ -3625,7 +3648,7 @@ the `actors` table when first encountered to make it reusable. Add the following
 function:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { getActorHandle, isActor, type Actor as APActor } from "@fedify/fedify";
+import { getActorHandle, isActor, type Actor as APActor } from "@fedify/vocab";
 import type { Logger } from "@logtape/logtape";
 const logger = {} as unknown as Logger;
 import Database from "better-sqlite3";
@@ -3675,12 +3698,8 @@ Change the code doing the same role in the `on(Follow, ...)` part of the inbox
 to use the `persistActor()` function:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import {
-  type Actor as APActor,
-  type Federation,
-  Follow,
-  type ParseUriResult,
-} from "@fedify/fedify";
+import { type Federation, type ParseUriResult } from "@fedify/fedify";
+import { type Actor as APActor, Follow } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import type { Logger } from "@logtape/logtape";
 const logger = {} as unknown as Logger;
@@ -3716,13 +3735,13 @@ Now that we've finished refactoring, let's implement the behavior when receiving
 an `Accept(Follow)` activity in the inbox:
 
 ~~~~ typescript twoslash [src/federation.ts]
+import { type Federation } from "@fedify/fedify";
 import {
   Accept,
   type Actor as APActor,
-  type Federation,
   Follow,
   isActor,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
@@ -4117,6 +4136,12 @@ Fedify:
 
 ~~~~ typescript twoslash [src/federation.ts]
 import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import {
   Accept,
   Create,  // [!code highlight]
   Endpoints,
@@ -4125,27 +4150,23 @@ import {
   PUBLIC_COLLECTION,
   Person,
   Undo,
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
-  importJwk,
   isActor,
   type Actor as APActor,
   type Recipient,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 ~~~~
 
 And add `on(Create, ...)` to the inbox code:
 
 ~~~~ typescript twoslash [src/federation.ts]
+import { type Federation } from "@fedify/fedify";
 import {
   type Actor as APActor,
-  type Federation,
   Create,
   Note,
   isActor,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");

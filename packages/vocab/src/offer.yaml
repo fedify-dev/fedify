@@ -1,0 +1,15 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Offer
+compactName: Offer
+uri: "https://www.w3.org/ns/activitystreams#Offer"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  Indicates that the actor is offering the object.
+  If specified, the target indicates the entity to which
+  the object is being offered.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

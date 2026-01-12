@@ -1,16 +1,12 @@
-import { getXForwardedRequest } from "x-forwarded-fetch";
 import {
-  Accept,
   createFederation,
-  Endpoints,
-  Follow,
   generateCryptoKeyPair,
   MemoryKvStore,
-  Person,
-  Undo,
 } from "@fedify/fedify";
-import { keyPairsStore, relationStore } from "~/data/store";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { revalidatePath } from "next/cache";
+import { getXForwardedRequest } from "x-forwarded-fetch";
+import { keyPairsStore, relationStore } from "~/data/store";
 
 export const fedifyRequestHandler = integrateFederation(() => {});
 

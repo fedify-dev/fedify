@@ -1,0 +1,32 @@
+$schema: ../../vocab-tools/schema.yaml
+name: PropertyValue
+compactName: PropertyValue
+# The below URI intentionally lacks a path slash due to Mastodon's mistake:
+# See also: https://docs.joinmastodon.org/spec/activitypub/#PropertyValue
+uri: "http://schema.org#PropertyValue"
+entity: false
+description: A pair of property name and value.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- schema: "http://schema.org#"
+  PropertyValue: "schema:PropertyValue"
+  value: "schema:value"
+
+properties:
+- singularName: name
+  functional: true
+  compactName: name
+  uri: "https://www.w3.org/ns/activitystreams#name"
+  description: The name of a property.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+  - "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"
+
+- singularName: value
+  functional: true
+  compactName: value
+  uri: "http://schema.org#value"
+  description: The value of a property.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+  - "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"

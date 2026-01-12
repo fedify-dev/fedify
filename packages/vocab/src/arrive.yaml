@@ -1,0 +1,15 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Arrive
+compactName: Arrive
+uri: "https://www.w3.org/ns/activitystreams#Arrive"
+extends: "https://www.w3.org/ns/activitystreams#IntransitiveActivity"
+entity: true
+description: |
+  An `IntransitiveActivity` that indicates that the `actor` has arrived at the `location`.
+  The `origin` can be used to identify the context from which the `actor` originated.
+  The `target` typically has no defined meaning.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

@@ -110,7 +110,8 @@ Here's an example of using the `~Context.getActorUri()` method in the actor
 dispatcher:
 
 ~~~~ typescript twoslash
-import { type Federation, Person } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface User { }
 const user: User | null = true ? { } : null;
@@ -142,7 +143,7 @@ example in an [inbox listener](./inbox.md):
 import { type Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-import { Accept, Follow } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
 
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
@@ -193,7 +194,8 @@ object from the URL arguments.  The following shows an example of using
 the `RequestContext.getActor()` method:
 
 ~~~~ typescript twoslash
-import { type Federation, Update } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Update } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 const request = new Request("");
 const identifier: string = "";
@@ -218,7 +220,8 @@ In the same way, you can use the `RequestContext.getObject()` method to dispatch
 an object from the URL arguments.  The following shows an example:
 
 ~~~~ typescript twoslash
-import { type Federation, Note } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 const request = new Request("");
 const identifier: string = "";
@@ -248,7 +251,8 @@ compatible with `Context`.  So you can just pass a `Context` object to those
 methods:
 
 ~~~~ typescript twoslash
-import {  type Context, Object } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { Object } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const jsonLd: unknown = {};
 // ---cut-before---
@@ -268,7 +272,8 @@ In such cases, you can use the `Context.getDocumentLoader()` method to get
 an authenticated `DocumentLoader` object.  The following shows an example:
 
 ~~~~ typescript twoslash
-import { type Actor, type Context, Person } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { type Actor, Person } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 const actor = new Person({}) as Actor;
 // ---cut-before---
@@ -325,7 +330,7 @@ Looking up remote objects
 > For example, you can get the `object` from an `Activity` object directly:
 >
 > ~~~~ typescript twoslash
-> import { Activity } from "@fedify/fedify";
+> import { Activity } from "@fedify/vocab";
 > const activity = new Activity({});
 > // ---cut-before---
 > const object = await activity.getObject();
@@ -334,7 +339,8 @@ Looking up remote objects
 > … instead of:
 >
 > ~~~~ typescript twoslash
-> import { Activity, type Context } from "@fedify/fedify";
+> import { type Context } from "@fedify/fedify";
+> import { Activity } from "@fedify/vocab";
 > const ctx = null as unknown as Context<void>;
 > const activity = new Activity({});
 > // ---cut-before---
@@ -507,7 +513,8 @@ and so on.  The `Context.traverseCollection()` method plays a role in such
 cases.  The following shows an example of traversing an actor's outbox:
 
 ~~~~ typescript twoslash
-import { type Context, isActor } from "@fedify/fedify";
+import { type Context } from "@fedify/fedify";
+import { isActor } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 const actor = await ctx.lookupObject("@hongminhee@fosstodon.org");

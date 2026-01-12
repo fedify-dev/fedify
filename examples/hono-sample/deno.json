@@ -3,7 +3,7 @@
     "hono": "jsr:@hono/hono@^4.7.1"
   },
   "tasks": {
-    "codegen": "deno task -f @fedify/fedify codegen",
+    "codegen": "deno task -f @fedify/vocab compile",
     "check": {
       "command": "deno fmt --check && deno lint && deno check **/*.ts",
       "dependencies": [

@@ -9,9 +9,7 @@
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
-    "./vocab": "./src/vocab/mod.ts",
-    "./utils": "./src/utils/mod.ts",
-    "./webfinger": "./src/webfinger/mod.ts"
+    "./utils": "./src/utils/mod.ts"
   },
   "imports": {
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
@@ -31,9 +29,6 @@
     "uri-template-router": "npm:uri-template-router@^1.0.0",
     "url-template": "npm:url-template@^3.1.1"
   },
-  "include": [
-    "src/vocab/vocab.ts"
-  ],
   "exclude": [
     ".test-report.xml",
     "apidoc/",
@@ -47,15 +42,16 @@
     "src/cfworkers/README.md",
     "src/cfworkers/server.ts",
     "src/cfworkers/server.js",
-    "src/cfworkers/server.js.map",
-    "src/vocab/*.yaml",
-    "!src/vocab/vocab.ts"
+    "src/cfworkers/server.js.map"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts", "src/testing/"]
+    "exclude": [
+      "**/*.test.ts",
+      "src/testing/"
+    ]
   },
   "tasks": {
-    "codegen": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab/vocab.ts && deno cache src/vocab/vocab.ts && deno check src/vocab/vocab.ts",
+    "codegen": "deno task -f @fedify/vocab compile",
     "cache": {
       "command": "deno cache src/mod.ts",
       "dependencies": [
@@ -97,22 +93,7 @@
     "pnpm:build": {
       "command": "pnpm exec tsdown",
       "dependencies": [
-        "codegen",
-        "pnpm:install",
-        "pnpm:build-vocab",
-        "pnpm:build-fixture"
-      ]
-    },
-    "pnpm:build-vocab-runtime": {
-      "command": "cd ../vocab-runtime && pnpm build"
-    },
-    "pnpm:build-vocab-tools": {
-      "command": "cd ../vocab-tools && pnpm build"
-    },
-    "pnpm:build-vocab": {
-      "dependencies": [
-        "pnpm:build-vocab-runtime",
-        "pnpm:build-vocab-tools"
+        "pnpm:build-vocab"
       ]
     },
     "test:node": {

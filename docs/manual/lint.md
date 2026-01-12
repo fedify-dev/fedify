@@ -275,7 +275,8 @@ and to receive activities from other servers.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing id property
@@ -308,7 +309,8 @@ won't be able to properly verify the actor's identity or send activities to it.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using hardcoded URL
@@ -351,7 +353,8 @@ are legitimate.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing publicKey when setKeyPairsDispatcher is configured
@@ -401,7 +404,8 @@ Signatures.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing assertionMethod when setKeyPairsDispatcher is configured
@@ -454,7 +458,8 @@ activities.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing inbox when setInboxListeners is configured
@@ -493,7 +498,8 @@ a different URI will cause incoming activities to fail.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using hardcoded URL
@@ -527,7 +533,8 @@ activities.  It's part of the standard ActivityPub actor profile.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing outbox when setOutboxDispatcher is configured
@@ -565,7 +572,8 @@ The outbox URI must match the path configured in `setOutboxDispatcher()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -600,7 +608,8 @@ which is important for activity delivery and social graph discovery.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing followers when setFollowersDispatcher is configured
@@ -639,7 +648,8 @@ The followers URI must match the path configured in `setFollowersDispatcher()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -673,7 +683,8 @@ The following URL allows other servers to discover who this actor follows.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing following when setFollowingDispatcher is configured
@@ -712,7 +723,8 @@ The following URI must match the path configured in `setFollowingDispatcher()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -746,7 +758,8 @@ liked.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing liked when setLikedDispatcher is configured
@@ -783,7 +796,8 @@ The liked URI must match the path configured in `setLikedDispatcher()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -818,7 +832,8 @@ highlighted content (commonly shown at the top of a profile).
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing featured when setFeaturedDispatcher is configured
@@ -857,7 +872,8 @@ The featured URI must match the path configured in `setFeaturedDispatcher()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -893,7 +909,8 @@ hashtags (commonly used for profile discovery).
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing featuredTags when setFeaturedTagsDispatcher is configured
@@ -933,7 +950,8 @@ The featuredTags URI must match the path configured in
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using wrong context method
@@ -969,7 +987,8 @@ on your server with a single request, improving federation efficiency.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Endpoints, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Missing sharedInbox when setInboxListeners has shared inbox path
@@ -1010,7 +1029,8 @@ The shared inbox URI must match the shared inbox path configured in
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Endpoints, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Bad: Using getInboxUri with identifier for shared inbox
@@ -1088,7 +1108,8 @@ Here's an example of code that would trigger lint errors:
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ❌ Wrong: Using relative URL for actor ID
@@ -1107,7 +1128,8 @@ Corrected version:
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
 // ✅ Correct: Using Context.getActorUri() for actor ID

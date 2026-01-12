@@ -1,4 +1,4 @@
-import { toAcctUrl } from "@fedify/fedify";
+import { toAcctUrl } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { InvalidHandleError } from "./error.ts";
 

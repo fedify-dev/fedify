@@ -12,8 +12,6 @@ export default [
       "./src/otel/mod.ts",
       "./src/utils/mod.ts",
       "./src/sig/mod.ts",
-      "./src/vocab/mod.ts",
-      "./src/webfinger/mod.ts",
     ],
     dts: true,
     format: ["esm", "cjs"],
@@ -45,12 +43,6 @@ export default [
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (
-          warning.code === "UNRESOLVED_IMPORT" &&
-          warning.id?.endsWith(join("vocab", "vocab.test.ts")) &&
-          warning.exporter === "@std/testing/snapshot"
-        ) {
-          return;
-        } else if (
           warning.code === "UNRESOLVED_IMPORT" &&
           warning.id?.endsWith(join("testing", "mod.ts")) &&
           warning.exporter === "bun:test"

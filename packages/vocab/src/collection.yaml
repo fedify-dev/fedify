@@ -1,0 +1,154 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Collection
+compactName: Collection
+uri: "https://www.w3.org/ns/activitystreams#Collection"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  A `Collection` is a subtype of {@link Object} that represents ordered or
+  unordered sets of {@link Object} or {@link Link} instances.
+
+  Refer to the Activity Streams 2.0 Core specification for a complete
+  description of the Collection type.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- toot: "http://joinmastodon.org/ns#"
+  misskey: "https://misskey-hub.net/ns#"
+  fedibird: "http://fedibird.com/ns#"
+  ChatMessage: "http://litepub.social/ns#ChatMessage"
+  sensitive: "as:sensitive"
+  votersCount: "toot:votersCount"
+  Emoji: "toot:Emoji"
+  Hashtag: "as:Hashtag"
+  quoteUrl: "as:quoteUrl"
+  _misskey_quote: "misskey:_misskey_quote"
+  quoteUri: "fedibird:quoteUri"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+
+properties:
+- singularName: totalItems
+  functional: true
+  compactName: totalItems
+  uri: "https://www.w3.org/ns/activitystreams#totalItems"
+  description: |
+    A non-negative integer specifying the total number of objects contained by
+    the logical view of the collection. This number might not reflect the actual
+    number of items serialized within the {@link Collection} object instance.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+
+- singularName: current
+  functional: true
+  compactName: current
+  uri: "https://www.w3.org/ns/activitystreams#current"
+  description: |
+    In a paged {@link Collection}, indicates the page that contains
+    the most recently updated member items.
+  range:
+  - "https://www.w3.org/ns/activitystreams#CollectionPage"
+
+- singularName: first
+  functional: true
+  compactName: first
+  uri: "https://www.w3.org/ns/activitystreams#first"
+  description: |
+    In a paged {@link Collection}, indicates the furthest preceding page of
+    items in the collection.
+  range:
+  - "https://www.w3.org/ns/activitystreams#CollectionPage"
+
+- singularName: last
+  functional: true
+  compactName: last
+  uri: "https://www.w3.org/ns/activitystreams#last"
+  description: |
+    In a paged {@link Collection}, indicates the furthest proceeding page of
+    the collection.
+  range:
+  - "https://www.w3.org/ns/activitystreams#CollectionPage"
+
+- pluralName: items
+  singularName: item
+  compactName: items
+  uri: "https://www.w3.org/ns/activitystreams#items"
+  description: |
+    Identifies the items contained in a collection.  The items might be ordered
+    or unordered.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+  - "https://www.w3.org/ns/activitystreams#Link"
+
+- singularName: likesOf
+  functional: true
+  compactName: likesOf
+  uri: "https://w3id.org/fep/5711#likesOf"
+  description: |
+    Defines an object for which the collection is the value of the likes property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: sharesOf
+  functional: true
+  compactName: sharesOf
+  uri: "https://w3id.org/fep/5711#sharesOf"
+  description: |
+    Defines an object for which the collection is the value of the shares property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: repliesOf
+  functional: true
+  compactName: repliesOf
+  uri: "https://w3id.org/fep/5711#repliesOf"
+  description: |
+    Defines an object for which the collection is the value of the replies property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"  
+
+- singularName: inboxOf
+  functional: true
+  compactName: inboxOf
+  uri: "https://w3id.org/fep/5711#inboxOf"
+  description: |
+    Defines an actor for which the collection is the value of the inbox property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: outboxOf
+  functional: true
+  compactName: outboxOf
+  uri: "https://w3id.org/fep/5711#outboxOf"
+  description: |
+    Defines an actor for which the collection is the value of the outbox property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: followersOf
+  functional: true
+  compactName: followersOf
+  uri: "https://w3id.org/fep/5711#followersOf"
+  description: |
+    Defines an actor for which the collection is the value of the followers property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: followingOf
+  functional: true
+  compactName: followingOf
+  uri: "https://w3id.org/fep/5711#followingOf"
+  description: |
+    Defines an actor for which the collection is the value of the following property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: likedOf
+  functional: true
+  compactName: likedOf
+  uri: "https://w3id.org/fep/5711#likedOf"
+  description: |
+    Defines an actor for which the collection is the value of the liked property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"

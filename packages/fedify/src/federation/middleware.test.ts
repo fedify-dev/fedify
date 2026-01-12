@@ -1,4 +1,6 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import * as vocab from "@fedify/vocab";
+import { getTypeId, lookupObject } from "@fedify/vocab";
 import {
   assert,
   assertEquals,
@@ -37,9 +39,6 @@ import {
   fetchDocumentLoader,
   getAuthenticatedDocumentLoader,
 } from "../utils/docloader.ts";
-import { lookupObject } from "../vocab/lookup.ts";
-import { getTypeId } from "../vocab/type.ts";
-import * as vocab from "../vocab/vocab.ts";
 import type { Context } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {

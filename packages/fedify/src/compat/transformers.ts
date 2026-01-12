@@ -1,6 +1,6 @@
+import type { Activity } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../federation/context.ts";
-import type { Activity } from "../vocab/vocab.ts";
 import type { ActivityTransformer } from "./types.ts";
 
 const logger = getLogger(["fedify", "compat", "transformers"]);
@@ -47,7 +47,7 @@ export function autoIdAssigner<TContextData>(
  * activity like this:
  *
  * ```typescript
- * import { Follow, Person } from "@fedify/fedify/vocab";
+ * import { Follow, Person } from "@fedify/vocab";
  * const input = new Follow({
  *   id: new URL("http://example.com/activities/1"),
  *   actor: new Person({
@@ -66,7 +66,7 @@ export function autoIdAssigner<TContextData>(
  * The result of applying this transformer would be:
  *
  * ```typescript
- * import { Follow, Person } from "@fedify/fedify/vocab";
+ * import { Follow, Person } from "@fedify/vocab";
  * const output = new Follow({
  *   id: new URL("http://example.com/activities/1"),
  *   actor: new URL("http://example.com/actors/1"),

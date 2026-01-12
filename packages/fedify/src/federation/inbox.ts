@@ -1,3 +1,4 @@
+import { Activity, getTypeId } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   context,
@@ -9,8 +10,6 @@ import {
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
-import { getTypeId } from "../vocab/type.ts";
-import { Activity } from "../vocab/vocab.ts";
 import type { InboxErrorHandler, InboxListener } from "./callback.ts";
 import type { Context, InboxContext } from "./context.ts";
 import type {

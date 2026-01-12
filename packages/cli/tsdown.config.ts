@@ -11,6 +11,7 @@ export default defineConfig({
   ],
   platform: "node",
   unbundle: true,
+  external: [/^node:/],
   inputOptions: {
     onwarn(warning, defaultHandler) {
       if (

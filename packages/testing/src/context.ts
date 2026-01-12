@@ -9,7 +9,7 @@ import { RouterError } from "@fedify/fedify/federation";
 import {
   lookupObject as globalLookupObject,
   traverseCollection as globalTraverseCollection,
-} from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 import { mockDocumentLoader } from "./docloader.ts";
 
 // Create a no-op tracer provider.

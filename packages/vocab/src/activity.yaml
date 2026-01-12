@@ -1,0 +1,98 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Activity
+compactName: Activity
+uri: "https://www.w3.org/ns/activitystreams#Activity"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  An Activity is a subtype of {@link Object} that describes some form of action
+  that may happen, is currently happening, or has already happened.
+  The {@link Activity} type itself serves as an abstract base type for all types
+  of activities.  It is important to note that the {@link Activity} type itself
+  does not carry any specific semantics about the kind of action being taken.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/v1"
+- "https://w3id.org/security/data-integrity/v1"
+
+properties:
+- pluralName: actors
+  singularName: actor
+  singularAccessor: true
+  compactName: actor
+  uri: "https://www.w3.org/ns/activitystreams#actor"
+  subpropertyOf: "https://www.w3.org/ns/activitystreams#attributedTo"
+  description: |
+    Describes one or more entities that either performed or are expected to
+    perform the activity.  Any single activity can have multiple actors.
+    The actor MAY be specified using an indirect {@link Link}.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Application"
+  - "https://www.w3.org/ns/activitystreams#Group"
+  - "https://www.w3.org/ns/activitystreams#Organization"
+  - "https://www.w3.org/ns/activitystreams#Person"
+  - "https://www.w3.org/ns/activitystreams#Service"
+
+- pluralName: objects
+  singularName: object
+  singularAccessor: true
+  compactName: object
+  uri: "https://www.w3.org/ns/activitystreams#object"
+  description: |
+    When used within an {@link Activity}, describes the direct object of
+    the activity.  For instance, in the activity "John added a movie to his
+    wishlist", the object of the activity is the movie added.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: targets
+  singularName: target
+  singularAccessor: true
+  compactName: target
+  uri: "https://www.w3.org/ns/activitystreams#target"
+  description: |
+    Describes the indirect object, or target, of the activity.  The precise
+    meaning of the target is largely dependent on the type of action being
+    described but will often be the object of the English preposition "to".
+    For instance, in the activity "John added a movie to his wishlist",
+    the target of the activity is John's wishlist.  An activity can have more
+    than one target. 
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: results
+  singularName: result
+  singularAccessor: true
+  compactName: result
+  uri: "https://www.w3.org/ns/activitystreams#result"
+  description: |
+    Describes the result of the activity.  For instance, if a particular action
+    results in the creation of a new resource, the result property can be used
+    to describe that new resource. 
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: origins
+  singularName: origin
+  singularAccessor: true
+  compactName: origin
+  uri: "https://www.w3.org/ns/activitystreams#origin"
+  description: |
+    Describes an indirect object of the activity from which the activity is
+    directed.  The precise meaning of the origin is the object of the English
+    preposition "from". For instance, in the activity "John moved an item to
+    List B from List A", the origin of the activity is "List A".
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: instruments
+  singularName: instrument
+  singularAccessor: true
+  compactName: instrument
+  uri: "https://www.w3.org/ns/activitystreams#instrument"
+  description: |
+    Identifies one or more objects used (or to be used) in the completion of
+    an {@link Activity}.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"

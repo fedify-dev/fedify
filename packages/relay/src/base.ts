@@ -1,5 +1,5 @@
 import type { Context, Federation, FederationBuilder } from "@fedify/fedify";
-import { isActor, Object as APObject } from "@fedify/fedify/vocab";
+import { isActor, Object as APObject } from "@fedify/vocab";
 import {
   isRelayFollowerData,
   type Relay,

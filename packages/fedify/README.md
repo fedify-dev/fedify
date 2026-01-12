@@ -113,8 +113,10 @@ Here is the list of packages:
 | [@fedify/sqlite](/packages/sqlite/)                 | [JSR][jsr:@fedify/sqlite]          | [npm][npm:@fedify/sqlite]          | SQLite driver                                |
 | [@fedify/sveltekit](/packages/sveltekit/)           | [JSR][jsr:@fedify/sveltekit]       | [npm][npm:@fedify/sveltekit]       | SvelteKit integration                        |
 | [@fedify/testing](/packages/testing/)               | [JSR][jsr:@fedify/testing]         | [npm][npm:@fedify/testing]         | Testing utilities                            |
+| [@fedify/vocab](/packages/vocab/)                   | [JSR][jsr:@fedify/vocab]           | [npm][npm:@fedify/vocab]           | Activity Vocabulary library     |
 | [@fedify/vocab-runtime](/packages/vocab-runtime/)   | [JSR][jsr:@fedify/vocab-runtime]   | [npm][npm:@fedify/vocab-runtime]   | Runtime library for code-generated vocab     |
 | [@fedify/vocab-tools](/packages/vocab-tools/)       | [JSR][jsr:@fedify/vocab-tools]     | [npm][npm:@fedify/vocab-tools]     | Code generation tools for Activity Vocab     |
+| [@fedify/webfinger](/packages/webfinger/)   | [JSR][jsr:@fedify/webfinger]   | [npm][npm:@fedify/webfinger]   | WebFinger client library for ActivityPub     |
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli

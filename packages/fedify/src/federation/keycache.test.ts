@@ -1,8 +1,8 @@
 import { test } from "@fedify/fixture";
+import { CryptographicKey, Multikey } from "@fedify/vocab";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertInstanceOf } from "@std/assert/assert-instance-of";
-import { CryptographicKey, Multikey } from "../vocab/vocab.ts";
 import { KvKeyCache } from "./keycache.ts";
 import { MemoryKvStore } from "./kv.ts";
 

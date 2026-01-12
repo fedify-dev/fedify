@@ -1,8 +1,8 @@
 import { PostgresMessageQueue } from "@fedify/postgres/mq";
 import * as temporal from "@js-temporal/polyfill";
 import { delay } from "@std/async/delay";
-import process from "node:process";
 import assert from "node:assert/strict";
+import process from "node:process";
 import { test } from "node:test";
 import postgres from "postgres";
 

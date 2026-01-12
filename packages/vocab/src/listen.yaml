@@ -1,0 +1,12 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Listen
+compactName: Listen
+uri: "https://www.w3.org/ns/activitystreams#Listen"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: Indicates that the `actor` has listened to the `object`.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+properties: []

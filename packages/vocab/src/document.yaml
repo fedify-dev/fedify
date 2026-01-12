@@ -1,0 +1,31 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Document
+compactName: Document
+uri: "https://www.w3.org/ns/activitystreams#Document"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: Represents a document of any kind.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+
+properties:
+- singularName: width
+  functional: true
+  compactName: width
+  uri: "https://www.w3.org/ns/activitystreams#width"
+  description: |
+    Specifies a hint as to the rendering width in
+    device-independent pixels of the linked resource.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+
+- singularName: height
+  functional: true
+  compactName: height
+  uri: "https://www.w3.org/ns/activitystreams#height"
+  description: |
+    Specifies a hint as to the rendering height in
+    device-independent pixels of the linked resource.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"

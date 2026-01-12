@@ -1,0 +1,28 @@
+$schema: ../../vocab-tools/schema.yaml
+name: CryptographicKey
+compactName: CryptographicKey
+uri: "https://w3id.org/security#Key"
+entity: true
+description: A key owned by an actor.
+defaultContext: "https://w3id.org/security/v1"
+
+properties:
+- singularName: owner
+  functional: true
+  compactName: owner
+  uri: "https://w3id.org/security#owner"
+  description: An actor who owns this key.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Application"
+  - "https://www.w3.org/ns/activitystreams#Group"
+  - "https://www.w3.org/ns/activitystreams#Organization"
+  - "https://www.w3.org/ns/activitystreams#Person"
+  - "https://www.w3.org/ns/activitystreams#Service"
+
+- singularName: publicKey
+  functional: true
+  compactName: publicKeyPem
+  uri: "https://w3id.org/security#publicKeyPem"
+  description: A PEM-encoded public key.
+  range:
+  - "fedify:publicKey"

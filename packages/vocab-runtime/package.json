@@ -62,11 +62,11 @@
   },
   "dependencies": {
     "@logtape/logtape": "catalog:",
-    "@multiformats/base-x": "^4.0.1",
+    "@multiformats/base-x": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "asn1js": "^3.0.6",
+    "asn1js": "catalog:",
     "byte-encodings": "catalog:",
     "multicodec": "^3.2.1",
-    "pkijs": "^3.2.5"
+    "pkijs": "catalog:"
   }
 }

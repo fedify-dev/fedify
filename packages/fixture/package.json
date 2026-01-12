@@ -15,6 +15,11 @@
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
       "import": "./dist/mod.js",
       "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
@@ -26,21 +31,23 @@
     "dist/",
     "package.json"
   ],
-  "peerDependencies": {
+  "dependencies": {
     "@fedify/vocab-runtime": "workspace:^",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:"
   },
   "devDependencies": {
+    "@js-temporal/polyfill": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
     "build": "tsdown",
     "prepack": "tsdown",
     "prepublish": "tsdown",
-    "test": "deno task codegen && tsdown && cd dist/ && node --test"
+    "test": "tsdown && cd dist/ && node --test"
   },
   "private": true
 }

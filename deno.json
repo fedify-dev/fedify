@@ -19,8 +19,10 @@
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
+    "./packages/vocab",
     "./packages/vocab-runtime",
     "./packages/vocab-tools",
+    "./packages/webfinger",
     "./examples/hono-sample",
     "./examples/fresh"
   ],
@@ -51,7 +53,7 @@
     "json-preserve-indent": "npm:json-preserve-indent@^1.1.3",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
-    "tsdown": "npm:tsdown@^0.12.9"
+    "tsdown": "npm:tsdown@^0.18.4"
   },
   "unstable": [
     "fs",
@@ -78,7 +80,13 @@
   },
   "nodeModulesDir": "auto",
   "tasks": {
-    "codegen": "deno task -f @fedify/cli codegen",
+    "build": {
+      "command": "pnpm --recursive --filter '@fedify/*' --parallel --silent build",
+      "dependencies": [
+        "install"
+      ]
+    },
+    "codegen": "deno task -f @fedify/vocab compile",
     "check-versions": "deno run --allow-read --allow-write scripts/check_versions.ts",
     "check-all": {
       "command": "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')",
@@ -93,8 +101,27 @@
         "codegen"
       ]
     },
+    "pnpm:build-vocab-runtime": {
+      "command": "pnpm -C packages/vocab-runtime build"
+    },
+    "pnpm:build-vocab-tools": {
+      "command": "pnpm -C packages/vocab-tools build"
+    },
     "pnpm:build-fixture": {
-      "command": "cd packages/fixture && pnpm build"
+      "command": "pnpm -C packages/fixture build"
+    },
+    "pnpm:build-webfinger": {
+      "command": "pnpm -C packages/webfinger build"
+    },
+    "pnpm:build-vocab": {
+      "command": "pnpm -C packages/vocab build",
+      "dependencies": [
+        "install",
+        "pnpm:build-vocab-runtime",
+        "pnpm:build-vocab-tools",
+        "pnpm:build-fixture",
+        "pnpm:build-webfinger"
+      ]
     },
     "test": {
       "command": "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel",
@@ -105,17 +132,13 @@
     "test:node": {
       "command": "pnpm run --recursive --filter '!{docs}' test",
       "dependencies": [
-        "codegen",
-        "install",
-        "pnpm:build-fixture"
+        "build"
       ]
     },
     "test:bun": {
       "command": "pnpm run --recursive --filter '!{docs}' test:bun",
       "dependencies": [
-        "codegen",
-        "install",
-        "pnpm:build-fixture"
+        "build"
       ]
     },
     "test-all": {

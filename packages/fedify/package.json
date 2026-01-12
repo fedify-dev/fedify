@@ -107,48 +107,27 @@
       "import": "./dist/utils/mod.js",
       "require": "./dist/utils/mod.cjs",
       "default": "./dist/utils/mod.js"
-    },
-    "./vocab": {
-      "types": {
-        "import": "./dist/vocab/mod.d.ts",
-        "require": "./dist/vocab/mod.d.cts",
-        "default": "./dist/vocab/mod.d.ts"
-      },
-      "import": "./dist/vocab/mod.js",
-      "require": "./dist/vocab/mod.cjs",
-      "default": "./dist/vocab/mod.js"
-    },
-    "./webfinger": {
-      "types": {
-        "import": "./dist/webfinger/mod.d.ts",
-        "require": "./dist/webfinger/mod.d.cts",
-        "default": "./dist/webfinger/mod.d.ts"
-      },
-      "import": "./dist/webfinger/mod.js",
-      "require": "./dist/webfinger/mod.cjs",
-      "default": "./dist/webfinger/mod.js"
     }
   },
   "dependencies": {
+    "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
+    "@fedify/webfinger": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
-    "@multiformats/base-x": "^4.0.1",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "^1.27.0",
-    "asn1js": "^3.0.7",
     "byte-encodings": "catalog:",
     "es-toolkit": "catalog:",
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
     "multicodec": "^3.2.1",
-    "pkijs": "^3.3.3",
     "structured-field-values": "^2.0.4",
     "uri-template-router": "^1.0.0",
     "url-template": "^3.1.1",
-    "urlpattern-polyfill": "^10.1.0"
+    "urlpattern-polyfill": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:*",
@@ -156,7 +135,6 @@
     "@std/assert": "jsr:^0.226.0",
     "@std/path": "catalog:",
     "@types/node": "^24.2.1",
-    "fast-check": "^3.22.0",
     "fetch-mock": "catalog:",
     "miniflare": "^4.20250523.0",
     "tsdown": "catalog:",
@@ -165,11 +143,11 @@
     "wrangler": "^4.17.0"
   },
   "scripts": {
-    "build": "deno task codegen && pnpm run --filter vocab-runtime build && pnpm run --filter vocab-tools build && pnpm run --filter fixture build && tsdown",
-    "prepack": "pnpm run build",
-    "prepublish": "pnpm run build",
-    "test": "deno task codegen && tsdown && cd dist/ && node --test",
-    "test:bun": "deno task pnpm:build && cd dist/ && bun test --timeout 60000",
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "prepublish": "tsdown",
+    "test": "tsdown && cd dist/ && node --test",
+    "test:bun": "tsdown && cd dist/ && bun test --timeout 60000",
     "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts"
   }
 }

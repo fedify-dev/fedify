@@ -2,7 +2,6 @@
   "name": "@fedify/relay",
   "version": "2.0.0",
   "license": "MIT",
-  "exports": {},
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.13"
   },
@@ -17,9 +16,9 @@
     "exclude": ["**/*.test.ts"]
   },
   "tasks": {
-    "codegen": "deno task -f @fedify/fedify codegen",
+    "codegen": "deno task -f @fedify/vocab compile",
     "check": {
-      "command": "deno task codegen && deno fmt --check && deno lint && deno check src/**/*.ts",
+      "command": "deno fmt --check && deno lint && deno check src/**/*.ts",
       "dependencies": [
         "codegen"
       ]
