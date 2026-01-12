@@ -250,16 +250,6 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#478]: https://github.com/fedify-dev/fedify/pull/478
 
-### @fedify/fixture
-
- -  Created Fedify test fixture utilities as the *@fedify/fixture* package.
-    This package provides reusable test fixtures for Fedify applications,
-    simplifying the setup of common test scenarios.
-    [[#508], [#516] by ChanHaeng Lee]
-
-[#508]: https://github.com/fedify-dev/fedify/issues/508
-[#516]: https://github.com/fedify-dev/fedify/pull/516
-
 ### @fedify/webfinger
 
  -  Created WebFinger utilities as the *@fedify/webfinger* package.

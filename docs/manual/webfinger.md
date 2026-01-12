@@ -248,3 +248,130 @@ if (activityPubActorLink?.href) {
 > which automatically performs WebFinger lookups when given a handle.
 > Use `~Context.lookupWebFinger()` when you need the raw WebFinger data or
 > want more direct control over the lookup process.
+
+
+Using WebFinger client
+----------------------
+
+The `@fedify/webfinger` package provides a standalone WebFinger client that can
+be used independently of the main Fedify framework.  This is useful when you
+only need WebFinger lookup functionality without the full ActivityPub
+federation capabilities.
+
+
+### Installation
+
+The `@fedify/webfinger` package is available on [JSR] and [npm].  You can
+install it using the following command:
+
+[JSR]: https://jsr.io/@fedify/webfinger
+[npm]: https://www.npmjs.com/package/@fedify/webfinger
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/webfinger
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/webfinger
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/webfinger
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/webfinger
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/webfinger
+~~~~
+
+:::
+
+
+### Looking up a WebFinger resource
+
+You can look up a WebFinger resource using the `lookupWebFinger()` function:
+
+~~~~ typescript twoslash
+import { lookupWebFinger } from "@fedify/webfinger";
+
+// Look up by acct: URI
+const result = await lookupWebFinger("acct:alice@example.com");
+
+// Look up by URL
+const result2 = await lookupWebFinger("https://example.com/users/alice");
+~~~~
+
+
+### Working with the result
+
+The result is a `ResourceDescriptor` object containing the subject, aliases,
+properties, and links:
+
+~~~~ typescript twoslash
+import { lookupWebFinger } from "@fedify/webfinger";
+
+const result = await lookupWebFinger("acct:alice@example.com");
+if (result != null) {
+  console.log("Subject:", result.subject);
+  console.log("Aliases:", result.aliases);
+
+  // Find the ActivityPub actor URL
+  const actorLink = result.links?.find(
+    (link) => link.rel === "self" && link.type === "application/activity+json",
+  );
+  if (actorLink?.href != null) {
+    console.log("Actor URL:", actorLink.href);
+  }
+}
+~~~~
+
+
+### Configuration options
+
+The `lookupWebFinger()` function accepts various options:
+
+~~~~ typescript twoslash
+import { lookupWebFinger } from "@fedify/webfinger";
+
+const result = await lookupWebFinger("acct:alice@example.com", {
+  // Custom User-Agent header
+  userAgent: "MyApp/1.0",
+
+  // Maximum redirects to follow (default: 5)
+  maxRedirection: 3,
+
+  // AbortSignal for cancellation
+  signal: AbortSignal.timeout(5000),
+});
+~~~~
+
+The available options are:
+
+`userAgent`
+:   The `User-Agent` header value to use when making requests.  Can be a string
+    or an object with options for generating the header.
+
+`allowPrivateAddress`
+:   Whether to allow private IP addresses in the URL.  Mostly useful for
+    testing purposes.  *Do not use this in production.*  Turned off by default.
+
+`maxRedirection`
+:   The maximum number of redirections to follow.  Defaults to `5`.
+
+`tracerProvider`
+:   The OpenTelemetry tracer provider.  If omitted, the global tracer provider
+    is used.
+
+`signal`
+:   An `AbortSignal` for cancelling the request.
+
+> [!TIP]
+> Use `@fedify/webfinger` when you need a lightweight WebFinger client without
+> the full Fedify framework.  If you're already using Fedify, prefer
+> `~Context.lookupWebFinger()` instead as it integrates with the federation
+> context.
