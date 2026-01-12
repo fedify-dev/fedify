@@ -19,7 +19,7 @@
     "node": ">=22.0.0",
     "bun": ">=1.1.0"
   },
-  "description": "WebFinger client library for Fedify",
+  "description": "WebFinger client library for ActivityPub",
   "type": "module",
   "main": "./dist/mod.cjs",
   "module": "./dist/mod.js",
