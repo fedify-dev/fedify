@@ -101,6 +101,28 @@
         "codegen"
       ]
     },
+    "pnpm:build-vocab-runtime": {
+      "command": "pnpm -C packages/vocab-runtime build"
+    },
+    "pnpm:build-vocab-tools": {
+      "command": "pnpm -C packages/vocab-tools build"
+    },
+    "pnpm:build-fixture": {
+      "command": "pnpm -C packages/fixture build"
+    },
+    "pnpm:build-webfinger": {
+      "command": "pnpm -C packages/webfinger build"
+    },
+    "pnpm:build-vocab": {
+      "command": "pnpm -C packages/vocab build",
+      "dependencies": [
+        "install",
+        "pnpm:build-vocab-runtime",
+        "pnpm:build-vocab-tools",
+        "pnpm:build-fixture",
+        "pnpm:build-webfinger"
+      ]
+    },
     "test": {
       "command": "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel",
       "dependencies": [

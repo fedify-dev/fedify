@@ -29,7 +29,6 @@
     "uri-template-router": "npm:uri-template-router@^1.0.0",
     "url-template": "npm:url-template@^3.1.1"
   },
-  "include": [],
   "exclude": [
     ".test-report.xml",
     "apidoc/",
@@ -94,15 +93,7 @@
     "pnpm:build": {
       "command": "pnpm exec tsdown",
       "dependencies": [
-        "codegen",
-        "pnpm:install"
-      ]
-    },
-    "pnpm:build-all": {
-      "command": "cd ../.. && deno task build",
-      "dependencies": [
-        "codegen",
-        "pnpm:install"
+        "pnpm:build-vocab"
       ]
     },
     "test:node": {
@@ -120,7 +111,7 @@
     "test:cfworkers": {
       "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts",
       "dependencies": [
-        "pnpm:build-all"
+        "pnpm:build"
       ]
     },
     "test-all": {
