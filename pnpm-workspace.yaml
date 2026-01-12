@@ -71,6 +71,6 @@ catalog:
   next: ^15.4.6
   pkijs: ^3.3.3
   postgres: ^3.4.7
-  tsdown: ^0.18.4
+  tsdown: ^0.12.9
   typescript: ^5.9.3
   urlpattern-polyfill: "^10.1.0"
