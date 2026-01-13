@@ -9,7 +9,8 @@
 *This package is available since Fedify 1.9.0.*
 
 This package provides [Fedify]'s [`KvStore`] and [`MessageQueue`]
-implementations for [Deno] runtime that uses Deno's built-in [`Deno.openKv()`] API:
+implementations for [Deno] runtime that uses Deno's built-in [`Deno.openKv()`]
+API:
 
  -  [`DenoKvStore`]
  -  [`DenoKvMessageQueue`]
@@ -27,6 +28,19 @@ const federation = createFederation({
 });
 ~~~~
 
+[JSR badge]: https://jsr.io/badges/@fedify/denokv
+[JSR]: https://jsr.io/@fedify/denokv
+[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social]: https://hollo.social/@fedify
+[Fedify]: https://fedify.dev/
+[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
+[`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
+[Deno]: https://deno.com/
+[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
+[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
+[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvMessageQueue
+
+
 `DenoKvStore`
 -------------
 
@@ -34,6 +48,7 @@ const federation = createFederation({
 Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
 performance for Deno environments.  It's suitable for production use in Deno
 applications.
+
 
 `DenoKvMessageQueue`
 --------------------
@@ -50,16 +65,3 @@ Installation
 ~~~~ sh
 deno add jsr:@fedify/denokv  # Deno
 ~~~~
-
-
-[JSR]: https://jsr.io/@fedify/denokv
-[JSR badge]: https://jsr.io/badges/@fedify/denokv
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Fedify]: https://fedify.dev/
-[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
-[`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
-[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvMessageQueue
-[Deno]: https://deno.com/
-[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv

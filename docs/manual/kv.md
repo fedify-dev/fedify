@@ -86,7 +86,6 @@ Pros
 Cons
 :   Limited scalability, not suitable for high-traffic production.
 
-
 ::: code-group
 
 ~~~~ typescript twoslash [Deno]
@@ -188,7 +187,6 @@ const federation = createFederation<void>({
 });
 ~~~~
 
-[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
 [`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvStore
 [Deno]: https://deno.com/
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
@@ -382,7 +380,6 @@ export default {
 > object.  See the [*Builder pattern for structuring*
 > section](./federation.md#builder-pattern-for-structuring) for details.
 
-[`@fedify/cfworkers`]: https://github.com/fedify-dev/fedify/tree/main/packages/cfworkers
 [`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/kv/~/WorkersKvStore
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/

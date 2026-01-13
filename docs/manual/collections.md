@@ -1190,7 +1190,6 @@ federation
   });
 ~~~~
 
-
 ### Constructing liked collection URIs
 
 To construct a liked collection URI, you can use the `Context.getLikedUri()`
@@ -1302,7 +1301,6 @@ ctx.getFeaturedUri("2bd304f9-36b3-44f0-bf0b-29124aafcbb4")
 > the identifier is valid before calling the method.
 
 
-
 Featured tags
 -------------
 
@@ -1313,8 +1311,8 @@ on top of their profile.  The featured tags collection is similar to the
 featured collection, but it's a collection of `Hashtag` objects instead of
 any ActivityStreams objects.
 
-Cursors and counters for the featured tags collection are implemented in the same
-way as the outbox collection, so we don't repeat the explanation here.
+Cursors and counters for the featured tags collection are implemented in the
+same way as the outbox collection, so we don't repeat the explanation here.
 
 The below example shows how to construct a featured tags collection:
 
@@ -1396,9 +1394,9 @@ objects in a paginated manner.
 
 There are two types of custom collections you can create:
 
-- **Collection**: An unordered collection of objects
-- **Ordered Collection**: An ordered collection of objects where the order
-  matters
+ -  **Collection**: An unordered collection of objects
+ -  **Ordered Collection**: An ordered collection of objects where the order
+    matters
 
 ### Setting up a custom collection
 
@@ -1558,12 +1556,12 @@ federation
 
 Custom collections support the same callback methods as built-in collections:
 
-- **`.setCounter()`**: Sets a callback that returns the total number of items
-  in the collection
-- **`.setFirstCursor()`**: Sets the cursor for the first page of the collection
-- **`.setLastCursor()`**: Sets the cursor for the last page of the collection
-- **`.authorize()`**: Sets an authorization predicate to control access to
-  the collection
+ -  **`.setCounter()`**: Sets a callback that returns the total number of items
+    in the collection
+ -  **`.setFirstCursor()`**: Sets the cursor for the first page of the collection
+ -  **`.setLastCursor()`**: Sets the cursor for the last page of the collection
+ -  **`.authorize()`**: Sets an authorization predicate to control access to
+    the collection
 
 ### Multiple parameters
 
@@ -1610,8 +1608,9 @@ federation
 
 ### Constructing custom collection URIs
 
-To construct a custom collection URI, you can use the `Context.getCollectionUri()`
-method. This method takes the collection name and the parameter values:
+To construct a custom collection URI, you can use the
+`Context.getCollectionUri()` method. This method takes the collection name and
+the parameter values:
 
 ~~~~ typescript twoslash
 import type { Context } from "@fedify/fedify";

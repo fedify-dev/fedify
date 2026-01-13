@@ -95,10 +95,12 @@ The package also exports helper functions for creating various context types:
  -  `createRequestContext()`: Creates a request context
  -  `createInboxContext()`: Creates an inbox context
 
-## Features
 
-- Track sent activities with metadata
-- Simulate activity reception
-- Configure custom URI templates
-- Test queue-based activity processing
-- Mock document loaders and context loaders
+Features
+--------
+
+ -  Track sent activities with metadata
+ -  Simulate activity reception
+ -  Configure custom URI templates
+ -  Test queue-based activity processing
+ -  Mock document loaders and context loaders

@@ -26,6 +26,16 @@ const app = new Hono();
 app.use(federation(fedi, (ctx) => "context data"));
 ~~~~
 
+[JSR badge]: https://jsr.io/badges/@fedify/hono
+[JSR]: https://jsr.io/@fedify/hono
+[npm badge]: https://img.shields.io/npm/v/@fedify/hono?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/hono
+[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social]: https://hollo.social/@fedify
+[Fedify]: https://fedify.dev/
+[Hono]: https://hono.dev/
+
+
 How it works
 ------------
 
@@ -37,12 +47,13 @@ application to coexist in the same domain and port.
 
 For example, if you make a request to */.well-known/webfinger* Fedify will
 handle the request by itself, but if you make a request to */users/alice*
-(assuming your Hono app has a handler for `/users/:handle`) with `Accept:
-text/html` header, Fedify will dispatch the request to the Hono app's
+(assuming your Hono app has a handler for `/users/:handle`) with
+`Accept: text/html` header, Fedify will dispatch the request to the Hono app's
 appropriate handler for `/users/:handle`.  Or if you define an actor dispatcher
-for `/users/{handle}` in Fedify, and the request is made with `Accept:
-application/activity+json` header, Fedify will dispatch the request to the
-appropriate actor dispatcher.
+for `/users/{handle}` in Fedify, and the request is made with
+`Accept: application/activity+json` header, Fedify will dispatch the request to
+the appropriate actor dispatcher.
+
 
 Installation
 ------------
@@ -54,12 +65,3 @@ pnpm add     @fedify/hono  # pnpm
 yarn add     @fedify/hono  # Yarn
 bun  add     @fedify/hono  # Bun
 ~~~~
-
-[JSR]: https://jsr.io/@fedify/hono
-[JSR badge]: https://jsr.io/badges/@fedify/hono
-[npm]: https://www.npmjs.com/package/@fedify/hono
-[npm badge]: https://img.shields.io/npm/v/@fedify/hono?logo=npm
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Fedify]: https://fedify.dev/
-[Hono]: https://hono.dev/

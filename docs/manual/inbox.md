@@ -26,10 +26,10 @@ activities with various specifications, such as:
  -  [Linked Data Signatures]
  -  Object Integrity Proofs ([FEP-8b32])
 
-You don't need to worry about the signature verification at all—unsigned activities and
-invalid signatures are silently ignored.  If you want to see why some activities
-are ignored, you can turn on [logging](./log.md) for `["fedify", "sig"]`
-category.
+You don't need to worry about the signature verification at all—unsigned
+activities and invalid signatures are silently ignored.  If you want to see why
+some activities are ignored, you can turn on [logging](./log.md) for
+`["fedify", "sig"]` category.
 
 [HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
@@ -43,8 +43,8 @@ Registering an inbox listener
 An inbox is basically an HTTP endpoint that receives webhook requests from other
 servers.  There are two types of inboxes in ActivityPub: the [shared inbox] and
 the personal inbox.  The shared inbox is a single inbox that receives activities
-for all actors in the server, while the personal inbox is an inbox for a specific
-actor.
+for all actors in the server, while the personal inbox is an inbox for a
+specific actor.
 
 With Fedify, you can register an inbox listener for both types of inboxes at
 a time.  The following shows how to register an inbox listener:
@@ -575,9 +575,9 @@ federation.setInboxListeners("/{identifier}/inbox", "/inbox")
 > listeners, which are usually running in the background task worker.
 
 [^2]: Some implementations may try to verify the unsigned activity by fetching
-      the original object from the original sender's server even if they
-      don't trust the forwarded activity.  However, it is not guaranteed
-      that all implementations do so.
+      the original object from the original sender's server even if they don't
+      trust the forwarded activity. However, it is not guaranteed that all
+      implementations do so.
 
 
 Constructing inbox URIs
@@ -676,7 +676,7 @@ for await (const item of context.traverseCollection(collection)) {
 >
 >  -  The `Activity` has its Object Integrity Proofs and the proofs are signed
 >     by its actor.
->
+
 >  -  The `Activity` is dereferenceable by its `~Object.id` and
 >     the dereferenced object has an actor that belongs to the same origin
 >     as the `Activity` object.

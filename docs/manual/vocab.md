@@ -56,9 +56,6 @@ Installation
 The `@fedify/vocab` package is available on [JSR] and [npm].  You can install
 it using the following command:
 
-[JSR]: https://jsr.io/@fedify/vocab
-[npm]: https://www.npmjs.com/package/@fedify/vocab
-
 ::: code-group
 
 ~~~~ bash [Deno]
@@ -82,6 +79,10 @@ bun add @fedify/vocab
 ~~~~
 
 :::
+
+[JSR]: https://jsr.io/@fedify/vocab
+[npm]: https://www.npmjs.com/package/@fedify/vocab
+
 
 Instantiation
 -------------
@@ -140,7 +141,7 @@ Depending on the category of the property, the accessors of the property are
 different.  The following table shows examples of the accessors:
 
 |            | Functional                            | Non-functional                                                                         |
-|------------|---------------------------------------|----------------------------------------------------------------------------------------|
+| ---------- | ------------------------------------- | -------------------------------------------------------------------------------------- |
 | Scalar     | `Object.published`                    | `Object.name`/`~Object.names`                                                          |
 | Non-scalar | `Person.inboxId`/`~Person.getInbox()` | `Activity.actorId`/`~Activity.actorIds`/`~Activity.getActor()`/`~Activity.getActors()` |
 
@@ -152,23 +153,23 @@ property.
 > [!NOTE]
 > Some of the properties in Activity Vocabulary have been renamed in Fedify:
 >
-> | Original name                | Accessor in Fedify                |
-> |------------------------------|-----------------------------------|
-> | [`alsoKnownAs`]              | `Application.getAliases()`/`Group.getAliases()`/`Organization.getAliases()`/`Person.getAliases()`/`Service.getAliases()` |
-> | [`anyOf`]                    | `Question.getInclusiveOptions()`  |
-> | [`attributedTo`]             | `Object.getAttributions()`        |
-> | [`hreflang`]                 | `Link.language`                   |
-> | [`inReplyTo`]                | `Object.getReplyTargets()`        |
-> | [`isCat`]                    | `Application.cat`/`Group.cat`/`Organization.cat`/`Person.cat`/`Service.cat` |
-> | [`movedTo`]                  | `Application.getSuccessor()`/`Group.getSuccessor()`/`Organization.getSuccessor()`/`Person.getSuccessor()`/`Service.getSuccessor()` |
-> | [`oneOf`]                    | `Question.getExclusiveOptions()`  |
-> | [`orderedItems`]             | `OrderedCollection.getItems()`    |
-> | [`publicKeyMultibase`]       | `Multikey.publicKey`              |
-> | [`publicKeyPem`]             | `CryptographicKey.publicKey`      |
-> | [`quoteUri`]                 | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl` |
-> | [`votersCount`]              | `Question.voters`                 |
+> | Original name                | Accessor in Fedify                                                                                                                      |
+> | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+> | [`alsoKnownAs`]              | `Application.getAliases()`/`Group.getAliases()`/`Organization.getAliases()`/`Person.getAliases()`/`Service.getAliases()`                |
+> | [`anyOf`]                    | `Question.getInclusiveOptions()`                                                                                                        |
+> | [`attributedTo`]             | `Object.getAttributions()`                                                                                                              |
+> | [`hreflang`]                 | `Link.language`                                                                                                                         |
+> | [`inReplyTo`]                | `Object.getReplyTargets()`                                                                                                              |
+> | [`isCat`]                    | `Application.cat`/`Group.cat`/`Organization.cat`/`Person.cat`/`Service.cat`                                                             |
+> | [`movedTo`]                  | `Application.getSuccessor()`/`Group.getSuccessor()`/`Organization.getSuccessor()`/`Person.getSuccessor()`/`Service.getSuccessor()`      |
+> | [`oneOf`]                    | `Question.getExclusiveOptions()`                                                                                                        |
+> | [`orderedItems`]             | `OrderedCollection.getItems()`                                                                                                          |
+> | [`publicKeyMultibase`]       | `Multikey.publicKey`                                                                                                                    |
+> | [`publicKeyPem`]             | `CryptographicKey.publicKey`                                                                                                            |
+> | [`quoteUri`]                 | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl`                                                           |
+> | [`votersCount`]              | `Question.voters`                                                                                                                       |
 > | [`_misskey_followedMessage`] | `Application.followedMessage`/`Group.followedMessage`/`Organization.followedMessage`/`Person.followedMessage`/`Service.followedMessage` |
-> | [`_misskey_quote`]           | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl` |
+> | [`_misskey_quote`]           | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl`                                                           |
 
 [`alsoKnownAs`]: https://www.w3.org/TR/did-core/#dfn-alsoknownas
 [`anyOf`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-anyof
@@ -501,26 +502,25 @@ The Activity Vocabulary has a few scalar types that are used as the values of
 the properties.  The following table shows the scalar types and their
 corresponding TypeScript types:
 
-| Scalar type              | TypeScript type                                   |
-|--------------------------|---------------------------------------------------|
-| `xsd:boolean`            | `boolean`                                         |
-| `xsd:integer`            | `number`                                          |
-| `xsd:nonNegativeInteger` | `number`                                          |
-| `xsd:float`              | `number`                                          |
-| `xsd:string`             | `string`                                          |
-| `xsd:anyURI`             | [`URL`]                                           |
-| `xsd:dateTime`           | [`Temporal.Instant`]                              |
-| `xsd:duration`           | [`Temporal.Duration`]                             |
-| `rdf:langString`         | `LanguageString`                                  |
-| `w3id:cryptosuiteString` | `"eddsa-jcs-2022"`                                |
-| `w3id:multibase`         | [`Uint8Array`]                                    |
-| Language tag ([BCP 47])  | [`Intl.Locale`]                                   |
-| Public key PEM           | [`CryptoKey`]                                     |
-| Public key Multibase     | [`CryptoKey`]                                     |
+| Scalar type              | TypeScript type                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `xsd:boolean`            | `boolean`                                                                                                     |
+| `xsd:integer`            | `number`                                                                                                      |
+| `xsd:nonNegativeInteger` | `number`                                                                                                      |
+| `xsd:float`              | `number`                                                                                                      |
+| `xsd:string`             | `string`                                                                                                      |
+| `xsd:anyURI`             | [`URL`]                                                                                                       |
+| `xsd:dateTime`           | [`Temporal.Instant`]                                                                                          |
+| `xsd:duration`           | [`Temporal.Duration`]                                                                                         |
+| `rdf:langString`         | `LanguageString`                                                                                              |
+| `w3id:cryptosuiteString` | `"eddsa-jcs-2022"`                                                                                            |
+| `w3id:multibase`         | [`Uint8Array`]                                                                                                |
+| Language tag ([BCP 47])  | [`Intl.Locale`]                                                                                               |
+| Public key PEM           | [`CryptoKey`]                                                                                                 |
+| Public key Multibase     | [`CryptoKey`]                                                                                                 |
 | Proof purpose            | `"assertionMethod" \| "authentication" \| "capabilityInvocation" \| "capabilityDelegation" \| "keyAgreement"` |
-| Units                    | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles" \| URL` |
+| Units                    | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles" \| URL`                                                 |
 
-[`URL`]: https://developer.mozilla.org/en-US/docs/Web/API/URL
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
@@ -645,7 +645,7 @@ unconditionally if any of the following conditions are met:
 If you want to contribute to Fedify's vocabulary API, the process is
 straightforward.  The _\*.yaml_ files located in the *packages/vocab/src/*
 directory of the Fedify repository serve as the source data for code generation.
-  To add a new type, you simply need to add a new *.yaml* file, and to add a new
+To add a new type, you simply need to add a new *.yaml* file, and to add a new
 property, you need to define the new property in the `properties` section of an
 existing *.yaml* file.
 

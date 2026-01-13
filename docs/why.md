@@ -111,11 +111,11 @@ delivering activities to potentially thousands of recipients.  Fedify's
 [two-stage delivery process](./manual/send.md#optimizing-activity-delivery-for-large-audiences)
 addresses this:
 
- 1. For activities with many recipients, a single consolidated message
+1.  For activities with many recipients, a single consolidated message
     containing the activity and all recipient information is created
- 2. A background worker processes this message and re-enqueues individual
+2.  A background worker processes this message and re-enqueues individual
     delivery tasks
- 3. Each delivery has independent retry logic and error handling
+3.  Each delivery has independent retry logic and error handling
 
 ~~~~ mermaid
 flowchart TB
@@ -258,9 +258,9 @@ users, created by the original developer of Fedify:
  -  Serves as both a showcase and test case for Fedify's capabilities
 
 > Implementing ActivityPub from the ground up was quite painful for me…
-> I realized that I was already building a sloppy quasi-framework for ActivityPub.
-> I thought, “No way, I'm going to build a proper ActivityPub framework,”
-> and Fedify is the result.
+> I realized that I was already building a sloppy quasi-framework for
+> ActivityPub. I thought, “No way, I'm going to build a proper ActivityPub
+> framework,” and Fedify is the result.
 >
 > —Hong Minhee, creator of Fedify and Hollo, in *[Alright, let's Fedify]*
 
@@ -304,7 +304,6 @@ Contributor ID) records available on the fediverse:
 [Encyclia]: https://encyclia.pub/
 [ORCID]: https://orcid.org/
 [Encyclia roadmap]: https://encyclia.pub/roadmap
-
 
 ### Typo Blue: Text-only blogging meets the fediverse
 

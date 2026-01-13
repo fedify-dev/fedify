@@ -336,7 +336,6 @@ Available options are:
 
 Defaults to `"rfc9421"`.
 
-[double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
 [HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 
@@ -424,12 +423,12 @@ listeners are set up.  This is useful for structuring your code and
 avoiding circular dependencies.  Here's a brief instruction on how to
 do that:
 
- 1. Instead of instantiating a `Federation` object using `createFederation()`
+1.  Instead of instantiating a `Federation` object using `createFederation()`
     function, create a `FederationBuilder` object using
     `createFederationBuilder()` function.
- 2. Register your dispatchers and listeners to the `FederationBuilder`
+2.  Register your dispatchers and listeners to the `FederationBuilder`
     object as you would do with a regular `Federation` object.
- 3. Call the `FederationBuilder.build()` method to create a `Federation`
+3.  Call the `FederationBuilder.build()` method to create a `Federation`
     object.  This method takes the same options as `createFederation()`
     function, and it returns a `Federation` object.
 

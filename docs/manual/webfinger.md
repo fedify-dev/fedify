@@ -11,12 +11,12 @@ WebFinger
 
 According to the [WebFinger website]:
 
- > WebFinger is used to discover information about people or other entities
- > on the Internet that are identified by a URI using standard
- > Hypertext Transfer Protocol (HTTP) methods over a secure transport.
- > A WebFinger resource returns a JavaScript Object Notation (JSON) object
- > describing the entity that is queried. The JSON object is referred to as
- > the JSON Resource Descriptor (JRD).
+> WebFinger is used to discover information about people or other entities
+> on the Internet that are identified by a URI using standard
+> Hypertext Transfer Protocol (HTTP) methods over a secure transport.
+> A WebFinger resource returns a JavaScript Object Notation (JSON) object
+> describing the entity that is queried. The JSON object is referred to as
+> the JSON Resource Descriptor (JRD).
 
 WebFinger is essential for ActivityPub federation. It lets servers discover
 actor profiles using familiar identifiers like `@user@example.com`.
@@ -53,6 +53,8 @@ The main WebFinger response object:
 `links`
 :   An array of [`Link`] objects pointing to related resources.
 
+[`Link`]: https://jsr.io/@fedify/fedify/doc/webfinger/~/Link
+
 ### `Link`
 
 Represents a link to a related resource:
@@ -78,6 +80,10 @@ Represents a link to a related resource:
 :   *Since Fedify 1.9.0.* A URI Template ([RFC 6570]) with placeholders
     for variable substitution. Commonly used for remote follow endpoints
     where `{uri}` is replaced with the account to follow.
+
+[RFC 5988]: https://datatracker.ietf.org/doc/html/rfc5988
+[RFC 6838]: https://datatracker.ietf.org/doc/html/rfc6838
+[RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
 
 ### Common link relations
 
@@ -124,11 +130,6 @@ Example WebFinger response (including both automatic and custom links):
 }
 ~~~~
 
-[`Link`]: https://jsr.io/@fedify/fedify/doc/webfinger/~/Link
-[RFC 5988]: https://datatracker.ietf.org/doc/html/rfc5988
-[RFC 6838]: https://datatracker.ietf.org/doc/html/rfc6838
-[RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
-
 
 Customizing WebFinger endpoint
 ------------------------------
@@ -161,7 +162,7 @@ federation.setWebFingerLinksDispatcher(async (ctx, resource) => {
 
 This gives results like below:
 
-~~~~json
+~~~~ json
 {
   "subject": "acct:alice@your-domain.com",
   "links": [
@@ -258,14 +259,10 @@ be used independently of the main Fedify framework.  This is useful when you
 only need WebFinger lookup functionality without the full ActivityPub
 federation capabilities.
 
-
 ### Installation
 
 The `@fedify/webfinger` package is available on [JSR] and [npm].  You can
 install it using the following command:
-
-[JSR]: https://jsr.io/@fedify/webfinger
-[npm]: https://www.npmjs.com/package/@fedify/webfinger
 
 ::: code-group
 
@@ -291,6 +288,8 @@ bun add @fedify/webfinger
 
 :::
 
+[JSR]: https://jsr.io/@fedify/webfinger
+[npm]: https://www.npmjs.com/package/@fedify/webfinger
 
 ### Looking up a WebFinger resource
 
@@ -305,7 +304,6 @@ const result = await lookupWebFinger("acct:alice@example.com");
 // Look up by URL
 const result2 = await lookupWebFinger("https://example.com/users/alice");
 ~~~~
-
 
 ### Working with the result
 
@@ -329,7 +327,6 @@ if (result != null) {
   }
 }
 ~~~~
-
 
 ### Configuration options
 

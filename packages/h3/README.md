@@ -36,12 +36,12 @@ app.use(router);
 > If you don't do this, Fedify will not be able to respond with a proper error
 > status code when a content negotiation fails.
 
-[JSR]: https://jsr.io/@fedify/h3
 [JSR badge]: https://jsr.io/badges/@fedify/h3
-[npm]: https://www.npmjs.com/package/@fedify/h3
+[JSR]: https://jsr.io/@fedify/h3
 [npm badge]: https://img.shields.io/npm/v/@fedify/h3?logo=npm
-[Matrix]: https://matrix.to/#/#fedify:matrix.org
+[npm]: https://www.npmjs.com/package/@fedify/h3
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
+[Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/

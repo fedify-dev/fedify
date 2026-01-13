@@ -28,6 +28,8 @@ JavaScript, command-line interfaces, and minimum experience with building
 web server apps.  However, it's perfectly fine if you're not familiar with
 the ActivityPub protocol or TypeScript; we will explain them as we go.
 
+[한국어]: https://hackmd.io/@OKSUchun/fedify-tutorial-ko
+
 
 What we will build
 ------------------
@@ -89,7 +91,7 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 }
 ~~~~
 
-~~~ json [Bun]
+~~~~ json [Bun]
 {
   "type": "module",
   "dependencies": {
@@ -97,9 +99,9 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
     "@fedify/fedify": "^1.1.0"
   }
 }
-~~~
+~~~~
 
-~~~ json [Node.js]
+~~~~ json [Node.js]
 {
   "type": "module",
   "devDependencies": {
@@ -113,7 +115,7 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
     "@hono/node-server": "^1.11.1"
   }
 }
-~~~
+~~~~
 
 :::
 
@@ -357,10 +359,10 @@ to the next step.
 > });
 > ~~~~
 
-[`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
 [`RedisKvStore`]: https://jsr.io/@fedify/redis/doc/kv/~/RedisKvStore
-[`@fedify/postgres`]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres
+[`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
+[`@fedify/postgres`]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres
 [LogTape]: https://logtape.org/
 [`configure()`]: https://jsr.io/@logtape/logtape/doc/~/configure
 
@@ -567,7 +569,7 @@ this in the next section.
 > If you are curious about the actor dispatcher further, see the
 > [*Actor dispatcher* section](../manual/actor.md) in the manual.
 
-[^3]: It assumes that you have [curl] installed on your system.  If you don't
+[^3]: It assumes that you have [curl] installed on your system. If you don't
       have curl, you need to install it first.
 
 [curl]: https://curl.se/
@@ -578,8 +580,8 @@ Exposing the server to the public internet
 
 To expose the server to the public internet, generally, you need a proper domain
 name configured with a DNS record pointing to your server's IP address.
-However, for local development, you can use the [`fedify
-tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
+However, for local development, you can use the
+[`fedify tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
 command to temporarily expose your server to the public internet.
 
 To use `fedify tunnel`, first make sure you have the `fedify` command installed.
@@ -712,8 +714,9 @@ ActivityPub servers because our server doesn't accept follow requests yet.
 
 > [!TIP]
 > There are alternatives to `fedify tunnel`.  See also the [*Exposing a local
-> server to the public* section](../manual/test.md#exposing-a-local-server-to-the-public)
-> in the manual for more details.
+> server to the public*
+> section](../manual/test.md#exposing-a-local-server-to-the-public) in the
+> manual for more details.
 
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
 
@@ -1284,7 +1287,7 @@ should see the actor's followers in the bulleted list.
 
 
 Linting your federation code
------------------------------
+----------------------------
 
 As your federated server grows, it's important to maintain code quality and
 catch common mistakes early.  Fedify provides the [`@fedify/lint`] package
@@ -1384,7 +1387,5 @@ Exercises
     See also the [*Integration* section](../manual/integration.md) in
     the manual for more details.
 
-[Hono]: https://hono.dev/
 [Fresh]: https://fresh.deno.dev/
 [JSX]: https://facebook.github.io/jsx/
-[한국어]: https://hackmd.io/@OKSUchun/fedify-tutorial-ko

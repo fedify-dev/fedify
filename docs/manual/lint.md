@@ -20,42 +20,44 @@ specifically designed for Fedify applications. It supports both [Deno Lint] and
 
 The plugin includes rules that check for:
 
-- Proper actor ID configuration
-- Required actor properties (inbox, outbox, followers, etc.)
-- Correct URL patterns for actor collections
-- Public key and assertion method requirements
-- Collection filtering implementation
+ -  Proper actor ID configuration
+ -  Required actor properties (inbox, outbox, followers, etc.)
+ -  Correct URL patterns for actor collections
+ -  Public key and assertion method requirements
+ -  Collection filtering implementation
 
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
 [Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
+
 
 Installation
 ------------
 
 ::: code-group
 
-~~~~sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/lint
 ~~~~
 
-~~~~sh [npm]
+~~~~ sh [npm]
 npm add -D @fedify/lint
 ~~~~
 
-~~~~sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add -D @fedify/lint
 ~~~~
 
-~~~~sh [Yarn]
+~~~~ sh [Yarn]
 yarn add -D @fedify/lint
 ~~~~
 
-~~~~sh [Bun]
+~~~~ sh [Bun]
 bun add -D @fedify/lint
 ~~~~
 
 :::
+
 
 Deno Lint
 ---------
@@ -64,7 +66,7 @@ Deno Lint
 
 Add the plugin to your _deno.json_ configuration file:
 
-~~~~json
+~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"]
@@ -78,7 +80,7 @@ By default, this enables all recommended rules.
 
 You can customize which rules to enable and their severity levels:
 
-~~~~json
+~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
@@ -100,16 +102,17 @@ You can customize which rules to enable and their severity levels:
 
 After setting up the configuration, run Deno's linter:
 
-~~~~sh
+~~~~ sh
 deno lint
 ~~~~
 
 You can also specify which files to lint:
 
-~~~~sh
+~~~~ sh
 deno lint federation.ts
 deno lint src/federation/
 ~~~~
+
 
 ESLint
 ------
@@ -126,7 +129,7 @@ import fedifyLint from "@fedify/lint";
 export default fedifyLint;
 ~~~~
 
-Or specify your own federation files: 
+Or specify your own federation files:
 
 ~~~~ typescript twoslash
 // @errors: 2304
@@ -138,7 +141,7 @@ export default {
 };
 ~~~~
 
-If you use other ESLint configurations: 
+If you use other ESLint configurations:
 
 ~~~~ typescript twoslash
 // @errors: 2304
@@ -206,7 +209,7 @@ export default [{
 Set up your ESLint configuration as shown above and add a script to
 _package.json_:
 
-~~~~jsonc
+~~~~ jsonc
 {
   "scripts": {
     "lint": "eslint ."
@@ -218,19 +221,19 @@ After setting up the configuration, run ESLint on your codebase:
 
 ::: code-group
 
-~~~~sh [npm]
+~~~~ sh [npm]
 npm run lint
 ~~~~
 
-~~~~sh [pnpm]
+~~~~ sh [pnpm]
 pnpm lint
 ~~~~
 
-~~~~sh [Yarn]
+~~~~ sh [Yarn]
 yarn lint
 ~~~~
 
-~~~~sh [Bun]
+~~~~ sh [Bun]
 bun lint
 ~~~~
 
@@ -240,23 +243,24 @@ Or run the linter directly via command line:
 
 ::: code-group
 
-~~~~sh [npm]
+~~~~ sh [npm]
 npx eslint .
 ~~~~
 
-~~~~sh [pnpm]
+~~~~ sh [pnpm]
 pnpx eslint .
 ~~~~
 
-~~~~sh [Yarn]
+~~~~ sh [Yarn]
 yarn eslint .
 ~~~~
 
-~~~~sh [Bun]
+~~~~ sh [Bun]
 bunx eslint .
 ~~~~
 
 :::
+
 
 Rules
 -----
@@ -1101,6 +1105,7 @@ federation.setFollowersDispatcher(
 
 [*Filtering by server*]: ./collections.md#filtering-by-server
 
+
 Example
 -------
 
@@ -1155,11 +1160,18 @@ error[fedify-lint/actor-id-mismatch]: Actor's `id` property must match
 `ctx.getActorUri(identifier)`. Ensure you're using the correct context method.
 ~~~~
 
+
 See also
 --------
 
-- [`@fedify/lint` on JSR](https://jsr.io/@fedify/lint)
-- [`@fedify/lint` on npm](https://www.npmjs.com/package/@fedify/lint)
-- [Deno Lint plugins documentation](https://docs.deno.com/runtime/reference/lint_plugins/)
-- [ESLint documentation](https://eslint.org/)
-- [Example project](https://github.com/fedify-dev/fedify/tree/main/examples/lint)
+ -  [`@fedify/lint` on JSR]
+ -  [`@fedify/lint` on npm]
+ -  [Deno Lint plugins documentation]
+ -  [ESLint documentation]
+ -  [Example project]
+
+[`@fedify/lint` on JSR]: https://jsr.io/@fedify/lint
+[`@fedify/lint` on npm]: https://www.npmjs.com/package/@fedify/lint
+[Deno Lint plugins documentation]: https://docs.deno.com/runtime/reference/lint_plugins/
+[ESLint documentation]: https://eslint.org/
+[Example project]: https://github.com/fedify-dev/fedify/tree/main/examples/lint

@@ -7,8 +7,8 @@ description: >-
 Sending activities
 ==================
 
-In ActivityPub, an actor can deliver an activity to another actor by [sending
-an HTTP `POST` request to the recipient's inbox][1].  Fedify provides
+In ActivityPub, an actor can deliver an activity to another actor by
+[sending an HTTP `POST` request to the recipient's inbox][1].  Fedify provides
 an abstracted way to send activities to other actors' inboxes.
 
 [1]: https://www.w3.org/TR/activitypub/#delivery
@@ -326,7 +326,7 @@ and you can set them to `Actor` objects, `Collection` objects, or `URL` objects.
 > here's a table that shows how to set the `to` and `cc` properties:
 >
 > | Privacy setting  | `to` property               | `cc` property               |
-> |------------------|-----------------------------|-----------------------------|
+> | ---------------- | --------------------------- | --------------------------- |
 > | Public           | `PUBLIC_COLLECTION`         | `Context.getFollowersUri()` |
 > | Quiet public[^1] | `Context.getFollowersUri()` | `PUBLIC_COLLECTION`         |
 > | Followers-only   | `Context.getFollowersUri()` | Mentioned actors            |
@@ -361,8 +361,8 @@ await ctx.sendActivity(
 ~~~~
 
 [^1]: Previously known as <q>Unlisted</q> in Mastodon—renamed to <q>Quiet
-      public</q> in Mastodon 4.3.0.  It's a public post that doesn't appear
-      in the public timeline and the hashtag pages.
+      public</q> in Mastodon 4.3.0. It's a public post that doesn't appear in
+      the public timeline and the hashtag pages.
 
 
 Enqueuing an outgoing activity
@@ -431,17 +431,17 @@ mechanism that improves response times and resource utilization.
 By default, when the number of recipients exceeds a threshold, Fedify uses
 a two-stage delivery process:
 
- 1. First, it creates a single consolidated message containing the activity
+1.  First, it creates a single consolidated message containing the activity
     payload and all recipient inboxes
- 2. Then, a background worker processes this message and re-enqueues individual
+2.  Then, a background worker processes this message and re-enqueues individual
     delivery tasks
 
 This approach has several benefits:
 
-- The `Context.sendActivity()` method returns more quickly
-- Memory consumption is reduced by avoiding payload duplication
-- The user interface remains responsive during large-scale deliveries
-- Each delivery still maintains independent retry logic
+ -  The `Context.sendActivity()` method returns more quickly
+ -  Memory consumption is reduced by avoiding payload duplication
+ -  The user interface remains responsive during large-scale deliveries
+ -  Each delivery still maintains independent retry logic
 
 ### Customizing fan-out behavior
 
@@ -510,7 +510,8 @@ await ctx.sendActivity(
 );
 ~~~~
 
-Use `"force"` to ensure fan-out behavior even with few recipients (rarely needed):
+Use `"force"` to ensure fan-out behavior even with few recipients (rarely
+needed):
 
 ~~~~ typescript twoslash
 import type { Context } from "@fedify/fedify";
@@ -535,7 +536,6 @@ Sometimes you may want to send an activity immediately without queueing it.
 You can do this by calling the `~Context.sendActivity()` method with the
 `immediate` option:
 
-
 ~~~~ typescript twoslash
 import { type Context } from "@fedify/fedify";
 import { Follow, type Recipient } from "@fedify/vocab";
@@ -556,6 +556,7 @@ async function sendFollow(
   );
 }
 ~~~~
+
 
 Shared inbox delivery
 ---------------------
@@ -597,9 +598,8 @@ async function sendNote(
 > `PUBLIC_COLLECTION` constant contains a `URL` object of
 > <https://www.w3.org/ns/activitystreams#Public>, a special IRI that
 > represents the public audience.  By setting the `to` property to this IRI,
-> the activity is visible to everyone.  See also the [*Public Addressing*
-> section](https://www.w3.org/TR/activitypub/#public-addressing) in the
-> ActivityPub specification.
+> the activity is visible to everyone.  See also the
+> [*Public Addressing* section] in the ActivityPub specification.
 
 > [!NOTE]
 > To deliver an activity to the shared inbox, the recipient server must support
@@ -607,6 +607,7 @@ async function sendNote(
 > the personal inbox delivery.
 
 [shared inbox delivery]: https://www.w3.org/TR/activitypub/#shared-inbox-delivery
+[*Public Addressing* section]: https://www.w3.org/TR/activitypub/#public-addressing
 
 
 Followers collection synchronization
@@ -624,8 +625,8 @@ If an activity needs to be delivered to only followers of the sender through
 the shared inbox, the server of the recipients has to be aware of the list of
 followers residing on the server.  However, synchronizing the followers
 collection every time an activity is sent is inefficient. To solve this problem,
-Mastodon, etc., use a mechanism called [followers collection
-synchronization][FEP-8fcf].
+Mastodon, etc., use a mechanism called
+[followers collection synchronization][FEP-8fcf].
 
 The idea is to send a digest of the followers collection with the activity
 so that the recipient server can check if it needs to resynchronize
@@ -898,7 +899,6 @@ equal to the number of Ed25519 key pairs.
 > key pairs for each actor, and store them in the database.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
-[several other cases]: https://socialhub.activitypub.rocks/t/fep-8b32-object-integrity-proofs/2725/79?u=hongminhee
 
 
 Activity transformers

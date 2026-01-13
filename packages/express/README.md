@@ -23,10 +23,10 @@ app.set("trust proxy", true);
 app.use(integrateFederation(federation, (req) => "context data goes here"));
 ~~~~
 
-[npm]: https://www.npmjs.com/package/@fedify/express
 [npm badge]: https://img.shields.io/npm/v/@fedify/express?logo=npm
-[Matrix]: https://matrix.to/#/#fedify:matrix.org
+[npm]: https://www.npmjs.com/package/@fedify/express
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
+[Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/

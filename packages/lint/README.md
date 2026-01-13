@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
 @fedify/lint: ESLint plugin for Fedify
-=======================================
+======================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -9,9 +9,10 @@
 
 *This package is available since Fedify 2.0.0.*
 
-This package provides [Deno Lint] and [ESLint] plugin with lint rules specifically designed
-for [Fedify] applications.  It helps you catch common mistakes and enforce
-best practices when building federated server apps with Fedify.
+This package provides [Deno Lint] and [ESLint] plugin with lint rules
+specifically designed for [Fedify] applications.  It helps you catch common
+mistakes and enforce best practices when building federated server apps with
+Fedify.
 
 The plugin includes rules that check for:
 
@@ -21,8 +22,17 @@ The plugin includes rules that check for:
  -  Public key and assertion method requirements
  -  Collection filtering implementation
 
+[JSR badge]: https://jsr.io/badges/@fedify/lint
+[JSR]: https://jsr.io/@fedify/lint
+[npm badge]: https://img.shields.io/npm/v/@fedify/lint?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/lint
+[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social]: https://hollo.social/@fedify
+[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
+[ESLint]: https://eslint.org/
+[Fedify]: https://fedify.dev/
 
-### Deno Lint Configuration Example
+### Deno Lint configuration example
 
 ~~~~ typescript
 // deno.json
@@ -42,7 +52,7 @@ The plugin includes rules that check for:
 }
 ~~~~
 
-### ESLint Configuration Example
+### ESLint configuration example
 
 ~~~~ typescript
 // eslint.config.ts
@@ -52,16 +62,6 @@ import fedifyLint from "@fedify/lint";
 export default fedifyLint;
 ~~~~
 
-[JSR]: https://jsr.io/@fedify/lint
-[JSR badge]: https://jsr.io/badges/@fedify/lint
-[npm]: https://www.npmjs.com/package/@fedify/lint
-[npm badge]: https://img.shields.io/npm/v/@fedify/lint?logo=npm
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
-[ESLint]: https://eslint.org/
-[Fedify]: https://fedify.dev/
-
 
 Features
 --------
@@ -69,7 +69,7 @@ Features
 The `@fedify/lint` package provides comprehensive linting rules for Fedify
 federation code:
 
-### Actor Validation Rules
+### Actor validation rules
 
  -  **`actor-id-required`**: Ensures all actors have an `id` property
  -  **`actor-id-mismatch`**: Validates that actor IDs match the expected URI
@@ -79,7 +79,7 @@ federation code:
  -  **`actor-assertion-method-required`**: Validates assertion methods for
     Object Integrity Proofs
 
-### Collection Property Rules
+### Collection property rules
 
  -  **`actor-inbox-property-required`**: Ensures inbox is defined when
     `setInboxListeners` is set
@@ -112,7 +112,7 @@ federation code:
  -  **`actor-shared-inbox-property-mismatch`**: Validates sharedInbox URI from
     `getInboxUri`
 
-### Other Rules
+### Other rules
 
  -  **`collection-filtering-not-implemented`**: Warns about missing collection
     filtering implementation (`setFollowersDispatcher` only for now)
@@ -147,9 +147,9 @@ bun add -D @fedify/lint
 
 
 Usage (Deno Lint)
-------------------
+-----------------
 
-### Basic Setup
+### Basic setup
 
 Add the plugin to your *deno.json* configuration file:
 
@@ -163,7 +163,7 @@ Add the plugin to your *deno.json* configuration file:
 
 By default, this enables all recommended rules.
 
-### Custom Configuration
+### Custom configuration
 
 You can customize which rules to enable and their severity levels:
 
@@ -204,7 +204,7 @@ deno lint src/federation/
 Usage (ESLint)
 --------------
 
-### Basic Setup
+### Basic setup
 
 Add the plugin to your ESLint configuration file (e.g., *eslint.config.ts*
 or *eslint.config.js*):
@@ -230,9 +230,9 @@ export default [
 ~~~~
 
 The default configuration applies recommended rules to files that match
-common federation-related patterns (e.g., *federation.ts*, *federation/\*.ts*).
+common federation-related patterns (e.g., *federation.ts*, _federation/\*.ts_).
 
-### Custom Configuration
+### Custom configuration
 
 You can customize which files to lint and which rules to enable:
 
@@ -253,7 +253,7 @@ export default [{
 }];
 ~~~~
 
-### Using Configurations
+### Using configurations
 
 The plugin provides two preset configurations:
 
@@ -327,7 +327,7 @@ federation.setActorDispatcher(
 ~~~~
 
 
-Running the Linter
+Running the linter
 ------------------
 
 ### Deno Lint
@@ -402,9 +402,14 @@ bunx eslint .
 
 :::
 
-See Also
+
+See also
 --------
 
- -  [Fedify Documentation](https://fedify.dev/)
- -  [ESLint Documentation](https://eslint.org/)
- -  [Example Project](https://github.com/fedify-dev/fedify/tree/main/examples/lint)
+ -  [Fedify Documentation]
+ -  [ESLint Documentation]
+ -  [Example Project]
+
+[Fedify Documentation]: https://fedify.dev/
+[ESLint Documentation]: https://eslint.org/
+[Example Project]: https://github.com/fedify-dev/fedify/tree/main/examples/lint

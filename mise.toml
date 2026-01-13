@@ -1,8 +1,9 @@
 [tools]
 bun = "1.2.22"
 deno = "2.6.4"
+"github:dahlia/hongdown" = "0.2.5"
 node = "22"
-"npm:pnpm" = "10.28.0"
+pnpm = "10.28.0"
 
 # Installation and setup
 [tasks.install]
@@ -23,7 +24,7 @@ run = "pnpm --filter '@fedify/*' --recursive --parallel build"
 [tasks.check]
 description = "Check code formatting, linting, and type checking"
 depends = ["prepare", "check-versions"]
-run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
+run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)') && hongdown --check"
 
 [tasks.check-versions]
 description = "Check that all package versions are consistent across the monorepo"
@@ -38,7 +39,7 @@ fi
 
 [tasks.fmt]
 description = "Format the codebase"
-run = "deno fmt"
+run = "deno fmt && hongdown --write"
 
 # Testing
 [tasks."test:deno"]

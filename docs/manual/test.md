@@ -21,10 +21,10 @@ public internet with a domain name and TLS certificate.  There are several tools
 that help you do that:
 
  -  [`fedify tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
- -  [ngrok](https://ngrok.com/)
- -  [serveo](https://serveo.net/)
- -  [localhost.run](https://localhost.run/)
- -  [Tailscale Funnel](https://tailscale.com/kb/1223/funnel)
+ -  [ngrok]
+ -  [serveo]
+ -  [localhost.run]
+ -  [Tailscale Funnel]
 
 > [!NOTE]
 > These tools are not for production use; they are for testing only.
@@ -41,16 +41,22 @@ that help you do that:
 > the proper domain name and protocol of the incoming HTTP requests.
 >
 > For more information, see [*How the <code>Federation</code> object recognizes
-> the domain name* section](./federation.md#how-the-federation-object-recognizes-the-domain-name)
+> the domain name*
+> section](./federation.md#how-the-federation-object-recognizes-the-domain-name)
 > in the *Federation* document.
+
+<!-- cSpell: ignore serveo tailscale -->
 
 [^1]: According to the [*Object Identifiers* section][1] in the ActivityPub
       specification, the public dereferenceable URIs should use HTTPS URIs.
 
+[ngrok]: https://ngrok.com/
+[serveo]: https://serveo.net/
+[localhost.run]: https://localhost.run/
+[Tailscale Funnel]: https://tailscale.com/kb/1223/funnel
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
-[1]: https://www.w3.org/TR/activitypub/#obj-id
 
-<!-- cSpell: ignore serveo tailscale -->
+[1]: https://www.w3.org/TR/activitypub/#obj-id
 
 
 Inspecting ActivityPub objects
@@ -64,20 +70,22 @@ discover and display the underlying ActivityPub.
 
 For example:
 
- -  [hollo.social/@fedify](https://browser.pub/https://hollo.social/@fedify)
- -  [@hongminhee@fosstodon.org](https://browser.pub/@hongminhee@fosstodon.org)
+ -  [hollo.social/@fedify]
+ -  [@hongminhee@fosstodon.org]
 
 If you want to know further details about BrowserPub,
 read the [creator's Mastodon thread].
 
 [BrowserPub]: https://browser.pub/
+[hollo.social/@fedify]: https://browser.pub/https://hollo.social/@fedify
+[@hongminhee@fosstodon.org]: https://browser.pub/@hongminhee@fosstodon.org
 [creator's Mastodon thread]: https://podcastindex.social/@js/113011966366461060
 
 ### `fedify lookup` command
 
 Fedify provides a [CLI toolchain](../cli.md) for testing and debugging.
-The [`fedify
-lookup` command](../cli.md#fedify-lookup-looking-up-an-activitypub-object)
+The
+[`fedify lookup` command](../cli.md#fedify-lookup-looking-up-an-activitypub-object)
 is a simple tool for looking up an ActivityPub object by its URL or fediverse
 handle.
 
@@ -189,8 +197,8 @@ bun add @fedify/testing
 
 *This API is available since Fedify 1.9.1.*
 
-The `createFederation()` function creates a mock implementation of the `Federation`
-interface that allows you to:
+The `createFederation()` function creates a mock implementation of the
+`Federation` interface that allows you to:
 
  -  Track sent activities without making network requests
  -  Simulate receiving activities and test inbox listeners

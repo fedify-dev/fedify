@@ -132,17 +132,16 @@ interactive prompts:
 [npm]: https://www.npmjs.com/
 [pnpm]: https://pnpm.io/
 [Yarn]: https://yarnpkg.com/
-[Fresh]: https://fresh.deno.dev/
 [Hono]: https://hono.dev/
+[Elysia]: https://elysiajs.com/
 [Express]: https://expressjs.com/
 [Nitro]: https://nitro.unjs.io/
 [Next.js]: https://nextjs.org/
 [Redis]: https://redis.io/
 [PostgreSQL]: https://www.postgresql.org/
+[Deno KV]: https://deno.com/kv
 [AMQP]: https://www.amqp.org/
 [RabbitMQ]: https://www.rabbitmq.com/
-[Deno KV]: https://deno.com/kv
-[Elysia]: https://elysiajs.com/
 
 ### `-r`/`--runtime`: JavaScript runtime
 
@@ -177,6 +176,8 @@ the `-w`/`--web-framework` option.  The available options are:
  -  `elysia`: [Elysia]
 
 If it's omitted, no web framework will be integrated.
+
+[Fresh]: https://fresh.deno.dev/
 
 ### `-k`/`--kv-store`: key–value store
 
@@ -976,9 +977,9 @@ about the security implications of exposing the server to the public internet.
 ![The result of fedify lookup fosstodon.org. The NodeInfo document is
 visualized along with the favicon.](cli/fedify-nodeinfo.png)
 
-The `fedify nodeinfo` command fetches the given instance's [NodeInfo] document and
-visualizes it in [`neofetch`]-style.  The argument can be either a bare hostname
-or a full URL.
+The `fedify nodeinfo` command fetches the given instance's [NodeInfo] document
+and visualizes it in [`neofetch`]-style.  The argument can be either a bare
+hostname or a full URL.
 
 > [!TIP]
 > Not all instances provide the NodeInfo document.  If the given instance does
@@ -993,8 +994,8 @@ or a full URL.
 > This option is mutually exclusive with `-b`/`--best-effort`, `--no-favicon`
 > and `-m`/`--metadata`.
 
-You can also output the fetched NodeInfo document in the raw JSON format by using
-the `-r`/`--raw` option:
+You can also output the fetched NodeInfo document in the raw JSON format by
+using the `-r`/`--raw` option:
 
 ~~~~ sh
 fedify nodeinfo --raw fosstodon.org
@@ -1092,20 +1093,21 @@ fedify tunnel 3000
 >
 > The HTTP requests through the tunnel have the following headers:
 >
->  `X-Forwarded-For`
->  :   The IP address of the client.
+> `X-Forwarded-For`
+> :   The IP address of the client.
 >
->  `X-Forwarded-Proto`
->  :   The protocol of the client, either `http` or `https`.
+> `X-Forwarded-Proto`
+> :   The protocol of the client, either `http` or `https`.
 >
->  `X-Forwarded-Host`
->  :   The host of the public tunnel server.
+> `X-Forwarded-Host`
+> :   The host of the public tunnel server.
 >
 > If you want to make your local server aware of these headers, you can use
 > the [x-forwarded-fetch] middleware in front of your HTTP server.
 >
 > For more information, see [*How the `Federation` object recognizes the domain
-> name* section](./manual/federation.md#how-the-federation-object-recognizes-the-domain-name)
+> name*
+> section](./manual/federation.md#how-the-federation-object-recognizes-the-domain-name)
 > in the *Federation* document.
 
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
@@ -1119,6 +1121,7 @@ command.  For example, to use the serveo.net, run the below command:
 ~~~~ sh
 fedify tunnel --service serveo.net 3000
 ~~~~
+
 
 `fedify webfinger`: Looking up a WebFinger resource
 ---------------------------------------------------
@@ -1232,7 +1235,7 @@ The `fedify` command supports shell completions for [Bash](#bash),
 ### Bash
 
 To enable Bash completions add the following line to your profile file
-(*~/.bashrc*, *~/.bash_profile*, or *~/.profile*):
+(*~/.bashrc*, *~/.bash\_profile*, or *~/.profile*):
 
 ~~~~ bash
 source <(fedify completions bash)

@@ -345,7 +345,7 @@ properties:
     the `requestId` property is included in it.  The `requestId` is a unique
     identifier for the HTTP request, which is derived from one of the following
     headers:
-    
+
      -  [`X-Request-Id`]
      -  `X-Correlation-Id`
      -  [`Traceparent`]
@@ -355,7 +355,7 @@ properties:
 `messageId`
 :   If the log message is made in the context of a background task,
     the `messageId` property is included in it.  The `messageId` is a unique
-    identifier for the background task, which is a UUID. 
+    identifier for the background task, which is a UUID.
 
 When you want to trace log messages, first of all you need to use a sink that
 writes log messages as structured data.  For example, you can use
@@ -393,6 +393,5 @@ jq -r 'select(.properties.requestId == "your-request-id")' fedify-logs.jsonl
 
 [`X-Request-Id`]: https://http.dev/x-request-id
 [`Traceparent`]: https://www.w3.org/TR/trace-context/#traceparent-header
-[file sink]: https://logtape.org/manual/sinks#file-sink
 [JSON Lines]: https://jsonlines.org/
 [`jq`]: https://jqlang.github.io/jq/

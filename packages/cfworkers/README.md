@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
 @fedify/cfworkers: Adapt Fedify with Cloudflare Workers
-======================================================
+=======================================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -47,6 +47,20 @@ export default {
 }>;
 ~~~~
 
+[JSR badge]: https://jsr.io/badges/@fedify/cfworkers
+[JSR]: https://jsr.io/@fedify/cfworkers
+[npm badge]: https://img.shields.io/npm/v/@fedify/cfworkers?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/cfworkers
+[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social]: https://hollo.social/@fedify
+[Fedify]: https://fedify.dev/
+[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
+[`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
+[Cloudflare Workers]: https://workers.cloudflare.com/
+[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
+[`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
+
+
 `WorkersKvStore`
 ----------------
 
@@ -54,6 +68,9 @@ export default {
 that uses Cloudflare's built-in [Cloudflare Workers KV] API.  It provides
 persistent storage and good performance for Cloudflare Workers environments.
 It's suitable for production use in Cloudflare Workers applications.
+
+[Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
+
 
 `WorkersMessageQueue`
 ---------------------
@@ -65,9 +82,10 @@ Cloudflare Workers environments.  It requires a Cloudflare Queues setup and
 management.
 
 > [!NOTE]
-> Since your `KVNamespace` and `Queue` are not bound to global variables, but rather
-> passed as arguments to the `fetch()` and `queue()` methods, you need to instantiate
-> your `Federation` object inside these methods, rather than at the top level.
+> Since your `KVNamespace` and `Queue` are not bound to global variables, but
+> rather passed as arguments to the `fetch()` and `queue()` methods, you need
+> to instantiate your `Federation` object inside these methods, rather than at
+> the top level.
 >
 > For better organization, you probably want to use a builder pattern to
 > register your dispatchers and listeners before instantiating the `Federation`
@@ -83,6 +101,9 @@ management.
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
 
+[Cloudflare Queues]: https://developers.cloudflare.com/queues/
+
+
 Installation
 ------------
 
@@ -93,18 +114,3 @@ pnpm add     @fedify/cfworkers  # pnpm
 yarn add     @fedify/cfworkers  # Yarn
 bun  add     @fedify/cfworkers  # Bun
 ~~~~
-
-[JSR]: https://jsr.io/@fedify/cfworkers
-[JSR badge]: https://jsr.io/badges/@fedify/cfworkers
-[npm]: https://www.npmjs.com/package/@fedify/cfworkers
-[npm badge]: https://img.shields.io/npm/v/@fedify/cfworkers?logo=npm
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Fedify]: https://fedify.dev/
-[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
-[`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
-[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
-[`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
-[Cloudflare Workers]: https://workers.cloudflare.com/
-[Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
-[Cloudflare Queues]: https://developers.cloudflare.com/queues/

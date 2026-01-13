@@ -25,10 +25,10 @@ const federation = createFederation({
 });
 ~~~~
 
-[JSR]: https://jsr.io/@fedify/postgres
 [JSR badge]: https://jsr.io/badges/@fedify/postgres
-[npm]: https://www.npmjs.com/package/@fedify/postgres
+[JSR]: https://jsr.io/@fedify/postgres
 [npm badge]: https://img.shields.io/npm/v/@fedify/postgres?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/postgres
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue

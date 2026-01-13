@@ -8,7 +8,8 @@
 [![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 > [!IMPORTANT]
-> In a CommonJS-based NestJS project, this ESM-only module requires setting `NODE_OPTIONS=--experimental-require-module` at runtime
+> In a CommonJS-based NestJS project, this ESM-only module requires setting
+> `NODE_OPTIONS=--experimental-require-module` at runtime
 
 This package provides a simple way to integrate [Fedify] with [NestJS].
 
@@ -130,10 +131,10 @@ export class AppModule implements NestModule {
 
 ~~~~
 
-[npm]: https://www.npmjs.com/package/@fedify/nestjs
 [npm badge]: https://img.shields.io/npm/v/@fedify/express?logo=npm
-[Matrix]: https://matrix.to/#/#fedify:matrix.org
+[npm]: https://www.npmjs.com/package/@fedify/nestjs
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
+[Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/

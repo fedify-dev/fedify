@@ -17,17 +17,18 @@ How it works
 Usually, Fedify behaves as a middleware that wraps around the web framework's
 request handler.  The middleware intercepts the incoming HTTP requests and
 dispatches them to the appropriate handler based on the request path and
-the [`Accept`] header (i.e., [content negotiation]).  Basically, this architecture
-allows Fedify and your web framework to coexist in the same domain and port.
+the [`Accept`] header (i.e., [content negotiation]).  Basically, this
+architecture allows Fedify and your web framework to coexist in the same domain
+and port.
 
 For example, if you make a request to */.well-known/webfinger* Fedify will
 handle the request by itself, but if you make a request to */users/alice*
-(assuming your web framework has a handler for `/users/:handle`) with `Accept:
-text/html` header, Fedify will dispatch the request to the web framework's
-appropriate handler for `/users/:handle`.  Or if you define an actor dispatcher
-for `/users/{handle}` in Fedify, and the request is made with `Accept:
-application/activity+json` header, Fedify will dispatch the request to the
-appropriate actor dispatcher.
+(assuming your web framework has a handler for `/users/:handle`) with
+`Accept: text/html` header, Fedify will dispatch the request to the web
+framework's appropriate handler for `/users/:handle`.  Or if you define an
+actor dispatcher for `/users/{handle}` in Fedify, and the request is made with
+`Accept: application/activity+json` header, Fedify will dispatch the request to
+the appropriate actor dispatcher.
 
 Here is a diagram that illustrates the architecture:
 
@@ -610,7 +611,6 @@ pnpm add @fedify/elysia
 yarn add @fedify/elysia
 ~~~~
 
-
 ~~~~ typescript
 import { fedify } from "@fedify/elysia";
 import { federation } from "./federation.ts";  // Your `Federation` instance
@@ -770,8 +770,10 @@ accept regex.  This is because Next.js middleware processes only requests
 with the [`Accept`] header matching the regex by default.  More details can be
 found in the Next.js official documentation [`config` in `middleware.js`].
 
+[Fedify repository]: https://github.com/fedify-dev/fedify
 [Next.js]: https://nextjs.org/
 [`config` in `middleware.js`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
+
 
 Fresh
 -----
@@ -794,12 +796,13 @@ deno add jsr:@fedify/fresh
 > The `@fedify/fresh` package only supports Fresh 2.x.
 
 > [!WARNING]
-> Due to `@fedify/fedify`'s `multicodec` dependency CJS issue, you should externalize `@fedify/fedify` in `vite.config.ts`.
+> Due to `@fedify/fedify`'s `multicodec` dependency CJS issue, you should
+> externalize `@fedify/fedify` in `vite.config.ts`.
 >
-> ~~~~typescript
+> ~~~~ typescript
 > import { fresh } from "@fresh/plugin-vite";
 > import { defineConfig } from "vite";
-> 
+>
 > export default defineConfig({
 >   plugins: [fresh()],
 >   ssr: {
@@ -818,8 +821,10 @@ deno add jsr:@fedify/fresh
 > ~~~~
 
 > [!WARNING]
-> Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable` to `compilerOptions.libs` field of `deno.json`.
-> ~~~~json
+> Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable`
+> to `compilerOptions.libs` field of `deno.json`.
+>
+> ~~~~ json
 >  "compilerOptions": {
 >    "lib": [
 >      "dom",
@@ -831,7 +836,7 @@ deno add jsr:@fedify/fresh
 > ...
 > ~~~~
 
-Put the following code in your *routes/_middleware.ts* file:
+Put the following code in your *routes/\_middleware.ts* file:
 
 ~~~~ typescript [_middelware.ts]
 import { createFederation } from "@fedify/fedify";
@@ -848,7 +853,8 @@ export default define.middleware(
 );
 ~~~~
 
-Or you can use `app.use()` in your `main.ts` to register the middleware globally:
+Or you can use `app.use()` in your `main.ts` to register the middleware
+globally:
 
 ~~~~ typescript [main.ts]
 import { App } from "fresh";
@@ -867,6 +873,7 @@ app.use(fedifyMiddleware);
 ~~~~
 
 [Fresh]: https://fresh.deno.dev/
+
 
 Custom middleware
 -----------------
@@ -938,6 +945,5 @@ as [`Request`] and [`Response`] objects.  In that case, you need to convert
 the request and response objects to the appropriate types that the `Federation`
 object can handle.
 
-[Fedify repository]: https://github.com/fedify-dev/fedify
 [`Request`]: https://developer.mozilla.org/en-US/docs/Web/API/Request
 [`Response`]: https://developer.mozilla.org/en-US/docs/Web/API/Response

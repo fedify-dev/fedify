@@ -1,51 +1,66 @@
-SvelteKit Sample
+SvelteKit sample
 ================
 
-A comprehensive example of building a federated server application using [Fedify](https://fedify.dev) with [SvelteKit](https://kit.svelte.dev/). This sample demonstrates how to create an ActivityPub-compatible federated social media server that can interact with other federated platforms like Mastodon, Pleroma, and other ActivityPub implementations.
+A comprehensive example of building a federated server application using
+[Fedify] with [SvelteKit]. This sample demonstrates how to create an
+ActivityPub-compatible federated social media server that can interact with
+other federated platforms like Mastodon, Pleroma, and other ActivityPub
+implementations.
 
-🚀 Features
+[Fedify]: https://fedify.dev
+[SvelteKit]: https://kit.svelte.dev/
+
+
+🚀 features
 -----------
 
-- **ActivityPub Protocol Support**: Full implementation of ActivityPub for federated social networking
-- **Actor System**: User profile management with cryptographic key pairs
-- **Follow/Unfollow**: Complete follow relationship handling with Accept/Undo activities
-- **Inbox Processing**: Real-time activity processing from federated instances
-- **Modern UI**: Built with SvelteKit and Tailwind CSS
-- **TypeScript**: Full type safety throughout the application
+ -  **ActivityPub Protocol Support**: Full implementation of ActivityPub for
+    federated social networking
+ -  **Actor System**: User profile management with cryptographic key pairs
+ -  **Follow/Unfollow**: Complete follow relationship handling with Accept/Undo
+    activities
+ -  **Inbox Processing**: Real-time activity processing from federated instances
+ -  **Modern UI**: Built with SvelteKit and Tailwind CSS
+ -  **TypeScript**: Full type safety throughout the application
 
-📋 Prerequisites
+
+📋 prerequisites
 ----------------
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** (version 18 or higher)
-- **npm** or **yarn** package manager
-- **Git** for version control
+ -  **Node.js** (version 18 or higher)
+ -  **npm** or **yarn** package manager
+ -  **Git** for version control
 
-🛠️ Setup and Installation
+
+🛠️ setup and installation
 -------------------------
 
-### 1. Clone the Repository
+### 1. clone the repository
 
 ~~~~ bash
 git clone https://github.com/fedify-dev/fedify.git
 cd fedify/examples/sveltekit-sample
 ~~~~
 
-### 2. Install Dependencies
+### 2. install dependencies
 
 ~~~~ bash
 pnpm install
 ~~~~
 
-### 3. Environment Setup
+### 3. environment setup
 
-The application uses in-memory storage by default, so no additional database setup is required for development. However, for production deployment, you may want to configure external storage.
+The application uses in-memory storage by default, so no additional database
+setup is required for development. However, for production deployment, you may
+want to configure external storage.
 
-🏃 Development Server
+
+🏃 development server
 ---------------------
 
-### Start the Development Server
+### Start the development server
 
 ~~~~ bash
 pnpm dev
@@ -53,10 +68,11 @@ pnpm dev
 
 The development server will start on `http://localhost:5173` by default.
 
-⚙️ Configuration Options
+
+⚙️ configuration options
 ------------------------
 
-### Federation Configuration
+### Federation configuration
 
 The federation setup is configured in `src/lib/federation.ts`:
 
@@ -66,26 +82,27 @@ const federation = createFederation({
 });
 ~~~~
 
-#### Key Configuration Options:
+#### Key configuration options:
 
-1. **Storage Backend**:
-   - Development: `MemoryKvStore()` (data lost on restart)
-   - Production: Consider using persistent storage solutions
+1.  **Storage Backend**:
+     -  Development: `MemoryKvStore()` (data lost on restart)
+     -  Production: Consider using persistent storage solutions
 
-2. **Actor Identifier**:
-   - Default: `"demo"`
-   - Modify the `IDENTIFIER` constant to change the demo user
+2.  **Actor Identifier**:
+     -  Default: `"demo"`
+     -  Modify the `IDENTIFIER` constant to change the demo user
 
-3. **Demo Actor Profile**:
-   - Name: "Fedify Demo"
-   - Summary: "This is a Fedify Demo account."
-   - Icon: `/demo-profile.png`
+3.  **Demo Actor Profile**:
+     -  Name: “Fedify Demo”
+     -  Summary: “This is a Fedify Demo account.”
+     -  Icon: `/demo-profile.png`
 
-### Server Configuration
+### Server configuration
 
-#### Proxy/Tunnel Support
+#### Proxy/tunnel support
 
-The application includes support for proxy headers via `x-forwarded-fetch`. This is configured in `src/lib/handles.ts`:
+The application includes support for proxy headers via `x-forwarded-fetch`.
+This is configured in `src/lib/handles.ts`:
 
 ~~~~ typescript
 export const replaceHost: Handle = async ({ event, resolve }) => {
@@ -94,57 +111,63 @@ export const replaceHost: Handle = async ({ event, resolve }) => {
 };
 ~~~~
 
-This is useful when deploying behind reverse proxies or using tunneling services like ngrok.
+This is useful when deploying behind reverse proxies or using tunneling
+services like ngrok.
 
 But if you don't use proxy or tunnel, the handle is unnecessary.
 
-📚 Example Usage Scenarios
--------------------------
 
-### 1. Basic Federation Testing
+📚 example usage scenarios
+--------------------------
 
-1. Start the development server:
+### 1. basic federation testing
 
-   ~~~~ bash
-   pnpm dev
-   ~~~~
+1.  Start the development server:
 
-2. Access the demo user profile:
+    ~~~~ bash
+    pnpm dev
+    ~~~~
 
-   ~~~~
-   curl http://localhost:5173/users/demo
-   ~~~~
+2.  Access the demo user profile:
 
-3. The ActivityPub actor endpoint is available at:
-   ~~~~
-   curl -H "Accept: application/activity+json" http://localhost:5173/users/demo
-   ~~~~
+    ~~~~
+    curl http://localhost:5173/users/demo
+    ~~~~
 
-### 2. Following from `activitypub.academy`
+3.  The ActivityPub actor endpoint is available at:
 
-[`activitypub.academy`](https://activitypub.academy) is a platform for learning about the ActivityPub protocol and its implementation.
+    ~~~~
+    curl -H "Accept: application/activity+json" http://localhost:5173/users/demo
+    ~~~~
+
+### 2. following from `activitypub.academy`
+
+[`activitypub.academy`] is a platform for learning about the ActivityPub
+protocol and its implementation.
 
 To test federation with `activitypub.academy`:
 
-1. Deploy the application to a public server or use a tunneling service:
+1.  Deploy the application to a public server or use a tunneling service:
 
-   ~~~~ bash
-   # Using Fedify CLI to tunnel
-   fedify tunnel 5173
-   ~~~~
+    ~~~~ bash
+    # Using Fedify CLI to tunnel
+    fedify tunnel 5173
+    ~~~~
 
-2. From your `activitypub.academy` account, search for and follow:
+2.  From your `activitypub.academy` account, search for and follow:
 
-   ~~~~
-   @demo@6c10b40c63d9e1ce7da55667ef0ef8b4.serveo.net
-   ~~~~
+    ~~~~
+    @demo@6c10b40c63d9e1ce7da55667ef0ef8b4.serveo.net
+    ~~~~
 
-3. The application will automatically:
-   - Receive the follow request
-   - Send an Accept activity back
-   - Store the relationship
+3.  The application will automatically:
+     -  Receive the follow request
+     -  Send an Accept activity back
+     -  Store the relationship
 
-### 3. Custom Actor Creation
+[`activitypub.academy`]: https://activitypub.academy
+
+### 3. custom actor creation
 
 To create additional actors, modify `src/lib/federation.ts`:
 
@@ -163,15 +186,16 @@ federation.setActorDispatcher(
 );
 ~~~~
 
-### 4. Activity Monitoring
+### 4. activity monitoring
 
-The application logs activities to the console. Monitor the development console to see:
+The application logs activities to the console. Monitor the development console
+to see:
 
-- Incoming follow requests
-- Outgoing accept activities
-- Undo operations
+ -  Incoming follow requests
+ -  Outgoing accept activities
+ -  Undo operations
 
-### 5. Custom Activities
+### 5. custom activities
 
 Extend the inbox listeners to handle additional ActivityPub activities:
 
@@ -189,7 +213,8 @@ federation
   });
 ~~~~
 
-🏗️ Project Structure
+
+🏗️ project structure
 --------------------
 
 ~~~~
@@ -226,10 +251,11 @@ src/
                     └── +page.svelte     # Individual post page
 ~~~~
 
-🚀 Deployment
+
+🚀 deployment
 -------------
 
-### Production Build
+### Production build
 
 ~~~~ bash
 pnpm build
@@ -237,12 +263,12 @@ pnpm build
 
 pnpm preview
 
-1. **HTTPS Required**: ActivityPub requires HTTPS in production
-2. **Domain Configuration**: Ensure proper domain setup for federation
-3. **Storage**: Replace `MemoryKvStore` with persistent storage
-4. **Environment Variables**: Configure production-specific settings
+1.  **HTTPS Required**: ActivityPub requires HTTPS in production
+2.  **Domain Configuration**: Ensure proper domain setup for federation
+3.  **Storage**: Replace `MemoryKvStore` with persistent storage
+4.  **Environment Variables**: Configure production-specific settings
 
-### Example Deployment Commands
+### Example deployment commands
 
 ~~~~ bash
 # Build for production
@@ -255,25 +281,34 @@ pnpm preview
 # (Vercel, Netlify, Docker, etc.)
 ~~~~
 
-🤝 Contributing
+
+🤝 contributing
 ---------------
 
 This is a sample application demonstrating Fedify capabilities. Feel free to:
 
-- Experiment with the code
-- Add new features
-- [Fedify GitHub Repository](https://github.com/fedify-dev/fedify)
-- Use as a starting point for your own federated applications
+ -  Experiment with the code
+ -  Add new features
+ -  [Fedify GitHub Repository]
+ -  Use as a starting point for your own federated applications
 
-📄 License
+[Fedify GitHub Repository]: https://github.com/fedify-dev/fedify
+
+
+📄 license
 ----------
 
 This sample application follows the same license as the main Fedify project.
 
-🔗 Links
+
+🔗 links
 --------
 
-- [Fedify Documentation](https://fedify.dev)
-- [SvelteKit Documentation](https://kit.svelte.dev/)
-- [ActivityPub Specification](https://www.w3.org/TR/activitypub/)
-- [Fedify GitHub Repository](https://github.com/fedify-dev/fedify)
+ -  [Fedify Documentation]
+ -  [SvelteKit Documentation]
+ -  [ActivityPub Specification]
+ -  [Fedify GitHub Repository]
+
+[Fedify Documentation]: https://fedify.dev
+[SvelteKit Documentation]: https://kit.svelte.dev/
+[ActivityPub Specification]: https://www.w3.org/TR/activitypub/

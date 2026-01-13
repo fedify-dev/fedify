@@ -96,7 +96,6 @@ To be released.
     already support this method.  [[#499], [#506]]
 
 [#280]: https://github.com/fedify-dev/fedify/issues/280
-[#297]: https://github.com/fedify-dev/fedify/issues/297
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
 [#391]: https://github.com/fedify-dev/fedify/pull/391
@@ -104,12 +103,12 @@ To be released.
 [#393]: https://github.com/fedify-dev/fedify/pulls/393
 [#433]: https://github.com/fedify-dev/fedify/pull/433
 [#434]: https://github.com/fedify-dev/fedify/pull/434
+[#441]: https://github.com/fedify-dev/fedify/issues/441
 [#444]: https://github.com/fedify-dev/fedify/issues/444
 [#445]: https://github.com/fedify-dev/fedify/pull/445
 [#451]: https://github.com/fedify-dev/fedify/pull/451
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
-[#494]: https://github.com/fedify-dev/fedify/pull/494
 [#506]: https://github.com/fedify-dev/fedify/pull/506
 
 ### @fedify/cli
@@ -141,7 +140,8 @@ To be released.
 
  -  Fixed a bug in the `fedify init` command where Deno import map generation
     incorrectly handled dependencies with registry prefixes (e.g., `npm:`),
-    creating invalid specifiers in *deno.json*.  [[#460], [#496] by Hyeonseo Kim]
+    creating invalid specifiers in *deno.json*.
+    [[#460], [#496] by Hyeonseo Kim]
 
  -  Added `fedify relay` command to run an ephemeral ActivityPub relay server.
     [[#510], [#518] by Jiwon Kwon]
@@ -190,8 +190,6 @@ To be released.
 [#459]: https://github.com/fedify-dev/fedify/pull/459
 [#471]: https://github.com/fedify-dev/fedify/pull/471
 [#490]: https://github.com/fedify-dev/fedify/pull/490
-[#510]: https://github.com/fedify-dev/fedify/issues/510
-[#518]: https://github.com/fedify-dev/fedify/pull/518
 
 ### @fedify/vocab-tools
 
@@ -230,9 +228,6 @@ To be released.
  -  Added *deno.json* configuration file to enable proper Deno tooling support
     in the package.  [[#460], [#496]]
 
-[#460]: https://github.com/fedify-dev/fedify/issues/460
-[#496]: https://github.com/fedify-dev/fedify/pull/496
-
 ### @fedify/lint
 
  -  Created Fedify linting tools as the *@fedify/lint* package.
@@ -240,14 +235,16 @@ To be released.
     consistent code style across Fedify packages and user projects.
     [[#297], [#494] by ChanHaeng Lee]
 
+[#297]: https://github.com/fedify-dev/fedify/issues/297
+[#494]: https://github.com/fedify-dev/fedify/pull/494
+
 ### @fedify/fresh
 
- -  Created a new @fedify/fresh package that provides seamless integration 
-    between Fedify and Fresh 2.0, replacing the deprecated `@fedify/fedify/x/fresh`
-    module that was designed for Fresh 1.x.
+ -  Created a new @fedify/fresh package that provides seamless integration
+    between Fedify and Fresh 2.0, replacing the deprecated
+    `@fedify/fedify/x/fresh` module that was designed for Fresh 1.x.
     [[#466], [#478] by Hyeonseo Kim]
 
-[#466]: https://github.com/fedify-dev/fedify/issues/466
 [#478]: https://github.com/fedify-dev/fedify/pull/478
 
 ### @fedify/webfinger
@@ -268,7 +265,7 @@ To be released.
     [[#437], [#517] by ChanHaeng Lee]
 
 [#437]: https://github.com/fedify-dev/fedify/issues/437
-[#517]: https://github.com/fedify-dev/fedify/pull/517
+
 
 Version 1.10.0
 --------------
@@ -379,12 +376,16 @@ Released on December 20, 2025.
     respond with a malicious HTML payload that blocked the event loop.
     [[CVE-2025-68475]]
 
+[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
+
 ### @fedify/sqlite
 
  -  Fixed `SyntaxError: Identifier 'Temporal' has already been declared` error
     that occurred when using `SqliteKvStore` on Node.js or Bun.  The error
     was caused by duplicate `Temporal` imports during the build process.
     [[#487]]
+
+[#487]: https://github.com/fedify-dev/fedify/issues/487
 
 
 Version 1.9.1
@@ -396,9 +397,9 @@ Released on October 31, 2025.
 
  -  Fixed JSR publishing hanging indefinitely at the *processing* stage by
     hiding complex type exports from the public API.  The JSR type analyzer
-    struggled with complex type dependencies when analyzing the `MockFederation`,
-    `TestFederation`, `TestContext`, and `SentActivity` types, causing indefinite
-    hangs during the processing stage.  [[#468]]
+    struggled with complex type dependencies when analyzing the
+    `MockFederation`, `TestFederation`, `TestContext`, and `SentActivity`
+    types, causing indefinite hangs during the processing stage.  [[#468]]
 
      -  *Breaking change*: `MockFederation` class is no longer exported from
         the public API.  Use `createFederation()` factory function instead.
@@ -407,12 +408,16 @@ Released on October 31, 2025.
         but their types are still inferred from `createFederation()` return type
         and can be used via TypeScript's type inference.
 
+[#468]: https://github.com/fedify-dev/fedify/issues/468
+
 ### @fedify/cli
 
  -  Fixed `fedify` command failing on Windows with `PermissionDenied` error
     when trying to locate or execute package managers during initialization.
     The CLI now properly handles _\*.cmd_ and _\*.bat_ files on Windows by
     invoking them through `cmd /c`.  [[#463]]
+
+[#463]: https://github.com/fedify-dev/fedify/issues/463
 
 
 Version 1.9.0
@@ -538,8 +543,8 @@ Released on October 14, 2025.
     hazard issues.  [[#429], [#431]]
 
 [FEP-fe34]: https://w3id.org/fep/fe34
-[FEP-5711]: https://w3id.org/fep/5711
 [RFC 6570]: https://tools.ietf.org/html/rfc6570
+[FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf
 [RFC 7033 Section 4.4.4.3]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.4.4.3
 [#119]: https://github.com/fedify-dev/fedify/issues/119
@@ -556,7 +561,6 @@ Released on October 14, 2025.
 [#429]: https://github.com/fedify-dev/fedify/issues/429
 [#431]: https://github.com/fedify-dev/fedify/pull/431
 [#440]: https://github.com/fedify-dev/fedify/issues/440
-[#441]: https://github.com/fedify-dev/fedify/issues/441
 [#443]: https://github.com/fedify-dev/fedify/pull/443
 [#446]: https://github.com/fedify-dev/fedify/pull/446
 
@@ -577,8 +581,8 @@ Released on October 14, 2025.
     hanging on slow or unresponsive servers.
     [[#258], [#372] by Hyunchae Kim]
 
-[#353]: https://github.com/fedify-dev/fedify/issues/353
-[#365]: https://github.com/fedify-dev/fedify/pull/365
+[#258]: https://github.com/fedify-dev/fedify/issues/258
+[#313]: https://github.com/fedify-dev/fedify/issues/313
 [#372]: https://github.com/fedify-dev/fedify/pull/372
 
 ### @fedify/amqp
@@ -661,7 +665,6 @@ Released on October 14, 2025.
     CommonJS-based Node.js applications.  [[#429], [#431]]
 
 [Next.js]: https://nextjs.org/
-[#313]: https://github.com/fedify-dev/fedify/issues/313
 
 ### @fedify/postgres
 
@@ -723,8 +726,6 @@ Released on December 20, 2025.
     was caused by duplicate `Temporal` imports during the build process.
     [[#487]]
 
-[#487]: https://github.com/fedify-dev/fedify/issues/487
-
 
 Version 1.8.14
 --------------
@@ -739,7 +740,6 @@ Released on October 19, 2025.
     type analyzer.  All method overloads have been removed and simplified to
     use `any` types where necessary.  [[#468], [#470]]
 
-[#468]: https://github.com/fedify-dev/fedify/issues/468
 [#470]: https://github.com/fedify-dev/fedify/pull/470
 
 ### @fedify/cli
@@ -748,8 +748,6 @@ Released on October 19, 2025.
     when trying to locate or execute package managers during initialization.
     The CLI now properly handles _\*.cmd_ and _\*.bat_ files on Windows by
     invoking them through `cmd /c`.  [[#463]]
-
-[#463]: https://github.com/fedify-dev/fedify/issues/463
 
 
 Version 1.8.13
@@ -792,6 +790,8 @@ Released on September 17, 2025.
     in `at://` URIs, supporting `did:web`, `did:key`, and other DID methods
     beyond just `did:plc`. Also handles URIs without path components
     correctly.  [[#436]]
+
+[#436]: https://github.com/fedify-dev/fedify/issues/436
 
 
 Version 1.8.10
@@ -888,6 +888,8 @@ Released on August 8, 2025.
     Now authentication verification is performed before activity processing to
     prevent actor impersonation attacks.  [[CVE-2025-54888]]
 
+[CVE-2025-54888]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-6jcc-xgcr-q3h4
+
 ### @fedify/cli
 
  -  Fixed `fedify nodeinfo` color support in Windows Terminal.
@@ -976,6 +978,8 @@ the versioning.
      -  *@fedify/sqlite* (SQLite drivers)
      -  *@fedify/testing* (testing utilities)
 
+[NestJS]: https://nestjs.com/
+
 ### @fedify/fedify
 
  -  Added custom collection dispatchers.  [[#310], [#332] by ChanHaeng Lee]
@@ -1024,6 +1028,14 @@ the versioning.
      -  Added `LookupObjectOptions.signal` option.
      -  Added `LookupWebFingerOptions.signal` option.
      -  Added `DoubleKnockOptions.signal` option.
+
+[#51]: https://github.com/fedify-dev/fedify/issues/51
+[#248]: https://github.com/fedify-dev/fedify/issues/248
+[#278]: https://github.com/fedify-dev/fedify/pull/278
+[#281]: https://github.com/fedify-dev/fedify/pull/281
+[#310]: https://github.com/fedify-dev/fedify/issues/310
+[#315]: https://github.com/fedify-dev/fedify/pull/315
+[#332]: https://github.com/fedify-dev/fedify/pull/332
 
 ### @fedify/cli
 
@@ -1077,6 +1089,34 @@ the versioning.
     failed to correctly render the favicon in terminal emulators that do not
     support 24-bit colors.  [[#168], [#282], [#304] by Hyeonseo Kim]
 
+[Kitty]: https://sw.kovidgoyal.net/kitty/
+[WezTerm]: https://wezterm.org/
+[Konsole]: https://konsole.kde.org/
+[Warp]: https://www.warp.dev/
+[Wayst]: https://github.com/91861/wayst
+[st]: https://st.suckless.org/
+[iTerm]: https://iterm2.com/
+[#168]: https://github.com/fedify-dev/fedify/issues/168
+[#169]: https://github.com/fedify-dev/fedify/issues/169
+[#191]: https://github.com/fedify-dev/fedify/issues/191
+[#257]: https://github.com/fedify-dev/fedify/issues/257
+[#260]: https://github.com/fedify-dev/fedify/issues/260
+[#261]: https://github.com/fedify-dev/fedify/issues/261
+[#262]: https://github.com/fedify-dev/fedify/issues/262
+[#263]: https://github.com/fedify-dev/fedify/issues/263
+[#267]: https://github.com/fedify-dev/fedify/issues/267
+[#282]: https://github.com/fedify-dev/fedify/pull/282
+[#285]: https://github.com/fedify-dev/fedify/pull/285
+[#298]: https://github.com/fedify-dev/fedify/pull/298
+[#304]: https://github.com/fedify-dev/fedify/issues/304
+[#311]: https://github.com/fedify-dev/fedify/issues/311
+[#321]: https://github.com/fedify-dev/fedify/pull/321
+[#328]: https://github.com/fedify-dev/fedify/pull/328
+[#331]: https://github.com/fedify-dev/fedify/pull/331
+[#341]: https://github.com/fedify-dev/fedify/pull/341
+[#342]: https://github.com/fedify-dev/fedify/pull/342
+[#348]: https://github.com/fedify-dev/fedify/pull/348
+
 ### @fedify/elysia
 
  -  Supported [Elysia] integration with the *@fedify/elysia* package.
@@ -1086,6 +1126,9 @@ the versioning.
      -  Added `fedify` Elysia plugin for integrating Fedify into Elysia
         applications.
 
+[#286]: https://github.com/fedify-dev/fedify/issues/286
+[#339]: https://github.com/fedify-dev/fedify/pull/339
+
 ### @fedify/nestjs
 
  -  Supported [NestJS] integration with the *@fedify/nestjs* package.
@@ -1093,6 +1136,9 @@ the versioning.
 
      -  Added *@fedify/nestjs* package.
      -  Added `FedifyModule` for integrating Fedify into NestJS applications.
+
+[#269]: https://github.com/fedify-dev/fedify/issues/269
+[#309]: https://github.com/fedify-dev/fedify/pull/309
 
 ### @fedify/sqlite
 
@@ -1102,6 +1148,9 @@ the versioning.
 
      -  Added *@fedify/sqlite* package.
      -  Added `SqliteKvStore`, a SQLite implementation of `KvStore`.
+
+[#274]: https://github.com/fedify-dev/fedify/issues/274
+[#318]: https://github.com/fedify-dev/fedify/pull/318
 
 ### @fedify/testing
 
@@ -1115,50 +1164,8 @@ the versioning.
      -  Added `MockFederation` class.
      -  Added `MockContext` class.
 
-[#51]: https://github.com/fedify-dev/fedify/issues/51
-[#168]: https://github.com/fedify-dev/fedify/issues/168
-[#169]: https://github.com/fedify-dev/fedify/issues/169
-[#191]: https://github.com/fedify-dev/fedify/issues/191
 [#197]: https://github.com/fedify-dev/fedify/issues/197
-[#248]: https://github.com/fedify-dev/fedify/issues/248
-[#257]: https://github.com/fedify-dev/fedify/issues/257
-[#260]: https://github.com/fedify-dev/fedify/issues/260
-[#261]: https://github.com/fedify-dev/fedify/issues/261
-[#262]: https://github.com/fedify-dev/fedify/issues/262
-[#263]: https://github.com/fedify-dev/fedify/issues/263
-[#267]: https://github.com/fedify-dev/fedify/issues/267
-[#269]: https://github.com/fedify-dev/fedify/issues/269
-[#274]: https://github.com/fedify-dev/fedify/issues/274
-[#278]: https://github.com/fedify-dev/fedify/pull/278
-[#281]: https://github.com/fedify-dev/fedify/pull/281
-[#282]: https://github.com/fedify-dev/fedify/pull/282
 [#283]: https://github.com/fedify-dev/fedify/pull/283
-[#285]: https://github.com/fedify-dev/fedify/pull/285
-[#286]: https://github.com/fedify-dev/fedify/issues/286
-[#298]: https://github.com/fedify-dev/fedify/pull/298
-[#304]: https://github.com/fedify-dev/fedify/issues/304
-[#309]: https://github.com/fedify-dev/fedify/pull/309
-[#310]: https://github.com/fedify-dev/fedify/issues/310
-[#311]: https://github.com/fedify-dev/fedify/issues/311
-[#315]: https://github.com/fedify-dev/fedify/pull/315
-[#318]: https://github.com/fedify-dev/fedify/pull/318
-[#321]: https://github.com/fedify-dev/fedify/pull/321
-[#328]: https://github.com/fedify-dev/fedify/pull/328
-[#331]: https://github.com/fedify-dev/fedify/pull/331
-[#332]: https://github.com/fedify-dev/fedify/pull/332
-[#339]: https://github.com/fedify-dev/fedify/pull/339
-[#341]: https://github.com/fedify-dev/fedify/pull/341
-[#342]: https://github.com/fedify-dev/fedify/pull/342
-[#348]: https://github.com/fedify-dev/fedify/pull/348
-[Kitty]: https://sw.kovidgoyal.net/kitty/
-[Elysia]: https://elysiajs.com/
-[NestJS]: https://nestjs.com/
-[WezTerm]: https://wezterm.org/
-[Konsole]: https://konsole.kde.org/
-[Warp]: https://www.warp.dev/
-[Wayst]: https://github.com/91861/wayst
-[st]: https://st.suckless.org/
-[iTerm]: https://iterm2.com/
 
 
 Version 1.7.16
@@ -1167,8 +1174,9 @@ Version 1.7.16
 Released on December 20, 2025.
 
  -  Fixed a bug where the npm package failed to load at runtime with an error
-    like `SyntaxError: The requested module '../types.js' does not provide an
-    export named 'i'`.  This was a regression introduced in version 1.7.15.
+    like
+    `SyntaxError: The requested module '../types.js' does not provide an export named 'i'`.
+    This was a regression introduced in version 1.7.15.
 
 
 Version 1.7.15
@@ -1282,7 +1290,6 @@ Released on July 28, 2025.
 [#335]: https://github.com/fedify-dev/fedify/pull/335
 
 
-
 Version 1.7.6
 -------------
 
@@ -1291,6 +1298,8 @@ Released on July 24, 2025.
  -  Fixed `doubleKnock()` to properly handle redirects with path-only `Location`
     headers by resolving them relative to the original request URL.
     [[#324] by Fabien O'Carroll]
+
+[#324]: https://github.com/fedify-dev/fedify/pull/324
 
 
 Version 1.7.5
@@ -1302,13 +1311,16 @@ Released on July 15, 2025.
     encountered redirects during HTTP signature retry attempts.
     [[#294], [#295]]
 
+[#294]: https://github.com/fedify-dev/fedify/issues/294
+[#295]: https://github.com/fedify-dev/fedify/pull/295
+
 
 Version 1.7.4
 -------------
 
 Released on July 13, 2025.
 
-  - Fixed a bug the `-T`/`--no-tunnel` option in the `fedify inbox` command
+ -  Fixed a bug the `-T`/`--no-tunnel` option in the `fedify inbox` command
     was being ignored, causing the server to always create a public tunnel
     regardless of the flag. [[#243], [#284] by Lee ByeongJun]
 
@@ -1343,8 +1355,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.7.0
@@ -1371,6 +1383,7 @@ Released on June 25, 2025.
     to `"draft-cavage-http-signatures-12"` if the first attempt fails.
     [[#252] by Fabien O'Carroll]
 
+[double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
 [#250]: https://github.com/fedify-dev/fedify/issues/250
 [#251]: https://github.com/fedify-dev/fedify/pull/251
 [#252]: https://github.com/fedify-dev/fedify/pull/252
@@ -1382,8 +1395,9 @@ Version 1.6.15
 Released on December 20, 2025.
 
  -  Fixed a bug where the npm package failed to load at runtime with an error
-    like `SyntaxError: The requested module '../types.js' does not provide an
-    export named 'i'`.  This was a regression introduced in version 1.6.14.
+    like
+    `SyntaxError: The requested module '../types.js' does not provide an export named 'i'`.
+    This was a regression introduced in version 1.6.14.
 
 
 Version 1.6.14
@@ -1404,8 +1418,6 @@ Released on December 20, 2025.
     the document loader's HTML parsing.  An attacker-controlled server could
     respond with a malicious HTML payload that blocked the event loop.
     [[CVE-2025-68475]]
-
-[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
 
 
 Version 1.6.12
@@ -1477,8 +1489,6 @@ Released on July 24, 2025.
     headers by resolving them relative to the original request URL.
     [[#324] by Fabien O'Carroll]
 
-[#324]: https://github.com/fedify-dev/fedify/pull/324
-
 
 Version 1.6.6
 -------------
@@ -1488,9 +1498,6 @@ Released on July 15, 2025.
  -  Fixed `TypeError: unusable` error that occurred when `doubleKnock()`
     encountered redirects during HTTP signature retry attempts.
     [[#294], [#295]]
-
-[#294]: https://github.com/fedify-dev/fedify/issues/294
-[#295]: https://github.com/fedify-dev/fedify/pull/295
 
 
 Version 1.6.5
@@ -1520,8 +1527,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.6.2
@@ -1532,8 +1539,8 @@ Released on June 19, 2025.
  -  Fixed compatibility issue with Mastodon servers running bleeding-edge
     versions with RFC 9421 implementation bugs. Extended double-knocking
     to retry with draft-cavage-http-signatures-12 on `5xx` errors as a temporary
-    workaround for Mastodon's RFC 9421 implementation that returns `500
-    Internal Server Error`.
+    workaround for Mastodon's RFC 9421 implementation that returns
+    `500 Internal Server Error`.
 
 
 Version 1.6.1
@@ -1557,7 +1564,7 @@ the versioning.
      -  Added `Federatable` interface.
      -  Added `FederationBuilder` interface.
      -  Deprecated `CreateFederationOptions` interface.  Use `FederationOptions`
-         interface.
+        interface.
 
  -  Added `Router.trailingSlashInsensitive` property.
 
@@ -1585,7 +1592,6 @@ the versioning.
  -  The minimum supported version of Node.js is now 22.0.0.
 
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
-[double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [#208]: https://github.com/fedify-dev/fedify/issues/208
 [#227]: https://github.com/fedify-dev/fedify/issues/227
@@ -1663,8 +1669,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.5.3
@@ -1679,6 +1685,8 @@ Released on May 16, 2025.
 
  -  The `exportJwk()` function now populates the `alg` property of a returned
     `JsonWebKey` object with `"Ed25519"` if the input key is an Ed25519 key.
+
+[#232]: https://github.com/fedify-dev/fedify/issues/232
 
 
 Version 1.5.2
@@ -1717,21 +1725,24 @@ Released on April 8, 2025.
     }
     ~~~~
 
+[RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
+[#226]: https://github.com/fedify-dev/fedify/issues/226
+
 
 Version 1.5.0
 -------------
 
 Released on March 28, 2025.
 
--  Improved activity delivery performance with large audiences through
-   a two-stage queuing system.  Sending activities to many recipients
-   (e.g., accounts with many followers) is now significantly faster and uses
-   less memory. [[#220]]
+ -  Improved activity delivery performance with large audiences through
+    a two-stage queuing system.  Sending activities to many recipients
+    (e.g., accounts with many followers) is now significantly faster and uses
+    less memory. [[#220]]
 
      -  Added `FederationQueueOptions.fanout` option.
      -  Changed the type of `FederationStartQueueOptions.queue` option to
-        `"inbox" | "outbox" | "fanout" | undefined` (was `"inbox" | "outbox" |
-        undefined`).
+        `"inbox" | "outbox" | "fanout" | undefined` (was
+        `"inbox" | "outbox" | undefined`).
      -  Added `SendActivityOptions.fanout` option.
      -  Added OpenTelemetry instrumented span `activitypub.fanout`.
      -  The `ForwardActivityOptions` interface became a type alias of
@@ -1750,10 +1761,11 @@ Released on March 28, 2025.
     default.
 
      -  Added `SendActivityOptionsForCollection` interface.
-     -  The type of `Context.sendActivity({ identifier: string } | { username:
-        string } | { handle: string }, "followers", Activity)` overload's
-        fourth parameter became `SendActivityOptionsForCollection | undefined`
-        (was `SendActivityOptions | undefined`).
+     -  The type of
+        `Context.sendActivity({ identifier: string } | { username: string } | { handle: string }, "followers", Activity)`
+        overload's fourth parameter became
+        `SendActivityOptionsForCollection | undefined` (was
+        `SendActivityOptions | undefined`).
 
  -  Fedify now accepts PEM-PKCS#1 besides PEM-SPKI for RSA public keys.
     [[#209]]
@@ -1819,6 +1831,9 @@ Released on March 28, 2025.
      -  `["fedify", "federation", "fanout"]`
      -  `["fedify", "federation", "object"]`
 
+[FEP-8fcf]: https://w3id.org/fep/8fcf
+[multibase]: https://github.com/multiformats/js-multibase
+[LogTape]: https://github.com/dahlia/logtape
 [#127]: https://github.com/fedify-dev/fedify/issues/127
 [#209]: https://github.com/fedify-dev/fedify/issues/209
 [#211]: https://github.com/fedify-dev/fedify/issues/211
@@ -1826,8 +1841,6 @@ Released on March 28, 2025.
 [#220]: https://github.com/fedify-dev/fedify/issues/220
 [#221]: https://github.com/fedify-dev/fedify/issues/221
 [#223]: https://github.com/fedify-dev/fedify/pull/223
-[FEP-8fcf]: https://w3id.org/fep/8fcf
-[multibase]: https://github.com/multiformats/js-multibase
 
 
 Version 1.4.17
@@ -1897,8 +1910,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.4.11
@@ -1948,6 +1961,8 @@ Released on March 26, 2025.
  -  Fixed a `TypeError` thrown by the `signRequest()` function on Node.js.
     [[#222]]
 
+[#222]: https://github.com/fedify-dev/fedify/issues/222
+
 
 Version 1.4.8
 -------------
@@ -1975,6 +1990,10 @@ Released on March 20, 2025.
  -  Fixed a server error thrown when an invalid URL was passed to the `base-url`
     parameter of the followers collection.  [[#217]]
 
+[#217]: https://github.com/fedify-dev/fedify/issues/217
+[#218]: https://github.com/fedify-dev/fedify/issues/218
+[#219]: https://github.com/fedify-dev/fedify/pull/219
+
 
 Version 1.4.6
 -------------
@@ -1984,6 +2003,9 @@ Released on March 9, 2025.
  -  Fedify no more depends on `node:punycode` module, which is deprecated in
     Node.js.  Now it uses the built-in `node:url` module instead.
     [[#212], [#214] by Fróði Karlsson]
+
+[#212]: https://github.com/fedify-dev/fedify/issues/212
+[#214]: https://github.com/fedify-dev/fedify/pull/214
 
 
 Version 1.4.5
@@ -1998,6 +2020,8 @@ Released on February 28, 2025.
  -  Fixed a bug where `fedify init` had failed to initialize a project with
     the `--runtime node --package-manager pnpm --web-framework nitro` option.
     [[#213]]
+
+[#213]: https://github.com/fedify-dev/fedify/issues/213
 
 
 Version 1.4.4
@@ -2039,6 +2063,8 @@ Released on February 19, 2025.
  -  The `fedify` command became aware of `FEDIFY_LOG_FILE` environment variable
     to log messages to a file.  If the variable is set, the command logs
     messages to the file specified by the variable.
+
+[#210]: https://github.com/fedify-dev/fedify/issues/210
 
 
 Version 1.4.1
@@ -2137,6 +2163,7 @@ Released on February 5, 2025.
 
 [#3]: https://github.com/fedify-dev/fedify/issues/3
 [#195]: https://github.com/fedify-dev/fedify/issues/195
+[#203]: https://github.com/fedify-dev/fedify/issues/203
 
 
 Version 1.3.24
@@ -2198,8 +2225,6 @@ Released on August 8, 2025.
     Now authentication verification is performed before activity processing to
     prevent actor impersonation attacks.  [[CVE-2025-54888]]
 
-[CVE-2025-54888]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-6jcc-xgcr-q3h4
-
 
 Version 1.3.19
 --------------
@@ -2208,8 +2233,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.3.18
@@ -2382,8 +2407,6 @@ Released on January 31, 2025.
  -  Fixed a bug where `getUserAgent()` function had returned a `User-Agent`
     string with a wrong JavaScript runtime name on Node.js.  [[#203]]
 
-[#203]: https://github.com/fedify-dev/fedify/issues/203
-
 
 Version 1.3.5
 -------------
@@ -2421,6 +2444,8 @@ Released on January 21, 2025.
         could lead to a SSRF attack.  Now it follows only the public network
         addresses.
 
+[CVE-2025-23221]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-c59p-wq67-24wx
+
 
 Version 1.3.3
 -------------
@@ -2438,6 +2463,8 @@ Released on December 18, 2024.
 
  -  Fixed the default document loader to handle the `Link` header with
     incorrect syntax.  [[#196]]
+
+[#196]: https://github.com/fedify-dev/fedify/issues/196
 
 
 Version 1.3.1
@@ -2458,8 +2485,8 @@ Released on November 30, 2024.
     activities.
 
      -  Changed the type of `CreateFederationOptions.queue` option to
-        `FederationQueueOptions | MessageQueue | undefined` (was `MessageQueue |
-        undefined`).
+        `FederationQueueOptions | MessageQueue | undefined` (was
+        `MessageQueue | undefined`).
      -  Added `FederationQueueOptions` interface.
      -  Added `FederationStartQueueOptions.queue` option.
 
@@ -2476,8 +2503,8 @@ Released on November 30, 2024.
      -  Deprecated `fetchDocumentLoader()` function.
      -  Added `LookupObjectOptions.userAgent` option.
      -  Added the type of `getActorHandle()` function's second parameter became
-        `GetActorHandleOptions | undefined` (was `NormalizeActorHandleOptions |
-        undefined`).
+        `GetActorHandleOptions | undefined` (was
+        `NormalizeActorHandleOptions | undefined`).
      -  Added `GetActorHandleOptions` interface.
      -  Added the optional second parameter to `lookupWebFinger()` function.
      -  Added `LookupWebFingerOptions` interface.
@@ -2492,15 +2519,16 @@ Released on November 30, 2024.
         `Promise<CryptographicKey | MultiKey | null | undefined>` (was
         `Promise<CryptographicKey | MultiKey | null>`).
      -  The type of the `KeyCache.set()` method's second parameter became
-        `CryptographicKey | MultiKey | null` (was `CryptographicKey | MultiKey`).
+        `CryptographicKey | MultiKey | null` (was
+        `CryptographicKey | MultiKey`).
      -  Added `fetchKey()` function.
      -  Added `FetchKeyOptions` interface.
      -  Added `FetchKeyResult` interface.
 
  -  The `Router` now provide the matched route's URI template besides the name.
 
-     -  The return type of `Router.route()` method became `RouterRouteResult |
-        null` (was `{ name: string; values: Record<string, string> } | null`).
+     -  The return type of `Router.route()` method became `RouterRouteResult | null`
+        (was `{ name: string; values: Record<string, string> } | null`).
      -  Added `RouterRouteResult` interface.
 
  -  Added `getTypeId()` function.
@@ -2521,20 +2549,35 @@ Released on November 30, 2024.
  -  Fedify now supports OpenTelemetry for tracing.  [[#170]]
 
      -  Added `Context.tracerProvider` property.
+
      -  Added `CreateFederationOptions.tracerProvider` option.
+
      -  Added `LookupWebFingerOptions.tracerProvider` option.
+
      -  Added `LookupObjectOptions.tracerProvider` option.
+
      -  Added `GetActorHandleOptions.tracerProvider` option.
+
      -  Added `VerifyRequestOptions.tracerProvider` option.
+
      -  Added `SignRequestOptions` interface.
+
      -  Added the optional fourth parameter to `signRequest()` function.
+
      -  Added `VerifyProofOptions.tracerProvider` option.
+
      -  Added `VerifyObjectOptions.tracerProvider` option.
+
      -  Added `SignObjectOptions.tracerProvider` option.
+
      -  Added `VerifySignatureOptions.tracerProvider` option.
+
      -  Added `VerifyJsonLdOptions.tracerProvider` option.
+
      -  Added `SignJsonLdOptions.tracerProvider` option.
+
      -  Added `DoesActorOwnKeyOptions.tracerProvider` option.
+
      -  Added `GetKeyOwnerOptions.tracerProvider` option.
 
      -  Added `tracerProvider` option to the following Activity Vocabulary APIs:
@@ -2553,7 +2596,6 @@ Released on November 30, 2024.
 
  -  Let the `fedify lookup` command take multiple arguments.
     [[#173], [#186] by PGD]
-
 
 [SvelteKit]: https://kit.svelte.dev/
 [#162]: https://github.com/fedify-dev/fedify/issues/162
@@ -2620,8 +2662,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.2.22
@@ -2833,7 +2875,11 @@ Released on November 23, 2024.
     [[#180], [#188] by Lim Kyunghee]
 
 [#177]: https://github.com/fedify-dev/fedify/issues/177
+[#178]: https://github.com/fedify-dev/fedify/issues/178
+[#180]: https://github.com/fedify-dev/fedify/issues/180
 [#181]: https://github.com/fedify-dev/fedify/pull/181
+[#185]: https://github.com/fedify-dev/fedify/pull/185
+[#188]: https://github.com/fedify-dev/fedify/pull/188
 
 
 Version 1.2.7
@@ -2843,6 +2889,8 @@ Released on November 22, 2024.
 
  -  Fixed a bug where `lookupWebFinger()` function had thrown a `TypeError`
     when the *.well-known/webfinger* redirects to a relative URI.  [[#166]]
+
+[#166]: https://github.com/fedify-dev/fedify/issues/166
 
 
 Version 1.2.6
@@ -2862,8 +2910,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Application.getInbox()` and
-        `Application.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Application.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Group()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -2880,8 +2929,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Organization.getInbox()` and
-        `Organization.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Organization.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Person()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -2901,6 +2951,8 @@ Released on November 19, 2024.
         methods is now `OrderedCollection | OrderedCollectionPage | null` (was
         `OrderedCollection | null`).
 
+[#165]: https://github.com/fedify-dev/fedify/issues/165
+
 
 Version 1.2.5
 -------------
@@ -2916,9 +2968,11 @@ Released on November 14, 2024.
         logger category and returns `null`.
      -  The `Federation.fetch()` method no longer throws a `TypeError`
         when a given `Request` object's body is already consumed or locked.
-        Instead, it logs an error message to the `["fedify", "federation",
-        "inbox"]` logger category and responds with a `500 Internal Server
-        Error`.
+        Instead, it logs an error message to the
+        `["fedify", "federation", "inbox"]` logger category and responds with a
+        `500 Internal Server Error`.
+
+[#159]: https://github.com/fedify-dev/fedify/issues/159
 
 
 Version 1.2.4
@@ -3080,8 +3134,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.1.22
@@ -3290,11 +3344,6 @@ Released on November 23, 2024.
  -  Fixed text overflow of the `fedify inbox` command's web log view.
     [[#180], [#188] by Lim Kyunghee]
 
-[#178]: https://github.com/fedify-dev/fedify/issues/178
-[#180]: https://github.com/fedify-dev/fedify/issues/180
-[#185]: https://github.com/fedify-dev/fedify/pull/185
-[#188]: https://github.com/fedify-dev/fedify/pull/188
-
 
 Version 1.1.7
 -------------
@@ -3322,8 +3371,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Application.getInbox()` and
-        `Application.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Application.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Group()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -3340,8 +3390,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Organization.getInbox()` and
-        `Organization.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Organization.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Person()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -3376,9 +3427,9 @@ Released on November 14, 2024.
         logger category and returns `null`.
      -  The `Federation.fetch()` method no longer throws a `TypeError`
         when a given `Request` object's body is already consumed or locked.
-        Instead, it logs an error message to the `["fedify", "federation",
-        "inbox"]` logger category and responds with a `500 Internal Server
-        Error`.
+        Instead, it logs an error message to the
+        `["fedify", "federation", "inbox"]` logger category and responds with a
+        `500 Internal Server Error`.
 
 
 Version 1.1.4
@@ -3416,6 +3467,8 @@ Released on October 27, 2024.
     `Link` headers with `rel=alternate`.  [[#155] by Emelia Smith]
  -  The `fetchDocumentLoader()` function now preloads the following JSON-LD
     context: <http://schema.org/>.
+
+[#155]: https://github.com/fedify-dev/fedify/pull/155
 
 
 Version 1.1.1
@@ -3549,8 +3602,6 @@ Released on September 17, 2025.
     automatically URL-encoded to `at://did%3Aplc%3A...` to prevent parsing
     failures when processing bridged Bluesky content.  [[#436]]
 
-[#436]: https://github.com/fedify-dev/fedify/issues/436
-
 
 Version 1.0.28
 --------------
@@ -3583,8 +3634,8 @@ Released on June 30, 2025.
 
  -  Fixed JSON-LD serialization of the `Question.voters` property to correctly
     serialize as a plain number (e.g., `"votersCount": 123`) instead of as a
-    typed literal object (e.g., `"votersCount":{"type":"xsd:nonNegativeInteger",
-    "@value":123}`).
+    typed literal object (e.g.,
+    `"votersCount":{"type":"xsd:nonNegativeInteger", "@value":123}`).
 
 
 Version 1.0.25
@@ -3600,8 +3651,6 @@ Released on May 16, 2025.
  -  The `exportJwk()` function now populates the `alg` property of a returned
     `JsonWebKey` object with `"Ed25519"` if the input key is an Ed25519 key.
 
-[#232]: https://github.com/fedify-dev/fedify/issues/232
-
 
 Version 1.0.24
 --------------
@@ -3613,9 +3662,6 @@ Released on April 8, 2025.
     interoperability with some implementations that do not include a timezone
     offset in their date-time strings including WordPress.  [[#226]]
 
-[RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
-[#226]: https://github.com/fedify-dev/fedify/issues/226
-
 
 Version 1.0.23
 --------------
@@ -3626,8 +3672,6 @@ Released on March 26, 2025.
     the `base-url` parameter was provided.
  -  Fixed a `TypeError` thrown by the `signRequest()` function on Node.js.
     [[#222]]
-
-[#222]: https://github.com/fedify-dev/fedify/issues/222
 
 
 Version 1.0.22
@@ -3656,10 +3700,6 @@ Released on March 20, 2025.
  -  Fixed a server error thrown when an invalid URL was passed to the `base-url`
     parameter of the followers collection.  [[#217]]
 
-[#217]: https://github.com/fedify-dev/fedify/issues/217
-[#218]: https://github.com/fedify-dev/fedify/issues/218
-[#219]: https://github.com/fedify-dev/fedify/pull/219
-
 
 Version 1.0.20
 --------------
@@ -3669,9 +3709,6 @@ Released on March 9, 2025.
  -  Fedify no more depends on `node:punycode` module, which is deprecated in
     Node.js.  Now it uses the built-in `node:url` module instead.
     [[#212], [#214] by Fróði Karlsson]
-
-[#212]: https://github.com/fedify-dev/fedify/issues/212
-[#214]: https://github.com/fedify-dev/fedify/pull/214
 
 
 Version 1.0.19
@@ -3689,8 +3726,6 @@ Released on February 28, 2025.
 
  -  Made `fedify init` to install *@logtape/logtape* 0.6.5 which is the version
     used in Fedify 1.0.x.
-
-[#213]: https://github.com/fedify-dev/fedify/issues/213
 
 
 Version 1.0.18
@@ -3733,8 +3768,6 @@ Released on February 19, 2025.
     to log messages to a file.  If the variable is set, the command logs
     messages to the file specified by the variable.
 
-[#210]: https://github.com/fedify-dev/fedify/issues/210
-
 
 Version 1.0.15
 --------------
@@ -3771,8 +3804,6 @@ Released on January 21, 2025.
         could lead to a SSRF attack.  Now it follows only the public network
         addresses.
 
-[CVE-2025-23221]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-c59p-wq67-24wx
-
 
 Version 1.0.13
 --------------
@@ -3781,8 +3812,6 @@ Released on December 18, 2024.
 
  -  Fixed the default document loader to handle the `Link` header with
     incorrect syntax.  [[#196]]
-
-[#196]: https://github.com/fedify-dev/fedify/issues/196
 
 
 Version 1.0.12
@@ -3820,8 +3849,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Application.getInbox()` and
-        `Application.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Application.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Group()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -3838,8 +3868,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Organization.getInbox()` and
-        `Organization.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Organization.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Person()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -3874,9 +3905,9 @@ Released on November 14, 2024.
         logger category and returns `null`.
      -  The `Federation.fetch()` method no longer throws a `TypeError`
         when a given `Request` object's body is already consumed or locked.
-        Instead, it logs an error message to the `["fedify", "federation",
-        "inbox"]` logger category and responds with a `500 Internal Server
-        Error`.
+        Instead, it logs an error message to the
+        `["fedify", "federation", "inbox"]` logger category and responds with a
+        `500 Internal Server Error`.
 
 
 Version 1.0.8
@@ -3974,7 +4005,7 @@ Released on September 26, 2024.
 
 
 Version 1.0.0
---------------
+-------------
 
 Released on September 26, 2024.
 
@@ -3996,53 +4027,76 @@ Released on September 26, 2024.
 
         The `{handle}` variable is deprecated, and it will be removed in
         the future.
+
      -  The type of `Federation.setActorDispatcher()` method's first parameter
-        became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setInboxDispatcher()` method's first parameter
-        became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setOutboxDispatcher()` method's first parameter
-        became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setFollowingDispatcher()` method's first
-        parameter became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        parameter became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setFollowersDispatcher()` method's first
-        parameter became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        parameter became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setLikedDispatcher()` method's first parameter
-        became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setFeaturedDispatcher()` method's first
-        parameter became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        parameter became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setFeaturedTagsDispatcher()` method's first
-        parameter became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        parameter became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Federation.setInboxListeners()` method's first parameter
-        became ```${string}{identifier}${string}` |
-        `${string}{handle}${string}``` (was ```${string}{handle}${string}```).
+        became
+        ``${string}{identifier}${string}` | `${string}{handle}${string}`` (was
+        ```${string}{handle}${string}```).
+
      -  The type of `Context.getDocumentLoader()` method's first parameter
-        became `{ identifier: string } | { username: string } | { handle:
-        string } | { keyId: URL; privateKey: CryptoKey }` (was `{ handle:
-        string } | { keyId: URL; privateKey: CryptoKey }`).
+        became
+        `{ identifier: string } | { username: string } | { handle: string } | { keyId: URL; privateKey: CryptoKey }`
+        (was `{ handle: string } | { keyId: URL; privateKey: CryptoKey }`).
+
      -  Passing `{ handle: string }` to `Context.getDocumentLoader()` method is
         deprecated in favor of `{ username: string }`.
+
      -  The type of `Context.sendActivity()` method's first parameter became
-        `SenderKeyPair | SenderKeyPair[] | { identifier: string } | {
-        username: string } | { handle: string }` (was `SenderKeyPair | SenderKeyPair[] | { handle: string }`).
+        `SenderKeyPair | SenderKeyPair[] | { identifier: string } | { username: string } | { handle: string }`
+        (was `SenderKeyPair | SenderKeyPair[] | { handle: string }`).
+
      -  All properties of `ParseUriResult` type became readonly.
+
      -  Added `identifier` properties next to `handle` properties in
         `ParseUriResult` type.
+
      -  The `handle` properties of `ParseUriResult` type are deprecated in favor
         of `identifier` properties.
+
      -  The return type of `SharedInboxKeyDispatcher` callback type became
-        `SenderKeyPair | { identifier: string } | { username: string } |
-        { handle: string } | null | Promise<SenderKeyPair | { identifier:
-        string } | { username: string } | { handle: string } | null>`
-        (was `SenderKeyPair | { handle: string } | null |
-        Promise<SenderKeyPair | { handle: string } | null>`).
+        `SenderKeyPair | { identifier: string } | { username: string } | { handle: string } | null | Promise<SenderKeyPair | { identifier: string } | { username: string } | { handle: string } | null>`
+        (was
+        `SenderKeyPair | { handle: string } | null | Promise<SenderKeyPair | { handle: string } | null>`).
 
  -  Fedify now supports [Linked Data Signatures], which is outdated but still
     widely used in the fediverse.
@@ -4123,8 +4177,8 @@ Released on September 26, 2024.
 
  -  Added options for PostgreSQL drivers to `fedify init` command.
 
-     -  Added `postgres` value to the `-k`/`--kv-store` option of the `fedify
-        init` command.
+     -  Added `postgres` value to the `-k`/`--kv-store` option of the `fedify init`
+        command.
      -  Added `postgres` value to the `-q`/`--message-queue` option of
         the `fedify init` command.
 
@@ -4152,8 +4206,6 @@ Released on November 22, 2024.
  -  Fixed a bug where `lookupWebFinger()` function had thrown a `TypeError`
     when the *.well-known/webfinger* redirects to a relative URI.  [[#166]]
 
-[#166]: https://github.com/fedify-dev/fedify/issues/166
-
 
 Version 0.15.8
 --------------
@@ -4172,8 +4224,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Application.getInbox()` and
-        `Application.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Application.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Group()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -4190,8 +4243,9 @@ Released on November 19, 2024.
         is now `OrderedCollection | OrderedCollectionPage | null | undefined`
         (was `OrderedCollection | null | undefined`).
      -  The return type of `Organization.getInbox()` and
-        `Organization.getOutbox()` methods is now `OrderedCollection |
-        OrderedCollectionPage | null` (was `OrderedCollection | null`).
+        `Organization.getOutbox()` methods is now
+        `OrderedCollection | OrderedCollectionPage | null` (was
+        `OrderedCollection | null`).
      -  The type of `Person()` constructor's `inbox` and `outbox` options is
         now `OrderedCollection | OrderedCollectionPage | null | undefined` (was
         `OrderedCollection | null | undefined`).
@@ -4211,8 +4265,6 @@ Released on November 19, 2024.
         methods is now `OrderedCollection | OrderedCollectionPage | null` (was
         `OrderedCollection | null`).
 
-[#165]: https://github.com/fedify-dev/fedify/issues/165
-
 
 Version 0.15.7
 --------------
@@ -4228,11 +4280,9 @@ Released on November 14, 2024.
         logger category and returns `null`.
      -  The `Federation.fetch()` method no longer throws a `TypeError`
         when a given `Request` object's body is already consumed or locked.
-        Instead, it logs an error message to the `["fedify", "federation",
-        "inbox"]` logger category and responds with a `500 Internal Server
-        Error`.
-
-[#159]: https://github.com/fedify-dev/fedify/issues/159
+        Instead, it logs an error message to the
+        `["fedify", "federation", "inbox"]` logger category and responds with a
+        `500 Internal Server Error`.
 
 
 Version 0.15.6
@@ -4265,8 +4315,6 @@ Released on October 27, 2024.
     `Link` headers with `rel=alternate`.  [[#155] by Emelia Smith]
  -  The `fetchDocumentLoader()` function now preloads the following JSON-LD
     context: <http://schema.org/>.
-
-[#155]: https://github.com/fedify-dev/fedify/pull/155
 
 
 Version 0.15.3
@@ -4330,10 +4378,10 @@ Released on September 11, 2024.
     `Like`.
 
      -  Changed the type of `Federation.setLikedDispatcher()` method's second
-        parameter to `CollectionDispatcher<Object | URL,
-        RequestContext<TContextData>, TContextData, void>` (was
-        `CollectionDispatcher<Like, RequestContext<TContextData>, TContextData,
-        void>`).
+        parameter to
+        `CollectionDispatcher<Object | URL, RequestContext<TContextData>, TContextData, void>`
+        (was
+        `CollectionDispatcher<Like, RequestContext<TContextData>, TContextData, void>`).
 
  -  Removed `expand` option of `Object.toJsonLd()` method, which was deprecated
     in version 0.14.0.  Use `format: "expand"` option instead.
@@ -4387,6 +4435,8 @@ Released on September 1, 2024.
  -  Fixed `fedify inbox` command where it had ignored `-a`/`--accept-follow`
     options when no `-f`/`--follow` option was provided.  [[#132]]
 
+[#132]: https://github.com/fedify-dev/fedify/issues/132
+
 
 Version 0.14.2
 --------------
@@ -4395,6 +4445,9 @@ Released on August 30, 2024.
 
  -  Fixed an incompatibility with Meta's [Threads] where sent activities had not
     been verified by their inbox.  [[#125]]
+
+[Threads]: https://www.threads.net/
+[#125]: https://github.com/fedify-dev/fedify/issues/125
 
 
 Version 0.14.1
@@ -4409,15 +4462,18 @@ Released on August 29, 2024.
     web interface had shown an expanded JSON-LD object instead of a compacted
     one.
 
+[#126]: https://github.com/fedify-dev/fedify/issues/126
+
 
 Version 0.14.0
 --------------
 
 Released on August 27, 2024.
 
- -  Removed the limitation that the `sendActivity({ handle: string },
-    "followers", Activity)` overload is only available for `RequestContext`
-    but not for `Context`.  Now it is available for both.  [[#115]]
+ -  Removed the limitation that the
+    `sendActivity({ handle: string }, "followers", Activity)` overload is only
+    available for `RequestContext` but not for `Context`.  Now it is available
+    for both.  [[#115]]
 
      -  Added `Context.sendActivity({ handle: string }, "followers", Activity)`
         overload.
@@ -4522,8 +4578,6 @@ Released on September 1, 2024.
  -  Fixed `fedify inbox` command where it had ignored `-a`/`--accept-follow`
     options when no `-f`/`--follow` option was provided.  [[#132]]
 
-[#132]: https://github.com/fedify-dev/fedify/issues/132
-
 
 Version 0.13.3
 --------------
@@ -4533,9 +4587,6 @@ Released on August 30, 2024.
  -  Fixed an incompatibility with Meta's [Threads] where sent activities had not
     been verified by their inbox.  [[#125]]
 
-[Threads]: https://www.threads.net/
-[#125]: https://github.com/fedify-dev/fedify/issues/125
-
 
 Version 0.13.2
 --------------
@@ -4544,8 +4595,6 @@ Released on August 29, 2024.
 
  -  Fixed `fedify inbox` command that had not been able to parse activities
     even if they are valid JSON-LD.  [[#126]]
-
-[#126]: https://github.com/fedify-dev/fedify/issues/126
 
 
 Version 0.13.1
@@ -4626,10 +4675,11 @@ Released on August 7, 2024.
 
      -  `["fedify", "webfinger", "server"]`
 
-[#69]: https://github.com/fedify-dev/fedify/issues/69
-[#110]: https://github.com/fedify-dev/fedify/issues/110
 [Express]: https://expressjs.com/
 [Nitro]: https://nitro.unjs.io/
+[x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
+[#69]: https://github.com/fedify-dev/fedify/issues/69
+[#110]: https://github.com/fedify-dev/fedify/issues/110
 
 
 Version 0.12.3
@@ -4798,8 +4848,10 @@ Released on July 24, 2024.
      -  `["fedify", "federation", "queue"]`
 
 [@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
+[CVE-2024-39687]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-p9cg-vqcc-grcx
 [#6]: https://github.com/fedify-dev/fedify/issues/6
 [#53]: https://github.com/fedify-dev/fedify/issues/53
+[#65]: https://github.com/fedify-dev/fedify/issues/65
 [#66]: https://github.com/fedify-dev/fedify/issues/66
 [#70]: https://github.com/fedify-dev/fedify/issues/70
 [#81]: https://github.com/fedify-dev/fedify/issues/81
@@ -5027,6 +5079,8 @@ Released on June 29, 2024.
     for Object Integrity Proofs.  [[FEP-8b32], [#54]]
 
 [eddsa-jcs-2022]: https://codeberg.org/fediverse/fep/pulls/338
+[FEP-8b32]: https://w3id.org/fep/8b32
+[#54]: https://github.com/fedify-dev/fedify/issues/54
 [#71]: https://github.com/fedify-dev/fedify/issues/71
 [#74]: https://github.com/fedify-dev/fedify/issues/74
 [#76]: https://github.com/fedify-dev/fedify/pull/76
@@ -5213,15 +5267,11 @@ is now distributed under the [MIT License] to encourage wider adoption.
      -  `["fedify", "vocab", "lookup"]`
      -  `["fedify", "webfinger", "lookup"]`
 
-[#54]: https://github.com/fedify-dev/fedify/issues/54
-[#55]: https://github.com/fedify-dev/fedify/issues/55
-[#65]: https://github.com/fedify-dev/fedify/issues/65
-[#68]: https://github.com/fedify-dev/fedify/pull/68
 [AGPL 3.0]: https://www.gnu.org/licenses/agpl-3.0.en.html
 [MIT License]: https://minhee.mit-license.org/
 [FEP-521a]: https://w3id.org/fep/521a
-[FEP-8b32]: https://w3id.org/fep/8b32
-[x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
+[#55]: https://github.com/fedify-dev/fedify/issues/55
+[#68]: https://github.com/fedify-dev/fedify/pull/68
 
 
 Version 0.9.3
@@ -5252,8 +5302,6 @@ Released on July 5, 2024.
      -  The `getAuthenticatedDocumentLoader()` function now returns a document
         loader that throws an error when the given URL is not an HTTP or HTTPS
         URL or refers to a private network address.
-
-[CVE-2024-39687]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-p9cg-vqcc-grcx
 
 
 Version 0.9.1
@@ -5341,9 +5389,8 @@ Released on May 6, 2024.
 
  -  The CLI toolchain for testing and debugging is now available on JSR:
     [@fedify/cli].  You can install it with
-    `deno install -A --unstable-fs --unstable-kv --unstable-temporal -n fedify
-    jsr:@fedify/cli`, or download a standalone executable from the [releases]
-    page.
+    `deno install -A --unstable-fs --unstable-kv --unstable-temporal -n fedify jsr:@fedify/cli`,
+    or download a standalone executable from the [releases] page.
 
      -  Added `fedify` command.
      -  Added `fedify lookup` subcommand.
@@ -5423,12 +5470,10 @@ Released on May 6, 2024.
 
  -  Fixed a bug of `lookupObject()` that it had failed to look up the actor
     object when WebFinger response had no links with
-    `"type": "application/activity+json"` but had `"type":
-    "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""`.
+    `"type": "application/activity+json"` but had
+    `"type": "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""`.
 
-[@fedify/cli]: https://jsr.io/@fedify/cli
 [releases]: https://github.com/fedify-dev/fedify/releases
-[FEP-8fcf]: https://w3id.org/fep/8fcf
 [#47]: https://github.com/fedify-dev/fedify/issues/47
 
 
@@ -5480,7 +5525,6 @@ Released on April 23, 2024.
 
 [public addressing]: https://www.w3.org/TR/activitypub/#public-addressing
 [authorized fetch]: https://swicg.github.io/activitypub-http-signature/#authorized-fetch
-[LogTape]: https://github.com/dahlia/logtape
 [#33]: https://github.com/fedify-dev/fedify/issues/33
 
 
@@ -5491,6 +5535,8 @@ Released on April 17, 2024.
 
  -  Fixed a bug of `new Federation()` constructor that if it is once called
     the process will never exit.  [[#39]]
+
+[#39]: https://github.com/fedify-dev/fedify/issues/39
 
 
 Version 0.6.0
@@ -5544,8 +5590,6 @@ Released on April 17, 2024.
 
  -  Fixed a bug of `new Federation()` constructor that if it is once called
     the process will never exit.  [[#39]]
-
-[#39]: https://github.com/fedify-dev/fedify/issues/39
 
 
 Version 0.5.1
@@ -5677,18 +5721,18 @@ Released on March 26, 2024.
 
  -  `Object`'s `attributedTo` property was renamed to `attribution`.
 
-    -  `new Object()` constructor's `attributedTo` option was renamed to
-       `attribution`.
-    -  `new Object()` constructor's `attributedTos` option was renamed to
-       `attributions`.
-    -  `Object.getAttributedTo()` method is renamed to
-       `Object.getAttribution()`.
-    -  `Object.getAttributedTos()` method is renamed to
-       `Object.getAttributions()`.
-    -  `Object.clone()` method's `attributedTo` option is renamed to
-       `attribution`.
-    -  `Object.clone()` method's `attributedTos` option is renamed to
-       `attributions`.
+     -  `new Object()` constructor's `attributedTo` option was renamed to
+        `attribution`.
+     -  `new Object()` constructor's `attributedTos` option was renamed to
+        `attributions`.
+     -  `Object.getAttributedTo()` method is renamed to
+        `Object.getAttribution()`.
+     -  `Object.getAttributedTos()` method is renamed to
+        `Object.getAttributions()`.
+     -  `Object.clone()` method's `attributedTo` option is renamed to
+        `attribution`.
+     -  `Object.clone()` method's `attributedTos` option is renamed to
+        `attributions`.
 
  -  `Object`'s `attribution` property (was `attributedTo`) now accepts only
     `Actor` objects.
@@ -5811,13 +5855,13 @@ Released on March 10, 2024.
  -  `Federation.handle()` now responds with `Access-Control-Allow-Origin: *`
     header for WebFinger requests.
 
- -  `fetchDocumentLoader()`, the default document loader, now sends `Accept:
-    application/activity+json, application/ld+json` header (was `Accept:
-    application/ld+json` only).
+ -  `fetchDocumentLoader()`, the default document loader, now sends
+    `Accept: application/activity+json, application/ld+json` header (was
+    `Accept: application/ld+json` only).
 
 [NodeInfo]: https://nodeinfo.diaspora.software/
-[WebFinger]: https://datatracker.ietf.org/doc/html/rfc7033
 [#1]: https://github.com/fedify-dev/fedify/issues/1
+[WebFinger]: https://datatracker.ietf.org/doc/html/rfc7033
 
 
 Version 0.1.0

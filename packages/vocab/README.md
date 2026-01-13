@@ -11,10 +11,10 @@ This package provides a collection of type-safe objects that represent the
 It is the core vocabulary library that powers ActivityPub object handling in
 Fedify applications.
 
-[JSR]: https://jsr.io/@fedify/vocab
 [JSR badge]: https://jsr.io/badges/@fedify/vocab
-[npm]: https://www.npmjs.com/package/@fedify/vocab
+[JSR]: https://jsr.io/@fedify/vocab
 [npm badge]: https://img.shields.io/npm/v/@fedify/vocab?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/vocab
 [Activity Vocabulary]: https://www.w3.org/TR/activitystreams-vocabulary/
 [Fedify]: https://fedify.dev/
 
@@ -121,8 +121,11 @@ Documentation
 
 For comprehensive documentation, please refer to:
 
- -  [Vocabulary documentation](https://fedify.dev/manual/vocab)
- -  [API reference](https://jsr.io/@fedify/vocab/doc/~)
+ -  [Vocabulary documentation]
+ -  [API reference]
+
+[Vocabulary documentation]: https://fedify.dev/manual/vocab
+[API reference]: https://jsr.io/@fedify/vocab/doc/~
 
 
 Related packages
@@ -136,4 +139,6 @@ Related packages
 License
 -------
 
-[MIT License](https://github.com/fedify-dev/fedify/blob/main/LICENSE)
+[MIT License]
+
+[MIT License]: https://github.com/fedify-dev/fedify/blob/main/LICENSE

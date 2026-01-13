@@ -1,8 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
-![](./logo.svg)
-Fedify: an ActivityPub server framework
-=======================================
+![](./logo.svg) Fedify: an ActivityPub server framework
+=======================================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -37,12 +36,12 @@ Currently, Fedify provides the following features out of the box:
 If you want to know more about the project, please take a look at the following
 resources:
 
- -  [Installation](https://fedify.dev/install)
+ -  [Installation]
  -  Tutorials:
-    [Learning the basics](https://fedify.dev/tutorial/basics) &
-    [Creating a microblog](https://fedify.dev/tutorial/microblog)
+    [Learning the basics] &
+    [Creating a microblog]
  -  [API reference][JSR]
- -  [Examples](https://github.com/fedify-dev/fedify/tree/main/examples)
+ -  [Examples]
 
 If you have any questions, suggestions, or feedback, please feel free to
 join our [Matrix chat space][Matrix] or [Discord server][Discord] or
@@ -51,16 +50,16 @@ join our [Matrix chat space][Matrix] or [Discord server][Discord] or
 [^1]: You may already know some of the networks in the fediverse, such as
       [Mastodon], [Lemmy], [Pixelfed], [PeerTube], and so on.
 
-[JSR]: https://jsr.io/@fedify/fedify
 [JSR badge]: https://jsr.io/badges/@fedify/fedify
-[npm]: https://www.npmjs.com/package/@fedify/fedify
+[JSR]: https://jsr.io/@fedify/fedify
 [npm badge]: https://img.shields.io/npm/v/@fedify/fedify?logo=npm
-[GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
+[npm]: https://www.npmjs.com/package/@fedify/fedify
 [GitHub Actions badge]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml/badge.svg
-[Matrix]: https://matrix.to/#/#fedify:matrix.org
+[GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
-[Discord]: https://discord.gg/bhtwpzURwd
+[Matrix]: https://matrix.to/#/#fedify:matrix.org
 [Discord badge]: https://img.shields.io/discord/1295652627505217647?logo=discord&cacheSeconds=60
+[Discord]: https://discord.gg/bhtwpzURwd
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify Demo]: https://dash.deno.com/playground/fedify-demo
@@ -73,8 +72,13 @@ join our [Matrix chat space][Matrix] or [Discord server][Discord] or
 [FEP-8b32]: https://w3id.org/fep/8b32
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [NodeInfo]: https://nodeinfo.diaspora.software/
+[Installation]: https://fedify.dev/install
+[Learning the basics]: https://fedify.dev/tutorial/basics
+[Creating a microblog]: https://fedify.dev/tutorial/microblog
+[Examples]: https://github.com/fedify-dev/fedify/tree/main/examples
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions
 [#Fedify]: https://mastodon.social/tags/fedify
+
 [Mastodon]: https://joinmastodon.org/
 [Lemmy]: https://join-lemmy.org/
 [Pixelfed]: https://pixelfed.org/
@@ -90,33 +94,33 @@ which provides the core functionality of the framework.  Other packages provide
 integrations with various web frameworks, database drivers, and other features.
 Here is the list of packages:
 
-| Package                                             | JSR                                | npm                                | Description                                  |
-| --------------------------------------------------- | ---------------------------------- | ---------------------------------- | -------------------------------------------- |
-| [@fedify/fedify](/packages/fedify/)                 | [JSR]                              | [npm]                              | The core framework of Fedify                 |
-| [@fedify/cli](/packages/cli/)                       | [JSR][jsr:@fedify/cli]             | [npm][npm:@fedify/cli]             | CLI toolchain for testing and debugging      |
-| [@fedify/amqp](/packages/amqp/)                     | [JSR][jsr:@fedify/amqp]            | [npm][npm:@fedify/amqp]            | AMQP/RabbitMQ driver                         |
-| [@fedify/cfworkers](/packages/cfworkers/)           | [JSR][jsr:@fedify/cfworkers]       | [npm][npm:@fedify/cfworkers]       | Cloudflare Workers integration               |
-| [@fedify/denokv](/packages/denokv/)                 | [JSR][jsr:@fedify/denokv]          |                                    | Deno KV integration                          |
-| [@fedify/elysia](/packages/elysia/)                 |                                    | [npm][npm:@fedify/elysia]          | Elysia integration                           |
-| [@fedify/express](/packages/express/)               | [JSR][jsr:@fedify/express]         | [npm][npm:@fedify/express]         | Express integration                          |
-| [@fedify/fastify](/packages/fastify/)               | [JSR][jsr:@fedify/fastify]         | [npm][npm:@fedify/fastify]         | Fastify integration                          |
-| [@fedify/fresh](/packages/fresh/)                   | [JSR][jsr:@fedify/fresh]           |                                    | Fresh integration                            |
-| [@fedify/h3](/packages/h3/)                         | [JSR][jsr:@fedify/h3]              | [npm][npm:@fedify/h3]              | H3 integration                               |
-| [@fedify/hono](/packages/hono/)                     | [JSR][jsr:@fedify/hono]            | [npm][npm:@fedify/hono]            | Hono integration                             |
-| [@fedify/koa](/packages/koa/)                       | [JSR][jsr:@fedify/koa]             | [npm][npm:@fedify/koa]             | Koa integration                              |
-| [@fedify/lint](/packages/lint/)                     | [JSR][jsr:@fedify/lint]            | [npm][npm:@fedify/lint]            | Linting utilities                            |
-| [@fedify/nestjs](/packages/nestjs/)                 |                                    | [npm][npm:@fedify/nestjs]          | NestJS integration                           |
-| [@fedify/next](/packages/next/)                     |                                    | [npm][npm:@fedify/next]            | Next.js integration                          |
-| [@fedify/postgres](/packages/postgres/)             | [JSR][jsr:@fedify/postgres]        | [npm][npm:@fedify/postgres]        | PostgreSQL driver                            |
-| [@fedify/redis](/packages/redis/)                   | [JSR][jsr:@fedify/redis]           | [npm][npm:@fedify/redis]           | Redis driver                                 |
-| [@fedify/relay](/packages/relay/)                   | [JSR][jsr:@fedify/relay]           | [npm][npm:@fedify/relay]           | ActivityPub relay support                    |
-| [@fedify/sqlite](/packages/sqlite/)                 | [JSR][jsr:@fedify/sqlite]          | [npm][npm:@fedify/sqlite]          | SQLite driver                                |
-| [@fedify/sveltekit](/packages/sveltekit/)           | [JSR][jsr:@fedify/sveltekit]       | [npm][npm:@fedify/sveltekit]       | SvelteKit integration                        |
-| [@fedify/testing](/packages/testing/)               | [JSR][jsr:@fedify/testing]         | [npm][npm:@fedify/testing]         | Testing utilities                            |
-| [@fedify/vocab](/packages/vocab/)                   | [JSR][jsr:@fedify/vocab]           | [npm][npm:@fedify/vocab]           | Activity Vocabulary library     |
-| [@fedify/vocab-runtime](/packages/vocab-runtime/)   | [JSR][jsr:@fedify/vocab-runtime]   | [npm][npm:@fedify/vocab-runtime]   | Runtime library for code-generated vocab     |
-| [@fedify/vocab-tools](/packages/vocab-tools/)       | [JSR][jsr:@fedify/vocab-tools]     | [npm][npm:@fedify/vocab-tools]     | Code generation tools for Activity Vocab     |
-| [@fedify/webfinger](/packages/webfinger/)   | [JSR][jsr:@fedify/webfinger]   | [npm][npm:@fedify/webfinger]   | WebFinger client library for ActivityPub     |
+| Package                                           | JSR                              | npm                              | Description                              |
+| ------------------------------------------------- | -------------------------------- | -------------------------------- | ---------------------------------------- |
+| [@fedify/fedify](/packages/fedify/)               | [JSR]                            | [npm]                            | The core framework of Fedify             |
+| [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
+| [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
+| [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
+| [@fedify/denokv](/packages/denokv/)               | [JSR][jsr:@fedify/denokv]        |                                  | Deno KV integration                      |
+| [@fedify/elysia](/packages/elysia/)               |                                  | [npm][npm:@fedify/elysia]        | Elysia integration                       |
+| [@fedify/express](/packages/express/)             | [JSR][jsr:@fedify/express]       | [npm][npm:@fedify/express]       | Express integration                      |
+| [@fedify/fastify](/packages/fastify/)             | [JSR][jsr:@fedify/fastify]       | [npm][npm:@fedify/fastify]       | Fastify integration                      |
+| [@fedify/fresh](/packages/fresh/)                 | [JSR][jsr:@fedify/fresh]         |                                  | Fresh integration                        |
+| [@fedify/h3](/packages/h3/)                       | [JSR][jsr:@fedify/h3]            | [npm][npm:@fedify/h3]            | H3 integration                           |
+| [@fedify/hono](/packages/hono/)                   | [JSR][jsr:@fedify/hono]          | [npm][npm:@fedify/hono]          | Hono integration                         |
+| [@fedify/koa](/packages/koa/)                     | [JSR][jsr:@fedify/koa]           | [npm][npm:@fedify/koa]           | Koa integration                          |
+| [@fedify/lint](/packages/lint/)                   | [JSR][jsr:@fedify/lint]          | [npm][npm:@fedify/lint]          | Linting utilities                        |
+| [@fedify/nestjs](/packages/nestjs/)               |                                  | [npm][npm:@fedify/nestjs]        | NestJS integration                       |
+| [@fedify/next](/packages/next/)                   |                                  | [npm][npm:@fedify/next]          | Next.js integration                      |
+| [@fedify/postgres](/packages/postgres/)           | [JSR][jsr:@fedify/postgres]      | [npm][npm:@fedify/postgres]      | PostgreSQL driver                        |
+| [@fedify/redis](/packages/redis/)                 | [JSR][jsr:@fedify/redis]         | [npm][npm:@fedify/redis]         | Redis driver                             |
+| [@fedify/relay](/packages/relay/)                 | [JSR][jsr:@fedify/relay]         | [npm][npm:@fedify/relay]         | ActivityPub relay support                |
+| [@fedify/sqlite](/packages/sqlite/)               | [JSR][jsr:@fedify/sqlite]        | [npm][npm:@fedify/sqlite]        | SQLite driver                            |
+| [@fedify/sveltekit](/packages/sveltekit/)         | [JSR][jsr:@fedify/sveltekit]     | [npm][npm:@fedify/sveltekit]     | SvelteKit integration                    |
+| [@fedify/testing](/packages/testing/)             | [JSR][jsr:@fedify/testing]       | [npm][npm:@fedify/testing]       | Testing utilities                        |
+| [@fedify/vocab](/packages/vocab/)                 | [JSR][jsr:@fedify/vocab]         | [npm][npm:@fedify/vocab]         | Activity Vocabulary library              |
+| [@fedify/vocab-runtime](/packages/vocab-runtime/) | [JSR][jsr:@fedify/vocab-runtime] | [npm][npm:@fedify/vocab-runtime] | Runtime library for code-generated vocab |
+| [@fedify/vocab-tools](/packages/vocab-tools/)     | [JSR][jsr:@fedify/vocab-tools]   | [npm][npm:@fedify/vocab-tools]   | Code generation tools for Activity Vocab |
+| [@fedify/webfinger](/packages/webfinger/)         | [JSR][jsr:@fedify/webfinger]     | [npm][npm:@fedify/webfinger]     | WebFinger client library for ActivityPub |
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
@@ -153,10 +157,14 @@ Here is the list of packages:
 [npm:@fedify/sveltekit]: https://www.npmjs.com/package/@fedify/sveltekit
 [jsr:@fedify/testing]: https://jsr.io/@fedify/testing
 [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing
+[jsr:@fedify/vocab]: https://jsr.io/@fedify/vocab
+[npm:@fedify/vocab]: https://www.npmjs.com/package/@fedify/vocab
 [jsr:@fedify/vocab-runtime]: https://jsr.io/@fedify/vocab-runtime
 [npm:@fedify/vocab-runtime]: https://www.npmjs.com/package/@fedify/vocab-runtime
 [jsr:@fedify/vocab-tools]: https://jsr.io/@fedify/vocab-tools
 [npm:@fedify/vocab-tools]: https://www.npmjs.com/package/@fedify/vocab-tools
+[jsr:@fedify/webfinger]: https://jsr.io/@fedify/webfinger
+[npm:@fedify/webfinger]: https://www.npmjs.com/package/@fedify/webfinger
 
 
 Sponsors
@@ -168,7 +176,10 @@ financial contributors:[^2]
 
 [^2]: Those lists are automatically updated every hour.
 
+<!-- hongdown-disable -->
+
 <!-- cSpell: disable -->
+
 <!-- DO NOT EDIT(h3): this section is automatically generated by the script -->
 
 ### Corporate sponsors
@@ -191,7 +202,10 @@ Robin Riley, yamanoku, Encyclia, taye, okin, Andy Piper, box464, Evan Prodromou,
 Robin Riley, Markus P, Nils Bergmann, Rameez
 
 <!-- /DO NOT EDIT -->
+
 <!-- cSpell: enable -->
+
+<!-- hongdown-enable -->
 
 ### Become a sponsor
 

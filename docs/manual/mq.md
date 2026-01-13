@@ -14,11 +14,11 @@ Choosing a `MessageQueue` implementation
 
 When choosing an implementation, consider the following factors:
 
- 1. *Runtime environment*: Are you using [Deno], [Node.js], [Bun],
+1.  *Runtime environment*: Are you using [Deno], [Node.js], [Bun],
     or another JavaScript runtime?
- 2. *Scalability need*: Do you need to support multiple workers or servers?
- 3. *Persistence requirements*: Do messages need to survive server restarts?
- 4. *Development vs. production*: Are you in a development/testing phase or
+2.  *Scalability need*: Do you need to support multiple workers or servers?
+3.  *Persistence requirements*: Do messages need to survive server restarts?
+4.  *Development vs. production*: Are you in a development/testing phase or
     deploying to production?
 
 Fedify provides several built-in `MessageQueue` implementations,
@@ -96,7 +96,6 @@ const federation = createFederation<void>({
 });
 ~~~~
 
-[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
 [`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
@@ -401,7 +400,6 @@ export default {
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
 
-[`@fedify/cfworkers`]: https://jsr.io/@fedify/cfworkers
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 
@@ -608,7 +606,7 @@ the `NODE_TYPE=web` nodes, and messages are processed only from
 the `NODE_TYPE=worker` nodes:
 
 | `NODE_TYPE` | Process messages? | Enqueue messages? |
-|-------------|-------------------|-------------------|
+| ----------- | ----------------- | ----------------- |
 | `web`       | Do not process    | Enqueue           |
 | `worker`    | Process           | Do not enqueue    |
 

@@ -55,19 +55,28 @@ Repository structure
 The repository is organized as a monorepo with the following packages:
 
  -  *packages/fedify/*: Main Fedify library (@fedify/fedify)
-    -  ~~src/codegen/~~: **Don't use.** Moved to `@fedify/vocab-tools`. If user code imports from here, notice and suggest migration.
-    -  *src/compat/*: Compatibility layer
-    -  *src/federation/*: Core federation functionality
-    -  *src/nodeinfo/*: NodeInfo protocol implementation
-    -  *src/otel/*: OpenTelemetry integration utilities
-    -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and `src/utils/*`. If user code imports from here, notice and suggest migration.
-    -  *src/shim/*: Platform abstraction layer
-    -  *src/sig/*: Signature implementation
-    -  *src/testing/*: Testing utilities. Most have been migrated to `packages/fixture`(`@fedify/fixture`), except for modules that have dependencies on `@fedify/fedify`.
-    -  *src/utils/*: Utility functions
-    -  ~~src/vocab/~~: **Don't use.** Moved to `@fedify/vocab`. If user code imports from here, notice and suggest migration.
-    -  ~~src/webfinger/~~: **Don't use.** Moved to `@fedify/webfinger`. If user code imports from here, notice and suggest migration.
-    -  ~~src/x/~~: **Don't use.** This directory will be removed in version 2.0.0. Use packages from the `@fedify` scope, which are located in the `packages/` directory (e.g., `@fedify/hono` is in `packages/hono/`).
+     -  ~~src/codegen/~~: **Don't use.** Moved to `@fedify/vocab-tools`. If user code
+        imports from here, notice and suggest migration.
+     -  *src/compat/*: Compatibility layer
+     -  *src/federation/*: Core federation functionality
+     -  *src/nodeinfo/*: NodeInfo protocol implementation
+     -  *src/otel/*: OpenTelemetry integration utilities
+     -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and
+        `src/utils/*`. If user code imports from here, notice and suggest
+        migration.
+     -  *src/shim/*: Platform abstraction layer
+     -  *src/sig/*: Signature implementation
+     -  *src/testing/*: Testing utilities. Most have been migrated to
+        `packages/fixture`(`@fedify/fixture`), except for modules that have
+        dependencies on `@fedify/fedify`.
+     -  *src/utils/*: Utility functions
+     -  ~~src/vocab/~~: **Don't use.** Moved to `@fedify/vocab`. If user code imports
+        from here, notice and suggest migration.
+     -  ~~src/webfinger/~~: **Don't use.** Moved to `@fedify/webfinger`. If user code
+        imports from here, notice and suggest migration.
+     -  ~~src/x/~~: **Don't use.** This directory will be removed in version 2.0.0. Use
+        packages from the `@fedify` scope, which are located in the `packages/`
+        directory (e.g., `@fedify/hono` is in `packages/hono/`).
  -  *packages/cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
  -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
@@ -90,9 +99,11 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit)
  -  *packages/testing/*: Testing utilities (@fedify/testing)
  -  *packages/vocab/*: Activity Vocabulary library (@fedify/vocab)
- -  *packages/webfinger/*: WebFinger client library for ActivityPub (@fedify/webfinger)
+ -  *packages/webfinger/*: WebFinger client library for ActivityPub
+    (@fedify/webfinger)
  -  *packages/vocab-runtime/*: Runtime utilities and types (@fedify/vocab-runtime)
- -  *packages/vocab-tools/*: Utilities and types for code-generated Activity Vocabulary APIs (@fedify/vocab-runtime)
+ -  *packages/vocab-tools/*: Utilities and types for code-generated Activity
+    Vocabulary APIs (@fedify/vocab-runtime)
  -  *docs/*: Documentation built with Node.js and VitePress
  -  *examples/*: Example projects demonstrating Fedify usage
 
@@ -100,44 +111,44 @@ The repository is organized as a monorepo with the following packages:
 Code patterns and principles
 ----------------------------
 
-1. **Builder Pattern**: The `FederationBuilder` class follows a fluent builder
-   pattern for configuring federation components.
+1.  **Builder Pattern**: The `FederationBuilder` class follows a fluent builder
+    pattern for configuring federation components.
 
-2. **Dispatcher Callbacks**: Use function callbacks for mapping routes to
-   handlers, following the pattern in existing dispatchers.
+2.  **Dispatcher Callbacks**: Use function callbacks for mapping routes to
+    handlers, following the pattern in existing dispatchers.
 
-3. **Type Safety**: Maintain strict TypeScript typing throughout. Use generics
-   like `<TContextData>` to allow applications to customize context data.
+3.  **Type Safety**: Maintain strict TypeScript typing throughout. Use generics
+    like `<TContextData>` to allow applications to customize context data.
 
-4. **Testing**: Follow the existing test patterns using Deno's testing
-   framework. Use in-memory stores for testing.
+4.  **Testing**: Follow the existing test patterns using Deno's testing
+    framework. Use in-memory stores for testing.
 
-5. **Framework Agnostic**: Code should work across Deno, Node.js, and Bun
-   environments.
+5.  **Framework Agnostic**: Code should work across Deno, Node.js, and Bun
+    environments.
 
-6. **ActivityPub Objects**: All vocabulary objects follow the class pattern
-   established in the *vocab/* directory.
+6.  **ActivityPub Objects**: All vocabulary objects follow the class pattern
+    established in the *vocab/* directory.
 
 
 Development workflow
 --------------------
 
-1. **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
-   or code generation scripts change.
+1.  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
+    or code generation scripts change.
 
-2. **Checking Code**: Before committing, run `mise run check` from the
-   root directory to check all packages.
+2.  **Checking Code**: Before committing, run `mise run check` from the
+    root directory to check all packages.
 
-3. **Running Tests**: Use `mise run test:deno` for Deno tests or
-   `mise run test` to test across all environments and packages.
+3.  **Running Tests**: Use `mise run test:deno` for Deno tests or
+    `mise run test` to test across all environments and packages.
 
-4. **Documentation**: Follow the Markdown conventions in CONTRIBUTING.md:
-    -  80 characters per line (except for code blocks and URLs)
-    -  Use reference links over inline links
-    -  Use setext headings over ATX headings
-    -  Two new lines before H1/H2 headings
-    -  Wrap file paths in asterisks
-    -  Code blocks should use quadruple tildes with language specified
+4.  **Documentation**: Follow the Markdown conventions in CONTRIBUTING.md:
+     -  80 characters per line (except for code blocks and URLs)
+     -  Use reference links over inline links
+     -  Use setext headings over ATX headings
+     -  Two new lines before H1/H2 headings
+     -  Wrap file paths in asterisks
+     -  Code blocks should use quadruple tildes with language specified
 
 
 Federation handling
@@ -145,11 +156,11 @@ Federation handling
 
 When working with federation code:
 
-1. Use the builder pattern following the `FederationBuilder` class
-2. Implement proper HTTP signature verification for security
-3. Keep ActivityPub compliance in mind for interoperability
-4. Follow existing patterns for handling inbox/outbox operations
-5. Use the queue system for background processing of federation activities
+1.  Use the builder pattern following the `FederationBuilder` class
+2.  Implement proper HTTP signature verification for security
+3.  Keep ActivityPub compliance in mind for interoperability
+4.  Follow existing patterns for handling inbox/outbox operations
+5.  Use the queue system for background processing of federation activities
 
 
 Common tasks
@@ -157,25 +168,28 @@ Common tasks
 
 ### Adding ActivityPub vocabulary types
 
-1. Create a new YAML file in *packages/fedify/src/vocab/* following existing patterns
-2. Run `mise run codegen` to generate TypeScript classes
-3. Export the new types from appropriate module files
+1.  Create a new YAML file in *packages/fedify/src/vocab/* following existing
+    patterns
+2.  Run `mise run codegen` to generate TypeScript classes
+3.  Export the new types from appropriate module files
 
 ### Implementing framework integrations
 
-1. Create a new package in *packages/* directory for new integrations
-2. Follow pattern from existing integration packages (*packages/hono/*, *packages/sveltekit/*)
-3. Use standard request/response interfaces for compatibility
-4. Consider creating example applications in *examples/* that demonstrate usage
+1.  Create a new package in *packages/* directory for new integrations
+2.  Follow pattern from existing integration packages (*packages/hono/*,
+    *packages/sveltekit/*)
+3.  Use standard request/response interfaces for compatibility
+4.  Consider creating example applications in *examples/* that demonstrate usage
 
 ### Creating database adapters
 
-1. For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
-   and *packages/fedify/src/federation/mq.ts*
-2. For specific database adapters: create dedicated packages
-   (*packages/sqlite/*, *packages/postgres/*, *packages/redis/*, *packages/amqp/*)
-3. Follow the pattern from existing database adapter packages
-4. Implement both KV store and message queue interfaces as needed
+1.  For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
+    and *packages/fedify/src/federation/mq.ts*
+2.  For specific database adapters: create dedicated packages
+    (*packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
+    *packages/amqp/*)
+3.  Follow the pattern from existing database adapter packages
+4.  Implement both KV store and message queue interfaces as needed
 
 ### Adding a new package
 
@@ -183,13 +197,13 @@ When adding a new package to the monorepo, the following files must be updated:
 
 **Required updates:**
 
- 1. *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
+1.  *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
     structure list
- 2. *README.md*: Add the package to the "Packages" section table
- 3. *package.json*: Add the `repository` field to the package metadata.
+2.  *README.md*: Add the package to the “Packages” section table
+3.  *package.json*: Add the `repository` field to the package metadata.
     This is required for provenance information when publishing to npm.
- 4. Root *deno.json*: Add the package path to the `workspace` array
- 5. *pnpm-workspace.yaml*: Add the package path to the `packages` array
+4.  Root *deno.json*: Add the package path to the `workspace` array
+5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array
 
 **Conditional updates:**
 
@@ -212,31 +226,32 @@ When adding a new package to the monorepo, the following files must be updated:
 Important security considerations
 ---------------------------------
 
-1. **HTTP Signatures**: Always verify HTTP signatures for incoming federation
-   requests
-2. **Object Integrity**: Use Object Integrity Proofs for content verification
-3. **Key Management**: Follow best practices for key storage and rotation
-4. **Rate Limiting**: Implement rate limiting for public endpoints
-5. **Input Validation**: Validate all input from federated sources
+1.  **HTTP Signatures**: Always verify HTTP signatures for incoming federation
+    requests
+2.  **Object Integrity**: Use Object Integrity Proofs for content verification
+3.  **Key Management**: Follow best practices for key storage and rotation
+4.  **Rate Limiting**: Implement rate limiting for public endpoints
+5.  **Input Validation**: Validate all input from federated sources
 
 
 Testing requirements
 --------------------
 
-1. Write unit tests for all new functionality
-2. Follow the pattern of existing tests
-3. Use the testing utilities in *packages/fedify/src/testing/* or *packages/testing/*
-4. Consider interoperability with other fediverse software
-5. For package-specific tests, follow the testing patterns in each package
+1.  Write unit tests for all new functionality
+2.  Follow the pattern of existing tests
+3.  Use the testing utilities in *packages/fedify/src/testing/* or
+    *packages/testing/*
+4.  Consider interoperability with other fediverse software
+5.  For package-specific tests, follow the testing patterns in each package
 
 
 Documentation standards
 -----------------------
 
-1. Include JSDoc comments for public APIs
-2. Update documentation when changing public APIs
-3. Follow Markdown conventions as described in CONTRIBUTING.md
-4. Include examples for new features
+1.  Include JSDoc comments for public APIs
+2.  Update documentation when changing public APIs
+3.  Follow Markdown conventions as described in CONTRIBUTING.md
+4.  Include examples for new features
 
 
 Branch policy
@@ -247,29 +262,29 @@ maintenance:
 
 ### Branch types
 
-1. **next**: Contains unreleased development for the next major version
-2. **main**: Contains unreleased development for the next minor version
-3. **x.y-maintenance**: Maintenance branches for released major/minor versions
-   (e.g., `1.5-maintenance`, `1.6-maintenance`)
+1.  **next**: Contains unreleased development for the next major version
+2.  **main**: Contains unreleased development for the next minor version
+3.  **x.y-maintenance**: Maintenance branches for released major/minor versions
+    (e.g., `1.5-maintenance`, `1.6-maintenance`)
 
 ### Development workflow
 
-- **Breaking changes**: Target the `next` branch
-- **New features**: Target the `main` branch
-- **Bug fixes**: Target the oldest applicable maintenance branch that contains
-  the bug
+ -  **Breaking changes**: Target the `next` branch
+ -  **New features**: Target the `main` branch
+ -  **Bug fixes**: Target the oldest applicable maintenance branch that contains
+    the bug
 
 ### Release and merge strategy
 
 When a bug is fixed in a maintenance branch:
 
-1. Fix the bug in the oldest affected maintenance branch (e.g., `1.5-maintenance`)
-2. Create a new patch release tag (e.g., `1.5.1`)
-3. Merge the fix into the next maintenance branch (e.g., `1.6-maintenance`)
-4. Create a new patch release tag for that branch (e.g., `1.6.1`)
-5. Continue merging forward through all subsequent maintenance branches
-6. Merge into `main`
-7. Finally merge into `next`
+1.  Fix the bug in the oldest affected maintenance branch (e.g., `1.5-maintenance`)
+2.  Create a new patch release tag (e.g., `1.5.1`)
+3.  Merge the fix into the next maintenance branch (e.g., `1.6-maintenance`)
+4.  Create a new patch release tag for that branch (e.g., `1.6.1`)
+5.  Continue merging forward through all subsequent maintenance branches
+6.  Merge into `main`
+7.  Finally merge into `next`
 
 This ensures that all maintenance branches and the development branches
 include the fix.
@@ -280,10 +295,10 @@ Bugfix process
 
 When fixing bugs:
 
-1. Add regression tests that demonstrate the bug
-2. Fix the bug
-3. Update CHANGES.md with the issue number, PR number, and your name
-4. Target the oldest applicable maintenance branch
+1.  Add regression tests that demonstrate the bug
+2.  Fix the bug
+3.  Update CHANGES.md with the issue number, PR number, and your name
+4.  Target the oldest applicable maintenance branch
 
 
 Feature implementation process
@@ -291,12 +306,13 @@ Feature implementation process
 
 When adding features:
 
-1. Add unit tests for the new feature
-2. Implement the feature
-3. Update documentation for API changes
-4. Verify examples work with the change
-5. Update CHANGES.md with details
-6. Target the main branch for non-breaking changes, or the next branch for breaking changes
+1.  Add unit tests for the new feature
+2.  Implement the feature
+3.  Update documentation for API changes
+4.  Verify examples work with the change
+5.  Update CHANGES.md with details
+6.  Target the main branch for non-breaking changes, or the next branch for
+    breaking changes
 
 
 Commit messages
@@ -304,10 +320,13 @@ Commit messages
 
  -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
     Keep the first line under 50 characters when possible.
+
  -  Focus on *why* the change was made, not just *what* changed.
+
  -  When referencing issues or PRs, use permalink URLs instead of just
     numbers (e.g., `#123`).  This preserves context if the repository
     is moved later.
+
  -  When listing items after a colon, add a blank line after the colon:
 
     ~~~~
@@ -414,18 +433,19 @@ Build and distribution
 
 The monorepo uses different build processes for different packages:
 
-1. **@fedify/fedify**: Uses a custom build process to support multiple environments:
-   - Deno-native modules
-   - npm package via dnt (Deno to Node Transform)
-   - JSR package distribution
+1.  **@fedify/fedify**: Uses a custom build process to support multiple
+    environments:
+     -  Deno-native modules
+     -  npm package via dnt (Deno to Node Transform)
+     -  JSR package distribution
 
-2. **@fedify/cli**: Built with Deno, distributed via JSR and npm
+2.  **@fedify/cli**: Built with Deno, distributed via JSR and npm
 
-3. **Database adapters and integrations**: Use tsdown for TypeScript compilation:
-   - *packages/amqp/*, *packages/elysia*, *packages/express/*, *packages/h3/*,
-     *packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
-     *packages/nestjs/*
-   - Built to support Node.js and Bun environments
+3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
+     -  *packages/amqp/*, *packages/elysia*, *packages/express/*, *packages/h3/*,
+        *packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
+        *packages/nestjs/*
+     -  Built to support Node.js and Bun environments
 
 Ensure changes work across all distribution formats and target environments.
 
@@ -476,7 +496,9 @@ documentation:
 ### Lists
 
  -  Use ` -  ` (space-hyphen-two spaces) for unordered list items
+
  -  Indent nested items with 4 spaces
+
  -  Align continuation text with the item content:
 
     ~~~~
@@ -488,6 +510,7 @@ documentation:
 ### Code blocks
 
  -  Use four tildes (`~~~~`) for code fences instead of backticks
+
  -  Always specify the language identifier:
 
     ~~~~~
@@ -508,6 +531,7 @@ documentation:
 
  -  Use reference-style links placed at the *end of each section*
     (not at document end)
+
  -  Format reference links with consistent spacing:
 
     ~~~~
@@ -536,7 +560,7 @@ beyond standard Markdown.
 Use the `twoslash` modifier to enable TypeScript type checking and hover
 information in code blocks:
 
-~~~~~
+~~~~~ markdown
 ~~~~ typescript twoslash
 import { createFederation } from "@fedify/fedify";
 
@@ -550,7 +574,7 @@ When code examples need variables that shouldn't be shown to readers,
 declare them *before* the `// ---cut-before---` directive.  Content before
 this directive is compiled but hidden from display:
 
-~~~~~
+~~~~~ markdown
 ~~~~ typescript twoslash
 import type { KvStore } from "@fedify/fedify";
 declare const kv: KvStore;
@@ -569,7 +593,7 @@ checks the entire block including the hidden fixture.
 Use code groups to show the same content for different package managers
 or environments:
 
-~~~~
+~~~~~ markdown
 ::: code-group
 
 ~~~~ bash [Deno]
@@ -585,7 +609,7 @@ pnpm add @fedify/fedify
 ~~~~
 
 :::
-~~~~
+~~~~~
 
 ### Links
 

@@ -38,10 +38,10 @@ const federation = createFederation({
 });
 ~~~~
 
-[JSR]: https://jsr.io/@fedify/redis
 [JSR badge]: https://jsr.io/badges/@fedify/redis
-[npm]: https://www.npmjs.com/package/@fedify/redis
+[JSR]: https://jsr.io/@fedify/redis
 [npm badge]: https://img.shields.io/npm/v/@fedify/redis?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/redis
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue

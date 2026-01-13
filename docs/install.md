@@ -1,9 +1,9 @@
 ---
 description: How to install Fedify.
 ---
+
 Installation
 ============
-
 
 Quick start
 -----------
@@ -76,7 +76,6 @@ Fedify is available on [JSR] for [Deno] and on [npm] for [Bun] and [Node.js].
 [npm]: https://www.npmjs.com/package/@fedify/fedify
 [Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
-
 
 ### Deno
 

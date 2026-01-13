@@ -148,7 +148,7 @@ bun run index.ts
 
 :::
 
-> [!TIP] SEE ALSO
+> [!TIP]
 >
 > See also the documentation for [`deno serve`] and
 > [Bun's `export default` syntax].
@@ -205,10 +205,10 @@ imports.
 Fedify requires [Node.js compatibility flag] to function properly on Cloudflare
 Workers.  Add the following to your *wrangler.jsonc* configuration file:
 
-```jsonc
+~~~~ jsonc
 "compatibility_date": "2025-05-31",
 "compatibility_flags": ["nodejs_compat"],
-```
+~~~~
 
 This enables essential Node.js APIs that Fedify depends on, including
 cryptographic functions and DNS resolution.

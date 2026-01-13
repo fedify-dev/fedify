@@ -95,11 +95,14 @@ the actor.  It's usually displayed in the user interface, and used to find
 the actor by the WebFinger protocol, i.e., looking up the fediverse handle
 in the search box.  It's also called the *bare handle*.
 
-By default, Fedify assumes that the actor's identifier is the WebFinger username, but you can decouple the WebFinger username from the actor's identifier if you want.   You can think of the difference between these
-two approaches as analogous to [natural key] vs. [surrogate key] in the database
+By default, Fedify assumes that the actor's identifier is the WebFinger
+username, but you can decouple the WebFinger username from the actor's
+identifier if you want.   You can think of the difference between these two
+approaches as analogous to [natural key] vs. [surrogate key] in the database
 design.
 
-There are pros and cons to using the WebFinger username as the actor's identifier (which is Fedify's default):
+There are pros and cons to using the WebFinger username as the actor's
+identifier (which is Fedify's default):
 
 Pros
 :    -  The actor URI is more predictable and human-readable,
@@ -111,8 +114,8 @@ Cons
         Hence, the fediverse handle is immutable in practice.
      -  It's usually treated as an anti-pattern in the fediverse.
 
-You need to choose the best approach for your use case before implementing the actor
-dispatcher.  If you decide to use the WebFinger username as the actor's
+You need to choose the best approach for your use case before implementing the
+actor dispatcher.  If you decide to use the WebFinger username as the actor's
 identifier, there's nothing to do—Fedify assumes it by default.
 
 If you decide to decouple the WebFinger username from the actor's identifier,
@@ -193,8 +196,9 @@ the actor's following collection.
 ### `endpoints`
 
 The `endpoints` property is an `Endpoints` instance, an object that contains
-the URIs of the actor's endpoints.  The most important endpoint is the `sharedInbox`.  You can use the `Context.getInboxUri()` method with no arguments
-to generate the URI of the actor's shared inbox:
+the URIs of the actor's endpoints.  The most important endpoint is the
+`sharedInbox`.  You can use the `Context.getInboxUri()` method with no
+arguments to generate the URI of the actor's shared inbox:
 
 ~~~~ typescript twoslash
 import { Context } from "@fedify/fedify";
@@ -491,8 +495,9 @@ responses to WebFinger requests.
 > [!TIP]
 > *Since Fedify 1.9.0*, you can also customize WebFinger responses using
 > `~Federatable.setWebFingerLinksDispatcher()` to add custom links with
-> the `template` field. See the [WebFinger documentation](./webfinger.md#customizing-webfinger-endpoint)
-> for details.
+> the `template` field. See the
+> [WebFinger documentation](./webfinger.md#customizing-webfinger-endpoint) for
+> details.
 
 ### `preferredUsername`
 

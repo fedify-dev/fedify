@@ -24,11 +24,11 @@ Currently, Fedify provides the following features out of the box:
 If you want to know more about the project, please take a look at the following
 resources:
 
- -  [GitHub](https://github.com/fedify-dev/fedify)
+ -  [GitHub]
  -  Tutorials: [Learning the basics](./tutorial/basics.md) &
     [Creating a microblog](./tutorial/microblog.md)
- -  [API reference](https://jsr.io/@fedify/fedify)
- -  [Examples](https://github.com/fedify-dev/fedify/tree/main/examples)
+ -  [API reference]
+ -  [Examples]
 
 If you have any questions, suggestions, or feedback, please feel free to
 join our [Matrix chat space] or [Discord server] or [GitHub Discussions].
@@ -36,7 +36,6 @@ join our [Matrix chat space] or [Discord server] or [GitHub Discussions].
 [^1]: You may already know some of the networks in the fediverse, such as
       [Mastodon], [Lemmy], [Pixelfed], [PeerTube], and so on.
 
-[Fedify Demo]: https://dash.deno.com/playground/fedify-demo
 [ActivityPub]: https://www.w3.org/TR/activitypub/
 [fediverse]: https://en.wikipedia.org/wiki/Fediverse
 [Activity Vocabulary]: https://www.w3.org/TR/activitystreams-vocabulary/
@@ -46,9 +45,13 @@ join our [Matrix chat space] or [Discord server] or [GitHub Discussions].
 [FEP-8b32]: https://w3id.org/fep/8b32
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [NodeInfo]: https://nodeinfo.diaspora.software/
+[GitHub]: https://github.com/fedify-dev/fedify
+[API reference]: https://jsr.io/@fedify/fedify
+[Examples]: https://github.com/fedify-dev/fedify/tree/main/examples
 [Matrix chat space]: https://matrix.to/#/#fedify:matrix.org
 [Discord server]: https://discord.gg/bhtwpzURwd
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions
+
 [Mastodon]: https://joinmastodon.org/
 [Lemmy]: https://join-lemmy.org/
 [Pixelfed]: https://pixelfed.org/

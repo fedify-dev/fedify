@@ -6,12 +6,12 @@
 
 This package provides a SQLite-based [`KvStore`] implementation for [Fedify].
 
-[JSR]: https://jsr.io/@fedify/sqlite
 [JSR badge]: https://jsr.io/badges/@fedify/sqlite
-[npm]: https://www.npmjs.com/package/@fedify/sqlite
+[JSR]: https://jsr.io/@fedify/sqlite
 [npm badge]: https://img.shields.io/npm/v/@fedify/sqlite?logo=npm
-[Fedify]: https://fedify.dev/
+[npm]: https://www.npmjs.com/package/@fedify/sqlite
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
+[Fedify]: https://fedify.dev/
 
 
 Usage

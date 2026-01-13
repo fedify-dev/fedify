@@ -40,13 +40,12 @@ new AmqpMessageQueue(await connect("amqp://localhost"), {
 
 For more details, please refer to the docs of [`AmqpMessageQueueOptions`].
 
-[JSR]: https://jsr.io/@fedify/amqp
 [JSR badge]: https://jsr.io/badges/@fedify/amqp
-[npm]: https://www.npmjs.com/package/@fedify/amqp
+[JSR]: https://jsr.io/@fedify/amqp
 [npm badge]: https://img.shields.io/npm/v/@fedify/amqp?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/amqp
 [RabbitMQ]: https://www.rabbitmq.com/
 [Fedify]: https://fedify.dev/
-[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
 [`AmqpMessageQueueOptions`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueueOptions

@@ -57,85 +57,154 @@ fediverse.
 
 ### Activity types
 
- -  [`Accept`](https://jsr.io/@fedify/fedify/doc/vocab/~/Accept)
- -  [`Add`](https://jsr.io/@fedify/fedify/doc/vocab/~/Add)
- -  [`Announce`](https://jsr.io/@fedify/fedify/doc/vocab/~/Announce)
- -  [`Arrive`](https://jsr.io/@fedify/fedify/doc/vocab/~/Arrive)
- -  [`Block`](https://jsr.io/@fedify/fedify/doc/vocab/~/Block)
- -  [`ChatMessage`](https://jsr.io/@fedify/fedify/doc/vocab/~/ChatMessage)
- -  [`Create`](https://jsr.io/@fedify/fedify/doc/vocab/~/Create)
- -  [`Delete`](https://jsr.io/@fedify/fedify/doc/vocab/~/Delete)
- -  [`Dislike`](https://jsr.io/@fedify/fedify/doc/vocab/~/Dislike)
- -  [`EmojiReact`](https://jsr.io/@fedify/fedify/doc/vocab/~/EmojiReact)
- -  [`Flag`](https://jsr.io/@fedify/fedify/doc/vocab/~/Flag)
- -  [`Follow`](https://jsr.io/@fedify/fedify/doc/vocab/~/Follow)
- -  [`Ignore`](https://jsr.io/@fedify/fedify/doc/vocab/~/Ignore)
- -  [`Invite`](https://jsr.io/@fedify/fedify/doc/vocab/~/Invite)
- -  [`Join`](https://jsr.io/@fedify/fedify/doc/vocab/~/Join)
- -  [`Leave`](https://jsr.io/@fedify/fedify/doc/vocab/~/Leave)
- -  [`Like`](https://jsr.io/@fedify/fedify/doc/vocab/~/Like)
- -  [`Listen`](https://jsr.io/@fedify/fedify/doc/vocab/~/Listen)
- -  [`Move`](https://jsr.io/@fedify/fedify/doc/vocab/~/Move)
- -  [`Offer`](https://jsr.io/@fedify/fedify/doc/vocab/~/Offer)
- -  [`Question`](https://jsr.io/@fedify/fedify/doc/vocab/~/Question)
- -  [`Read`](https://jsr.io/@fedify/fedify/doc/vocab/~/Read)
- -  [`Reject`](https://jsr.io/@fedify/fedify/doc/vocab/~/Reject)
- -  [`Remove`](https://jsr.io/@fedify/fedify/doc/vocab/~/Remove)
- -  [`TentativeAccept`](https://jsr.io/@fedify/fedify/doc/vocab/~/TentativeAccept)
- -  [`TentativeReject`](https://jsr.io/@fedify/fedify/doc/vocab/~/TentativeReject)
- -  [`Travel`](https://jsr.io/@fedify/fedify/doc/vocab/~/Travel)
- -  [`Undo`](https://jsr.io/@fedify/fedify/doc/vocab/~/Undo)
- -  [`Update`](https://jsr.io/@fedify/fedify/doc/vocab/~/Update)
- -  [`View`](https://jsr.io/@fedify/fedify/doc/vocab/~/View)
+ -  [`Accept`]
+ -  [`Add`]
+ -  [`Announce`]
+ -  [`Arrive`]
+ -  [`Block`]
+ -  [`ChatMessage`]
+ -  [`Create`]
+ -  [`Delete`]
+ -  [`Dislike`]
+ -  [`EmojiReact`]
+ -  [`Flag`]
+ -  [`Follow`]
+ -  [`Ignore`]
+ -  [`Invite`]
+ -  [`Join`]
+ -  [`Leave`]
+ -  [`Like`]
+ -  [`Listen`]
+ -  [`Move`]
+ -  [`Offer`]
+ -  [`Question`]
+ -  [`Read`]
+ -  [`Reject`]
+ -  [`Remove`]
+ -  [`TentativeAccept`]
+ -  [`TentativeReject`]
+ -  [`Travel`]
+ -  [`Undo`]
+ -  [`Update`]
+ -  [`View`]
+
+[`Accept`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Accept
+[`Add`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Add
+[`Announce`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Announce
+[`Arrive`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Arrive
+[`Block`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Block
+[`ChatMessage`]: https://jsr.io/@fedify/fedify/doc/vocab/~/ChatMessage
+[`Create`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Create
+[`Delete`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Delete
+[`Dislike`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Dislike
+[`EmojiReact`]: https://jsr.io/@fedify/fedify/doc/vocab/~/EmojiReact
+[`Flag`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Flag
+[`Follow`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Follow
+[`Ignore`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Ignore
+[`Invite`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Invite
+[`Join`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Join
+[`Leave`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Leave
+[`Like`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Like
+[`Listen`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Listen
+[`Move`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Move
+[`Offer`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Offer
+[`Question`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Question
+[`Read`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Read
+[`Reject`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Reject
+[`Remove`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Remove
+[`TentativeAccept`]: https://jsr.io/@fedify/fedify/doc/vocab/~/TentativeAccept
+[`TentativeReject`]: https://jsr.io/@fedify/fedify/doc/vocab/~/TentativeReject
+[`Travel`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Travel
+[`Undo`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Undo
+[`Update`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Update
+[`View`]: https://jsr.io/@fedify/fedify/doc/vocab/~/View
 
 ### Actor types
 
- -  [`Application`](https://jsr.io/@fedify/fedify/doc/vocab/~/Application)
- -  [`Group`](https://jsr.io/@fedify/fedify/doc/vocab/~/Group)
- -  [`Organization`](https://jsr.io/@fedify/fedify/doc/vocab/~/Organization)
- -  [`Person`](https://jsr.io/@fedify/fedify/doc/vocab/~/Person)
- -  [`Service`](https://jsr.io/@fedify/fedify/doc/vocab/~/Service)
+ -  [`Application`]
+ -  [`Group`]
+ -  [`Organization`]
+ -  [`Person`]
+ -  [`Service`]
+
+[`Application`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Application
+[`Group`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Group
+[`Organization`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Organization
+[`Person`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Person
+[`Service`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Service
 
 ### Object types
 
- -  [`Article`](https://jsr.io/@fedify/fedify/doc/vocab/~/Article)
- -  [`Audio`](https://jsr.io/@fedify/fedify/doc/vocab/~/Audio)
- -  [`Document`](https://jsr.io/@fedify/fedify/doc/vocab/~/Document)
- -  [`Event`](https://jsr.io/@fedify/fedify/doc/vocab/~/Event)
- -  [`Image`](https://jsr.io/@fedify/fedify/doc/vocab/~/Image)
- -  [`Note`](https://jsr.io/@fedify/fedify/doc/vocab/~/Note)
- -  [`Page`](https://jsr.io/@fedify/fedify/doc/vocab/~/Page)
- -  [`Place`](https://jsr.io/@fedify/fedify/doc/vocab/~/Place)
- -  [`Profile`](https://jsr.io/@fedify/fedify/doc/vocab/~/Profile)
- -  [`Tombstone`](https://jsr.io/@fedify/fedify/doc/vocab/~/Tombstone)
- -  [`Video`](https://jsr.io/@fedify/fedify/doc/vocab/~/Video)
+ -  [`Article`]
+ -  [`Audio`]
+ -  [`Document`]
+ -  [`Event`]
+ -  [`Image`]
+ -  [`Note`]
+ -  [`Page`]
+ -  [`Place`]
+ -  [`Profile`]
+ -  [`Tombstone`]
+ -  [`Video`]
+
+[`Article`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Article
+[`Audio`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Audio
+[`Document`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Document
+[`Event`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Event
+[`Image`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Image
+[`Note`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Note
+[`Page`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Page
+[`Place`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Place
+[`Profile`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Profile
+[`Tombstone`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Tombstone
+[`Video`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Video
 
 ### Collection types
 
- -  [`Collection`](https://jsr.io/@fedify/fedify/doc/vocab/~/Collection)
- -  [`CollectionPage`](https://jsr.io/@fedify/fedify/doc/vocab/~/CollectionPage)
- -  [`OrderedCollection`](https://jsr.io/@fedify/fedify/doc/vocab/~/OrderedCollection)
- -  [`OrderedCollectionPage`](https://jsr.io/@fedify/fedify/doc/vocab/~/OrderedCollectionPage)
+ -  [`Collection`]
+ -  [`CollectionPage`]
+ -  [`OrderedCollection`]
+ -  [`OrderedCollectionPage`]
+
+[`Collection`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Collection
+[`CollectionPage`]: https://jsr.io/@fedify/fedify/doc/vocab/~/CollectionPage
+[`OrderedCollection`]: https://jsr.io/@fedify/fedify/doc/vocab/~/OrderedCollection
+[`OrderedCollectionPage`]: https://jsr.io/@fedify/fedify/doc/vocab/~/OrderedCollectionPage
 
 ### Link types
 
- -  [`Link`](https://jsr.io/@fedify/fedify/doc/vocab/~/Link)
- -  [`Mention`](https://jsr.io/@fedify/fedify/doc/vocab/~/Mention)
+ -  [`Link`]
+ -  [`Mention`]
+
+[`Link`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Link
+[`Mention`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Mention
 
 ### Extended types
 
- -  [`Emoji`](https://jsr.io/@fedify/fedify/doc/vocab/~/Emoji) (Mastodon extension)
- -  [`Hashtag`](https://jsr.io/@fedify/fedify/doc/vocab/~/Hashtag)
- -  [`PropertyValue`](https://jsr.io/@fedify/fedify/doc/vocab/~/PropertyValue) (Schema.org)
- -  [`Relationship`](https://jsr.io/@fedify/fedify/doc/vocab/~/Relationship)
+ -  [`Emoji`] (Mastodon extension)
+ -  [`Hashtag`]
+ -  [`PropertyValue`] (Schema.org)
+ -  [`Relationship`]
+
+[`Emoji`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Emoji
+[`Hashtag`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Hashtag
+[`PropertyValue`]: https://jsr.io/@fedify/fedify/doc/vocab/~/PropertyValue
+[`Relationship`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Relationship
 
 ### Cryptographic types
 
- -  [`Key`](https://jsr.io/@fedify/fedify/doc/vocab/~/Key)
- -  [`Multikey`](https://jsr.io/@fedify/fedify/doc/vocab/~/Multikey)
- -  [`DataIntegrityProof`](https://jsr.io/@fedify/fedify/doc/vocab/~/DataIntegrityProof)
+ -  [`Key`]
+ -  [`Multikey`]
+ -  [`DataIntegrityProof`]
+
+[`Key`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Key
+[`Multikey`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Multikey
+[`DataIntegrityProof`]: https://jsr.io/@fedify/fedify/doc/vocab/~/DataIntegrityProof
 
 ### Service types
 
- -  [`DidService`](https://jsr.io/@fedify/fedify/doc/vocab/~/DidService)
- -  [`Endpoints`](https://jsr.io/@fedify/fedify/doc/vocab/~/Endpoints)
+ -  [`DidService`]
+ -  [`Endpoints`]
+
+[`DidService`]: https://jsr.io/@fedify/fedify/doc/vocab/~/DidService
+[`Endpoints`]: https://jsr.io/@fedify/fedify/doc/vocab/~/Endpoints

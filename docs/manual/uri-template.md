@@ -39,7 +39,7 @@ simple usernames (`alice`), numeric IDs, or UUIDs.  Notice how special
 characters like `:` and spaces are percent-encoded:
 
 | Template              | Value         | Result                 |
-|-----------------------|---------------|------------------------|
+| --------------------- | ------------- | ---------------------- |
 | `/users/{identifier}` | `alice`       | `/users/alice`         |
 | `/users/{identifier}` | `alice:bob`   | `/users/alice%3Abob`   |
 | `/users/{identifier}` | `hello world` | `/users/hello%20world` |
@@ -79,7 +79,7 @@ expansion, reserved characters are kept as-is instead of being percent-encoded.
 This prevents double-encoding issues when your identifier is itself a URI:
 
 | Template               | Value                       | Result                             |
-|------------------------|-----------------------------|------------------------------------|
+| ---------------------- | --------------------------- | ---------------------------------- |
 | `/users/{+identifier}` | `https://example.com/actor` | `/users/https://example.com/actor` |
 | `/users/{+identifier}` | `alice:bob`                 | `/users/alice:bob`                 |
 | `/users/{+identifier}` | `path/to/resource`          | `/users/path/to/resource`          |
@@ -115,7 +115,7 @@ It's useful for optional path segments.  When the variable is empty or
 undefined, nothing is added to the path:
 
 | Template         | Value     | Result    |
-|------------------|-----------|-----------|
+| ---------------- | --------- | --------- |
 | `/api{/version}` | `v1`      | `/api/v1` |
 | `/api{/version}` | *(empty)* | `/api`    |
 
@@ -126,7 +126,7 @@ multiple variables separated by commas, and each will become a separate query
 parameter:
 
 | Template           | Value              | Result                    |
-|--------------------|--------------------|---------------------------|
+| ------------------ | ------------------ | ------------------------- |
 | `/search{?q}`      | `hello`            | `/search?q=hello`         |
 | `/search{?q,lang}` | `q=hello, lang=en` | `/search?q=hello&lang=en` |
 
@@ -137,12 +137,12 @@ This is useful when you already have query parameters in the template and want
 to add more:
 
 | Template               | Value   | Result                     |
-|------------------------|---------|----------------------------|
+| ---------------------- | ------- | -------------------------- |
 | `/search?type=all{&q}` | `hello` | `/search?type=all&q=hello` |
 
 
 Common use cases in Fedify
----------------------------
+--------------------------
 
 ### Actor identifiers
 
@@ -276,7 +276,8 @@ Common pitfalls
 
 Using `{identifier}` when the identifier contains a URI causes double-encoding.
 For example, if your identifier is `"https://example.com/actor"`, the collection
-ID becomes `https://fedify.example/users/https%253A%252F%252Fexample.com%252Factor/followers`
+ID becomes
+`https://fedify.example/users/https%253A%252F%252Fexample.com%252Factor/followers`
 (notice `%253A` instead of `%3A`—the percent sign itself gets encoded).
 
 This is wrong:
@@ -336,7 +337,7 @@ Decision guide
 
 Use this guide to choose the right expansion type:
 
-```mermaid
+~~~~ mermaid
 flowchart TD
     Start[What kind of identifier?]
     Start --> Simple{Simple string?<br/>e.g., username, UUID}
@@ -353,12 +354,12 @@ flowchart TD
     UsePlus --> Example2["Example: /users/{+identifier}"]
     UseSlash --> Example3["Example: /api{/version}"]
     UseQuestion --> Example4["Example: /search{?q}"]
-```
+~~~~
 
 Quick reference:
 
-| If your identifier contains…  | Use                         |
-|--------------------------------|-----------------------------|
+| If your identifier contains…   | Use                         |
+| ------------------------------ | --------------------------- |
 | Just letters, numbers, hyphens | `{identifier}`              |
 | UUIDs                          | `{identifier}`              |
 | URIs or URLs                   | `{+identifier}`             |
@@ -373,15 +374,15 @@ Troubleshooting
 
 Symptoms of using `{identifier}` when you should use `{+identifier}`:
 
-- Double-encoded characters (e.g., `%253A` instead of `%3A`)
-- Collection IDs that don't match the expected format
-- Errors when trying to access generated URIs
+ -  Double-encoded characters (e.g., `%253A` instead of `%3A`)
+ -  Collection IDs that don't match the expected format
+ -  Errors when trying to access generated URIs
 
 Symptoms of using `{+identifier}` when you should use `{identifier}`:
 
-- Routes matching too broadly (catching extra path segments)
-- Security issues with path traversal
-- Unexpected values in your identifier parameter
+ -  Routes matching too broadly (catching extra path segments)
+ -  Security issues with path traversal
+ -  Unexpected values in your identifier parameter
 
 ### Testing your URI Template
 

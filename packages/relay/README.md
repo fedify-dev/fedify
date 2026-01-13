@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
 @fedify/relay: ActivityPub relay for Fedify
-============================================
+===========================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -16,9 +16,18 @@ forward activities between federated instances.
 For comprehensive documentation on building and operating relay servers,
 see the [*Relay server* section in the Fedify manual][manual].
 
+[JSR badge]: https://jsr.io/badges/@fedify/relay
+[JSR]: https://jsr.io/@fedify/relay
+[npm badge]: https://img.shields.io/npm/v/@fedify/relay?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/relay
+[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social]: https://hollo.social/@fedify
+[Fedify]: https://fedify.dev/
+[manual]: https://fedify.dev/manual/relay
+
 
 What is an ActivityPub relay?
-------------------------------
+-----------------------------
 
 ActivityPub relays are infrastructure components that help small instances
 participate effectively in the federated social network by acting as
@@ -131,8 +140,8 @@ const relay = createRelay("litepub", {
 
 ### Subscription handling
 
-The `subscriptionHandler` is required and determines whether to approve or reject
-subscription requests.  For an open relay that accepts all subscriptions:
+The `subscriptionHandler` is required and determines whether to approve or
+reject subscription requests.  For an open relay that accepts all subscriptions:
 
 ~~~~ typescript
 const relay = createRelay("mastodon", {
@@ -251,6 +260,8 @@ For production use, choose a persistent storage backend like Redis or
 PostgreSQL.  See the [Fedify documentation on key–value stores] for more
 details.
 
+[Fedify documentation on key–value stores]: https://fedify.dev/manual/kv
+
 
 API reference
 -------------
@@ -350,14 +361,3 @@ interface RelayFollower {
  -  `actorId`: The actor ID (URL) of the follower
  -  `actor`: The validated Actor object
  -  `state`: The follower's state (`"pending"` or `"accepted"`)
-
-
-[JSR]: https://jsr.io/@fedify/relay
-[JSR badge]: https://jsr.io/badges/@fedify/relay
-[npm]: https://www.npmjs.com/package/@fedify/relay
-[npm badge]: https://img.shields.io/npm/v/@fedify/relay?logo=npm
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Fedify]: https://fedify.dev/
-[Fedify documentation on key–value stores]: https://fedify.dev/manual/kv
-[manual]: https://fedify.dev/manual/relay

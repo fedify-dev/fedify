@@ -10,10 +10,10 @@ This package provides a WebFinger client implementation for looking up
 ActivityPub actors and other resources in the fediverse.  It is part of the
 [Fedify] framework but can be used independently.
 
-[JSR]: https://jsr.io/@fedify/webfinger
 [JSR badge]: https://jsr.io/badges/@fedify/webfinger
-[npm]: https://www.npmjs.com/package/@fedify/webfinger
+[JSR]: https://jsr.io/@fedify/webfinger
 [npm badge]: https://img.shields.io/npm/v/@fedify/webfinger?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/webfinger
 [Fedify]: https://fedify.dev/
 
 
@@ -124,8 +124,11 @@ Documentation
 
 For comprehensive documentation, please refer to:
 
- -  [WebFinger documentation](https://fedify.dev/manual/webfinger)
- -  [API reference](https://jsr.io/@fedify/webfinger/doc/~)
+ -  [WebFinger documentation]
+ -  [API reference]
+
+[WebFinger documentation]: https://fedify.dev/manual/webfinger
+[API reference]: https://jsr.io/@fedify/webfinger/doc/~
 
 
 Related packages
@@ -138,4 +141,6 @@ Related packages
 License
 -------
 
-[MIT License](https://github.com/fedify-dev/fedify/blob/main/LICENSE)
+[MIT License]
+
+[MIT License]: https://github.com/fedify-dev/fedify/blob/main/LICENSE

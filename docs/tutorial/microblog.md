@@ -112,6 +112,12 @@ node --version
 npm --version
 ~~~~
 
+[Deno]: https://deno.com/
+[Bun]: https://bun.sh/
+[Node.js]: https://nodejs.org/
+[Cloudflare Workers]: https://workers.cloudflare.com/
+[various installation methods]: https://nodejs.org/en/download/package-manager
+
 ### Installing the `fedify` command
 
 To set up a Fedify project, you need to install the [`fedify`](../cli.md)
@@ -198,7 +204,7 @@ the following structure:
  -  *.vscode/* — Visual Studio Code related settings
      -  *extensions.json* — Recommended extensions for Visual Studio Code
      -  *settings.json* — Visual Studio Code settings
- -  *node_modules/* — Directory where dependent packages are installed
+ -  *node\_modules/* — Directory where dependent packages are installed
     (contents omitted)
  -  *src/* — Source code
      -  *app.tsx* — Server unrelated to ActivityPub
@@ -270,9 +276,11 @@ its name is *john*, and its username is also *john*.
 > which is difficult to read with the naked eye. If you also have the `jq`
 > command installed on your system, you can use `curl` and `jq` together:
 >
-> ~~~~sh
+> ~~~~ sh
 > curl -H"Accept: application/activity+json" http://localhost:8000/users/john | jq .
 > ~~~~
+
+[Hono]: https://hono.dev/
 
 ### Visual Studio Code
 
@@ -291,7 +299,7 @@ After [installing Visual Studio Code], open the working directory by selecting
 *File* → *Open Folder…* from the menu.
 
 If you see a popup in the bottom right asking <q>Do you want to install
-the recommended 'Biome' extension from biomejs for this repository?</q>,
+the recommended ‘Biome’ extension from biomejs for this repository?</q>,
 click the *Install* button to install the extension. Installing this extension
 will automatically format your TypeScript code, so you don't have to wrestle
 with code styles like indentation or spacing when writing TypeScript code.
@@ -302,16 +310,10 @@ with code styles like indentation or spacing when writing TypeScript code.
 > The difference in productivity depending on whether TypeScript LSP is set up
 > or not is significant.
 
-[Deno]: https://deno.com/
-[Bun]: https://bun.sh/
-[Node.js]: https://nodejs.org/
-[Cloudflare Workers]: https://workers.cloudflare.com/
-[various installation methods]: https://nodejs.org/en/download/package-manager
-[Hono]: https://hono.dev/
+*[LSP]: Language Server Protocol
+
 [Visual Studio Code]: https://code.visualstudio.com/
 [installing Visual Studio Code]: https://code.visualstudio.com/docs/setup/setup-overview
-
-*[LSP]: Language Server Protocol
 
 
 Prerequisites
@@ -394,6 +396,8 @@ Above all, Fedify provides the best experience when used with TypeScript.
 > [!TIP]
 > If you want to learn TypeScript properly and thoroughly, we recommend reading
 > *[The TypeScript Handbook]*. It takes about 30 minutes to read it all.
+
+[The TypeScript Handbook]: https://www.typescriptlang.org/docs/handbook/intro.html
 
 ### JSX
 
@@ -479,8 +483,10 @@ component.
 > :   Opens a component tag named `<Container>`. Must be closed with
 >     `</Container>`.
 
-Among the things passed as props, `children` is worth noting specifically. This is because the child elements of the component are passed as the `children` prop.
-As a result, in the above code, the `html` variable is assigned the HTML tree
+Among the things passed as props, `children` is worth noting specifically. This
+is because the child elements of the component are passed as the `children`
+prop. As a result, in the above code, the `html` variable is assigned the HTML
+tree
 `<div title="Hello, JSX!"><p id="greet">Hello, <strong>JSX</strong>!</p></div>`.
 
 > [!TIP]
@@ -488,7 +494,6 @@ As a result, in the above code, the `html` variable is assigned the HTML tree
 > If you want to know more about JSX, read the *[Writing Markup with JSX]* and
 > *[JavaScript in JSX with Curly Braces]* sections of the React documentation.
 
-[The TypeScript Handbook]: https://www.typescriptlang.org/docs/handbook/intro.html
 [Writing Markup with JSX]: https://react.dev/learn/writing-markup-with-jsx
 [JavaScript in JSX with Curly Braces]: https://react.dev/learn/javascript-in-jsx-with-curly-braces
 
@@ -606,6 +611,8 @@ If you see a screen like this, it's working correctly:
 > To use JSX, the source file extension must be *.jsx* or *.tsx*.
 > Note that both files we edited in this section have the *.tsx* extension.
 
+[Pico CSS]: https://picocss.com/
+
 ### Database setup
 
 Now that we've implemented the visible part, it's time to implement
@@ -635,7 +642,7 @@ Now we need to run the *src/schema.sql* file to create the users table.
 For this, we need the `sqlite3` command, which you can
 [get from the SQLite website] or install from your platform's package manager.
 For macOS, you don't need to get it separately as it is built into the system.
-If you get it directly, you can get the *sqlite-tools-\*.zip* file for your
+If you get it directly, you can get the _sqlite-tools-\*.zip_ file for your
 OS and unzip it. If you use a package manager, you can also install it with
 the following command:
 
@@ -673,6 +680,7 @@ sqlite3 microblog.sqlite3 < src/schema.sql
 The above command will create a *microblog.sqlite3* file, which will store your
 SQLite data.
 
+[SQLite]: https://www.sqlite.org/
 [get from the SQLite website]: https://www.sqlite.org/download.html
 
 ### Connecting to the database in the app
@@ -827,11 +835,8 @@ If the record was properly inserted, you should see output like this (of course,
 `johndoe` will be whatever username you entered):
 
 | `id` | `username` |
-|------|------------|
+| ---- | ---------- |
 | `1`  | `johndoe`  |
-
-[Pico CSS]: https://picocss.com/
-[SQLite]: https://www.sqlite.org/
 
 
 Profile page
@@ -1609,8 +1614,8 @@ the registered private keys when sending activities.
 
 The `generateCryptoKeyPair()` function generates a new private key and public
 key pair and returns it as a [`CryptoKeyPair`] object. For your reference,
-the [`CryptoKeyPair`] type has the type `{ privateKey: CryptoKey;
-publicKey: CryptoKey; }`.
+the [`CryptoKeyPair`] type has the type
+`{ privateKey: CryptoKey; publicKey: CryptoKey; }`.
 
 The `exportJwk()` function returns an object representing the [`CryptoKey`]
 object in JWK format. You don't need to know what the JWK format is.
@@ -1756,11 +1761,10 @@ be inconvenient to deploy somewhere every time we modify the code for testing.
 Wouldn't it be great if we could expose our local server to the internet without
 deployment for immediate testing?
 
-Here's where the [`fedify
-tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
-command comes in handy. In a terminal, open
-a new tab and enter this command followed by the port number of your local
-server:
+Here's where the
+[`fedify tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
+command comes in handy. In a terminal, open a new tab and enter this command
+followed by the port number of your local server:
 
 ~~~~ sh
 fedify tunnel 8000
@@ -1795,7 +1799,8 @@ results to go to their profile page:
 
 ![Actor's profile viewed in Mastodon](./microblog/remote-profile.png)
 
-But this is as far as we can go. Don't try to follow yet! For our actor to be followable from other servers, we need to implement an inbox.
+But this is as far as we can go. Don't try to follow yet! For our actor to be
+followable from other servers, we need to implement an inbox.
 
 > [!NOTE]
 > The `fedify tunnel` command automatically disconnects after a while if not
@@ -2054,8 +2059,8 @@ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
 If the follow request was processed successfully, you should see a result like
 this (of course, the time will be different):
 
-| `following_id` | `follower_id` |       `created`       |
-|----------------|---------------|-----------------------|
+| `following_id` | `follower_id` | `created`             |
+| -------------- | ------------- | --------------------- |
 | `1`            | `2`           | `2024-09-01 10:19:41` |
 
 Let's also check if a new record was created in the `actors` table:
@@ -2064,9 +2069,9 @@ Let's also check if a new record was created in the `actors` table:
 echo "SELECT * FROM actors WHERE id > 1;" | sqlite3 -table microblog.sqlite3
 ~~~~
 
-| `id` | `user_id` |                         `uri`                          |                 `handle`                  |        `name`        |                         `inbox_url`                          |         `shared_inbox_url`          |                       `url`                       |       `created`       |
-|------|-----------|--------------------------------------------------------|-------------------------------------------|----------------------|--------------------------------------------------------------|------------------------------------|---------------------------------------------------|-----------------------|
-| `2`  |         | `https://activitypub.academy/users/dobussia_dovornath` | `@dobussia_dovornath@activitypub.academy` | `Dobussia Dovornath` | `https://activitypub.academy/users/dobussia_dovornath/inbox` | `https://activitypub.academy/inbox` | `https://activitypub.academy/@dobussia_dovornath` | `2024-09-01 10:19:41` |
+| `id` | `user_id` | `uri`                                                  | `handle`                                  | `name`               | `inbox_url`                                                  | `shared_inbox_url`                  | `url`                                             | `created`             |
+| ---- | --------- | ------------------------------------------------------ | ----------------------------------------- | -------------------- | ------------------------------------------------------------ | ----------------------------------- | ------------------------------------------------- | --------------------- |
+| `2`  |           | `https://activitypub.academy/users/dobussia_dovornath` | `@dobussia_dovornath@activitypub.academy` | `Dobussia Dovornath` | `https://activitypub.academy/users/dobussia_dovornath/inbox` | `https://activitypub.academy/inbox` | `https://activitypub.academy/@dobussia_dovornath` | `2024-09-01 10:19:41` |
 
 Now, let's look at ActivityPub.Academy's *Activity Log* again.
 If the `Accept(Follow)` activity sent by our actor arrived well,
@@ -2115,7 +2120,7 @@ includes the `Follow` activity that was received by our inbox earlier. However,
 since we haven't defined any behavior for when the inbox receives
 an `Undo(Follow)` activity, nothing has happened.
 
-### Receiving `Undo(Follow)` Activity
+### Receiving `Undo(Follow)` activity
 
 To implement unfollow, open the *src/federation.ts* file and `import` the `Undo`
 class provided by Fedify:
@@ -2201,8 +2206,8 @@ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
 If the follow request was processed successfully, you should see a result like
 this:
 
-| `following_id` | `follower_id` |       `created`       |
-|----------------|---------------|-----------------------|
+| `following_id` | `follower_id` | `created`             |
+| -------------- | ------------- | --------------------- |
 | `1`            | `2`           | `2024-09-02 01:05:17` |
 
 Now press the unfollow button again, then check the database one more time:
@@ -2215,7 +2220,7 @@ If the unfollow request was processed successfully, the record should have
 disappeared, so you should see a result like this:
 
 | `count(*)` |
-|------------|
+| ---------- |
 | `0`        |
 
 
@@ -2959,8 +2964,8 @@ echo "SELECT * FROM posts;" | sqlite3 -table microblog.sqlite3
 
 You should see a result like this:
 
-| `id` |                     `uri`                     | `actor_id` |       `content`       |                     `url`                     |       `created`       |
-|------|-----------------------------------------------|------------|-----------------------|-----------------------------------------------|-----------------------|
+| `id` | `uri`                                         | `actor_id` | `content`             | `url`                                         | `created`             |
+| ---- | --------------------------------------------- | ---------- | --------------------- | --------------------------------------------- | --------------------- |
 | `1`  | `http://localhost:8000/users/johndoe/posts/1` | `1`        | `It's my first post!` | `http://localhost:8000/users/johndoe/posts/1` | `2024-09-02 08:10:55` |
 
 [stringify-entities]: https://github.com/wooorm/stringify-entities
@@ -3815,8 +3820,8 @@ echo "SELECT * FROM follows WHERE follower_id = 1;" | sqlite3 -table microblog.s
 If successful, you should see a result like this (the value in
 the `following_id` column might be slightly different):
 
-| `following_id` | `follower_id` |       `created`       |
-|----------------|---------------|-----------------------|
+| `following_id` | `follower_id` | `created`             |
+| -------------- | ------------- | --------------------- |
 | `3`            | `1`           | `2024-09-02 14:11:17` |
 
 
@@ -4209,8 +4214,8 @@ echo "SELECT * FROM posts WHERE actor_id != 1" | sqlite3 -table microblog.sqlite
 
 If a record was indeed added, you should see a result like this:
 
-| `id` |                                      `uri`                                       | `actor_id` |                    `content`                    |                               `url`                                |       `created`       |
-|------|----------------------------------------------------------------------------------|------------|-------------------------------------------------|--------------------------------------------------------------------|-----------------------|
+| `id` | `uri`                                                                            | `actor_id` | `content`                                       | `url`                                                              | `created`             |
+| ---- | -------------------------------------------------------------------------------- | ---------- | ----------------------------------------------- | ------------------------------------------------------------------ | --------------------- |
 | `3`  | `https://activitypub.academy/users/algusia_draneoll/statuses/113068684551948316` | `3`        | `<p>Would it send a Create(Note) activity?</p>` | `https://activitypub.academy/@algusia_draneoll/113068684551948316` | `2024-09-02 15:33:32` |
 
 ### Displaying remote posts
@@ -4312,9 +4317,9 @@ want to try solving the following challenges:
 
  -  The current implementation directly outputs the HTML contained in the `Note`
     object received via ActivityPub. Therefore, a malicious ActivityPub server
-    could send a `Create(Note)` activity containing HTML like `<script>while
-    (true) alert('Gotcha!');</script>`. This is called an [XSS] vulnerability.
-    How can we prevent such vulnerabilities?
+    could send a `Create(Note)` activity containing HTML like
+    `<script>while (true) alert('Gotcha!');</script>`. This is called an [XSS]
+    vulnerability. How can we prevent such vulnerabilities?
 
  -  Let's try changing the name of the actor we created by executing
     the following SQL in the SQLite database:
@@ -4340,6 +4345,5 @@ want to try solving the following challenges:
     of [ActivityPub.Academy] to find a way.
 
 [XSS]: https://en.wikipedia.org/wiki/Cross-site_scripting
-
 
 <!-- cSpell: ignore choco winget johndoe Dobussia Dovornath serveo -->

@@ -10,10 +10,10 @@ contribute to the project.
 Bug reports
 -----------
 
-If you find a bug in Fedify, first of all, please search the [GitHub issue
-tracker] to see if the bug has already been reported.  If it hasn't been
-reported yet, please open a new issue.  When you open an issue, please provide
-the following information:
+If you find a bug in Fedify, first of all, please search the
+[GitHub issue tracker] to see if the bug has already been reported.  If it
+hasn't been reported yet, please open a new issue.  When you open an issue,
+please provide the following information:
 
  -  The version of Fedify you are using.
  -  The version of Deno you are using.
@@ -28,10 +28,10 @@ the following information:
 Feature requests
 ----------------
 
-If you have a feature request for Fedify, please search the [GitHub issue
-tracker] to see if the feature has already been requested.  If it hasn't been
-requested yet, please open a new issue.  When you open an issue, please provide
-the following information:
+If you have a feature request for Fedify, please search the
+[GitHub issue tracker] to see if the feature has already been requested.  If it
+hasn't been requested yet, please open a new issue.  When you open an issue,
+please provide the following information:
 
  -  The use case of the feature.
  -  The expected behavior.
@@ -112,14 +112,14 @@ maintenance:
 
 When a bug is fixed in a maintenance branch:
 
- 1. Fix the bug in the oldest affected maintenance branch
+1.  Fix the bug in the oldest affected maintenance branch
     (e.g., *1.5-maintenance*).
- 2. Create a new patch release tag (e.g., `1.5.1`).
- 3. Merge the fix into the next maintenance branch (e.g., *1.6-maintenance*).
- 4. Create a new patch release tag for that branch (e.g., `1.6.1`).
- 5. Continue merging forward through all subsequent maintenance branches.
- 6. Merge into *main*.
- 7. Finally merge into *next*.
+2.  Create a new patch release tag (e.g., `1.5.1`).
+3.  Merge the fix into the next maintenance branch (e.g., *1.6-maintenance*).
+4.  Create a new patch release tag for that branch (e.g., `1.6.1`).
+5.  Continue merging forward through all subsequent maintenance branches.
+6.  Merge into *main*.
+7.  Finally merge into *next*.
 
 This ensures that all maintenance branches and the development branches
 include the fix.
@@ -147,10 +147,10 @@ issue tracker.
 
 ### Feature implementation
 
-If you want to contribute to Fedify, please open a new issue in the [GitHub
-issue tracker] to discuss the change you want to make.  If the change is
-accepted, you can start working on the change.  When you open a pull request,
-please provide the following information:
+If you want to contribute to Fedify, please open a new issue in the
+[GitHub issue tracker] to discuss the change you want to make.  If the change
+is accepted, you can start working on the change.  When you open a pull
+request, please provide the following information:
 
  -  The issue number that the pull request is related to.
  -  The description of the change.
@@ -175,13 +175,13 @@ When adding a new package to the monorepo, the following files must be updated:
 
 **Required updates:**
 
- 1. *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
+1.  *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
     structure list.
- 2. *README.md*: Add the package to the "Packages" section table.
- 3. *package.json*: Add the `repository` field to the package metadata.
+2.  *README.md*: Add the package to the “Packages” section table.
+3.  *package.json*: Add the `repository` field to the package metadata.
     This is required for provenance information when publishing to npm.
- 4. Root *deno.json*: Add the package path to the `workspace` array.
- 5. *pnpm-workspace.yaml*: Add the package path to the `packages` array.
+4.  Root *deno.json*: Add the package path to the `workspace` array.
+5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array.
 
 **Conditional updates:**
 
@@ -225,10 +225,13 @@ for any dependency-related changes.
 
  -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
     Keep the first line under 50 characters when possible.
+
  -  Focus on *why* the change was made, not just *what* changed.
+
  -  When referencing issues or PRs, use permalink URLs instead of just
     numbers (e.g., `#123`).  This preserves context if the repository
     is moved later.
+
  -  When listing items after a colon, add a blank line after the colon:
 
     ~~~~
@@ -243,11 +246,14 @@ for any dependency-related changes.
 When adding entries to *CHANGES.md*, follow these conventions:
 
  -  Use ` -  ` (one space, hyphen, two spaces) for list items.
+
  -  Wrap lines at approximately 80 characters, and indent continuation lines
     by 4 spaces so they align with the bullet text.
+
  -  Write concrete, user-facing descriptions.  Include what changed, why it
     changed, and what users should do differently (especially for breaking
     changes).
+
  -  Use `[[#123]]` markers for issue/PR references, with reference links at
     the end of the version section:
 
@@ -285,7 +291,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/cli/*: The Fedify CLI (@fedify/cli).  The CLI is built with
     [Deno].
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
- -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for Fedify.
+ -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for
+    Fedify.
  -  *packages/denokv/*: Deno KV integration (@fedify/denokv) for Fedify.
  -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.
@@ -312,10 +319,10 @@ The repository is organized as a monorepo with the following packages:
  -  *examples/*: The example projects.  Some examples are built with Deno, and
     some are built with Node.js.
 
-[Deno]: https://deno.com/
-[VitePress]: https://vitepress.dev/
-[Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
+[Deno]: https://deno.com/
+[Node.js]: https://nodejs.org/
+[VitePress]: https://vitepress.dev/
 
 ### Development environment
 
@@ -334,8 +341,6 @@ specified in *mise.toml*.
 The recommended editor for Fedify is [Visual Studio Code] with
 the [Deno extension] installed.  Or you can use any editor that supports Deno;
 see the [*Set Up Your Environment* section][1] in the Deno manual.
-
-[mise]: https://mise.jdx.dev/
 
 > [!CAUTION]
 >
@@ -375,11 +380,12 @@ Immediately after running the `code .` command, Visual Studio Code will open
 the repository, and you can start hacking on Fedify.  If you encounter the
 following message:
 
-> Do you want to install recommended 'Deno' extension from denoland for
+> Do you want to install recommended ‘Deno’ extension from denoland for
 > this repository?
 
 Please click the *Install* button to install the Deno extension.
 
+[mise]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 [1]: https://docs.deno.com/runtime/manual/getting_started/setup_your_environment/
@@ -481,7 +487,6 @@ The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
 > public CLI. It uses the `FEDIFY_TEST_MODE` environment variable internally
 > to configure the init command to use local workspace packages instead of
 > published versions.
-
 
 ### Building the docs
 

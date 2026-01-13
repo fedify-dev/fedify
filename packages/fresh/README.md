@@ -1,3 +1,5 @@
+<!-- hongdown-proper-nouns: Fresh -->
+
 <!-- deno-fmt-ignore-file -->
 
 @fedify/fresh: Integrate Fedify with Fresh 2.x
@@ -22,8 +24,6 @@ const fedifyMiddleware = define.middleware(
 app.use(fedifyMiddleware);
 ~~~~
 
-[Matrix]: https://matrix.to/#/#fedify:matrix.org
-[Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
