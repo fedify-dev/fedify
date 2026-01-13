@@ -309,10 +309,6 @@ jobs:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
-    # Don't know why, but the .gitignore list is not overridden by include list
-    # in deno.json:
-    - run: rm src/vocab/.gitignore
-      working-directory: ${{ github.workspace }}/packages/fedify/
     - run: |
         set -ex
         mise run codegen
