@@ -29,8 +29,26 @@ run = "pnpm --filter '@fedify/*' --recursive --parallel build"
 # Code quality
 [tasks.check]
 description = "Check code formatting, linting, and type checking"
-depends = ["prepare", "check-versions"]
-run = "deno fmt --check && deno lint && deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)') && hongdown --check"
+depends = ["check:fmt", "check:lint", "check:types", "check:md", "check-versions"]
+
+[tasks."check:fmt"]
+description = "Check code formatting"
+depends = ["install"]
+run = "deno fmt --check"
+
+[tasks."check:lint"]
+description = "Check code linting"
+depends = ["install"]
+run = "deno lint"
+
+[tasks."check:types"]
+description = "Check TypeScript types"
+depends = ["install"]
+run = "deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
+
+[tasks."check:md"]
+description = "Check Markdown formatting"
+run = "hongdown --check"
 
 [tasks.check-versions]
 description = "Check that all package versions are consistent across the monorepo"
