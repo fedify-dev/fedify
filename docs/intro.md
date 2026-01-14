@@ -3,7 +3,7 @@ What is Fedify?
 
 Fedify is a TypeScript library for building federated server apps
 powered by [ActivityPub] and other standards, so-called [fediverse].[^1]
-It aims to eliminate the complexity and redundant boilerplate code when
+It aims to eliminate the complexity and boilerplate code when
 building a federated server app, so that you can focus on your business logic
 and user experience.
 
@@ -16,8 +16,8 @@ Currently, Fedify provides the following features out of the box:
  -  [Object Integrity Proofs][FEP-8b32] & [Linked Data Signatures]
  -  Middlewares for handling webhooks
  -  [NodeInfo] protocol
- -  Special touch for interoperability with Mastodon and few other popular
-    fediverse software
+ -  Enhanced interoperability with Mastodon and other popular fediverse
+    software
  -  [Integration with various web frameworks](./manual/integration.md)
  -  [CLI toolchain for testing and debugging](./cli.md)
 

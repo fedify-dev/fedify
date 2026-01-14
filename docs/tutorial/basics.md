@@ -218,7 +218,7 @@ Now, open your web browser and navigate to <http://localhost:8000/>.  You should
 see the <q>Hello, world</q> message.
 
 As you can guess, [`Deno.serve()`] (in case of Deno), [`Bun.serve()`] (in case
-of Bun), and [`serve()`] (in case of Node.js) are a function to create an HTTP
+of Bun), and [`serve()`] (in case of Node.js) are functions to create an HTTP
 server.  They take a callback function that receives a [`Request`] object and
 returns a [`Response`] object. The `Response` object is sent back to the client.
 
@@ -305,7 +305,7 @@ serve({
 
 :::
 
-The `Federation.fetch()` method takes the incoming `Request` and few options.
+The `Federation.fetch()` method takes the incoming `Request` and a few options.
 In this case, we pass `undefined` as the `contextData` because we don't
 need to share any context data here.
 
@@ -613,7 +613,7 @@ Press ^C to close the tunnel.
 > time you restart the command.
 
 However, since `fedify tunnel` is a reverse proxy between the public internet
-and your server, the server still is not aware the fact that it is exposed to
+and your server, the server is still not aware of the fact that it is exposed to
 the public internet through HTTPS.  In order to make the server aware of it,
 you need to place a [x-forwarded-fetch] middleware in front of the `Federation`.
 
@@ -728,7 +728,7 @@ In ActivityPub, an [inbox] is where an actor receives incoming activities from
 other actors.  To accept follow requests from other servers, we need to register
 an inbox listener for the actor *me*.
 
-Let's register an inbox listener for the actor *me*.  First of all, every
+Let's register an inbox listener for the actor *me*.  First, every
 activity is represented as a class in the Fedify framework.  The `Follow` class
 represents the `Follow` activity.  We will use the `Follow` class to handle
 incoming follow requests:

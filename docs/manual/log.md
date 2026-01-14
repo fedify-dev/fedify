@@ -357,7 +357,7 @@ properties:
     the `messageId` property is included in it.  The `messageId` is a unique
     identifier for the background task, which is a UUID.
 
-When you want to trace log messages, first of all you need to use a sink that
+When you want to trace log messages, first you need to use a sink that
 writes log messages as structured data.  For example, you can use
 a [file sink] with a [JSON Lines] formatter.  Oh, and don't forget to set
 `contextLocalStorage` in [`configure()`]!  To sum up, you can configure

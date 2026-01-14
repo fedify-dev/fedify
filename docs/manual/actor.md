@@ -11,7 +11,7 @@ Actor dispatcher
 In ActivityPub, [actors] are entities that can perform [activities].  You can
 register an actor dispatcher so that Fedify can dispatch an appropriate actor
 by its identifier.  Since the actor dispatcher is the most significant part of
-the Fedify, it is the first thing you need to do to make Fedify work.
+Fedify, it is the first thing you need to do to make Fedify work.
 
 An actor dispatcher is a callback function that takes a `Context` object and
 an identifier, and returns an actor object.  The actor object can be one of
@@ -129,7 +129,7 @@ details.
 Key properties of an `Actor`
 ----------------------------
 
-Despite ActivityPub declares every property of an actor as optional,
+Although ActivityPub declares every property of an actor as optional,
 in practice, you need to set some of them to make the actor work properly
 with the existing ActivityPub implementations.  The following shows
 the key properties of an `Actor` object:
@@ -217,7 +217,7 @@ a `CryptographicKey` instance.  This property is usually used for verifying
 See the [next section](#public-keys-of-an-actor) for details.
 
 > [!TIP]
-> In theory, an actor has multiple `publicKeys`, but in practice, the most
+> In theory, an actor has multiple `publicKeys`, but in practice, most
 > implementations have trouble with multiple keys.  Therefore, it is recommended
 > to set only one key in the `publicKey` property.  Usually, it contains
 > the first RSA-PKCS#1-v1.5 public key of the actor.
@@ -481,7 +481,7 @@ to let users change their WebFinger username without breaking the existing
 network, because changing the WebFinger username does not affect the actor URI.
 
 > [!NOTE]
-> We highly recommend you to set the actor's `preferredUsername` property to
+> We highly recommend that you set the actor's `preferredUsername` property to
 > the corresponding WebFinger username so that peers can find the actor's
 > fediverse handle by fetching the actor object.
 

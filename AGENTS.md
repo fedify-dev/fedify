@@ -12,7 +12,7 @@ Project overview
 
 Fedify is a TypeScript library for building federated server applications
 powered by ActivityPub and related standards, facilitating integration with
-the Fediverse. The project aims to eliminate complexity and boilerplate code
+the fediverse. The project aims to eliminate complexity and boilerplate code
 when implementing federation protocols.
 
 Main features:

@@ -141,7 +141,7 @@ A patch set should include the following:
  -  The *CHANGES.md* entry.  The entry should include the issue number,
     the pull request number, and your name (unless you want to be anonymous).
 
-Bug fix pull requests should target the most oldest maintenance branch that
+Bug fix pull requests should target the oldest maintenance branch that
 the bug affects.  If you are not sure which branch to target, please ask in the
 issue tracker.
 
@@ -400,7 +400,7 @@ code .
 > ~~~~
 
 Note that the `mise run codegen` command is required to run only once at
-very first time, or when you update the code generation scripts.   Otherwise,
+the very first time, or when you update the code generation scripts.  Otherwise,
 you can skip the command and just run:
 
 ~~~~ bash
