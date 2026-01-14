@@ -223,12 +223,11 @@ async function handleWebFingerInternal<TContextData>(
   }
   for await (const image of actor.getIcons()) {
     if (image.url?.href == null) continue;
-    const link: Link = {
+    links.push({
       rel: "http://webfinger.net/rel/avatar",
       href: image.url.href.toString(),
-    };
-    if (image.mediaType != null) link.type = image.mediaType;
-    links.push(link);
+      ...(image.mediaType != null && { type: image.mediaType }),
+    });
   }
 
   if (webFingerLinksDispatcher != null) {

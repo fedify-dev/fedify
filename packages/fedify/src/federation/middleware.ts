@@ -128,13 +128,13 @@ export interface FederationQueueOptions {
    * The message queue for incoming activities.  If not provided, incoming
    * activities will not be queued and will be processed immediately.
    */
-  inbox?: MessageQueue;
+  readonly inbox?: MessageQueue;
 
   /**
    * The message queue for outgoing activities.  If not provided, outgoing
    * activities will not be queued and will be sent immediately.
    */
-  outbox?: MessageQueue;
+  readonly outbox?: MessageQueue;
 
   /**
    * The message queue for fanning out outgoing activities.  If not provided,
@@ -142,7 +142,7 @@ export interface FederationQueueOptions {
    * fanned out immediately, which causes slow response times on
    * {@link Context.sendActivity} calls.
    */
-  fanout?: MessageQueue;
+  readonly fanout?: MessageQueue;
 }
 
 /**
@@ -154,20 +154,20 @@ export interface FederationKvPrefixes {
    * processed or not.
    * @default `["_fedify", "activityIdempotence"]`
    */
-  activityIdempotence: KvKey;
+  readonly activityIdempotence: KvKey;
 
   /**
    * The key prefix used for storing remote JSON-LD documents.
    * @default `["_fedify", "remoteDocument"]`
    */
-  remoteDocument: KvKey;
+  readonly remoteDocument: KvKey;
 
   /**
    * The key prefix used for caching public keys.
    * @default `["_fedify", "publicKey"]`
    * @since 0.12.0
    */
-  publicKey: KvKey;
+  readonly publicKey: KvKey;
 
   /**
    * The key prefix used for caching HTTP Message Signatures specs.
@@ -176,7 +176,7 @@ export interface FederationKvPrefixes {
    * @default `["_fedify", "httpMessageSignaturesSpec"]`
    * @since 1.6.0
    */
-  httpMessageSignaturesSpec: KvKey;
+  readonly httpMessageSignaturesSpec: KvKey;
 }
 
 /**

@@ -4,9 +4,9 @@ import { encodeHex } from "byte-encodings/hex";
  * A page of items.
  */
 export interface PageItems<TItem> {
-  prevCursor?: string | null;
-  nextCursor?: string | null;
-  items: TItem[];
+  readonly prevCursor?: string | null;
+  readonly nextCursor?: string | null;
+  readonly items: readonly TItem[];
 }
 
 /**

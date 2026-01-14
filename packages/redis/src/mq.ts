@@ -20,40 +20,40 @@ export interface RedisMessageQueueOptions {
    * This is used to prevent multiple workers from processing the same message,
    * so it should be unique for each worker.
    */
-  workerId?: string;
+  readonly workerId?: string;
 
   /**
    * The Pub/Sub channel key to use for the message queue.  `"fedify_channel"`
    * by default.
    * @default `"fedify_channel"`
    */
-  channelKey?: RedisKey;
+  readonly channelKey?: RedisKey;
 
   /**
    * The Sorted Set key to use for the delayed message queue.  `"fedify_queue"`
    * by default.
    * @default `"fedify_queue"`
    */
-  queueKey?: RedisKey;
+  readonly queueKey?: RedisKey;
 
   /**
    * The key to use for locking the message queue.  `"fedify_lock"` by default.
    * @default `"fedify_lock"`
    */
-  lockKey?: RedisKey;
+  readonly lockKey?: RedisKey;
 
   /**
    * The codec to use for encoding and decoding messages in the key–value store.
    * Defaults to {@link JsonCodec}.
    * @default {@link JsonCodec}
    */
-  codec?: Codec;
+  readonly codec?: Codec;
 
   /**
    * The poll interval for the message queue.  5 seconds by default.
    * @default `{ seconds: 5 }`
    */
-  pollInterval?: Temporal.Duration | Temporal.DurationLike;
+  readonly pollInterval?: Temporal.Duration | Temporal.DurationLike;
 }
 
 /**
@@ -130,7 +130,7 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
   }
 
   async enqueueMany(
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (messages.length === 0) return;

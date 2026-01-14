@@ -59,7 +59,7 @@ export interface MessageQueue {
    * @param options Additional options for enqueuing the messages.
    */
   enqueueMany?: (
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ) => Promise<void>;
 
@@ -138,7 +138,7 @@ export class InProcessMessageQueue implements MessageQueue {
   }
 
   enqueueMany(
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (messages.length === 0) return Promise.resolve();
@@ -243,7 +243,7 @@ export class ParallelMessageQueue implements MessageQueue {
   }
 
   async enqueueMany(
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (this.queue.enqueueMany == null) {

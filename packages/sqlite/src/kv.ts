@@ -21,13 +21,13 @@ export interface SqliteKvStoreOptions {
    * `"fedify_kv"` by default.
    * @default `"fedify_kv"`
    */
-  tableName?: string;
+  readonly tableName?: string;
 
   /**
    * Whether the table has been initialized.  `false` by default.
    * @default `false`
    */
-  initialized?: boolean;
+  readonly initialized?: boolean;
 }
 
 /**

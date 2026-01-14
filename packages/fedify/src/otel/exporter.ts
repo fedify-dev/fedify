@@ -19,17 +19,17 @@ export interface SignatureVerificationDetails {
   /**
    * Whether HTTP Signatures were verified.
    */
-  httpSignaturesVerified: boolean;
+  readonly httpSignaturesVerified: boolean;
 
   /**
    * The key ID used for HTTP signature verification, if available.
    */
-  httpSignaturesKeyId?: string;
+  readonly httpSignaturesKeyId?: string;
 
   /**
    * Whether Linked Data Signatures were verified.
    */
-  ldSignaturesVerified: boolean;
+  readonly ldSignaturesVerified: boolean;
 }
 
 /**
@@ -43,62 +43,62 @@ export interface TraceActivityRecord {
   /**
    * The trace ID from OpenTelemetry.
    */
-  traceId: string;
+  readonly traceId: string;
 
   /**
    * The span ID from OpenTelemetry.
    */
-  spanId: string;
+  readonly spanId: string;
 
   /**
    * The parent span ID, if any.
    */
-  parentSpanId?: string;
+  readonly parentSpanId?: string;
 
   /**
    * Whether this is an inbound or outbound activity.
    */
-  direction: ActivityDirection;
+  readonly direction: ActivityDirection;
 
   /**
    * The ActivityPub activity type (e.g., "Create", "Follow", "Like").
    */
-  activityType: string;
+  readonly activityType: string;
 
   /**
    * The activity's ID URL, if present.
    */
-  activityId?: string;
+  readonly activityId?: string;
 
   /**
    * The actor ID URL (sender of the activity).
    */
-  actorId?: string;
+  readonly actorId?: string;
 
   /**
    * The full JSON representation of the activity.
    */
-  activityJson: string;
+  readonly activityJson: string;
 
   /**
    * Whether the activity was verified (for inbound activities).
    */
-  verified?: boolean;
+  readonly verified?: boolean;
 
   /**
    * Detailed signature verification information (for inbound activities).
    */
-  signatureDetails?: SignatureVerificationDetails;
+  readonly signatureDetails?: SignatureVerificationDetails;
 
   /**
    * The timestamp when this record was created (ISO 8601 format).
    */
-  timestamp: string;
+  readonly timestamp: string;
 
   /**
    * The target inbox URL (for outbound activities).
    */
-  inboxUrl?: string;
+  readonly inboxUrl?: string;
 }
 
 /**
@@ -110,22 +110,22 @@ export interface TraceSummary {
   /**
    * The trace ID.
    */
-  traceId: string;
+  readonly traceId: string;
 
   /**
    * The timestamp of the first activity in the trace.
    */
-  timestamp: string;
+  readonly timestamp: string;
 
   /**
    * The number of activities in the trace.
    */
-  activityCount: number;
+  readonly activityCount: number;
 
   /**
    * Activity types present in this trace.
    */
-  activityTypes: string[];
+  readonly activityTypes: readonly string[];
 }
 
 /**
@@ -139,13 +139,13 @@ export interface FedifySpanExporterOptions {
    * If not specified, data will be stored indefinitely
    * (or until manually deleted).
    */
-  ttl?: Temporal.Duration;
+  readonly ttl?: Temporal.Duration;
 
   /**
    * The key prefix for storing trace data in the KvStore.
    * Defaults to `["fedify", "traces"]`.
    */
-  keyPrefix?: KvKey;
+  readonly keyPrefix?: KvKey;
 }
 
 /**
@@ -470,24 +470,18 @@ export class FedifySpanExporter implements SpanExporter {
     await this.#setWithCasRetry<TraceSummary>(
       summaryKey,
       (existing) => {
-        const summary: TraceSummary = existing != null
-          ? {
-            traceId: existing.traceId,
-            timestamp: existing.timestamp,
-            activityCount: existing.activityCount,
-            activityTypes: [...existing.activityTypes],
-          }
-          : {
-            traceId: record.traceId,
-            timestamp: record.timestamp,
-            activityCount: 0,
-            activityTypes: [],
-          };
-        summary.activityCount += 1;
-        if (!summary.activityTypes.includes(record.activityType)) {
-          summary.activityTypes.push(record.activityType);
-        }
-        return summary;
+        const activityCount = existing != null ? existing.activityCount + 1 : 1;
+        const activityTypes = existing != null
+          ? existing.activityTypes.includes(record.activityType)
+            ? existing.activityTypes
+            : [...existing.activityTypes, record.activityType]
+          : [record.activityType];
+        return {
+          traceId: existing?.traceId ?? record.traceId,
+          timestamp: existing?.timestamp ?? record.timestamp,
+          activityCount,
+          activityTypes,
+        };
       },
       options,
     );

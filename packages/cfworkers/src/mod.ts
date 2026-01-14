@@ -185,7 +185,7 @@ export class WorkersMessageQueue implements MessageQueue {
 
   enqueueMany(
     // deno-lint-ignore no-explicit-any
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     const requests: MessageSendRequest[] = messages.map((msg) => ({

@@ -36,7 +36,7 @@ Checklist
  -  [ ] Did you write some relevant docs about this change (if it's a new feature)?
  -  [ ] Did you write a regression test to reproduce the bug (if it's a bug fix)?
  -  [ ] Did you write some tests for this change (if it's a new feature)?
- -  [ ] Did you run `deno task test-all` on your machine?
+ -  [ ] Did you run `mise test` on your machine?
 
 
 Additional notes

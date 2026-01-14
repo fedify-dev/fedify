@@ -1,6 +1,6 @@
 export interface SenderKeyJwkPair {
-  keyId: string;
-  privateKey: JsonWebKey;
+  readonly keyId: string;
+  readonly privateKey: JsonWebKey;
 }
 
 /**
@@ -15,41 +15,46 @@ export interface SenderKeyJwkPair {
 export type Message = FanoutMessage | OutboxMessage | InboxMessage;
 
 export interface FanoutMessage {
-  type: "fanout";
-  id: ReturnType<typeof crypto.randomUUID>;
-  baseUrl: string;
-  keys: SenderKeyJwkPair[];
-  inboxes: Record<string, { actorIds: string[]; sharedInbox: boolean }>;
-  activity: unknown;
-  activityId?: string;
-  activityType: string;
-  collectionSync?: string;
-  traceContext: Record<string, string>;
+  readonly type: "fanout";
+  readonly id: ReturnType<typeof crypto.randomUUID>;
+  readonly baseUrl: string;
+  readonly keys: readonly SenderKeyJwkPair[];
+  readonly inboxes: Readonly<
+    Record<
+      string,
+      { readonly actorIds: readonly string[]; readonly sharedInbox: boolean }
+    >
+  >;
+  readonly activity: unknown;
+  readonly activityId?: string;
+  readonly activityType: string;
+  readonly collectionSync?: string;
+  readonly traceContext: Readonly<Record<string, string>>;
 }
 
 export interface OutboxMessage {
-  type: "outbox";
-  id: ReturnType<typeof crypto.randomUUID>;
-  baseUrl: string;
-  keys: SenderKeyJwkPair[];
-  activity: unknown;
-  activityId?: string;
-  activityType: string;
-  inbox: string;
-  sharedInbox: boolean;
-  started: string;
-  attempt: number;
-  headers: Record<string, string>;
-  traceContext: Record<string, string>;
+  readonly type: "outbox";
+  readonly id: ReturnType<typeof crypto.randomUUID>;
+  readonly baseUrl: string;
+  readonly keys: readonly SenderKeyJwkPair[];
+  readonly activity: unknown;
+  readonly activityId?: string;
+  readonly activityType: string;
+  readonly inbox: string;
+  readonly sharedInbox: boolean;
+  readonly started: string;
+  readonly attempt: number;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly traceContext: Readonly<Record<string, string>>;
 }
 
 export interface InboxMessage {
-  type: "inbox";
-  id: ReturnType<typeof crypto.randomUUID>;
-  baseUrl: string;
-  activity: unknown;
-  started: string;
-  attempt: number;
-  identifier: string | null;
-  traceContext: Record<string, string>;
+  readonly type: "inbox";
+  readonly id: ReturnType<typeof crypto.randomUUID>;
+  readonly baseUrl: string;
+  readonly activity: unknown;
+  readonly started: string;
+  readonly attempt: number;
+  readonly identifier: string | null;
+  readonly traceContext: Readonly<Record<string, string>>;
 }

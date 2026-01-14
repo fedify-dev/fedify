@@ -236,11 +236,14 @@ export function parseNodeInfo(
       metadata = Object.fromEntries(Object.entries(data.metadata));
     } else if (!options.tryBestEffort) return null;
   }
-  const result: NodeInfo = { software, protocols, usage };
-  if (services != null) result.services = services;
-  if (openRegistrations != null) result.openRegistrations = openRegistrations;
-  if (metadata != null) result.metadata = metadata;
-  return result;
+  return {
+    software,
+    protocols,
+    usage,
+    ...(services != null && { services }),
+    ...(openRegistrations != null && { openRegistrations }),
+    ...(metadata != null && { metadata }),
+  };
 }
 
 export function parseSoftware(
@@ -292,11 +295,12 @@ export function parseSoftware(
       if (!options.tryBestEffort) return null;
     }
   }
-  const result: Software = { name, version };
-  if (repository != null) result.repository = repository;
-  if (homepage != null) result.homepage = homepage;
-
-  return result;
+  return {
+    name,
+    version,
+    ...(repository != null && { repository }),
+    ...(homepage != null && { homepage }),
+  };
 }
 
 export function parseProtocol(data: unknown): Protocol | null {
@@ -333,10 +337,10 @@ export function parseServices(
     outbound = os.filter((o) => o != null) as OutboundService[];
     if (os.length > outbound.length && !options.tryBestEffort) return null;
   }
-  const result: Services = {};
-  if (inbound != null) result.inbound = inbound;
-  if (outbound != null) result.outbound = outbound;
-  return result;
+  return {
+    ...(inbound != null && { inbound }),
+    ...(outbound != null && { outbound }),
+  };
 }
 
 export function parseInboundService(data: unknown): InboundService | null {
@@ -377,44 +381,51 @@ export function parseUsage(
   options: ParseNodeInfoOptions = {},
 ): Usage | null {
   if (typeof data !== "object" || data == null) return null;
-  const users: Usage["users"] = {};
+  let total: number | undefined;
+  let activeHalfyear: number | undefined;
+  let activeMonth: number | undefined;
   if ("users" in data && typeof data.users === "object" && data.users != null) {
     if ("total" in data.users) {
       if (typeof data.users.total === "number") {
-        users.total = data.users.total;
+        total = data.users.total;
       } else {
         if (!options.tryBestEffort) return null;
         if (typeof data.users.total === "string") {
           const n = parseInt(data.users.total);
-          if (!isNaN(n)) users.total = n;
+          if (!isNaN(n)) total = n;
         }
       }
     }
     if ("activeHalfyear" in data.users) {
       if (typeof data.users.activeHalfyear === "number") {
-        users.activeHalfyear = data.users.activeHalfyear;
+        activeHalfyear = data.users.activeHalfyear;
       } else {
         if (!options.tryBestEffort) return null;
         if (typeof data.users.activeHalfyear === "string") {
           const n = parseInt(data.users.activeHalfyear);
-          if (!isNaN(n)) users.activeHalfyear = n;
+          if (!isNaN(n)) activeHalfyear = n;
         }
       }
     }
     if ("activeMonth" in data.users) {
       if (typeof data.users.activeMonth === "number") {
-        users.activeMonth = data.users.activeMonth;
+        activeMonth = data.users.activeMonth;
       } else {
         if (!options.tryBestEffort) return null;
         if (typeof data.users.activeMonth === "string") {
           const n = parseInt(data.users.activeMonth);
-          if (!isNaN(n)) users.activeMonth = n;
+          if (!isNaN(n)) activeMonth = n;
         }
       }
     }
   } else {
     if (!options.tryBestEffort) return null;
   }
+  const users: Usage["users"] = {
+    ...(total != null && { total }),
+    ...(activeHalfyear != null && { activeHalfyear }),
+    ...(activeMonth != null && { activeMonth }),
+  };
   let localPosts = 0;
   if ("localPosts" in data) {
     if (typeof data.localPosts === "number") {

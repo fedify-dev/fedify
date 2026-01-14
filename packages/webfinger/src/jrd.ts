@@ -6,22 +6,22 @@ export interface ResourceDescriptor {
   /**
    * A URI that identifies the entity that this descriptor describes.
    */
-  subject?: string;
+  readonly subject?: string;
 
   /**
    * URIs that identify the same entity as the `subject`.
    */
-  aliases?: string[];
+  readonly aliases?: readonly string[];
 
   /**
    * Conveys additional information about the `subject` of this descriptor.
    */
-  properties?: Record<string, string>;
+  readonly properties?: Readonly<Record<string, string>>;
 
   /**
    * Links to other resources.
    */
-  links?: Link[];
+  readonly links?: readonly Link[];
 }
 
 /**
@@ -33,29 +33,29 @@ export interface Link {
    * The link's relation type, which is either a URI or a registered relation
    * type (see [RFC 5988](https://datatracker.ietf.org/doc/html/rfc5988)).
    */
-  rel: string;
+  readonly rel: string;
 
   /**
    * The media type of the target resource (see
    * [RFC 6838](https://datatracker.ietf.org/doc/html/rfc6838)).
    */
-  type?: string;
+  readonly type?: string;
 
   /**
    * A URI pointing to the target resource.
    */
-  href?: string;
+  readonly href?: string;
 
   /**
    * Human-readable titles describing the link relation.  If the language is
    * unknown or unspecified, the key is `"und"`.
    */
-  titles?: Record<string, string>;
+  readonly titles?: Readonly<Record<string, string>>;
 
   /**
    * Conveys additional information about the link relation.
    */
-  properties?: Record<string, string>;
+  readonly properties?: Readonly<Record<string, string>>;
 
   /**
    * A URI Template (RFC 6570) that can be used to construct URIs by
@@ -63,5 +63,5 @@ export interface Link {
    * where parameters like account URIs need to be dynamically inserted.
    * @since 1.9.0
    */
-  template?: string;
+  readonly template?: string;
 }

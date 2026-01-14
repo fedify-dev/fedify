@@ -6,6 +6,7 @@ exclude = [
   "CLAUDE.md",
   "GEMINI.md",
   "WARP.md",
+  "packages/fedify/src/cfworkers/**",
 ]
 
 [heading]

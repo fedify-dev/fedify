@@ -288,6 +288,6 @@ export interface Recipient {
     /**
      * The URI of the actor's shared inbox.
      */
-    sharedInbox: URL | null;
+    readonly sharedInbox: URL | null;
   } | null;
 }
