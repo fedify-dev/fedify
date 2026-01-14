@@ -422,6 +422,25 @@ For workspace packages, use the pnpm catalog (*pnpm-workspace.yaml*) to manage
 versions centrally.  In *package.json*, reference catalog versions with
 `"catalog:"` instead of hardcoding version numbers.
 
+When adding dependencies that are published to both JSR and npm (like Optique),
+use the appropriate package registry for each configuration:
+
+ -  *deno.json*: Use the JSR package (e.g., `jsr:@optique/core`)
+ -  *package.json*: Use the npm package (e.g., `@optique/core`)
+
+This ensures optimal compatibility with each runtime environment while
+maintaining the same functionality across both Deno and Node.js/Bun.
+
+When the JSR and npm package names differ (like Hono: `jsr:@hono/hono` vs
+`hono`), align imports to the npm package name in *deno.json* using an alias:
+
+~~~~
+"hono": "jsr:@hono/hono@^4.0.0"
+~~~~
+
+This allows consistent imports across both environments using the npm package
+name (e.g., `import { Hono } from "hono"`).
+
 Forgetting to add a dependency to *package.json* will cause Node.js and Bun
 tests to fail with `ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
 
