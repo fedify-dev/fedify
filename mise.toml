@@ -1,9 +1,15 @@
 [tools]
 bun = "1.2.22"
 deno = "2.6.4"
-"github:dahlia/hongdown" = "0.2.5"
 node = "22"
 pnpm = "10.28.0"
+
+[tools."github:dahlia/hongdown"]
+version = "0.2.6"
+
+[tools."github:dahlia/hongdown".platforms]
+linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
+linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 
 # Installation and setup
 [tasks.install]
