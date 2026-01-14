@@ -1,4 +1,5 @@
-import { createFederation, Person } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 /* imports */
 
