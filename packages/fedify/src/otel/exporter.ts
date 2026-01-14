@@ -473,7 +473,7 @@ export class FedifySpanExporter implements SpanExporter {
         const activityCount = existing != null ? existing.activityCount + 1 : 1;
         const activityTypes = existing != null
           ? existing.activityTypes.includes(record.activityType)
-            ? [...existing.activityTypes]
+            ? existing.activityTypes
             : [...existing.activityTypes, record.activityType]
           : [record.activityType];
         return {
