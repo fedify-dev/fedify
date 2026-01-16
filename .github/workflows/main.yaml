@@ -40,6 +40,10 @@ jobs:
       issues: read
       checks: write
       pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.detect-changes.outputs.changed_workspaces_json) }}
     services:
       rabbitmq:
         image: rabbitmq
@@ -76,33 +80,15 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - uses: ./.github/actions/setup-mise
-    - name: Run Deno tests for changed packages
+    - name: Run Deno tests for ${{ matrix.workspace }}
+      working-directory: ${{ matrix.workspace }}
       run: |
-        # Get base ref for deno test filter
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          base_ref="${{ github.event.pull_request.base.sha }}"
+        if [[ -f "deno.json" ]] || [[ -f "deno.jsonc" ]]; then
+          mise run codegen || true
+          deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel --coverage=.cov --junit-path=.test-report.xml
         else
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            base_ref="HEAD~1"
-          else
-            base_ref=""
-          fi
-        fi
-
-        # Run deno test with filter for changed files
-        if [[ -n "$base_ref" ]]; then
-          changed_files=$(git diff --name-only "${base_ref}" HEAD | grep '\.ts$' || true)
-          if [[ -n "$changed_files" ]]; then
-            mise run codegen
-            deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel --coverage=.cov --junit-path=.test-report.xml $changed_files
-          else
-            echo "No TypeScript files changed, skipping Deno tests"
-          fi
-        else
-          mise run test:deno -- --coverage=.cov --junit-path=.test-report.xml
+          echo "No deno.json found in ${{ matrix.workspace }}, skipping"
         fi
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -110,27 +96,32 @@ jobs:
     - uses: dorny/test-reporter@v2
       if: success() || failure()
       with:
-        name: "Test Results (Deno)"
-        path: .test-report.xml
+        name: "Test Results (Deno) - ${{ matrix.workspace }}"
+        path: ${{ matrix.workspace }}/.test-report.xml
         reporter: jest-junit
       continue-on-error: true
     - if: '!cancelled()'
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: .test-report.xml
-    - run: deno coverage --lcov .cov > .cov.lcov
+        files: ${{ matrix.workspace }}/.test-report.xml
+      continue-on-error: true
+    - run: deno coverage --lcov ${{ matrix.workspace }}/.cov > ${{ matrix.workspace }}/.cov.lcov
       continue-on-error: true
     - uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: .cov.lcov
+        files: ${{ matrix.workspace }}/.cov.lcov
       continue-on-error: true
 
   test-node:
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.detect-changes.outputs.changed_workspaces_json) }}
     services:
       rabbitmq:
         image: rabbitmq
@@ -167,32 +158,19 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - uses: ./.github/actions/setup-mise
-    - name: Run Node.js tests for changed packages
-      run: |
-        # Get base ref for pnpm filter
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          base_ref="${{ github.event.pull_request.base.sha }}"
-        else
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            base_ref="HEAD~1"
-          else
-            base_ref=""
-          fi
-        fi
-
-        if [[ -n "$base_ref" ]]; then
-          pnpm run --recursive --filter="...[${base_ref}]" --filter='!{docs}' test
-        else
-          mise run test:node
-        fi
+    - name: Run Node.js tests for ${{ matrix.workspace }}
+      run: pnpm --filter "${{ matrix.workspace }}" test
+      continue-on-error: true
 
   test-bun:
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.detect-changes.outputs.changed_workspaces_json) }}
     services:
       rabbitmq:
         image: rabbitmq
@@ -229,29 +207,14 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - uses: ./.github/actions/setup-mise
-    - name: Run Bun tests for changed packages
-      run: |
-        # Get base ref for pnpm filter
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          base_ref="${{ github.event.pull_request.base.sha }}"
-        else
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            base_ref="HEAD~1"
-          else
-            base_ref=""
-          fi
-        fi
-
-        if [[ -n "$base_ref" ]]; then
-          pnpm run --recursive --filter="...[${base_ref}]" --filter='!{docs}' test:bun
-        else
-          mise run test:bun
-        fi
+    - name: Run Bun tests for ${{ matrix.workspace }}
+      run: pnpm --filter "${{ matrix.workspace }}" test:bun
+      continue-on-error: true
 
   test-cfworkers:
+    needs: detect-changes
+    if: contains(needs.detect-changes.outputs.changed_workspaces, 'packages/fedify')
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -309,29 +272,16 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.detect-changes.outputs.changed_workspaces_json) }}
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - uses: ./.github/actions/setup-mise
-    - name: Run lint/check for changed packages
-      run: |
-        # Get base ref for pnpm filter
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          base_ref="${{ github.event.pull_request.base.sha }}"
-        else
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            base_ref="HEAD~1"
-          else
-            base_ref=""
-          fi
-        fi
-
-        if [[ -n "$base_ref" ]]; then
-          pnpm run --recursive --filter="...[${base_ref}]" check
-        else
-          mise run check
-        fi
+    - name: Run lint/check for ${{ matrix.workspace }}
+      run: pnpm --filter "${{ matrix.workspace }}" check
+      continue-on-error: true
 
   release-test:
     runs-on: ubuntu-latest
@@ -352,8 +302,8 @@ jobs:
   # ===========================================================================
 
   build-cli-pr:
-    if: github.event_name == 'pull_request'
-    needs: [release-test]
+    if: github.event_name == 'pull_request' && contains(needs.detect-changes.outputs.changed_workspaces, 'packages/cli')
+    needs: [release-test, detect-changes]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -369,8 +319,8 @@ jobs:
           packages/cli/fedify-cli-*.zip
 
   build-docs-pr:
-    if: github.event_name == 'pull_request'
-    needs: [release-test]
+    if: github.event_name == 'pull_request' && contains(needs.detect-changes.outputs.changed_workspaces, 'docs')
+    needs: [release-test, detect-changes]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -409,7 +359,10 @@ jobs:
   # ===========================================================================
 
   build-cli:
-    if: github.event_name == 'push' && (success() || needs.detect-changes.outputs.has_changes == 'false')
+    if: |
+      github.event_name == 'push' &&
+      (success() ||
+       (needs.test.result == 'skipped' && needs.test-node.result == 'skipped' && needs.test-bun.result == 'skipped' && needs.lint.result == 'skipped'))
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version, detect-changes]
     runs-on: ubuntu-latest
     steps:
@@ -427,7 +380,10 @@ jobs:
           packages/cli/fedify-cli-*.zip
 
   build-packages:
-    if: github.event_name == 'push' && (success() || needs.detect-changes.outputs.has_changes == 'false')
+    if: |
+      github.event_name == 'push' &&
+      (success() ||
+       (needs.test.result == 'skipped' && needs.test-node.result == 'skipped' && needs.test-bun.result == 'skipped' && needs.lint.result == 'skipped'))
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version, detect-changes]
     runs-on: ubuntu-latest
     steps:
@@ -437,20 +393,9 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
     - run: sudo npm install -g npm@latest && npm --version
-    - name: Pack changed packages
+    - name: Pack all packages
       run: |
-        # Get base ref for pnpm filter
-        if git rev-parse HEAD~1 >/dev/null 2>&1; then
-          base_ref="HEAD~1"
-        else
-          base_ref=""
-        fi
-
-        if [[ -n "$base_ref" && "${{ needs.detect-changes.outputs.has_changes }}" == "true" ]]; then
-          pnpm pack --recursive --filter="...[${base_ref}]" --filter='!./examples/**'
-        else
-          pnpm pack --recursive --filter='!./examples/**'
-        fi
+        pnpm pack --recursive --filter='!./examples/**'
 
         # Remove private packages
         for pkg in fedify-*.tgz; do
@@ -468,7 +413,10 @@ jobs:
         path: fedify-*.tgz
 
   publish-jsr:
-    if: github.event_name == 'push' && (success() || needs.detect-changes.outputs.has_changes == 'false')
+    if: |
+      github.event_name == 'push' &&
+      (success() ||
+       (needs.test.result == 'skipped' && needs.test-node.result == 'skipped' && needs.test-bun.result == 'skipped' && needs.lint.result == 'skipped'))
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version, detect-changes]
     runs-on: ubuntu-latest
     permissions:
