@@ -3,3 +3,4 @@
  * @module
  */
 export { SqliteKvStore } from "./kv.ts";
+export { SqliteMessageQueue } from "./mq.ts";
