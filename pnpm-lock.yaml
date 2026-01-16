@@ -668,6 +668,9 @@ importers:
       '@alinea/suite':
         specifier: ^0.6.3
         version: 0.6.3
+      '@fedify/testing':
+        specifier: workspace:^
+        version: link:../testing
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
@@ -1150,6 +1153,12 @@ importers:
         specifier: 'catalog:'
         version: 3.4.7
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
+      '@fedify/testing':
+        specifier: workspace:^
+        version: link:../testing
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1178,6 +1187,9 @@ importers:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
+      '@fedify/testing':
+        specifier: workspace:^
+        version: link:../testing
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1234,6 +1246,9 @@ importers:
         specifier: ^1.31.0
         version: 1.39.5
     devDependencies:
+      '@fedify/testing':
+        specifier: workspace:^
+        version: link:../testing
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1265,7 +1280,13 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.43.0
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1

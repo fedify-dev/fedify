@@ -13,7 +13,7 @@ if ("Temporal" in globalThis) {
   Temporal = temporal.Temporal;
 }
 
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = process.env.POSTGRES_URL;
 
 function getStore(): {
   // deno-lint-ignore no-explicit-any
