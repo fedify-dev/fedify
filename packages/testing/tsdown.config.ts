@@ -12,5 +12,6 @@ export default defineConfig({
     "@fedify/fedify/utils",
     "@fedify/vocab",
     "@fedify/fedify/webfinger",
+    "@fedify/fixture",
   ],
 });
