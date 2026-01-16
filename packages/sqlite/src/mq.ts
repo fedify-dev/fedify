@@ -192,23 +192,22 @@ export class SqliteMessageQueue implements MessageQueue {
     while (signal == null || !signal.aborted) {
       const now = Temporal.Now.instant().epochMilliseconds;
 
-      // Get the oldest message that is ready to be processed
+      // Atomically fetch and delete the oldest message that is ready to be
+      // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
       const result = this.#db
         .prepare(
-          `SELECT id, message
-          FROM "${this.#tableName}"
-          WHERE scheduled <= ?
-          ORDER BY scheduled
-          LIMIT 1`,
+          `DELETE FROM "${this.#tableName}"
+          WHERE id = (
+            SELECT id FROM "${this.#tableName}"
+            WHERE scheduled <= ?
+            ORDER BY scheduled
+            LIMIT 1
+          )
+          RETURNING id, message`,
         )
         .get(now) as { id: string; message: string } | undefined;
 
       if (result) {
-        // Delete the message before processing to prevent duplicate processing
-        this.#db
-          .prepare(`DELETE FROM "${this.#tableName}" WHERE id = ?`)
-          .run(result.id);
-
         const message = this.#decodeMessage(result.message);
         logger.debug("Processing message {id}...", { id: result.id, message });
 
