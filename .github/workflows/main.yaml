@@ -87,8 +87,19 @@ jobs:
         if [[ -f "deno.json" ]] || [[ -f "deno.jsonc" ]]; then
           mise run codegen || true
           # Run all tests in this workspace directory (not parent workspaces)
+          # Exit successfully even if no tests are found
           deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel \
-            --coverage=.cov --junit-path=.test-report.xml
+            --coverage=.cov --junit-path=.test-report.xml || {
+            exit_code=$?
+            if [[ $exit_code -eq 1 ]]; then
+              # Exit code 1 might mean no tests found, check if test files exist
+              if ! find . -name "*_test.ts" -o -name "*_test.tsx" -o -name "*.test.ts" 2>/dev/null | grep -q .; then
+                echo "No test files found in ${{ matrix.workspace }}, skipping"
+                exit 0
+              fi
+            fi
+            exit $exit_code
+          }
         else
           echo "No deno.json found in ${{ matrix.workspace }}, skipping"
         fi
