@@ -20,10 +20,19 @@
     "src/schema.yaml"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts",
     "test": "deno test -A"
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
+    ]
   }
 }
