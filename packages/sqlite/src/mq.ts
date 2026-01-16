@@ -92,8 +92,7 @@ export class SqliteMessageQueue implements MessageQueue {
   /**
    * {@inheritDoc MessageQueue.enqueue}
    */
-  // deno-lint-ignore require-await
-  async enqueue(
+  enqueue(
     // deno-lint-ignore no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions,
@@ -123,18 +122,18 @@ export class SqliteMessageQueue implements MessageQueue {
       .run(id, encodedMessage, now, scheduled);
 
     logger.debug("Enqueued a message.", { message });
+    return Promise.resolve();
   }
 
   /**
    * {@inheritDoc MessageQueue.enqueueMany}
    */
-  // deno-lint-ignore require-await
-  async enqueueMany(
+  enqueueMany(
     // deno-lint-ignore no-explicit-any
-    messages: any[],
+    messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    if (messages.length === 0) return;
+    if (messages.length === 0) return Promise.resolve();
 
     this.initialize();
 
@@ -171,6 +170,7 @@ export class SqliteMessageQueue implements MessageQueue {
       this.#db.exec("ROLLBACK");
       throw error;
     }
+    return Promise.resolve();
   }
 
   /**
