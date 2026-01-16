@@ -293,6 +293,71 @@ const federation = createFederation({
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
 [RabbitMQ]: https://www.rabbitmq.com/
 
+### `SqliteMessageQueue`
+
+*This API is available since Fedify 2.0.0.*
+
+To use [`SqliteMessageQueue`], you need to install the *@fedify/sqlite* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/sqlite
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/sqlite
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/sqlite
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/sqlite
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/sqlite
+~~~~
+
+:::
+
+[`SqliteMessageQueue`] is a message queue implementation that uses SQLite as
+the backend.  It uses polling to check for new messages and is designed for
+single-node deployments.  It's suitable for development, testing, and
+small-scale production use where simplicity is preferred over high throughput.
+
+Best for
+:   Development, testing, and single-node deployments.
+
+Pros
+:   Simple setup, persistent, no external dependencies beyond SQLite.
+
+Cons
+:   Not suitable for distributed environments or high-throughput scenarios,
+    uses polling instead of push-based messaging.
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+import Database from "better-sqlite3";
+
+const db = new Database("federation.db");
+const federation = createFederation<void>({
+// ---cut-start---
+  kv: null as unknown as KvStore,
+// ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+  // ... other options
+});
+~~~~
+
+[`SqliteMessageQueue`]: https://jsr.io/@fedify/sqlite/doc/mq/~/SqliteMessageQueue
+
 ### `WorkersMessageQueue` (Cloudflare Workers only)
 
 *This API is available since Fedify 1.6.0.*
@@ -658,6 +723,9 @@ The following implementations do not yet support native retry:
 
 [`AmqpMessageQueue`]
 :   Native retry support planned for future release.
+
+[`SqliteMessageQueue`]
+:   No native retry support (`~MessageQueue.nativeRetrial` is `false`).
 
 `ParallelMessageQueue` inherits the `~MessageQueue.nativeRetrial` value from
 the wrapped queue.
