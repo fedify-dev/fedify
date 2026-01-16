@@ -86,7 +86,9 @@ jobs:
       run: |
         if [[ -f "deno.json" ]] || [[ -f "deno.jsonc" ]]; then
           mise run codegen || true
-          deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel --coverage=.cov --junit-path=.test-report.xml
+          # Run all tests in this workspace directory (not parent workspaces)
+          deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel \
+            --coverage=.cov --junit-path=.test-report.xml
         else
           echo "No deno.json found in ${{ matrix.workspace }}, skipping"
         fi
