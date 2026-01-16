@@ -10,9 +10,18 @@
     "estree": "npm:@types/estree@^1.0.8"
   },
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "test": "deno test --allow-env"
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
+    ]
   }
 }

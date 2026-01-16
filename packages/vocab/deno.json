@@ -27,5 +27,13 @@
     "check": "deno fmt --check && deno lint && deno check src/*.ts",
     "compile": "deno run --allow-read --allow-write --allow-env --check scripts/codegen.ts && deno fmt src/vocab.ts && deno cache src/vocab.ts && deno check src/vocab.ts",
     "test": "deno test --allow-read --allow-write --allow-env --unstable-kv --trace-leaks --parallel"
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
+    ]
   }
 }
+

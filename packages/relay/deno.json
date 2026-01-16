@@ -13,7 +13,9 @@
     "node_modules/"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
@@ -38,6 +40,13 @@
   "lint": {
     "exclude": [
       "src/init/templates/**"
+    ]
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
     ]
   }
 }
