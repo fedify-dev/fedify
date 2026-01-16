@@ -14,6 +14,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_workspaces: ${{ steps.detect.outputs.changed_workspaces }}
+      changed_workspaces_json: ${{ steps.detect.outputs.changed_workspaces_json }}
+      all_workspaces: ${{ steps.detect.outputs.all_workspaces }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: ./.github/actions/setup-mise
+
+    - id: detect
+      uses: ./.github/actions/detect-workspace-changes
+
   test:
     runs-on: ubuntu-latest
     permissions:
@@ -171,6 +188,52 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
+
+  test-cli-init:
+    needs: detect-changes
+    if: contains(needs.detect-changes.outputs.changed_workspaces, 'packages/cli')
+    runs-on: ubuntu-latest
+    services:
+      rabbitmq:
+        image: rabbitmq
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports:
+        - 5672:5672
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 5432:5432
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 6379:6379
+    env:
+      AMQP_URL: amqp://guest:guest@localhost:5672
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      REDIS_URL: redis://localhost:6379
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-mise
+    - name: Run deno task test-init for @fedify/cli
+      run: |
+        cd packages/cli
+        deno task test-init
 
   lint:
     runs-on: ubuntu-latest
