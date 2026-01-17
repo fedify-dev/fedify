@@ -29,3 +29,8 @@ export {
   createInboxContext,
   createRequestContext,
 } from "./mock.ts";
+export {
+  default as testMessageQueue,
+  getRandomKey,
+  waitFor,
+} from "./mq-tester.ts";

@@ -1,7 +1,13 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/mod.ts", "src/kv.ts", "src/sqlite.node.ts", "src/sqlite.bun.ts"],
+  entry: [
+    "src/mod.ts",
+    "src/kv.ts",
+    "src/mq.ts",
+    "src/sqlite.node.ts",
+    "src/sqlite.bun.ts",
+  ],
   dts: true,
   unbundle: true,
   format: ["esm", "cjs"],

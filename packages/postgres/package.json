@@ -77,6 +77,8 @@
     "postgres": "catalog:"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
+    "@fedify/testing": "workspace:^",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
