@@ -1,3 +1,4 @@
+no_inherit = true
 include = ["*.md", "**/*.md"]
 exclude = [
   "**/node_modules/**",
