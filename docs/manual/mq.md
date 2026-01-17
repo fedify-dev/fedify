@@ -328,33 +328,72 @@ bun add @fedify/sqlite
 the backend.  It uses polling to check for new messages and is designed for
 single-node deployments.  It's suitable for development, testing, and
 small-scale production use where simplicity is preferred over high throughput.
+It uses native sqlite modules, [`node:sqlite`] for Node.js and Deno,
+[`bun:sqlite`] for Bun.
 
 Best for
-:   Development, testing, and single-node deployments.
+:   Development and testing.
 
 Pros
-:   Simple setup, persistent, no external dependencies beyond SQLite.
+:   Simple, persistent with minimal configuration.
 
 Cons
-:   Not suitable for distributed environments or high-throughput scenarios,
-    uses polling instead of push-based messaging.
+:   Limited scalability, not suitable for high-traffic production.
 
-~~~~ typescript twoslash
+::: code-group
+
+~~~~ typescript twoslash [Deno]
 import type { KvStore } from "@fedify/fedify";
 // ---cut-before---
+import { DatabaseSync } from "node:sqlite";
 import { createFederation } from "@fedify/fedify";
 import { SqliteMessageQueue } from "@fedify/sqlite";
-import Database from "better-sqlite3";
 
-const db = new Database("federation.db");
+const db = new DatabaseSync(":memory:");
 const federation = createFederation<void>({
-// ---cut-start---
-  kv: null as unknown as KvStore,
-// ---cut-end---
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
   queue: new SqliteMessageQueue(db),  // [!code highlight]
-  // ... other options
 });
 ~~~~
+
+~~~~ typescript twoslash [Node.js]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
+~~~~ typescript [Bun]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { Database } from "bun:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new Database(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
+:::
 
 [`SqliteMessageQueue`]: https://jsr.io/@fedify/sqlite/doc/mq/~/SqliteMessageQueue
 

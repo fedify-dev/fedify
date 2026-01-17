@@ -4,8 +4,16 @@ import type {
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
+import * as temporal from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import type { SqliteDatabaseAdapter } from "./adapter.ts";
+
+let Temporal: typeof temporal.Temporal;
+if ("Temporal" in globalThis) {
+  Temporal = globalThis.Temporal;
+} else {
+  Temporal = temporal.Temporal;
+}
 
 const logger = getLogger(["fedify", "sqlite", "mq"]);
 

@@ -46,6 +46,16 @@
       "require": "./dist/kv.cjs",
       "default": "./dist/kv.js"
     },
+    "./mq": {
+      "types": {
+        "import": "./dist/mq.d.ts",
+        "require": "./dist/mq.d.cts",
+        "default": "./dist/mq.d.ts"
+      },
+      "import": "./dist/mq.js",
+      "require": "./dist/mq.cjs",
+      "default": "./dist/mq.js"
+    },
     "./package.json": "./package.json"
   },
   "imports": {
