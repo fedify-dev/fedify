@@ -14,4 +14,16 @@ export default defineConfig({
     "@fedify/fedify/webfinger",
     "@fedify/fixture",
   ],
+  outputOptions(outputOptions, format) {
+    if (format === "cjs") {
+      outputOptions.intro = `
+        const { Temporal } = require("@js-temporal/polyfill");
+      `;
+    } else {
+      outputOptions.intro = `
+        import { Temporal } from "@js-temporal/polyfill";
+      `;
+    }
+    return outputOptions;
+  },
 });

@@ -1,15 +1,7 @@
 import type { MessageQueue } from "@fedify/fedify";
 import { test as defaultTest } from "@fedify/fixture";
-import * as temporal from "@js-temporal/polyfill";
 import { delay } from "es-toolkit";
 import { deepStrictEqual, ok } from "node:assert/strict";
-
-let Temporal: typeof temporal.Temporal;
-if ("Temporal" in globalThis) {
-  Temporal = globalThis.Temporal;
-} else {
-  Temporal = temporal.Temporal;
-}
 
 /**
  * Options for the {@link testMessageQueue} function.

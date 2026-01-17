@@ -4,7 +4,8 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./kv": "./src/kv.ts"
+    "./kv": "./src/kv.ts",
+    "./mq": "./src/mq.ts"
   },
   "imports": {
     "#sqlite": "./src/sqlite.node.ts"

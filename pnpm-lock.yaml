@@ -735,6 +735,9 @@ importers:
       '@fedify/vocab-tools':
         specifier: workspace:*
         version: link:../vocab-tools
+      '@fedify/webfinger':
+        specifier: workspace:*
+        version: link:../webfinger
       '@fxts/core':
         specifier: 'catalog:'
         version: 1.20.0
