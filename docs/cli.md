@@ -966,6 +966,20 @@ about the security implications of exposing the server to the public internet.
 > If you disable the tunneling feature, the ephemeral ActivityPub instance will
 > be served via HTTP instead of HTTPS.
 
+### `-A`/`--authorized-fetch`: Authorized fetch mode
+
+The `-A`/`--authorized-fetch` option enables authorized fetch mode on the
+ephemeral inbox server.  When enabled, incoming requests without valid HTTP
+Signatures are rejected with `401 Unauthorized`.
+
+~~~~ sh
+fedify inbox --authorized-fetch
+~~~~
+
+This is useful for testing whether your ActivityPub server correctly signs
+its outgoing requests, as many instances in the fediverse (such as Mastodon
+with secure mode) require valid signatures.
+
 
 `fedify nodeinfo`: Visualizing an instance's NodeInfo
 -----------------------------------------------------
