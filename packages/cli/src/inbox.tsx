@@ -5,6 +5,7 @@ import {
   createFederation,
   generateCryptoKeyPair,
   MemoryKvStore,
+  verifyRequest,
 } from "@fedify/fedify";
 import {
   Accept,
@@ -104,6 +105,14 @@ export const inboxCommand = command(
         }),
         "An ephemeral ActivityPub inbox for testing purposes.",
       ),
+      authorizedFetch: option(
+        "-A",
+        "--authorized-fetch",
+        {
+          description:
+            message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures with 401 Unauthorized will be rejected.`,
+        },
+      ),
     }),
     debugOption,
   ),
@@ -120,7 +129,7 @@ export async function runInbox(
   const fetch = createFetchHandler({
     actorName: command.actorName,
     actorSummary: command.actorSummary,
-  });
+  }, command.authorizedFetch);
   const sendDeleteToPeers = createSendDeleteToPeers({
     actorName: command.actorName,
     actorSummary: command.actorSummary,
@@ -485,6 +494,7 @@ app.get("/r/:idx{[0-9]+}", (c) => {
 
 function createFetchHandler(
   actorOptions: { actorName: string; actorSummary: string },
+  authorizedFetchEnabled: boolean,
 ): (request: Request) => Promise<Response> {
   return async function fetch(request: Request): Promise<Response> {
     const timestamp = Temporal.Now.instant();
@@ -493,6 +503,24 @@ function createFetchHandler(
     if (pathname === "/r" || pathname.startsWith("/r/")) {
       return app.fetch(request);
     }
+
+    if (authorizedFetchEnabled) {
+      const key = await verifyRequest(request, {
+        documentLoader: federationDocumentLoader,
+      });
+      if (key == null) {
+        logger.error(
+          "Unauthorized request: HTTP Signature verification failed for {method} {path}",
+          { method: request.method, path: pathname },
+        );
+        return new Response("Unauthorized: Invalid or missing HTTP signature", {
+          status: 401,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+      logger.debug("HTTP Signature verified: {keyId}", { keyId: key.id?.href });
+    }
+
     const inboxRequest = pathname === "/inbox" ||
       pathname.startsWith("/i/inbox");
     if (inboxRequest) {
