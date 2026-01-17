@@ -50,6 +50,7 @@
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/vocab-tools": "workspace:*",
+    "@fedify/webfinger": "workspace:*",
     "@fxts/core": "catalog:",
     "@hongminhee/localtunnel": "^0.3.0",
     "@inquirer/prompts": "^7.8.4",

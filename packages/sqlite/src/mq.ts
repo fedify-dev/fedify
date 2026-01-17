@@ -4,16 +4,8 @@ import type {
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
-import * as temporal from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import type { SqliteDatabaseAdapter } from "./adapter.ts";
-
-let Temporal: typeof temporal.Temporal;
-if ("Temporal" in globalThis) {
-  Temporal = globalThis.Temporal;
-} else {
-  Temporal = temporal.Temporal;
-}
 
 const logger = getLogger(["fedify", "sqlite", "mq"]);
 
@@ -87,7 +79,7 @@ export class SqliteMessageQueue implements MessageQueue {
     this.#initialized = options.initialized ?? false;
     this.#tableName = options.tableName ?? SqliteMessageQueue.#defaultTableName;
     this.#pollIntervalMs = Temporal.Duration.from(
-      options.pollInterval ?? { seconds: 5 },
+      options.pollInterval ?? { milliseconds: 500 },
     ).total("millisecond");
 
     if (!SqliteMessageQueue.#tableNameRegex.test(this.#tableName)) {
