@@ -28,7 +28,8 @@ export interface SqliteMessageQueueOptions {
   initialized?: boolean;
 
   /**
-   * The poll interval for the message queue.  500 milliseconds by default.
+   * The poll interval for the message queue.
+   * @default `{ milliseconds: 500 }`
    */
   pollInterval?: Temporal.Duration | Temporal.DurationLike;
 }
@@ -210,17 +211,8 @@ export class SqliteMessageQueue implements MessageQueue {
       if (result) {
         const message = this.#decodeMessage(result.message);
         logger.debug("Processing message {id}...", { id: result.id, message });
-
-        try {
-          await handler(message);
-          logger.debug("Processed message {id}.", { id: result.id });
-        } catch (error) {
-          logger.error(
-            "Failed to process message {id}: {error}",
-            { id: result.id, error },
-          );
-          throw error;
-        }
+        await handler(message);
+        logger.debug("Processed message {id}.", { id: result.id });
 
         // Check for next message immediately
         continue;
