@@ -12,13 +12,6 @@ export interface TestMessageQueueOptions {
    * It should be compatible with `node:test`'s `test` function.
    */
   test?: (name: string, fn: () => Promise<void> | void) => void;
-
-  /**
-   * An optional initialization function to call before the tests run.
-   * This is useful for setting up database tables or other resources.
-   * @param mq The message queue instance to initialize.
-   */
-  initialize?: (mq: MessageQueue) => Promise<void> | void;
 }
 
 /**
@@ -79,11 +72,6 @@ export default function testMessageQueue<
     const mq2 = await getMessageQueue();
     const controller = new AbortController();
     try {
-      // Initialize if needed (e.g., create database tables)
-      if (options.initialize != null) {
-        await options.initialize(mq1);
-      }
-
       // Set up message collection and listeners
       const messages: string[] = [];
       const listening1 = mq1.listen((message: string) => {
