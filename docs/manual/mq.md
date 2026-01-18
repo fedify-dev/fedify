@@ -340,6 +340,11 @@ Pros
 Cons
 :   Limited scalability, not suitable for high-traffic production.
 
+> [!NOTE]
+> `SqliteMessageQueue` uses `DELETE ... RETURNING` to atomically fetch and
+> delete the oldest message that is ready to be processed.  This requires
+> SQLite 3.35.0 or later.
+
 ::: code-group
 
 ~~~~ typescript twoslash [Deno]
