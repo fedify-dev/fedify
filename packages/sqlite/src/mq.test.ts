@@ -1,8 +1,12 @@
 import { PlatformDatabase } from "#sqlite";
 import { SqliteMessageQueue } from "@fedify/sqlite/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const dbPath = `/tmp/${getRandomKey("sqlite")}.db`;
+const dbDir = await mkdtemp(join(tmpdir(), "fedify-sqlite-"));
+const dbPath = join(dbDir, `${getRandomKey("sqlite")}.db`);
 const db = new PlatformDatabase(dbPath);
 const tableName = getRandomKey("message").replaceAll("-", "_");
 

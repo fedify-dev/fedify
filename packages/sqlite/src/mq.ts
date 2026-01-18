@@ -9,6 +9,14 @@ import type { SqliteDatabaseAdapter } from "./adapter.ts";
 
 const logger = getLogger(["fedify", "sqlite", "mq"]);
 
+class EnqueueEvent extends Event {
+  readonly delayMs: number;
+  constructor(delayMs: number) {
+    super("enqueue");
+    this.delayMs = delayMs;
+  }
+}
+
 /**
  * Options for the SQLite message queue.
  */
@@ -29,7 +37,7 @@ export interface SqliteMessageQueueOptions {
 
   /**
    * The poll interval for the message queue.
-   * @default `{ milliseconds: 500 }`
+   * @default `{ seconds: 5 }`
    */
   pollInterval?: Temporal.Duration | Temporal.DurationLike;
 }
@@ -57,6 +65,19 @@ export interface SqliteMessageQueueOptions {
 export class SqliteMessageQueue implements MessageQueue {
   static readonly #defaultTableName = "fedify_message";
   static readonly #tableNameRegex = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+  // In-memory event emitter for notifying listeners when messages are enqueued.
+  // Scoped per table name to allow multiple queues to coexist.
+  static readonly #notifyChannels = new Map<string, EventTarget>();
+
+  static #getNotifyChannel(tableName: string): EventTarget {
+    let channel = SqliteMessageQueue.#notifyChannels.get(tableName);
+    if (channel == null) {
+      channel = new EventTarget();
+      SqliteMessageQueue.#notifyChannels.set(tableName, channel);
+    }
+    return channel;
+  }
+
   readonly #db: SqliteDatabaseAdapter;
   readonly #tableName: string;
   readonly #pollIntervalMs: number;
@@ -69,7 +90,7 @@ export class SqliteMessageQueue implements MessageQueue {
 
   /**
    * Creates a new SQLite message queue.
-   * @param db The SQLite database to use. Supports `node:sqlite` and `bun:sqlite`.
+   * @param db The SQLite database to use. Supports `node:sqlite`, `bun:sqlite`.
    * @param options The options for the message queue.
    */
   constructor(
@@ -80,7 +101,7 @@ export class SqliteMessageQueue implements MessageQueue {
     this.#initialized = options.initialized ?? false;
     this.#tableName = options.tableName ?? SqliteMessageQueue.#defaultTableName;
     this.#pollIntervalMs = Temporal.Duration.from(
-      options.pollInterval ?? { milliseconds: 500 },
+      options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
 
     if (!SqliteMessageQueue.#tableNameRegex.test(this.#tableName)) {
@@ -123,6 +144,13 @@ export class SqliteMessageQueue implements MessageQueue {
       .run(id, encodedMessage, now, scheduled);
 
     logger.debug("Enqueued a message.", { message });
+
+    // Notify listeners that a message has been enqueued
+    const delayMs = delay.total("millisecond");
+    SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
+      new EnqueueEvent(delayMs),
+    );
+
     return Promise.resolve();
   }
 
@@ -167,6 +195,12 @@ export class SqliteMessageQueue implements MessageQueue {
 
       this.#db.exec("COMMIT");
       logger.debug("Enqueued messages.", { messages });
+
+      // Notify listeners that messages have been enqueued
+      const delayMs = delay.total("millisecond");
+      SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
+        new EnqueueEvent(delayMs),
+      );
     } catch (error) {
       this.#db.exec("ROLLBACK");
       throw error;
@@ -190,36 +224,77 @@ export class SqliteMessageQueue implements MessageQueue {
       { tableName: this.#tableName },
     );
 
-    while (signal == null || !signal.aborted) {
-      const now = Temporal.Now.instant().epochMilliseconds;
+    const channel = SqliteMessageQueue.#getNotifyChannel(this.#tableName);
+    const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
-      // Atomically fetch and delete the oldest message that is ready to be
-      // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
-      const result = this.#db
-        .prepare(
-          `DELETE FROM "${this.#tableName}"
-          WHERE id = (
-            SELECT id FROM "${this.#tableName}"
-            WHERE scheduled <= ?
-            ORDER BY scheduled
-            LIMIT 1
+    const poll = async () => {
+      while (signal == null || !signal.aborted) {
+        const now = Temporal.Now.instant().epochMilliseconds;
+
+        // Atomically fetch and delete the oldest message that is ready to be
+        // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
+        const result = this.#db
+          .prepare(
+            `DELETE FROM "${this.#tableName}"
+            WHERE id = (
+              SELECT id FROM "${this.#tableName}"
+              WHERE scheduled <= ?
+              ORDER BY scheduled
+              LIMIT 1
+            )
+            RETURNING id, message`,
           )
-          RETURNING id, message`,
-        )
-        .get(now) as { id: string; message: string } | undefined;
+          .get(now) as { id: string; message: string } | undefined;
 
-      if (result) {
-        const message = this.#decodeMessage(result.message);
-        logger.debug("Processing message {id}...", { id: result.id, message });
-        await handler(message);
-        logger.debug("Processed message {id}.", { id: result.id });
+        if (result) {
+          const message = this.#decodeMessage(result.message);
+          logger.debug("Processing message {id}...", {
+            id: result.id,
+            message,
+          });
+          await handler(message);
+          logger.debug("Processed message {id}.", { id: result.id });
 
-        // Check for next message immediately
-        continue;
+          // Check for next message immediately
+          continue;
+        }
+
+        // No more messages ready to process
+        break;
       }
+    };
 
-      // No messages available, wait before polling again
-      await this.#wait(this.#pollIntervalMs, signal);
+    const onEnqueue = (event: Event) => {
+      const delayMs = (event as EnqueueEvent).delayMs;
+      if (delayMs < 1) {
+        poll();
+      } else {
+        timeouts.add(setTimeout(poll, delayMs));
+      }
+    };
+
+    channel.addEventListener("enqueue", onEnqueue);
+    signal?.addEventListener("abort", () => {
+      channel.removeEventListener("enqueue", onEnqueue);
+      for (const timeout of timeouts) clearTimeout(timeout);
+    });
+
+    // Initial poll
+    await poll();
+
+    // Periodic polling as fallback
+    while (signal == null || !signal.aborted) {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      await new Promise<unknown>((resolve) => {
+        signal?.addEventListener("abort", resolve);
+        timeout = setTimeout(() => {
+          signal?.removeEventListener("abort", resolve);
+          resolve(0);
+        }, this.#pollIntervalMs);
+        timeouts.add(timeout);
+      });
+      if (timeout != null) timeouts.delete(timeout);
+      await poll();
     }
 
     logger.debug("Stopped listening for messages on table {tableName}.", {
@@ -275,26 +350,5 @@ export class SqliteMessageQueue implements MessageQueue {
 
   #decodeMessage(message: string): unknown {
     return JSON.parse(message);
-  }
-
-  #wait(ms: number, signal?: AbortSignal): Promise<void> {
-    return new Promise<void>((resolve) => {
-      if (signal?.aborted) {
-        resolve();
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        signal?.removeEventListener("abort", onAbort);
-        resolve();
-      }, ms);
-
-      const onAbort = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-
-      signal?.addEventListener("abort", onAbort, { once: true });
-    });
   }
 }
