@@ -28,7 +28,7 @@ export interface SqliteMessageQueueOptions {
   initialized?: boolean;
 
   /**
-   * The poll interval for the message queue.  5 seconds by default.
+   * The poll interval for the message queue.  500 milliseconds by default.
    */
   pollInterval?: Temporal.Duration | Temporal.DurationLike;
 }
