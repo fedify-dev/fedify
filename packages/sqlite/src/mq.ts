@@ -62,7 +62,7 @@ export interface SqliteMessageQueueOptions {
  * });
  * ```
  */
-export class SqliteMessageQueue implements MessageQueue {
+export class SqliteMessageQueue implements MessageQueue, Disposable {
   static readonly #defaultTableName = "fedify_message";
   static readonly #tableNameRegex = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
   // In-memory event emitter for notifying listeners when messages are enqueued.
@@ -342,6 +342,13 @@ export class SqliteMessageQueue implements MessageQueue {
   drop(): void {
     this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}"`);
     this.#initialized = false;
+  }
+
+  /**
+   * Closes the database connection.
+   */
+  [Symbol.dispose](): void {
+    this.#db.close();
   }
 
   #encodeMessage(message: unknown): string {

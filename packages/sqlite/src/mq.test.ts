@@ -13,8 +13,10 @@ const tableName = getRandomKey("message").replaceAll("-", "_");
 testMessageQueue(
   "SqliteMessageQueue",
   () => new SqliteMessageQueue(db, { tableName }),
-  ({ controller }) => {
+  ({ mq1, mq2, controller }) => {
     controller.abort();
-    db.close();
+    mq1.drop();
+    mq2.drop();
+    mq1[Symbol.dispose]();
   },
 );
