@@ -6,6 +6,7 @@ import {
   type Federation,
   generateCryptoKeyPair,
   MemoryKvStore,
+  type RequestContext,
 } from "@fedify/fedify";
 import {
   Accept,
@@ -141,6 +142,11 @@ export async function runInbox(
   const federationDocumentLoader = await getDocumentLoader();
   const authorizedFetchEnabled = command.authorizedFetch ?? false;
 
+  const authorize = async (ctx: RequestContext<ContextData>) => {
+    if (!authorizedFetchEnabled) return true;
+    return await ctx.getSignedKey() != null;
+  };
+
   const federation = createFederation<ContextData>({
     kv: new MemoryKvStore(),
     documentLoaderFactory: () => federationDocumentLoader,
@@ -187,10 +193,7 @@ export async function runInbox(
       }
       return actorKeyPairs;
     })
-    .authorize(async (ctx, _identifier) => {
-      if (!authorizedFetchEnabled) return true;
-      return await ctx.getSignedKey() != null;
-    });
+    .authorize(authorize);
 
   // Set up inbox listeners
   federation
@@ -251,10 +254,7 @@ export async function runInbox(
       if (identifier !== "i") return null;
       return Object.keys(followers).length;
     })
-    .authorize(async (ctx, _identifier) => {
-      if (!authorizedFetchEnabled) return true;
-      return await ctx.getSignedKey() != null;
-    });
+    .authorize(authorize);
 
   federation
     .setFollowingDispatcher(
@@ -262,18 +262,12 @@ export async function runInbox(
       (_ctx, _identifier) => null,
     )
     .setCounter((_ctx, _identifier) => 0)
-    .authorize(async (ctx, _identifier) => {
-      if (!authorizedFetchEnabled) return true;
-      return await ctx.getSignedKey() != null;
-    });
+    .authorize(authorize);
 
   federation
     .setOutboxDispatcher("/{identifier}/outbox", (_ctx, _identifier) => null)
     .setCounter((_ctx, _identifier) => 0)
-    .authorize(async (ctx, _identifier) => {
-      if (!authorizedFetchEnabled) return true;
-      return await ctx.getSignedKey() != null;
-    });
+    .authorize(authorize);
 
   federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
     return {
