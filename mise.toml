@@ -5,7 +5,7 @@ node = "22"
 pnpm = "10.28.0"
 
 [tools."github:dahlia/hongdown"]
-version = "0.2.6"
+version = "0.3.0"
 
 [tools."github:dahlia/hongdown".platforms]
 linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
