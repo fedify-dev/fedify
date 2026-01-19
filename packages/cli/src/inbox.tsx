@@ -6,9 +6,7 @@ import {
   type Federation,
   generateCryptoKeyPair,
   MemoryKvStore,
-  verifyRequest,
 } from "@fedify/fedify";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
 import {
   Accept,
   Activity,
@@ -146,9 +144,6 @@ export async function runInbox(
   const federation = createFederation<ContextData>({
     kv: new MemoryKvStore(),
     documentLoaderFactory: () => federationDocumentLoader,
-    // When authorizedFetch is enabled, we verify all requests manually,
-    // so skip federation's inbox signature verification to avoid double verification
-    skipSignatureVerification: authorizedFetchEnabled,
   });
 
   const time = Temporal.Now.instant();
@@ -191,6 +186,10 @@ export async function runInbox(
         ];
       }
       return actorKeyPairs;
+    })
+    .authorize(async (ctx, _identifier) => {
+      if (!authorizedFetchEnabled) return true;
+      return await ctx.getSignedKey() != null;
     });
 
   // Set up inbox listeners
@@ -251,6 +250,10 @@ export async function runInbox(
     .setCounter((_ctx, identifier) => {
       if (identifier !== "i") return null;
       return Object.keys(followers).length;
+    })
+    .authorize(async (ctx, _identifier) => {
+      if (!authorizedFetchEnabled) return true;
+      return await ctx.getSignedKey() != null;
     });
 
   federation
@@ -258,11 +261,19 @@ export async function runInbox(
       "/{identifier}/following",
       (_ctx, _identifier) => null,
     )
-    .setCounter((_ctx, _identifier) => 0);
+    .setCounter((_ctx, _identifier) => 0)
+    .authorize(async (ctx, _identifier) => {
+      if (!authorizedFetchEnabled) return true;
+      return await ctx.getSignedKey() != null;
+    });
 
   federation
     .setOutboxDispatcher("/{identifier}/outbox", (_ctx, _identifier) => null)
-    .setCounter((_ctx, _identifier) => 0);
+    .setCounter((_ctx, _identifier) => 0)
+    .authorize(async (ctx, _identifier) => {
+      if (!authorizedFetchEnabled) return true;
+      return await ctx.getSignedKey() != null;
+    });
 
   federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
     return {
@@ -287,9 +298,7 @@ export async function runInbox(
   // Create handlers with the configured federation
   const fetch = createFetchHandler(
     federation,
-    federationDocumentLoader,
     { actorName: command.actorName, actorSummary: command.actorSummary },
-    authorizedFetchEnabled,
   );
   const sendDeleteToPeers = createSendDeleteToPeers(
     federation,
@@ -504,9 +513,7 @@ app.get("/r/:idx{[0-9]+}", (c) => {
 
 function createFetchHandler(
   federation: Federation<ContextData>,
-  documentLoader: DocumentLoader,
   actorOptions: { actorName: string; actorSummary: string },
-  authorizedFetchEnabled: boolean,
 ): (request: Request) => Promise<Response> {
   return async function fetch(request: Request): Promise<Response> {
     const timestamp = Temporal.Now.instant();
@@ -514,21 +521,6 @@ function createFetchHandler(
     const pathname = new URL(request.url).pathname;
     if (pathname === "/r" || pathname.startsWith("/r/")) {
       return app.fetch(request);
-    }
-
-    if (authorizedFetchEnabled) {
-      const key = await verifyRequest(request, { documentLoader });
-      if (key == null) {
-        logger.error(
-          "Unauthorized request: HTTP Signature verification failed for {method} {path}",
-          { method: request.method, path: pathname },
-        );
-        return new Response("Unauthorized: Invalid or missing HTTP signature", {
-          status: 401,
-          headers: { "Content-Type": "text/plain; charset=utf-8" },
-        });
-      }
-      logger.debug("HTTP Signature verified: {keyId}", { keyId: key.id?.href });
     }
 
     const inboxRequest = pathname === "/inbox" ||
