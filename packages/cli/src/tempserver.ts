@@ -23,7 +23,8 @@ export async function spawnTemporaryServer(
     const server = serve({
       port: serverPort,
       hostname: "::",
-      fetch: fetch,
+      silent: true,
+      fetch,
     });
     await server.ready();
     const url = new URL(server.url!);
@@ -65,6 +66,7 @@ export async function spawnTemporaryServer(
     },
     port: serverPort,
     hostname: "::",
+    silent: true,
   });
 
   await server.ready();
