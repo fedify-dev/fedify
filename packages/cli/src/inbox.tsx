@@ -3,8 +3,10 @@
 import {
   type Context,
   createFederation,
+  type Federation,
   generateCryptoKeyPair,
   MemoryKvStore,
+  type RequestContext,
 } from "@fedify/fedify";
 import {
   Accept,
@@ -104,6 +106,14 @@ export const inboxCommand = command(
         }),
         "An ephemeral ActivityPub inbox for testing purposes.",
       ),
+      authorizedFetch: option(
+        "-A",
+        "--authorized-fetch",
+        {
+          description:
+            message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
+        },
+      ),
     }),
     debugOption,
   ),
@@ -114,22 +124,210 @@ export const inboxCommand = command(
   },
 );
 
+// Module-level state
+const activities: ActivityEntry[] = [];
+const acceptFollows: string[] = [];
+const peers: Record<string, Actor> = {};
+const followers: Record<string, Actor> = {};
+
 export async function runInbox(
   command: InferValue<typeof inboxCommand>,
 ) {
-  const fetch = createFetchHandler({
-    actorName: command.actorName,
-    actorSummary: command.actorSummary,
-  });
-  const sendDeleteToPeers = createSendDeleteToPeers({
-    actorName: command.actorName,
-    actorSummary: command.actorSummary,
-  });
+  // Reset module-level state for a clean run
+  activities.length = 0;
+  acceptFollows.length = 0;
+  for (const key of Object.keys(peers)) delete peers[key];
+  for (const key of Object.keys(followers)) delete followers[key];
 
   // Enable Debug mode if requested
   if (command.debug) {
     await configureLogging();
   }
+
+  // Create federation inside runInbox to configure skipSignatureVerification
+  const federationDocumentLoader = await getDocumentLoader();
+  const authorizedFetchEnabled = command.authorizedFetch ?? false;
+
+  const authorize = async (ctx: RequestContext<ContextData>) => {
+    if (!authorizedFetchEnabled) return true;
+    return await ctx.getSignedKey() != null;
+  };
+
+  // Instance actor must be public for key fetching per spec
+  // https://swicg.github.io/activitypub-http-signature/#instance-actor
+  const instanceActor = async (
+    ctx: RequestContext<ContextData>,
+    identifier: string,
+  ) => {
+    if (identifier === "ia") return true;
+    return await authorize(ctx);
+  };
+
+  const federation = createFederation<ContextData>({
+    kv: new MemoryKvStore(),
+    documentLoaderFactory: () => federationDocumentLoader,
+    skipSignatureVerification: !authorizedFetchEnabled,
+  });
+
+  const time = Temporal.Now.instant();
+  let actorKeyPairs: CryptoKeyPair[] | undefined = undefined;
+  let instanceActorKeyPairs: CryptoKeyPair[] | undefined = undefined;
+
+  // Set up actor dispatcher
+  federation
+    .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+      if (identifier !== "i" && identifier !== "ia") return null;
+      const keyPairs = await ctx.getActorKeyPairs(identifier);
+      return new Application({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+        name: identifier === "ia" ? "Instance Actor" : ctx.data.actorName,
+        summary: identifier === "ia"
+          ? "Instance actor for signing requests"
+          : ctx.data.actorSummary,
+        inbox: ctx.getInboxUri(identifier),
+        endpoints: new Endpoints({
+          sharedInbox: ctx.getInboxUri(),
+        }),
+        followers: ctx.getFollowersUri(identifier),
+        following: ctx.getFollowingUri(identifier),
+        outbox: ctx.getOutboxUri(identifier),
+        manuallyApprovesFollowers: true,
+        published: time,
+        icon: new Image({
+          url: new URL("https://fedify.dev/logo.png"),
+          mediaType: "image/png",
+        }),
+        publicKey: keyPairs[0].cryptographicKey,
+        assertionMethods: keyPairs.map((pair) => pair.multikey),
+        url: ctx.getActorUri(identifier),
+      });
+    })
+    .setKeyPairsDispatcher(async (_ctxData, identifier) => {
+      if (identifier === "i") {
+        if (actorKeyPairs == null) {
+          actorKeyPairs = [
+            await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+            await generateCryptoKeyPair("Ed25519"),
+          ];
+        }
+        return actorKeyPairs;
+      } else if (identifier === "ia") {
+        if (instanceActorKeyPairs == null) {
+          instanceActorKeyPairs = [
+            await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+            await generateCryptoKeyPair("Ed25519"),
+          ];
+        }
+        return instanceActorKeyPairs;
+      }
+      return [];
+    })
+    .authorize(instanceActor);
+
+  // Set up inbox listeners
+  federation
+    .setInboxListeners("/{identifier}/inbox", "/inbox")
+    .setSharedKeyDispatcher((_) => ({ identifier: "ia" }))
+    .on(Activity, async (ctx, activity) => {
+      activities[ctx.data.activityIndex].activity = activity;
+      for await (const actor of activity.getActors()) {
+        if (actor.id != null) peers[actor.id.href] = actor;
+      }
+      for await (const actor of activity.getAttributions()) {
+        if (actor.id != null) peers[actor.id.href] = actor;
+      }
+      if (activity instanceof Follow) {
+        if (acceptFollows.length < 1) return;
+        const objectId = activity.objectId;
+        if (objectId == null) return;
+        const parsed = ctx.parseUri(objectId);
+        if (parsed?.type !== "actor" || parsed.identifier !== "i") return;
+        const { identifier } = parsed;
+        const follower = await activity.getActor();
+        if (!isActor(follower)) return;
+        const accepts = await matchesActor(follower, acceptFollows);
+        if (!accepts || activity.id == null) {
+          logger.debug("Does not accept follow from {actor}.", {
+            actor: follower.id?.href,
+          });
+          return;
+        }
+        logger.debug("Accepting follow from {actor}.", {
+          actor: follower.id?.href,
+        });
+        followers[activity.id.href] = follower;
+        await ctx.sendActivity(
+          { identifier },
+          follower,
+          new Accept({
+            id: new URL(`#accepts/${follower.id?.href}`, ctx.getActorUri("i")),
+            actor: ctx.getActorUri(identifier),
+            object: activity.id,
+          }),
+        );
+      }
+    });
+
+  // Set up collection dispatchers
+  federation
+    .setFollowersDispatcher("/{identifier}/followers", (_ctx, identifier) => {
+      if (identifier !== "i") return null;
+      const items: Recipient[] = [];
+      for (const follower of Object.values(followers)) {
+        if (follower.id == null) continue;
+        items.push(follower);
+      }
+      return { items };
+    })
+    .setCounter((_ctx, identifier) => {
+      if (identifier !== "i") return null;
+      return Object.keys(followers).length;
+    })
+    .authorize(authorize);
+
+  federation
+    .setFollowingDispatcher(
+      "/{identifier}/following",
+      (_ctx, _identifier) => null,
+    )
+    .setCounter((_ctx, _identifier) => 0)
+    .authorize(authorize);
+
+  federation
+    .setOutboxDispatcher("/{identifier}/outbox", (_ctx, _identifier) => null)
+    .setCounter((_ctx, _identifier) => 0)
+    .authorize(authorize);
+
+  federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
+    return {
+      software: {
+        name: "fedify-cli",
+        version: metadata.version,
+        repository: new URL("https://github.com/fedify-dev/fedify"),
+      },
+      protocols: ["activitypub"],
+      usage: {
+        users: {
+          total: 1,
+          activeMonth: 1,
+          activeHalfyear: 1,
+        },
+        localComments: 0,
+        localPosts: 0,
+      },
+    };
+  });
+
+  // Create handlers with the configured federation
+  const fetch = createFetchHandler(
+    federation,
+    { actorName: command.actorName, actorSummary: command.actorSummary },
+  );
+  const sendDeleteToPeers = createSendDeleteToPeers(
+    federation,
+    { actorName: command.actorName, actorSummary: command.actorSummary },
+  );
 
   const spinner = ora({
     text: "Spinning up an ephemeral ActivityPub server...",
@@ -203,63 +401,8 @@ export async function runInbox(
   printServerInfo(fedCtx);
 }
 
-const federationDocumentLoader = await getDocumentLoader();
-
-const federation = createFederation<ContextData>({
-  kv: new MemoryKvStore(),
-  documentLoaderFactory: () => {
-    return federationDocumentLoader;
-  },
-});
-
-const time = Temporal.Now.instant();
-let actorKeyPairs: CryptoKeyPair[] | undefined = undefined;
-
-federation
-  .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
-    if (identifier !== "i") return null;
-    return new Application({
-      id: ctx.getActorUri(identifier),
-      preferredUsername: identifier,
-      name: ctx.data.actorName,
-      summary: ctx.data.actorSummary,
-      inbox: ctx.getInboxUri(identifier),
-      endpoints: new Endpoints({
-        sharedInbox: ctx.getInboxUri(),
-      }),
-      followers: ctx.getFollowersUri(identifier),
-      following: ctx.getFollowingUri(identifier),
-      outbox: ctx.getOutboxUri(identifier),
-      manuallyApprovesFollowers: true,
-      published: time,
-      icon: new Image({
-        url: new URL("https://fedify.dev/logo.png"),
-        mediaType: "image/png",
-      }),
-      publicKey: (await ctx.getActorKeyPairs(identifier))[0].cryptographicKey,
-      assertionMethods: (await ctx.getActorKeyPairs(identifier))
-        .map((pair) => pair.multikey),
-      url: ctx.getActorUri(identifier),
-    });
-  })
-  .setKeyPairsDispatcher(async (_ctxData, identifier) => {
-    if (identifier !== "i") return [];
-    if (actorKeyPairs == null) {
-      actorKeyPairs = [
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-        await generateCryptoKeyPair("Ed25519"),
-      ];
-    }
-    return actorKeyPairs;
-  });
-
-const activities: ActivityEntry[] = [];
-
-const acceptFollows: string[] = [];
-
-const peers: Record<string, Actor> = {};
-
 function createSendDeleteToPeers(
+  federation: Federation<ContextData>,
   actorOptions: { actorName: string; actorSummary: string },
 ): (server: TemporaryServer) => Promise<void> {
   return async function sendDeleteToPeers(
@@ -291,97 +434,6 @@ function createSendDeleteToPeers(
     }
   };
 }
-
-const followers: Record<string, Actor> = {};
-
-federation
-  .setInboxListeners("/{identifier}/inbox", "/inbox")
-  .setSharedKeyDispatcher((_) => ({ identifier: "i" }))
-  .on(Activity, async (ctx, activity) => {
-    activities[ctx.data.activityIndex].activity = activity;
-    for await (const actor of activity.getActors()) {
-      if (actor.id != null) peers[actor.id.href] = actor;
-    }
-    for await (const actor of activity.getAttributions()) {
-      if (actor.id != null) peers[actor.id.href] = actor;
-    }
-    if (activity instanceof Follow) {
-      if (acceptFollows.length < 1) return;
-      const objectId = activity.objectId;
-      if (objectId == null) return;
-      const parsed = ctx.parseUri(objectId);
-      if (parsed?.type !== "actor" || parsed.identifier !== "i") return;
-      const { identifier } = parsed;
-      const follower = await activity.getActor();
-      if (!isActor(follower)) return;
-      const accepts = await matchesActor(follower, acceptFollows);
-      if (!accepts || activity.id == null) {
-        logger.debug("Does not accept follow from {actor}.", {
-          actor: follower.id?.href,
-        });
-        return;
-      }
-      logger.debug("Accepting follow from {actor}.", {
-        actor: follower.id?.href,
-      });
-      followers[activity.id.href] = follower;
-      await ctx.sendActivity(
-        { identifier },
-        follower,
-        new Accept({
-          id: new URL(`#accepts/${follower.id?.href}`, ctx.getActorUri("i")),
-          actor: ctx.getActorUri(identifier),
-          object: activity.id,
-        }),
-      );
-    }
-  });
-
-federation
-  .setFollowersDispatcher("/{identifier}/followers", (_ctx, identifier) => {
-    if (identifier !== "i") return null;
-    const items: Recipient[] = [];
-    for (const follower of Object.values(followers)) {
-      if (follower.id == null) continue;
-      items.push(follower);
-    }
-    return { items };
-  })
-  .setCounter((_ctx, identifier) => {
-    if (identifier !== "i") return null;
-    return Object.keys(followers).length;
-  });
-
-federation
-  .setFollowingDispatcher(
-    "/{identifier}/following",
-    (_ctx, _identifier) => null,
-  )
-  .setCounter((_ctx, _identifier) => 0);
-
-federation
-  .setOutboxDispatcher("/{identifier}/outbox", (_ctx, _identifier) => null)
-  .setCounter((_ctx, _identifier) => 0);
-
-federation.setNodeInfoDispatcher("/nodeinfo/2.1", (_ctx) => {
-  return {
-    software: {
-      name: "fedify-cli",
-      version: metadata.version,
-      repository: new URL("https://github.com/fedify-dev/fedify"),
-    },
-    protocols: ["activitypub"],
-    usage: {
-      users: {
-        total: 1,
-        activeMonth: 1,
-        activeHalfyear: 1,
-      },
-      localComments: 0,
-      localPosts: 0,
-    },
-  };
-});
 
 function printServerInfo(fedCtx: Context<ContextData>): void {
   const table = new Table({
@@ -484,6 +536,7 @@ app.get("/r/:idx{[0-9]+}", (c) => {
 });
 
 function createFetchHandler(
+  federation: Federation<ContextData>,
   actorOptions: { actorName: string; actorSummary: string },
 ): (request: Request) => Promise<Response> {
   return async function fetch(request: Request): Promise<Response> {
@@ -493,6 +546,7 @@ function createFetchHandler(
     if (pathname === "/r" || pathname.startsWith("/r/")) {
       return app.fetch(request);
     }
+
     const inboxRequest = pathname === "/inbox" ||
       pathname.startsWith("/i/inbox");
     if (inboxRequest) {
