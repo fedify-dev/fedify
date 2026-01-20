@@ -171,17 +171,20 @@ export async function runInbox(
 
   const time = Temporal.Now.instant();
   let actorKeyPairs: CryptoKeyPair[] | undefined = undefined;
+  let instanceActorKeyPairs: CryptoKeyPair[] | undefined = undefined;
 
   // Set up actor dispatcher
   federation
     .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "i") return null;
+      if (identifier !== "i" && identifier !== "ia") return null;
       const keyPairs = await ctx.getActorKeyPairs(identifier);
       return new Application({
         id: ctx.getActorUri(identifier),
         preferredUsername: identifier,
-        name: ctx.data.actorName,
-        summary: ctx.data.actorSummary,
+        name: identifier === "ia" ? "Instance Actor" : ctx.data.actorName,
+        summary: identifier === "ia"
+          ? "Instance actor for signing requests"
+          : ctx.data.actorSummary,
         inbox: ctx.getInboxUri(identifier),
         endpoints: new Endpoints({
           sharedInbox: ctx.getInboxUri(),
@@ -201,21 +204,31 @@ export async function runInbox(
       });
     })
     .setKeyPairsDispatcher(async (_ctxData, identifier) => {
-      if (identifier !== "i") return [];
-      if (actorKeyPairs == null) {
-        actorKeyPairs = [
-          await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-          await generateCryptoKeyPair("Ed25519"),
-        ];
+      if (identifier === "i") {
+        if (actorKeyPairs == null) {
+          actorKeyPairs = [
+            await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+            await generateCryptoKeyPair("Ed25519"),
+          ];
+        }
+        return actorKeyPairs;
+      } else if (identifier === "ia") {
+        if (instanceActorKeyPairs == null) {
+          instanceActorKeyPairs = [
+            await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+            await generateCryptoKeyPair("Ed25519"),
+          ];
+        }
+        return instanceActorKeyPairs;
       }
-      return actorKeyPairs;
+      return [];
     })
     .authorize(instanceActor);
 
   // Set up inbox listeners
   federation
     .setInboxListeners("/{identifier}/inbox", "/inbox")
-    .setSharedKeyDispatcher((_) => ({ identifier: "i" }))
+    .setSharedKeyDispatcher((_) => ({ identifier: "ia" }))
     .on(Activity, async (ctx, activity) => {
       activities[ctx.data.activityIndex].activity = activity;
       for await (const actor of activity.getActors()) {
