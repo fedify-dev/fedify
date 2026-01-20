@@ -135,22 +135,21 @@ Deno.test("DenoKvStore", async (t) => {
 
 const kvs: Deno.Kv[] = [];
 
-testMessageQueue(
-  "DenoKvMessageQueue",
-  async () => {
-    const kv = await Deno.openKv(":memory:");
-    kvs.push(kv);
-    return new DenoKvMessageQueue(kv);
-  },
-  ({ controller }) => {
-    controller.abort();
-    for (const kv of kvs) {
-      try {
-        kv.close();
-      } catch {
-        // Ignore errors on close
+Deno.test("DenoKvMessageQueue", () =>
+  testMessageQueue(
+    async () => {
+      const kv = await Deno.openKv(":memory:");
+      kvs.push(kv);
+      return new DenoKvMessageQueue(kv);
+    },
+    ({ controller }) => {
+      controller.abort();
+      for (const kv of kvs) {
+        try {
+          kv.close();
+        } catch {
+          // Ignore errors on close
+        }
       }
-    }
-  },
-  { test: Deno.test },
-);
+    },
+  ));

@@ -7,19 +7,18 @@ import { Redis } from "ioredis";
 
 const dbUrl = process.env.REDIS_URL;
 
-testMessageQueue(
-  "RedisMessageQueue",
-  () =>
-    new RedisMessageQueue(() => new Redis(dbUrl!), {
-      pollInterval: { seconds: 1 },
-      channelKey: getRandomKey("channel"),
-      queueKey: getRandomKey("queue"),
-      lockKey: getRandomKey("lock"),
-    }),
-  ({ mq1, mq2, controller }) => {
-    controller.abort();
-    mq1[Symbol.dispose]();
-    mq2[Symbol.dispose]();
-  },
-  { test: (name, fn) => test(name, { ignore: dbUrl == null }, fn) },
-);
+test("RedisMessageQueue", { ignore: dbUrl == null }, () =>
+  testMessageQueue(
+    () =>
+      new RedisMessageQueue(() => new Redis(dbUrl!), {
+        pollInterval: { seconds: 1 },
+        channelKey: getRandomKey("channel"),
+        queueKey: getRandomKey("queue"),
+        lockKey: getRandomKey("lock"),
+      }),
+    ({ mq1, mq2, controller }) => {
+      controller.abort();
+      mq1[Symbol.dispose]();
+      mq2[Symbol.dispose]();
+    },
+  ));

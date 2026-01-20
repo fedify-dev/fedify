@@ -13,22 +13,21 @@ function createSql() {
   return sql;
 }
 
-testMessageQueue(
-  "PostgresMessageQueue",
-  () =>
-    new PostgresMessageQueue(createSql(), {
-      tableName: getRandomKey("message"),
-      channelName: getRandomKey("channel"),
-    }),
-  async ({ mq1, mq2, controller }) => {
-    controller.abort();
-    await mq1.drop();
-    await mq2.drop();
-    for (const sql of sqls) {
-      await sql.end();
-    }
-  },
-  { test: (name, fn) => test(name, { ignore: dbUrl == null }, fn) },
-);
+test("PostgresMessageQueue", { ignore: dbUrl == null }, () =>
+  testMessageQueue(
+    () =>
+      new PostgresMessageQueue(createSql(), {
+        tableName: getRandomKey("message"),
+        channelName: getRandomKey("channel"),
+      }),
+    async ({ mq1, mq2, controller }) => {
+      controller.abort();
+      await mq1.drop();
+      await mq2.drop();
+      for (const sql of sqls) {
+        await sql.end();
+      }
+    },
+  ));
 
 // cspell: ignore sqls

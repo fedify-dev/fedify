@@ -297,7 +297,6 @@ To be released.
     [[#477], [#526] by ChanHaeng Lee]
 
      -  Added `testMessageQueue()` function.
-     -  Added `TestMessageQueueOptions` interface.
      -  Added `waitFor()` helper function.
      -  Added `getRandomKey()` helper function.
 

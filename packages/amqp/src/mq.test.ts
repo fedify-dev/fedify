@@ -18,27 +18,23 @@ const connections: ChannelModel[] = [];
 const queue = getRandomKey("queue");
 const delayedQueuePrefix = getRandomKey("delayed") + "_";
 
-testMessageQueue(
+test(
   "AmqpMessageQueue",
-  async () => {
-    const conn = await getConnection();
-    connections.push(conn);
-    return new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
-  },
-  async ({ controller }) => {
-    controller.abort();
-    for (const conn of connections) {
-      await conn.close();
-    }
-  },
-  {
-    test: (name, fn) =>
-      test(name, {
-        sanitizeOps: false,
-        sanitizeExit: false,
-        sanitizeResources: false,
-      }, fn),
-  },
+  { sanitizeOps: false, sanitizeExit: false, sanitizeResources: false },
+  () =>
+    testMessageQueue(
+      async () => {
+        const conn = await getConnection();
+        connections.push(conn);
+        return new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
+      },
+      async ({ controller }) => {
+        controller.abort();
+        for (const conn of connections) {
+          await conn.close();
+        }
+      },
+    ),
 );
 
 test(
