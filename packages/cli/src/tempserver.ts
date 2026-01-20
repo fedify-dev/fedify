@@ -23,7 +23,8 @@ export async function spawnTemporaryServer(
     const server = serve({
       port: serverPort,
       hostname: "::",
-      fetch: fetch,
+      silent: true,
+      fetch,
     });
     await server.ready();
     const url = new URL(server.url!);
@@ -41,30 +42,36 @@ export async function spawnTemporaryServer(
   }
 
   const server = serve({
-    fetch: (request) => {
-      const url = new URL(request.url);
-      url.protocol = "https:";
-      request = new Request(url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.method === "GET" || request.method === "HEAD"
-          ? null
-          : request.body,
-        referrer: request.referrer,
-        referrerPolicy: request.referrerPolicy,
-        mode: request.mode,
-        credentials: request.credentials,
-        cache: request.cache,
-        redirect: request.redirect,
-        integrity: request.integrity,
-        keepalive: request.keepalive,
-        signal: request.signal,
-      });
+    // Note that `protocol: "https"` does not work on Deno, so we need to
+    // manually rewrite the request URL to use https: on Deno:
+    fetch: "Deno" in globalThis
+      ? (request) => {
+        const url = new URL(request.url);
+        url.protocol = "https:";
+        const newRequest = new Request(url, {
+          method: request.method,
+          headers: request.headers,
+          body: request.method === "GET" || request.method === "HEAD"
+            ? null
+            : request.body,
+          referrer: request.referrer,
+          referrerPolicy: request.referrerPolicy,
+          mode: request.mode,
+          credentials: request.credentials,
+          cache: request.cache,
+          redirect: request.redirect,
+          integrity: request.integrity,
+          keepalive: request.keepalive,
+          signal: request.signal,
+        });
 
-      return new Response();
-    },
+        return fetch(newRequest);
+      }
+      : fetch,
     port: serverPort,
     hostname: "::",
+    silent: true,
+    protocol: "https",
   });
 
   await server.ready();
@@ -74,10 +81,7 @@ export async function spawnTemporaryServer(
 
   logger.debug("Temporary server is listening on port {port}.", { port });
   const tun = await openTunnel({ port: parseInt(port) });
-  logger.debug(
-    "Temporary server is tunneled to {url}.",
-    { url: tun.url.href },
-  );
+  logger.debug("Temporary server is tunneled to {url}.", { url: tun.url.href });
 
   return {
     url: tun.url,
