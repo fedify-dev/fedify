@@ -50,8 +50,7 @@
     "package.json"
   ],
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^",
-    "@fedify/fixture": "workspace:^"
+    "@fedify/fedify": "workspace:^"
   },
   "dependencies": {
     "es-toolkit": "catalog:"
