@@ -133,6 +133,12 @@ const followers: Record<string, Actor> = {};
 export async function runInbox(
   command: InferValue<typeof inboxCommand>,
 ) {
+  // Reset module-level state for a clean run
+  activities.length = 0;
+  acceptFollows.length = 0;
+  for (const key of Object.keys(peers)) delete peers[key];
+  for (const key of Object.keys(followers)) delete followers[key];
+
   // Enable Debug mode if requested
   if (command.debug) {
     await configureLogging();
@@ -150,6 +156,7 @@ export async function runInbox(
   const federation = createFederation<ContextData>({
     kv: new MemoryKvStore(),
     documentLoaderFactory: () => federationDocumentLoader,
+    skipSignatureVerification: !authorizedFetchEnabled,
   });
 
   const time = Temporal.Now.instant();
