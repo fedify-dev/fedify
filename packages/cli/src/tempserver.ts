@@ -46,7 +46,7 @@ export async function spawnTemporaryServer(
       ? (request) => {
         const url = new URL(request.url);
         url.protocol = "https:";
-        request = new Request(url, {
+        const newRequest = new Request(url, {
           method: request.method,
           headers: request.headers,
           body: request.method === "GET" || request.method === "HEAD"
@@ -63,7 +63,7 @@ export async function spawnTemporaryServer(
           signal: request.signal,
         });
 
-        return fetch(request);
+        return fetch(newRequest);
       }
       : fetch,
     port: serverPort,
