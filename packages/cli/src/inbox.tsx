@@ -159,7 +159,7 @@ export async function runInbox(
     ctx: RequestContext<ContextData>,
     identifier: string,
   ) => {
-    if (identifier === "i") return true;
+    if (identifier === "ia") return true;
     return await authorize(ctx);
   };
 
