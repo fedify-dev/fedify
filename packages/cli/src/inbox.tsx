@@ -153,6 +153,16 @@ export async function runInbox(
     return await ctx.getSignedKey() != null;
   };
 
+  // Instance actor must be public for key fetching per spec
+  // https://swicg.github.io/activitypub-http-signature/#instance-actor
+  const instanceActor = async (
+    ctx: RequestContext<ContextData>,
+    identifier: string,
+  ) => {
+    if (identifier === "i") return true;
+    return await authorize(ctx);
+  };
+
   const federation = createFederation<ContextData>({
     kv: new MemoryKvStore(),
     documentLoaderFactory: () => federationDocumentLoader,
@@ -199,7 +209,8 @@ export async function runInbox(
         ];
       }
       return actorKeyPairs;
-    });
+    })
+    .authorize(instanceActor);
 
   // Set up inbox listeners
   federation
