@@ -42,31 +42,34 @@ export async function spawnTemporaryServer(
   }
 
   const server = serve({
-    fetch: (request) => {
-      const url = new URL(request.url);
-      url.protocol = "https:";
-      request = new Request(url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.method === "GET" || request.method === "HEAD"
-          ? null
-          : request.body,
-        referrer: request.referrer,
-        referrerPolicy: request.referrerPolicy,
-        mode: request.mode,
-        credentials: request.credentials,
-        cache: request.cache,
-        redirect: request.redirect,
-        integrity: request.integrity,
-        keepalive: request.keepalive,
-        signal: request.signal,
-      });
+    fetch: "Deno" in globalThis
+      ? (request) => {
+        const url = new URL(request.url);
+        url.protocol = "https:";
+        request = new Request(url, {
+          method: request.method,
+          headers: request.headers,
+          body: request.method === "GET" || request.method === "HEAD"
+            ? null
+            : request.body,
+          referrer: request.referrer,
+          referrerPolicy: request.referrerPolicy,
+          mode: request.mode,
+          credentials: request.credentials,
+          cache: request.cache,
+          redirect: request.redirect,
+          integrity: request.integrity,
+          keepalive: request.keepalive,
+          signal: request.signal,
+        });
 
-      return new Response();
-    },
+        return fetch(request);
+      }
+      : fetch,
     port: serverPort,
     hostname: "::",
     silent: true,
+    protocol: "https",
   });
 
   await server.ready();
@@ -76,10 +79,7 @@ export async function spawnTemporaryServer(
 
   logger.debug("Temporary server is listening on port {port}.", { port });
   const tun = await openTunnel({ port: parseInt(port) });
-  logger.debug(
-    "Temporary server is tunneled to {url}.",
-    { url: tun.url.href },
-  );
+  logger.debug("Temporary server is tunneled to {url}.", { url: tun.url.href });
 
   return {
     url: tun.url,
