@@ -166,6 +166,7 @@ export async function runInbox(
   federation
     .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
       if (identifier !== "i") return null;
+      const keyPairs = await ctx.getActorKeyPairs(identifier);
       return new Application({
         id: ctx.getActorUri(identifier),
         preferredUsername: identifier,
@@ -184,9 +185,8 @@ export async function runInbox(
           url: new URL("https://fedify.dev/logo.png"),
           mediaType: "image/png",
         }),
-        publicKey: (await ctx.getActorKeyPairs(identifier))[0].cryptographicKey,
-        assertionMethods: (await ctx.getActorKeyPairs(identifier))
-          .map((pair) => pair.multikey),
+        publicKey: keyPairs[0].cryptographicKey,
+        assertionMethods: keyPairs.map((pair) => pair.multikey),
         url: ctx.getActorUri(identifier),
       });
     })
