@@ -199,8 +199,7 @@ export async function runInbox(
         ];
       }
       return actorKeyPairs;
-    })
-    .authorize(authorize);
+    });
 
   // Set up inbox listeners
   federation
