@@ -40,6 +40,19 @@ export interface SqliteMessageQueueOptions {
    * @default `{ seconds: 5 }`
    */
   pollInterval?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
+   * Maximum number of retries for SQLITE_BUSY errors.
+   * @default `5`
+   */
+  maxRetries?: number;
+
+  /**
+   * Initial retry delay in milliseconds for SQLITE_BUSY errors.
+   * Uses exponential backoff.
+   * @default `100`
+   */
+  retryDelayMs?: number;
 }
 
 /**
@@ -84,6 +97,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   readonly #tableName: string;
   readonly #pollIntervalMs: number;
   readonly #instanceId: string;
+  readonly #maxRetries: number;
+  readonly #retryDelayMs: number;
   #initialized: boolean;
 
   /**
@@ -107,6 +122,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     this.#pollIntervalMs = Temporal.Duration.from(
       options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
+    this.#maxRetries = options.maxRetries ?? 5;
+    this.#retryDelayMs = options.retryDelayMs ?? 100;
 
     if (!SqliteMessageQueue.#tableNameRegex.test(this.#tableName)) {
       throw new Error(
@@ -152,22 +169,22 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing a message...", { message });
     }
 
-    this.#db
-      .prepare(
-        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-        VALUES (?, ?, ?, ?)`,
-      )
-      .run(id, encodedMessage, now, scheduled);
+    return this.#retryOnBusy(() => {
+      this.#db
+        .prepare(
+          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
+          VALUES (?, ?, ?, ?)`,
+        )
+        .run(id, encodedMessage, now, scheduled);
 
-    logger.debug("Enqueued a message.", { message });
+      logger.debug("Enqueued a message.", { message });
 
-    // Notify listeners that a message has been enqueued
-    const delayMs = delay.total("millisecond");
-    SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
-      new EnqueueEvent(delayMs),
-    );
-
-    return Promise.resolve();
+      // Notify listeners that a message has been enqueued
+      const delayMs = delay.total("millisecond");
+      SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
+        new EnqueueEvent(delayMs),
+      );
+    });
   }
 
   /**
@@ -195,33 +212,34 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing messages...", { messages });
     }
 
-    try {
-      this.#db.exec("BEGIN IMMEDIATE");
+    return this.#retryOnBusy(() => {
+      try {
+        this.#db.exec("BEGIN IMMEDIATE");
 
-      const stmt = this.#db.prepare(
-        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-        VALUES (?, ?, ?, ?)`,
-      );
+        const stmt = this.#db.prepare(
+          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
+          VALUES (?, ?, ?, ?)`,
+        );
 
-      for (const message of messages) {
-        const id = crypto.randomUUID();
-        const encodedMessage = this.#encodeMessage(message);
-        stmt.run(id, encodedMessage, now, scheduled);
+        for (const message of messages) {
+          const id = crypto.randomUUID();
+          const encodedMessage = this.#encodeMessage(message);
+          stmt.run(id, encodedMessage, now, scheduled);
+        }
+
+        this.#db.exec("COMMIT");
+        logger.debug("Enqueued messages.", { messages });
+
+        // Notify listeners that messages have been enqueued
+        const delayMs = delay.total("millisecond");
+        SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
+          new EnqueueEvent(delayMs),
+        );
+      } catch (error) {
+        this.#db.exec("ROLLBACK");
+        throw error;
       }
-
-      this.#db.exec("COMMIT");
-      logger.debug("Enqueued messages.", { messages });
-
-      // Notify listeners that messages have been enqueued
-      const delayMs = delay.total("millisecond");
-      SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
-        new EnqueueEvent(delayMs),
-      );
-    } catch (error) {
-      this.#db.exec("ROLLBACK");
-      throw error;
-    }
-    return Promise.resolve();
+    });
   }
 
   /**
@@ -249,18 +267,20 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
         // Atomically fetch and delete the oldest message that is ready to be
         // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
-        const result = this.#db
-          .prepare(
-            `DELETE FROM "${this.#tableName}"
-            WHERE id = (
-              SELECT id FROM "${this.#tableName}"
-              WHERE scheduled <= ?
-              ORDER BY scheduled
-              LIMIT 1
+        const result = await this.#retryOnBusy(() => {
+          return this.#db
+            .prepare(
+              `DELETE FROM "${this.#tableName}"
+              WHERE id = (
+                SELECT id FROM "${this.#tableName}"
+                WHERE scheduled <= ?
+                ORDER BY scheduled
+                LIMIT 1
+              )
+              RETURNING id, message`,
             )
-            RETURNING id, message`,
-          )
-          .get(now) as { id: string; message: string } | undefined;
+            .get(now) as { id: string; message: string } | undefined;
+        });
 
         if (result) {
           const message = this.#decodeMessage(result.message);
@@ -379,6 +399,83 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       SqliteMessageQueue.#activeInstances.delete(this.#tableName);
       SqliteMessageQueue.#notifyChannels.delete(this.#tableName);
     }
+  }
+
+  /**
+   * Checks if an error is a SQLITE_BUSY error.
+   * Handles different error formats from node:sqlite and bun:sqlite.
+   */
+  #isBusyError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+
+    // Check error message for SQLITE_BUSY
+    if (
+      error.message.includes("SQLITE_BUSY") ||
+      error.message.includes("database is locked")
+    ) {
+      return true;
+    }
+
+    // Check error code property (node:sqlite)
+    const errorWithCode = error as Error & { code?: string };
+    if (errorWithCode.code === "SQLITE_BUSY") {
+      return true;
+    }
+
+    // Check errno property (bun:sqlite)
+    const errorWithErrno = error as Error & { errno?: number };
+    if (errorWithErrno.errno === 5) { // SQLITE_BUSY = 5
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Retries a database operation with exponential backoff on SQLITE_BUSY errors.
+   */
+  async #retryOnBusy<T>(operation: () => T): Promise<T> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= this.#maxRetries; attempt++) {
+      try {
+        return operation();
+      } catch (error) {
+        lastError = error;
+
+        if (!this.#isBusyError(error)) {
+          throw error;
+        }
+
+        if (attempt === this.#maxRetries) {
+          logger.error(
+            "Max retries ({maxRetries}) reached for SQLITE_BUSY error on table {tableName}.",
+            {
+              maxRetries: this.#maxRetries,
+              tableName: this.#tableName,
+              error,
+            },
+          );
+          throw error;
+        }
+
+        // Exponential backoff: retryDelayMs * 2^attempt
+        const delayMs = this.#retryDelayMs * Math.pow(2, attempt);
+        logger.debug(
+          "SQLITE_BUSY error on table {tableName}, retrying in {delayMs}ms (attempt {attempt}/{maxRetries})...",
+          {
+            tableName: this.#tableName,
+            delayMs,
+            attempt: attempt + 1,
+            maxRetries: this.#maxRetries,
+          },
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw lastError;
   }
 
   #encodeMessage(message: unknown): string {
