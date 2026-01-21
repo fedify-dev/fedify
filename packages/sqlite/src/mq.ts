@@ -212,41 +212,35 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing messages...", { messages });
     }
 
-    return this.#retryOnBusy(() => {
-      try {
-        this.#db.exec("BEGIN IMMEDIATE");
+    return this.#withTransactionRetries(() => {
+      const stmt = this.#db.prepare(
+        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
+        VALUES (?, ?, ?, ?)`,
+      );
 
-        const stmt = this.#db.prepare(
-          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-          VALUES (?, ?, ?, ?)`,
-        );
-
-        for (const message of messages) {
-          const id = crypto.randomUUID();
-          const encodedMessage = this.#encodeMessage(message);
-          stmt.run(id, encodedMessage, now, scheduled);
-        }
-
-        this.#db.exec("COMMIT");
-        logger.debug("Enqueued messages.", { messages });
-
-        // Notify listeners that messages have been enqueued
-        const delayMs = delay.total("millisecond");
-        SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
-          new EnqueueEvent(delayMs),
-        );
-      } catch (error) {
-        this.#db.exec("ROLLBACK");
-        logger.error(
-          "Failed to enqueue messages to table {tableName}: {error}",
-          {
-            tableName: this.#tableName,
-            messageCount: messages.length,
-            error,
-          },
-        );
-        throw error;
+      for (const message of messages) {
+        const id = crypto.randomUUID();
+        const encodedMessage = this.#encodeMessage(message);
+        stmt.run(id, encodedMessage, now, scheduled);
       }
+
+      logger.debug("Enqueued messages.", { messages });
+
+      // Notify listeners that messages have been enqueued
+      const delayMs = delay.total("millisecond");
+      SqliteMessageQueue.#getNotifyChannel(this.#tableName).dispatchEvent(
+        new EnqueueEvent(delayMs),
+      );
+    }).catch((error) => {
+      logger.error(
+        "Failed to enqueue messages to table {tableName}: {error}",
+        {
+          tableName: this.#tableName,
+          messageCount: messages.length,
+          error,
+        },
+      );
+      throw error;
     });
   }
 
@@ -275,7 +269,9 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
         // Atomically fetch and delete the oldest message that is ready to be
         // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
-        const result = await this.#retryOnBusy(() => {
+        // Wrapped in BEGIN IMMEDIATE transaction to ensure proper locking
+        // and prevent race conditions in multi-process scenarios
+        const result = await this.#withTransactionRetries(() => {
           return this.#db
             .prepare(
               `DELETE FROM "${this.#tableName}"
@@ -372,19 +368,21 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       tableName: this.#tableName,
     });
 
-    this.#db.exec(`
-      CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
-        id TEXT PRIMARY KEY,
-        message TEXT NOT NULL,
-        created INTEGER NOT NULL,
-        scheduled INTEGER NOT NULL
-      )
-    `);
+    this.#withTransaction(() => {
+      this.#db.exec(`
+        CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
+          id TEXT PRIMARY KEY,
+          message TEXT NOT NULL,
+          created INTEGER NOT NULL,
+          scheduled INTEGER NOT NULL
+        )
+      `);
 
-    this.#db.exec(`
-      CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_scheduled"
-      ON "${this.#tableName}" (scheduled)
-    `);
+      this.#db.exec(`
+        CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_scheduled"
+        ON "${this.#tableName}" (scheduled)
+      `);
+    });
 
     this.#initialized = true;
     logger.debug("Initialized the message queue table {tableName}.", {
@@ -423,7 +421,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   }
 
   /**
-   * Checks if an error is a SQLITE_BUSY error.
+   * Checks if an error is a SQLITE_BUSY error or transaction conflict.
    * Handles different error formats from node:sqlite and bun:sqlite.
    */
   #isBusyError(error: unknown): boolean {
@@ -432,7 +430,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     // Check error message for SQLITE_BUSY
     if (
       error.message.includes("SQLITE_BUSY") ||
-      error.message.includes("database is locked")
+      error.message.includes("database is locked") ||
+      error.message.includes("transaction within a transaction")
     ) {
       return true;
     }
@@ -504,6 +503,40 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     }
 
     throw lastError;
+  }
+
+  /**
+   * Executes a database operation within a transaction.
+   * Automatically handles BEGIN IMMEDIATE, COMMIT, and ROLLBACK.
+   */
+  #withTransaction<T>(operation: () => T): T {
+    let transactionStarted = false;
+    try {
+      this.#db.exec("BEGIN IMMEDIATE");
+      transactionStarted = true;
+      const result = operation();
+      this.#db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      // Only rollback if transaction was successfully started
+      if (transactionStarted) {
+        try {
+          this.#db.exec("ROLLBACK");
+        } catch {
+          // Ignore rollback errors - transaction might have been rolled back already
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Executes a database operation within a transaction with retry logic.
+   * Automatically handles BEGIN IMMEDIATE, COMMIT, and ROLLBACK.
+   * Retries on SQLITE_BUSY errors with exponential backoff.
+   */
+  async #withTransactionRetries<T>(operation: () => T): Promise<T> {
+    return await this.#retryOnBusy(() => this.#withTransaction(operation));
   }
 
   #encodeMessage(message: unknown): string {
