@@ -26,6 +26,17 @@ env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
 depends = ["install"]
 run = "pnpm --filter '@fedify/*' --recursive --parallel build"
 
+[tasks.prepare-each]
+description = "Prepare specific package(s)"
+usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
+env = { CI = "true" }
+run = '''
+for PACKAGE in ${usage_packages}; do
+  echo "Preparing package: $PACKAGE"
+  pnpm --filter "@fedify/$PACKAGE" build
+done
+'''
+
 # Code quality
 [tasks.check]
 description = "Check code formatting, linting, and type checking"
@@ -65,6 +76,24 @@ fi
 description = "Format the codebase"
 run = "deno fmt && hongdown --write"
 
+[tasks.check-each]
+description = "Check code quality for specific package(s)"
+usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
+run = '''
+for PACKAGE in ${usage_packages}; do
+  echo "Checking package: $PACKAGE"
+  PACKAGE_DIR="packages/$PACKAGE"
+  if [ ! -d "$PACKAGE_DIR" ]; then
+    echo "Error: Package directory $PACKAGE_DIR not found"
+    exit 1
+  fi
+
+  deno fmt --check "$PACKAGE_DIR"
+  deno lint "$PACKAGE_DIR"
+  deno check "$PACKAGE_DIR"/**/*.ts
+done
+'''
+
 # Testing
 [tasks."test:deno"]
 description = "Run the test suite using Deno"
@@ -84,6 +113,21 @@ run = "pnpm run --recursive --filter '!{docs}' test:bun"
 [tasks.test]
 description = "Run the test suite across all environments (Deno, Node.js, Bun)"
 depends = ["check", "test:deno", "test:node", "test:bun"]
+
+[tasks.test-each]
+description = "Run tests for a specific package across all environments"
+usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
+run = '''
+mise run prepare-each ${usage_packages}
+mise run check-each ${usage_packages}
+
+for PACKAGE in ${usage_packages}; do
+  echo "Running tests for package: $PACKAGE"
+  deno task --filter "@fedify/$PACKAGE" test
+  pnpm --filter "@fedify/$PACKAGE" test
+  pnpm --filter "@fedify/$PACKAGE" test:bun
+done
+'''
 
 # Documentation
 [tasks.docs]
