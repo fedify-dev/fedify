@@ -178,7 +178,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   // which causes JSR type analyzer to hang when combined with @opentelemetry/api
   // types present in Context.tracerProvider (issue #468).
   private webFingerDispatcher?: any;
-  private actorDispatchers: Map<string, any> = new Map();
+  public actorDispatchers: Map<string, any> = new Map();
   public actorPath?: string;
   public inboxPath?: string;
   public outboxPath?: string;
@@ -190,7 +190,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public nodeInfoPath?: string;
   public sharedInboxPath?: string;
   public objectPaths: Map<string, string> = new Map();
-  private objectDispatchers: Map<string, any> = new Map();
+  public objectDispatchers: Map<string, any> = new Map();
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
   private followingDispatcher?: any;
@@ -622,12 +622,34 @@ class MockContext<TContextData> implements Context<TContextData> {
     this.tracerProvider = options.tracerProvider ?? noopTracerProvider;
   }
 
-  getActor(_handle: string): Promise<any> {
-    return Promise.resolve(null);
+  async getActor(handle: string): Promise<any> {
+    if (
+      this.federation instanceof MockFederation && this.federation.actorPath
+    ) {
+      const dispatcher = this.federation.actorDispatchers.get(
+        this.federation.actorPath,
+      );
+      if (dispatcher) {
+        return await dispatcher(this, handle);
+      }
+    }
+    return null;
   }
 
-  getObject(_cls: any, _values: any): Promise<any> {
-    return Promise.resolve(null);
+  async getObject<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+  ): Promise<TObject | null> {
+    if (this.federation instanceof MockFederation) {
+      const path = this.federation.objectPaths.get(cls.typeId.href);
+      if (path) {
+        const dispatcher = this.federation.objectDispatchers.get(path);
+        if (dispatcher) {
+          return await dispatcher(this, values);
+        }
+      }
+    }
+    return null;
   }
 
   getSignedKey(): Promise<any> {
