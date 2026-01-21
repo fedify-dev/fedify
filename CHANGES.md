@@ -155,6 +155,12 @@ To be released.
      -  Tunnels the relay server to the public internet by default for external
         access, with `--no-tunnel` option to run locally only.
 
+ -  Added `--tunnel-service` option to `fedify lookup`, `fedify inbox`, and
+    `fedify relay` commands to select the tunneling service (localhost.run,
+    serveo.net, or pinggy.io).  Also added `--tunnel-service` as an alias
+    to the existing `-s`/`--service` option in `fedify tunnel` for consistency.
+    [[#525], [#529], [#531] by Jiwon Kwon]
+
 [Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374
 [#397]: https://github.com/fedify-dev/fedify/issues/397
@@ -168,6 +174,9 @@ To be released.
 [#496]: https://github.com/fedify-dev/fedify/pull/496
 [#510]: https://github.com/fedify-dev/fedify/issues/510
 [#518]: https://github.com/fedify-dev/fedify/pull/518
+[#525]: https://github.com/fedify-dev/fedify/issues/525
+[#529]: https://github.com/fedify-dev/fedify/pull/529
+[#531]: https://github.com/fedify-dev/fedify/pull/531
 
 ### @fedify/relay
 
