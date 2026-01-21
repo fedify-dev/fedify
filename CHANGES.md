@@ -159,7 +159,7 @@ To be released.
     `fedify relay` commands to select the tunneling service (localhost.run,
     serveo.net, or pinggy.io).  Also added `--tunnel-service` as an alias
     to the existing `-s`/`--service` option in `fedify tunnel` for consistency.
-    [[#525], [#529] by Jiwon Kwon]
+    [[#525], [#529], [#531] by Jiwon Kwon]
 
 [Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374
@@ -176,6 +176,7 @@ To be released.
 [#518]: https://github.com/fedify-dev/fedify/pull/518
 [#525]: https://github.com/fedify-dev/fedify/issues/525
 [#529]: https://github.com/fedify-dev/fedify/pull/529
+[#531]: https://github.com/fedify-dev/fedify/pull/531
 
 ### @fedify/relay
 
