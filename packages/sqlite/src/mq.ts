@@ -316,7 +316,6 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
                 error,
               },
             );
-            throw error;
           }
 
           // Check for next message immediately
