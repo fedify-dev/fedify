@@ -138,7 +138,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
     if (!SqliteMessageQueue.#tableNameRegex.test(this.#tableName)) {
       throw new Error(
-        `Invalid table name for the message queue: ${this.#tableName}`,
+        `Invalid table name for the message queue: ${this.#tableName}.\
+ Only letters, digits, and underscores are allowed.`,
       );
     }
 
