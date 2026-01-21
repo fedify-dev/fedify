@@ -237,6 +237,14 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         );
       } catch (error) {
         this.#db.exec("ROLLBACK");
+        logger.error(
+          "Failed to enqueue messages to table {tableName}: {error}",
+          {
+            tableName: this.#tableName,
+            messageCount: messages.length,
+            error,
+          },
+        );
         throw error;
       }
     });
@@ -288,8 +296,21 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
             id: result.id,
             message,
           });
-          await handler(message);
-          logger.debug("Processed message {id}.", { id: result.id });
+          try {
+            await handler(message);
+            logger.debug("Processed message {id}.", { id: result.id });
+          } catch (error) {
+            logger.error(
+              "Failed to process message {id} from table {tableName}: {error}",
+              {
+                id: result.id,
+                tableName: this.#tableName,
+                message,
+                error,
+              },
+            );
+            throw error;
+          }
 
           // Check for next message immediately
           continue;
@@ -444,6 +465,13 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         lastError = error;
 
         if (!this.#isBusyError(error)) {
+          logger.error(
+            "Database operation failed on table {tableName}: {error}",
+            {
+              tableName: this.#tableName,
+              error,
+            },
+          );
           throw error;
         }
 
