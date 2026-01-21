@@ -14,7 +14,9 @@
     "test"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts"

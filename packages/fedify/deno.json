@@ -123,5 +123,12 @@
         "test:cfworkers"
       ]
     }
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
+    ]
   }
 }

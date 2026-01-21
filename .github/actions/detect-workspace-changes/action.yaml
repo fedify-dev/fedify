@@ -1,0 +1,114 @@
+name: Detect Workspace Changes
+description: Detects which workspace packages have changed using pnpm
+outputs:
+  changed_workspaces:
+    description: "Space-separated list of changed workspace paths"
+    value: ${{ steps.detect.outputs.changed_workspaces }}
+  changed_workspaces_json:
+    description: "JSON array of changed workspace paths"
+    value: ${{ steps.detect.outputs.changed_workspaces_json }}
+  all_workspaces:
+    description: "JSON array of all workspace paths"
+    value: ${{ steps.detect.outputs.all_workspaces }}
+  has_changes:
+    description: "Whether any workspaces have changes"
+    value: ${{ steps.detect.outputs.has_changes }}
+
+runs:
+  using: composite
+  steps:
+  - name: Detect changed workspaces
+    id: detect
+    shell: bash
+    run: |
+      set -e
+
+      # Determine base commit for comparison
+      if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        base_ref="${{ github.event.pull_request.base.sha }}"
+      else
+        # For push events, compare with previous commit
+        if git rev-parse HEAD~1 >/dev/null 2>&1; then
+          base_ref="HEAD~1"
+        else
+          # First commit in repository
+          base_ref=""
+        fi
+      fi
+
+      echo "Base ref: $base_ref"
+      echo ""
+
+      # Use pnpm to detect changed workspaces
+      if [[ -n "$base_ref" ]]; then
+        # Get list of changed workspaces using pnpm --filter
+        # The [...$base_ref] syntax filters to packages that have changes since base_ref
+        changed_output=$(pnpm list --recursive --depth -1 --filter "...[${base_ref}]" --json 2>/dev/null || echo "[]")
+      else
+        # First commit - all workspaces are considered changed
+        changed_output=$(pnpm list --recursive --depth -1 --json 2>/dev/null || echo "[]")
+      fi
+
+      echo "Changed packages output:"
+      echo "$changed_output" | jq .
+      echo ""
+
+      # Extract workspace paths from pnpm output
+      changed_workspaces=$(echo "$changed_output" | jq -r '.[].path // empty' | sed "s|^$PWD/||" || echo "")
+
+      # Convert to array
+      readarray -t changed_array <<< "$changed_workspaces"
+
+      # Filter out empty entries
+      filtered_changed=()
+      for ws in "${changed_array[@]}"; do
+        if [[ -n "$ws" ]]; then
+          filtered_changed+=("$ws")
+          echo "✓ Changed: $ws"
+        fi
+      done
+
+      echo ""
+
+      # Get all workspaces for reference
+      all_output=$(pnpm list --recursive --depth -1 --json 2>/dev/null || echo "[]")
+      all_workspaces=$(echo "$all_output" | jq -r '.[].path // empty' | sed "s|^$PWD/||" || echo "")
+
+      # Output results
+      if [[ ${#filtered_changed[@]} -eq 0 ]]; then
+        echo "No workspace changes detected"
+        echo "changed_workspaces=" >> "$GITHUB_OUTPUT"
+        echo "changed_workspaces_json=[]" >> "$GITHUB_OUTPUT"
+        echo "has_changes=false" >> "$GITHUB_OUTPUT"
+      else
+        echo "Changed workspaces: ${filtered_changed[*]}"
+        # Output as space-separated string
+        echo "changed_workspaces=${filtered_changed[*]}" >> "$GITHUB_OUTPUT"
+        # Output as JSON array (compact format, no newlines)
+        json_array=$(printf '%s\n' "${filtered_changed[@]}" | jq -R . | jq -s -c .)
+        echo "changed_workspaces_json=$json_array" >> "$GITHUB_OUTPUT"
+        echo "has_changes=true" >> "$GITHUB_OUTPUT"
+      fi
+
+      # Output all workspaces for reference (compact format, no newlines)
+      all_workspaces_json=$(echo "$all_workspaces" | grep -v '^$' | jq -R . | jq -s -c . || echo "[]")
+      echo "all_workspaces=$all_workspaces_json" >> "$GITHUB_OUTPUT"
+
+  - name: Display detection results
+    shell: bash
+    run: |
+      echo "## Workspace Change Detection Results" >> "$GITHUB_STEP_SUMMARY"
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      if [[ "${{ steps.detect.outputs.has_changes }}" == "true" ]]; then
+        echo "### Changed Workspaces" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo '${{ steps.detect.outputs.changed_workspaces_json }}' | jq -r '.[] | "- `" + . + "`"' >> "$GITHUB_STEP_SUMMARY"
+      else
+        echo "No workspace changes detected." >> "$GITHUB_STEP_SUMMARY"
+      fi
+
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+      echo "### All Workspaces" >> "$GITHUB_STEP_SUMMARY"
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+      echo '${{ steps.detect.outputs.all_workspaces }}' | jq -r '.[] | "- `" + . + "`"' >> "$GITHUB_STEP_SUMMARY"

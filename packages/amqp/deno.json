@@ -17,7 +17,9 @@
     "pnpm-lock.yaml"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "build": "pnpm build",
@@ -42,5 +44,12 @@
         "test:bun"
       ]
     }
+  },
+  "test": {
+    "include": [
+      "./**/*_test.ts",
+      "./**/*_test.tsx",
+      "./**/*.test.ts"
+    ]
   }
 }
