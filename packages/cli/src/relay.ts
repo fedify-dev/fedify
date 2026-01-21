@@ -24,6 +24,7 @@ import { DatabaseSync } from "node:sqlite";
 import process from "node:process";
 import ora from "ora";
 import { configureLogging, debugOption } from "./globals.ts";
+import { tunnelOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -82,11 +83,8 @@ export const relayCommand = command(
             message`Reject follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
         }),
       )),
-      noTunnel: option("-T", "--no-tunnel", {
-        description:
-          message`Disable tunneling the relay server to the public internet. Local access only.`,
-      }),
     }),
+    tunnelOption,
     debugOption,
   ),
   {
@@ -140,7 +138,11 @@ export async function runRelay(
 
   server = await spawnTemporaryServer(async (request) => {
     return await relay.fetch(request);
-  }, { noTunnel: command.noTunnel, port: command.port });
+  }, {
+    noTunnel: !command.tunnel,
+    port: command.port,
+    ...(command.tunnel && { service: command.tunnelService }),
+  });
 
   relay = createRelay(
     command.protocol as RelayType,

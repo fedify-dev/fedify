@@ -44,6 +44,7 @@ import ora from "ora";
 import metadata from "../deno.json" with { type: "json" };
 import { getDocumentLoader } from "./docloader.ts";
 import { configureLogging, debugOption } from "./globals.ts";
+import { tunnelOption } from "./options.ts";
 import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { recordingSink } from "./log.ts";
@@ -86,14 +87,9 @@ export const inboxCommand = command(
           }),
         ),
       ),
-      noTunnel: option(
-        "-T",
-        "--no-tunnel",
-        {
-          description:
-            message`Do not tunnel the ephemeral ActivityPub server to the public Internet.`,
-        },
-      ),
+    }),
+    tunnelOption,
+    object({
       actorName: withDefault(
         option("--actor-name", string({ metavar: "NAME" }), {
           description: message`Customize the actor display name.`,
@@ -334,7 +330,8 @@ export async function runInbox(
     discardStdin: false,
   }).start();
   const server = await spawnTemporaryServer(fetch, {
-    noTunnel: command.noTunnel,
+    noTunnel: !command.tunnel,
+    ...(command.tunnel && { service: command.tunnelService }),
   });
   spinner.succeed(
     `The ephemeral ActivityPub server is up and running: ${

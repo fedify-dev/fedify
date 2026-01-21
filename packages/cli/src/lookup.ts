@@ -42,16 +42,20 @@ import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { configureLogging, debugOption } from "./globals.ts";
 import { renderImages } from "./imagerenderer.ts";
+import { tunnelServiceOption } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = withDefault(
+export const authorizedFetchOption = or(
   object({
-    authorizedFetch: flag("-a", "--authorized-fetch", {
-      description: message`Sign the request with an one-time key.`,
-    }),
+    authorizedFetch: map(
+      flag("-a", "--authorized-fetch", {
+        description: message`Sign the request with an one-time key.`,
+      }),
+      () => true as const,
+    ),
     firstKnock: withDefault(
       option(
         "--first-knock",
@@ -64,8 +68,11 @@ export const authorizedFetchOption = withDefault(
       ),
       "draft-cavage-http-signatures-12" as const,
     ),
+    tunnelService: tunnelServiceOption,
   }),
-  { authorizedFetch: false } as const,
+  object({
+    authorizedFetch: constant(false as const),
+  }),
 );
 
 const traverseOption = withDefault(
@@ -358,7 +365,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
         }),
         { contextLoader },
       );
-    });
+    }, { service: command.tunnelService });
     const baseAuthLoader = getAuthenticatedDocumentLoader(
       {
         keyId: new URL("#main-key", server.url),
