@@ -787,6 +787,19 @@ the [ActivityPub HTTP Signatures] specification.
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 [ActivityPub HTTP Signatures]: https://swicg.github.io/activitypub-http-signature/
 
+### `--tunnel-service`: Tunneling service for `-a`/`--authorized-fetch`
+
+The `--tunnel-service` option is used to specify which tunneling service to use
+when using the `-a`/`--authorized-fetch` option.  The authorized fetch feature
+requires a temporary server to be exposed to the public internet, and this
+option allows you to choose the tunneling service.  Available services can be
+found in the output of the `fedify lookup --help` command.  For example, to use
+serveo.net as the tunneling service:
+
+~~~~ sh
+fedify lookup --authorized-fetch --tunnel-service serveo.net @user@example.com
+~~~~
+
 ### `-u`/`--user-agent`: Custom `User-Agent` header
 
 *This option is available since Fedify 1.3.0.*
@@ -966,6 +979,20 @@ about the security implications of exposing the server to the public internet.
 > If you disable the tunneling feature, the ephemeral ActivityPub instance will
 > be served via HTTP instead of HTTPS.
 
+### `--tunnel-service`: Tunneling service
+
+The `--tunnel-service` option is used to specify which tunneling service to use
+for exposing the ephemeral inbox server to the public internet.  Available
+services can be found in the output of the `fedify inbox --help` command.
+For example, to use serveo.net as the tunneling service:
+
+~~~~ sh
+fedify inbox --tunnel-service serveo.net
+~~~~
+
+> [!NOTE]
+> This option cannot be used together with `-T`/`--no-tunnel`.
+
 ### `-A`/`--authorized-fetch`: Authorized fetch mode
 
 The `-A`/`--authorized-fetch` option enables authorized fetch mode on the
@@ -1126,11 +1153,13 @@ fedify tunnel 3000
 
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
 
-### `-s`/`--service`: The tunneling service
+### `-s`/`--service`/`--tunnel-service`: The tunneling service
 
 The `-s`/`--service` option is used to specify the tunneling service to use.
-Available services can be found in the output of the `fedify tunnel --help`
-command.  For example, to use the serveo.net, run the below command:
+The `--tunnel-service` is an alias for consistency with other commands that
+support tunneling.  Available services can be found in the output of the
+`fedify tunnel --help` command.  For example, to use serveo.net, run the below
+command:
 
 ~~~~ sh
 fedify tunnel --service serveo.net 3000
