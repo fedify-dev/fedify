@@ -68,6 +68,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   // In-memory event emitter for notifying listeners when messages are enqueued.
   // Scoped per table name to allow multiple queues to coexist.
   static readonly #notifyChannels = new Map<string, EventTarget>();
+  // Track active instance IDs per table name for accurate cleanup
+  static readonly #activeInstances = new Map<string, Set<string>>();
 
   static #getNotifyChannel(tableName: string): EventTarget {
     let channel = SqliteMessageQueue.#notifyChannels.get(tableName);
@@ -81,6 +83,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   readonly #db: SqliteDatabaseAdapter;
   readonly #tableName: string;
   readonly #pollIntervalMs: number;
+  readonly #instanceId: string;
   #initialized: boolean;
 
   /**
@@ -100,6 +103,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     this.#db = new SqliteDatabase(db);
     this.#initialized = options.initialized ?? false;
     this.#tableName = options.tableName ?? SqliteMessageQueue.#defaultTableName;
+    this.#instanceId = crypto.randomUUID();
     this.#pollIntervalMs = Temporal.Duration.from(
       options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
@@ -109,6 +113,18 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         `Invalid table name for the message queue: ${this.#tableName}`,
       );
     }
+
+    // Register this instance ID for this table
+    this.#registerInstance();
+  }
+
+  #registerInstance(): void {
+    let instances = SqliteMessageQueue.#activeInstances.get(this.#tableName);
+    if (instances == null) {
+      instances = new Set();
+      SqliteMessageQueue.#activeInstances.set(this.#tableName, instances);
+    }
+    instances.add(this.#instanceId);
   }
 
   /**
@@ -349,6 +365,20 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
    */
   [Symbol.dispose](): void {
     this.#db.close();
+    this.#unregisterInstance();
+  }
+
+  #unregisterInstance(): void {
+    const instances = SqliteMessageQueue.#activeInstances.get(this.#tableName);
+    if (instances == null) return;
+
+    instances.delete(this.#instanceId);
+
+    // If no more instances exist for this table, cleanup EventTarget to prevent memory leak
+    if (instances.size === 0) {
+      SqliteMessageQueue.#activeInstances.delete(this.#tableName);
+      SqliteMessageQueue.#notifyChannels.delete(this.#tableName);
+    }
   }
 
   #encodeMessage(message: unknown): string {
