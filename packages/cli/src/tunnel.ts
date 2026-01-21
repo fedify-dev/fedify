@@ -10,6 +10,7 @@ import {
   object,
   option,
   optional,
+  value,
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
 import { print, printError } from "@optique/run";
@@ -32,10 +33,15 @@ export const tunnelCommand = command(
         option(
           "-s",
           "--service",
+          "--tunnel-service",
           choice(["localhost.run", "serveo.net", "pinggy.io"], {
             metavar: "SERVICE",
           }),
-          { description: message`The tunneling service to use.` },
+          {
+            description: message`The tunneling service to use: ${
+              value("localhost.run")
+            }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
+          },
         ),
       ),
     }),

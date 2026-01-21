@@ -33,6 +33,7 @@ import {
   optionNames,
   or,
   string,
+  value,
   withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
@@ -47,11 +48,14 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = withDefault(
+export const authorizedFetchOption = or(
   object({
-    authorizedFetch: flag("-a", "--authorized-fetch", {
-      description: message`Sign the request with an one-time key.`,
-    }),
+    authorizedFetch: map(
+      flag("-a", "--authorized-fetch", {
+        description: message`Sign the request with an one-time key.`,
+      }),
+      () => true as const,
+    ),
     firstKnock: withDefault(
       option(
         "--first-knock",
@@ -64,8 +68,21 @@ export const authorizedFetchOption = withDefault(
       ),
       "draft-cavage-http-signatures-12" as const,
     ),
+    tunnelService: optional(
+      option(
+        "--tunnel-service",
+        choice(["localhost.run", "serveo.net", "pinggy.io"]),
+        {
+          description: message`The tunneling service to use: ${
+            value("localhost.run")
+          }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
+        },
+      ),
+    ),
   }),
-  { authorizedFetch: false } as const,
+  object({
+    authorizedFetch: constant(false as const),
+  }),
 );
 
 const traverseOption = withDefault(
@@ -358,7 +375,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
         }),
         { contextLoader },
       );
-    });
+    }, { service: command.tunnelService });
     const baseAuthLoader = getAuthenticatedDocumentLoader(
       {
         keyId: new URL("#main-key", server.url),

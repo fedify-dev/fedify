@@ -7,6 +7,7 @@ const logger = getLogger(["fedify", "cli", "tempserver"]);
 export type SpawnTemporaryServerOptions = {
   noTunnel?: boolean;
   port?: number;
+  service?: "localhost.run" | "serveo.net" | "pinggy.io";
 };
 
 export type TemporaryServer = {
@@ -80,7 +81,10 @@ export async function spawnTemporaryServer(
   const port = url.port;
 
   logger.debug("Temporary server is listening on port {port}.", { port });
-  const tun = await openTunnel({ port: parseInt(port) });
+  const tun = await openTunnel({
+    port: parseInt(port),
+    service: options.service,
+  });
   logger.debug("Temporary server is tunneled to {url}.", { url: tun.url.href });
 
   return {

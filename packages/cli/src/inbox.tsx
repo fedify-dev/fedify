@@ -24,16 +24,21 @@ import {
 } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
+  choice,
   command,
   constant,
+  flag,
   type InferValue,
+  map,
   merge,
   message,
   multiple,
   object,
   option,
   optional,
+  or,
   string,
+  value,
   withDefault,
 } from "@optique/core";
 import Table from "cli-table3";
@@ -86,14 +91,33 @@ export const inboxCommand = command(
           }),
         ),
       ),
-      noTunnel: option(
-        "-T",
-        "--no-tunnel",
-        {
-          description:
-            message`Do not tunnel the ephemeral ActivityPub server to the public Internet.`,
-        },
-      ),
+    }),
+    or(
+      object({
+        tunnel: map(
+          flag("-T", "--no-tunnel", {
+            description:
+              message`Do not tunnel the ephemeral ActivityPub server to the public Internet.`,
+          }),
+          () => false as const,
+        ),
+      }),
+      object({
+        tunnel: constant(true),
+        tunnelService: optional(
+          option(
+            "--tunnel-service",
+            choice(["localhost.run", "serveo.net", "pinggy.io"]),
+            {
+              description: message`The tunneling service to use: ${
+                value("localhost.run")
+              }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
+            },
+          ),
+        ),
+      }),
+    ),
+    object({
       actorName: withDefault(
         option("--actor-name", string({ metavar: "NAME" }), {
           description: message`Customize the actor display name.`,
@@ -334,7 +358,8 @@ export async function runInbox(
     discardStdin: false,
   }).start();
   const server = await spawnTemporaryServer(fetch, {
-    noTunnel: command.noTunnel,
+    noTunnel: !command.tunnel,
+    ...(command.tunnel && { service: command.tunnelService }),
   });
   spinner.succeed(
     `The ephemeral ActivityPub server is up and running: ${

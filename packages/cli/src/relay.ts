@@ -5,8 +5,10 @@ import { getLogger } from "@logtape/logtape";
 import {
   command,
   constant,
+  flag,
   type InferValue,
   integer,
+  map,
   merge,
   message,
   multiple,
@@ -14,6 +16,7 @@ import {
   option,
   optional,
   optionName,
+  or,
   string,
   value,
   withDefault,
@@ -82,11 +85,34 @@ export const relayCommand = command(
             message`Reject follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
         }),
       )),
-      noTunnel: option("-T", "--no-tunnel", {
-        description:
-          message`Disable tunneling the relay server to the public internet. Local access only.`,
-      }),
     }),
+    or(
+      object({
+        tunnel: map(
+          flag("-T", "--no-tunnel", {
+            description:
+              message`Disable tunneling the relay server to the public internet. Local access only.`,
+          }),
+          () => false as const,
+        ),
+      }),
+      object({
+        tunnel: constant(true),
+        tunnelService: optional(
+          option(
+            "--tunnel-service",
+            choice(["localhost.run", "serveo.net", "pinggy.io"], {
+              metavar: "SERVICE",
+            }),
+            {
+              description: message`The tunneling service to use: ${
+                value("localhost.run")
+              }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
+            },
+          ),
+        ),
+      }),
+    ),
     debugOption,
   ),
   {
@@ -140,7 +166,11 @@ export async function runRelay(
 
   server = await spawnTemporaryServer(async (request) => {
     return await relay.fetch(request);
-  }, { noTunnel: command.noTunnel, port: command.port });
+  }, {
+    noTunnel: !command.tunnel,
+    port: command.port,
+    ...(command.tunnel && { service: command.tunnelService }),
+  });
 
   relay = createRelay(
     command.protocol as RelayType,
