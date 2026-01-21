@@ -24,21 +24,16 @@ import {
 } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
-  choice,
   command,
   constant,
-  flag,
   type InferValue,
-  map,
   merge,
   message,
   multiple,
   object,
   option,
   optional,
-  or,
   string,
-  value,
   withDefault,
 } from "@optique/core";
 import Table from "cli-table3";
@@ -49,6 +44,7 @@ import ora from "ora";
 import metadata from "../deno.json" with { type: "json" };
 import { getDocumentLoader } from "./docloader.ts";
 import { configureLogging, debugOption } from "./globals.ts";
+import { tunnelOption } from "./options.ts";
 import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { recordingSink } from "./log.ts";
@@ -92,31 +88,7 @@ export const inboxCommand = command(
         ),
       ),
     }),
-    or(
-      object({
-        tunnel: map(
-          flag("-T", "--no-tunnel", {
-            description:
-              message`Do not tunnel the ephemeral ActivityPub server to the public Internet.`,
-          }),
-          () => false as const,
-        ),
-      }),
-      object({
-        tunnel: constant(true),
-        tunnelService: optional(
-          option(
-            "--tunnel-service",
-            choice(["localhost.run", "serveo.net", "pinggy.io"]),
-            {
-              description: message`The tunneling service to use: ${
-                value("localhost.run")
-              }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
-            },
-          ),
-        ),
-      }),
-    ),
+    tunnelOption,
     object({
       actorName: withDefault(
         option("--actor-name", string({ metavar: "NAME" }), {
