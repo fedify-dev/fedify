@@ -17,7 +17,7 @@ test("SqliteMessageQueue", () =>
     ({ mq1, mq2, controller }) => {
       controller.abort();
       mq1.drop();
-      mq2.drop();
       mq1[Symbol.dispose]();
+      mq2[Symbol.dispose]();
     },
   ));

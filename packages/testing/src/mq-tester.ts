@@ -61,10 +61,10 @@ export default async function testMessageQueue<
     const messages: string[] = [];
     const listening1 = mq1.listen((message: string) => {
       messages.push(message);
-    }, controller);
+    }, { signal: controller.signal });
     const listening2 = mq2.listen((message: string) => {
       messages.push(message);
-    }, controller);
+    }, { signal: controller.signal });
 
     // Test: enqueue()
     await mq1.enqueue("Hello, world!");

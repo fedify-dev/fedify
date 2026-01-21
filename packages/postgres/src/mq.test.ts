@@ -5,21 +5,24 @@ import process from "node:process";
 import postgres from "postgres";
 
 const dbUrl = process.env.POSTGRES_URL;
-const sqls: postgres.Sql[] = [];
 
-function createSql() {
-  const sql = postgres(dbUrl!);
-  sqls.push(sql);
-  return sql;
-}
+test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
+  const tableName = getRandomKey("message");
+  const channelName = getRandomKey("channel");
+  const sqls: postgres.Sql[] = [];
 
-test("PostgresMessageQueue", { ignore: dbUrl == null }, () =>
-  testMessageQueue(
+  function createSql() {
+    const sql = postgres(dbUrl!);
+    sqls.push(sql);
+    return sql;
+  }
+
+  return testMessageQueue(
     () =>
-      new PostgresMessageQueue(createSql(), {
-        tableName: getRandomKey("message"),
-        channelName: getRandomKey("channel"),
-      }),
+      new PostgresMessageQueue(
+        createSql(),
+        { tableName, channelName },
+      ),
     async ({ mq1, mq2, controller }) => {
       controller.abort();
       await mq1.drop();
@@ -28,6 +31,7 @@ test("PostgresMessageQueue", { ignore: dbUrl == null }, () =>
         await sql.end();
       }
     },
-  ));
+  );
+});
 
 // cspell: ignore sqls

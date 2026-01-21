@@ -422,8 +422,15 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
    * Closes the database connection.
    */
   [Symbol.dispose](): void {
-    this.#db.close();
-    this.#unregisterInstance();
+    try {
+      this.#db.close();
+      this.#unregisterInstance();
+    } catch (error) {
+      logger.error(
+        "Failed to close the database connection for table {tableName}: {error}",
+        { tableName: this.#tableName, error },
+      );
+    }
   }
 
   #unregisterInstance(): void {
