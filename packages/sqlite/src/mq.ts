@@ -53,6 +53,15 @@ export interface SqliteMessageQueueOptions {
    * @default `100`
    */
   retryDelayMs?: number;
+
+  /**
+   * SQLite journal mode to use.
+   * WAL (Write-Ahead Logging) mode is recommended for better concurrency
+   * in multi-process environments.
+   * Note: WAL mode is persistent per database file, not per connection.
+   * @default `"WAL"`
+   */
+  journalMode?: "WAL" | "DELETE" | "TRUNCATE" | "PERSIST" | "MEMORY";
 }
 
 /**
@@ -99,6 +108,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   readonly #instanceId: string;
   readonly #maxRetries: number;
   readonly #retryDelayMs: number;
+  readonly #journalMode: string;
   #initialized: boolean;
 
   /**
@@ -124,6 +134,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     ).total("millisecond");
     this.#maxRetries = options.maxRetries ?? 5;
     this.#retryDelayMs = options.retryDelayMs ?? 100;
+    this.#journalMode = options.journalMode ?? "WAL";
 
     if (!SqliteMessageQueue.#tableNameRegex.test(this.#tableName)) {
       throw new Error(
@@ -358,6 +369,10 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   /**
    * Creates the message queue table if it does not already exist.
    * Does nothing if the table already exists.
+   *
+   * This method also configures the SQLite journal mode for better concurrency.
+   * WAL (Write-Ahead Logging) mode is enabled by default to improve
+   * concurrent access in multi-process environments.
    */
   initialize(): void {
     if (this.#initialized) {
@@ -367,6 +382,10 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     logger.debug("Initializing the message queue table {tableName}...", {
       tableName: this.#tableName,
     });
+
+    // Set journal mode for better concurrency
+    // Note: This is persistent per database file and must be set outside a transaction
+    this.#db.exec(`PRAGMA journal_mode=${this.#journalMode}`);
 
     this.#withTransaction(() => {
       this.#db.exec(`
