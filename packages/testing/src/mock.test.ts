@@ -357,3 +357,86 @@ test("MockFederation without queue sends all activities immediately", async () =
   assertEquals(mockFederation.sentActivities[0].queue, undefined);
   assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
 });
+
+test("MockContext.getActor() calls registered actor dispatcher", async () => {
+  const mockFederation = createFederation<void>();
+
+  // Register actor dispatcher
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (ctx, identifier) => {
+      return new Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+        name: `Test User ${identifier}`,
+      });
+    },
+  );
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const actor = await context.getActor("alice");
+
+  assertEquals(actor instanceof Person, true);
+  assertEquals(actor?.preferredUsername, "alice");
+  assertEquals(actor?.name, "Test User alice");
+  assertEquals(actor?.id?.href, "https://example.com/users/alice");
+});
+
+test("MockContext.getObject() calls registered object dispatcher", async () => {
+  const mockFederation = createFederation<void>();
+
+  // Register object dispatcher
+  mockFederation.setObjectDispatcher(
+    Note,
+    "/users/{identifier}/posts/{postId}",
+    (ctx, values) => {
+      return new Note({
+        id: ctx.getObjectUri(Note, values),
+        content: `Post ${values.postId} by ${values.identifier}`,
+      });
+    },
+  );
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const note = await context.getObject(Note, {
+    identifier: "alice",
+    postId: "123",
+  });
+
+  assertEquals(note instanceof Note, true);
+  assertEquals(note?.content, "Post 123 by alice");
+  assertEquals(note?.id?.href, "https://example.com/users/alice/posts/123");
+});
+
+test("MockContext.getActor() returns null when no dispatcher registered", async () => {
+  const mockFederation = createFederation<void>();
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const actor = await context.getActor("alice");
+  assertEquals(actor, null);
+});
+
+test("MockContext.getObject() returns null when no dispatcher registered", async () => {
+  const mockFederation = createFederation<void>();
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const note = await context.getObject(Note, {
+    identifier: "alice",
+    postId: "123",
+  });
+  assertEquals(note, null);
+});

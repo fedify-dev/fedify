@@ -8,6 +8,13 @@ Version 1.10.1
 
 To be released.
 
+### @fedify/testing
+
+ -  Fixed `TestContext.getActor()` and `TestContext.getObject()` returning
+    `null` instead of calling registered dispatchers.  The methods now properly
+    invoke actor and object dispatchers when they are registered via
+    `setActorDispatcher()` and `setObjectDispatcher()`.  [[#530]]
+
 
 Version 1.10.0
 --------------
@@ -104,6 +111,21 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.3
+-------------
+
+Released on January 22, 2026.
+
+### @fedify/testing
+
+ -  Fixed `TestContext.getActor()` and `TestContext.getObject()` returning
+    `null` instead of calling registered dispatchers.  The methods now properly
+    invoke actor and object dispatchers when they are registered via
+    `setActorDispatcher()` and `setObjectDispatcher()`.  [[#530]]
+
+[#530]: https://github.com/fedify-dev/fedify/issues/530
 
 
 Version 1.9.2
