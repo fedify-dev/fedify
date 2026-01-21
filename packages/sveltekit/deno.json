@@ -1,6 +1,6 @@
 {
   "name": "@fedify/sveltekit",
-  "version": "1.10.1",
+  "version": "1.10.2",
   "license": "MIT",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.13",
