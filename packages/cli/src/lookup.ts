@@ -33,7 +33,6 @@ import {
   optionNames,
   or,
   string,
-  value,
   withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
@@ -43,6 +42,7 @@ import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { configureLogging, debugOption } from "./globals.ts";
 import { renderImages } from "./imagerenderer.ts";
+import { tunnelServiceOption } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
@@ -68,17 +68,7 @@ export const authorizedFetchOption = or(
       ),
       "draft-cavage-http-signatures-12" as const,
     ),
-    tunnelService: optional(
-      option(
-        "--tunnel-service",
-        choice(["localhost.run", "serveo.net", "pinggy.io"]),
-        {
-          description: message`The tunneling service to use: ${
-            value("localhost.run")
-          }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
-        },
-      ),
-    ),
+    tunnelService: tunnelServiceOption,
   }),
   object({
     authorizedFetch: constant(false as const),

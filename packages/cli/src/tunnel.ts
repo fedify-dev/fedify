@@ -10,9 +10,10 @@ import {
   object,
   option,
   optional,
-  value,
+  valueSet,
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
+import { TUNNEL_SERVICES } from "./options.ts";
 import { print, printError } from "@optique/run";
 import process from "node:process";
 import ora from "ora";
@@ -34,13 +35,13 @@ export const tunnelCommand = command(
           "-s",
           "--service",
           "--tunnel-service",
-          choice(["localhost.run", "serveo.net", "pinggy.io"], {
+          choice(TUNNEL_SERVICES, {
             metavar: "SERVICE",
           }),
           {
             description: message`The tunneling service to use: ${
-              value("localhost.run")
-            }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
+              valueSet(TUNNEL_SERVICES)
+            }.`,
           },
         ),
       ),

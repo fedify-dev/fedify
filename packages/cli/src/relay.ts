@@ -5,10 +5,8 @@ import { getLogger } from "@logtape/logtape";
 import {
   command,
   constant,
-  flag,
   type InferValue,
   integer,
-  map,
   merge,
   message,
   multiple,
@@ -16,7 +14,6 @@ import {
   option,
   optional,
   optionName,
-  or,
   string,
   value,
   withDefault,
@@ -27,6 +24,7 @@ import { DatabaseSync } from "node:sqlite";
 import process from "node:process";
 import ora from "ora";
 import { configureLogging, debugOption } from "./globals.ts";
+import { tunnelOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -86,33 +84,7 @@ export const relayCommand = command(
         }),
       )),
     }),
-    or(
-      object({
-        tunnel: map(
-          flag("-T", "--no-tunnel", {
-            description:
-              message`Disable tunneling the relay server to the public internet. Local access only.`,
-          }),
-          () => false as const,
-        ),
-      }),
-      object({
-        tunnel: constant(true),
-        tunnelService: optional(
-          option(
-            "--tunnel-service",
-            choice(["localhost.run", "serveo.net", "pinggy.io"], {
-              metavar: "SERVICE",
-            }),
-            {
-              description: message`The tunneling service to use: ${
-                value("localhost.run")
-              }, ${value("serveo.net")}, or ${value("pinggy.io")}.`,
-            },
-          ),
-        ),
-      }),
-    ),
+    tunnelOption,
     debugOption,
   ),
   {

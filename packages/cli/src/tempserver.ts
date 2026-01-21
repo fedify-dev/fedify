@@ -1,13 +1,14 @@
 import { openTunnel } from "@hongminhee/localtunnel";
 import { getLogger } from "@logtape/logtape";
 import { serve } from "srvx";
+import type { TunnelService } from "./options.ts";
 
 const logger = getLogger(["fedify", "cli", "tempserver"]);
 
 export type SpawnTemporaryServerOptions = {
   noTunnel?: boolean;
   port?: number;
-  service?: "localhost.run" | "serveo.net" | "pinggy.io";
+  service?: TunnelService;
 };
 
 export type TemporaryServer = {
