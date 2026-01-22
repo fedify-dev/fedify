@@ -52,7 +52,11 @@
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"
   },
+  "dependencies": {
+    "es-toolkit": "catalog:"
+  },
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",

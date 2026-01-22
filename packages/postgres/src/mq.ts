@@ -258,4 +258,4 @@ export class PostgresMessageQueue implements MessageQueue {
   }
 }
 
-// cSpell: ignore typname
+// cSpell: ignore typname unlisten

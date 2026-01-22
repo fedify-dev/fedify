@@ -44,9 +44,9 @@
         "default": "postgres"
       }
     },
-    "object": "new PostgresMessageQueue(postgres(process.env.DATABASE_URL))",
+    "object": "new PostgresMessageQueue(postgres(process.env.POSTGRES_URL))",
     "env": {
-      "DATABASE_URL": "postgres://postgres@localhost:5432/postgres"
+      "POSTGRES_URL": "postgres://postgres@localhost:5432/postgres"
     }
   },
   "amqp": {

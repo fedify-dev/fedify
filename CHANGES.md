@@ -275,6 +275,31 @@ To be released.
 
 [#437]: https://github.com/fedify-dev/fedify/issues/437
 
+### @fedify/sqlite
+
+ -  Added `SqliteMessageQueue` class implementing `MessageQueue` interface
+    using SQLite as the backing store.  This implementation uses polling to
+    check for new messages and is suitable for single-node deployments and
+    development environments.  [[#477], [#526] by ChanHaeng Lee]
+
+     -  Added `SqliteMessageQueue` class.
+     -  Added `SqliteMessageQueueOptions` interface.
+
+[#477]: https://github.com/fedify-dev/fedify/issues/477
+[#526]: https://github.com/fedify-dev/fedify/pull/526
+
+### @fedify/testing
+
+ -  Added `testMessageQueue()` utility function for standardized testing of
+    `MessageQueue` implementations.  This function provides a reusable test
+    harness that covers common message queue operations including `enqueue()`,
+    `enqueue()` with delay, `enqueueMany()`, and multiple listener scenarios.
+    [[#477], [#526] by ChanHaeng Lee]
+
+     -  Added `testMessageQueue()` function.
+     -  Added `waitFor()` helper function.
+     -  Added `getRandomKey()` helper function.
+
 
 Version 1.10.1
 --------------

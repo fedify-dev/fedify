@@ -4,7 +4,8 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./kv": "./src/kv.ts"
+    "./kv": "./src/kv.ts",
+    "./mq": "./src/mq.ts"
   },
   "imports": {
     "#sqlite": "./src/sqlite.node.ts"
@@ -22,6 +23,6 @@
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check",
-    "test": "deno test --allow-net --allow-env --doc --no-check=leaks"
+    "test": "deno test --allow-net --allow-env --allow-read --allow-write --doc --no-check=leaks"
   }
 }

@@ -24,9 +24,9 @@
       "@fedify/postgres": { "PostgresKvStore": "PostgresKvStore" },
       "postgres": { "default": "postgres" }
     },
-    "object": "new PostgresKvStore(postgres(process.env.DATABASE_URL))",
+    "object": "new PostgresKvStore(postgres(process.env.POSTGRES_URL))",
     "env": {
-      "DATABASE_URL": "postgres://postgres@localhost:5432/postgres"
+      "POSTGRES_URL": "postgres://postgres@localhost:5432/postgres"
     }
   },
   "denokv": {

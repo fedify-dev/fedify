@@ -293,6 +293,115 @@ const federation = createFederation({
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
 [RabbitMQ]: https://www.rabbitmq.com/
 
+### `SqliteMessageQueue`
+
+*This API is available since Fedify 2.0.0.*
+
+To use [`SqliteMessageQueue`], you need to install the *@fedify/sqlite* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/sqlite
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/sqlite
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/sqlite
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/sqlite
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/sqlite
+~~~~
+
+:::
+
+[`SqliteMessageQueue`] is a message queue implementation that uses SQLite as
+the backend.  It uses polling to check for new messages and is designed for
+single-node deployments.  It's suitable for development, testing, and
+small-scale production use where simplicity is preferred over high throughput.
+It uses native sqlite modules, [`node:sqlite`] for Node.js and Deno,
+[`bun:sqlite`] for Bun.
+
+Best for
+:   Development and testing.
+
+Pros
+:   Simple, persistent with minimal configuration.
+
+Cons
+:   Limited scalability, not suitable for high-traffic production.
+
+> [!NOTE]
+> `SqliteMessageQueue` uses `DELETE ... RETURNING` to atomically fetch and
+> delete the oldest message that is ready to be processed.  This requires
+> SQLite 3.35.0 or later.
+
+::: code-group
+
+~~~~ typescript twoslash [Deno]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
+~~~~ typescript twoslash [Node.js]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
+~~~~ typescript [Bun]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { Database } from "bun:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new Database(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
+:::
+
+[`SqliteMessageQueue`]: https://jsr.io/@fedify/sqlite/doc/mq/~/SqliteMessageQueue
+
 ### `WorkersMessageQueue` (Cloudflare Workers only)
 
 *This API is available since Fedify 1.6.0.*
@@ -658,6 +767,9 @@ The following implementations do not yet support native retry:
 
 [`AmqpMessageQueue`]
 :   Native retry support planned for future release.
+
+[`SqliteMessageQueue`]
+:   No native retry support (`~MessageQueue.nativeRetrial` is `false`).
 
 `ParallelMessageQueue` inherits the `~MessageQueue.nativeRetrial` value from
 the wrapped queue.
