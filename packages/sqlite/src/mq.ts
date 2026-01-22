@@ -350,9 +350,13 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     while (signal == null || !signal.aborted) {
       let timeout: ReturnType<typeof setTimeout> | undefined;
       await new Promise<unknown>((resolve) => {
-        signal?.addEventListener("abort", resolve);
+        const onAbort = () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve(undefined);
+        };
+        signal?.addEventListener("abort", onAbort);
         timeout = setTimeout(() => {
-          signal?.removeEventListener("abort", resolve);
+          signal?.removeEventListener("abort", onAbort);
           resolve(0);
         }, this.#pollIntervalMs);
         timeouts.add(timeout);
