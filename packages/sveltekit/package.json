@@ -1,6 +1,6 @@
 {
   "name": "@fedify/sveltekit",
-  "version": "2.0.0",
+  "version": "1.10.3",
   "description": "Integrate Fedify with SvelteKit",
   "keywords": [
     "Fedify",

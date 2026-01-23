@@ -222,7 +222,17 @@ To be released.
     to the existing `-s`/`--service` option in `fedify tunnel` for consistency.
     [[#525], [#529], [#531] by Jiwon Kwon]
 
+ -  Added configuration file support for persisting CLI options.
+    [[#265], [#562] by Jiwon Kwon]
+
+     -  Configuration files are loaded hierarchically from system, user, and
+        project directories.
+     -  Added `--config` (`-C`) option to specify a custom configuration file
+        path.
+     -  Added `--ignore-config` option to skip loading configuration files.
+
 [Elysia]: https://elysiajs.com/
+[#265]: https://github.com/fedify-dev/fedify/issues/265
 [#374]: https://github.com/fedify-dev/fedify/issues/374
 [#397]: https://github.com/fedify-dev/fedify/issues/397
 [#408]: https://github.com/fedify-dev/fedify/issues/408
@@ -238,6 +248,7 @@ To be released.
 [#525]: https://github.com/fedify-dev/fedify/issues/525
 [#529]: https://github.com/fedify-dev/fedify/pull/529
 [#531]: https://github.com/fedify-dev/fedify/pull/531
+[#562]: https://github.com/fedify-dev/fedify/pull/562
 
 ### @fedify/debugger
 
