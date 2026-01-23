@@ -300,6 +300,18 @@ To be released.
      -  Added `waitFor()` helper function.
      -  Added `getRandomKey()` helper function.
 
+### @fedify/redis
+
+ -  Fixed a race condition in `RedisMessageQueue.listen()` where pub/sub
+    notifications could be missed if `enqueue()` was called immediately after
+    `listen()` started.  The issue occurred because the message handler was
+    attached inside an async callback, allowing a timing window where messages
+    could be published before the handler was ready.  
+    [[#515], [#532] by Jiwon Kwon]
+
+[#515]: https://github.com/fedify-dev/fedify/issues/515
+[#532]: https://github.com/fedify-dev/fedify/pull/532
+
 
 Version 1.10.1
 --------------

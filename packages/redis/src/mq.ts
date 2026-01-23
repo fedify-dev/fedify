@@ -209,34 +209,37 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
         await handler(message);
       }
     };
-    const promise = this.#subRedis.subscribe(this.#channelKey, () => {
-      /**
-       * Cast to Redis for event methods. Both Redis and Cluster extend EventEmitter
-       * and get the same methods via applyMixin at runtime, but their TypeScript
-       * interfaces are incompatible:
-       * - Redis declares specific overloads: on(event: "message", cb: (channel, message) => void)
-       * - Cluster only has generic: on(event: string | symbol, listener: Function)
-       *
-       * This makes the union type Redis | Cluster incompatible for these method calls.
-       * The cast is safe because both classes use applyMixin(Class, EventEmitter) which
-       * copies all EventEmitter prototype methods, giving them identical pub/sub functionality.
-       *
-       * @see https://github.com/redis/ioredis/blob/main/lib/Redis.ts#L863 (has specific overloads)
-       * @see https://github.com/redis/ioredis/blob/main/lib/cluster/index.ts#L1110 (empty interface)
-       */
-      const subRedis = this.#subRedis as Redis;
-      subRedis.on("message", poll);
-      signal?.addEventListener("abort", () => {
-        subRedis.off("message", poll);
-      });
-    });
-    signal?.addEventListener(
-      "abort",
-      () => {
-        for (const timeout of timeouts) clearTimeout(timeout);
-      },
-    );
+    // Await subscription to ensure it's established before continuing.
+    // This prevents the race condition where enqueue() publishes a notification
+    // before the message handler is attached.
+    await this.#subRedis.subscribe(this.#channelKey);
+    /**
+     * Cast to Redis for event methods. Both Redis and Cluster extend EventEmitter
+     * and get the same methods via applyMixin at runtime, but their TypeScript
+     * interfaces are incompatible:
+     * - Redis declares specific overloads: on(event: "message", cb: (channel, message) => void)
+     * - Cluster only has generic: on(event: string | symbol, listener: Function)
+     *
+     * This makes the union type Redis | Cluster incompatible for these method calls.
+     * The cast is safe because both classes use applyMixin(Class, EventEmitter) which
+     * copies all EventEmitter prototype methods, giving them identical pub/sub functionality.
+     *
+     * @see https://github.com/redis/ioredis/blob/main/lib/Redis.ts#L863 (has specific overloads)
+     * @see https://github.com/redis/ioredis/blob/main/lib/cluster/index.ts#L1110 (empty interface)
+     */
+    const subRedis = this.#subRedis as Redis;
+    // Attach the message handler synchronously after subscription is confirmed.
+    // This ensures no pub/sub notifications are missed.
+    subRedis.on("message", poll);
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
+    signal?.addEventListener("abort", () => {
+      subRedis.off("message", poll);
+      this.#subRedis.unsubscribe(this.#channelKey);
+      for (const timeout of timeouts) clearTimeout(timeout);
+    });
+    // Perform an initial poll immediately to catch any messages that were
+    // enqueued before the listener started.
+    await poll();
     while (!signal?.aborted) {
       let timeout: ReturnType<typeof setTimeout> | undefined;
       await new Promise<unknown>((resolve) => {
@@ -250,12 +253,6 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       if (timeout != null) timeouts.delete(timeout);
       await poll();
     }
-    return await new Promise((resolve) => {
-      signal?.addEventListener("abort", () => {
-        promise.catch(() => resolve()).then(() => resolve());
-      });
-      promise.catch(() => resolve()).then(() => resolve());
-    });
   }
 
   [Symbol.dispose](): void {
