@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fedify",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "An ActivityPub server framework",
   "keywords": [
     "ActivityPub",

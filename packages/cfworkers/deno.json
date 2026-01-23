@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cfworkers",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "license": "MIT",
   "imports": {
     "@cloudflare/workers-types/experimental": "npm:@cloudflare/workers-types@^4.20250906.0/experimental"

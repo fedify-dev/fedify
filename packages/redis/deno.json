@@ -1,6 +1,6 @@
 {
   "name": "@fedify/redis",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
