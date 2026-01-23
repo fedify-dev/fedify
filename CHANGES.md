@@ -8,6 +8,15 @@ Version 1.9.4
 
 To be released.
 
+### @fedify/testing
+
+ -  Fixed `TestContext.getActorKeyPairs()` returning empty array instead of
+    calling registered key pairs dispatcher.  The method now properly invokes
+    the key pairs dispatcher when it is registered via `setKeyPairsDispatcher()`.
+    [[#530]]
+
+[#530]: https://github.com/fedify-dev/fedify/issues/530
+
 
 Version 1.9.3
 -------------
