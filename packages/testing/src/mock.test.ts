@@ -440,3 +440,73 @@ test("MockContext.getObject() returns null when no dispatcher registered", async
   });
   assertEquals(note, null);
 });
+
+test("MockContext.getActorKeyPairs() calls registered key pairs dispatcher", async () => {
+  const mockFederation = createFederation<void>();
+
+  // Generate a test RSA key pair
+  const keyPair = await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+      hash: "SHA-256",
+    },
+    true,
+    ["sign", "verify"],
+  );
+
+  // Register actor dispatcher with key pairs dispatcher
+  mockFederation
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+      return new Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+      });
+    })
+    .setKeyPairsDispatcher((ctx, identifier) => {
+      return [
+        {
+          keyId: new URL(`${ctx.getActorUri(identifier).href}#main-key`),
+          privateKey: keyPair.privateKey,
+          publicKey: keyPair.publicKey,
+        },
+      ];
+    });
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const keyPairs = await context.getActorKeyPairs("alice");
+
+  assertEquals(keyPairs.length, 1);
+  assertEquals(
+    keyPairs[0].keyId.href,
+    "https://example.com/users/alice#main-key",
+  );
+  assertEquals(keyPairs[0].privateKey, keyPair.privateKey);
+  assertEquals(keyPairs[0].publicKey, keyPair.publicKey);
+  assertEquals(keyPairs[0].cryptographicKey.id?.href, keyPairs[0].keyId.href);
+  assertEquals(
+    keyPairs[0].cryptographicKey.ownerId?.href,
+    "https://example.com/users/alice",
+  );
+  assertEquals(keyPairs[0].multikey.id?.href, keyPairs[0].keyId.href);
+  assertEquals(
+    keyPairs[0].multikey.controllerId?.href,
+    "https://example.com/users/alice",
+  );
+});
+
+test("MockContext.getActorKeyPairs() returns empty array when no dispatcher registered", async () => {
+  const mockFederation = createFederation<void>();
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  const keyPairs = await context.getActorKeyPairs("alice");
+  assertEquals(keyPairs, []);
+});
