@@ -1,18 +1,9 @@
-/**
- * Deterministic regression test for RedisMessageQueue race condition.
- *
- * This test uses mocks to control callback timing and reproduce the bug 100%.
- * See: https://github.com/fedify-dev/fedify/issues/515
- *
- * Run with:
- *   deno test --allow-all src/mq.race.test.ts
- */
 import { test } from "@fedify/fixture";
-import { assertEquals } from "@std/assert";
+import { strictEqual } from "node:assert/strict";
 import type { Callback, RedisKey } from "ioredis";
 import { Buffer } from "node:buffer";
 import { EventEmitter } from "node:events";
-import { RedisMessageQueue } from "./mq.ts";
+import { RedisMessageQueue } from "@fedify/redis/mq";
 
 /**
  * Mock Redis client that allows manual control of subscribe callback timing.
@@ -182,8 +173,8 @@ test("Deterministic: Race condition with callback approach", async () => {
   });
 
   // Callback not executed yet
-  assertEquals(mockSubRedis.hasSubscribeCallbackPending(), true);
-  assertEquals(mockSubRedis.listenerCount("message"), 0);
+  strictEqual(mockSubRedis.hasSubscribeCallbackPending(), true);
+  strictEqual(mockSubRedis.listenerCount("message"), 0);
 
   // Publish BEFORE callback runs
   const listenersAtPublish = mockSubRedis.listenerCount("message");
@@ -193,8 +184,8 @@ test("Deterministic: Race condition with callback approach", async () => {
   mockSubRedis.triggerSubscribeCallback();
 
   // Assert: message was LOST
-  assertEquals(listenersAtPublish, 0, "No listeners when publish() was called");
-  assertEquals(
+  strictEqual(listenersAtPublish, 0, "No listeners when publish() was called");
+  strictEqual(
     receivedMessages.length,
     0,
     "Message lost due to race condition",
@@ -223,19 +214,19 @@ test("Deterministic: Fixed approach (await + sync handler)", async () => {
   });
 
   // Handler attached immediately
-  assertEquals(mockSubRedis.listenerCount("message"), 1);
+  strictEqual(mockSubRedis.listenerCount("message"), 1);
 
   // Publish AFTER handler attached
   const listenersAtPublish = mockSubRedis.listenerCount("message");
   await mockSubRedis.publish("test-channel", "notification");
 
   // Assert: message was RECEIVED
-  assertEquals(
+  strictEqual(
     listenersAtPublish,
     1,
     "Handler attached when publish() was called",
   );
-  assertEquals(
+  strictEqual(
     receivedMessages.length,
     1,
     "Message received - no race condition",
@@ -277,7 +268,7 @@ test("Regression: RedisMessageQueue handler attached before yield", async () => 
     await new Promise((r) => setTimeout(r, 50));
 
     // FIXED impl: handler must be attached after yielding
-    assertEquals(
+    strictEqual(
       subRedisInstance!.listenerCount("message"),
       1,
       "Handler must be attached after listen() yields control",
