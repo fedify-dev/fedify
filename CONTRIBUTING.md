@@ -391,15 +391,16 @@ see the [*Set Up Your Environment* section][1] in the Deno manual.
 
 > [!CAUTION]
 >
-> Fedify heavily depends on code generation, so you need to run
-> `mise run codegen` before coding or testing.
+> Fedify heavily depends on code generation and all packages must be built
+> before coding or testing. Running `mise run install` (or `pnpm install`)
+> automatically handles code generation and builds all packages.
 
 Assuming you have Deno and Visual Studio Code installed, you can open
 the repository in Visual Studio Code and get ready to hack on Fedify by running
 the following commands at the *root* of the repository:
 
 ~~~~ bash
-mise run codegen
+mise run install  # This runs codegen and builds all packages
 code .
 ~~~~
 
@@ -412,9 +413,10 @@ code .
 > mise run hooks:install
 > ~~~~
 
-Note that the `mise run codegen` command is required to run only once at
-the very first time, or when you update the code generation scripts.  Otherwise,
-you can skip the command and just run:
+Note that the `mise run install` command is required to run only once at
+the very first time after checkout. When you update dependencies or code
+generation scripts, run `mise run install` again. Otherwise, you can skip
+the command and just run:
 
 ~~~~ bash
 code .

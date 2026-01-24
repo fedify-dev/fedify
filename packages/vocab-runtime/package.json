@@ -38,10 +38,11 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown",
-    "test": "tsdown && cd dist/ && node --test"
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/vocab-runtime... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "pnpm build && cd dist/ && node --test"
   },
   "keywords": [
     "Fedify",

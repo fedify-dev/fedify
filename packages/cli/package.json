@@ -86,16 +86,16 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "codegen": "deno task -f @fedify/fedify codegen",
-    "build": "pnpm run codegen && pnpm run --filter fedify build && pnpm run --filter relay build && pnpm run --filter sqlite build && tsdown",
-    "prepack": "pnpm run build",
-    "prepublish": "pnpm run build",
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/cli... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
     "test": "pnpm build && node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
     "test-init": "deno task test-init",
-    "test:bun": "tsdown && bun test",
-    "run": "tsdown && node dist/mod.js",
+    "test:bun": "pnpm build && bun test",
+    "run": "pnpm build && node dist/mod.js",
     "runi": "tsdown && node dist/mod.js",
-    "run:bun": "tsdown && bun dist/mod.js",
+    "run:bun": "pnpm build && bun dist/mod.js",
     "runi:bun": "tsdown && bun dist/mod.js"
   }
 }

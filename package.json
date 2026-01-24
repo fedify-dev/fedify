@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "prepare": "pnpm -r run build:self"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
