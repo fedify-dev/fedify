@@ -10,6 +10,7 @@ import type {
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
+import { CryptographicKey, Multikey } from "@fedify/vocab";
 import type {
   Activity,
   Collection,
@@ -179,6 +180,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   // types present in Context.tracerProvider (issue #468).
   private webFingerDispatcher?: any;
   public actorDispatchers: Map<string, any> = new Map();
+  public actorKeyPairsDispatcher?: any;
   public actorPath?: string;
   public inboxPath?: string;
   public outboxPath?: string;
@@ -229,7 +231,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     this.actorDispatchers.set(path, dispatcher);
     this.actorPath = path;
     return {
-      setKeyPairsDispatcher: () => this as any,
+      setKeyPairsDispatcher: (keyPairsDispatcher: any) => {
+        this.actorKeyPairsDispatcher = keyPairsDispatcher;
+        return this as any;
+      },
       mapHandle: () => this as any,
       mapAlias: () => this as any,
       authorize: () => this as any,
@@ -836,8 +841,32 @@ class MockContext<TContextData> implements Context<TContextData> {
     return null;
   }
 
-  getActorKeyPairs(_identifier: string): Promise<ActorKeyPair[]> {
-    return Promise.resolve([]);
+  async getActorKeyPairs(identifier: string): Promise<ActorKeyPair[]> {
+    if (
+      this.federation instanceof MockFederation &&
+      this.federation.actorKeyPairsDispatcher
+    ) {
+      const keyPairs = await this.federation.actorKeyPairsDispatcher(
+        this,
+        identifier,
+      );
+      // Wrap with CryptographicKey and Multikey objects like real implementation
+      const owner = this.getActorUri(identifier);
+      return keyPairs.map((kp: any) => ({
+        ...kp,
+        cryptographicKey: new CryptographicKey({
+          id: kp.keyId,
+          owner,
+          publicKey: kp.publicKey,
+        }),
+        multikey: new Multikey({
+          id: kp.keyId,
+          controller: owner,
+          publicKey: kp.publicKey,
+        }),
+      }));
+    }
+    return [];
   }
 
   getDocumentLoader(params: any): any {

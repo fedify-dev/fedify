@@ -12,34 +12,25 @@ Project overview
 
 Fedify is a TypeScript library for building federated server applications
 powered by ActivityPub and related standards, facilitating integration with
-the fediverse. The project aims to eliminate complexity and boilerplate code
+the fediverse.  The project aims to eliminate complexity and boilerplate code
 when implementing federation protocols.
 
-Main features:
-
- -  Type-safe ActivityPub vocabulary implementation
- -  WebFinger client and server
- -  HTTP Signatures and Linked Data Signatures
- -  Object Integrity Proofs
- -  Federation middleware for handling webhooks
- -  NodeInfo protocol support
- -  Interoperability with Mastodon and other fediverse software
- -  Integration with various web frameworks (Express, h3, Hono, SvelteKit)
- -  Database adapters (PostgreSQL, Redis, AMQP/RabbitMQ)
- -  CLI toolchain for testing and debugging
+Main features: Type-safe ActivityPub vocabulary, WebFinger, HTTP Signatures,
+Object Integrity Proofs, federation middleware, NodeInfo protocol,
+interoperability with Mastodon and other fediverse software, multi-framework
+integration, database adapters, and CLI toolchain.
 
 
 Development environment
 -----------------------
 
- -  Task runner and toolchain manager: [mise] (required)
- -  Primary development environment: [Deno]
+ -  Task runner: [mise] (required)
+ -  Primary environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
- -  Important: Run `mise run codegen` before working with the codebase (for
-    code generation)
- -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed to the
-    repository for reproducible builds.  Update them when changing dependencies.
+ -  **CRITICAL**: Run `mise run codegen` before working with the codebase
+ -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.
+    Update them when changing dependencies.
 
 [mise]: https://mise.jdx.dev/
 [Deno]: https://deno.com/
@@ -52,60 +43,34 @@ Development environment
 Repository structure
 --------------------
 
-The repository is organized as a monorepo with the following packages:
+Monorepo with packages in *packages/*. See *README.md* “Packages” section
+for the complete package list.
 
- -  *packages/fedify/*: Main Fedify library (@fedify/fedify)
-     -  ~~src/codegen/~~: **Don't use.** Moved to `@fedify/vocab-tools`. If user code
-        imports from here, notice and suggest migration.
-     -  *src/compat/*: Compatibility layer
-     -  *src/federation/*: Core federation functionality
-     -  *src/nodeinfo/*: NodeInfo protocol implementation
-     -  *src/otel/*: OpenTelemetry integration utilities
-     -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and
-        `src/utils/*`. If user code imports from here, notice and suggest
-        migration.
-     -  *src/shim/*: Platform abstraction layer
-     -  *src/sig/*: Signature implementation
-     -  *src/testing/*: Testing utilities. Most have been migrated to
-        `packages/fixture`(`@fedify/fixture`), except for modules that have
-        dependencies on `@fedify/fedify`.
-     -  *src/utils/*: Utility functions
-     -  ~~src/vocab/~~: **Don't use.** Moved to `@fedify/vocab`. If user code imports
-        from here, notice and suggest migration.
-     -  ~~src/webfinger/~~: **Don't use.** Moved to `@fedify/webfinger`. If user code
-        imports from here, notice and suggest migration.
-     -  ~~src/x/~~: **Don't use.** This directory will be removed in version 2.0.0. Use
-        packages from the `@fedify` scope, which are located in the `packages/`
-        directory (e.g., `@fedify/hono` is in `packages/hono/`).
- -  *packages/cli/*: Fedify CLI implementation (@fedify/cli, built with Deno)
- -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp)
- -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
- -  *packages/denokv/*: Deno KV integration (@fedify/denokv)
- -  *packages/elysia/*: Elysia integration (@fedify/elysia)
- -  *packages/express/*: Express.js integration (@fedify/express)
- -  *packages/fixture/*: Testing utilities (@fedify/fixture)
- -  *packages/fastify/*: Fastify integration (@fedify/fastify)
- -  *packages/fresh/*: Fresh integration (@fedify/fresh)
- -  *packages/h3/*: h3 framework integration (@fedify/h3)
- -  *packages/hono/*: Hono integration (@fedify/hono)
- -  *packages/koa/*: Koa integration (@fedify/koa)
- -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres)
- -  *packages/redis/*: Redis drivers (@fedify/redis)
- -  *packages/relay/*: ActivityPub relay support (@fedify/relay)
- -  *packages/lint/*: Linting utilities (@fedify/lint)
- -  *packages/nestjs/*: NestJS integration (@fedify/nestjs)
- -  *packages/next/*: Next.js integration (@fedify/next)
- -  *packages/sqlite/*: SQLite driver (@fedify/sqlite)
- -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit)
- -  *packages/testing/*: Testing utilities (@fedify/testing)
- -  *packages/vocab/*: Activity Vocabulary library (@fedify/vocab)
- -  *packages/webfinger/*: WebFinger client library for ActivityPub
-    (@fedify/webfinger)
- -  *packages/vocab-runtime/*: Runtime utilities and types (@fedify/vocab-runtime)
- -  *packages/vocab-tools/*: Utilities and types for code-generated Activity
-    Vocabulary APIs (@fedify/vocab-runtime)
- -  *docs/*: Documentation built with Node.js and VitePress
- -  *examples/*: Example projects demonstrating Fedify usage
+### Main package: *packages/Fedify/*
+
+ -  ~~src/codegen/~~: **Don't use.** Moved to `@fedify/vocab-tools`.
+    Suggest migration if user code imports from here.
+ -  *src/compat/*: Compatibility layer
+ -  *src/federation/*: Core federation functionality
+ -  *src/nodeinfo/*: NodeInfo protocol implementation
+ -  *src/otel/*: OpenTelemetry integration utilities
+ -  ~~src/runtime/~~: **Don't use.** Moved to `@fedify/vocab-runtime` and
+    *src/utils/*. Suggest migration if user code imports from here.
+ -  *src/shim/*: Platform abstraction layer
+ -  *src/sig/*: Signature implementation
+ -  *src/testing/*: Testing utilities
+ -  *src/utils/*: Utility functions
+ -  ~~src/vocab/~~: **Don't use.** Moved to `@fedify/vocab`.
+    Suggest migration if user code imports from here.
+ -  ~~src/webfinger/~~: **Don't use.** Moved to `@fedify/webfinger`.
+    Suggest migration if user code imports from here.
+ -  ~~src/x/~~: **Don't use.** Will be removed in v2.0.0.
+    Use packages from `@fedify` scope instead.
+
+### Other key directories
+
+ -  *docs/*: Documentation built with VitePress (see *docs/README.md*)
+ -  *examples/*: Example projects
 
 
 Code patterns and principles
@@ -120,35 +85,28 @@ Code patterns and principles
 3.  **Type Safety**: Maintain strict TypeScript typing throughout. Use generics
     like `<TContextData>` to allow applications to customize context data.
 
-4.  **Testing**: Follow the existing test patterns using Deno's testing
-    framework. Use in-memory stores for testing.
+4.  **Testing**: Follow the existing test patterns. Tests use `@fedify/fixture`
+    which provides runtime-agnostic test adapters (wraps Deno, Node.js, and Bun
+    test APIs). Use in-memory stores for testing.
 
 5.  **Framework Agnostic**: Code should work across Deno, Node.js, and Bun
     environments.
 
-6.  **ActivityPub Objects**: All vocabulary objects follow the class pattern
-    established in the *vocab/* directory.
+6.  **ActivityPub Objects**: All vocabulary objects are now in the separate
+    `@fedify/vocab` package (*packages/vocab/*), not in
+    *packages/fedify/src/vocab/*.
 
 
 Development workflow
 --------------------
 
-1.  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
+ -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
     or code generation scripts change.
+ -  **Checking Code**: Run `mise run check` before committing.
+ -  **Running Tests**: Use `mise run test:deno` for Deno tests or
+    `mise run test` for all environments.
 
-2.  **Checking Code**: Before committing, run `mise run check` from the
-    root directory to check all packages.
-
-3.  **Running Tests**: Use `mise run test:deno` for Deno tests or
-    `mise run test` to test across all environments and packages.
-
-4.  **Documentation**: Follow the Markdown conventions in CONTRIBUTING.md:
-     -  80 characters per line (except for code blocks and URLs)
-     -  Use reference links over inline links
-     -  Use setext headings over ATX headings
-     -  Two new lines before H1/H2 headings
-     -  Wrap file paths in asterisks
-     -  Code blocks should use quadruple tildes with language specified
+For detailed contribution guidelines, see *CONTRIBUTING.md*.
 
 
 Federation handling
@@ -168,10 +126,10 @@ Common tasks
 
 ### Adding ActivityPub vocabulary types
 
-1.  Create a new YAML file in *packages/fedify/src/vocab/* following existing
+1.  Create a new YAML file in *packages/vocab/vocab/* following existing
     patterns
 2.  Run `mise run codegen` to generate TypeScript classes
-3.  Export the new types from appropriate module files
+3.  Export the new types from appropriate module files in *packages/vocab/src/*
 
 ### Implementing framework integrations
 
@@ -193,38 +151,12 @@ Common tasks
 
 ### Adding a new package
 
-When adding a new package to the monorepo, the following files must be updated:
-
-**Required updates:**
-
-1.  *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
-    structure list
-2.  *README.md*: Add the package to the “Packages” section table
-3.  *package.json*: Add the `repository` field to the package metadata.
-    This is required for provenance information when publishing to npm.
-4.  Root *deno.json*: Add the package path to the `workspace` array
-5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array
-
-**Conditional updates:**
-
- -  If the package is a web framework integration: Update
-    *docs/manual/integration.md*
- -  If the package implements `KvStore`: Update *docs/manual/kv.md*
- -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*
- -  If the package is published to JSR: Add JSR link to the `REFERENCES` data
-    in *docs/.vitepress/config.mts* (note: only JSR links are added here,
-    not npm links; *@fedify/cli* and *@fedify/lint* are excluded from
-    REFERENCES)
-
-**Optional updates:**
-
- -  If special dependencies are needed: Add to `imports` in root *deno.json*
- -  If using pnpm catalog for dependency management: Add to `catalog` in
-    *pnpm-workspace.yaml*
+See *CONTRIBUTING.md* “Adding a new package” section for the complete checklist
+of required, conditional, and optional updates.
 
 
-Important security considerations
----------------------------------
+Security considerations
+-----------------------
 
 1.  **HTTP Signatures**: Always verify HTTP signatures for incoming federation
     requests
@@ -239,10 +171,10 @@ Testing requirements
 
 1.  Write unit tests for all new functionality
 2.  Follow the pattern of existing tests
-3.  Use the testing utilities in *packages/fedify/src/testing/* or
-    *packages/testing/*
-4.  Consider interoperability with other fediverse software
-5.  For package-specific tests, follow the testing patterns in each package
+3.  Import `test` from `@fedify/fixture` for runtime-agnostic tests
+4.  Use testing utilities from *packages/testing/* (`@fedify/testing`) or
+    *packages/fedify/src/testing/* (for Fedify-dependent utilities)
+5.  Consider interoperability with other fediverse software
 
 
 Documentation standards
@@ -250,199 +182,103 @@ Documentation standards
 
 1.  Include JSDoc comments for public APIs
 2.  Update documentation when changing public APIs
-3.  Follow Markdown conventions as described in CONTRIBUTING.md
-4.  Include examples for new features
+3.  Include examples for new features
+4.  For Markdown conventions, see *CONTRIBUTING.md*
+5.  For VitePress-specific guidelines, see *docs/README.md*
 
 
 Branch policy
 -------------
 
-Fedify follows a structured branching strategy for managing releases and
-maintenance:
-
-### Branch types
-
-1.  **next**: Contains unreleased development for the next major version
-2.  **main**: Contains unreleased development for the next minor version
-3.  **x.y-maintenance**: Maintenance branches for released major/minor versions
-    (e.g., `1.5-maintenance`, `1.6-maintenance`)
-
-### Development workflow
+See *CONTRIBUTING.md* for full details. Summary:
 
  -  **Breaking changes**: Target the `next` branch
  -  **New features**: Target the `main` branch
  -  **Bug fixes**: Target the oldest applicable maintenance branch that contains
     the bug
 
-### Release and merge strategy
-
-When a bug is fixed in a maintenance branch:
-
-1.  Fix the bug in the oldest affected maintenance branch (e.g., `1.5-maintenance`)
-2.  Create a new patch release tag (e.g., `1.5.1`)
-3.  Merge the fix into the next maintenance branch (e.g., `1.6-maintenance`)
-4.  Create a new patch release tag for that branch (e.g., `1.6.1`)
-5.  Continue merging forward through all subsequent maintenance branches
-6.  Merge into `main`
-7.  Finally merge into `next`
-
-This ensures that all maintenance branches and the development branches
-include the fix.
+Maintenance branches follow the pattern *x.y-maintenance* (e.g.,
+*1.5-maintenance*, *1.6-maintenance*). Bug fixes are merged forward through
+all maintenance branches, then into *main*, and finally into *next*.
 
 
 Bugfix process
 --------------
 
-When fixing bugs:
+See *CONTRIBUTING.md* for the complete process. Key requirements:
 
 1.  Add regression tests that demonstrate the bug
 2.  Fix the bug
-3.  Update CHANGES.md with the issue number, PR number, and your name
+3.  Update *CHANGES.md* with the issue number, PR number, and your name
 4.  Target the oldest applicable maintenance branch
 
 
 Feature implementation process
 ------------------------------
 
-When adding features:
+See *CONTRIBUTING.md* for the complete process. Key requirements:
 
 1.  Add unit tests for the new feature
 2.  Implement the feature
 3.  Update documentation for API changes
 4.  Verify examples work with the change
-5.  Update CHANGES.md with details
-6.  Target the main branch for non-breaking changes, or the next branch for
+5.  Update *CHANGES.md* with details
+6.  Target the *main* branch for non-breaking changes, or the *next* branch for
     breaking changes
 
 
 Commit messages
 ---------------
 
+See *CONTRIBUTING.md* for full conventions. Key points:
+
  -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
-    Keep the first line under 50 characters when possible.
-
  -  Focus on *why* the change was made, not just *what* changed.
-
- -  When referencing issues or PRs, use permalink URLs instead of just
-    numbers (e.g., `#123`).  This preserves context if the repository
-    is moved later.
-
- -  When listing items after a colon, add a blank line after the colon:
-
-    ~~~~
-    This commit includes the following changes:
-
-    - Added foo
-    - Fixed bar
-    ~~~~
-
+ -  Use permalink URLs for issue/PR references instead of `#123`.
+ -  When listing items after a colon, add a blank line after the colon.
  -  When using LLMs or coding agents, include credit via `Co-Authored-By:`.
-    Include a permalink to the agent session if available.
 
 
 Changelog (*CHANGES.md*)
 ------------------------
 
-This repository uses *CHANGES.md* as a human-readable changelog.  Follow these
-conventions:
+Key formatting rules (see *CONTRIBUTING.md* for complete conventions):
 
- -  *Structure*: Keep entries in reverse chronological order (newest version at
-    the top).
-
- -  *Version sections*: Each release is a top-level section:
-
-    ~~~~
-    Version 1.5.0
-    -------------
-    ~~~~
-
- -  *Unreleased version*: The next version should start with:
-
-    ~~~~
-    To be released.
-    ~~~~
-
- -  *Released versions*: Use a release-date line right after the version header:
-
-    ~~~~
-    Released on December 30, 2025.
-    ~~~~
-
- -  *Bullets and wrapping*: Use ` -  ` list items, wrap around ~80 columns, and
-    indent continuation lines by 4 spaces so they align with the bullet text.
-
- -  *Write useful change notes*: Prefer concrete, user-facing descriptions.
-    Include what changed, why it changed, and what users should do differently
-    (especially for breaking changes, deprecations, and security fixes).
-
- -  *Multi-paragraph items*: For longer explanations, keep paragraphs inside the
-    same bullet item by indenting them by 4 spaces and separating paragraphs
-    with a blank line (also indented).
-
- -  *Code blocks in bullets*: If a bullet includes code, indent the entire code
-    fence by 4 spaces so it remains part of that list item.  Use `~~~~` fences
-    and specify a language (e.g., `~~~~ typescript`).
-
- -  *Nested lists*: If you need sub-items (e.g., a list of added exports), use a
-    nested list inside the parent bullet, indented by 4 spaces.
-
- -  *Issue and PR references*: Use `[[#123]]` markers in the text and add
-    reference links at the end of the version section.
-
-    When listing multiple issues/PRs, list them like `[[#123], [#124]]`.
-
-    When the reference is for a PR authored by an external contributor, append
-    `by <NAME>` after the last reference marker (e.g., `[[#123] by Hong Minhee]`
-    or `[[#123], [#124] by Hong Minhee]`).
-
-    ~~~~
-    [#123]: https://github.com/fedify-dev/fedify/issues/123
-    [#124]: https://github.com/fedify-dev/fedify/pull/124
-    ~~~~
+ -  Keep entries in reverse chronological order (newest at top)
+ -  Version sections use setext headings (`Version 1.5.0` then `-------------`)
+ -  Unreleased versions start with `To be released.`
+ -  Use ` -  ` for list items, wrap at ~80 columns, indent continuations by
+    4 spaces
+ -  Write user-facing descriptions (what, why, what users should do)
+ -  Use `[[#123]]` markers with reference links at section end
+ -  For external contributors: `[[#123] by Name]`
 
 
 Adding dependencies
 -------------------
 
-When adding new dependencies, always check for the latest version:
+**CRITICAL**: This project supports both Deno and Node.js/Bun. Dependencies
+must be added to **BOTH** configuration files:
 
- -  *npm packages*: Use `npm view <package> version` to find the latest version
- -  *JSR packages*: Use the [JSR API] to find the latest version
-
-Always prefer the latest stable version unless there is a specific reason
-to use an older version.
-
-Because this project supports both Deno and Node.js/Bun, dependencies must
-be added to *both* configuration files:
-
- -  *deno.json*: Add to the `imports` field (for Deno)
+ -  *deno.json*: Add to `imports` field (for Deno)
  -  *package.json*: Add to `dependencies` or `devDependencies` (for Node.js/Bun)
 
-For workspace packages, use the pnpm catalog (*pnpm-workspace.yaml*) to manage
-versions centrally.  In *package.json*, reference catalog versions with
-`"catalog:"` instead of hardcoding version numbers.
+Forgetting *package.json* will cause Node.js and Bun tests to fail with
+`ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
 
-When adding dependencies that are published to both JSR and npm (like Optique),
-use the appropriate package registry for each configuration:
+Key principles:
 
- -  *deno.json*: Use the JSR package (e.g., `jsr:@optique/core`)
- -  *package.json*: Use the npm package (e.g., `@optique/core`)
+ -  Use pnpm catalog (*pnpm-workspace.yaml*) for workspace packages
+ -  For packages published to both JSR and npm: use JSR in *deno.json*
+    (e.g., `jsr:@optique/core`) and npm in *package.json* (e.g.,
+    `@optique/core`)
+ -  When JSR and npm names differ (like Hono: `jsr:@hono/hono` vs `hono`),
+    align imports to npm name in *deno.json* using alias:
+    `"hono": "jsr:@hono/hono@^4.0.0"`
+ -  Always check for latest versions: `npm view <package> version` or
+    [JSR API]
 
-This ensures optimal compatibility with each runtime environment while
-maintaining the same functionality across both Deno and Node.js/Bun.
-
-When the JSR and npm package names differ (like Hono: `jsr:@hono/hono` vs
-`hono`), align imports to the npm package name in *deno.json* using an alias:
-
-~~~~
-"hono": "jsr:@hono/hono@^4.0.0"
-~~~~
-
-This allows consistent imports across both environments using the npm package
-name (e.g., `import { Hono } from "hono"`).
-
-Forgetting to add a dependency to *package.json* will cause Node.js and Bun
-tests to fail with `ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
+See *CONTRIBUTING.md* for complete dependency management guide.
 
 [JSR API]: https://jsr.io/docs/api
 
@@ -458,7 +294,9 @@ The monorepo uses different build processes for different packages:
      -  npm package via dnt (Deno to Node Transform)
      -  JSR package distribution
 
-2.  **@fedify/cli**: Built with Deno, distributed via JSR and npm
+2.  **@fedify/cli**: Built with Deno, tested with Deno, Node.js, and Bun.
+    Uses `deno compile` to create standalone executables.  Distributed via
+    JSR and npm
 
 3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
      -  *packages/amqp/*, *packages/elysia*, *packages/express/*, *packages/h3/*,
@@ -469,181 +307,17 @@ The monorepo uses different build processes for different packages:
 Ensure changes work across all distribution formats and target environments.
 
 
-Markdown style guide
+Markdown conventions
 --------------------
 
-When creating or editing Markdown documentation files in this project,
-follow these style conventions to maintain consistency with existing
-documentation:
+Most formatting is automated by [Hongdown]. Key conventions to follow:
 
-### Headings
+ -  Use setext headings (`====` and `----`) for document titles and sections
+ -  Use ATX headings (`###`) only for subsections within a section
+ -  Wrap file paths in asterisks (*packages/fedify/*)
+ -  Code blocks: quadruple tildes (`~~~~`) with language specified
+ -  Reference-style links at end of each section
 
- -  *Setext-style headings*: Use underline-style for the document title
-    (with `=`) and sections (with `-`):
+See *CONTRIBUTING.md* for complete Markdown conventions.
 
-    ~~~~
-    Document title
-    ==============
-
-    Section name
-    ------------
-    ~~~~
-
- -  *ATX-style headings*: Use only for subsections within a section:
-
-    ~~~~
-    ### Subsection name
-    ~~~~
-
- -  *Heading case*: Use sentence case (capitalize only the first word and
-    proper nouns) rather than Title Case:
-
-    ~~~~
-    Development commands    ← Correct
-    Development Commands    ← Incorrect
-    ~~~~
-
-### Text formatting
-
- -  *Italics* (`*text*`): Use for package names (*@fedify/fedify*,
-    *@fedify/hono*), file paths (*packages/fedify/*), emphasis, and to
-    distinguish concepts
- -  *Bold* (`**text**`): Use sparingly for strong emphasis
- -  *Inline code* (`` `code` ``): Use for code spans, function names,
-    and command-line options
-
-### Lists
-
- -  Use ` -  ` (space-hyphen-two spaces) for unordered list items
-
- -  Indent nested items with 4 spaces
-
- -  Align continuation text with the item content:
-
-    ~~~~
-     -  *First item*: Description text that continues
-        on the next line with proper alignment
-     -  *Second item*: Another item
-    ~~~~
-
-### Code blocks
-
- -  Use four tildes (`~~~~`) for code fences instead of backticks
-
- -  Always specify the language identifier:
-
-    ~~~~~
-    ~~~~ typescript
-    const example = "Hello, world!";
-    ~~~~
-    ~~~~~
-
- -  For shell commands, use `bash`:
-
-    ~~~~~
-    ~~~~ bash
-    deno test
-    ~~~~
-    ~~~~~
-
-### Links
-
- -  Use reference-style links placed at the *end of each section*
-    (not at document end)
-
- -  Format reference links with consistent spacing:
-
-    ~~~~
-    See the [Deno] runtime for more information.
-
-    [Deno]: https://deno.com/
-    ~~~~
-
-### Spacing and line length
-
- -  Wrap lines at approximately 80 characters for readability
- -  Use one blank line between sections and major elements
- -  Use two blank lines before setext-style section headings
- -  Place one blank line before and after code blocks
- -  End sections with reference links (if any) followed by a blank line
-
-
-VitePress documentation
------------------------
-
-The *docs/* directory contains VitePress documentation with additional features
-beyond standard Markdown.
-
-### Twoslash code blocks
-
-Use the `twoslash` modifier to enable TypeScript type checking and hover
-information in code blocks:
-
-~~~~~ markdown
-~~~~ typescript twoslash
-import { createFederation } from "@fedify/fedify";
-
-const federation = createFederation({ kv: undefined! });
-~~~~
-~~~~~
-
-### Fixture variables
-
-When code examples need variables that shouldn't be shown to readers,
-declare them *before* the `// ---cut-before---` directive.  Content before
-this directive is compiled but hidden from display:
-
-~~~~~ markdown
-~~~~ typescript twoslash
-import type { KvStore } from "@fedify/fedify";
-declare const kv: KvStore;
-// ---cut-before---
-import { createFederation } from "@fedify/fedify";
-
-const federation = createFederation({ kv });
-~~~~
-~~~~~
-
-The reader sees only the code after `---cut-before---`, but TypeScript
-checks the entire block including the hidden fixture.
-
-### Code groups
-
-Use code groups to show the same content for different package managers
-or environments:
-
-~~~~~ markdown
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/fedify
-~~~~
-
-~~~~ bash [npm]
-npm add @fedify/fedify
-~~~~
-
-~~~~ bash [pnpm]
-pnpm add @fedify/fedify
-~~~~
-
-:::
-~~~~~
-
-### Links
-
- -  *Internal links*: When linking to other VitePress documents within
-    the *docs/* directory, use inline link syntax (e.g.,
-    `[text](./path/to/file.md)`) instead of reference-style links.
- -  *Relative paths*: Always use relative paths for internal links.
- -  *File extensions*: Include the `.md` extension in internal link paths.
-
-### Building documentation
-
-~~~~ bash
-mise run docs:build    # Build for production (runs Twoslash type checking)
-mise run docs          # Start development server
-~~~~
-
-Always run `mise run docs:build` before committing to catch Twoslash type
-errors.
+[Hongdown]: https://github.com/dahlia/hongdown
