@@ -67,9 +67,10 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown",
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/lint... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
     "test": "node --experimental-transform-types --test 'src/tests/**/*.test.ts'"
   }
 }

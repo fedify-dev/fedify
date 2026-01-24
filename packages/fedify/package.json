@@ -143,11 +143,12 @@
     "wrangler": "^4.17.0"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown",
-    "test": "tsdown && cd dist/ && node --test",
-    "test:bun": "tsdown && cd dist/ && bun test --timeout 60000",
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/fedify... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "pnpm build && cd dist/ && node --test",
+    "test:bun": "pnpm build && cd dist/ && bun test --timeout 60000",
     "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts"
   }
 }

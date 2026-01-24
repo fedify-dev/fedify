@@ -84,10 +84,11 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown",
-    "test": "tsdown && node --experimental-transform-types --test",
-    "test:bun": "tsdown && bun test --timeout=10000"
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/postgres... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "pnpm build && node --experimental-transform-types --test",
+    "test:bun": "pnpm build && bun test --timeout=10000"
   }
 }

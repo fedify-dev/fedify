@@ -60,7 +60,8 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "tsdown",
+    "build:self": "deno task compile && tsdown",
+    "build": "pnpm --filter @fedify/vocab... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "test": "pnpm build && cd dist/ && node --test",

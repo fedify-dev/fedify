@@ -55,8 +55,9 @@
     "h3": "catalog:"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepack": "tsdown",
-    "prepublish": "tsdown"
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/h3... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build"
   }
 }
