@@ -321,9 +321,9 @@ The repository is organized as a monorepo with the following packages:
 
  -  *packages/fedify/*: The main Fedify library (@fedify/fedify).  The library
     is built with Deno, and tested with Deno, Node.js, and [Bun].
-     -  *src/codegen/*: The code generation scripts.
- -  *packages/cli/*: The Fedify CLI (@fedify/cli).  The CLI is built with
-    [Deno].
+ -  *packages/cli/*: The Fedify CLI (@fedify/cli).  Built with [Deno] and
+    tested with Deno, Node.js, and [Bun].  Uses `deno compile` to create
+    standalone executables.
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
  -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for
     Fedify.
@@ -344,10 +344,15 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite) for Fedify.
  -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit) for Fedify.
  -  *packages/testing/*: Testing utilities (@fedify/testing) for Fedify.
+ -  *packages/vocab/*: Activity Vocabulary library (@fedify/vocab) for Fedify.
  -  *packages/vocab-runtime/*: Runtime library for code-generated vocab
     (@fedify/vocab-runtime) for Fedify.
  -  *packages/vocab-tools/*: Code generation tools for Activity Vocabulary
     (@fedify/vocab-tools) for Fedify.
+ -  *packages/webfinger/*: WebFinger client library (@fedify/webfinger) for
+    ActivityPub.
+ -  *packages/fixture/*: Testing utilities (@fedify/fixture) providing
+    runtime-agnostic test adapters.
  -  *docs/*: The Fedify docs.  The docs are built with [Node.js] and
     [VitePress].
  -  *examples/*: The example projects.  Some examples are built with Deno, and
@@ -434,10 +439,11 @@ the `fedify lookup` subcommand, you can run the following command:
 mise run cli -- lookup @fedify@hollo.social
 ~~~~
 
-> [!TIP]
+> [!NOTE]
 >
-> Unlike the Fedify library, the Fedify CLI does not have to be tested with
-> Node.js and Bun; you can test the CLI with Deno only.
+> The Fedify CLI is tested with Deno, Node.js, and Bun like other packages.
+> However, for quick local testing during development, `mise run cli` uses
+> Deno directly without requiring a full multi-runtime test run.
 
 #### Running the tests
 

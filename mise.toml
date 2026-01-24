@@ -40,7 +40,13 @@ done
 # Code quality
 [tasks.check]
 description = "Check code formatting, linting, and type checking"
-depends = ["check:fmt", "check:lint", "check:types", "check:md", "check-versions"]
+depends = [
+  "check:fmt",
+  "check:lint",
+  "check:types",
+  "check:md",
+  "check-versions",
+]
 
 [tasks."check:fmt"]
 description = "Check code formatting"
