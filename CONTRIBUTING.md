@@ -42,6 +42,14 @@ please provide the following information:
 Pull requests
 -------------
 
+### AI usage
+
+If you use AI tools (such as GitHub Copilot, Claude, Cursor, etc.) while
+contributing, you must disclose this in your pull request description and/or
+commit messages.  See *[AI_POLICY.md]* for the complete policy.
+
+[AI_POLICY.md]: AI_POLICY.md
+
 ### License
 
 Fedify is licensed under the [MIT License].  By opening a pull request,
