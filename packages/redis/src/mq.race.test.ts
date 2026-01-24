@@ -1,4 +1,4 @@
-import { test } from "@fedify/fixture";
+import { test } from "node:test";
 import { strictEqual } from "node:assert/strict";
 import type { Callback, RedisKey } from "ioredis";
 import { Buffer } from "node:buffer";
