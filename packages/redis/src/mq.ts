@@ -234,7 +234,6 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
     signal?.addEventListener("abort", () => {
       subRedis.off("message", poll);
-      this.#subRedis.unsubscribe(this.#channelKey);
       for (const timeout of timeouts) clearTimeout(timeout);
     });
     // Perform an initial poll immediately to catch any messages that were
