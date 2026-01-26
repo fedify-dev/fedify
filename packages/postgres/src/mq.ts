@@ -259,6 +259,11 @@ export class PostgresMessageQueue implements MessageQueue {
         ordering_key text
       );
     `;
+      // Add ordering_key column if it doesn't exist (for existing tables)
+      await this.#sql`
+      ALTER TABLE ${this.#sql(this.#tableName)}
+      ADD COLUMN IF NOT EXISTS ordering_key text;
+    `;
     } catch (error) {
       if (
         !(error instanceof postgres.PostgresError &&
