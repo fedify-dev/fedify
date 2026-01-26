@@ -207,7 +207,7 @@ export async function* generateCloner(
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   ${emitOverride(typeUri, types)} clone(

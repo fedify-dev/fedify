@@ -1056,7 +1056,7 @@ proofs?: (DataIntegrityProof | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -11205,7 +11205,7 @@ proofs?: (DataIntegrityProof | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -11557,7 +11557,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -12283,7 +12283,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -15353,7 +15353,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -15742,7 +15742,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -16353,7 +16353,7 @@ endpoints?: (URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -16769,7 +16769,7 @@ endpoints?: (URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -17174,7 +17174,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -18149,7 +18149,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -19013,7 +19013,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -19817,7 +19817,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -20153,7 +20153,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -20484,7 +20484,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -21282,7 +21282,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -27401,7 +27401,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -27744,7 +27744,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -28080,7 +28080,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -28565,7 +28565,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -29108,7 +29108,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -29449,7 +29449,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -29785,7 +29785,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -30324,7 +30324,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -34615,7 +34615,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -35897,7 +35897,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -36227,7 +36227,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -36555,7 +36555,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -37000,7 +37000,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -37977,7 +37977,7 @@ proofs?: (DataIntegrityProof | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -38319,7 +38319,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -38651,7 +38651,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -39449,7 +39449,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -45774,7 +45774,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -47209,7 +47209,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -47517,7 +47517,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -47859,7 +47859,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -48193,7 +48193,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -48523,7 +48523,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -48853,7 +48853,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -49183,7 +49183,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -49511,7 +49511,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -49819,7 +49819,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -50136,7 +50136,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -50474,7 +50474,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -50955,7 +50955,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -51675,7 +51675,7 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -52929,7 +52929,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -59039,7 +59039,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -59848,7 +59848,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -66045,7 +66045,7 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -67002,7 +67002,7 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -67749,7 +67749,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -68966,7 +68966,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -69296,7 +69296,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -69733,7 +69733,7 @@ relationships?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -71280,7 +71280,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -72078,7 +72078,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -78279,7 +78279,7 @@ contents?: ((string | LanguageString))[];mediaType?: string | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
    clone(
@@ -78833,7 +78833,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -79163,7 +79163,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -79502,7 +79502,7 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -79946,7 +79946,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -80281,7 +80281,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -80614,7 +80614,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -80936,7 +80936,7 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
@@ -81276,7 +81276,7 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    * @param values The values to update the clone with.
-   * @options The options to use for cloning.
+   * @param options The options to use for cloning.
    * @returns The cloned instance.
    */
   override clone(
