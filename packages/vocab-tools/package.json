@@ -42,7 +42,8 @@
     "build": "pnpm --filter @fedify/vocab-tools... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test": "pnpm build && cd dist/ && node --test"
+    "pretest": "pnpm build",
+    "test": "cd dist/ && node --test"
   },
   "keywords": [
     "Fedify",
