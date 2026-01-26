@@ -335,6 +335,9 @@ To be released.
     could be published before the handler was ready.  
     [[#515], [#532] by Jiwon Kwon]
 
+ -  `RedisMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.  [[#538]]
+
 [#515]: https://github.com/fedify-dev/fedify/issues/515
 [#532]: https://github.com/fedify-dev/fedify/pull/532
 

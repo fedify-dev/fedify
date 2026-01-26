@@ -833,7 +833,7 @@ The following implementations support ordering keys:
 | ------------------------ | -------------------- |
 | `InProcessMessageQueue`  | Yes                  |
 | [`DenoKvMessageQueue`]   | Not yet              |
-| [`RedisMessageQueue`]    | Not yet              |
+| [`RedisMessageQueue`]    | Yes                  |
 | [`PostgresMessageQueue`] | Yes                  |
 | [`AmqpMessageQueue`]     | Not yet              |
 | [`SqliteMessageQueue`]   | Yes                  |
