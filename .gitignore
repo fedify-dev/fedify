@@ -1,6 +1,7 @@
 .claude/settings.local.json
 .DS_Store
 .pnpm-store/
+.vocab-codegen.lock/
 dist/
 node_modules/
 package-lock.json
