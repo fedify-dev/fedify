@@ -262,7 +262,16 @@ type Uuid = ReturnType<typeof crypto.randomUUID>;
  * for I/O-bound tasks, but not for CPU-bound tasks, which is okay for Fedify's
  * workloads.
  *
- * When using `ParallelMessageQueue`, the ordering guarantee is preserved.
+ * When using `ParallelMessageQueue`, the ordering guarantee is preserved
+ * *only if* the underlying queue implementation delivers messages in a wrapper
+ * format that includes the `__fedify_ordering_key__` property.  Currently,
+ * only `DenoKvMessageQueue` and `WorkersMessageQueue` use this format.
+ * For other queue implementations (e.g., `InProcessMessageQueue`,
+ * `RedisMessageQueue`, `PostgresMessageQueue`, `SqliteMessageQueue`,
+ * `AmqpMessageQueue`), the ordering key cannot be detected by
+ * `ParallelMessageQueue`, so ordering guarantees are handled by those
+ * implementations directly rather than at the `ParallelMessageQueue` level.
+ *
  * Messages with the same ordering key will never be processed concurrently
  * by different workers, ensuring sequential processing within each key.
  * Messages with different ordering keys (or no ordering key) can still be
@@ -338,11 +347,22 @@ export class ParallelMessageQueue implements MessageQueue {
 
   /**
    * Extracts ordering key from a message if present.
-   * Supports the standard wrapper format used by queue implementations.
+   *
+   * This method only works for queue implementations that deliver messages
+   * in the wrapper format with `__fedify_ordering_key__` property.  Currently,
+   * only `DenoKvMessageQueue` and `WorkersMessageQueue` use this format.
+   *
+   * For other queue implementations (`InProcessMessageQueue`,
+   * `RedisMessageQueue`, `PostgresMessageQueue`, `SqliteMessageQueue`,
+   * `AmqpMessageQueue`), messages are delivered as raw payloads without the
+   * wrapper, so the ordering key cannot be detected here.  Those
+   * implementations handle ordering guarantees internally.
    */
   #extractOrderingKey(message: any): string | undefined {
     if (message != null && typeof message === "object") {
-      // Check for standard wrapper format used by DenoKv and potentially others
+      // Check for standard wrapper format used by DenoKvMessageQueue and
+      // WorkersMessageQueue.  Other implementations (InProcess, Redis,
+      // Postgres, Sqlite, Amqp) deliver raw payloads without this wrapper.
       if ("__fedify_ordering_key__" in message) {
         return message.__fedify_ordering_key__ as string | undefined;
       }
