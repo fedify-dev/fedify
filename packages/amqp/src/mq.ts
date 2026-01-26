@@ -17,7 +17,7 @@ import { Buffer } from "node:buffer";
  * rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
  * ```
  *
- * @since 0.4.0
+ * @since 2.0.0
  */
 export interface AmqpOrderingOptions {
   /**
