@@ -4,7 +4,7 @@ import type {
   MessageQueueListenOptions,
 } from "@fedify/fedify";
 // @deno-types="npm:@types/amqplib@^0.10.7"
-import type { Channel, ChannelModel } from "amqplib";
+import type { Channel, ChannelModel, ConsumeMessage } from "amqplib";
 import { Buffer } from "node:buffer";
 
 /**
@@ -359,8 +359,7 @@ export class AmqpMessageQueue implements MessageQueue {
     await this.#prepareOrdering(channel);
     await channel.prefetch(1);
 
-    // deno-lint-ignore no-explicit-any
-    const messageHandler = (msg: any) => {
+    const messageHandler = (msg: ConsumeMessage | null) => {
       if (msg == null) return;
       const message = JSON.parse(msg.content.toString("utf-8"));
       try {
