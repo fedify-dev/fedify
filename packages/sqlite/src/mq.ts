@@ -278,51 +278,32 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
     const channel = SqliteMessageQueue.#getNotifyChannel(this.#tableName);
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
-    const processingKeys = new Set<string>();
+    const lockTableName = `${this.#tableName}_locks`;
 
     const poll = async () => {
       while (signal == null || !signal.aborted) {
         const now = Temporal.Now.instant().epochMilliseconds;
-        const lockedKeys = [...processingKeys];
 
         // Atomically fetch and delete the oldest message that is ready to be
         // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
         // Wrapped in BEGIN IMMEDIATE transaction to ensure proper locking
         // and prevent race conditions in multi-process scenarios
-        // Exclude messages with ordering keys currently being processed
+        // Exclude messages with ordering keys currently being processed (DB-level lock)
         const result = await this.#withTransactionRetries(() => {
-          if (lockedKeys.length === 0) {
-            return this.#db
-              .prepare(
-                `DELETE FROM "${this.#tableName}"
-                WHERE id = (
-                  SELECT id FROM "${this.#tableName}"
-                  WHERE scheduled <= ?
-                  ORDER BY scheduled
-                  LIMIT 1
-                )
-                RETURNING id, message, ordering_key`,
-              )
-              .get(now) as
-                | { id: string; message: string; ordering_key: string | null }
-                | undefined;
-          }
-          // Build query that excludes messages with locked ordering keys
-          // but allows NULL ordering_key
-          const placeholders = lockedKeys.map(() => "?").join(", ");
           return this.#db
             .prepare(
               `DELETE FROM "${this.#tableName}"
               WHERE id = (
                 SELECT id FROM "${this.#tableName}"
                 WHERE scheduled <= ?
-                  AND (ordering_key IS NULL OR ordering_key NOT IN (${placeholders}))
+                  AND (ordering_key IS NULL
+                       OR ordering_key NOT IN (SELECT ordering_key FROM "${lockTableName}"))
                 ORDER BY scheduled
                 LIMIT 1
               )
               RETURNING id, message, ordering_key`,
             )
-            .get(now, ...lockedKeys) as
+            .get(now) as
               | { id: string; message: string; ordering_key: string | null }
               | undefined;
         });
@@ -330,7 +311,18 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         if (result) {
           const message = this.#decodeMessage(result.message);
           const orderingKey = result.ordering_key;
-          if (orderingKey != null) processingKeys.add(orderingKey);
+
+          // Acquire DB-level lock for this ordering key
+          if (orderingKey != null) {
+            await this.#retryOnBusy(() => {
+              this.#db
+                .prepare(
+                  `INSERT OR IGNORE INTO "${lockTableName}" (ordering_key) VALUES (?)`,
+                )
+                .run(orderingKey);
+            });
+          }
+
           logger.debug("Processing message {id}...", {
             id: result.id,
             message,
@@ -350,7 +342,16 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
               },
             );
           } finally {
-            if (orderingKey != null) processingKeys.delete(orderingKey);
+            // Release DB-level lock for this ordering key
+            if (orderingKey != null) {
+              await this.#retryOnBusy(() => {
+                this.#db
+                  .prepare(
+                    `DELETE FROM "${lockTableName}" WHERE ordering_key = ?`,
+                  )
+                  .run(orderingKey);
+              });
+            }
           }
 
           // Check for next message immediately
@@ -440,6 +441,13 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_scheduled"
         ON "${this.#tableName}" (scheduled)
       `);
+
+      // Create lock table for distributed ordering key locks
+      this.#db.exec(`
+        CREATE TABLE IF NOT EXISTS "${this.#tableName}_locks" (
+          ordering_key TEXT PRIMARY KEY
+        )
+      `);
     });
 
     this.#initialized = true;
@@ -449,11 +457,12 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   }
 
   /**
-   * Drops the table used by the message queue.  Does nothing if the table
-   * does not exist.
+   * Drops the tables used by the message queue.  Does nothing if the tables
+   * do not exist.
    */
   drop(): void {
     this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}"`);
+    this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}_locks"`);
     this.#initialized = false;
   }
 
