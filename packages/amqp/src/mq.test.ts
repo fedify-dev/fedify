@@ -37,6 +37,47 @@ test(
     ),
 );
 
+// Test with ordering key support (requires rabbitmq_consistent_hash_exchange plugin)
+const orderingConnections: ChannelModel[] = [];
+const orderingQueue = getRandomKey("ordering_queue");
+const orderingDelayedQueuePrefix = getRandomKey("ordering_delayed") + "_";
+const orderingExchange = getRandomKey("ordering_exchange");
+const orderingQueuePrefix = getRandomKey("ordering_partition") + "_";
+
+// Only run ordering key tests if AMQP_ORDERING_TEST env var is set
+// (requires rabbitmq_consistent_hash_exchange plugin to be enabled)
+const orderingTest = process.env.AMQP_ORDERING_TEST
+  ? test
+  : suite(import.meta).skip;
+
+orderingTest(
+  "AmqpMessageQueue [ordering]",
+  { sanitizeOps: false, sanitizeExit: false, sanitizeResources: false },
+  () =>
+    testMessageQueue(
+      async () => {
+        const conn = await getConnection();
+        orderingConnections.push(conn);
+        return new AmqpMessageQueue(conn, {
+          queue: orderingQueue,
+          delayedQueuePrefix: orderingDelayedQueuePrefix,
+          ordering: {
+            exchange: orderingExchange,
+            queuePrefix: orderingQueuePrefix,
+            partitions: 4,
+          },
+        });
+      },
+      async ({ controller }) => {
+        controller.abort();
+        for (const conn of orderingConnections) {
+          await conn.close();
+        }
+      },
+      { testOrderingKey: true },
+    ),
+);
+
 test(
   "AmqpMessageQueue [nativeRetrial: false]",
   { sanitizeOps: false, sanitizeExit: false, sanitizeResources: false },

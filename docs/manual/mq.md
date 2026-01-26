@@ -835,7 +835,7 @@ The following implementations support ordering keys:
 | [`DenoKvMessageQueue`]   | Yes                  |
 | [`RedisMessageQueue`]    | Yes                  |
 | [`PostgresMessageQueue`] | Yes                  |
-| [`AmqpMessageQueue`]     | Not yet              |
+| [`AmqpMessageQueue`]     | Yes[^1]              |
 | [`SqliteMessageQueue`]   | Yes                  |
 | `WorkersMessageQueue`    | Not yet              |
 
@@ -843,6 +843,16 @@ The following implementations support ordering keys:
 > When using `ParallelMessageQueue`, the ordering guarantee is preserved.
 > Messages with the same ordering key will never be processed concurrently
 > by different workers, ensuring sequential processing within each key.
+
+[^1]: `AmqpMessageQueue` requires the [`rabbitmq_consistent_hash_exchange`]
+      plugin to be enabled on the RabbitMQ server.  This is a Tier 1 plugin that
+      ships with RabbitMQ but is not enabled by default.  Enable it with:
+
+      ~~~~ bash
+      rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
+      ~~~~
+
+[`rabbitmq_consistent_hash_exchange`]: https://www.rabbitmq.com/docs/consistent-hash-exchange
 
 
 Using different message queues for different tasks
