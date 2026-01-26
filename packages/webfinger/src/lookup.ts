@@ -57,7 +57,6 @@ export interface LookupWebFingerOptions {
   /**
    * AbortSignal for cancelling the request.
    * @since 1.8.0
-   * @
    */
   signal?: AbortSignal;
 }
