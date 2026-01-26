@@ -20,4 +20,5 @@ test("SqliteMessageQueue", () =>
       mq1[Symbol.dispose]();
       mq2[Symbol.dispose]();
     },
+    { testOrderingKey: true },
   ));

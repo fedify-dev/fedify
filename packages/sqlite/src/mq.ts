@@ -181,15 +181,17 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing a message...", { message });
     }
 
+    const orderingKey = options?.orderingKey ?? null;
+
     return this.#retryOnBusy(() => {
       this.#db
         .prepare(
-          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-          VALUES (?, ?, ?, ?)`,
+          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled, ordering_key)
+          VALUES (?, ?, ?, ?, ?)`,
         )
-        .run(id, encodedMessage, now, scheduled);
+        .run(id, encodedMessage, now, scheduled, orderingKey);
 
-      logger.debug("Enqueued a message.", { message });
+      logger.debug("Enqueued a message.", { message, orderingKey });
 
       // Notify listeners that a message has been enqueued
       const delayMs = delay.total("millisecond");
@@ -224,16 +226,18 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing messages...", { messages });
     }
 
+    const orderingKey = options?.orderingKey ?? null;
+
     return this.#withTransactionRetries(() => {
       const stmt = this.#db.prepare(
-        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-        VALUES (?, ?, ?, ?)`,
+        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled, ordering_key)
+        VALUES (?, ?, ?, ?, ?)`,
       );
 
       for (const message of messages) {
         const id = crypto.randomUUID();
         const encodedMessage = this.#encodeMessage(message);
-        stmt.run(id, encodedMessage, now, scheduled);
+        stmt.run(id, encodedMessage, now, scheduled, orderingKey);
       }
 
       logger.debug("Enqueued messages.", { messages });
@@ -274,6 +278,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
     const channel = SqliteMessageQueue.#getNotifyChannel(this.#tableName);
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
+    const lockTableName = `${this.#tableName}_locks`;
 
     const poll = async () => {
       while (signal == null || !signal.aborted) {
@@ -283,6 +288,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
         // Wrapped in BEGIN IMMEDIATE transaction to ensure proper locking
         // and prevent race conditions in multi-process scenarios
+        // Exclude messages with ordering keys currently being processed (DB-level lock)
         const result = await this.#withTransactionRetries(() => {
           return this.#db
             .prepare(
@@ -290,19 +296,37 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
               WHERE id = (
                 SELECT id FROM "${this.#tableName}"
                 WHERE scheduled <= ?
+                  AND (ordering_key IS NULL
+                       OR ordering_key NOT IN (SELECT ordering_key FROM "${lockTableName}"))
                 ORDER BY scheduled
                 LIMIT 1
               )
-              RETURNING id, message`,
+              RETURNING id, message, ordering_key`,
             )
-            .get(now) as { id: string; message: string } | undefined;
+            .get(now) as
+              | { id: string; message: string; ordering_key: string | null }
+              | undefined;
         });
 
         if (result) {
           const message = this.#decodeMessage(result.message);
+          const orderingKey = result.ordering_key;
+
+          // Acquire DB-level lock for this ordering key
+          if (orderingKey != null) {
+            await this.#retryOnBusy(() => {
+              this.#db
+                .prepare(
+                  `INSERT OR IGNORE INTO "${lockTableName}" (ordering_key) VALUES (?)`,
+                )
+                .run(orderingKey);
+            });
+          }
+
           logger.debug("Processing message {id}...", {
             id: result.id,
             message,
+            orderingKey,
           });
           try {
             await handler(message);
@@ -317,6 +341,17 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
                 error,
               },
             );
+          } finally {
+            // Release DB-level lock for this ordering key
+            if (orderingKey != null) {
+              await this.#retryOnBusy(() => {
+                this.#db
+                  .prepare(
+                    `DELETE FROM "${lockTableName}" WHERE ordering_key = ?`,
+                  )
+                  .run(orderingKey);
+              });
+            }
           }
 
           // Check for next message immediately
@@ -397,13 +432,21 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
           id TEXT PRIMARY KEY,
           message TEXT NOT NULL,
           created INTEGER NOT NULL,
-          scheduled INTEGER NOT NULL
+          scheduled INTEGER NOT NULL,
+          ordering_key TEXT
         )
       `);
 
       this.#db.exec(`
         CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_scheduled"
         ON "${this.#tableName}" (scheduled)
+      `);
+
+      // Create lock table for distributed ordering key locks
+      this.#db.exec(`
+        CREATE TABLE IF NOT EXISTS "${this.#tableName}_locks" (
+          ordering_key TEXT PRIMARY KEY
+        )
       `);
     });
 
@@ -414,11 +457,12 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   }
 
   /**
-   * Drops the table used by the message queue.  Does nothing if the table
-   * does not exist.
+   * Drops the tables used by the message queue.  Does nothing if the tables
+   * do not exist.
    */
   drop(): void {
     this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}"`);
+    this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}_locks"`);
     this.#initialized = false;
   }
 

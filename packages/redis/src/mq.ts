@@ -92,6 +92,8 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
   #codec: Codec;
   #pollIntervalMs: number;
   #loopHandle?: ReturnType<typeof setInterval>;
+  #lastTimestamp: number = 0;
+  #sequenceInMs: number = 0;
 
   /**
    * Creates a new Redis message queue.
@@ -114,19 +116,38 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     ).total("millisecond");
   }
 
+  /**
+   * Returns a monotonically increasing timestamp to ensure message ordering.
+   * When multiple messages are enqueued in the same millisecond, a fractional
+   * sequence number is added to preserve insertion order.
+   */
+  #getMonotonicTimestamp(baseTimestamp: number): number {
+    if (baseTimestamp === this.#lastTimestamp) {
+      this.#sequenceInMs++;
+    } else {
+      this.#lastTimestamp = baseTimestamp;
+      this.#sequenceInMs = 0;
+    }
+    // Add sequence as fractional milliseconds (0.001ms per sequence)
+    return baseTimestamp + this.#sequenceInMs * 0.001;
+  }
+
   async enqueue(
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const ts = options?.delay == null
-      ? 0
-      : Temporal.Now.instant().add(options.delay).epochMilliseconds;
+    const now = Temporal.Now.instant().epochMilliseconds;
+    const baseTs = options?.delay == null
+      ? now
+      : now + options.delay.total("millisecond");
+    const ts = this.#getMonotonicTimestamp(baseTs);
     const encodedMessage = this.#codec.encode([
       crypto.randomUUID(),
       message,
+      options?.orderingKey,
     ]);
     await this.#redis.zadd(this.#queueKey, ts, encodedMessage);
-    if (ts < 1) this.#redis.publish(this.#channelKey, "");
+    if (baseTs <= now) this.#redis.publish(this.#channelKey, "");
   }
 
   async enqueueMany(
@@ -134,25 +155,37 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (messages.length === 0) return;
-    const ts = options?.delay == null
-      ? 0
-      : Temporal.Now.instant().add(options.delay).epochMilliseconds;
+    const now = Temporal.Now.instant().epochMilliseconds;
+    const baseTs = options?.delay == null
+      ? now
+      : now + options.delay.total("millisecond");
     // Use multi to batch multiple ZADD commands:
     const multi = this.#redis.multi();
     for (const message of messages) {
+      const ts = this.#getMonotonicTimestamp(baseTs);
       const encodedMessage = this.#codec.encode([
         crypto.randomUUID(),
         message,
+        options?.orderingKey,
       ]);
       multi.zadd(this.#queueKey, ts, encodedMessage);
     }
     // Execute all commands in a single transaction:
     await multi.exec();
     // Notify only if there's no delay:
-    if (ts < 1) this.#redis.publish(this.#channelKey, "");
+    if (baseTs <= now) this.#redis.publish(this.#channelKey, "");
   }
 
-  async #poll(): Promise<any | undefined> {
+  /**
+   * Returns the Redis key used to lock a specific ordering key.
+   */
+  #getOrderingLockKey(orderingKey: string): string {
+    return `${this.#lockKey}:ordering:${orderingKey}`;
+  }
+
+  async #poll(): Promise<
+    { message: any; orderingKey: string | undefined } | undefined
+  > {
     logger.debug("Polling for messages...");
     const result = await this.#redis.set(
       this.#lockKey,
@@ -179,10 +212,42 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     );
     try {
       if (messages.length < 1) return;
-      const encodedMessage = messages[0];
-      await this.#redis.zrem(this.#queueKey, encodedMessage);
-      const [_, message] = this.#codec.decode(encodedMessage) as [string, any];
-      return message;
+      // Find a message whose ordering key is not currently being processed
+      for (const encodedMessage of messages) {
+        const decoded = this.#codec.decode(encodedMessage) as [
+          string,
+          any,
+          string | undefined,
+        ];
+        const orderingKey = decoded[2];
+        // If this message has an ordering key, try to acquire a distributed lock
+        if (orderingKey != null) {
+          const orderingLockKey = this.#getOrderingLockKey(orderingKey);
+          const lockResult = await this.#redis.set(
+            orderingLockKey,
+            this.#workerId,
+            "EX",
+            60, // Lock expires after 60 seconds
+            "NX",
+          );
+          if (lockResult == null) {
+            // Another worker is processing a message with this ordering key
+            continue;
+          }
+        }
+        // Found a processable message; try to remove it from queue
+        const removed = await this.#redis.zrem(this.#queueKey, encodedMessage);
+        if (removed === 0) {
+          // Another worker already removed this message, release the ordering lock
+          if (orderingKey != null) {
+            await this.#redis.del(this.#getOrderingLockKey(orderingKey));
+          }
+          continue;
+        }
+        return { message: decoded[1], orderingKey };
+      }
+      // All messages have ordering keys that are being processed
+      return;
     } finally {
       await this.#redis.del(this.#lockKey);
     }
@@ -198,15 +263,25 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     const signal = options.signal;
     const poll = async () => {
       while (!signal?.aborted) {
-        let message: any;
+        let result:
+          | { message: any; orderingKey: string | undefined }
+          | undefined;
         try {
-          message = await this.#poll();
+          result = await this.#poll();
         } catch (error) {
           logger.error("Error polling for messages: {error}", { error });
           return;
         }
-        if (message === undefined) return;
-        await handler(message);
+        if (result === undefined) return;
+        const { message, orderingKey } = result;
+        try {
+          await handler(message);
+        } finally {
+          // Release the distributed ordering key lock
+          if (orderingKey != null) {
+            await this.#redis.del(this.#getOrderingLockKey(orderingKey));
+          }
+        }
       }
     };
     // Await subscription to ensure it's established before continuing.

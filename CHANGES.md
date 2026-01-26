@@ -95,6 +95,18 @@ To be released.
     implementations time to add support.  All official `KvStore` implementations
     already support this method.  [[#499], [#506]]
 
+ -  Added `orderingKey` option to `MessageQueueEnqueueOptions` interface for
+    ordered message delivery.  Messages with the same ordering key are
+    guaranteed to be processed in the order they were enqueued, while messages
+    with different ordering keys can be processed in parallel.  This helps
+    prevent race conditions when processing related activities (e.g., ensuring
+    a `Delete` activity is processed after a `Create` activity for the same
+    object).  [[#538], [#540]]
+
+     -  Added `MessageQueueEnqueueOptions.orderingKey` property.
+     -  All properties in `MessageQueueEnqueueOptions` are now `readonly`.
+     -  `InProcessMessageQueue` now supports the `orderingKey` option.
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -110,6 +122,8 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
+[#538]: https://github.com/fedify-dev/fedify/issues/538
+[#540]: https://github.com/fedify-dev/fedify/pull/540
 
 ### @fedify/cli
 
@@ -285,6 +299,14 @@ To be released.
      -  Added `SqliteMessageQueue` class.
      -  Added `SqliteMessageQueueOptions` interface.
 
+ -  `SqliteMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
+
+     -  Added `ordering_key` column to the message queue table schema.
+     -  The new table schema is created when `SqliteMessageQueue.initialize()`
+        is called on a fresh database.
+
 [#477]: https://github.com/fedify-dev/fedify/issues/477
 [#526]: https://github.com/fedify-dev/fedify/pull/526
 
@@ -300,6 +322,12 @@ To be released.
      -  Added `waitFor()` helper function.
      -  Added `getRandomKey()` helper function.
 
+ -  Added `TestMessageQueueOptions` interface and optional `options` parameter
+    to `testMessageQueue()` function.  [[#538], [#540]]
+
+     -  Added `TestMessageQueueOptions` interface.
+     -  Added `testOrderingKey` option to enable ordering key tests.
+
 ### @fedify/redis
 
  -  Fixed a race condition in `RedisMessageQueue.listen()` where pub/sub
@@ -309,8 +337,45 @@ To be released.
     could be published before the handler was ready.  
     [[#515], [#532] by Jiwon Kwon]
 
+ -  `RedisMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
+
 [#515]: https://github.com/fedify-dev/fedify/issues/515
 [#532]: https://github.com/fedify-dev/fedify/pull/532
+
+### @fedify/postgres
+
+ -  `PostgresMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
+
+     -  Added `ordering_key` column to the message queue table schema.
+     -  The new table schema is created when `PostgresMessageQueue.initialize()`
+        is called on a fresh database.
+
+### @fedify/amqp
+
+ -  `AmqpMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
+
+     -  Uses RabbitMQ's `rabbitmq_consistent_hash_exchange` plugin to route
+        messages with the same ordering key to the same queue.
+     -  The plugin must be enabled on the RabbitMQ server for ordering key
+        support to work.
+
+### @fedify/cfworkers
+
+ -  `WorkersMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
+
+     -  Added `WorkersMessageQueueOptions` interface with `orderingKv`,
+        `orderingKeyPrefix`, and `orderingLockTtl` options.
+     -  Added `processMessage()` method to handle lock acquisition and release.
+     -  Requires a Workers KV namespace for lock management.
+     -  Due to Workers KV eventual consistency, ordering is best-effort.
 
 
 Version 1.10.2

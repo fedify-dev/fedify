@@ -555,7 +555,9 @@ class CustomMessageQueue implements MessageQueue {
 
 This method should add the message to your queue system.
 Handle the `~MessageQueueEnqueueOptions.delay` option if provided in
-`MessageQueueEnqueueOptions`.  Ensure the method is non-blocking
+`MessageQueueEnqueueOptions`.  If provided, handle the
+`~MessageQueueEnqueueOptions.orderingKey` option to ensure messages with the
+same ordering key are processed sequentially.  Ensure the method is non-blocking
 (use async operations where necessary).
 
 ### Implement `~MessageQueue.enqueueMany` method (optional)
@@ -791,6 +793,74 @@ Improved observability
 
 Optimized performance
 :   Backend-specific optimizations for retry logic.
+
+
+Ordering guarantees
+-------------------
+
+*This API is available since Fedify 2.0.0.*
+
+By default, message queues do not guarantee the order in which messages are
+processed.  This can cause issues when related messages need to be processed
+in a specific order.  For example, when a post is created and quickly deleted,
+the `Delete` activity might arrive before the `Create` activity, resulting in
+“zombie posts” that should have been deleted.
+
+To address this, you can use the `~MessageQueueEnqueueOptions.orderingKey`
+option when enqueuing messages.  Messages with the same ordering key are
+guaranteed to be processed in the order they were enqueued.  Messages without
+an ordering key or with different ordering keys can be processed in parallel.
+
+~~~~ typescript twoslash
+import type { KvStore, MessageQueue } from "@fedify/fedify";
+declare const queue: MessageQueue;
+// ---cut-before---
+// These messages will be processed in order (1, 2, 3)
+await queue.enqueue({ action: "create", noteId: "123" }, { orderingKey: "note:123" });
+await queue.enqueue({ action: "update", noteId: "123" }, { orderingKey: "note:123" });
+await queue.enqueue({ action: "delete", noteId: "123" }, { orderingKey: "note:123" });
+
+// These messages can be processed in parallel with the above
+await queue.enqueue({ action: "create", noteId: "456" }, { orderingKey: "note:456" });
+await queue.enqueue({ action: "delete", noteId: "456" }, { orderingKey: "note:456" });
+~~~~
+
+### Implementation support
+
+The following implementations support ordering keys:
+
+| Implementation           | Ordering Key Support |
+| ------------------------ | -------------------- |
+| `InProcessMessageQueue`  | Yes                  |
+| [`DenoKvMessageQueue`]   | Yes                  |
+| [`RedisMessageQueue`]    | Yes                  |
+| [`PostgresMessageQueue`] | Yes                  |
+| [`AmqpMessageQueue`]     | Yes[^1]              |
+| [`SqliteMessageQueue`]   | Yes                  |
+| `WorkersMessageQueue`    | Yes[^2]              |
+
+> [!NOTE]
+> When using `ParallelMessageQueue`, the ordering guarantee is preserved
+> only if the underlying queue delivers messages in wrapper format with the
+> ordering key embedded (currently `DenoKvMessageQueue` and
+> `WorkersMessageQueue`).  For other implementations, ordering is handled
+> internally by the queue itself, not by `ParallelMessageQueue`.
+> Messages with the same ordering key will never be processed concurrently,
+> ensuring sequential processing within each key.
+
+[^1]: `AmqpMessageQueue` requires the [`rabbitmq_consistent_hash_exchange`]
+      plugin to be enabled on the RabbitMQ server.  This is a Tier 1 plugin that
+      ships with RabbitMQ but is not enabled by default.  Enable it with:
+
+      ~~~~ bash
+      rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
+      ~~~~
+[^2]: `WorkersMessageQueue` requires a Workers KV namespace to be provided for
+      ordering key locks. Due to Workers KV's eventual consistency, the ordering
+      guarantee is best-effort. For strict ordering requirements, consider using
+      Durable Objects.
+
+[`rabbitmq_consistent_hash_exchange`]: https://www.rabbitmq.com/docs/consistent-hash-exchange
 
 
 Using different message queues for different tasks

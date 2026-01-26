@@ -31,6 +31,7 @@ test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
         await sql.end();
       }
     },
+    { testOrderingKey: true },
   );
 });
 

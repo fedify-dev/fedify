@@ -11,7 +11,20 @@ export interface MessageQueueEnqueueOptions {
    *
    * It must not be negative.
    */
-  delay?: Temporal.Duration;
+  readonly delay?: Temporal.Duration;
+
+  /**
+   * An optional key that ensures messages with the same ordering key are
+   * processed sequentially (one at a time).  Messages with different ordering
+   * keys (or no ordering key) may be processed in parallel.
+   *
+   * This is useful for ensuring that related messages are processed in order,
+   * such as ensuring that a `Delete` activity is processed after a `Create`
+   * activity for the same object.
+   *
+   * @since 2.0.0
+   */
+  readonly orderingKey?: string;
 }
 
 /**
@@ -90,6 +103,14 @@ export interface InProcessMessageQueueOptions {
 }
 
 /**
+ * Internal structure for storing messages with their ordering key.
+ */
+interface QueuedMessage {
+  message: any;
+  orderingKey: string | null;
+}
+
+/**
  * A message queue that processes messages in the same process.
  * Do not use this in production as it does neither persist messages nor
  * distribute them across multiple processes.
@@ -97,9 +118,14 @@ export interface InProcessMessageQueueOptions {
  * @since 0.5.0
  */
 export class InProcessMessageQueue implements MessageQueue {
-  #messages: any[];
+  #messages: QueuedMessage[];
   #monitors: Record<ReturnType<typeof crypto.randomUUID>, () => void>;
   #pollIntervalMs: number;
+  /**
+   * Tracks which ordering keys are currently being processed to ensure
+   * sequential processing for messages with the same key.
+   */
+  #processingKeys: Set<string>;
 
   /**
    * In-process message queue does not provide native retry mechanisms.
@@ -117,6 +143,7 @@ export class InProcessMessageQueue implements MessageQueue {
     this.#pollIntervalMs = Temporal.Duration.from(
       options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
+    this.#processingKeys = new Set();
   }
 
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
@@ -130,7 +157,8 @@ export class InProcessMessageQueue implements MessageQueue {
       );
       return Promise.resolve();
     }
-    this.#messages.push(message);
+    const orderingKey = options?.orderingKey ?? null;
+    this.#messages.push({ message, orderingKey });
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
@@ -152,7 +180,10 @@ export class InProcessMessageQueue implements MessageQueue {
       );
       return Promise.resolve();
     }
-    this.#messages.push(...messages);
+    const orderingKey = options?.orderingKey ?? null;
+    for (const message of messages) {
+      this.#messages.push({ message, orderingKey });
+    }
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
@@ -165,11 +196,34 @@ export class InProcessMessageQueue implements MessageQueue {
   ): Promise<void> {
     const signal = options.signal;
     while (signal == null || !signal.aborted) {
-      while (this.#messages.length > 0) {
-        const message = this.#messages.shift();
-        await handler(message);
+      // Find a message that can be processed (either no ordering key, or
+      // its ordering key is not currently being processed)
+      const idx = this.#messages.findIndex((m) =>
+        m.orderingKey == null || !this.#processingKeys.has(m.orderingKey)
+      );
+      if (idx >= 0) {
+        const queued = this.#messages.splice(idx, 1)[0];
+        const { message, orderingKey } = queued;
+        // Mark the ordering key as being processed
+        if (orderingKey != null) {
+          this.#processingKeys.add(orderingKey);
+        }
+        try {
+          await handler(message);
+        } finally {
+          // Release the ordering key
+          if (orderingKey != null) {
+            this.#processingKeys.delete(orderingKey);
+          }
+        }
+      } else if (this.#messages.length === 0) {
+        // No messages at all, wait for new ones
+        await this.#wait(this.#pollIntervalMs, signal);
+      } else {
+        // Messages exist but all their ordering keys are being processed
+        // Wait a bit before checking again
+        await this.#wait(10, signal);
       }
-      await this.#wait(this.#pollIntervalMs, signal);
     }
   }
 
@@ -208,6 +262,21 @@ type Uuid = ReturnType<typeof crypto.randomUUID>;
  * for I/O-bound tasks, but not for CPU-bound tasks, which is okay for Fedify's
  * workloads.
  *
+ * When using `ParallelMessageQueue`, the ordering guarantee is preserved
+ * *only if* the underlying queue implementation delivers messages in a wrapper
+ * format that includes the `__fedify_ordering_key__` property.  Currently,
+ * only `DenoKvMessageQueue` and `WorkersMessageQueue` use this format.
+ * For other queue implementations (e.g., `InProcessMessageQueue`,
+ * `RedisMessageQueue`, `PostgresMessageQueue`, `SqliteMessageQueue`,
+ * `AmqpMessageQueue`), the ordering key cannot be detected by
+ * `ParallelMessageQueue`, so ordering guarantees are handled by those
+ * implementations directly rather than at the `ParallelMessageQueue` level.
+ *
+ * Messages with the same ordering key will never be processed concurrently
+ * by different workers, ensuring sequential processing within each key.
+ * Messages with different ordering keys (or no ordering key) can still be
+ * processed in parallel.
+ *
  * @since 1.0.0
  */
 export class ParallelMessageQueue implements MessageQueue {
@@ -219,6 +288,21 @@ export class ParallelMessageQueue implements MessageQueue {
    * @since 1.7.0
    */
   readonly nativeRetrial?: boolean;
+
+  /**
+   * Tracks which ordering keys are currently being processed to ensure
+   * sequential processing for messages with the same key.
+   */
+  #processingKeys: Set<string> = new Set();
+
+  /**
+   * Pending messages waiting for their ordering key to become available.
+   */
+  #pendingMessages: Array<{
+    message: any;
+    orderingKey: string;
+    resolve: () => void;
+  }> = [];
 
   /**
    * Constructs a new {@link ParallelMessageQueue} with the given queue and
@@ -261,6 +345,31 @@ export class ParallelMessageQueue implements MessageQueue {
     await this.queue.enqueueMany(messages, options);
   }
 
+  /**
+   * Extracts ordering key from a message if present.
+   *
+   * This method only works for queue implementations that deliver messages
+   * in the wrapper format with `__fedify_ordering_key__` property.  Currently,
+   * only `DenoKvMessageQueue` and `WorkersMessageQueue` use this format.
+   *
+   * For other queue implementations (`InProcessMessageQueue`,
+   * `RedisMessageQueue`, `PostgresMessageQueue`, `SqliteMessageQueue`,
+   * `AmqpMessageQueue`), messages are delivered as raw payloads without the
+   * wrapper, so the ordering key cannot be detected here.  Those
+   * implementations handle ordering guarantees internally.
+   */
+  #extractOrderingKey(message: any): string | undefined {
+    if (message != null && typeof message === "object") {
+      // Check for standard wrapper format used by DenoKvMessageQueue and
+      // WorkersMessageQueue.  Other implementations (InProcess, Redis,
+      // Postgres, Sqlite, Amqp) deliver raw payloads without this wrapper.
+      if ("__fedify_ordering_key__" in message) {
+        return message.__fedify_ordering_key__ as string | undefined;
+      }
+    }
+    return undefined;
+  }
+
   listen(
     handler: (message: any) => Promise<void> | void,
     options: MessageQueueListenOptions = {},
@@ -272,7 +381,21 @@ export class ParallelMessageQueue implements MessageQueue {
         workers.delete(consumedId);
       }
       const workerId = crypto.randomUUID();
-      const promise = this.#work(workerId, handler, message);
+      const orderingKey = this.#extractOrderingKey(message);
+
+      // If this ordering key is being processed, wait for it
+      if (orderingKey != null && this.#processingKeys.has(orderingKey)) {
+        await new Promise<void>((resolve) => {
+          this.#pendingMessages.push({ message, orderingKey, resolve });
+        });
+      }
+
+      // Mark ordering key as being processed
+      if (orderingKey != null) {
+        this.#processingKeys.add(orderingKey);
+      }
+
+      const promise = this.#work(workerId, handler, message, orderingKey);
       workers.set(workerId, promise);
     }, options);
   }
@@ -281,9 +404,25 @@ export class ParallelMessageQueue implements MessageQueue {
     workerId: Uuid,
     handler: (message: any) => Promise<void> | void,
     message: any,
+    orderingKey: string | undefined,
   ): Promise<Uuid> {
     await this.#sleep(0);
-    await handler(message);
+    try {
+      await handler(message);
+    } finally {
+      // Release the ordering key and process any pending messages
+      if (orderingKey != null) {
+        this.#processingKeys.delete(orderingKey);
+        // Find and wake up the next pending message with this ordering key
+        const pendingIdx = this.#pendingMessages.findIndex(
+          (p) => p.orderingKey === orderingKey,
+        );
+        if (pendingIdx >= 0) {
+          const pending = this.#pendingMessages.splice(pendingIdx, 1)[0];
+          pending.resolve();
+        }
+      }
+    }
     return workerId;
   }
 

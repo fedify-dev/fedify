@@ -126,12 +126,35 @@ export class DenoKvStore implements KvStore {
 }
 
 /**
+ * Internal message wrapper that includes ordering key metadata.
+ */
+interface WrappedMessage {
+  readonly __fedify_ordering_key__?: string;
+  // deno-lint-ignore no-explicit-any
+  readonly __fedify_payload__: any;
+}
+
+/**
+ * Options for {@link DenoKvMessageQueue}.
+ * @since 2.0.0
+ */
+export interface DenoKvMessageQueueOptions {
+  /**
+   * The key prefix to use for ordering key locks.
+   * Defaults to `["__fedify_ordering_lock__"]`.
+   * @default `["__fedify_ordering_lock__"]`
+   */
+  readonly orderingLockPrefix?: Deno.KvKey;
+}
+
+/**
  * Represents a message queue adapter that uses Deno KV store.
  *
  * @since 1.9.0
  */
 export class DenoKvMessageQueue implements MessageQueue, Disposable {
   #kv: Deno.Kv;
+  #orderingLockPrefix: Deno.KvKey;
 
   /**
    * Deno KV queues provide automatic retry with exponential backoff.
@@ -143,9 +166,16 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
    * Constructs a new {@link DenoKvMessageQueue} adapter with the given Deno KV
    * store.
    * @param kv The Deno KV store to use.
+   * @param options Options for the message queue.
    */
-  constructor(kv: Deno.Kv) {
+  constructor(kv: Deno.Kv, options: DenoKvMessageQueueOptions = {}) {
     this.#kv = kv;
+    this.#orderingLockPrefix = options.orderingLockPrefix ??
+      ["__fedify_ordering_lock__"];
+  }
+
+  #getOrderingLockKey(orderingKey: string): Deno.KvKey {
+    return [...this.#orderingLockPrefix, orderingKey];
   }
 
   async enqueue(
@@ -153,8 +183,12 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
     message: any,
     options?: MessageQueueEnqueueOptions | undefined,
   ): Promise<void> {
+    const wrapped: WrappedMessage = {
+      __fedify_ordering_key__: options?.orderingKey,
+      __fedify_payload__: message,
+    };
     await this.#kv.enqueue(
-      message,
+      wrapped,
       options?.delay == null ? undefined : {
         delay: Math.max(options.delay.total("millisecond"), 0),
       },
@@ -173,7 +207,44 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
         if (!(e instanceof Deno.errors.BadResource)) throw e;
       }
     }, { once: true });
-    return this.#kv.listenQueue(handler);
+    const wrappedHandler = async (
+      rawMessage: WrappedMessage | unknown,
+    ): Promise<void> => {
+      // Handle both wrapped and unwrapped messages for backwards compatibility
+      const wrapped = rawMessage as WrappedMessage;
+      const orderingKey = wrapped.__fedify_ordering_key__;
+      const message = "__fedify_payload__" in wrapped
+        ? wrapped.__fedify_payload__
+        : rawMessage;
+      // If this ordering key is currently being processed, wait for it
+      if (orderingKey != null) {
+        const lockKey = this.#getOrderingLockKey(orderingKey);
+        // Spin-wait until we can acquire the lock
+        // This preserves FIFO order better than re-enqueueing with delay
+        while (true) {
+          const existing = await this.#kv.get(lockKey);
+          if (existing.value == null) {
+            // Try to acquire the lock using atomic check
+            const lockResult = await this.#kv.atomic()
+              .check(existing)
+              .set(lockKey, true, { expireIn: 60000 }) // 60 second TTL
+              .commit();
+            if (lockResult.ok) break; // Lock acquired
+          }
+          // Lock is held or race condition, sleep and retry
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+      try {
+        await handler(message);
+      } finally {
+        // Release the ordering key lock
+        if (orderingKey != null) {
+          await this.#kv.delete(this.#getOrderingLockKey(orderingKey));
+        }
+      }
+    };
+    return this.#kv.listenQueue(wrappedHandler);
   }
 
   [Symbol.dispose](): void {

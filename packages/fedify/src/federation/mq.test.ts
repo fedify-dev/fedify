@@ -104,6 +104,75 @@ test("InProcessMessageQueue", async (t) => {
   await listening;
 });
 
+test("InProcessMessageQueue orderingKey", async (t) => {
+  const mq = new InProcessMessageQueue();
+
+  // Track the order of message processing per ordering key
+  const orderTracker: Record<string, number[]> = {
+    keyA: [],
+    keyB: [],
+    noKey: [],
+  };
+  const allMessages: { key: string | null; value: number }[] = [];
+
+  const controller = new AbortController();
+  const listening = mq.listen(
+    (message: { key: string | null; value: number }) => {
+      allMessages.push(message);
+      const trackKey = message.key ?? "noKey";
+      if (trackKey in orderTracker) {
+        orderTracker[trackKey].push(message.value);
+      }
+    },
+    controller,
+  );
+
+  await t.step("enqueue with ordering key", async () => {
+    // Enqueue messages with different ordering keys
+    // Messages with the same key should be processed in order
+    await mq.enqueue({ key: "keyA", value: 1 }, { orderingKey: "keyA" });
+    await mq.enqueue({ key: "keyB", value: 1 }, { orderingKey: "keyB" });
+    await mq.enqueue({ key: "keyA", value: 2 }, { orderingKey: "keyA" });
+    await mq.enqueue({ key: "keyB", value: 2 }, { orderingKey: "keyB" });
+    await mq.enqueue({ key: "keyA", value: 3 }, { orderingKey: "keyA" });
+    await mq.enqueue({ key: "keyB", value: 3 }, { orderingKey: "keyB" });
+    await mq.enqueue({ key: null, value: 1 }); // No ordering key
+    await mq.enqueue({ key: null, value: 2 }); // No ordering key
+  });
+
+  await waitFor(() => allMessages.length >= 8, 30_000);
+
+  await t.step("verify ordering key order", () => {
+    // Messages with the same ordering key should be processed in order
+    assertEquals(
+      orderTracker.keyA,
+      [1, 2, 3],
+      "Messages with orderingKey 'keyA' should be processed in order",
+    );
+    assertEquals(
+      orderTracker.keyB,
+      [1, 2, 3],
+      "Messages with orderingKey 'keyB' should be processed in order",
+    );
+  });
+
+  await t.step("verify messages without ordering key", () => {
+    // Messages without ordering key should all be received (order not guaranteed)
+    assertEquals(
+      orderTracker.noKey.length,
+      2,
+      "Messages without ordering key should all be received",
+    );
+    assert(
+      orderTracker.noKey.includes(1) && orderTracker.noKey.includes(2),
+      "Messages without ordering key should contain values 1 and 2",
+    );
+  });
+
+  controller.abort();
+  await listening;
+});
+
 test("MessageQueue.nativeRetrial", async (t) => {
   if (
     // @ts-ignore: Works on Deno
