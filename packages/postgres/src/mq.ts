@@ -88,26 +88,30 @@ export class PostgresMessageQueue implements MessageQueue {
   ): Promise<void> {
     await this.initialize();
     const delay = options?.delay ?? Temporal.Duration.from({ seconds: 0 });
+    const orderingKey = options?.orderingKey ?? null;
     if (options?.delay) {
       logger.debug("Enqueuing a message with a delay of {delay}...", {
         delay,
         message,
+        orderingKey,
       });
     } else {
-      logger.debug("Enqueuing a message...", { message });
+      logger.debug("Enqueuing a message...", { message, orderingKey });
     }
     await this.#sql`
-      INSERT INTO ${this.#sql(this.#tableName)} (message, delay)
+      INSERT INTO ${this.#sql(this.#tableName)} (message, delay, ordering_key)
       VALUES (
         ${this.#json(message)},
-        ${delay.toString()}
+        ${delay.toString()},
+        ${orderingKey}
       );
     `;
-    logger.debug("Enqueued a message.", { message });
+    logger.debug("Enqueued a message.", { message, orderingKey });
     await this.#sql.notify(this.#channelName, delay.toString());
     logger.debug("Notified the message queue channel {channelName}.", {
       channelName: this.#channelName,
       message,
+      orderingKey,
     });
   }
 
@@ -119,28 +123,32 @@ export class PostgresMessageQueue implements MessageQueue {
     if (messages.length === 0) return;
     await this.initialize();
     const delay = options?.delay ?? Temporal.Duration.from({ seconds: 0 });
+    const orderingKey = options?.orderingKey ?? null;
     if (options?.delay) {
       logger.debug("Enqueuing messages with a delay of {delay}...", {
         delay,
         messages,
+        orderingKey,
       });
     } else {
-      logger.debug("Enqueuing messages...", { messages });
+      logger.debug("Enqueuing messages...", { messages, orderingKey });
     }
     for (const message of messages) {
       await this.#sql`
-        INSERT INTO ${this.#sql(this.#tableName)} (message, delay)
+        INSERT INTO ${this.#sql(this.#tableName)} (message, delay, ordering_key)
         VALUES (
           ${this.#json(message)},
-          ${delay.toString()}
+          ${delay.toString()},
+          ${orderingKey}
         );
       `;
     }
-    logger.debug("Enqueued messages.", { messages });
+    logger.debug("Enqueued messages.", { messages, orderingKey });
     await this.#sql.notify(this.#channelName, delay.toString());
     logger.debug("Notified the message queue channel {channelName}.", {
       channelName: this.#channelName,
       messages,
+      orderingKey,
     });
   }
 
@@ -151,25 +159,50 @@ export class PostgresMessageQueue implements MessageQueue {
   ): Promise<void> {
     await this.initialize();
     const { signal } = options;
+    const processingKeys = new Set<string>();
     const poll = async () => {
       while (!signal?.aborted) {
-        const query = this.#sql`
-          DELETE FROM ${this.#sql(this.#tableName)}
-          WHERE id = (
-            SELECT id
-            FROM ${this.#sql(this.#tableName)}
-            WHERE created + delay < CURRENT_TIMESTAMP
-            ORDER BY created
-            LIMIT 1
-          )
-          RETURNING message;
-        `.execute();
+        // Build the query to exclude messages with ordering keys currently
+        // being processed.  Messages without an ordering key (null) can always
+        // be processed.
+        const lockedKeys = [...processingKeys];
+        const query = lockedKeys.length > 0
+          ? this.#sql`
+            DELETE FROM ${this.#sql(this.#tableName)}
+            WHERE id = (
+              SELECT id
+              FROM ${this.#sql(this.#tableName)}
+              WHERE created + delay < CURRENT_TIMESTAMP
+                AND (ordering_key IS NULL
+                     OR ordering_key NOT IN ${this.#sql(lockedKeys)})
+              ORDER BY created
+              LIMIT 1
+            )
+            RETURNING message, ordering_key;
+          `.execute()
+          : this.#sql`
+            DELETE FROM ${this.#sql(this.#tableName)}
+            WHERE id = (
+              SELECT id
+              FROM ${this.#sql(this.#tableName)}
+              WHERE created + delay < CURRENT_TIMESTAMP
+              ORDER BY created
+              LIMIT 1
+            )
+            RETURNING message, ordering_key;
+          `.execute();
         const cancel = query.cancel.bind(query);
         signal?.addEventListener("abort", cancel);
         let i = 0;
-        for (const message of await query) {
+        for (const row of await query) {
           if (signal?.aborted) return;
-          await handler(message.message);
+          const orderingKey = row.ordering_key as string | null;
+          if (orderingKey != null) processingKeys.add(orderingKey);
+          try {
+            await handler(row.message);
+          } finally {
+            if (orderingKey != null) processingKeys.delete(orderingKey);
+          }
           i++;
         }
         signal?.removeEventListener("abort", cancel);
@@ -224,7 +257,8 @@ export class PostgresMessageQueue implements MessageQueue {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         message jsonb NOT NULL,
         delay interval DEFAULT '0 seconds',
-        created timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+        created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+        ordering_key text
       );
     `;
     } catch (error) {

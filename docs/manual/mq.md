@@ -834,7 +834,7 @@ The following implementations support ordering keys:
 | `InProcessMessageQueue`  | Yes                  |
 | [`DenoKvMessageQueue`]   | Not yet              |
 | [`RedisMessageQueue`]    | Not yet              |
-| [`PostgresMessageQueue`] | Not yet              |
+| [`PostgresMessageQueue`] | Yes                  |
 | [`AmqpMessageQueue`]     | Not yet              |
 | [`SqliteMessageQueue`]   | Not yet              |
 | `WorkersMessageQueue`    | Not yet              |

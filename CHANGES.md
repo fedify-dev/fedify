@@ -331,6 +331,15 @@ To be released.
 [#515]: https://github.com/fedify-dev/fedify/issues/515
 [#532]: https://github.com/fedify-dev/fedify/pull/532
 
+### @fedify/postgres
+
+ -  `PostgresMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.  [[#538]]
+
+     -  Added `ordering_key` column to the message queue table schema.
+     -  The new table schema is created when `PostgresMessageQueue.initialize()`
+        is called on a fresh database.
+
 
 Version 1.10.2
 --------------
