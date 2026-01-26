@@ -83,7 +83,7 @@ export interface KvCacheParameters {
 }
 
 /**
- * Decorates a {@link DocumentLoader} with a cache backed by a {@link Deno.Kv}.
+ * Decorates a {@link DocumentLoader} with a cache backed by a {@link KvStore}.
  * @param parameters The parameters for the cache.
  * @returns The decorated document loader which is cache-enabled.
  */
