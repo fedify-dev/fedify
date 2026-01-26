@@ -132,6 +132,28 @@ for PACKAGE in ${usage_packages}; do
 done
 '''
 
+# Snapshot updates
+# Note: vocab uses @std/testing/snapshot which only works on Deno
+# vocab-tools has separate snapshots for each runtime
+[tasks."test:deno:update_snapshots"]
+description = "Update test snapshots for Deno"
+run = '''
+deno task -f @fedify/vocab-tools test -- --update
+deno task -f @fedify/vocab test -- --update
+'''
+
+[tasks."test:node:update_snapshots"]
+description = "Update test snapshots for Node.js"
+run = "pnpm --filter @fedify/vocab-tools test:update_snapshots"
+
+[tasks."test:bun:update_snapshots"]
+description = "Update test snapshots for Bun"
+run = "pnpm --filter @fedify/vocab-tools test:bun:update_snapshots"
+
+[tasks."test:update_snapshots"]
+description = "Update test snapshots for all environments (Deno, Node.js, Bun)"
+depends = ["test:deno:update_snapshots", "test:node:update_snapshots", "test:bun:update_snapshots"]
+
 # Documentation
 [tasks.docs]
 description = "Start the documentation development server"
