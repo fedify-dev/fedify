@@ -147,7 +147,7 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       options?.orderingKey,
     ]);
     await this.#redis.zadd(this.#queueKey, ts, encodedMessage);
-    if (ts <= now) this.#redis.publish(this.#channelKey, "");
+    if (baseTs <= now) this.#redis.publish(this.#channelKey, "");
   }
 
   async enqueueMany(
