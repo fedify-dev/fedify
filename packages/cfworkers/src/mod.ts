@@ -42,8 +42,10 @@ interface WrappedMessage {
  */
 export interface ProcessMessageResult {
   /**
-   * Whether the message should be processed.  If `false`, the message has been
-   * re-enqueued to wait for the ordering key lock to be released.
+   * Whether the message should be processed.  If `false`, the message has not
+   * been processed (for example, because an ordering key lock is still held)
+   * and the caller is responsible for re-enqueuing or retrying it when
+   * appropriate.
    */
   readonly shouldProcess: boolean;
   /**
