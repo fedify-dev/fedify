@@ -29,6 +29,11 @@ jobs:
           RABBITMQ_DEFAULT_PASS: guest
         ports:
         - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       postgres:
         image: postgres
         env:
@@ -58,10 +63,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
+    - name: Enable RabbitMQ consistent hash exchange plugin
+      run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
     - run: mise run test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
         LOG: ${{ runner.debug && 'always' || '' }}
+        AMQP_ORDERING_TEST: "true"
     - uses: dorny/test-reporter@v2
       if: success() || failure()
       with:
@@ -92,6 +100,11 @@ jobs:
           RABBITMQ_DEFAULT_PASS: guest
         ports:
         - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       postgres:
         image: postgres
         env:
@@ -121,7 +134,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
+    - name: Enable RabbitMQ consistent hash exchange plugin
+      run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
     - run: mise run test:node
+      env:
+        AMQP_ORDERING_TEST: "true"
 
   test-bun:
     runs-on: ubuntu-latest
@@ -133,6 +150,11 @@ jobs:
           RABBITMQ_DEFAULT_PASS: guest
         ports:
         - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       postgres:
         image: postgres
         env:
@@ -162,7 +184,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
+    - name: Enable RabbitMQ consistent hash exchange plugin
+      run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
     - run: mise run test:bun
+      env:
+        AMQP_ORDERING_TEST: "true"
 
   test-cfworkers:
     runs-on: ubuntu-latest
