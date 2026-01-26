@@ -555,7 +555,9 @@ class CustomMessageQueue implements MessageQueue {
 
 This method should add the message to your queue system.
 Handle the `~MessageQueueEnqueueOptions.delay` option if provided in
-`MessageQueueEnqueueOptions`.  Ensure the method is non-blocking
+`MessageQueueEnqueueOptions`.  If provided, handle the
+`~MessageQueueEnqueueOptions.orderingKey` option to ensure messages with the
+same ordering key are processed sequentially.  Ensure the method is non-blocking
 (use async operations where necessary).
 
 ### Implement `~MessageQueue.enqueueMany` method (optional)
@@ -791,6 +793,56 @@ Improved observability
 
 Optimized performance
 :   Backend-specific optimizations for retry logic.
+
+
+Ordering guarantees
+-------------------
+
+*This API is available since Fedify 2.0.0.*
+
+By default, message queues do not guarantee the order in which messages are
+processed.  This can cause issues when related messages need to be processed
+in a specific order.  For example, when a post is created and quickly deleted,
+the `Delete` activity might arrive before the `Create` activity, resulting in
+“zombie posts” that should have been deleted.
+
+To address this, you can use the `~MessageQueueEnqueueOptions.orderingKey`
+option when enqueuing messages.  Messages with the same ordering key are
+guaranteed to be processed in the order they were enqueued.  Messages without
+an ordering key or with different ordering keys can be processed in parallel.
+
+~~~~ typescript twoslash
+import type { KvStore, MessageQueue } from "@fedify/fedify";
+declare const queue: MessageQueue;
+// ---cut-before---
+// These messages will be processed in order (1, 2, 3)
+await queue.enqueue({ action: "create", noteId: "123" }, { orderingKey: "note:123" });
+await queue.enqueue({ action: "update", noteId: "123" }, { orderingKey: "note:123" });
+await queue.enqueue({ action: "delete", noteId: "123" }, { orderingKey: "note:123" });
+
+// These messages can be processed in parallel with the above
+await queue.enqueue({ action: "create", noteId: "456" }, { orderingKey: "note:456" });
+await queue.enqueue({ action: "delete", noteId: "456" }, { orderingKey: "note:456" });
+~~~~
+
+### Implementation support
+
+The following implementations support ordering keys:
+
+| Implementation           | Ordering Key Support |
+| ------------------------ | -------------------- |
+| `InProcessMessageQueue`  | Yes                  |
+| [`DenoKvMessageQueue`]   | Not yet              |
+| [`RedisMessageQueue`]    | Not yet              |
+| [`PostgresMessageQueue`] | Not yet              |
+| [`AmqpMessageQueue`]     | Not yet              |
+| [`SqliteMessageQueue`]   | Not yet              |
+| `WorkersMessageQueue`    | Not yet              |
+
+> [!NOTE]
+> When using `ParallelMessageQueue`, the ordering guarantee is preserved.
+> Messages with the same ordering key will never be processed concurrently
+> by different workers, ensuring sequential processing within each key.
 
 
 Using different message queues for different tasks

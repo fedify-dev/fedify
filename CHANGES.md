@@ -95,6 +95,18 @@ To be released.
     implementations time to add support.  All official `KvStore` implementations
     already support this method.  [[#499], [#506]]
 
+ -  Added `orderingKey` option to `MessageQueueEnqueueOptions` interface for
+    ordered message delivery.  Messages with the same ordering key are
+    guaranteed to be processed in the order they were enqueued, while messages
+    with different ordering keys can be processed in parallel.  This helps
+    prevent race conditions when processing related activities (e.g., ensuring
+    a `Delete` activity is processed after a `Create` activity for the same
+    object).  [[#538]]
+
+     -  Added `MessageQueueEnqueueOptions.orderingKey` property.
+     -  All properties in `MessageQueueEnqueueOptions` are now `readonly`.
+     -  `InProcessMessageQueue` now supports the `orderingKey` option.
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -110,6 +122,7 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
+[#538]: https://github.com/fedify-dev/fedify/issues/538
 
 ### @fedify/cli
 
@@ -299,6 +312,12 @@ To be released.
      -  Added `testMessageQueue()` function.
      -  Added `waitFor()` helper function.
      -  Added `getRandomKey()` helper function.
+
+ -  Added `TestMessageQueueOptions` interface and optional `options` parameter
+    to `testMessageQueue()` function.  [[#538]]
+
+     -  Added `TestMessageQueueOptions` interface.
+     -  Added `testOrderingKey` option to enable ordering key tests.
 
 ### @fedify/redis
 

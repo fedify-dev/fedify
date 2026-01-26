@@ -32,5 +32,6 @@ export {
 export {
   default as testMessageQueue,
   getRandomKey,
+  type TestMessageQueueOptions,
   waitFor,
 } from "./mq-tester.ts";

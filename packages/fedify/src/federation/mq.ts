@@ -11,7 +11,20 @@ export interface MessageQueueEnqueueOptions {
    *
    * It must not be negative.
    */
-  delay?: Temporal.Duration;
+  readonly delay?: Temporal.Duration;
+
+  /**
+   * An optional key that ensures messages with the same ordering key are
+   * processed sequentially (one at a time).  Messages with different ordering
+   * keys (or no ordering key) may be processed in parallel.
+   *
+   * This is useful for ensuring that related messages are processed in order,
+   * such as ensuring that a `Delete` activity is processed after a `Create`
+   * activity for the same object.
+   *
+   * @since 2.0.0
+   */
+  readonly orderingKey?: string;
 }
 
 /**
@@ -90,6 +103,14 @@ export interface InProcessMessageQueueOptions {
 }
 
 /**
+ * Internal structure for storing messages with their ordering key.
+ */
+interface QueuedMessage {
+  message: any;
+  orderingKey: string | null;
+}
+
+/**
  * A message queue that processes messages in the same process.
  * Do not use this in production as it does neither persist messages nor
  * distribute them across multiple processes.
@@ -97,9 +118,14 @@ export interface InProcessMessageQueueOptions {
  * @since 0.5.0
  */
 export class InProcessMessageQueue implements MessageQueue {
-  #messages: any[];
+  #messages: QueuedMessage[];
   #monitors: Record<ReturnType<typeof crypto.randomUUID>, () => void>;
   #pollIntervalMs: number;
+  /**
+   * Tracks which ordering keys are currently being processed to ensure
+   * sequential processing for messages with the same key.
+   */
+  #processingKeys: Set<string>;
 
   /**
    * In-process message queue does not provide native retry mechanisms.
@@ -117,6 +143,7 @@ export class InProcessMessageQueue implements MessageQueue {
     this.#pollIntervalMs = Temporal.Duration.from(
       options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
+    this.#processingKeys = new Set();
   }
 
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
@@ -130,7 +157,8 @@ export class InProcessMessageQueue implements MessageQueue {
       );
       return Promise.resolve();
     }
-    this.#messages.push(message);
+    const orderingKey = options?.orderingKey ?? null;
+    this.#messages.push({ message, orderingKey });
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
@@ -152,7 +180,10 @@ export class InProcessMessageQueue implements MessageQueue {
       );
       return Promise.resolve();
     }
-    this.#messages.push(...messages);
+    const orderingKey = options?.orderingKey ?? null;
+    for (const message of messages) {
+      this.#messages.push({ message, orderingKey });
+    }
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
@@ -165,11 +196,34 @@ export class InProcessMessageQueue implements MessageQueue {
   ): Promise<void> {
     const signal = options.signal;
     while (signal == null || !signal.aborted) {
-      while (this.#messages.length > 0) {
-        const message = this.#messages.shift();
-        await handler(message);
+      // Find a message that can be processed (either no ordering key, or
+      // its ordering key is not currently being processed)
+      const idx = this.#messages.findIndex((m) =>
+        m.orderingKey == null || !this.#processingKeys.has(m.orderingKey)
+      );
+      if (idx >= 0) {
+        const queued = this.#messages.splice(idx, 1)[0];
+        const { message, orderingKey } = queued;
+        // Mark the ordering key as being processed
+        if (orderingKey != null) {
+          this.#processingKeys.add(orderingKey);
+        }
+        try {
+          await handler(message);
+        } finally {
+          // Release the ordering key
+          if (orderingKey != null) {
+            this.#processingKeys.delete(orderingKey);
+          }
+        }
+      } else if (this.#messages.length === 0) {
+        // No messages at all, wait for new ones
+        await this.#wait(this.#pollIntervalMs, signal);
+      } else {
+        // Messages exist but all their ordering keys are being processed
+        // Wait a bit before checking again
+        await this.#wait(10, signal);
       }
-      await this.#wait(this.#pollIntervalMs, signal);
     }
   }
 
