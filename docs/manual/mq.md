@@ -832,7 +832,7 @@ The following implementations support ordering keys:
 | Implementation           | Ordering Key Support |
 | ------------------------ | -------------------- |
 | `InProcessMessageQueue`  | Yes                  |
-| [`DenoKvMessageQueue`]   | Not yet              |
+| [`DenoKvMessageQueue`]   | Yes                  |
 | [`RedisMessageQueue`]    | Yes                  |
 | [`PostgresMessageQueue`] | Yes                  |
 | [`AmqpMessageQueue`]     | Not yet              |

@@ -263,8 +263,9 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     const signal = options.signal;
     const poll = async () => {
       while (!signal?.aborted) {
-        let result: { message: any; orderingKey: string | undefined } |
-          undefined;
+        let result:
+          | { message: any; orderingKey: string | undefined }
+          | undefined;
         try {
           result = await this.#poll();
         } catch (error) {
