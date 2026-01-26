@@ -50,17 +50,14 @@ depends = [
 
 [tasks."check:fmt"]
 description = "Check code formatting"
-depends = ["install"]
 run = "deno fmt --check"
 
 [tasks."check:lint"]
 description = "Check code linting"
-depends = ["install"]
 run = "deno lint"
 
 [tasks."check:types"]
 description = "Check TypeScript types"
-depends = ["install"]
 run = "deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
 
 [tasks."check:md"]
