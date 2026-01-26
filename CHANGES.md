@@ -101,7 +101,7 @@ To be released.
     with different ordering keys can be processed in parallel.  This helps
     prevent race conditions when processing related activities (e.g., ensuring
     a `Delete` activity is processed after a `Create` activity for the same
-    object).  [[#538]]
+    object).  [[#538], [#540]]
 
      -  Added `MessageQueueEnqueueOptions.orderingKey` property.
      -  All properties in `MessageQueueEnqueueOptions` are now `readonly`.
@@ -123,6 +123,7 @@ To be released.
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
 [#538]: https://github.com/fedify-dev/fedify/issues/538
+[#540]: https://github.com/fedify-dev/fedify/pull/540
 
 ### @fedify/cli
 
@@ -299,7 +300,8 @@ To be released.
      -  Added `SqliteMessageQueueOptions` interface.
 
  -  `SqliteMessageQueue` now supports the `orderingKey` option to ensure
-    messages with the same ordering key are processed sequentially.  [[#538]]
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
 
      -  Added `ordering_key` column to the message queue table schema.
      -  The new table schema is created when `SqliteMessageQueue.initialize()`
@@ -321,7 +323,7 @@ To be released.
      -  Added `getRandomKey()` helper function.
 
  -  Added `TestMessageQueueOptions` interface and optional `options` parameter
-    to `testMessageQueue()` function.  [[#538]]
+    to `testMessageQueue()` function.  [[#538], [#540]]
 
      -  Added `TestMessageQueueOptions` interface.
      -  Added `testOrderingKey` option to enable ordering key tests.
@@ -336,7 +338,8 @@ To be released.
     [[#515], [#532] by Jiwon Kwon]
 
  -  `RedisMessageQueue` now supports the `orderingKey` option to ensure
-    messages with the same ordering key are processed sequentially.  [[#538]]
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
 
 [#515]: https://github.com/fedify-dev/fedify/issues/515
 [#532]: https://github.com/fedify-dev/fedify/pull/532
@@ -344,7 +347,8 @@ To be released.
 ### @fedify/postgres
 
  -  `PostgresMessageQueue` now supports the `orderingKey` option to ensure
-    messages with the same ordering key are processed sequentially.  [[#538]]
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
 
      -  Added `ordering_key` column to the message queue table schema.
      -  The new table schema is created when `PostgresMessageQueue.initialize()`
@@ -353,7 +357,8 @@ To be released.
 ### @fedify/amqp
 
  -  `AmqpMessageQueue` now supports the `orderingKey` option to ensure
-    messages with the same ordering key are processed sequentially.  [[#538]]
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
 
      -  Uses RabbitMQ's `rabbitmq_consistent_hash_exchange` plugin to route
         messages with the same ordering key to the same queue.
@@ -363,7 +368,8 @@ To be released.
 ### @fedify/cfworkers
 
  -  `WorkersMessageQueue` now supports the `orderingKey` option to ensure
-    messages with the same ordering key are processed sequentially.  [[#538]]
+    messages with the same ordering key are processed sequentially.
+    [[#538], [#540]]
 
      -  Added `WorkersMessageQueueOptions` interface with `orderingKv`,
         `orderingKeyPrefix`, and `orderingLockTtl` options.
