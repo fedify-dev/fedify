@@ -116,7 +116,7 @@ export interface Context<TContextData> {
    * @param cls The class of the object.
    * @param values The values to pass to the object dispatcher.
    * @returns The object's URI.
-   * @throws {RouteError} If no object dispatcher is available for the class.
+   * @throws {RouterError} If no object dispatcher is available for the class.
    * @throws {TypeError} If values are invalid.
    * @since 0.7.0
    */
@@ -429,7 +429,7 @@ export interface Context<TContextData> {
    * @param name The name of the collection, which can be a string or a symbol.
    * @param values The values of the URI parameters.
    * @return The URI of the collection.
-   * @throws {RouteError} If no object dispatcher is available for the name.
+   * @throws {RouterError} If no object dispatcher is available for the name.
    * @throws {TypeError} If values are invalid.
    * @since 1.8.0
    */
