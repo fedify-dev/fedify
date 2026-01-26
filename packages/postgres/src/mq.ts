@@ -159,49 +159,47 @@ export class PostgresMessageQueue implements MessageQueue {
   ): Promise<void> {
     await this.initialize();
     const { signal } = options;
-    const processingKeys = new Set<string>();
     const poll = async () => {
       while (!signal?.aborted) {
-        // Build the query to exclude messages with ordering keys currently
-        // being processed.  Messages without an ordering key (null) can always
-        // be processed.
-        const lockedKeys = [...processingKeys];
-        const query = lockedKeys.length > 0
-          ? this.#sql`
-            DELETE FROM ${this.#sql(this.#tableName)}
-            WHERE id = (
-              SELECT id
-              FROM ${this.#sql(this.#tableName)}
-              WHERE created + delay < CURRENT_TIMESTAMP
-                AND (ordering_key IS NULL
-                     OR ordering_key NOT IN ${this.#sql(lockedKeys)})
-              ORDER BY created
-              LIMIT 1
-            )
-            RETURNING message, ordering_key;
-          `.execute()
-          : this.#sql`
-            DELETE FROM ${this.#sql(this.#tableName)}
-            WHERE id = (
-              SELECT id
-              FROM ${this.#sql(this.#tableName)}
-              WHERE created + delay < CURRENT_TIMESTAMP
-              ORDER BY created
-              LIMIT 1
-            )
-            RETURNING message, ordering_key;
-          `.execute();
+        // Use PostgreSQL advisory locks for distributed ordering key locking.
+        // pg_try_advisory_lock returns true if the lock was acquired, false
+        // otherwise.  We use hashtext() to convert the table name and ordering
+        // key to integers for the lock ID.  Messages without an ordering key
+        // (null) can always be processed.
+        const query = this.#sql`
+          DELETE FROM ${this.#sql(this.#tableName)}
+          WHERE id = (
+            SELECT id
+            FROM ${this.#sql(this.#tableName)}
+            WHERE created + delay < CURRENT_TIMESTAMP
+              AND (ordering_key IS NULL
+                   OR pg_try_advisory_lock(
+                        hashtext(${this.#tableName}),
+                        hashtext(ordering_key)
+                      ))
+            ORDER BY created
+            LIMIT 1
+          )
+          RETURNING message, ordering_key;
+        `.execute();
         const cancel = query.cancel.bind(query);
         signal?.addEventListener("abort", cancel);
         let i = 0;
         for (const row of await query) {
           if (signal?.aborted) return;
           const orderingKey = row.ordering_key as string | null;
-          if (orderingKey != null) processingKeys.add(orderingKey);
           try {
             await handler(row.message);
           } finally {
-            if (orderingKey != null) processingKeys.delete(orderingKey);
+            // Release the distributed advisory lock if we acquired one
+            if (orderingKey != null) {
+              await this.#sql`
+                SELECT pg_advisory_unlock(
+                  hashtext(${this.#tableName}),
+                  hashtext(${orderingKey})
+                );
+              `;
+            }
           }
           i++;
         }
