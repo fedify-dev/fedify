@@ -350,6 +350,27 @@ To be released.
      -  The new table schema is created when `PostgresMessageQueue.initialize()`
         is called on a fresh database.
 
+### @fedify/amqp
+
+ -  `AmqpMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.  [[#538]]
+
+     -  Uses RabbitMQ's `rabbitmq_consistent_hash_exchange` plugin to route
+        messages with the same ordering key to the same queue.
+     -  The plugin must be enabled on the RabbitMQ server for ordering key
+        support to work.
+
+### @fedify/cfworkers
+
+ -  `WorkersMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.  [[#538]]
+
+     -  Added `WorkersMessageQueueOptions` interface with `orderingKv`,
+        `orderingKeyPrefix`, and `orderingLockTtl` options.
+     -  Added `processMessage()` method to handle lock acquisition and release.
+     -  Requires a Workers KV namespace for lock management.
+     -  Due to Workers KV eventual consistency, ordering is best-effort.
+
 
 Version 1.10.2
 --------------

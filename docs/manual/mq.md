@@ -837,7 +837,7 @@ The following implementations support ordering keys:
 | [`PostgresMessageQueue`] | Yes                  |
 | [`AmqpMessageQueue`]     | Yes[^1]              |
 | [`SqliteMessageQueue`]   | Yes                  |
-| `WorkersMessageQueue`    | Not yet              |
+| `WorkersMessageQueue`    | Yes[^2]              |
 
 > [!NOTE]
 > When using `ParallelMessageQueue`, the ordering guarantee is preserved.
@@ -851,6 +851,10 @@ The following implementations support ordering keys:
       ~~~~ bash
       rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
       ~~~~
+[^2]: `WorkersMessageQueue` requires a Workers KV namespace to be provided for
+      ordering key locks. Due to Workers KV's eventual consistency, the ordering
+      guarantee is best-effort. For strict ordering requirements, consider using
+      Durable Objects.
 
 [`rabbitmq_consistent_hash_exchange`]: https://www.rabbitmq.com/docs/consistent-hash-exchange
 
