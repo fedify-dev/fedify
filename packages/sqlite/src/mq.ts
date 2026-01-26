@@ -181,15 +181,17 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing a message...", { message });
     }
 
+    const orderingKey = options?.orderingKey ?? null;
+
     return this.#retryOnBusy(() => {
       this.#db
         .prepare(
-          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-          VALUES (?, ?, ?, ?)`,
+          `INSERT INTO "${this.#tableName}" (id, message, created, scheduled, ordering_key)
+          VALUES (?, ?, ?, ?, ?)`,
         )
-        .run(id, encodedMessage, now, scheduled);
+        .run(id, encodedMessage, now, scheduled, orderingKey);
 
-      logger.debug("Enqueued a message.", { message });
+      logger.debug("Enqueued a message.", { message, orderingKey });
 
       // Notify listeners that a message has been enqueued
       const delayMs = delay.total("millisecond");
@@ -224,16 +226,18 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       logger.debug("Enqueuing messages...", { messages });
     }
 
+    const orderingKey = options?.orderingKey ?? null;
+
     return this.#withTransactionRetries(() => {
       const stmt = this.#db.prepare(
-        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled)
-        VALUES (?, ?, ?, ?)`,
+        `INSERT INTO "${this.#tableName}" (id, message, created, scheduled, ordering_key)
+        VALUES (?, ?, ?, ?, ?)`,
       );
 
       for (const message of messages) {
         const id = crypto.randomUUID();
         const encodedMessage = this.#encodeMessage(message);
-        stmt.run(id, encodedMessage, now, scheduled);
+        stmt.run(id, encodedMessage, now, scheduled, orderingKey);
       }
 
       logger.debug("Enqueued messages.", { messages });
@@ -274,35 +278,63 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
     const channel = SqliteMessageQueue.#getNotifyChannel(this.#tableName);
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
+    const processingKeys = new Set<string>();
 
     const poll = async () => {
       while (signal == null || !signal.aborted) {
         const now = Temporal.Now.instant().epochMilliseconds;
+        const lockedKeys = [...processingKeys];
 
         // Atomically fetch and delete the oldest message that is ready to be
         // processed using DELETE ... RETURNING (SQLite >= 3.35.0)
         // Wrapped in BEGIN IMMEDIATE transaction to ensure proper locking
         // and prevent race conditions in multi-process scenarios
+        // Exclude messages with ordering keys currently being processed
         const result = await this.#withTransactionRetries(() => {
+          if (lockedKeys.length === 0) {
+            return this.#db
+              .prepare(
+                `DELETE FROM "${this.#tableName}"
+                WHERE id = (
+                  SELECT id FROM "${this.#tableName}"
+                  WHERE scheduled <= ?
+                  ORDER BY scheduled
+                  LIMIT 1
+                )
+                RETURNING id, message, ordering_key`,
+              )
+              .get(now) as
+                | { id: string; message: string; ordering_key: string | null }
+                | undefined;
+          }
+          // Build query that excludes messages with locked ordering keys
+          // but allows NULL ordering_key
+          const placeholders = lockedKeys.map(() => "?").join(", ");
           return this.#db
             .prepare(
               `DELETE FROM "${this.#tableName}"
               WHERE id = (
                 SELECT id FROM "${this.#tableName}"
                 WHERE scheduled <= ?
+                  AND (ordering_key IS NULL OR ordering_key NOT IN (${placeholders}))
                 ORDER BY scheduled
                 LIMIT 1
               )
-              RETURNING id, message`,
+              RETURNING id, message, ordering_key`,
             )
-            .get(now) as { id: string; message: string } | undefined;
+            .get(now, ...lockedKeys) as
+              | { id: string; message: string; ordering_key: string | null }
+              | undefined;
         });
 
         if (result) {
           const message = this.#decodeMessage(result.message);
+          const orderingKey = result.ordering_key;
+          if (orderingKey != null) processingKeys.add(orderingKey);
           logger.debug("Processing message {id}...", {
             id: result.id,
             message,
+            orderingKey,
           });
           try {
             await handler(message);
@@ -317,6 +349,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
                 error,
               },
             );
+          } finally {
+            if (orderingKey != null) processingKeys.delete(orderingKey);
           }
 
           // Check for next message immediately
@@ -397,7 +431,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
           id TEXT PRIMARY KEY,
           message TEXT NOT NULL,
           created INTEGER NOT NULL,
-          scheduled INTEGER NOT NULL
+          scheduled INTEGER NOT NULL,
+          ordering_key TEXT
         )
       `);
 

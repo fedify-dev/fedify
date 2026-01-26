@@ -298,6 +298,13 @@ To be released.
      -  Added `SqliteMessageQueue` class.
      -  Added `SqliteMessageQueueOptions` interface.
 
+ -  `SqliteMessageQueue` now supports the `orderingKey` option to ensure
+    messages with the same ordering key are processed sequentially.  [[#538]]
+
+     -  Added `ordering_key` column to the message queue table schema.
+     -  The new table schema is created when `SqliteMessageQueue.initialize()`
+        is called on a fresh database.
+
 [#477]: https://github.com/fedify-dev/fedify/issues/477
 [#526]: https://github.com/fedify-dev/fedify/pull/526
 

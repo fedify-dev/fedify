@@ -836,7 +836,7 @@ The following implementations support ordering keys:
 | [`RedisMessageQueue`]    | Not yet              |
 | [`PostgresMessageQueue`] | Yes                  |
 | [`AmqpMessageQueue`]     | Not yet              |
-| [`SqliteMessageQueue`]   | Not yet              |
+| [`SqliteMessageQueue`]   | Yes                  |
 | `WorkersMessageQueue`    | Not yet              |
 
 > [!NOTE]
