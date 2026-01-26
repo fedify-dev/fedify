@@ -840,9 +840,13 @@ The following implementations support ordering keys:
 | `WorkersMessageQueue`    | Yes[^2]              |
 
 > [!NOTE]
-> When using `ParallelMessageQueue`, the ordering guarantee is preserved.
-> Messages with the same ordering key will never be processed concurrently
-> by different workers, ensuring sequential processing within each key.
+> When using `ParallelMessageQueue`, the ordering guarantee is preserved
+> only if the underlying queue delivers messages in wrapper format with the
+> ordering key embedded (currently `DenoKvMessageQueue` and
+> `WorkersMessageQueue`).  For other implementations, ordering is handled
+> internally by the queue itself, not by `ParallelMessageQueue`.
+> Messages with the same ordering key will never be processed concurrently,
+> ensuring sequential processing within each key.
 
 [^1]: `AmqpMessageQueue` requires the [`rabbitmq_consistent_hash_exchange`]
       plugin to be enabled on the RabbitMQ server.  This is a Tier 1 plugin that
