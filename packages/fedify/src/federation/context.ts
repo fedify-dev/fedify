@@ -383,7 +383,7 @@ export interface Context<TContextData> {
   ): Promise<void>;
 
   /**
-   * Sends an activity to the outboxes of the sender's followers.
+   * Sends an activity to the inboxes of the sender's followers.
    * @param sender The sender's identifier or the sender's username.
    * @param recipients In this case, it must be `"followers"`.
    * @param activity The activity to send.
