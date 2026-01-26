@@ -194,6 +194,21 @@ export class AmqpMessageQueue implements MessageQueue {
     return channel;
   }
 
+  /**
+   * Enqueues a message to be processed.
+   *
+   * When an `orderingKey` is provided without a `delay`, the message is routed
+   * through the consistent hash exchange, ensuring messages with the same
+   * ordering key are processed by the same consumer in FIFO order.
+   *
+   * When both `orderingKey` and `delay` are provided, the message is first
+   * placed in a delay queue, then routed to the consistent hash exchange
+   * after the delay expires.  This ensures ordering is preserved even for
+   * delayed messages.
+   *
+   * @param message The message to enqueue.
+   * @param options The options for enqueueing the message.
+   */
   async enqueue(
     // deno-lint-ignore no-explicit-any
     message: any,
