@@ -207,8 +207,9 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
         if (!(e instanceof Deno.errors.BadResource)) throw e;
       }
     }, { once: true });
-    // deno-lint-ignore no-explicit-any
-    const wrappedHandler = async (rawMessage: any): Promise<void> => {
+    const wrappedHandler = async (
+      rawMessage: WrappedMessage | unknown,
+    ): Promise<void> => {
       // Handle both wrapped and unwrapped messages for backwards compatibility
       const wrapped = rawMessage as WrappedMessage;
       const orderingKey = wrapped.__fedify_ordering_key__;
