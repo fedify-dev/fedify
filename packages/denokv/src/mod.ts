@@ -216,24 +216,23 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
       const message = "__fedify_payload__" in wrapped
         ? wrapped.__fedify_payload__
         : rawMessage;
-      // If this ordering key is currently being processed, re-enqueue with delay
+      // If this ordering key is currently being processed, wait for it
       if (orderingKey != null) {
         const lockKey = this.#getOrderingLockKey(orderingKey);
-        const existing = await this.#kv.get(lockKey);
-        if (existing.value != null) {
-          // Another listener is processing this ordering key, re-enqueue
-          await this.#kv.enqueue(rawMessage, { delay: 100 });
-          return;
-        }
-        // Try to acquire the lock using atomic check
-        const lockResult = await this.#kv.atomic()
-          .check(existing)
-          .set(lockKey, true, { expireIn: 60000 }) // 60 second TTL
-          .commit();
-        if (!lockResult.ok) {
-          // Race condition: another listener got the lock, re-enqueue
-          await this.#kv.enqueue(rawMessage, { delay: 100 });
-          return;
+        // Spin-wait until we can acquire the lock
+        // This preserves FIFO order better than re-enqueueing with delay
+        while (true) {
+          const existing = await this.#kv.get(lockKey);
+          if (existing.value == null) {
+            // Try to acquire the lock using atomic check
+            const lockResult = await this.#kv.atomic()
+              .check(existing)
+              .set(lockKey, true, { expireIn: 60000 }) // 60 second TTL
+              .commit();
+            if (lockResult.ok) break; // Lock acquired
+          }
+          // Lock is held or race condition, sleep and retry
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
       try {
