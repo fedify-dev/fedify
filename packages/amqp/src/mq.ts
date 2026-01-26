@@ -219,7 +219,12 @@ export class AmqpMessageQueue implements MessageQueue {
     const orderingKey = options?.orderingKey;
 
     // If ordering key is provided and ordering is enabled, use consistent hash
-    if (orderingKey != null && this.#ordering != null && delay == null) {
+    // Treat delay <= 0 the same as no delay for routing purposes
+    if (
+      orderingKey != null &&
+      this.#ordering != null &&
+      (delay == null || delay <= 0)
+    ) {
       channel.publish(
         this.#ordering.exchange,
         orderingKey, // routing key = ordering key
@@ -294,7 +299,12 @@ export class AmqpMessageQueue implements MessageQueue {
     const orderingKey = options?.orderingKey;
 
     // If ordering key is provided and ordering is enabled, use consistent hash
-    if (orderingKey != null && this.#ordering != null && delay == null) {
+    // Treat delay <= 0 the same as no delay for routing purposes
+    if (
+      orderingKey != null &&
+      this.#ordering != null &&
+      (delay == null || delay <= 0)
+    ) {
       for (const message of messages) {
         channel.publish(
           this.#ordering.exchange,
