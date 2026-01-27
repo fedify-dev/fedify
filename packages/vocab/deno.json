@@ -23,6 +23,9 @@
     "src/*.yaml",
     "!src/vocab.ts"
   ],
+  "publish": {
+    "exclude": ["**/*.test.ts", "tsdown.config.ts", "scripts/"]
+  },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts",
     "compile": "deno run --allow-read --allow-write --allow-env --allow-run scripts/codegen.ts",

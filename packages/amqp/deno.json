@@ -17,7 +17,7 @@
     "pnpm-lock.yaml"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "build": "pnpm build",

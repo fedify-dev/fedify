@@ -47,7 +47,10 @@
   "publish": {
     "exclude": [
       "**/*.test.ts",
-      "src/testing/"
+      "src/testing/",
+      "tsdown.config.ts",
+      "scripts/",
+      "wrangler.toml"
     ]
   },
   "tasks": {
