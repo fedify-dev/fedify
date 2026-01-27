@@ -2269,6 +2269,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       context: this,
       orderingKey: options.orderingKey,
       collectionSync,
+      immediate: options.immediate,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
