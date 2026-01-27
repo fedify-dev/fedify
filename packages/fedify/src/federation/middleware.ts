@@ -1158,7 +1158,23 @@ export class FederationImpl<TContextData>
         const promises: Promise<void>[] = messages.map((m) =>
           outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
         );
-        await Promise.all(promises);
+        const results = await Promise.allSettled(promises);
+        const errors = results
+          .filter((r) => r.status === "rejected")
+          .map((r) => (r as PromiseRejectedResult).reason);
+        if (errors.length > 0) {
+          logger.error(
+            "Failed to enqueue activity {activityId} to send later: {errors}",
+            { activityId: activity.id!.href, errors },
+          );
+          if (errors.length > 1) {
+            throw new AggregateError(
+              errors,
+              `Failed to enqueue activity ${activityId} to send later.`,
+            );
+          }
+          throw errors[0];
+        }
       } else {
         try {
           await outboxQueue.enqueueMany(messages.map((m) => m.message));
