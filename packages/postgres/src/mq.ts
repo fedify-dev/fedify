@@ -161,50 +161,111 @@ export class PostgresMessageQueue implements MessageQueue {
     const { signal } = options;
     const poll = async () => {
       while (!signal?.aborted) {
-        // Use PostgreSQL advisory locks for distributed ordering key locking.
-        // pg_try_advisory_lock returns true if the lock was acquired, false
-        // otherwise.  We use hashtext() to convert the table name and ordering
-        // key to integers for the lock ID.  Messages without an ordering key
-        // (null) can always be processed.
+        let processed = false;
+
+        // Step 1: Try to process messages without ordering key first.
+        // These don't need advisory locks.
         const query = this.#sql`
-          DELETE FROM ${this.#sql(this.#tableName)}
-          WHERE id = (
-            SELECT id
+          WITH candidate AS (
+            SELECT id, ordering_key
             FROM ${this.#sql(this.#tableName)}
             WHERE created + delay < CURRENT_TIMESTAMP
-              AND (ordering_key IS NULL
-                   OR pg_try_advisory_lock(
-                        hashtext(${this.#tableName}),
-                        hashtext(ordering_key)
-                      ))
+              AND ordering_key IS NULL
             ORDER BY created
             LIMIT 1
+            FOR UPDATE SKIP LOCKED
           )
+          DELETE FROM ${this.#sql(this.#tableName)}
+          WHERE id IN (SELECT id FROM candidate)
           RETURNING message, ordering_key;
         `.execute();
         const cancel = query.cancel.bind(query);
         signal?.addEventListener("abort", cancel);
-        let i = 0;
         for (const row of await query) {
           if (signal?.aborted) return;
-          const orderingKey = row.ordering_key as string | null;
-          try {
-            await handler(row.message);
-          } finally {
-            // Release the distributed advisory lock if we acquired one
-            if (orderingKey != null) {
+          await handler(row.message);
+          processed = true;
+        }
+        signal?.removeEventListener("abort", cancel);
+
+        // If we processed a message without ordering key, continue the loop
+        if (processed) continue;
+
+        // Step 2: Try to process a message with an ordering key.
+        // We do this separately to ensure pg_try_advisory_lock is called
+        // exactly once per attempt.
+        // We loop through candidates until we find one we can lock, or run out.
+        const attemptedOrderingKeys = new Set<string>();
+        while (!signal?.aborted) {
+          // Find a candidate with ordering key that we haven't tried yet
+          const candidateResult = await this.#sql`
+            SELECT id, ordering_key
+            FROM ${this.#sql(this.#tableName)}
+            WHERE created + delay < CURRENT_TIMESTAMP
+              AND ordering_key IS NOT NULL
+              ${
+            attemptedOrderingKeys.size > 0
+              ? this.#sql`AND ordering_key NOT IN ${
+                this.#sql([...attemptedOrderingKeys])
+              }`
+              : this.#sql``
+          }
+            ORDER BY created
+            LIMIT 1
+          `;
+
+          if (candidateResult.length === 0) {
+            // No more candidates to try
+            break;
+          }
+
+          const candidate = candidateResult[0];
+          const candidateId = candidate.id as string;
+          const orderingKey = candidate.ordering_key as string;
+          attemptedOrderingKeys.add(orderingKey);
+
+          // Try to acquire the advisory lock (exactly once)
+          const lockResult = await this.#sql`
+            SELECT pg_try_advisory_lock(
+              hashtext(${this.#tableName}),
+              hashtext(${orderingKey})
+            ) AS acquired
+          `;
+
+          if (lockResult[0].acquired) {
+            try {
+              // We have the lock, now delete and process the message
+              const deleteResult = await this.#sql`
+                DELETE FROM ${this.#sql(this.#tableName)}
+                WHERE id = ${candidateId}
+                RETURNING message, ordering_key
+              `;
+
+              for (const row of deleteResult) {
+                if (signal?.aborted) return;
+                await handler(row.message);
+                processed = true;
+              }
+            } finally {
+              // Always release the advisory lock
               await this.#sql`
                 SELECT pg_advisory_unlock(
                   hashtext(${this.#tableName}),
                   hashtext(${orderingKey})
-                );
+                )
               `;
             }
+            // If we processed a message, continue the outer loop
+            if (processed) break;
           }
-          i++;
+          // Lock not acquired, try next candidate with different ordering key
         }
-        signal?.removeEventListener("abort", cancel);
-        if (i < 1) break;
+
+        // If we processed a message, continue the outer loop
+        if (processed) continue;
+
+        // No messages to process, exit the loop
+        break;
       }
     };
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
