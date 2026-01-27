@@ -10,7 +10,7 @@
     "estree": "npm:@types/estree@^1.0.8"
   },
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "test": "deno test --allow-env"

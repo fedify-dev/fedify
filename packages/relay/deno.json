@@ -13,7 +13,7 @@
     "node_modules/"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",

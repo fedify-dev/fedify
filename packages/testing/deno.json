@@ -13,7 +13,8 @@
   ],
   "publish": {
     "exclude": [
-      "**/*.test.ts"
+      "**/*.test.ts",
+      "tsdown.config.ts"
     ]
   },
   "tasks": {

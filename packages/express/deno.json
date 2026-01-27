@@ -13,7 +13,7 @@
     "node_modules"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check *.ts"
