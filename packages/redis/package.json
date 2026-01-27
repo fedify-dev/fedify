@@ -97,7 +97,9 @@
     "build": "pnpm --filter @fedify/redis... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test": "pnpm build && node --experimental-transform-types --test",
-    "test:bun": "pnpm build && bun test --timeout=10000"
+    "pretest": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "pretest:bun": "pnpm build",
+    "test:bun": "bun test --timeout=10000"
   }
 }

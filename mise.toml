@@ -106,12 +106,12 @@ run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --paralle
 [tasks."test:node"]
 description = "Run the test suite using Node.js"
 depends = ["prepare"]
-run = "pnpm run --recursive --filter '!{docs}' test"
+run = "pnpm run --recursive --filter '!{docs}' --config.enable-pre-post-scripts=false test"
 
 [tasks."test:bun"]
 description = "Run the test suite using Bun"
 depends = ["prepare"]
-run = "pnpm run --recursive --filter '!{docs}' test:bun"
+run = "pnpm run --recursive --filter '!{docs}' --config.enable-pre-post-scripts=false test:bun"
 
 [tasks.test]
 description = "Run the test suite across all environments (Deno, Node.js, Bun)"
