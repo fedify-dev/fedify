@@ -2233,6 +2233,7 @@ test("ContextImpl.sendActivity()", async (t) => {
           },
         },
         keys: queue.messages[0].type === "fanout" ? queue.messages[0].keys : [],
+        orderingKey: undefined,
         traceContext: {},
       },
     ]);
@@ -2368,6 +2369,85 @@ test("ContextImpl.sendActivity()", async (t) => {
     );
 
     assertNotEquals(collectionSyncHeader, null);
+  });
+
+  queue.clear();
+
+  await t.step('orderingKey with fanout: "force"', async () => {
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/ordering-1"),
+      actor: new URL("https://example.com/person"),
+    });
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "force", orderingKey: "https://example.com/note/1" },
+    );
+    assertEquals(queue.messages.length, 1);
+    const fanoutMessage = queue.messages[0];
+    assertEquals(fanoutMessage.type, "fanout");
+    if (fanoutMessage.type === "fanout") {
+      assertEquals(
+        fanoutMessage.orderingKey,
+        "https://example.com/note/1",
+      );
+    }
+  });
+
+  queue.clear();
+
+  await t.step('orderingKey with fanout: "skip"', async () => {
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/ordering-2"),
+      actor: new URL("https://example.com/person"),
+    });
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "skip", orderingKey: "https://example.com/note/2" },
+    );
+    assertEquals(queue.messages.length, 1);
+    const outboxMessage = queue.messages[0];
+    assertEquals(outboxMessage.type, "outbox");
+    // outbox message should have orderingKey transformed to include inbox origin
+    if (outboxMessage.type === "outbox") {
+      assertEquals(
+        outboxMessage.orderingKey,
+        "https://example.com/note/2\nhttps://example.com",
+      );
+    }
+  });
+
+  queue.clear();
+
+  await t.step("orderingKey not specified", async () => {
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/ordering-3"),
+      actor: new URL("https://example.com/person"),
+    });
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "force" },
+    );
+    assertEquals(queue.messages.length, 1);
+    const fanoutMessage2 = queue.messages[0];
+    assertEquals(fanoutMessage2.type, "fanout");
+    if (fanoutMessage2.type === "fanout") {
+      assertEquals(fanoutMessage2.orderingKey, undefined);
+    }
   });
 
   fetchMock.hardReset();

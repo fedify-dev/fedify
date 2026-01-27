@@ -101,11 +101,15 @@ To be released.
     with different ordering keys can be processed in parallel.  This helps
     prevent race conditions when processing related activities (e.g., ensuring
     a `Delete` activity is processed after a `Create` activity for the same
-    object).  [[#538], [#540]]
+    object).  [[#536], [#538], [#540], [#544]]
 
      -  Added `MessageQueueEnqueueOptions.orderingKey` property.
      -  All properties in `MessageQueueEnqueueOptions` are now `readonly`.
      -  `InProcessMessageQueue` now supports the `orderingKey` option.
+     -  Added `SendActivityOptions.orderingKey` option to ensure ordered
+        delivery of activities for the same object.  When specified, activities
+        with the same `orderingKey` are guaranteed to be delivered in order
+        to each recipient server.
 
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
@@ -122,8 +126,10 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
+[#536]: https://github.com/fedify-dev/fedify/issues/536
 [#538]: https://github.com/fedify-dev/fedify/issues/538
 [#540]: https://github.com/fedify-dev/fedify/pull/540
+[#544]: https://github.com/fedify-dev/fedify/pull/544
 
 ### @fedify/cli
 

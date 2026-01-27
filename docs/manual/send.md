@@ -529,6 +529,85 @@ await ctx.sendActivity(
 ~~~~
 
 
+Ensuring ordered delivery
+-------------------------
+
+*This API is available since Fedify 2.0.0.*
+
+When sending multiple related activities for the same object
+(e.g., `Create(Note)` followed by `Delete(Note)` for the same `Note`),
+it's important that they arrive at recipient servers in the correct order.
+Without ordering guarantees, a `Delete(Note)` activity might arrive before
+the `Create(Note)` activity, causing the recipient to ignore the deletion and
+leaving a “zombie post” that should have been deleted.
+
+To ensure ordered delivery, you can use the `~SendActivityOptions.orderingKey`
+option in the `~Context.sendActivity()` method:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import { Create, Delete, Note, type Recipient } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const recipients: Recipient[] = [];
+const noteId = new URL("https://example.com/notes/123");
+// ---cut-before---
+// Create activity
+await ctx.sendActivity(
+  { identifier: "alice" },
+  recipients,
+  new Create({
+    id: new URL("#create", noteId),
+    actor: ctx.getActorUri("alice"),
+    object: new Note({ id: noteId }),
+  }),
+  { orderingKey: noteId.href },  // [!code highlight]
+);
+
+// Delete activity - guaranteed to arrive after Create
+await ctx.sendActivity(
+  { identifier: "alice" },
+  recipients,
+  new Delete({
+    id: new URL("#delete", noteId),
+    actor: ctx.getActorUri("alice"),
+    object: noteId,
+  }),
+  { orderingKey: noteId.href },  // [!code highlight]
+);
+~~~~
+
+Activities with the same `~SendActivityOptions.orderingKey` are guaranteed to be
+delivered in the order they were enqueued, per recipient server.  Activities
+with different `~SendActivityOptions.orderingKey` values (or no
+`~SendActivityOptions.orderingKey`) can be delivered in parallel for maximum
+throughput.
+
+### When to use `~SendActivityOptions.orderingKey`
+
+Use `~SendActivityOptions.orderingKey` when you have activities that must be
+processed in a specific order:
+
+ -  `Create(Note)` → `Update(Note)` → `Delete(Note)` for the same object
+ -  `Follow(Person)` → `Undo(Follow(Person))` for the same target
+ -  Any sequence where later activities depend on earlier ones
+
+Don't use `~SendActivityOptions.orderingKey` for unrelated activities,
+as it unnecessarily reduces parallelism.
+
+### How it works
+
+When you specify an `~SendActivityOptions.orderingKey`:
+
+1.  During fan-out, the key is passed as-is to the fanout queue
+2.  When individual delivery tasks are created, the key is transformed to
+    `${orderingKey}\n${recipientServerOrigin}` to ensure ordering is maintained
+    per-recipient-server while allowing parallel delivery to different servers
+
+This means Server A can receive a `Delete(Note)` immediately after its
+`Create(Note)` completes, without waiting for Server Z's `Create(Note)` to
+finish.
+
+
 Immediately sending an activity
 -------------------------------
 
