@@ -746,7 +746,7 @@ export interface SendActivityOptions {
   /**
    * Whether to prefer the shared inbox for the recipients.
    */
-  preferSharedInbox?: boolean;
+  readonly preferSharedInbox?: boolean;
 
   /**
    * Whether to send the activity immediately, without enqueuing it.
@@ -755,7 +755,7 @@ export interface SendActivityOptions {
    *
    * @since 0.3.0
    */
-  immediate?: boolean;
+  readonly immediate?: boolean;
 
   /**
    * Determines how activities are queued when sent to multiple recipients.
@@ -773,7 +773,7 @@ export interface SendActivityOptions {
    * @default `"auto"`
    * @since 1.5.0
    */
-  fanout?: "auto" | "skip" | "force";
+  readonly fanout?: "auto" | "skip" | "force";
 
   /**
    * The base URIs to exclude from the recipients' inboxes.  It is useful
@@ -784,6 +784,21 @@ export interface SendActivityOptions {
    * @since 0.9.0
    */
   readonly excludeBaseUris?: readonly URL[];
+
+  /**
+   * An optional key to ensure ordered delivery of activities.  Activities with
+   * the same `orderingKey` are guaranteed to be delivered in the order they
+   * were enqueued, per recipient server.
+   *
+   * Typical use case: pass the object ID (e.g., `Note` ID) to ensure that
+   * `Create`, `Update`, and `Delete` activities for the same object are
+   * delivered in order.
+   *
+   * When omitted, no ordering is guaranteed (maximum parallelism).
+   *
+   * @since 2.0.0
+   */
+  readonly orderingKey?: string;
 }
 
 /**

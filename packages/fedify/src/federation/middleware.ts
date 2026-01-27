@@ -579,6 +579,7 @@ export class FederationImpl<TContextData>
     );
     await this.sendActivity(keys, message.inboxes, activity, {
       collectionSync: message.collectionSync,
+      orderingKey: message.orderingKey,
       context,
     });
   }
@@ -975,7 +976,7 @@ export class FederationImpl<TContextData>
     options: SendActivityInternalOptions<TContextData>,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    const { immediate, collectionSync, context: ctx } = options;
+    const { immediate, collectionSync, orderingKey, context: ctx } = options;
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -1098,8 +1099,12 @@ export class FederationImpl<TContextData>
     if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
-    const messages: OutboxMessage[] = [];
+    const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
+      const inboxOrigin = new URL(inbox).origin;
+      const messageOrderingKey = orderingKey == null
+        ? undefined
+        : `${orderingKey}\n${inboxOrigin}`;
       const message: OutboxMessage = {
         type: "outbox",
         id: crypto.randomUUID(),
@@ -1119,14 +1124,15 @@ export class FederationImpl<TContextData>
               inboxes[inbox].actorIds,
             ),
         },
+        orderingKey: messageOrderingKey,
         traceContext: carrier,
       };
-      messages.push(message);
+      messages.push({ message, orderingKey: messageOrderingKey });
     }
     const { outboxQueue } = this;
     if (outboxQueue.enqueueMany == null) {
       const promises: Promise<void>[] = messages.map((m) =>
-        outboxQueue.enqueue(m)
+        outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
       );
       const results = await Promise.allSettled(promises);
       const errors = results
@@ -1146,14 +1152,23 @@ export class FederationImpl<TContextData>
         throw errors[0];
       }
     } else {
-      try {
-        await outboxQueue.enqueueMany(messages);
-      } catch (error) {
-        logger.error(
-          "Failed to enqueue activity {activityId} to send later: {error}",
-          { activityId: activity.id!.href, error },
+      // Note: enqueueMany does not support per-message orderingKey,
+      // so we fall back to individual enqueues when orderingKey is specified
+      if (orderingKey != null) {
+        const promises: Promise<void>[] = messages.map((m) =>
+          outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
         );
-        throw error;
+        await Promise.all(promises);
+      } else {
+        try {
+          await outboxQueue.enqueueMany(messages.map((m) => m.message));
+        } catch (error) {
+          logger.error(
+            "Failed to enqueue activity {activityId} to send later: {error}",
+            { activityId: activity.id!.href, error },
+          );
+          throw error;
+        }
       }
     }
   }
@@ -2221,8 +2236,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const { privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
     }
-    const opts: SendActivityInternalOptions<TContextData> = { context: this };
     let expandedRecipients: Recipient[];
+    let collectionSync: string | undefined;
     if (Array.isArray(recipients)) {
       expandedRecipients = recipients;
     } else if (recipients === "followers") {
@@ -2240,16 +2255,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       }
       if (options.syncCollection) {
         try {
-          opts.collectionSync = this.getFollowersUri(identifier).href;
+          collectionSync = this.getFollowersUri(identifier).href;
         } catch (error) {
-          if (error instanceof RouterError) {
-            opts.collectionSync = undefined;
-          } else throw error;
+          if (!(error instanceof RouterError)) {
+            throw error;
+          }
         }
       }
     } else {
       expandedRecipients = [recipients];
     }
+    const opts: SendActivityInternalOptions<TContextData> = {
+      context: this,
+      orderingKey: options.orderingKey,
+      collectionSync,
+    };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
@@ -2307,12 +2327,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
+      orderingKey: options.orderingKey,
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {
       this.federation._startQueueInternal(this.data);
     }
-    this.federation.fanoutQueue.enqueue(message);
+    this.federation.fanoutQueue.enqueue(
+      message,
+      { orderingKey: options.orderingKey },
+    );
   }
 
   async *getFollowers(identifier: string): AsyncIterable<Recipient> {
@@ -2971,9 +2995,10 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
 }
 
 interface SendActivityInternalOptions<TContextData> {
-  immediate?: boolean;
-  collectionSync?: string;
-  context: Context<TContextData>;
+  readonly immediate?: boolean;
+  readonly collectionSync?: string;
+  readonly orderingKey?: string;
+  readonly context: Context<TContextData>;
 }
 
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {

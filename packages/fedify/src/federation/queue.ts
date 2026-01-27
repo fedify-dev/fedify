@@ -29,6 +29,7 @@ export interface FanoutMessage {
   readonly activityId?: string;
   readonly activityType: string;
   readonly collectionSync?: string;
+  readonly orderingKey?: string;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 
@@ -45,6 +46,7 @@ export interface OutboxMessage {
   readonly started: string;
   readonly attempt: number;
   readonly headers: Readonly<Record<string, string>>;
+  readonly orderingKey?: string;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 
