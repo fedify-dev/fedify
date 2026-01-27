@@ -468,7 +468,7 @@ export interface Federatable<TContextData> {
    *                        ([RFC 6570](https://tools.ietf.org/html/rfc6570)).
    *                        The path must have no variables.
    * @returns An object to register inbox listeners.
-   * @throws {RouteError} Thrown if the path pattern is invalid.
+   * @throws {RouterError} Thrown if the path pattern is invalid.
    */
   setInboxListeners(
     inboxPath:

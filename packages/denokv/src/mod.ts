@@ -38,7 +38,7 @@ export class DenoKvStore implements KvStore {
   }
 
   /**
-   * {@inheritDoc KvStore.set}
+   * {@inheritDoc KvStore.get}
    */
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     const entry = await this.#kv.get<T>(key);

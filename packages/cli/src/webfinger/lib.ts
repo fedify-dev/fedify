@@ -21,14 +21,14 @@ export function convertUrlIfHandle(handleOrUrl: string): URL {
 
 /**
  * Converts a handle in the format `@username@domain` to a URL.
- * The resulting URL will be in the format `https://domain/@username`.
+ * The resulting URL will be in the format `acct:username@domain`.
  * @param handle The handle to convert, in the format `@username@domain`.
  * @returns A URL object representing the handle.
  * @throws {Error} If the handle format is invalid.
  * @example
  * ```ts
  * const url = convertHandleToUrl("@username@domain.com");
- * console.log(url.toString()); // "https://domain.com/@username"
+ * console.log(url.toString()); // "acct:username@domain.com"
  * ```
  */
 export function convertHandleToUrl(handle: string): URL {

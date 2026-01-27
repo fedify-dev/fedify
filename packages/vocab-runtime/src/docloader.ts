@@ -269,7 +269,7 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * Creates a JSON-LD document loader that utilizes the browser's `fetch` API.
  *
  * The created loader preloads the below frequently used contexts by default
- * (unless `options.ignorePreloadedContexts` is set to `true`):
+ * (unless `options.skipPreloadedContexts` is set to `true`):
  *
  * - <https://www.w3.org/ns/activitystreams>
  * - <https://w3id.org/security/v1>

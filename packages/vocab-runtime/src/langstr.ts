@@ -11,8 +11,8 @@ export class LanguageString extends String {
   /**
    * Constructs a new `LanguageString`.
    * @param value A string value written in the given language.
-   * @param locale The language of the string.  If a string is given, it will
-   *               be parsed as a `Intl.Locale` object.
+   * @param language The language of the string.  If a string is given, it will
+   *                 be parsed as a `Intl.Locale` object.
    */
   constructor(value: string, language: Intl.Locale | string) {
     super(value);

@@ -76,7 +76,7 @@ function createContext<TContextData>(
     sendActivity,
     routeActivity,
   } = values;
-  function throwRouteError(): URL {
+  function throwRouterError(): URL {
     throw new RouterError("Not implemented");
   }
   return {
@@ -90,17 +90,17 @@ function createContext<TContextData>(
     contextLoader: contextLoader ?? mockDocumentLoader,
     tracerProvider: tracerProvider ?? noopTracerProvider,
     clone: clone ?? ((data) => createContext({ ...values, data })),
-    getNodeInfoUri: getNodeInfoUri ?? throwRouteError,
-    getActorUri: getActorUri ?? throwRouteError,
-    getObjectUri: getObjectUri ?? throwRouteError,
-    getCollectionUri: getCollectionUri ?? throwRouteError,
-    getOutboxUri: getOutboxUri ?? throwRouteError,
-    getInboxUri: getInboxUri ?? throwRouteError,
-    getFollowingUri: getFollowingUri ?? throwRouteError,
-    getFollowersUri: getFollowersUri ?? throwRouteError,
-    getLikedUri: getLikedUri ?? throwRouteError,
-    getFeaturedUri: getFeaturedUri ?? throwRouteError,
-    getFeaturedTagsUri: getFeaturedTagsUri ?? throwRouteError,
+    getNodeInfoUri: getNodeInfoUri ?? throwRouterError,
+    getActorUri: getActorUri ?? throwRouterError,
+    getObjectUri: getObjectUri ?? throwRouterError,
+    getCollectionUri: getCollectionUri ?? throwRouterError,
+    getOutboxUri: getOutboxUri ?? throwRouterError,
+    getInboxUri: getInboxUri ?? throwRouterError,
+    getFollowingUri: getFollowingUri ?? throwRouterError,
+    getFollowersUri: getFollowersUri ?? throwRouterError,
+    getLikedUri: getLikedUri ?? throwRouterError,
+    getFeaturedUri: getFeaturedUri ?? throwRouterError,
+    getFeaturedTagsUri: getFeaturedTagsUri ?? throwRouterError,
     parseUri: parseUri ?? ((_uri) => {
       throw new Error("Not implemented");
     }),

@@ -283,7 +283,7 @@ async function loadSchema(path: string): Promise<TypeSchema> {
 /**
  * Loads all schema files in the directory.
  * @param dir The path of the directory to load schema files from.
- * @returns A map from the qualified URI of a type to its {@link SchemaFile}.
+ * @returns A map from the qualified URI of a type to its {@link TypeSchema}.
  * @throws {@link AggregateError} if any schema file is invalid.  It contains
  *         all {@link SchemaError}s of the invalid schema files.
  */
