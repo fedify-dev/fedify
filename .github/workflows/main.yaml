@@ -65,7 +65,7 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-    - run: mise run test:deno -- --coverage=.cov --junit-path=.test-report.xml
+    - run: mise run --skip-deps test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
         LOG: ${{ runner.debug && 'always' || '' }}
@@ -136,7 +136,7 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-    - run: mise run test:node
+    - run: mise run --skip-deps test:node
       env:
         AMQP_ORDERING_TEST: "true"
 
@@ -186,7 +186,7 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-    - run: mise run test:bun
+    - run: mise run --skip-deps test:bun
       env:
         AMQP_ORDERING_TEST: "true"
 
@@ -217,7 +217,7 @@ jobs:
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: mise run codegen
     - run: deno publish --dry-run
-    - run: pnpm publish --recursive --dry-run --no-git-checks
+    - run: pnpm publish --recursive --dry-run --no-git-checks --ignore-scripts
 
   # ===========================================================================
   # PR-only jobs: Validate CLI and docs build
@@ -308,7 +308,7 @@ jobs:
     - uses: ./.github/actions/determine-version
     - run: sudo npm install -g npm@latest && npm --version
     - run: |
-        pnpm pack --recursive --filter='!./examples/**'
+        pnpm pack --recursive --filter='!./examples/**' --config.enable-pre-post-scripts=false
         # Remove private packages
         for pkg in fedify-*.tgz; do
           if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then

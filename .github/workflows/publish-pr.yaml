@@ -94,7 +94,7 @@ jobs:
         head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
     - run: sudo npm install -g npm@latest && npm --version
     - run: |
-        pnpm pack --recursive --filter='!./examples/**'
+        pnpm pack --recursive --filter='!./examples/**' --config.enable-pre-post-scripts=false
         # Remove private packages and CLI package
         for pkg in fedify-*.tgz; do
           if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
