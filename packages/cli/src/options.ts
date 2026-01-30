@@ -8,6 +8,7 @@ import {
   option,
   optional,
   or,
+  string,
   valueSet,
 } from "@optique/core";
 
@@ -69,3 +70,33 @@ export const debugOption = object("Global options", {
     description: message`Enable debug mode.`,
   }),
 });
+
+/**
+ * Configuration file options.
+ *
+ * These options are mutually exclusive:
+ * - `--config PATH` loads an additional config file on top of standard hierarchy
+ * - `--ignore-config` skips all config files (useful for CI reproducibility)
+ *
+ * Returns either:
+ * - `{ ignoreConfig: true }` when `--ignore-config` is specified
+ * - `{ ignoreConfig: false, configPath?: string }` otherwise
+ */
+export const configOption = or(
+  object({
+    ignoreConfig: map(
+      flag("-I", "--ignore-config", {
+        description: message`Ignore all configuration files.`,
+      }),
+      () => true as const,
+    ),
+  }),
+  object({
+    ignoreConfig: constant(false),
+    configPath: optional(
+      option("-c", "--config", string({ metavar: "PATH" }), {
+        description: message`Load an additional configuration file.`,
+      }),
+    ),
+  }),
+);
