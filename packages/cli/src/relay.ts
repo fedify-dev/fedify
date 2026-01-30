@@ -20,11 +20,11 @@ import {
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
 import Table from "cli-table3";
-import { DatabaseSync } from "node:sqlite";
 import process from "node:process";
+import { DatabaseSync } from "node:sqlite";
 import ora from "ora";
-import { configureLogging, debugOption } from "./globals.ts";
-import { tunnelOption } from "./options.ts";
+import { configureLogging } from "./log.ts";
+import { debugOption, tunnelOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";

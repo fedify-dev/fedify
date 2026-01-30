@@ -14,7 +14,7 @@ import {
   or,
 } from "@optique/core";
 import { path } from "@optique/run";
-import { debugOption } from "../globals.ts";
+import { debugOption } from "../options.ts";
 import {
   KV_STORE,
   MESSAGE_QUEUE,

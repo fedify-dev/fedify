@@ -14,7 +14,7 @@ import {
   string,
   withDefault,
 } from "@optique/core";
-import { debugOption } from "../globals.ts";
+import { debugOption } from "../options.ts";
 
 const userAgent = optional(option(
   "-u",

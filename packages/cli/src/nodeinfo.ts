@@ -22,10 +22,10 @@ import { print, printError } from "@optique/run";
 import type { ChalkInstance } from "chalk";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
-import ora from "ora";
 import os from "node:os";
 import process from "node:process";
-import { debugOption } from "./globals.ts";
+import ora from "ora";
+import { debugOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);

@@ -40,9 +40,9 @@ import { createWriteStream, type WriteStream } from "node:fs";
 import process from "node:process";
 import ora from "ora";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
-import { configureLogging, debugOption } from "./globals.ts";
 import { renderImages } from "./imagerenderer.ts";
-import { tunnelServiceOption } from "./options.ts";
+import { configureLogging } from "./log.ts";
+import { debugOption, tunnelServiceOption } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
