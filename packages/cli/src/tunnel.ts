@@ -13,12 +13,11 @@ import {
   valueSet,
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
-import { TUNNEL_SERVICES } from "./options.ts";
 import { print, printError } from "@optique/run";
 import process from "node:process";
 import ora from "ora";
-import { configureLogging, debugOption } from "./globals.ts";
-
+import { configureLogging } from "./log.ts";
+import { debugOption, TUNNEL_SERVICES } from "./options.ts";
 export const tunnelCommand = command(
   "tunnel",
   merge(

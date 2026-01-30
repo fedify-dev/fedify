@@ -63,3 +63,9 @@ export const tunnelOption = or(
     tunnelService: tunnelServiceOption,
   }),
 );
+
+export const debugOption = object("Global options", {
+  debug: option("-d", "--debug", {
+    description: message`Enable debug mode.`,
+  }),
+});
