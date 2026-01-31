@@ -1,6 +1,6 @@
 {
   "name": "@fedify/hono",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "description": "Integrate Fedify with Hono",
   "keywords": [
     "Fedify",

@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cli",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "type": "module",
   "files": [
     "README.md",
