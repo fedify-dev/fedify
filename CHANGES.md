@@ -8,6 +8,15 @@ Version 1.10.3
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `traverseCollection()` yielding no items when a `Collection` has
+    an inline `CollectionPage` in its `first` property without an explicit
+    `id`.  This is common in Mastodon's `replies` collections.  The function
+    previously used `collection.firstId` to determine pagination, which
+    returned `null` for inline pages without an `id`, causing it to
+    incorrectly fall into the non-paginated branch.  [[#550] by Lee Dogeon]
+
 
 Version 1.10.2
 --------------
@@ -130,6 +139,23 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.5
+-------------
+
+Released on February 1, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `traverseCollection()` yielding no items when a `Collection` has
+    an inline `CollectionPage` in its `first` property without an explicit
+    `id`.  This is common in Mastodon's `replies` collections.  The function
+    previously used `collection.firstId` to determine pagination, which
+    returned `null` for inline pages without an `id`, causing it to
+    incorrectly fall into the non-paginated branch.  [[#550] by Lee Dogeon]
+
+[#550]: https://github.com/fedify-dev/fedify/pull/550
 
 
 Version 1.9.4

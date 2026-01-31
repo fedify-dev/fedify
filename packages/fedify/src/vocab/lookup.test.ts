@@ -5,6 +5,7 @@ import {
   assertRejects,
 } from "@std/assert";
 import fetchMock from "fetch-mock";
+import { deepStrictEqual } from "node:assert";
 import { mockDocumentLoader } from "../testing/docloader.ts";
 import { test } from "../testing/mod.ts";
 import { createTestTracerProvider } from "../testing/otel.ts";
@@ -264,6 +265,21 @@ test("traverseCollection()", {
       new Note({ content: "This is a simple note" }),
       new Note({ content: "This is another simple note" }),
       new Note({ content: "This is a third simple note" }),
+    ],
+  );
+  // Inline-paged collection (CollectionPage embedded without id, with next)
+  const inlinePagedCollection = await lookupObject(
+    "https://example.com/inline-paged-collection",
+    options,
+  );
+  assertInstanceOf(inlinePagedCollection, Collection);
+  deepStrictEqual(
+    await Array.fromAsync(
+      traverseCollection(inlinePagedCollection, options),
+    ),
+    [
+      new Note({ content: "Inline first note" }),
+      new Note({ content: "Inline second note" }),
     ],
   );
 });
