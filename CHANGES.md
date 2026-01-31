@@ -90,6 +90,12 @@ To be released.
      -  Removed `@fedify/fedify/x/sveltekit` in favor of `@fedify/sveltekit`.
      -  Removed `@fedify/fedify/x/fresh` (Fresh integration). [[#466]]
 
+ -  Deprecated the `@fedify/fedify/vocab` module in favor of the new
+    `@fedify/vocab` package.  The `@fedify/fedify/vocab` module now re-exports
+    all exports from `@fedify/vocab` for backward compatibility, but will be
+    removed in a future version.  Please migrate to `@fedify/vocab` directly.
+    [[#437], [#517] by ChanHaeng Lee]
+
  -  The `KvStore.list()` method is now required instead of optional.
     This method was added as optional in version 1.10.0 to give existing
     implementations time to add support.  All official `KvStore` implementations
@@ -119,6 +125,7 @@ To be released.
 [#393]: https://github.com/fedify-dev/fedify/pulls/393
 [#433]: https://github.com/fedify-dev/fedify/pull/433
 [#434]: https://github.com/fedify-dev/fedify/pull/434
+[#437]: https://github.com/fedify-dev/fedify/issues/437
 [#441]: https://github.com/fedify-dev/fedify/issues/441
 [#444]: https://github.com/fedify-dev/fedify/issues/444
 [#445]: https://github.com/fedify-dev/fedify/pull/445
@@ -126,6 +133,7 @@ To be released.
 [#466]: https://github.com/fedify-dev/fedify/issues/466
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
+[#517]: https://github.com/fedify-dev/fedify/pull/517
 [#536]: https://github.com/fedify-dev/fedify/issues/536
 [#538]: https://github.com/fedify-dev/fedify/issues/538
 [#540]: https://github.com/fedify-dev/fedify/pull/540
@@ -283,17 +291,15 @@ To be released.
     including parsing and generating WebFinger documents.
     [[#517] by ChanHaeng Lee]
 
-[#517]: https://github.com/fedify-dev/fedify/pull/517
-
 ### @fedify/vocab
 
  -  Created ActivityPub Vocabulary API package as the *@fedify/vocab* package.
     This package contains the generated Activity Vocabulary classes and
     related types, separated from the main *@fedify/fedify* package to
     improve modularity and enable custom vocabulary extensions.
+    The previous `@fedify/fedify/vocab` module is now deprecated and
+    re-exports all exports from this package for backward compatibility.
     [[#437], [#517] by ChanHaeng Lee]
-
-[#437]: https://github.com/fedify-dev/fedify/issues/437
 
 ### @fedify/sqlite
 
