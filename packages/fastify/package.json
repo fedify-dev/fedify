@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fastify",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "description": "Integrate Fedify with Fastify",
   "keywords": [
     "Fedify",
