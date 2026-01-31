@@ -1,0 +1,13 @@
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "id": "https://example.com/inline-paged-collection",
+  "type": "Collection",
+  "first": {
+    "type": "CollectionPage",
+    "partOf": "https://example.com/inline-paged-collection",
+    "next": "https://example.com/inline-paged/a",
+    "items": [
+      { "type": "Note", "content": "Inline first note" }
+    ]
+  }
+}

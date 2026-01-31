@@ -8,6 +8,17 @@ Version 1.9.5
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `traverseCollection()` yielding no items when a `Collection` has
+    an inline `CollectionPage` in its `first` property without an explicit
+    `id`.  This is common in Mastodon's `replies` collections.  The function
+    previously used `collection.firstId` to determine pagination, which
+    returned `null` for inline pages without an `id`, causing it to
+    incorrectly fall into the non-paginated branch.  [[#550] by Lee Dogeon]
+
+[#550]: https://github.com/fedify-dev/fedify/pull/550
+
 
 Version 1.9.4
 -------------
