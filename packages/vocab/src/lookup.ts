@@ -299,14 +299,14 @@ export async function* traverseCollection(
   collection: Collection,
   options: TraverseCollectionOptions = {},
 ): AsyncIterable<Object | Link> {
-  if (collection.firstId == null) {
+  const interval = Temporal.Duration.from(options.interval ?? { seconds: 0 })
+    .total("millisecond");
+  let page = await collection.getFirst(options);
+  if (page == null) {
     for await (const item of collection.getItems(options)) {
       yield item;
     }
   } else {
-    const interval = Temporal.Duration.from(options.interval ?? { seconds: 0 })
-      .total("millisecond");
-    let page = await collection.getFirst(options);
     while (page != null) {
       for await (const item of page.getItems(options)) {
         yield item;

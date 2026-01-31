@@ -267,6 +267,21 @@ test("traverseCollection()", {
       new Note({ content: "This is a third simple note" }),
     ],
   );
+  // Inline-paged collection (CollectionPage embedded without id, with next)
+  const inlinePagedCollection = await lookupObject(
+    "https://example.com/inline-paged-collection",
+    options,
+  );
+  assertInstanceOf(inlinePagedCollection, Collection);
+  deepStrictEqual(
+    await Array.fromAsync(
+      traverseCollection(inlinePagedCollection, options),
+    ),
+    [
+      new Note({ content: "Inline first note" }),
+      new Note({ content: "Inline second note" }),
+    ],
+  );
 });
 
 test("FEP-fe34: lookupObject() cross-origin security", {
