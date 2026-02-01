@@ -9,7 +9,8 @@
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
     "./sig": "./src/sig/mod.ts",
-    "./utils": "./src/utils/mod.ts"
+    "./utils": "./src/utils/mod.ts",
+    "./vocab": "./src/vocab/mod.ts"
   },
   "imports": {
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",

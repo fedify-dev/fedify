@@ -107,6 +107,16 @@
       "import": "./dist/utils/mod.js",
       "require": "./dist/utils/mod.cjs",
       "default": "./dist/utils/mod.js"
+    },
+    "./vocab": {
+      "types": {
+        "import": "./dist/vocab/mod.d.ts",
+        "require": "./dist/vocab/mod.d.cts",
+        "default": "./dist/vocab/mod.d.ts"
+      },
+      "import": "./dist/vocab/mod.js",
+      "require": "./dist/vocab/mod.cjs",
+      "default": "./dist/vocab/mod.js"
     }
   },
   "dependencies": {

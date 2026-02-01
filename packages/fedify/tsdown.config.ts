@@ -12,6 +12,7 @@ export default [
       "./src/otel/mod.ts",
       "./src/utils/mod.ts",
       "./src/sig/mod.ts",
+      "./src/vocab/mod.ts",
     ],
     dts: true,
     format: ["esm", "cjs"],
