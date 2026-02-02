@@ -6,33 +6,31 @@ export async function renderRequest(request: Request): Promise<string> {
   // @ts-ignore: Work around `deno publish --dry-run` bug
   request = request.clone();
   const url = new URL(request.url);
-  let code = `${request.method} ${url.pathname + url.search}\n`;
-  for (const [key, value] of request.headers.entries()) {
-    code += `${capitalize(key)}: ${value}\n`;
-  }
-  let body: string;
-  try {
-    body = await request.text();
-  } catch (_) {
-    body = "[Failed to decode body; it may be binary.]";
-  }
-  code += `\n${body}`;
-  return code;
+  const statusLine = `${request.method} ${url.pathname + url.search}`;
+  return await render(request, statusLine);
 }
 
 export async function renderResponse(response: Response): Promise<string> {
   response = response.clone();
-  let code = `${response.status} ${
+  const statusLine = `${response.status} ${
     response.statusText === ""
       ? getStatusText(response.status)
       : response.statusText
-  }\n`;
-  for (const [key, value] of response.headers.entries()) {
+  }`;
+  return await render(response, statusLine);
+}
+
+async function render(
+  requestOrResponse: Request | Response,
+  statusLine: string,
+): Promise<string> {
+  let code = `${statusLine}\n`;
+  for (const [key, value] of requestOrResponse.headers.entries()) {
     code += `${capitalize(key)}: ${value}\n`;
   }
   let body: string;
   try {
-    body = await response.text();
+    body = await requestOrResponse.text();
   } catch (_) {
     body = "[Failed to decode body; it may be binary.]";
   }
