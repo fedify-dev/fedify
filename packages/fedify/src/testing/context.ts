@@ -83,15 +83,16 @@ export function createContext<TContextData>(
     getDocumentLoader: getDocumentLoader ?? ((_params) => {
       throw new Error("Not implemented");
     }),
-    getActorKeyPairs: getActorKeyPairs ?? ((_handle) => Promise.resolve([])),
+    getActorKeyPairs: getActorKeyPairs ??
+      ((_identifier) => Promise.resolve([])),
     getActorKeysByUsage: getActorKeysByUsage ??
-      ((_handle) =>
+      ((_identifier) =>
         Promise.resolve({
           publicKeys: [],
           assertionMethods: [],
         })),
     getActorFirstKeyByUsage: getActorFirstKeyByUsage ??
-      ((_handle) => {
+      ((_identifier) => {
         throw new Error("No actor keys available");
       }),
     lookupObject: lookupObject ?? ((uri, options = {}) => {

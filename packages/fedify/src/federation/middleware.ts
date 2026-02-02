@@ -1946,26 +1946,31 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return result;
   }
 
-  getActorKeysByUsage(identifier: string): Promise<{
+  async getActorKeysByUsage(identifier: string): Promise<{
     publicKeys: CryptographicKey[];
     assertionMethods: Multikey[];
   }> {
-    return this.getActorKeyPairs(identifier)
-      .then((keys) => ({
-        publicKeys: keys.map((k) => k.cryptographicKey),
-        assertionMethods: keys.map((k) => k.multikey),
-      }));
+    const keys = await this.getActorKeyPairs(identifier);
+    return {
+      publicKeys: keys.map((k) => k.cryptographicKey),
+      assertionMethods: keys.map((k) => k.multikey),
+    };
   }
 
-  getActorFirstKeyByUsage(identifier: string): Promise<{
+  async getActorFirstKeyByUsage(identifier: string): Promise<{
     publicKey: CryptographicKey;
     assertionMethod: Multikey;
   }> {
-    return this.getActorKeysByUsage(identifier)
-      .then(({ publicKeys, assertionMethods }) => ({
-        publicKey: publicKeys[0],
-        assertionMethod: assertionMethods[0],
-      }));
+    const { publicKeys, assertionMethods } = await this.getActorKeysByUsage(
+      identifier,
+    );
+    if (publicKeys.length < 1 || assertionMethods.length < 1) {
+      throw new Error(`No actor keys available for identifier: ${identifier}`);
+    }
+    return {
+      publicKey: publicKeys[0],
+      assertionMethod: assertionMethods[0],
+    };
   }
 
   protected async getKeyPairsFromIdentifier(
