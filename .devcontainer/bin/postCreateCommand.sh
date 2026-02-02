@@ -18,4 +18,4 @@ cat << 'EOF' >> ~/.bashrc
 eval "$(mise activate bash)"
 EOF
 
-mise run install
+pnpm install

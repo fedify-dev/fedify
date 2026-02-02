@@ -16,29 +16,5 @@
       "**/*.test.ts",
       "tsdown.config.ts"
     ]
-  },
-  "tasks": {
-    "build": "pnpm build",
-    "check": "deno fmt --check && deno lint && deno check",
-    "test": "deno test --allow-read --allow-net --allow-env",
-    "test:node": {
-      "dependencies": [
-        "build"
-      ],
-      "command": "node --experimental-transform-types --test"
-    },
-    "test:bun": {
-      "dependencies": [
-        "build"
-      ],
-      "command": "bun test --timeout 15000"
-    },
-    "test-all": {
-      "dependencies": [
-        "test",
-        "test:node",
-        "test:bun"
-      ]
-    }
   }
 }

@@ -1,0 +1,54 @@
+language: "typescript"
+tags:
+  - "tsdown-build"
+
+tasks:
+  check:
+    script: "deno fmt --check && deno lint && deno check src/**/*.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.deno:
+    command: "deno test --allow-env"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.node:
+    script: "cd dist/ && node --test"
+    toolchains:
+      - "node"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "dist/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.bun:
+    script: "cd dist/ && bun test --timeout 60000"
+    toolchains:
+      - "bun"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "dist/**/*"
+      - "/mise.toml"
+    options:
+      cache: true

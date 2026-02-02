@@ -1,0 +1,21 @@
+inheritedBy:
+  tags:
+    or:
+      - "tsdown-build"
+
+tasks:
+  build:
+    script: "pnpm exec tsdown"
+    deps:
+      - "^:build"
+    toolchains:
+      - "node"
+    inputs:
+      - "src/**/*"
+      - "tsdown.config.ts"
+      - "file://tsconfig.json?optional"
+      - "/mise.toml"
+    outputs:
+      - "dist/"
+    options:
+      cache: true

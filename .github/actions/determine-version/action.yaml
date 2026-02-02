@@ -59,4 +59,4 @@ runs:
 
   - name: Sync versions across packages
     shell: bash
-    run: mise run check-versions --fix
+    run: moon run root:check.versions --fix

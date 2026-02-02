@@ -11,8 +11,5 @@
   },
   "publish": {
     "exclude": ["**/*.test.ts", "tsdown.config.ts"]
-  },
-  "tasks": {
-    "test": "deno test --allow-env"
   }
 }

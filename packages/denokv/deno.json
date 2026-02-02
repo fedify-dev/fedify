@@ -15,9 +15,5 @@
   ],
   "publish": {
     "exclude": ["**/*.test.ts"]
-  },
-  "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/*.ts",
-    "test": "deno test --allow-net --allow-env --allow-read --allow-write"
   }
 }

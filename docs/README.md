@@ -94,9 +94,9 @@ pnpm add @fedify/fedify
 ### Building documentation
 
 ~~~~ bash
-mise run docs:build    # Build for production (runs Twoslash type checking)
-mise run docs          # Start development server
+moon run docs:build    # Build for production (runs Twoslash type checking)
+moon run docs:dev          # Start development server
 ~~~~
 
-Always run `mise run docs:build` before committing to catch Twoslash type
-errors.
+Always run `moon run docs:build` before committing to catch Twoslash
+type errors.

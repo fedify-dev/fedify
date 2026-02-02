@@ -223,7 +223,7 @@ changes.
 To update both lockfiles at once, run:
 
 ~~~~ bash
-mise run install
+pnpm install
 ~~~~
 
 When reviewing pull requests, please check that lockfile changes are included
@@ -392,15 +392,15 @@ see the [*Set Up Your Environment* section][1] in the Deno manual.
 > [!CAUTION]
 >
 > Fedify heavily depends on code generation and all packages must be built
-> before coding or testing. Running `mise run install` (or `pnpm install`)
-> automatically handles code generation and builds all packages.
+> before coding or testing. Running `pnpm install` automatically handles
+> code generation and builds all packages.
 
 Assuming you have Deno and Visual Studio Code installed, you can open
 the repository in Visual Studio Code and get ready to hack on Fedify by running
 the following commands at the *root* of the repository:
 
 ~~~~ bash
-mise run install  # This runs codegen and builds all packages
+pnpm install  # This runs codegen and builds all packages
 code .
 ~~~~
 
@@ -413,10 +413,9 @@ code .
 > mise run hooks:install
 > ~~~~
 
-Note that the `mise run install` command is required to run only once at
-the very first time after checkout. When you update dependencies or code
-generation scripts, run `mise run install` again. Otherwise, you can skip
-the command and just run:
+Note that `pnpm install` is required to run only once at the very first time
+after checkout. When you update dependencies or code generation scripts,
+run `pnpm install` again. Otherwise, you can skip the command and just run:
 
 ~~~~ bash
 code .
@@ -442,8 +441,8 @@ Please click the *Install* button to install the Deno extension.
 ### Running the Fedify CLI
 
 If you want to test your changes in the Fedify CLI, you can run
-`mise run cli` command from the root.  For example, if you want to test
-the `fedify lookup` subcommand, you can run the following command:
+`mise run cli` command from the root.  For example, if you want to
+test the `fedify lookup` subcommand, you can run the following command:
 
 ~~~~ bash
 mise run cli -- lookup @fedify@hollo.social
@@ -452,8 +451,8 @@ mise run cli -- lookup @fedify@hollo.social
 > [!NOTE]
 >
 > The Fedify CLI is tested with Deno, Node.js, and Bun like other packages.
-> However, for quick local testing during development, `mise run cli` uses
-> Deno directly without requiring a full multi-runtime test run.
+> However, for quick local testing during development, `mise run cli`
+> uses Deno directly without requiring a full multi-runtime test run.
 
 #### Running the tests
 
@@ -467,14 +466,14 @@ mise run test:deno
 Or you can test a specific package:
 
 ~~~~ bash
-deno task -f @fedify/fedify test
+moon run fedify:test
 ~~~~
 
 You can use `--filter` option to run a specific test.  For example, if you
 want to run the `verifyRequest` test:
 
 ~~~~ bash
-deno task -f @fedify/fedify test --filter verifyRequest
+moon run fedify:test -- --filter verifyRequest
 ~~~~
 
 If the tests pass, you should run `mise run test` command to test
@@ -488,10 +487,10 @@ To test individual packages with specific runtimes:
 
 ~~~~ bash
 # Test with Node.js
-mise run test:node
+moon run :test.node
 
 # Test with Bun
-mise run test:bun
+moon run :test.bun
 ~~~~
 
 Of course, Node.js and Bun should be installed on your system to run the tests
@@ -506,18 +505,17 @@ the `fedify init` command with various combinations of web frameworks,
 package managers, KvStore implementations, and MessageQueue implementations.
 
 ~~~~ bash
-# From /packages/cli
-deno task test-init
+moon run cli:test-init
 ~~~~
 
 You can also specify specific options to test:
 
 ~~~~ bash
 # Test with specific web framework and package manager
-deno task test-init -w hono -p deno
+moon run cli:test-init -- -w hono -p deno
 
 # Test with multiple options
-deno task test-init -w hono -w express -p deno -p npm -k denokv -m denokv
+moon run cli:test-init -- -w hono -w express -p deno -p npm -k denokv -m denokv
 ~~~~
 
 If some options are not specified, all combinations are tested by default.
@@ -525,8 +523,8 @@ If some options are not specified, all combinations are tested by default.
 You can skip dry run or hydration tests:
 
 ~~~~ bash
-deno task test-init --no-dry-run   # Only run hydration tests
-deno task test-init --no-hyd-run   # Only run dry-run tests
+moon run cli:test-init -- --no-dry-run   # Only run hydration tests
+moon run cli:test-init -- --no-hyd-run   # Only run dry-run tests
 ~~~~
 
 The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
@@ -545,8 +543,8 @@ in the browser.  To do that, you need to install [Node.js] and [pnpm] first.
 Then you can run the following commands at the repository root:
 
 ~~~~ bash
-mise run install
-mise run docs
+pnpm install
+moon run docs:dev
 ~~~~
 
 Once the development server is running, you can open your browser and navigate

@@ -86,18 +86,6 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/cli... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
-    "test-init": "deno task test-init",
-    "pretest:bun": "pnpm build",
-    "test:bun": "bun test",
-    "run": "pnpm build && node dist/mod.js",
-    "runi": "tsdown && node dist/mod.js",
-    "run:bun": "pnpm build && bun dist/mod.js",
-    "runi:bun": "tsdown && bun dist/mod.js"
+    "prepack": "moon run cli:build"
   }
 }

@@ -1,8 +1,12 @@
+[env]
+MOON_TOOLCHAIN_FORCE_GLOBALS = "true"
+
 [tools]
 bun = "1.2.22"
 deno = "2.6.4"
 node = "22"
 pnpm = "10.28.0"
+"npm:@moonrepo/cli" = "2.0.0-rc.1"
 
 [tools."github:dahlia/hongdown"]
 version = "0.3.2"
@@ -11,209 +15,21 @@ version = "0.3.2"
 linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
 linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 
-# Installation and setup
-[tasks.install]
-description = "Install all dependencies and set up the development environment"
-run = "deno task install"
-
 [tasks.codegen]
-description = "Generate ActivityPub vocabulary types from YAML definitions"
-run = "deno task codegen"
-
-[tasks.prepare]
-description = "Prepare the development environment (codegen, install, build fixtures)"
-env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
-depends = ["install"]
-run = "pnpm -r run build:self"
-
-[tasks.prepare-each]
-description = "Prepare specific package(s)"
-usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
-env = { CI = "true" }
-run = '''
-for PACKAGE in ${usage_packages}; do
-  echo "Preparing package: $PACKAGE"
-  pnpm --filter "@fedify/$PACKAGE" build
-done
-'''
+run = "moon run vocab:codegen"
 
 # Code quality
 [tasks.check]
-description = "Check code formatting, linting, and type checking"
-depends = [
-  "check:fmt",
-  "check:lint",
-  "check:types",
-  "check:md",
-  "check-versions",
-  "check:manifest:workspace-protocol",
-]
+run = "moon run root:check"
 
-[tasks."check:fmt"]
-description = "Check code formatting"
-run = "deno fmt --check"
-
-[tasks."check:lint"]
-description = "Check code linting"
-run = "deno lint"
-
-[tasks."check:types"]
-description = "Check TypeScript types"
-run = "deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
-
-[tasks."check:md"]
-description = "Check Markdown formatting"
-run = "hongdown --check"
-
-[tasks.check-versions]
-description = "Check that all package versions are consistent across the monorepo"
-usage = 'flag "--fix" help="Automatically fix version mismatches"'
-run = '''
-if [ "${usage_fix}" = "true" ]; then
-  deno run --allow-read --allow-write scripts/check_versions.ts --fix
-else
-  deno task check-versions
-fi
-'''
-
-[tasks."check:manifest:workspace-protocol"]
-description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
-run = '''
-found=0
-for file in $(find . -name 'package.json' -not -path '*/node_modules/*'); do
-  invalid=$(jq -r '
-    [
-      (.dependencies // {}),
-      (.devDependencies // {}),
-      (.peerDependencies // {}),
-      (.optionalDependencies // {})
-    ]
-    | add
-    | to_entries[]
-    | select(.value == "workspace:")
-    | "  \(.key)"
-  ' "$file" 2>/dev/null)
-  if [ -n "$invalid" ]; then
-    if [ "$found" -eq 0 ]; then
-      echo "Error: Found invalid workspace: specifiers (missing *, ^, or ~):"
-      echo ""
-    fi
-    echo "$file:"
-    echo "$invalid"
-    found=1
-  fi
-done
-
-if [ "$found" -eq 1 ]; then
-  echo ""
-  echo "Valid formats: workspace:*, workspace:^, workspace:~"
-  exit 1
-fi
-echo "All workspace: specifiers are valid"
-'''
-
-[tasks.fmt]
-description = "Format the codebase"
-run = "deno fmt && hongdown --write"
-
-[tasks.check-each]
-description = "Check code quality for specific package(s)"
-usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
-run = '''
-for PACKAGE in ${usage_packages}; do
-  echo "Checking package: $PACKAGE"
-  PACKAGE_DIR="packages/$PACKAGE"
-  if [ ! -d "$PACKAGE_DIR" ]; then
-    echo "Error: Package directory $PACKAGE_DIR not found"
-    exit 1
-  fi
-
-  deno fmt --check "$PACKAGE_DIR"
-  deno lint "$PACKAGE_DIR"
-  deno check "$PACKAGE_DIR"/**/*.ts
-done
-'''
-
-# Testing
-[tasks."test:deno"]
-description = "Run the test suite using Deno"
-depends = ["prepare"]
-run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
-
-[tasks."test:node"]
-description = "Run the test suite using Node.js"
-depends = ["prepare"]
-run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test"
-
-[tasks."test:bun"]
-description = "Run the test suite using Bun"
-depends = ["prepare"]
-run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test:bun"
+[tasks.cli]
+run = "moon run root:cli"
 
 [tasks.test]
-description = "Run the test suite across all environments (Deno, Node.js, Bun)"
-depends = ["check", "test:deno", "test:node", "test:bun"]
+run = "moon run :test.bun :test.node root:test.deno root:check"
 
-[tasks.test-each]
-description = "Run tests for a specific package across all environments"
-usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
-run = '''
-mise run prepare-each ${usage_packages}
-mise run check-each ${usage_packages}
-
-for PACKAGE in ${usage_packages}; do
-  echo "Running tests for package: $PACKAGE"
-  deno task --filter "@fedify/$PACKAGE" test
-  pnpm --filter "@fedify/$PACKAGE" test
-  pnpm --filter "@fedify/$PACKAGE" test:bun
-done
-'''
-
-# Snapshot updates
-# Note: vocab uses @std/testing/snapshot which only works on Deno
-# vocab-tools has separate snapshots for each runtime
-[tasks."test:deno:update_snapshots"]
-description = "Update test snapshots for Deno"
-run = '''
-deno task -f @fedify/vocab-tools test -- --update
-deno task -f @fedify/vocab test -- --update
-'''
-
-[tasks."test:node:update_snapshots"]
-description = "Update test snapshots for Node.js"
-run = "pnpm --filter @fedify/vocab-tools test:update_snapshots"
-
-[tasks."test:bun:update_snapshots"]
-description = "Update test snapshots for Bun"
-run = "pnpm --filter @fedify/vocab-tools test:bun:update_snapshots"
-
-[tasks."test:update_snapshots"]
-description = "Update test snapshots for all environments (Deno, Node.js, Bun)"
-depends = ["test:deno:update_snapshots", "test:node:update_snapshots", "test:bun:update_snapshots"]
-
-# Documentation
-[tasks.docs]
-description = "Start the documentation development server"
-run = "pnpm -C docs dev"
-
-[tasks."docs:build"]
-description = "Build the documentation for production"
-run = "pnpm -C docs build"
-
-[tasks."docs:preview"]
-description = "Preview the built documentation"
-run = "pnpm -C docs preview"
-
-# Benchmarks
-[tasks.bench]
-description = "Run benchmarks"
-run = "deno task -f @fedify/fedify bench"
-
-# CLI and utilities
-[tasks.cli]
-description = "Run the Fedify CLI tool"
-run = "deno task cli"
+[tasks."test:deno"]
+run = "moon run root:test.deno"
 
 [tasks."hooks:install"]
-description = "Install Git hooks for pre-commit checks"
 run = "mise generate git-pre-commit --write --task=check"

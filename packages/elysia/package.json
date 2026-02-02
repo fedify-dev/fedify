@@ -46,10 +46,7 @@
     "package.json"
   ],
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/elysia... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepack": "moon run elysia:build"
   },
   "peerDependencies": {
     "elysia": "^1.3.6",

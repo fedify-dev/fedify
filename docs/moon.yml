@@ -1,0 +1,38 @@
+id: "docs"
+language: "typescript"
+tags: []
+
+tasks:
+  dev:
+    command: "vitepress dev --host"
+    toolchains:
+      - "node"
+    deps:
+      - "^:build"
+    options:
+      cache: false
+      persistent: true
+
+  build:
+    script: "NODE_OPTIONS='--max-old-space-size=8192' vitepress build"
+    toolchains:
+      - "node"
+    deps:
+      - "^:build"
+    inputs:
+      - "**/*"
+      - "/mise.toml"
+    outputs:
+      - ".vitepress/dist/"
+    options:
+      cache: true
+
+  preview:
+    command: "vitepress preview"
+    toolchains:
+      - "node"
+    deps:
+      - "^:build"
+    options:
+      cache: false
+      persistent: true

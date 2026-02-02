@@ -59,9 +59,6 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/koa... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepack": "moon run koa:build"
   }
 }

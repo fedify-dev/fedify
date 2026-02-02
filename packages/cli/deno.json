@@ -32,40 +32,6 @@
   "publish": {
     "exclude": ["**/*.test.ts", "tsdown.config.ts", "scripts/"]
   },
-  "tasks": {
-    "codegen": "deno task -f @fedify/vocab compile",
-    "check": {
-      "command": "deno fmt --check && deno lint && deno check src/**/*.ts",
-      "dependencies": [
-        "codegen"
-      ]
-    },
-    "run": {
-      "command": "deno run --allow-all src/mod.ts",
-      "dependencies": [
-        "codegen"
-      ]
-    },
-    "runi": "deno run --allow-all src/mod.ts",
-    "pack": {
-      "command": "deno run -A scripts/pack.ts",
-      "dependencies": [
-        "codegen"
-      ]
-    },
-    "test": {
-      "command": "deno test --allow-all",
-      "dependencies": [
-        "codegen"
-      ]
-    },
-    "test-init": {
-      "command": "FEDIFY_TEST_MODE=true deno run --allow-all src/init/test/mod.ts test-init",
-      "dependencies": [
-        "codegen"
-      ]
-    }
-  },
   "fmt": {
     "exclude": [
       "src/init/templates/**"
