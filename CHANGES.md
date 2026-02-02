@@ -10,6 +10,12 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `Context.getActorKeysByUsage()` and
+    `Context.getActorFirstKeyByUsage()` methods to simplify retrieval of actor
+    keys grouped by usage type.  These methods provide a more convenient way
+    to obtain keys for `publicKey` and `assertionMethod` properties when
+    setting up actor dispatchers.  [[#488]]
+
  -  Remove `contextLoader` option (which was deprecated) from
     `FederationOptions` interface in favor of `contextLoaderFactory` option
     for better flexibility.  [[#376], [#445] by Hasang Cho]
@@ -131,6 +137,7 @@ To be released.
 [#445]: https://github.com/fedify-dev/fedify/pull/445
 [#451]: https://github.com/fedify-dev/fedify/pull/451
 [#466]: https://github.com/fedify-dev/fedify/issues/466
+[#488]: https://github.com/fedify-dev/fedify/issues/488
 [#499]: https://github.com/fedify-dev/fedify/issues/499
 [#506]: https://github.com/fedify-dev/fedify/pull/506
 [#517]: https://github.com/fedify-dev/fedify/pull/517

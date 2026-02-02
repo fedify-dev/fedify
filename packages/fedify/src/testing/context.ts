@@ -42,6 +42,8 @@ export function createContext<TContextData>(
     getFeaturedTagsUri,
     parseUri,
     getActorKeyPairs,
+    getActorKeysByUsage,
+    getActorFirstKeyByUsage,
     getDocumentLoader,
     lookupObject,
     traverseCollection,
@@ -82,6 +84,16 @@ export function createContext<TContextData>(
       throw new Error("Not implemented");
     }),
     getActorKeyPairs: getActorKeyPairs ?? ((_handle) => Promise.resolve([])),
+    getActorKeysByUsage: getActorKeysByUsage ??
+      ((_handle) =>
+        Promise.resolve({
+          publicKeys: [],
+          assertionMethods: [],
+        })),
+    getActorFirstKeyByUsage: getActorFirstKeyByUsage ??
+      ((_handle) => {
+        throw new Error("No actor keys available");
+      }),
     lookupObject: lookupObject ?? ((uri, options = {}) => {
       return globalLookupObject(uri, {
         documentLoader: options.documentLoader ?? documentLoader ??

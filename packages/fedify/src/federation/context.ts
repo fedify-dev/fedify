@@ -212,6 +212,28 @@ export interface Context<TContextData> {
   getActorKeyPairs(identifier: string): Promise<ActorKeyPair[]>;
 
   /**
+   * Gets the keys for an actor grouped by usage.
+   * @param identifier The actor's identifier.
+   * @returns An object containing arrays of public keys and assertion methods.
+   * @since 1.6.0
+   */
+  getActorKeysByUsage(identifier: string): Promise<{
+    publicKeys: CryptographicKey[];
+    assertionMethods: Multikey[];
+  }>;
+
+  /**
+   * Gets the first key for an actor of each usage type.
+   * @param identifier The actor's identifier.
+   * @returns An object containing the first public key and assertion method.
+   * @since 1.6.0
+   */
+  getActorFirstKeyByUsage(identifier: string): Promise<{
+    publicKey: CryptographicKey;
+    assertionMethod: Multikey;
+  }>;
+
+  /**
    * Gets an authenticated {@link DocumentLoader} for the given identity.
    * Note that an authenticated document loader intentionally does not cache
    * the fetched documents.
