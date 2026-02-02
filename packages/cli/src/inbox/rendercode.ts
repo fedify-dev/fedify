@@ -2,22 +2,22 @@ import type { Activity } from "@fedify/vocab";
 import { getStatusText } from "@poppanator/http-constants";
 import { getContextLoader } from "../docloader.ts";
 
-export async function renderRequest(request: Request): Promise<string> {
+export function renderRequest(request: Request): Promise<string> {
   // @ts-ignore: Work around `deno publish --dry-run` bug
   request = request.clone();
   const url = new URL(request.url);
   const statusLine = `${request.method} ${url.pathname + url.search}`;
-  return await render(request, statusLine);
+  return render(request, statusLine);
 }
 
-export async function renderResponse(response: Response): Promise<string> {
+export function renderResponse(response: Response): Promise<string> {
   response = response.clone();
   const statusLine = `${response.status} ${
     response.statusText === ""
       ? getStatusText(response.status)
       : response.statusText
   }`;
-  return await render(response, statusLine);
+  return render(response, statusLine);
 }
 
 async function render(
