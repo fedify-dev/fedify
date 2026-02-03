@@ -10,6 +10,7 @@ import {
   or,
   string,
   valueSet,
+  withDefault,
 } from "@optique/core";
 
 /**
@@ -80,23 +81,25 @@ export const debugOption = object("Global options", {
  *
  * Returns either:
  * - `{ ignoreConfig: true }` when `--ignore-config` is specified
- * - `{ ignoreConfig: false, configPath?: string }` otherwise
+ * - `{ ignoreConfig: false, configPath: string }` when `--config` is specified
+ * - `{ ignoreConfig: false }` when neither is specified (default)
  */
-export const configOption = or(
-  object({
-    ignoreConfig: map(
-      flag("-I", "--ignore-config", {
-        description: message`Ignore all configuration files.`,
-      }),
-      () => true as const,
-    ),
-  }),
-  object({
-    ignoreConfig: constant(false),
-    configPath: optional(
-      option("-c", "--config", string({ metavar: "PATH" }), {
+export const configOption = withDefault(
+  or(
+    object({
+      ignoreConfig: map(
+        flag("--ignore-config", {
+          description: message`Ignore all configuration files.`,
+        }),
+        () => true as const,
+      ),
+    }),
+    object({
+      ignoreConfig: constant(false),
+      configPath: option("--config", string({ metavar: "PATH" }), {
         description: message`Load an additional configuration file.`,
       }),
-    ),
-  }),
+    }),
+  ),
+  { ignoreConfig: false, configPath: undefined } as const,
 );

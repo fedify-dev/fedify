@@ -1,10 +1,4 @@
-import { message } from "@optique/core";
-import { printError } from "@optique/run";
-import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { env, exit } from "node:process";
-import { parse as parseToml, type TomlTable } from "smol-toml";
+import { parse as parseToml } from "smol-toml";
 import {
   boolean,
   type InferOutput,
@@ -12,7 +6,6 @@ import {
   object,
   optional,
   picklist,
-  safeParse,
   string,
 } from "valibot";
 
@@ -89,123 +82,14 @@ export const configSchema = object({
  */
 export type Config = InferOutput<typeof configSchema>;
 
-function getUserConfigPath(): string {
-  const xdgConfigHome = env.XDG_CONFIG_HOME;
-  const baseDir = xdgConfigHome || join(homedir(), ".config");
-  return join(baseDir, "fedify", "config.toml");
-}
-
 /**
- * Default config file paths in order of priority (lowest to highest).
+ * TOML parser for Optique config context.
+ * Parses TOML file contents into a JavaScript object.
+ *
+ * @param contents - Raw file contents as Uint8Array
+ * @returns Parsed TOML data
  */
-const CONFIG_PATHS = [
-  "/etc/fedify/config.toml",
-  getUserConfigPath(),
-  ".fedify.toml",
-];
-
-async function loadConfigFile(configPath: string): Promise<string | null> {
-  let contents: string;
-  try {
-    contents = await readFile(configPath, "utf-8");
-  } catch {
-    // silently fail when it failed to read file
-    return null;
-  }
-  return contents;
-}
-
-function parseConfigFile(contents: string, configPath: string): Config | null {
-  let toml: TomlTable;
-  try {
-    toml = parseToml(contents);
-  } catch {
-    printError(message`Invalid TOML syntax in ${configPath}`);
-    return null;
-  }
-
-  const results = safeParse(configSchema, toml);
-  if (!results.success) {
-    printError(
-      message`Invalid configuration in ${configPath}: ${
-        results.issues[0].message
-      }`,
-    );
-    return null;
-  }
-  return results.output;
-}
-
-function mergeSection<T>(
-  target: T | undefined,
-  source: T | undefined,
-): T | undefined {
-  if (!target) return source;
-  if (!source) return target;
-  return { ...target, ...source } as T;
-}
-
-function mergeConfig(target: Config, source: Config): Config {
-  return {
-    debug: source.debug ?? target.debug,
-    lookup: mergeSection(target.lookup, source.lookup),
-    webfinger: mergeSection(target.webfinger, source.webfinger),
-    inbox: mergeSection(target.inbox, source.inbox),
-    relay: mergeSection(target.relay, source.relay),
-    nodeinfo: mergeSection(target.nodeinfo, source.nodeinfo),
-  };
-}
-
-/**
- * Load and merge configuration from the standard hierarchy.
- *
- * Priority order (lowest to highest):
- *
- *  1. /etc/fedify/config.toml (system-wide)
- *  2. ~/.config/fedify/config.toml (user)
- *  3. ./.fedify.toml (project-local)
- *  4. --config PATH (explicit, if provided)
- *
- * @param explicitConfigPath - Optional explicit config path from --config option
- * @param ignoreConfig - If true, skip all config files and return empty config
- * @returns The merged configuration object
- * @exits 1 if explicit config path is provided but file can't be read or parsed
- */
-export async function loadConfig(
-  explicitConfigPath?: string,
-  ignoreConfig: boolean = false,
-): Promise<Config> {
-  if (ignoreConfig) {
-    return {};
-  }
-
-  let config: Config = {};
-
-  for (const configPath of CONFIG_PATHS) {
-    const contents = await loadConfigFile(configPath);
-    if (!contents) {
-      continue;
-    }
-    const loaded = parseConfigFile(contents, configPath);
-    if (loaded) {
-      config = mergeConfig(config, loaded);
-    }
-  }
-
-  if (explicitConfigPath) {
-    const contents = await loadConfigFile(explicitConfigPath);
-    if (!contents) {
-      printError(
-        message`Failed to read config file ${explicitConfigPath}`,
-      );
-      exit(1);
-    }
-    const loaded = parseConfigFile(contents, explicitConfigPath);
-    if (!loaded) {
-      exit(1);
-    }
-    config = mergeConfig(config, loaded);
-  }
-
-  return config;
+export function parseTomlConfig(contents: Uint8Array): unknown {
+  const text = new TextDecoder().decode(contents);
+  return parseToml(text);
 }
