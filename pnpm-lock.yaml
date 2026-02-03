@@ -140,61 +140,61 @@ importers:
         specifier: ^0.8.4
         version: 0.8.4
       '@fedify/amqp':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/amqp
       '@fedify/cfworkers':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/cfworkers
       '@fedify/express':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/express
       '@fedify/fastify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/fastify
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/fedify
       '@fedify/h3':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/h3
       '@fedify/hono':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/hono
       '@fedify/koa':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/koa
       '@fedify/lint':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/lint
       '@fedify/nestjs':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/nestjs
       '@fedify/next':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/next
       '@fedify/postgres':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/postgres
       '@fedify/redis':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/redis
       '@fedify/relay':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/relay
       '@fedify/sqlite':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/sqlite
       '@fedify/sveltekit':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/sveltekit
       '@fedify/testing':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/testing
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/vocab
       '@fedify/vocab-runtime':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../packages/vocab-runtime
       '@hono/node-server':
         specifier: ^1.13.7
@@ -317,10 +317,10 @@ importers:
   examples/cloudflare-workers:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
     devDependencies:
       typescript:
@@ -339,7 +339,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       elysia:
         specifier: 'catalog:'
@@ -352,13 +352,13 @@ importers:
   examples/express:
     dependencies:
       '@fedify/express':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/express
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
@@ -383,13 +383,13 @@ importers:
   examples/fastify:
     dependencies:
       '@fedify/fastify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fastify
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       fastify:
         specifier: 'catalog:'
@@ -405,13 +405,13 @@ importers:
   examples/koa:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/koa':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/koa
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
@@ -436,13 +436,13 @@ importers:
   examples/next-integration:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/next':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/next
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       next:
         specifier: 15.5.0
@@ -488,10 +488,10 @@ importers:
   examples/next14-app-router:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
@@ -537,10 +537,10 @@ importers:
   examples/next15-app-router:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       next:
         specifier: 15.3.1
@@ -586,13 +586,13 @@ importers:
   examples/sveltekit-sample:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/fedify
       '@fedify/sveltekit':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/sveltekit
       '@fedify/vocab':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../../packages/vocab
       x-forwarded-fetch:
         specifier: ^0.2.0
@@ -877,7 +877,7 @@ importers:
   packages/fastify:
     dependencies:
       '@fedify/fedify':
-        specifier: 'workspace:'
+        specifier: workspace:^
         version: link:../fedify
       fastify:
         specifier: 'catalog:'

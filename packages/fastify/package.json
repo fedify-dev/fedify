@@ -47,7 +47,7 @@
     "fastify-plugin": "catalog:"
   },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:",
+    "@fedify/fedify": "workspace:^",
     "fastify": "catalog:"
   },
   "devDependencies": {

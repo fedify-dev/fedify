@@ -30,9 +30,9 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@fedify/express": "workspace:",
-    "@fedify/fedify": "workspace:",
-    "@fedify/vocab": "workspace:",
+    "@fedify/express": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "@logtape/logtape": "catalog:",
     "express": "catalog:"
   }

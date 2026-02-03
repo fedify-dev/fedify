@@ -8,9 +8,9 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
-    "@fedify/fastify": "workspace:",
-    "@fedify/fedify": "workspace:",
-    "@fedify/vocab": "workspace:",
+    "@fedify/fastify": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "fastify": "catalog:"
   },
   "devDependencies": {
