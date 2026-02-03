@@ -46,6 +46,7 @@ depends = [
   "check:types",
   "check:md",
   "check-versions",
+  "check:manifest:workspace-protocol",
 ]
 
 [tasks."check:fmt"]
@@ -73,6 +74,42 @@ if [ "${usage_fix}" = "true" ]; then
 else
   deno task check-versions
 fi
+'''
+
+[tasks."check:manifest:workspace-protocol"]
+description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
+run = '''
+found=0
+for file in $(find . -name 'package.json' -not -path '*/node_modules/*'); do
+  invalid=$(jq -r '
+    [
+      (.dependencies // {}),
+      (.devDependencies // {}),
+      (.peerDependencies // {}),
+      (.optionalDependencies // {})
+    ]
+    | add
+    | to_entries[]
+    | select(.value == "workspace:")
+    | "  \(.key)"
+  ' "$file" 2>/dev/null)
+  if [ -n "$invalid" ]; then
+    if [ "$found" -eq 0 ]; then
+      echo "Error: Found invalid workspace: specifiers (missing *, ^, or ~):"
+      echo ""
+    fi
+    echo "$file:"
+    echo "$invalid"
+    found=1
+  fi
+done
+
+if [ "$found" -eq 1 ]; then
+  echo ""
+  echo "Valid formats: workspace:*, workspace:^, workspace:~"
+  exit 1
+fi
+echo "All workspace: specifiers are valid"
 '''
 
 [tasks.fmt]
