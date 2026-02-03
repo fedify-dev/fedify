@@ -10,8 +10,8 @@
     "test": "true"
   },
   "dependencies": {
-    "@fedify/fedify": "workspace:",
-    "@fedify/vocab": "workspace:",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

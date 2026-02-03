@@ -20,9 +20,9 @@
     "lint": "prettier --check . && eslint ."
   },
   "dependencies": {
-    "@fedify/fedify": "workspace:",
-    "@fedify/sveltekit": "workspace:",
-    "@fedify/vocab": "workspace:",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/sveltekit": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "x-forwarded-fetch": "^0.2.0"
   },
   "devDependencies": {

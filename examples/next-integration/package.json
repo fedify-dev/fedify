@@ -9,9 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fedify/fedify": "workspace:",
-    "@fedify/next": "workspace:",
-    "@fedify/vocab": "workspace:",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/next": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "next": "15.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
