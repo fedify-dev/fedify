@@ -20,7 +20,7 @@ run = "moon run vocab:codegen"
 
 # Code quality
 [tasks.check]
-run = "moon run root:check"
+run = "MOON_LOG=trace moon run root:check"
 
 [tasks.cli]
 run = "moon run root:cli"
