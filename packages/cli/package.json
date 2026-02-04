@@ -59,8 +59,9 @@
     "@js-temporal/polyfill": "catalog:",
     "@logtape/file": "catalog:",
     "@logtape/logtape": "catalog:",
-    "@optique/core": "^0.9.0",
-    "@optique/run": "^0.9.0",
+    "@optique/config": "^0.10.0-dev.346",
+    "@optique/core": "^0.10.0-dev.346",
+    "@optique/run": "^0.10.0-dev.346",
     "@poppanator/http-constants": "^1.1.1",
     "byte-encodings": "catalog:",
     "chalk": "^5.6.2",
@@ -77,7 +78,9 @@
     "jimp": "^1.6.0",
     "ora": "^8.2.0",
     "shiki": "^1.6.4",
-    "srvx": "^0.8.7"
+    "smol-toml": "^1.6.0",
+    "srvx": "^0.8.7",
+    "valibot": "^1.2.0"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

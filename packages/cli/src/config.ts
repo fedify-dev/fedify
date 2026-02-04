@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { parse as parseToml } from "smol-toml";
 import {
   boolean,
@@ -83,13 +84,13 @@ export const configSchema = object({
 export type Config = InferOutput<typeof configSchema>;
 
 /**
- * TOML parser for Optique config context.
- * Parses TOML file contents into a JavaScript object.
- *
- * @param contents - Raw file contents as Uint8Array
- * @returns Parsed TOML data
+ * Try to load and parse a TOML config file.
+ * Returns an empty object if the file doesn't exist or fails to parse.
  */
-export function parseTomlConfig(contents: Uint8Array): unknown {
-  const text = new TextDecoder().decode(contents);
-  return parseToml(text);
+export function tryLoadToml(path: string): Record<string, unknown> {
+  try {
+    return parseToml(readFileSync(path, "utf-8"));
+  } catch {
+    return {};
+  }
 }
