@@ -296,3 +296,66 @@ test("Federation.setInboxListeners().withIdempotency() - custom callback", async
   assertEquals(response.status, 202);
   assertEquals(processedActivities.length, 3); // Should be 3, not deduplicated
 });
+
+test("Federation.setInboxListeners() - default strategy is per-inbox", async () => {
+  const federation = createTestFederation();
+  const processedActivities: [string | null, Activity][] = [];
+
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    // No .withIdempotency() call - should default to "per-inbox"
+    .on(Create, (ctx, activity) => {
+      processedActivities.push([ctx.recipient, activity]);
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/6"),
+    actor: new URL("https://example.com/person2"),
+  });
+  const signedActivity = await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+  );
+  const body = JSON.stringify(
+    await signedActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
+  );
+
+  // Send to first inbox
+  let response = await federation.fetch(
+    new Request("https://example.com/users/john/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body,
+    }),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(processedActivities.length, 1);
+  assertEquals(processedActivities[0][0], "john");
+
+  // Send to second inbox (shared) with same activity ID - should NOT be deduplicated (per-inbox behavior)
+  response = await federation.fetch(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body,
+    }),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(processedActivities.length, 2); // Should be 2, not deduplicated
+  assertEquals(processedActivities[1][0], null);
+
+  // Send to same inbox again - should be deduplicated (per-inbox behavior)
+  response = await federation.fetch(
+    new Request("https://example.com/users/john/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body,
+    }),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(processedActivities.length, 2); // Should still be 2
+});
