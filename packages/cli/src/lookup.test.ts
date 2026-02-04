@@ -1,9 +1,11 @@
 import { Activity, Note } from "@fedify/vocab";
+import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import test from "node:test";
 import { getContextLoader } from "./docloader.ts";
 import {
+  authorizedFetchOption,
   clearTimeoutSignal,
   createTimeoutSignal,
   TimeoutError,
@@ -179,4 +181,57 @@ test("clearTimeoutSignal - cleans up timer properly", async () => {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   assert.ok(!signal.aborted);
+});
+
+test("authorizedFetchOption - parses successfully without -a flag", () => {
+  const result = parse(authorizedFetchOption, []);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, false);
+    // When authorizedFetch is false, firstKnock and tunnelService are not available
+  }
+});
+
+test("authorizedFetchOption - parses successfully with -a flag", () => {
+  const result = parse(authorizedFetchOption, ["-a"]);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(
+      result.value.firstKnock,
+      "draft-cavage-http-signatures-12",
+    );
+    assert.strictEqual(result.value.tunnelService, undefined);
+  }
+});
+
+test("authorizedFetchOption - parses with -a and --first-knock", () => {
+  const result = parse(authorizedFetchOption, [
+    "-a",
+    "--first-knock",
+    "rfc9421",
+  ]);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(result.value.firstKnock, "rfc9421");
+    assert.strictEqual(result.value.tunnelService, undefined);
+  }
+});
+
+test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
+  const result = parse(authorizedFetchOption, [
+    "-a",
+    "--tunnel-service",
+    "localhost.run",
+  ]);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(
+      result.value.firstKnock,
+      "draft-cavage-http-signatures-12",
+    );
+    assert.strictEqual(result.value.tunnelService, "localhost.run");
+  }
 });

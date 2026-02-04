@@ -48,7 +48,7 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = or(
+export const authorizedFetchOption = withDefault(
   object({
     authorizedFetch: map(
       flag("-a", "--authorized-fetch", {
@@ -70,9 +70,7 @@ export const authorizedFetchOption = or(
     ),
     tunnelService: tunnelServiceOption,
   }),
-  object({
-    authorizedFetch: constant(false as const),
-  }),
+  { authorizedFetch: false } as const,
 );
 
 const traverseOption = withDefault(
