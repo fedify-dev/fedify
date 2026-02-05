@@ -138,12 +138,16 @@ export const lookupCommand = command(
           key: (config) => config.lookup?.userAgent,
         },
       ),
-      separator: withDefault(
+      separator: bindConfig(
         option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
           description:
             message`Specify the separator between adjacent output objects or collection items.`,
         }),
-        "----",
+        {
+          context: configContext,
+          key: (config) => config.lookup?.separator as string,
+          default: "----",
+        },
       ),
       output: optional(option(
         "-o",
