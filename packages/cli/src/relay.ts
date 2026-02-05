@@ -2,6 +2,7 @@ import { MemoryKvStore } from "@fedify/fedify";
 import { createRelay, type Relay, type RelayType } from "@fedify/relay";
 import { SqliteKvStore } from "@fedify/sqlite";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   command,
   constant,
@@ -16,13 +17,13 @@ import {
   optionName,
   string,
   value,
-  withDefault,
 } from "@optique/core";
 import { choice } from "@optique/core/valueparser";
 import Table from "cli-table3";
 import process from "node:process";
 import { DatabaseSync } from "node:sqlite";
 import ora from "ora";
+import { configContext } from "./config.ts";
 import { configureLogging } from "./log.ts";
 import { debugOption, tunnelOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
@@ -36,16 +37,23 @@ export const relayCommand = command(
   merge(
     object("Relay options", {
       command: constant("relay"),
-      protocol: option(
-        "-p",
-        "--protocol",
-        choice(["mastodon", "litepub"], { metavar: "TYPE" }),
+      protocol: bindConfig(
+        option(
+          "-p",
+          "--protocol",
+          choice(["mastodon", "litepub"], { metavar: "TYPE" }),
+          {
+            description: message`The relay protocol to use. ${
+              value("mastodon")
+            } for Mastodon-compatible relay, ${
+              value("litepub")
+            } for LitePub-compatible relay.`,
+          },
+        ),
         {
-          description: message`The relay protocol to use. ${
-            value("mastodon")
-          } for Mastodon-compatible relay, ${
-            value("litepub")
-          } for LitePub-compatible relay.`,
+          context: configContext,
+          key: (config) => config.relay?.protocol as string,
+          default: "mastodon",
         },
       ),
       persistent: optional(
@@ -54,7 +62,7 @@ export const relayCommand = command(
             message`Path to SQLite database file for persistent storage. If not specified, uses in-memory storage which is lost when the server stops.`,
         }),
       ),
-      port: withDefault(
+      port: bindConfig(
         option(
           "-P",
           "--port",
@@ -63,13 +71,21 @@ export const relayCommand = command(
             description: message`The local port to listen on.`,
           },
         ),
-        8000,
+        {
+          context: configContext,
+          key: (config) => config.relay?.port as number,
+          default: 8000,
+        },
       ),
-      name: withDefault(
+      name: bindConfig(
         option("-n", "--name", string({ metavar: "NAME" }), {
           description: message`The relay display name.`,
         }),
-        "Fedify Relay",
+        {
+          context: configContext,
+          key: (config) => config.relay?.name as string,
+          default: "Fedify Relay",
+        },
       ),
       acceptFollow: optional(multiple(
         option("-a", "--accept-follow", string({ metavar: "URI" }), {

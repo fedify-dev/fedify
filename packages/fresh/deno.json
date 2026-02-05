@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fresh",
-  "version": "2.0.0",
+  "version": "1.10.3",
   "license": "MIT",
   "imports": {
     "@fresh/core": "jsr:@fresh/core@^2.1.4",
@@ -14,7 +14,9 @@
     "node_modules"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts"
+    ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts"

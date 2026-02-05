@@ -15,6 +15,7 @@ import {
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   argument,
   choice,
@@ -39,6 +40,7 @@ import { path, print, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
 import process from "node:process";
 import ora from "ora";
+import { configContext } from "./config.ts";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { configureLogging } from "./log.ts";
@@ -125,10 +127,16 @@ export const lookupCommand = command(
         ),
         "default" as const,
       ),
-      userAgent: optional(
-        option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
-          description: message`The custom User-Agent header value.`,
-        }),
+      userAgent: bindConfig(
+        optional(
+          option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
+            description: message`The custom User-Agent header value.`,
+          }),
+        ),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.userAgent,
+        },
       ),
       separator: withDefault(
         option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
@@ -147,12 +155,20 @@ export const lookupCommand = command(
         }),
         { description: message`Specify the output file path.` },
       )),
-      timeout: optional(option(
-        "-T",
-        "--timeout",
-        float({ min: 0, metavar: "SECONDS" }),
-        { description: message`Set timeout for network requests in seconds.` },
-      )),
+      timeout: bindConfig(
+        optional(option(
+          "-T",
+          "--timeout",
+          float({ min: 0, metavar: "SECONDS" }),
+          {
+            description: message`Set timeout for network requests in seconds.`,
+          },
+        )),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.timeout,
+        },
+      ),
     }),
   ),
   {

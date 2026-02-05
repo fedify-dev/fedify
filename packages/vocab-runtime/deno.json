@@ -1,6 +1,6 @@
 {
   "name": "@fedify/vocab-runtime",
-  "version": "2.0.0",
+  "version": "1.10.3",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts"
@@ -24,7 +24,10 @@
     "node_modules"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts",

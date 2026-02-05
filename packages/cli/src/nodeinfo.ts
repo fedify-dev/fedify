@@ -3,6 +3,7 @@ import { getUserAgent } from "@fedify/vocab-runtime";
 import { createJimp } from "@jimp/core";
 import webp from "@jimp/wasm-webp";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   argument,
   command as Command,
@@ -25,6 +26,7 @@ import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
 import os from "node:os";
 import process from "node:process";
 import ora from "ora";
+import { configContext } from "./config.ts";
 import { debugOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
@@ -58,11 +60,17 @@ const nodeInfoOption = optional(
   ),
 );
 
-const userAgentOption = optional(object({
-  userAgent: option("-u", "--user-agent", string(), {
-    description: message`The custom User-Agent header value.`,
-  }),
-}));
+const userAgentOption = object({
+  userAgent: bindConfig(
+    optional(option("-u", "--user-agent", string(), {
+      description: message`The custom User-Agent header value.`,
+    })),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.userAgent,
+    },
+  ),
+});
 
 export const nodeInfoCommand = Command(
   "nodeinfo",

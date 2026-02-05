@@ -1,3 +1,4 @@
+import { createConfigContext } from "@optique/config";
 import { readFileSync } from "node:fs";
 import { parse as parseToml } from "smol-toml";
 import {
@@ -82,6 +83,11 @@ export const configSchema = object({
  * Type representing the configuration file structure.
  */
 export type Config = InferOutput<typeof configSchema>;
+
+/**
+ * Config context for use with bindConfig().
+ */
+export const configContext = createConfigContext({ schema: configSchema });
 
 /**
  * Try to load and parse a TOML config file.
