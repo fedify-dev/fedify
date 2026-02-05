@@ -65,6 +65,13 @@ const nodeinfoSchema = object({
 });
 
 /**
+ * Schema for the tunnel command configuration.
+ */
+const tunnelSchema = object({
+  service: optional(picklist(["localhost.run", "serveo.net", "pinggy.io"])),
+});
+
+/**
  * Schema for the complete configuration file.
  */
 export const configSchema = object({
@@ -77,6 +84,7 @@ export const configSchema = object({
   inbox: optional(inboxSchema),
   relay: optional(relaySchema),
   nodeinfo: optional(nodeinfoSchema),
+  tunnel: optional(tunnelSchema),
 });
 
 /**
