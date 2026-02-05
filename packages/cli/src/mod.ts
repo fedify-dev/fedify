@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { createConfigContext } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { merge, or } from "@optique/core";
 import envPaths from "env-paths";
@@ -8,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { parse as parseToml } from "smol-toml";
-import { configSchema, tryLoadToml } from "./config.ts";
+import { configContext, tryLoadToml } from "./config.ts";
 import {
   generateVocabCommand,
   runGenerateVocab,
@@ -21,8 +20,6 @@ import { configOption } from "./options.ts";
 import { relayCommand, runRelay } from "./relay.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
-
-const configContext = createConfigContext({ schema: configSchema });
 
 const command = merge(
   or(

@@ -23,6 +23,7 @@ import {
   type Recipient,
 } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   command,
   constant,
@@ -34,8 +35,8 @@ import {
   option,
   optional,
   string,
-  withDefault,
 } from "@optique/core";
+import { configContext } from "./config.ts";
 import Table from "cli-table3";
 import { type Context as HonoContext, Hono } from "hono";
 import type { BlankEnv, BlankInput } from "hono/types";
@@ -89,24 +90,38 @@ export const inboxCommand = command(
     }),
     tunnelOption,
     object({
-      actorName: withDefault(
+      actorName: bindConfig(
         option("--actor-name", string({ metavar: "NAME" }), {
           description: message`Customize the actor display name.`,
         }),
-        "Fedify Ephemeral Inbox",
+        {
+          context: configContext,
+          key: (config) => config.inbox?.actorName as string,
+          default: "Fedify Ephemeral Inbox",
+        },
       ),
-      actorSummary: withDefault(
+      actorSummary: bindConfig(
         option("--actor-summary", string({ metavar: "SUMMARY" }), {
           description: message`Customize the actor description.`,
         }),
-        "An ephemeral ActivityPub inbox for testing purposes.",
-      ),
-      authorizedFetch: option(
-        "-A",
-        "--authorized-fetch",
         {
-          description:
-            message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
+          context: configContext,
+          key: (config) => config.inbox?.actorSummary as string,
+          default: "An ephemeral ActivityPub inbox for testing purposes.",
+        },
+      ),
+      authorizedFetch: bindConfig(
+        optional(option(
+          "-A",
+          "--authorized-fetch",
+          {
+            description:
+              message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
+          },
+        )),
+        {
+          context: configContext,
+          key: (config) => config.inbox?.authorizedFetch,
         },
       ),
     }),

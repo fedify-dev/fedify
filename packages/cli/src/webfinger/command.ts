@@ -1,3 +1,4 @@
+import { bindConfig } from "@optique/config";
 import {
   argument,
   command,
@@ -12,28 +13,44 @@ import {
   option,
   optional,
   string,
-  withDefault,
 } from "@optique/core";
+import { configContext } from "../config.ts";
 import { debugOption } from "../options.ts";
 
-const userAgent = optional(option(
-  "-u",
-  "--user-agent",
-  string({ metavar: "USER_AGENT" }),
-  { description: message`The custom User-Agent header value.` },
-));
+const userAgent = bindConfig(
+  optional(option(
+    "-u",
+    "--user-agent",
+    string({ metavar: "USER_AGENT" }),
+    { description: message`The custom User-Agent header value.` },
+  )),
+  {
+    context: configContext,
+    key: (config) => config.webfinger?.userAgent,
+  },
+);
 
-const allowPrivateAddresses = optional(flag("-p", "--allow-private-address", {
-  description: message`Allow private IP addresses in the URL.`,
-}));
+const allowPrivateAddresses = bindConfig(
+  optional(flag("-p", "--allow-private-address", {
+    description: message`Allow private IP addresses in the URL.`,
+  })),
+  {
+    context: configContext,
+    key: (config) => config.webfinger?.allowPrivateAddress,
+  },
+);
 
-const maxRedirection = withDefault(
+const maxRedirection = bindConfig(
   option(
     "--max-redirection",
     integer({ min: 0 }),
     { description: message`Maximum number of redirections to follow.` },
   ),
-  5,
+  {
+    context: configContext,
+    key: (config) => config.webfinger?.maxRedirection as number,
+    default: 5,
+  },
 );
 
 export const webFingerCommand = command(
