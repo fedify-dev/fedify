@@ -1,0 +1,11 @@
+projects:
+  - "packages/*"
+  - "docs"
+  - "."
+
+vcs:
+  client: "git"
+  defaultBranch: main
+
+pipeline:
+  cacheLifetime: "7 days"

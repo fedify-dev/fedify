@@ -44,12 +44,7 @@
     "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/fixture... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "cd dist/ && node --test"
+    "prepack": "moon run fixture:build"
   },
   "private": true
 }

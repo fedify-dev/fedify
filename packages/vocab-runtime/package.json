@@ -38,12 +38,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/vocab-runtime... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "cd dist/ && node --test"
+    "prepack": "moon run vocab-runtime:build"
   },
   "keywords": [
     "Fedify",

@@ -1,0 +1,52 @@
+language: "typescript"
+tags:
+  - "tsdown-build"
+
+tasks:
+  check:
+    script: "deno fmt --check && deno lint && deno check src/**/*.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.deno:
+    command: "deno test --allow-net --allow-env --allow-read --allow-write --doc --no-check=leaks"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.node:
+    command: "node --experimental-transform-types --test"
+    toolchains:
+      - "node"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.bun:
+    command: "bun test --timeout=10000"
+    toolchains:
+      - "bun"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true

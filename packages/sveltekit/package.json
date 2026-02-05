@@ -58,11 +58,6 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/sveltekit... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "dev": "tsdown --watch",
-    "test": "node --experimental-transform-types --test"
+    "prepack": "moon run sveltekit:build"
   }
 }

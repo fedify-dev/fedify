@@ -12,6 +12,6 @@ Usage
 -----
 
 ~~~~ sh
-deno task codegen  # At very first time only
+mise run codegen  # At very first time only (run from repository root)
 deno run -A ./main.ts @fedify@hollo.social
 ~~~~

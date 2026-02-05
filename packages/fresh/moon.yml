@@ -1,0 +1,19 @@
+language: "typescript"
+tags: []
+# NOTE: moonrepo doesn't detect imports through workspace feature,
+#       without `imports` field of deno.json. So it needs to be added manually.
+dependsOn:
+  - fedify
+
+tasks:
+  check:
+    script: "deno fmt --check && deno lint && deno check src/**/*.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true

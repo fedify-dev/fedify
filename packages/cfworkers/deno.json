@@ -20,8 +20,5 @@
       "vitest.config.ts",
       "wrangler.jsonc"
     ]
-  },
-  "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/*.ts"
   }
 }

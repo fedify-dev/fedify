@@ -21,9 +21,5 @@
       "!dist/",
       "tsdown.config.ts"
     ]
-  },
-  "tasks": {
-    "check": "deno fmt --check && deno lint && deno check",
-    "test": "deno test --allow-net --allow-env --allow-read --allow-write --doc --no-check=leaks"
   }
 }

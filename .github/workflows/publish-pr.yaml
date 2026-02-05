@@ -277,12 +277,11 @@ jobs:
         EXTRA_NAV_LINK="$STABLE_DOCS_URL" \
         SITEMAP_HOSTNAME="$UNSTABLE_DOCS_URL" \
         JSR_REF_VERSION=unstable \
-        pnpm run build
+        moon run docs:build
       env:
         PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}
-      working-directory: ${{ github.workspace }}/docs/
     - id: wrangler
       uses: cloudflare/wrangler-action@v3
       with:

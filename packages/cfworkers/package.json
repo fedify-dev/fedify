@@ -62,10 +62,6 @@
     "wrangler": "^4.21.1"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/cfworkers... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "test": "vitest run"
+    "prepack": "moon run cfworkers:build"
   }
 }

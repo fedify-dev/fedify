@@ -1,0 +1,79 @@
+language: "typescript"
+tags:
+  - "tsdown-build"
+
+tasks:
+  check:
+    script: "deno fmt --check && deno lint && deno check src/**/*.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.deno:
+    command: "deno test --allow-all"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  run:
+    command: "deno run --allow-all src/mod.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    options:
+      runInCI: false
+
+  pack:
+    script: "deno run -A scripts/pack.ts"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "src/**/*"
+      - "scripts/pack.ts"
+      - "/mise.toml"
+
+  test-init:
+    script: "FEDIFY_TEST_MODE=true deno run --allow-all src/init/test/mod.ts test-init"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+
+  test.node:
+    command: "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'"
+    toolchains:
+      - "node"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.bun:
+    command: "bun test"
+    toolchains:
+      - "bun"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true

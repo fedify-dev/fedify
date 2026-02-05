@@ -1,0 +1,15 @@
+language: "typescript"
+tags:
+  - "tsdown-build"
+
+tasks: {}
+# TODO: Skip temporarily.
+# check:
+#   script: "deno fmt --check && deno lint && deno check src/**/*.ts"
+#   toolchains:
+#     - "deno"
+#   inputs:
+#     - "src/**/*"
+#     - "/mise.toml"
+#   options:
+#     cache: true

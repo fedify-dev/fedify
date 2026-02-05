@@ -41,16 +41,18 @@ integration, database adapters, and CLI toolchain.
 Development environment
 -----------------------
 
- -  Task runner: [mise] (required)
+ -  Tool version manager: [mise] (required — manages Deno, Node.js, Bun, pnpm)
+ -  Task orchestrator: [moon] (build caching, impact analysis)
  -  Primary environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
- -  **CRITICAL**: Run `mise run install` (or `pnpm install`) after checkout.
+ -  **CRITICAL**: Run `pnpm install` after checkout.
     This automatically runs code generation and builds all packages.
  -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.
     Update them when changing dependencies.
 
 [mise]: https://mise.jdx.dev/
+[moon]: https://moonrepo.dev/
 [Deno]: https://deno.com/
 [Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
@@ -118,11 +120,11 @@ Code patterns and principles
 Development workflow
 --------------------
 
- -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
-    or code generation scripts change.
+ -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML
+    files or code generation scripts change.
  -  **Building Packages**: After installation, all packages are automatically
-    built. To rebuild a specific package and its dependencies, run `pnpm build`
-    in that package's directory.
+    built. To rebuild a specific package and its dependencies, run
+    `moon run <package>:build`.
  -  **Checking Code**: Run `mise run check` before committing.
  -  **Running Tests**: Use `mise run test:deno` for Deno tests or
     `mise run test` for all environments.

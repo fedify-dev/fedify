@@ -1,0 +1,6 @@
+javascript:
+  packageManager: "pnpm"
+deno: {}
+node: {}
+bun: {}
+pnpm: {}

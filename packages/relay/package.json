@@ -60,13 +60,6 @@
     "urlpattern-polyfill": "catalog:"
   },
   "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/relay... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "cd dist/ && node --test",
-    "pretest:bun": "pnpm build",
-    "test:bun": "cd dist/ && bun test --timeout 60000"
+    "prepack": "moon run relay:build"
   }
 }

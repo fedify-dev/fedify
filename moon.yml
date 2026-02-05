@@ -1,0 +1,186 @@
+id: "root"
+language: "typescript"
+tags: []
+
+tasks:
+  # === Installation/Setup ===
+  install:
+    command: "deno task install"
+    toolchains:
+      - "deno"
+    options:
+      cache: false
+
+  # === Formatting ===
+  fmt:
+    script: "deno fmt && hongdown --write"
+    toolchains:
+      - "system"
+    options:
+      cache: false
+
+  # === Code Quality Checks ===
+  check:
+    deps:
+      - "~:check.fmt"
+      - "~:check.lint"
+      - "~:check.types"
+      - "~:check.md"
+      - "~:check.workspace-protocol"
+      - "~:check.versions"
+    options:
+      persistent: false
+
+  check.fmt:
+    command: "deno fmt --check"
+    toolchains:
+      - "deno"
+    inputs:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  check.lint:
+    command: "deno lint"
+    toolchains:
+      - "deno"
+    inputs:
+      - "**/*.ts"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  check.types:
+    script: >-
+      deno check --unstable-temporal
+      $(deno eval 'import m from "./deno.json" with { type: "json" };
+      for (let p of m.workspace) console.log(p)')
+    toolchains:
+      - "deno"
+    inputs:
+      - "**/*.ts"
+      - "/deno.json"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  check.md:
+    command: "hongdown --check"
+    toolchains:
+      - "system"
+    inputs:
+      - "**/*.md"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  check.workspace-protocol:
+    script: |
+      found=0
+      for file in $(find . -name 'package.json' -not -path '*/node_modules/*'); do
+        invalid=$(jq -r '
+          [
+            (.dependencies // {}),
+            (.devDependencies // {}),
+            (.peerDependencies // {}),
+            (.optionalDependencies // {})
+          ]
+          | add
+          | to_entries[]
+          | select(.value == "workspace:")
+          | "  \(.key)"
+        ' "$file" 2>/dev/null)
+        if [ -n "$invalid" ]; then
+          if [ "$found" -eq 0 ]; then
+            echo "Error: Found invalid workspace: specifiers (missing *, ^, or ~):"
+            echo ""
+          fi
+          echo "$file:"
+          echo "$invalid"
+          found=1
+        fi
+      done
+      if [ "$found" -eq 1 ]; then
+        echo ""
+        echo "Valid formats: workspace:*, workspace:^, workspace:~"
+        exit 1
+      fi
+      echo "All workspace: specifiers are valid"
+    toolchains:
+      - "system"
+    inputs:
+      - "**/package.json"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  check.versions:
+    command: "deno run --allow-read --allow-write scripts/check_versions.ts"
+    toolchains:
+      - "deno"
+    inputs:
+      - "packages/*/deno.json"
+      - "packages/*/package.json"
+      - "/deno.json"
+      - "/scripts/check_versions.ts"
+    options:
+      cache: true
+
+  # === Tests ===
+  test.deno:
+    command: "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
+    toolchains:
+      - "deno"
+    deps:
+      - "vocab:codegen"
+    inputs:
+      - "packages/*/src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  # === Snapshot Updates ===
+  test.deno.update_snapshots:
+    script: >-
+      deno task -f @fedify/vocab-tools test -- --update &&
+      deno task -f @fedify/vocab test -- --update
+    toolchains:
+      - "deno"
+    options:
+      cache: false
+
+  test.node.update_snapshots:
+    deps:
+      - "vocab-tools:test.node.update_snapshots"
+    options:
+      persistent: false
+
+  test.bun.update_snapshots:
+    deps:
+      - "vocab-tools:test.bun.update_snapshots"
+    options:
+      persistent: false
+
+  test.update_snapshots:
+    deps:
+      - "~:test.deno.update_snapshots"
+      - "~:test.node.update_snapshots"
+      - "~:test.bun.update_snapshots"
+
+  # === Benchmarks ===
+  bench:
+    command: "deno task -f @fedify/fedify bench"
+    toolchains:
+      - "deno"
+    options:
+      cache: false
+
+  # === CLI ===
+  cli:
+    command: "deno task cli"
+    toolchains:
+      - "deno"
+    options:
+      cache: false

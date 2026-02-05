@@ -1,0 +1,37 @@
+language: "typescript"
+tags:
+  - "tsdown-build"
+
+tasks:
+  check:
+    script: "deno fmt --check && deno lint && deno check src/*.ts"
+    toolchains:
+      - "deno"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.deno:
+    command: "deno test"
+    toolchains:
+      - "deno"
+    inputs:
+      - "src/**/*"
+      - "/mise.toml"
+    options:
+      cache: true
+
+  test.node:
+    script: "cd dist/ && node --test"
+    toolchains:
+      - "node"
+    deps:
+      - "~:build"
+    inputs:
+      - "src/**/*"
+      - "dist/**/*"
+      - "/mise.toml"
+    options:
+      cache: true

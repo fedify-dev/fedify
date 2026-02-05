@@ -60,14 +60,7 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build:self": "deno task compile && tsdown",
-    "build": "pnpm --filter @fedify/vocab... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "cd dist/ && node --test",
-    "pretest:bun": "pnpm build",
-    "test:bun": "cd dist/ && bun test --timeout 60000"
+    "prepack": "moon run vocab:build"
   },
   "keywords": [
     "Fedify",
