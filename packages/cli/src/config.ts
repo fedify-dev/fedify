@@ -25,8 +25,13 @@ const webfingerSchema = object({
  */
 const lookupSchema = object({
   authorizedFetch: optional(boolean()),
+  firstKnock: optional(
+    picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
+  ),
   traverse: optional(boolean()),
   suppressErrors: optional(boolean()),
+  defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
+  separator: optional(string()),
   userAgent: optional(string()),
   timeout: optional(number()),
 });
@@ -55,6 +60,9 @@ const relaySchema = object({
   tunnelService: optional(
     picklist(["localhost.run", "serveo.net", "pinggy.io"]),
   ),
+  persistent: optional(string()),
+  acceptFollow: optional(string()),
+  rejectFollow: optional(string()),
 });
 
 /**
@@ -62,6 +70,10 @@ const relaySchema = object({
  */
 const nodeinfoSchema = object({
   userAgent: optional(string()),
+  raw: optional(boolean()),
+  bestEffort: optional(boolean()),
+  noFavicon: optional(boolean()),
+  metadata: optional(boolean()),
 });
 
 /**

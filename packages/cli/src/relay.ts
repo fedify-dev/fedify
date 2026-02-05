@@ -56,11 +56,17 @@ export const relayCommand = command(
           default: "mastodon",
         },
       ),
-      persistent: optional(
-        option("--persistent", string({ metavar: "PATH" }), {
-          description:
-            message`Path to SQLite database file for persistent storage. If not specified, uses in-memory storage which is lost when the server stops.`,
-        }),
+      persistent: bindConfig(
+        optional(
+          option("--persistent", string({ metavar: "PATH" }), {
+            description:
+              message`Path to SQLite database file for persistent storage. If not specified, uses in-memory storage which is lost when the server stops.`,
+          }),
+        ),
+        {
+          context: configContext,
+          key: (config) => config.relay?.persistent,
+        },
       ),
       port: bindConfig(
         option(
