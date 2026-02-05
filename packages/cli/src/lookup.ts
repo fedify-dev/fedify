@@ -52,11 +52,18 @@ const logger = getLogger(["fedify", "cli", "lookup"]);
 
 export const authorizedFetchOption = withDefault(
   object({
-    authorizedFetch: map(
-      flag("-a", "--authorized-fetch", {
-        description: message`Sign the request with an one-time key.`,
-      }),
-      () => true as const,
+    authorizedFetch: bindConfig(
+      map(
+        flag("-a", "--authorized-fetch", {
+          description: message`Sign the request with an one-time key.`,
+        }),
+        () => true as const,
+      ),
+      {
+        context: configContext,
+        key: (config) => config.lookup?.authorizedFetch as boolean,
+        default: false,
+      },
     ),
     firstKnock: withDefault(
       option(
@@ -75,19 +82,34 @@ export const authorizedFetchOption = withDefault(
   { authorizedFetch: false } as const,
 );
 
-const traverseOption = withDefault(
-  object({
-    traverse: flag("-t", "--traverse", {
-      description:
-        message`Traverse the given collection(s) to fetch all items.`,
-    }),
-    suppressErrors: option("-S", "--suppress-errors", {
-      description:
-        message`Suppress partial errors while traversing the collection.`,
-    }),
-  }),
-  { traverse: false } as const,
-);
+const traverseOption = object({
+  traverse: bindConfig(
+    withDefault(
+      flag("-t", "--traverse", {
+        description:
+          message`Traverse the given collection(s) to fetch all items.`,
+      }),
+      false,
+    ),
+    {
+      context: configContext,
+      key: (config) => config.lookup?.traverse as boolean,
+      default: false,
+    },
+  ),
+  suppressErrors: bindConfig(
+    optional(
+      option("-S", "--suppress-errors", {
+        description:
+          message`Suppress partial errors while traversing the collection.`,
+      }),
+    ),
+    {
+      context: configContext,
+      key: (config) => config.lookup?.suppressErrors,
+    },
+  ),
+});
 
 export const lookupCommand = command(
   "lookup",
@@ -104,28 +126,40 @@ export const lookupCommand = command(
         }),
         { min: 1 },
       ),
-      format: withDefault(
-        or(
-          map(
-            option("-r", "--raw", {
-              description: message`Print the fetched JSON-LD document as is.`,
-            }),
-            () => "raw" as const,
+      format: bindConfig(
+        withDefault(
+          or(
+            map(
+              option("-r", "--raw", {
+                description: message`Print the fetched JSON-LD document as is.`,
+              }),
+              () => "raw" as const,
+            ),
+            map(
+              option("-C", "--compact", {
+                description: message`Compact the fetched JSON-LD document.`,
+              }),
+              () => "compact" as const,
+            ),
+            map(
+              option("-e", "--expand", {
+                description: message`Expand the fetched JSON-LD document.`,
+              }),
+              () => "expand" as const,
+            ),
           ),
-          map(
-            option("-C", "--compact", {
-              description: message`Compact the fetched JSON-LD document.`,
-            }),
-            () => "compact" as const,
-          ),
-          map(
-            option("-e", "--expand", {
-              description: message`Expand the fetched JSON-LD document.`,
-            }),
-            () => "expand" as const,
-          ),
+          "default" as const,
         ),
-        "default" as const,
+        {
+          context: configContext,
+          key: (config) =>
+            config.lookup?.defaultFormat as
+              | "default"
+              | "raw"
+              | "compact"
+              | "expand",
+          default: "default",
+        },
       ),
       userAgent: bindConfig(
         optional(

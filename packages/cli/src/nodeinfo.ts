@@ -15,7 +15,6 @@ import {
   object,
   option,
   optional,
-  or,
   string,
   text,
 } from "@optique/core";
@@ -37,28 +36,46 @@ export const Jimp = createJimp({
   plugins: defaultPlugins,
 });
 
-const nodeInfoOption = optional(
-  or(
-    object({
-      raw: flag("-r", "--raw", {
-        description: message`Show NodeInfo document in the raw JSON format`,
-      }),
-    }),
-    object({
-      bestEffort: optional(flag("-b", "--best-effort", {
-        description:
-          message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
-      })),
-      noFavicon: optional(flag("--no-favicon", {
-        description: message`Disable fetching the favicon of the instance`,
-      })),
-      metadata: optional(flag("-m", "--metadata", {
-        description:
-          message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
-      })),
-    }),
+const nodeInfoOption = object({
+  raw: bindConfig(
+    optional(flag("-r", "--raw", {
+      description: message`Show NodeInfo document in the raw JSON format`,
+    })),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.raw,
+    },
   ),
-);
+  bestEffort: bindConfig(
+    optional(flag("-b", "--best-effort", {
+      description:
+        message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
+    })),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.bestEffort,
+    },
+  ),
+  noFavicon: bindConfig(
+    optional(flag("--no-favicon", {
+      description: message`Disable fetching the favicon of the instance`,
+    })),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.noFavicon,
+    },
+  ),
+  metadata: bindConfig(
+    optional(flag("-m", "--metadata", {
+      description:
+        message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
+    })),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.metadata,
+    },
+  ),
+});
 
 const userAgentOption = object({
   userAgent: bindConfig(
@@ -107,7 +124,7 @@ export async function runNodeInfo(
     URL.canParse(command.host) ? command.host : `https://${command.host}`,
   );
 
-  if ("raw" in command && command.raw) {
+  if (command.raw) {
     const nodeInfo = await getNodeInfo(url, {
       parse: "none",
       userAgent: command.userAgent,
@@ -124,16 +141,14 @@ export async function runNodeInfo(
     return;
   }
   const nodeInfo = await getNodeInfo(url, {
-    parse: "bestEffort" in command && command.bestEffort
-      ? "best-effort"
-      : "strict",
+    parse: command.bestEffort ? "best-effort" : "strict",
     userAgent: command.userAgent,
   });
   logger.debug("NodeInfo document: {nodeInfo}", { nodeInfo });
   if (nodeInfo == undefined) {
     spinner.fail("No NodeInfo document found or it is invalid.");
     printError(message`No NodeInfo document found or it is invalid.`);
-    if (!("bestEffort" in command && command.bestEffort)) {
+    if (!command.bestEffort) {
       printError(
         message`Use the -b/--best-effort option to try to parse the document anyway.`,
       );
@@ -144,7 +159,7 @@ export async function runNodeInfo(
   let layout: string[];
   let defaultWidth = 0;
 
-  if (!("noFavicon" in command && command.noFavicon)) {
+  if (!command.noFavicon) {
     spinner.text = "Fetching the favicon...";
     try {
       const faviconUrl = await getFaviconUrl(url, command.userAgent);
@@ -267,7 +282,7 @@ export async function runNodeInfo(
   }
 
   if (
-    "metadata" in command && command.metadata && nodeInfo.metadata != null &&
+    command.metadata && nodeInfo.metadata != null &&
     Object.keys(nodeInfo.metadata).length > 0
   ) {
     layout[next()] += colors.bold(colors.dim("Metadata:"));
