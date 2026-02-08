@@ -2,41 +2,44 @@ import type { Activity } from "@fedify/vocab";
 import { getStatusText } from "@poppanator/http-constants";
 import { getContextLoader } from "../docloader.ts";
 
-export async function renderRequest(request: Request): Promise<string> {
+export function renderRequest(request: Request): Promise<string> {
   // @ts-ignore: Work around `deno publish --dry-run` bug
   request = request.clone();
   const url = new URL(request.url);
-  let code = `${request.method} ${url.pathname + url.search}\n`;
-  for (const [key, value] of request.headers.entries()) {
-    code += `${capitalize(key)}: ${value}\n`;
-  }
-  let body: string;
-  try {
-    body = await request.text();
-  } catch (_) {
-    body = "[Failed to decode body; it may be binary.]";
-  }
-  code += `\n${body}`;
-  return code;
+  return render(
+    `${request.method} ${url.pathname + url.search}`,
+    request.headers,
+    request,
+  );
 }
 
-export async function renderResponse(response: Response): Promise<string> {
+export function renderResponse(response: Response): Promise<string> {
   response = response.clone();
-  let code = `${response.status} ${
+  const code = `${response.status} ${
     response.statusText === ""
       ? getStatusText(response.status)
       : response.statusText
-  }\n`;
-  for (const [key, value] of response.headers.entries()) {
+  }`;
+  return render(
+    code,
+    response.headers,
+    response,
+  );
+}
+
+async function render(
+  code: string,
+  headers: Headers,
+  body: Body,
+): Promise<string> {
+  code += "\n";
+  for (const [key, value] of headers.entries()) {
     code += `${capitalize(key)}: ${value}\n`;
   }
-  let body: string;
-  try {
-    body = await response.text();
-  } catch (_) {
-    body = "[Failed to decode body; it may be binary.]";
-  }
-  code += `\n${body}`;
+  const bodyText = await body.text().catch((_) =>
+    "[Failed to decode body; it may be binary.]"
+  );
+  code += `\n${bodyText}`;
   return code;
 }
 
