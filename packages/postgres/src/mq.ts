@@ -180,6 +180,12 @@ export class PostgresMessageQueue implements MessageQueue {
           WHERE id IN (SELECT id FROM candidate)
           RETURNING message, ordering_key;
         `.execute();
+        // Attach an abort handler that cancels the in-flight query.
+        // query.cancel() may reject the query promise even if the query
+        // has already resolved (race between resolution and abort), so
+        // we suppress the resulting "57014 canceling statement" rejection
+        // to avoid an unhandled promise rejection crashing the test runner.
+        query.catch(() => {});
         const cancel = query.cancel.bind(query);
         signal?.addEventListener("abort", cancel);
         for (const row of await query) {
