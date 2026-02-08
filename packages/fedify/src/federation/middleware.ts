@@ -648,7 +648,7 @@ export class FederationImpl<TContextData>
         tracerProvider: this.tracerProvider,
       });
       try {
-        this.onOutboxError?.(error as Error, activity);
+        await this.onOutboxError?.(error as Error, activity);
       } catch (error) {
         logger.error(
           "An unexpected error occurred in onError handler:\n{error}",
@@ -669,37 +669,39 @@ export class FederationImpl<TContextData>
             status: error.statusCode,
           },
         );
-        const ctx = this.#createContext(
-          new URL(message.baseUrl),
-          _,
-          {
-            documentLoader: this.documentLoaderFactory(loaderOptions),
-          },
-        );
-        try {
-          await this.outboxPermanentFailureHandler?.(ctx, {
-            inbox: new URL(message.inbox),
-            activity,
-            error,
-            statusCode: error.statusCode,
-            actorIds: (message.actorIds ?? []).flatMap((id) => {
-              try {
-                return [new URL(id)];
-              } catch {
-                logger.warn(
-                  "Invalid actorId URL in OutboxMessage: {id}",
-                  { id },
-                );
-                return [];
-              }
-            }),
-          });
-        } catch (handlerError) {
-          logger.error(
-            "An unexpected error occurred in " +
-              "outboxPermanentFailureHandler:\n{error}",
-            { ...logData, error: handlerError },
+        if (this.outboxPermanentFailureHandler != null) {
+          const ctx = this.#createContext(
+            new URL(message.baseUrl),
+            _,
+            {
+              documentLoader: this.documentLoaderFactory(loaderOptions),
+            },
           );
+          try {
+            await this.outboxPermanentFailureHandler(ctx, {
+              inbox: new URL(message.inbox),
+              activity,
+              error,
+              statusCode: error.statusCode,
+              actorIds: (message.actorIds ?? []).flatMap((id) => {
+                try {
+                  return [new URL(id)];
+                } catch {
+                  logger.warn(
+                    "Invalid actorId URL in OutboxMessage: {id}",
+                    { id },
+                  );
+                  return [];
+                }
+              }),
+            });
+          } catch (handlerError) {
+            logger.error(
+              "An unexpected error occurred in " +
+                "outboxPermanentFailureHandler:\n{error}",
+              { ...logData, error: handlerError },
+            );
+          }
         }
         return;
       }
