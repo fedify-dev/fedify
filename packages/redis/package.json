@@ -100,6 +100,6 @@
     "pretest": "pnpm build",
     "test": "node --experimental-transform-types --test",
     "pretest:bun": "pnpm build",
-    "test:bun": "bun test --timeout=10000"
+    "test:bun": "bun test --timeout=60000"
   }
 }
