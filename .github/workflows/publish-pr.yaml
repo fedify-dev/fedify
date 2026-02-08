@@ -149,7 +149,7 @@ jobs:
         head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
     # Don't know why, but the .gitignore list is not overridden by include list
     # in deno.json:
-    - run: rm src/vocab/.gitignore
+    - run: 'rm -f src/vocab/.gitignore || true'
       working-directory: ${{ github.workspace }}/packages/fedify/
     - name: Publish to JSR
       run: |
