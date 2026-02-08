@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { run } from "@optique/run";
 import { testInitCommand } from "../command.ts";
 import runTestInit from "./action.ts";

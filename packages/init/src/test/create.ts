@@ -70,7 +70,7 @@ function* genInitCommand(
   yield "deno";
   yield "run";
   yield "-A";
-  yield "src/mod.ts";
+  yield "src/test/execute.ts";
   yield "init";
   yield testDir;
   yield "-w";
