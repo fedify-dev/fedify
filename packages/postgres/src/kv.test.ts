@@ -32,6 +32,7 @@ function getStore(): {
 
 test("PostgresKvStore.initialize()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, tableName, store } = getStore();
   try {
     await store.initialize();
@@ -47,6 +48,7 @@ test("PostgresKvStore.initialize()", { skip: dbUrl == null }, async () => {
 
 test("PostgresKvStore.get()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, tableName, store } = getStore();
   try {
     await store.initialize();
@@ -70,6 +72,7 @@ test("PostgresKvStore.get()", { skip: dbUrl == null }, async () => {
 
 test("PostgresKvStore.set()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, tableName, store } = getStore();
   try {
     await store.set(["foo", "baz"], "baz");
@@ -111,6 +114,7 @@ test("PostgresKvStore.set()", { skip: dbUrl == null }, async () => {
 
 test("PostgresKvStore.delete()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, tableName, store } = getStore();
   try {
     await store.delete(["foo", "bar"]);
@@ -127,6 +131,7 @@ test("PostgresKvStore.delete()", { skip: dbUrl == null }, async () => {
 
 test("PostgresKvStore.drop()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, tableName, store } = getStore();
   try {
     await store.drop();
@@ -141,6 +146,7 @@ test("PostgresKvStore.drop()", { skip: dbUrl == null }, async () => {
 
 test("PostgresKvStore.list()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
+
   const { sql, store } = getStore();
   try {
     await store.set(["prefix", "a"], "value-a");
@@ -168,6 +174,7 @@ test(
   { skip: dbUrl == null },
   async () => {
     if (dbUrl == null) return; // Bun does not support skip option
+
     const { sql, tableName, store } = getStore();
     try {
       await store.initialize();
@@ -203,6 +210,7 @@ test(
   { skip: dbUrl == null },
   async () => {
     if (dbUrl == null) return; // Bun does not support skip option
+
     const { sql, store } = getStore();
     try {
       await store.set(["a"], "value-a");
@@ -226,6 +234,7 @@ test(
   { skip: dbUrl == null },
   async () => {
     if (dbUrl == null) return; // Bun does not support skip option
+
     const { sql, store } = getStore();
     try {
       await store.set(["a"], "value-a");

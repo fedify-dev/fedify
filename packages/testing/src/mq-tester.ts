@@ -88,6 +88,11 @@ export default async function testMessageQueue<
       messages.push(message);
     }, { signal: controller.signal });
 
+    // Give listeners time to establish their subscriptions (e.g.,
+    // PostgreSQL LISTEN) before enqueueing messages, so that NOTIFY
+    // signals are not lost:
+    await delay(1000);
+
     // Test: enqueue()
     await mq1.enqueue("Hello, world!");
     await waitFor(() => messages.length > 0, 15_000);
@@ -187,6 +192,10 @@ export default async function testMessageQueue<
         },
         { signal: orderController.signal },
       );
+
+      // Give listeners time to establish their subscriptions before
+      // enqueueing messages:
+      await delay(1000);
 
       // Enqueue messages with different ordering keys
       // Messages with the same key should be processed in order

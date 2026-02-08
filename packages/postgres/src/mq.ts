@@ -65,6 +65,7 @@ export class PostgresMessageQueue implements MessageQueue {
   readonly #channelName: string;
   readonly #pollIntervalMs: number;
   #initialized: boolean;
+  #initPromise?: Promise<void>;
   #driverSerializesJson = false;
 
   constructor(
@@ -268,16 +269,36 @@ export class PostgresMessageQueue implements MessageQueue {
         break;
       }
     };
+    // Debounce poll() to prevent concurrent executions from NOTIFY floods.
+    // If poll() is already running, a follow-up run is scheduled instead of
+    // spawning concurrent poll() calls.
+    let polling = false;
+    let pollAgain = false;
+    const debouncedPoll = async () => {
+      if (polling) {
+        pollAgain = true;
+        return;
+      }
+      polling = true;
+      try {
+        do {
+          pollAgain = false;
+          await poll();
+        } while (pollAgain && !signal?.aborted);
+      } finally {
+        polling = false;
+      }
+    };
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
     const listen = await this.#sql.listen(
       this.#channelName,
       async (delay) => {
         const duration = Temporal.Duration.from(delay);
         const durationMs = duration.total("millisecond");
-        if (durationMs < 1) await poll();
-        else timeouts.add(setTimeout(poll, durationMs));
+        if (durationMs < 1) await debouncedPoll();
+        else timeouts.add(setTimeout(debouncedPoll, durationMs));
       },
-      poll,
+      debouncedPoll,
     );
     signal?.addEventListener("abort", () => {
       listen.unlisten();
@@ -294,7 +315,7 @@ export class PostgresMessageQueue implements MessageQueue {
         timeouts.add(timeout);
       });
       if (timeout != null) timeouts.delete(timeout);
-      await poll();
+      await debouncedPoll();
     }
     await new Promise<void>((resolve) => {
       signal?.addEventListener("abort", () => resolve());
@@ -305,8 +326,12 @@ export class PostgresMessageQueue implements MessageQueue {
   /**
    * Initializes the message queue table if it does not already exist.
    */
-  async initialize(): Promise<void> {
-    if (this.#initialized) return;
+  initialize(): Promise<void> {
+    if (this.#initialized) return Promise.resolve();
+    return (this.#initPromise ??= this.#doInitialize());
+  }
+
+  async #doInitialize(): Promise<void> {
     logger.debug("Initializing the message queue table {tableName}...", {
       tableName: this.#tableName,
     });

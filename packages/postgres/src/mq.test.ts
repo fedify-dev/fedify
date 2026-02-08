@@ -9,6 +9,8 @@ import postgres from "postgres";
 const dbUrl = process.env.POSTGRES_URL;
 
 test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
+  if (dbUrl == null) return; // Bun does not support skip option
+
   const tableName = getRandomKey("message");
   const channelName = getRandomKey("channel");
   const sqls: postgres.Sql[] = [];
@@ -56,6 +58,8 @@ nodeTest(
   "PostgresMessageQueue advisory lock release",
   { skip: dbUrl == null },
   async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
     const tableName = getRandomKey("message");
     const channelName = getRandomKey("channel");
 
