@@ -913,8 +913,8 @@ option in the *Federation* section for more details.
 > Even if no handler is registered, permanent failures will still skip retries.
 
 > [!TIP]
-> If any errors are thrown in the permanent failure handler, they are silently
-> caught and ignored, similar to `onOutboxError`.
+> If any errors are thrown in the permanent failure handler, they are caught,
+> logged, and ignored, similar to `onOutboxError`.
 
 
 HTTP Signatures

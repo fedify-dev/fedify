@@ -244,7 +244,8 @@ export type OutboxErrorHandler = (
  * (including retries), this handler is called only once for permanent failures,
  * after which delivery is not retried.
  *
- * If any errors are thrown in this callback, they are ignored.
+ * If any errors are thrown in this callback, they are caught, logged,
+ * and ignored.
  *
  * @template TContextData The context data to pass to the {@link Context}.
  * @param context The context.
