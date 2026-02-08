@@ -339,6 +339,33 @@ Defaults to `"rfc9421"`.
 [HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 
+### `permanentFailureStatusCodes`
+
+*This API is available since Fedify 2.0.0.*
+
+HTTP status codes that should be treated as permanent delivery failures.
+When an inbox returns one of these codes, the delivery will not be retried
+and the permanent failure handler (if registered via
+`~Federatable.setOutboxPermanentFailureHandler()`) will be called.
+
+By default, `[404, 410]`.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, InProcessMessageQueue } from "@fedify/fedify";
+
+const federation = createFederation({
+  // Omitted for brevity; see the related section for details.
+  queue: new InProcessMessageQueue(),
+  permanentFailureStatusCodes: [404, 410, 451],
+});
+~~~~
+
+See also the
+[*Permanent delivery failure handling*](./send.md#permanent-delivery-failure-handling)
+section in the *Sending activities* page for how to register a handler for
+permanent delivery failures.
+
 ### `outboxRetryPolicy`
 
 *This API is available since Fedify 0.12.0.*

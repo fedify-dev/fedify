@@ -27,6 +27,7 @@ import type {
   NodeInfoDispatcher,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
+  OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
@@ -106,6 +107,7 @@ export class FederationBuilderImpl<TContextData>
   inboxListeners?: InboxListenerSet<TContextData>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
+  outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
@@ -185,6 +187,7 @@ export class FederationBuilderImpl<TContextData>
     f.inboxListeners = this.inboxListeners?.clone();
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.sharedInboxKeyDispatcher = this.sharedInboxKeyDispatcher;
+    f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
     f.idempotencyStrategy = this.idempotencyStrategy;
     return f;
   }
@@ -1533,6 +1536,12 @@ export class FederationBuilderImpl<TContextData>
     const path = this.router.build(`collection:${routeName}`, values) ??
       this.router.build(`orderedCollection:${routeName}`, values);
     return path;
+  }
+
+  setOutboxPermanentFailureHandler(
+    handler: OutboxPermanentFailureHandler<TContextData>,
+  ): void {
+    this.outboxPermanentFailureHandler = handler;
   }
 
   /**

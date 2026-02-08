@@ -263,9 +263,12 @@ async function sendActivityInternal(
         error,
       },
     );
-    throw new Error(
+    throw new SendActivityError(
+      inbox,
+      response.status,
       `Failed to send activity ${activityId} to ${inbox.href} ` +
         `(${response.status} ${response.statusText}):\n${error}`,
+      error,
     );
   }
 
@@ -275,4 +278,47 @@ async function sendActivityInternal(
     "activitypub.inbox.url": inbox.href,
     "activitypub.activity.id": activityId ?? "",
   });
+}
+
+/**
+ * An error that is thrown when an activity fails to send to a remote inbox.
+ * It contains structured information about the failure, including the HTTP
+ * status code, the inbox URL, and the response body.
+ * @since 2.0.0
+ */
+export class SendActivityError extends Error {
+  /**
+   * The inbox URL that the activity was being sent to.
+   */
+  readonly inbox: URL;
+
+  /**
+   * The HTTP status code returned by the inbox.
+   */
+  readonly statusCode: number;
+
+  /**
+   * The response body from the inbox, if any.
+   */
+  readonly responseBody: string;
+
+  /**
+   * Creates a new {@link SendActivityError}.
+   * @param inbox The inbox URL.
+   * @param statusCode The HTTP status code.
+   * @param message The error message.
+   * @param responseBody The response body.
+   */
+  constructor(
+    inbox: URL,
+    statusCode: number,
+    message: string,
+    responseBody: string,
+  ) {
+    super(message);
+    this.name = "SendActivityError";
+    this.inbox = inbox;
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
+  }
 }

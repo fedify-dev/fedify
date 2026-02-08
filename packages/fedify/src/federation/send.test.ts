@@ -16,6 +16,7 @@ import {
   assert,
   assertEquals,
   assertFalse,
+  assertInstanceOf,
   assertNotEquals,
   assertRejects,
 } from "@std/assert";
@@ -29,7 +30,7 @@ import {
   rsaPublicKey2,
 } from "../testing/keys.ts";
 
-import { extractInboxes, sendActivity } from "./send.ts";
+import { extractInboxes, sendActivity, SendActivityError } from "./send.ts";
 
 test("extractInboxes()", () => {
   const recipients: Actor[] = [
@@ -257,6 +258,85 @@ test("sendActivity()", async (t) => {
         "https://example.com/inbox2 (500 Internal Server Error):\n" +
         "something went wrong",
     );
+  });
+
+  await t.step("failure throws SendActivityError", async () => {
+    const activity: unknown = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person",
+    };
+    try {
+      await sendActivity({
+        activity,
+        activityId: "https://example.com/activity",
+        keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        inbox: new URL("https://example.com/inbox2"),
+      });
+      assert(false, "Should have thrown");
+    } catch (e) {
+      assertInstanceOf(e, SendActivityError);
+      assertEquals(e.statusCode, 500);
+      assertEquals(e.inbox, new URL("https://example.com/inbox2"));
+      assertEquals(e.responseBody, "something went wrong");
+    }
+  });
+
+  fetchMock.post("https://example.com/inbox-gone", {
+    status: 410,
+    body: "Gone",
+  });
+
+  await t.step("410 Gone throws SendActivityError", async () => {
+    const activity: unknown = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person",
+    };
+    try {
+      await sendActivity({
+        activity,
+        activityId: "https://example.com/activity",
+        keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        inbox: new URL("https://example.com/inbox-gone"),
+      });
+      assert(false, "Should have thrown");
+    } catch (e) {
+      assertInstanceOf(e, SendActivityError);
+      assertEquals(e.statusCode, 410);
+      assertEquals(e.inbox, new URL("https://example.com/inbox-gone"));
+      assertEquals(e.responseBody, "Gone");
+    }
+  });
+
+  fetchMock.post("https://example.com/inbox-notfound", {
+    status: 404,
+    body: "Not Found",
+  });
+
+  await t.step("404 Not Found throws SendActivityError", async () => {
+    const activity: unknown = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person",
+    };
+    try {
+      await sendActivity({
+        activity,
+        activityId: "https://example.com/activity",
+        keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        inbox: new URL("https://example.com/inbox-notfound"),
+      });
+      assert(false, "Should have thrown");
+    } catch (e) {
+      assertInstanceOf(e, SendActivityError);
+      assertEquals(e.statusCode, 404);
+      assertEquals(e.inbox, new URL("https://example.com/inbox-notfound"));
+      assertEquals(e.responseBody, "Not Found");
+    }
   });
 
   fetchMock.hardReset();

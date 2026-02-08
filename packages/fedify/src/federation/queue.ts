@@ -43,6 +43,7 @@ export interface OutboxMessage {
   readonly activityType: string;
   readonly inbox: string;
   readonly sharedInbox: boolean;
+  readonly actorIds?: readonly string[];
   readonly started: string;
   readonly attempt: number;
   readonly headers: Readonly<Record<string, string>>;

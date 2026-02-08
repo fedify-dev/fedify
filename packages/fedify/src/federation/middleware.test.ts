@@ -1880,6 +1880,286 @@ test("FederationImpl.processQueuedTask()", async (t) => {
   });
 });
 
+test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
+  fetchMock.spyGlobal();
+
+  fetchMock.post("https://gone.example/inbox", {
+    status: 410,
+    body: "Gone",
+  });
+  fetchMock.post("https://notfound.example/inbox", {
+    status: 404,
+    body: "Not Found",
+  });
+  fetchMock.post("https://error.example/inbox", {
+    status: 500,
+    body: "Internal Server Error",
+  });
+  fetchMock.post("https://legal.example/inbox", {
+    status: 451,
+    body: "Unavailable For Legal Reasons",
+  });
+
+  interface PermanentFailureSetup {
+    federation: FederationImpl<void>;
+    queuedMessages: Message[];
+  }
+
+  function setup(
+    options: {
+      permanentFailureStatusCodes?: readonly number[];
+      nativeRetrial?: boolean;
+    } = {},
+  ): PermanentFailureSetup {
+    const kv = new MemoryKvStore();
+    const queuedMessages: Message[] = [];
+    const queue: MessageQueue = {
+      ...(options.nativeRetrial ? { nativeRetrial: true } : {}),
+      enqueue(message, _options) {
+        queuedMessages.push(message);
+        return Promise.resolve();
+      },
+      listen(_handler, _options) {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv,
+      queue,
+      ...(options.permanentFailureStatusCodes
+        ? { permanentFailureStatusCodes: options.permanentFailureStatusCodes }
+        : {}),
+    });
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+    return { federation, queuedMessages };
+  }
+
+  function createOutboxMessage(
+    inbox: string,
+    activityId: string,
+    actorIds?: string[],
+  ): OutboxMessage {
+    return {
+      type: "outbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com",
+      keys: [],
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: activityId,
+        actor: "https://example.com/users/alice",
+        object: { type: "Note", content: "test" },
+      },
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      inbox,
+      sharedInbox: false,
+      ...(actorIds != null ? { actorIds } : {}),
+      started: new Date().toISOString(),
+      attempt: 0,
+      headers: {},
+      traceContext: {},
+    };
+  }
+
+  await t.step("410 Gone triggers permanent failure handler", async () => {
+    const { federation, queuedMessages } = setup();
+    let handlerCalled = false;
+    let handlerValues: Record<string, unknown> = {};
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      handlerCalled = true;
+      handlerValues = { ...values };
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage(
+        "https://gone.example/inbox",
+        "https://example.com/activity/1",
+        [
+          "https://gone.example/users/bob",
+          "https://gone.example/users/charlie",
+        ],
+      ),
+    );
+    assert(handlerCalled, "Permanent failure handler should be called");
+    assertEquals(
+      handlerValues.inbox,
+      new URL("https://gone.example/inbox"),
+    );
+    assertEquals(handlerValues.statusCode, 410);
+    assertInstanceOf(handlerValues.activity, vocab.Create);
+    assertEquals(handlerValues.actorIds, [
+      new URL("https://gone.example/users/bob"),
+      new URL("https://gone.example/users/charlie"),
+    ]);
+    // Should NOT be re-enqueued for retry
+    assertEquals(queuedMessages, []);
+  });
+
+  await t.step("404 Not Found triggers permanent failure handler", async () => {
+    const { federation, queuedMessages } = setup();
+    let handlerCalled = false;
+    let handlerStatusCode = 0;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      handlerCalled = true;
+      handlerStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage(
+        "https://notfound.example/inbox",
+        "https://example.com/activity/2",
+        ["https://notfound.example/users/bob"],
+      ),
+    );
+    assert(handlerCalled, "Permanent failure handler should be called");
+    assertEquals(handlerStatusCode, 404);
+    // Should NOT be re-enqueued for retry
+    assertEquals(queuedMessages, []);
+  });
+
+  await t.step(
+    "500 error does NOT trigger permanent failure handler",
+    async () => {
+      const { federation, queuedMessages } = setup();
+      let handlerCalled = false;
+      federation.setOutboxPermanentFailureHandler(() => {
+        handlerCalled = true;
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage(
+          "https://error.example/inbox",
+          "https://example.com/activity/3",
+          ["https://error.example/users/bob"],
+        ),
+      );
+      assertFalse(
+        handlerCalled,
+        "Permanent failure handler should NOT be called",
+      );
+      // Should be re-enqueued for retry (normal retry behavior)
+      assertEquals(queuedMessages.length, 1);
+      assertEquals((queuedMessages[0] as OutboxMessage).attempt, 1);
+    },
+  );
+
+  await t.step("custom permanentFailureStatusCodes", async () => {
+    const { federation, queuedMessages } = setup({
+      permanentFailureStatusCodes: [404, 410, 451],
+    });
+    let handlerCalled = false;
+    let handlerStatusCode = 0;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      handlerCalled = true;
+      handlerStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage(
+        "https://legal.example/inbox",
+        "https://example.com/activity/4",
+        ["https://legal.example/users/bob"],
+      ),
+    );
+    assert(handlerCalled, "Permanent failure handler should be called for 451");
+    assertEquals(handlerStatusCode, 451);
+    // Should NOT be re-enqueued for retry
+    assertEquals(queuedMessages, []);
+  });
+
+  await t.step("handler exception is caught and logged", async () => {
+    const { federation, queuedMessages } = setup();
+    federation.setOutboxPermanentFailureHandler(() => {
+      throw new Error("Handler error that should be ignored");
+    });
+
+    // Should not throw even though the handler throws
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage(
+        "https://gone.example/inbox",
+        "https://example.com/activity/5",
+        ["https://gone.example/users/bob"],
+      ),
+    );
+    // Should NOT be re-enqueued for retry
+    assertEquals(queuedMessages, []);
+  });
+
+  await t.step(
+    "permanent failure skips retry without handler registered",
+    async () => {
+      const { federation, queuedMessages } = setup();
+      // No handler registered
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage(
+          "https://gone.example/inbox",
+          "https://example.com/activity/6",
+          [],
+        ),
+      );
+      // Should NOT be re-enqueued for retry even without a handler
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "nativeRetrial: permanent failure does not re-throw",
+    async () => {
+      const { federation, queuedMessages } = setup({
+        nativeRetrial: true,
+      });
+      let handlerCalled = false;
+      federation.setOutboxPermanentFailureHandler(() => {
+        handlerCalled = true;
+      });
+
+      // Should NOT throw (unlike non-permanent failures with nativeRetrial)
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage(
+          "https://gone.example/inbox",
+          "https://example.com/activity/7",
+          ["https://gone.example/users/bob"],
+        ),
+      );
+      assert(handlerCalled, "Permanent failure handler should be called");
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "actorIds missing from message defaults to empty array",
+    async () => {
+      const { federation, queuedMessages } = setup();
+      let handlerActorIds: readonly URL[] = [];
+      federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+        handlerActorIds = values.actorIds;
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        // No actorIds field (simulating old message format)
+        createOutboxMessage(
+          "https://gone.example/inbox",
+          "https://example.com/activity/8",
+        ),
+      );
+      assertEquals(handlerActorIds, []);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  fetchMock.hardReset();
+});
+
 test("ContextImpl.lookupObject()", async (t) => {
   // Note that this test only checks if allowPrivateAddress option affects
   // the ContextImpl.lookupObject() method.  Other aspects of the method are

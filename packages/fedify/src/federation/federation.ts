@@ -31,6 +31,7 @@ import type {
   ObjectAuthorizePredicate,
   ObjectDispatcher,
   OutboxErrorHandler,
+  OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
@@ -677,6 +678,25 @@ export interface Federatable<TContextData> {
     RequestContext<TContextData>,
     TContextData
   >;
+
+  /**
+   * Registers a handler for permanent delivery failures.
+   *
+   * This handler is called when an inbox returns an HTTP status code
+   * that indicates permanent failure (`410 Gone`, `404 Not Found`, etc.),
+   * allowing the application to clean up followers that are no longer
+   * reachable.
+   *
+   * Unlike `onOutboxError`, which is called for every delivery failure
+   * (including retries), this handler is called only once for permanent
+   * failures, after which delivery is not retried.
+   *
+   * @param handler A callback to handle permanent failures.
+   * @since 2.0.0
+   */
+  setOutboxPermanentFailureHandler(
+    handler: OutboxPermanentFailureHandler<TContextData>,
+  ): void;
 }
 
 /**
@@ -878,6 +898,18 @@ export interface FederationOptions<TContextData> {
    * If any errors are thrown in this callback, they are ignored.
    */
   onOutboxError?: OutboxErrorHandler;
+
+  /**
+   * HTTP status codes that should be treated as permanent delivery failures.
+   * When an inbox returns one of these codes, the delivery will not be retried
+   * and the permanent failure handler (if registered via
+   * {@link Federatable.setOutboxPermanentFailureHandler}) will be called.
+   *
+   * By default, `[404, 410]`.
+   *
+   * @since 2.0.0
+   */
+  permanentFailureStatusCodes?: readonly number[];
 
   /**
    * The time window for verifying HTTP Signatures of incoming requests.  If the
