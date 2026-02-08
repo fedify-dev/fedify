@@ -3,7 +3,7 @@ import type { Link } from "@fedify/webfinger";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
-import type { SenderKeyPair } from "./send.ts";
+import type { SendActivityError, SenderKeyPair } from "./send.ts";
 
 /**
  * A callback that dispatches a {@link NodeInfo} object.
@@ -259,7 +259,7 @@ export type OutboxPermanentFailureHandler<TContextData> = (
     /** The activity that failed to deliver. */
     readonly activity: Activity;
     /** The error that occurred. */
-    readonly error: Error;
+    readonly error: SendActivityError;
     /** The HTTP status code returned by the inbox. */
     readonly statusCode: number;
     /**

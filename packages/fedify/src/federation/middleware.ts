@@ -682,7 +682,17 @@ export class FederationImpl<TContextData>
             activity,
             error,
             statusCode: error.statusCode,
-            actorIds: (message.actorIds ?? []).map((id) => new URL(id)),
+            actorIds: (message.actorIds ?? []).flatMap((id) => {
+              try {
+                return [new URL(id)];
+              } catch {
+                logger.warn(
+                  "Invalid actorId URL in OutboxMessage: {id}",
+                  { id },
+                );
+                return [];
+              }
+            }),
           });
         } catch (handlerError) {
           logger.error(
