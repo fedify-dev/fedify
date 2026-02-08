@@ -166,7 +166,8 @@ export class PostgresMessageQueue implements MessageQueue {
 
         // Step 1: Try to process messages without ordering key first.
         // These don't need advisory locks.
-        const query = this.#sql`
+        for (
+          const row of await this.#sql`
           WITH candidate AS (
             SELECT id, ordering_key
             FROM ${this.#sql(this.#tableName)}
@@ -179,21 +180,12 @@ export class PostgresMessageQueue implements MessageQueue {
           DELETE FROM ${this.#sql(this.#tableName)}
           WHERE id IN (SELECT id FROM candidate)
           RETURNING message, ordering_key;
-        `.execute();
-        // Attach an abort handler that cancels the in-flight query.
-        // query.cancel() may reject the query promise even if the query
-        // has already resolved (race between resolution and abort), so
-        // we suppress the resulting "57014 canceling statement" rejection
-        // to avoid an unhandled promise rejection crashing the test runner.
-        query.catch(() => {});
-        const cancel = query.cancel.bind(query);
-        signal?.addEventListener("abort", cancel);
-        for (const row of await query) {
+        `
+        ) {
           if (signal?.aborted) return;
           await handler(row.message);
           processed = true;
         }
-        signal?.removeEventListener("abort", cancel);
 
         // If we processed a message without ordering key, continue the loop
         if (processed) continue;
