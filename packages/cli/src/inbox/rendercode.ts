@@ -6,7 +6,7 @@ export function renderRequest(request: Request): Promise<string> {
   // @ts-ignore: Work around `deno publish --dry-run` bug
   request = request.clone();
   const url = new URL(request.url);
-  return render(
+  return renderMessage(
     `${request.method} ${url.pathname + url.search}`,
     request.headers,
     request,
@@ -20,14 +20,14 @@ export function renderResponse(response: Response): Promise<string> {
       ? getStatusText(response.status)
       : response.statusText
   }`;
-  return render(
+  return renderMessage(
     code,
     response.headers,
     response,
   );
 }
 
-async function render(
+async function renderMessage(
   code: string,
   headers: Headers,
   body: Body,
