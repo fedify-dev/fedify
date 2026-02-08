@@ -1,5 +1,4 @@
 import type { Message } from "@optique/core";
-import type { RequiredNotNull } from "../utils.ts";
 import type { InitCommand } from "./command.ts";
 import type {
   KV_STORE,
@@ -7,6 +6,7 @@ import type {
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
+import type { RequiredNotNull } from "./utils.ts";
 
 export type PackageManager = typeof PACKAGE_MANAGER[number];
 export type WebFramework = typeof WEB_FRAMEWORK[number];

@@ -1,5 +1,4 @@
 import { pipe } from "@fxts/core";
-import { replace } from "../utils.ts";
 import { PACKAGE_MANAGER } from "./const.ts";
 import {
   getInstruction,
@@ -10,6 +9,7 @@ import {
   readTemplate,
 } from "./lib.ts";
 import type { WebFrameworks } from "./types.ts";
+import { replace } from "./utils.ts";
 
 const webFrameworks: WebFrameworks = {
   hono: {

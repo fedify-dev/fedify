@@ -1,7 +1,7 @@
 import { always, filter, map, pipe, tap, unless } from "@fxts/core";
 import { optionNames } from "@optique/core";
 import { join } from "node:path";
-import { printMessage } from "../../utils.ts";
+import { printMessage } from "../utils.ts";
 import createTestApp, { filterOptions, generateTestCases } from "./create.ts";
 import runServerAndLookupUser from "./lookup.ts";
 import type { InitTestData } from "./types.ts";

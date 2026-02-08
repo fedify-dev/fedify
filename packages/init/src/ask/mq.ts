@@ -1,6 +1,6 @@
 import { pipe, tap, throwError, unless, when } from "@fxts/core/index.js";
 import { select } from "@inquirer/prompts";
-import { printErrorMessage } from "../../utils.ts";
+import { printErrorMessage } from "../utils.ts";
 import { MESSAGE_QUEUE } from "../const.ts";
 import { isTest, messageQueues } from "../lib.ts";
 import type { MessageQueue, PackageManager } from "../types.ts";

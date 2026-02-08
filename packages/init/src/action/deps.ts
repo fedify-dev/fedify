@@ -8,7 +8,7 @@ import {
   when,
 } from "@fxts/core";
 import { join as joinPath } from "node:path";
-import { merge, replace } from "../../utils.ts";
+import { merge, replace } from "../utils.ts";
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { PACKAGES_PATH } from "./const.ts";

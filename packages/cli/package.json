@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:*",
+    "@fedify/init": "workspace:*",
     "@fedify/relay": "workspace:*",
     "@fedify/sqlite": "workspace:*",
     "@fedify/vocab": "workspace:*",

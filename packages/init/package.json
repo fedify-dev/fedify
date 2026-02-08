@@ -1,0 +1,67 @@
+{
+  "name": "@fedify/init",
+  "version": "2.0.0",
+  "description": "Project initializer for Fedify",
+  "keywords": [
+    "fedify",
+    "activitypub",
+    "cli",
+    "init"
+  ],
+  "homepage": "https://fedify.dev/",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/init"
+  },
+  "type": "module",
+  "main": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "@fxts/core": "catalog:",
+    "@inquirer/prompts": "^7.8.4",
+    "@logtape/logtape": "catalog:",
+    "@optique/core": "^0.9.0",
+    "@optique/run": "^0.9.0",
+    "chalk": "^5.6.2",
+    "es-toolkit": "catalog:",
+    "inquirer-toggle": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/init... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test-init": "deno task test-init"
+  }
+}

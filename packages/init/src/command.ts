@@ -14,13 +14,13 @@ import {
   or,
 } from "@optique/core";
 import { path } from "@optique/run";
-import { debugOption } from "../globals.ts";
 import {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
+import { debugOption } from "./globals.ts";
 
 const webFramework = optional(option(
   "-w",

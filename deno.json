@@ -11,6 +11,7 @@
     "./packages/fixture",
     "./packages/fresh",
     "./packages/h3",
+    "./packages/init",
     "./packages/hono",
     "./packages/koa",
     "./packages/lint",
@@ -162,7 +163,7 @@
       "./packages"
     ],
     "exclude": [
-      "./packages/cli/src/init/templates/**"
+      "./packages/init/src/templates/**"
     ]
   }
 }

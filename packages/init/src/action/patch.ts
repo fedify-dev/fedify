@@ -1,7 +1,7 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readFile } from "node:fs/promises";
-import { formatJson, merge, replaceAll, set } from "../../utils.ts";
+import { formatJson, merge, replaceAll, set } from "../utils.ts";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import {

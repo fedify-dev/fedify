@@ -1,5 +1,5 @@
 import { apply, pipe } from "@fxts/core";
-import { CommandError, runSubCommand } from "../../utils.ts";
+import { CommandError, runSubCommand } from "../utils.ts";
 import type { InitCommandData } from "../types.ts";
 
 const installDependencies = (data: InitCommandData) =>

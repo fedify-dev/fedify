@@ -3,14 +3,6 @@ import { values } from "@optique/core";
 import { appendFile, mkdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import process from "node:process";
-import {
-  CommandError,
-  type GeneratedType,
-  printErrorMessage,
-  printMessage,
-  product,
-  runSubCommand,
-} from "../../utils.ts";
 import packageManagers from "../json/pm.json" with { type: "json" };
 import { kvStores, messageQueues } from "../lib.ts";
 import type {
@@ -19,6 +11,14 @@ import type {
   PackageManager,
   WebFramework,
 } from "../types.ts";
+import {
+  CommandError,
+  type GeneratedType,
+  printErrorMessage,
+  printMessage,
+  product,
+  runSubCommand,
+} from "../utils.ts";
 import webFrameworks from "../webframeworks.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
 
@@ -34,7 +34,7 @@ async (
     const result = await runSubCommand(
       toArray(genInitCommand(testDir, dry, options)),
       {
-        cwd: join(import.meta.dirname!, "../../.."),
+        cwd: join(import.meta.dirname!, "../.."),
         stdio: ["ignore", "pipe", "pipe"],
       },
     );

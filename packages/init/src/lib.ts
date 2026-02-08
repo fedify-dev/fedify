@@ -17,8 +17,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import process from "node:process";
-import metadata from "../../deno.json" with { type: "json" };
-import { isNotFoundError, runSubCommand } from "../utils.ts";
+import metadata from "../deno.json" with { type: "json" };
 import kv from "./json/kv.json" with { type: "json" };
 import mq from "./json/mq.json" with { type: "json" };
 import pm from "./json/pm.json" with { type: "json" };
@@ -30,6 +29,7 @@ import type {
   PackageManagers,
   Runtimes,
 } from "./types.ts";
+import { isNotFoundError, runSubCommand } from "./utils.ts";
 import webFrameworks from "./webframeworks.ts";
 
 export const PACKAGE_VERSION = metadata.version;

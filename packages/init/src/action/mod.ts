@@ -1,9 +1,9 @@
 import { pipe, tap, unless, when } from "@fxts/core";
 import process from "node:process";
-import { set } from "../../utils.ts";
 import askOptions from "../ask/mod.ts";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
+import { set } from "../utils.ts";
 import { makeDirIfHyd } from "./dir.ts";
 import recommendConfigEnv from "./env.ts";
 import installDependencies from "./install.ts";
@@ -20,20 +20,19 @@ import setData from "./set.ts";
 import { hasCommand, isDry } from "./utils.ts";
 
 /**
- *             options: InitCommand
- *                ├ drawDinosaur
- *          ┌─────┴──────┐
- *          │ askOptions │ InitCommand -> InitCommandOptions
- *          └─────┬──────┘
- *                ├ noticeOptions
- *           ┌────┴────┐
- *           │ setData │ InitCommandOptions -> InitCommandData
- *           └────┬────┘
- *              ┌─┴─┐ isDry
- * handleDryRun ┤   ├ handleHydRun
- *              └─┬─┘
- *                ├ recommendConfigEnv
- *                ├ noticeHowToRun
+ * Execution flow of the `runInit` function:
+ *
+ * 1. Receives options of type `InitCommand`.
+ * 2. Prints a dinosaur ASCII art via `drawDinosaur`.
+ * 3. Prompts the user for options via `askOptions`,
+ *    converting `InitCommand` into `InitCommandOptions`.
+ * 4. Displays the selected options via `noticeOptions`.
+ * 5. Converts `InitCommandOptions` into `InitCommandData` via `setData`.
+ * 6. Branches based on `isDry`:
+ *    - If dry run, executes `handleDryRun`.
+ *    - Otherwise, executes `handleHydRun`.
+ * 7. Recommends configuration environment via `recommendConfigEnv`.
+ * 8. Shows how to run the project via `noticeHowToRun`.
  */
 const runInit = (options: InitCommand) =>
   pipe(

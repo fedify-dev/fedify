@@ -5,7 +5,7 @@ import {
   printErrorMessage,
   printMessage,
   type RequiredNotNull,
-} from "../../utils.ts";
+} from "../utils.ts";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
 

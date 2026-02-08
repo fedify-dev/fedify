@@ -30,7 +30,11 @@
     "fedify-cli-*.zip"
   ],
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts", "scripts/"]
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts",
+      "scripts/"
+    ]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
@@ -58,27 +62,8 @@
       "dependencies": [
         "codegen"
       ]
-    },
-    "test-init": {
-      "command": "FEDIFY_TEST_MODE=true deno run --allow-all src/init/test/mod.ts test-init",
-      "dependencies": [
-        "codegen"
-      ]
     }
   },
-  "fmt": {
-    "exclude": [
-      "src/init/templates/**"
-    ]
-  },
-  "lint": {
-    "exclude": [
-      "src/init/templates/**"
-    ]
-  },
-  "test": {
-    "exclude": [
-      "src/init/test/**"
-    ]
-  }
+  "fmt": {},
+  "lint": {}
 }

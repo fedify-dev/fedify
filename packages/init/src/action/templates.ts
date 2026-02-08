@@ -1,6 +1,6 @@
 import { entries, join, map, pipe } from "@fxts/core";
 import { toMerged } from "es-toolkit";
-import { replace } from "../../utils.ts";
+import { replace } from "../utils.ts";
 import { readTemplate } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 

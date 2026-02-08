@@ -2,7 +2,7 @@ import { pipe } from "@fxts/core";
 import { existsSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { basename, normalize } from "node:path";
-import { merge, set } from "../../utils.ts";
+import { merge, set } from "../utils.ts";
 import { kvStores, messageQueues } from "../lib.ts";
 import type {
   InitCommandData,

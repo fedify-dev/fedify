@@ -1,5 +1,5 @@
 import { entries, forEach, pipeLazy, tap, toArray, when } from "@fxts/core";
-import { notEmpty } from "../../utils.ts";
+import { notEmpty } from "../utils.ts";
 import type { InitCommandIo } from "../types.ts";
 import { noticeConfigEnv, noticeEnvKeyValue } from "./notice.ts";
 

@@ -1,7 +1,7 @@
 import { rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { printMessage } from "../../utils.ts";
+import { printMessage } from "../utils.ts";
 
 export const genRunId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;

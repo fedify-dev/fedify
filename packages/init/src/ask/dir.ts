@@ -3,7 +3,7 @@ import { input } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { printError } from "@optique/run";
 import toggle from "inquirer-toggle";
-import { getCwd, getOsType, runSubCommand } from "../../utils.ts";
+import { getCwd, getOsType, runSubCommand } from "../utils.ts";
 import { isDirectoryEmpty, logger } from "../lib.ts";
 
 /**

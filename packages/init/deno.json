@@ -1,0 +1,51 @@
+{
+  "name": "@fedify/init",
+  "version": "2.0.0",
+  "license": "MIT",
+  "exports": "./src/mod.ts",
+  "imports": {
+    "@fedify/init/": "./src/",
+    "@fxts/core": "npm:@fxts/core@^1.21.1",
+    "@inquirer/prompts": "npm:@inquirer/prompts@^7.8.4",
+    "@logtape/logtape": "jsr:@logtape/logtape@^2.0.0",
+    "@optique/core": "jsr:@optique/core@^0.9.0",
+    "@optique/run": "jsr:@optique/run@^0.9.0",
+    "chalk": "npm:chalk@^5.6.2",
+    "es-toolkit": "npm:es-toolkit@^1.43.0",
+    "inquirer-toggle": "npm:inquirer-toggle@^1.0.1"
+  },
+  "exclude": [
+    "dist/",
+    "node_modules/"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/**/*.ts",
+    "run": "deno run --allow-all src/mod.ts",
+    "test-init": "FEDIFY_TEST_MODE=true deno run --allow-all src/test/mod.ts test-init"
+  },
+  "fmt": {
+    "exclude": [
+      "src/templates/**"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      "src/templates/**"
+    ],
+    "rules": {
+      "exclude": [
+        "no-slow-types"
+      ]
+    }
+  },
+  "test": {
+    "exclude": [
+      "src/init/test/**"
+    ]
+  }
+}

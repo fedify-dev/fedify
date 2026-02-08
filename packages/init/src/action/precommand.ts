@@ -1,4 +1,4 @@
-import { CommandError, exit, runSubCommand } from "../../utils.ts";
+import { CommandError, exit, runSubCommand } from "../utils.ts";
 import type { InitCommandData } from "../types.ts";
 
 /**

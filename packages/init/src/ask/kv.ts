@@ -1,6 +1,6 @@
 import { pipe, tap, throwError, unless, when } from "@fxts/core/index.js";
 import { select } from "@inquirer/prompts";
-import { printErrorMessage } from "../../utils.ts";
+import { printErrorMessage } from "../utils.ts";
 import { KV_STORE } from "../const.ts";
 import { isTest, kvStores } from "../lib.ts";
 import type { KvStore, PackageManager } from "../types.ts";

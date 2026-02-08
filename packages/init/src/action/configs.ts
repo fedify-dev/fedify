@@ -10,7 +10,7 @@ import {
 import { uniq } from "es-toolkit";
 import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
-import { merge } from "../../utils.ts";
+import { merge } from "../utils.ts";
 import biome from "../json/biome.json" with { type: "json" };
 import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
   type: "json",

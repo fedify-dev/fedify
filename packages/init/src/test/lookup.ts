@@ -6,7 +6,7 @@ import { createWriteStream } from "node:fs";
 import { join, sep } from "node:path";
 import process from "node:process";
 import type Stream from "node:stream";
-import { printErrorMessage, printMessage, runSubCommand } from "../../utils.ts";
+import { printErrorMessage, printMessage, runSubCommand } from "../utils.ts";
 import { getDevCommand } from "../lib.ts";
 import type {
   KvStore,
