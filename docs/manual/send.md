@@ -833,6 +833,89 @@ const federation = createFederation({
 > activity, because the delivery is retried according to the backoff schedule
 > until it succeeds or reaches the maximum retry count.
 
+### Permanent delivery failure handling
+
+*This API is available since Fedify 2.0.0.*
+
+When a remote inbox returns an HTTP status code that indicates a permanent
+failure (such as `410 Gone` or `404 Not Found`), there is no point in retrying
+the delivery.  Fedify automatically skips retries for permanent failures and
+allows you to handle them by registering a permanent failure handler:
+
+~~~~ typescript twoslash
+// @noErrors: 2304 2345
+import { createFederation, InProcessMessageQueue } from "@fedify/fedify";
+
+const federation = createFederation({
+  // Omitted for brevity; see the related section for details.
+  queue: new InProcessMessageQueue(),
+});
+
+federation.setOutboxPermanentFailureHandler(async (ctx, values) => {
+  console.warn(
+    `Inbox ${values.inbox.href} permanently failed ` +
+    `with status ${values.statusCode}`
+  );
+  // Remove followers associated with this inbox:
+  for (const actorId of values.actorIds) {
+    await removeFollower(actorId);
+  }
+});
+~~~~
+
+The handler receives the following information:
+
+`values.inbox`
+:   The inbox URL that returned the permanent failure.
+
+`values.activity`
+:   The `Activity` object that failed to deliver.
+
+`values.error`
+:   The `SendActivityError` that was thrown.
+
+`values.statusCode`
+:   The HTTP status code returned by the inbox (e.g., `404` or `410`).
+
+`values.actorIds`
+:   The actor IDs that were supposed to receive the activity at this inbox.
+    When `preferSharedInbox: true` is used, a single inbox URL may represent
+    multiple followers.
+
+By default, the following HTTP status codes are treated as permanent failures:
+
+ -  `404 Not Found` — the inbox no longer exists
+ -  `410 Gone` — the inbox is explicitly marked as gone
+
+You can customize which status codes are treated as permanent failures using
+the `permanentFailureStatusCodes` option in `FederationOptions`:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, InProcessMessageQueue } from "@fedify/fedify";
+
+const federation = createFederation({
+  // Omitted for brevity; see the related section for details.
+  queue: new InProcessMessageQueue(),
+  permanentFailureStatusCodes: [404, 410, 451],
+});
+~~~~
+
+See also the
+[`permanentFailureStatusCodes`](./federation.md#permanentfailurestatuscodes)
+option in the *Federation* section for more details.
+
+> [!NOTE]
+> The permanent failure handler is called only once for each permanent
+> failure, and delivery is not retried afterwards.  This is different from
+> `onOutboxError`, which can be called multiple times due to retries.
+>
+> Even if no handler is registered, permanent failures will still skip retries.
+
+> [!TIP]
+> If any errors are thrown in the permanent failure handler, they are silently
+> caught and ignored, similar to `onOutboxError`.
+
 
 HTTP Signatures
 ---------------

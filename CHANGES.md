@@ -123,6 +123,22 @@ To be released.
         with the same `orderingKey` are guaranteed to be delivered in order
         to each recipient server.
 
+ -  Added `Federatable.setOutboxPermanentFailureHandler()` method to handle
+    permanent delivery failures (such as `410 Gone` or `404 Not Found`) when
+    sending activities to remote inboxes.  This allows applications to clean
+    up unreachable followers and avoid future delivery attempts to permanently
+    failed inboxes.  [[#548], [#559]]
+
+ -  Added `permanentFailureStatusCodes` option to `FederationOptions` to
+    configure which HTTP status codes are treated as permanent delivery
+    failures.  By default, `404` and `410` are treated as permanent failures.
+    [[#548], [#559]]
+
+ -  Added `SendActivityError` class, a structured error that is thrown when
+    an activity fails to send to a remote inbox.  It includes the HTTP status
+    code, the inbox URL, and the response body, making it easier to
+    programmatically handle delivery errors.  [[#548], [#559]]
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -144,6 +160,8 @@ To be released.
 [#538]: https://github.com/fedify-dev/fedify/issues/538
 [#540]: https://github.com/fedify-dev/fedify/pull/540
 [#544]: https://github.com/fedify-dev/fedify/pull/544
+[#548]: https://github.com/fedify-dev/fedify/issues/548
+[#559]: https://github.com/fedify-dev/fedify/pull/559
 [#560]: https://github.com/fedify-dev/fedify/issues/560
 
 ### @fedify/cli

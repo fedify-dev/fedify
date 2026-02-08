@@ -352,6 +352,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     };
   }
 
+  setOutboxPermanentFailureHandler(_handler: any): void {
+    // Mock implementation - no-op
+  }
+
   // deno-lint-ignore require-await
   async startQueue(
     contextData: TContextData,

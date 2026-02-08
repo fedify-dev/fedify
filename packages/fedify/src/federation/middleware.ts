@@ -106,7 +106,12 @@ import type {
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import { RouterError } from "./router.ts";
-import { extractInboxes, sendActivity, type SenderKeyPair } from "./send.ts";
+import {
+  extractInboxes,
+  sendActivity,
+  SendActivityError,
+  type SenderKeyPair,
+} from "./send.ts";
 import { handleWebFinger } from "./webfinger.ts";
 
 /**
@@ -230,6 +235,7 @@ export class FederationImpl<TContextData>
   allowPrivateAddress: boolean;
   userAgent?: GetUserAgentOptions | string;
   onOutboxError?: OutboxErrorHandler;
+  permanentFailureStatusCodes: readonly number[];
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
@@ -369,6 +375,8 @@ export class FederationImpl<TContextData>
           }));
     this.userAgent = userAgent;
     this.onOutboxError = options.onOutboxError;
+    this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
+      [404, 410];
     this.signatureTimeWindow = options.signatureTimeWindow ?? { hours: 1 };
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
@@ -647,6 +655,45 @@ export class FederationImpl<TContextData>
           { ...logData, error },
         );
       }
+
+      // Check if the error is a permanent delivery failure
+      if (
+        error instanceof SendActivityError &&
+        this.permanentFailureStatusCodes.includes(error.statusCode)
+      ) {
+        logger.warn(
+          "Permanent delivery failure for activity {activityId} to " +
+            "{inbox} ({status}); not retrying.",
+          {
+            ...logData,
+            status: error.statusCode,
+          },
+        );
+        const ctx = this.#createContext(
+          new URL(message.baseUrl),
+          _,
+          {
+            documentLoader: this.documentLoaderFactory(loaderOptions),
+          },
+        );
+        try {
+          await this.outboxPermanentFailureHandler?.(ctx, {
+            inbox: new URL(message.inbox),
+            activity,
+            error,
+            statusCode: error.statusCode,
+            actorIds: (message.actorIds ?? []).map((id) => new URL(id)),
+          });
+        } catch (handlerError) {
+          logger.error(
+            "An unexpected error occurred in " +
+              "outboxPermanentFailureHandler:\n{error}",
+            { ...logData, error: handlerError },
+          );
+        }
+        return;
+      }
+
       // Skip retry logic if the message queue backend handles retries automatically
       if (this.outboxQueue?.nativeRetrial) {
         logger.error(
@@ -1115,6 +1162,7 @@ export class FederationImpl<TContextData>
         activityType: getTypeId(activity).href,
         inbox,
         sharedInbox: inboxes[inbox].sharedInbox,
+        actorIds: [...inboxes[inbox].actorIds],
         started: new Date().toISOString(),
         attempt: 0,
         headers: collectionSync == null ? {} : {

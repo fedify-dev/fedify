@@ -233,6 +233,43 @@ export type OutboxErrorHandler = (
 ) => void | Promise<void>;
 
 /**
+ * A callback that handles permanent delivery failures when sending activities
+ * to remote inboxes.
+ *
+ * This handler is called when an inbox returns an HTTP status code that
+ * indicates permanent failure (such as `410 Gone` or `404 Not Found`),
+ * allowing the application to clean up followers that are no longer reachable.
+ *
+ * Unlike {@link OutboxErrorHandler}, which is called for every delivery failure
+ * (including retries), this handler is called only once for permanent failures,
+ * after which delivery is not retried.
+ *
+ * If any errors are thrown in this callback, they are ignored.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The context.
+ * @param values The delivery failure information.
+ * @since 2.0.0
+ */
+export type OutboxPermanentFailureHandler<TContextData> = (
+  context: Context<TContextData>,
+  values: {
+    /** The inbox URL that failed. */
+    readonly inbox: URL;
+    /** The activity that failed to deliver. */
+    readonly activity: Activity;
+    /** The error that occurred. */
+    readonly error: Error;
+    /** The HTTP status code returned by the inbox. */
+    readonly statusCode: number;
+    /**
+     * The actor IDs that were supposed to receive the activity at this inbox.
+     */
+    readonly actorIds: readonly URL[];
+  },
+) => void | Promise<void>;
+
+/**
  * A callback that determines if a request is authorized or not.
  *
  * @template TContextData The context data to pass to the {@link Context}.
