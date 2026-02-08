@@ -2125,7 +2125,7 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     assertEquals(queuedMessages, []);
   });
 
-  await t.step("handler exception is silently ignored", async () => {
+  await t.step("handler exception is caught and logged", async () => {
     const kv = new MemoryKvStore();
     const queuedMessages: Message[] = [];
     const queue: MessageQueue = {
