@@ -196,6 +196,16 @@ export class PostgresMessageQueue implements MessageQueue {
         // We do this separately to ensure pg_try_advisory_lock is called
         // exactly once per attempt.
         // We loop through candidates until we find one we can lock, or run out.
+        //
+        // IMPORTANT: Advisory locks are session-level (i.e., tied to a specific
+        // PostgreSQL connection).  Since the postgres.js driver uses a
+        // connection pool, consecutive queries may run on different pooled
+        // connections.  If pg_try_advisory_lock and pg_advisory_unlock execute
+        // on different connections, the unlock silently fails ("you don't own a
+        // lock of type ExclusiveLock") and the lock leaks permanently, blocking
+        // all future processing of that ordering key.  To prevent this, we use
+        // sql.reserve() to pin a single connection for the entire
+        // lock → delete → handler → unlock sequence.
         const attemptedOrderingKeys = new Set<string>();
         while (!signal?.aborted) {
           // Find a candidate with ordering key that we haven't tried yet
@@ -225,39 +235,46 @@ export class PostgresMessageQueue implements MessageQueue {
           const orderingKey = candidate.ordering_key as string;
           attemptedOrderingKeys.add(orderingKey);
 
-          // Try to acquire the advisory lock (exactly once)
-          const lockResult = await this.#sql`
-            SELECT pg_try_advisory_lock(
-              hashtext(${this.#tableName}),
-              hashtext(${orderingKey})
-            ) AS acquired
-          `;
+          // Reserve a dedicated connection so that the advisory lock and
+          // unlock are guaranteed to run on the same connection:
+          const reserved = await this.#sql.reserve();
+          try {
+            // Try to acquire the advisory lock (exactly once)
+            const lockResult = await reserved`
+              SELECT pg_try_advisory_lock(
+                hashtext(${this.#tableName}),
+                hashtext(${orderingKey})
+              ) AS acquired
+            `;
 
-          if (lockResult[0].acquired) {
-            try {
-              // We have the lock, now delete and process the message
-              const deleteResult = await this.#sql`
-                DELETE FROM ${this.#sql(this.#tableName)}
-                WHERE id = ${candidateId}
-                RETURNING message, ordering_key
-              `;
+            if (lockResult[0].acquired) {
+              try {
+                // We have the lock, now delete and process the message
+                const deleteResult = await reserved`
+                  DELETE FROM ${reserved(this.#tableName)}
+                  WHERE id = ${candidateId}
+                  RETURNING message, ordering_key
+                `;
 
-              for (const row of deleteResult) {
-                if (signal?.aborted) return;
-                await handler(row.message);
-                processed = true;
+                for (const row of deleteResult) {
+                  if (signal?.aborted) return;
+                  await handler(row.message);
+                  processed = true;
+                }
+              } finally {
+                // Always release the advisory lock on the SAME connection
+                await reserved`
+                  SELECT pg_advisory_unlock(
+                    hashtext(${this.#tableName}),
+                    hashtext(${orderingKey})
+                  )
+                `;
               }
-            } finally {
-              // Always release the advisory lock
-              await this.#sql`
-                SELECT pg_advisory_unlock(
-                  hashtext(${this.#tableName}),
-                  hashtext(${orderingKey})
-                )
-              `;
+              // If we processed a message, continue the outer loop
+              if (processed) break;
             }
-            // If we processed a message, continue the outer loop
-            if (processed) break;
+          } finally {
+            reserved.release();
           }
           // Lock not acquired, try next candidate with different ordering key
         }

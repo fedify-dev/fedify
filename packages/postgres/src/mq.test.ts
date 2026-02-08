@@ -363,4 +363,141 @@ nodeTest(
   },
 );
 
+// Regression test for advisory lock leak due to connection pool.
+//
+// PostgreSQL advisory locks are session-level: pg_try_advisory_lock() binds
+// the lock to the physical connection that runs the query.  The postgres.js
+// driver uses a connection pool internally, so consecutive queries may run on
+// *different* pooled connections.  When pg_try_advisory_lock() and
+// pg_advisory_unlock() execute on different connections, the unlock silently
+// fails (PostgreSQL WARNING: "you don't own a lock of type ExclusiveLock")
+// and the lock leaks permanently, blocking all future processing for that
+// ordering key.
+//
+// This test deterministically reproduces the bug by:
+// 1. Enqueueing ordering key messages and processing them with a listener
+//    while simultaneously saturating the connection pool with concurrent
+//    queries, forcing the pool to rotate connections between the lock and
+//    unlock calls.
+// 2. After all messages are processed, explicitly checking that NO advisory
+//    locks remain held for the ordering keys used.
+//
+// The pool saturation technique (concurrent pg_sleep queries) ensures that
+// lock() and unlock() are almost always routed to different connections,
+// making the test fail deterministically without the fix (sql.reserve()).
+//
+// See: https://github.com/fedify-dev/fedify/issues/538
+nodeTest(
+  "PostgresMessageQueue advisory lock not leaked across pooled connections",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    // Use a SMALL pool (max: 3) so that concurrent pg_sleep queries can
+    // easily saturate it and force connection rotation.
+    const sql = postgres(dbUrl!, { max: 3 });
+    const sqlCheck = postgres(dbUrl!);
+
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    try {
+      await mq.initialize();
+
+      // Enqueue several messages with ordering keys.  Multiple messages per
+      // key ensures the poll() loop calls lock→delete→unlock repeatedly.
+      const keyA = "pool-leak-key-A";
+      const keyB = "pool-leak-key-B";
+      for (let i = 1; i <= 3; i++) {
+        await mq.enqueue({ key: keyA, value: i }, { orderingKey: keyA });
+        await mq.enqueue({ key: keyB, value: i }, { orderingKey: keyB });
+      }
+
+      const processed: { key: string | null; value: number }[] = [];
+      const controller = new AbortController();
+
+      // Start a listener that processes messages while we saturate the pool.
+      const listening = mq.listen(
+        (msg: { key: string | null; value: number }) => {
+          processed.push(msg);
+        },
+        { signal: controller.signal },
+      );
+
+      // Continuously saturate the connection pool with concurrent queries.
+      // This forces postgres.js to use all available pooled connections,
+      // making it highly likely that the advisory lock and unlock queries
+      // land on different connections.
+      let saturating = true;
+      const saturate = async () => {
+        while (saturating) {
+          try {
+            await Promise.all([
+              sql`SELECT pg_sleep(0.01)`,
+              sql`SELECT pg_sleep(0.01)`,
+            ]);
+          } catch {
+            // Ignore errors from pool closing
+            break;
+          }
+        }
+      };
+      const saturationTask = saturate();
+
+      // Wait for all 6 messages to be processed
+      const start = Date.now();
+      while (processed.length < 6 && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      saturating = false;
+      controller.abort();
+      await listening;
+      await saturationTask;
+
+      deepStrictEqual(
+        processed.length,
+        6,
+        "All 6 messages should be processed",
+      );
+
+      // THE KEY ASSERTION: verify that no advisory locks remain held.
+      // If the lock leaked (lock/unlock on different pooled connections),
+      // pg_try_advisory_lock from a separate session will return false.
+      for (const key of [keyA, keyB]) {
+        const lockResult = await sqlCheck`
+          SELECT pg_try_advisory_lock(
+            hashtext(${tableName}),
+            hashtext(${key})
+          ) AS acquired
+        `;
+        deepStrictEqual(
+          lockResult[0].acquired,
+          true,
+          `Advisory lock for ordering key "${key}" should be fully released ` +
+            "(leaked lock indicates lock/unlock ran on different pooled " +
+            "connections)",
+        );
+        // Release the lock we just acquired for the check
+        await sqlCheck`
+          SELECT pg_advisory_unlock(
+            hashtext(${tableName}),
+            hashtext(${key})
+          )
+        `;
+      }
+    } finally {
+      await mq.drop();
+      await sql.end();
+      await sqlCheck.end();
+    }
+  },
+);
+
 // cspell: ignore sqls
