@@ -401,6 +401,18 @@ To be released.
      -  The new table schema is created when `PostgresMessageQueue.initialize()`
         is called on a fresh database.
 
+ -  Fixed a race condition in `PostgresMessageQueue.initialize()` where
+    concurrent calls from `listen()` and `enqueue()` would run DDL
+    statements in parallel, causing redundant table creation and
+    `ALTER TABLE` operations.  The initialization promise is now cached
+    so that concurrent callers share the same work.
+
+ -  Fixed `PostgresMessageQueue.listen()` spawning many concurrent
+    `poll()` calls when a burst of `NOTIFY` signals arrived (e.g., from
+    bulk enqueue of 100 messages), causing excessive database contention.
+    Poll executions are now serialized so that at most one runs at a time,
+    with subsequent requests queued after the current one finishes.
+
 ### @fedify/amqp
 
  -  `AmqpMessageQueue` now supports the `orderingKey` option to ensure

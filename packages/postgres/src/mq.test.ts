@@ -158,4 +158,209 @@ nodeTest(
   },
 );
 
+// Regression test for concurrent initialize() calls.  When listen() and
+// enqueue() are called without awaiting listen() first, both code paths enter
+// initialize() concurrently.  Without proper promise caching, the DDL runs
+// multiple times in parallel, which can cause race conditions.
+//
+// This test verifies that concurrent initialization is safe: start listen()
+// (which internally calls initialize()) without awaiting it, then immediately
+// call enqueue() (which also calls initialize()).  The message must still be
+// delivered successfully.
+nodeTest(
+  "PostgresMessageQueue concurrent initialization",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    try {
+      // Do NOT call initialize() ahead of time — let listen() and enqueue()
+      // race to initialize concurrently.
+      const messages: string[] = [];
+      const controller = new AbortController();
+
+      // Start listen() WITHOUT awaiting — it will call initialize() internally
+      const listening = mq.listen(
+        (message: string) => {
+          messages.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // Immediately enqueue — this also calls initialize(), racing with
+      // listen()'s initialize().  With the bug (no promise caching), both
+      // would run DDL concurrently.
+      await mq.enqueue("concurrent-init-test");
+
+      // Wait for the message to be delivered
+      const start = Date.now();
+      while (messages.length < 1 && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        messages,
+        ["concurrent-init-test"],
+        "Message should be delivered despite concurrent initialization",
+      );
+
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for poll serialization ensuring no messages are lost.
+// When multiple messages are enqueued BEFORE listen() starts, there are no
+// NOTIFY signals to trigger immediate polling — the listener must discover
+// all messages through its periodic poll cycle alone.
+//
+// This is a deterministic test: by inserting messages before listen() starts,
+// we completely eliminate NOTIFY timing as a variable.  If poll() ever skips
+// messages (e.g., due to incorrect serialization or debouncing), this test
+// will fail consistently.
+nodeTest(
+  "PostgresMessageQueue processes pre-enqueued messages via polling",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    try {
+      await mq.initialize();
+
+      // Enqueue messages BEFORE starting the listener — no NOTIFY will be
+      // received by the listener for these messages.
+      const count = 20;
+      for (let i = 0; i < count; i++) {
+        await mq.enqueue(`pre-enqueued-${i}`);
+      }
+
+      // Now start listening — messages can only be found through polling
+      const messages: string[] = [];
+      const controller = new AbortController();
+
+      const listening = mq.listen(
+        (message: string) => {
+          messages.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // With pollInterval=100ms, 20 messages should be processed well
+      // within 15 seconds even without NOTIFY
+      const start = Date.now();
+      while (messages.length < count && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        new Set(messages),
+        new Set(Array.from({ length: count }, (_, i) => `pre-enqueued-${i}`)),
+        `All ${count} pre-enqueued messages should be processed via polling`,
+      );
+
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for concurrent enqueue + listen not dropping messages.
+// This test fires off multiple enqueue() calls concurrently while a listener
+// is active.  Each enqueue sends a NOTIFY, creating a burst of notifications
+// that exercises the poll serialization logic.
+//
+// With the old debouncing bug, concurrent NOTIFY handlers would set a
+// "pollAgain" flag and return immediately without waiting for the actual
+// poll to complete.  This could cause messages to be missed if the timing
+// was wrong.  The promise-chain serialization ensures every NOTIFY results
+// in an actual poll() execution.
+nodeTest(
+  "PostgresMessageQueue concurrent enqueue with active listener",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    try {
+      await mq.initialize();
+
+      const messages: string[] = [];
+      const controller = new AbortController();
+
+      const listening = mq.listen(
+        (message: string) => {
+          messages.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // Wait for the listener to establish its LISTEN subscription
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Fire off many enqueue() calls concurrently — each one sends a
+      // NOTIFY, creating a burst that stresses the serialization logic
+      const count = 30;
+      const enqueues: Promise<void>[] = [];
+      for (let i = 0; i < count; i++) {
+        enqueues.push(mq.enqueue(`concurrent-${i}`));
+      }
+      await Promise.all(enqueues);
+
+      // Wait for all messages to be processed
+      const start = Date.now();
+      while (messages.length < count && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        new Set(messages),
+        new Set(Array.from({ length: count }, (_, i) => `concurrent-${i}`)),
+        `All ${count} concurrently enqueued messages should be processed`,
+      );
+
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cspell: ignore sqls

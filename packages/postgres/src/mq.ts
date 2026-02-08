@@ -269,25 +269,16 @@ export class PostgresMessageQueue implements MessageQueue {
         break;
       }
     };
-    // Debounce poll() to prevent concurrent executions from NOTIFY floods.
-    // If poll() is already running, a follow-up run is scheduled instead of
-    // spawning concurrent poll() calls.
-    let polling = false;
-    let pollAgain = false;
-    const debouncedPoll = async () => {
-      if (polling) {
-        pollAgain = true;
-        return;
-      }
-      polling = true;
-      try {
-        do {
-          pollAgain = false;
-          await poll();
-        } while (pollAgain && !signal?.aborted);
-      } finally {
-        polling = false;
-      }
+    // Serialize poll() so that at most one runs at a time, preventing
+    // concurrent database contention from NOTIFY floods (e.g., 100 bulk
+    // messages each sending a NOTIFY).  Callers that arrive while poll()
+    // is running will wait for the current run to finish and then start a
+    // new one, rather than spawning concurrent poll() calls.
+    let pollLock: Promise<void> = Promise.resolve();
+    const serializedPoll = () => {
+      const next = pollLock.then(poll);
+      pollLock = next.catch(() => {});
+      return next;
     };
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
     const listen = await this.#sql.listen(
@@ -295,10 +286,10 @@ export class PostgresMessageQueue implements MessageQueue {
       async (delay) => {
         const duration = Temporal.Duration.from(delay);
         const durationMs = duration.total("millisecond");
-        if (durationMs < 1) await debouncedPoll();
-        else timeouts.add(setTimeout(debouncedPoll, durationMs));
+        if (durationMs < 1) await serializedPoll();
+        else timeouts.add(setTimeout(serializedPoll, durationMs));
       },
-      debouncedPoll,
+      serializedPoll,
     );
     signal?.addEventListener("abort", () => {
       listen.unlisten();
@@ -315,7 +306,7 @@ export class PostgresMessageQueue implements MessageQueue {
         timeouts.add(timeout);
       });
       if (timeout != null) timeouts.delete(timeout);
-      await debouncedPoll();
+      await serializedPoll();
     }
     await new Promise<void>((resolve) => {
       signal?.addEventListener("abort", () => resolve());
