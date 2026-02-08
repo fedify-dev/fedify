@@ -11,6 +11,7 @@ export default [
     external: [/^node:/],
   }),
   defineConfig({
+    outDir: "dist/tests",
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
       .map((f) => f.replace(sep, "/")),
     format: ["esm", "cjs"],

@@ -43,11 +43,11 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "node --experimental-transform-types --test",
+    "test": "node --experimental-transform-types --test 'src/**/*.test.ts'",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test",
     "pretest:update_snapshots": "pnpm build",
-    "test:update_snapshots": "node --experimental-transform-types --test --test-update-snapshots",
+    "test:update_snapshots": "node --experimental-transform-types --test --test-update-snapshots 'src/**/*.test.ts'",
     "pretest:bun:update_snapshots": "pnpm build",
     "test:bun:update_snapshots": "bun test --update-snapshots"
   },
