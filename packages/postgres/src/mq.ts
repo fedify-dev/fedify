@@ -361,7 +361,13 @@ export class PostgresMessageQueue implements MessageQueue {
     } catch (error) {
       if (
         !(error instanceof postgres.PostgresError &&
-          error.constraint_name === "pg_type_typname_nsp_index")
+          (error.constraint_name === "pg_type_typname_nsp_index" ||
+            // When multiple PostgresMessageQueue instances sharing the same
+            // table name initialize concurrently (e.g., mq1 and mq2 in
+            // tests), the concurrent CREATE TABLE IF NOT EXISTS statements
+            // can race and one may fail with 42P07 (duplicate_table).
+            // This is safe to ignore because the table already exists.
+            error.code === "42P07"))
       ) {
         logger.error("Failed to initialize the message queue table: {error}", {
           error,
