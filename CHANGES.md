@@ -77,6 +77,12 @@ To be released.
      -  Updated import paths throughout the codebase to reflect the new module
         organization.
 
+ -  Deprecated the `@fedify/fedify/runtime` module in favor of the new
+    `@fedify/vocab-runtime` package.  The `@fedify/fedify/runtime` module now
+    re-exports all exports from `@fedify/vocab-runtime` for backward
+    compatibility, but will be removed in a future version.  Please migrate
+    to `@fedify/vocab-runtime` directly.  [[#560]]
+
  -  The `KvCacheParameters.rules` option's type became
     `[string | URL | URLPattern, Temporal.Duration | Temporal.DurationLike][]`
     (was `[string | URL | URLPattern, Temporal.Duration][]`).
@@ -138,6 +144,7 @@ To be released.
 [#538]: https://github.com/fedify-dev/fedify/issues/538
 [#540]: https://github.com/fedify-dev/fedify/pull/540
 [#544]: https://github.com/fedify-dev/fedify/pull/544
+[#560]: https://github.com/fedify-dev/fedify/issues/560
 
 ### @fedify/cli
 
@@ -300,6 +307,16 @@ To be released.
     The previous `@fedify/fedify/vocab` module is now deprecated and
     re-exports all exports from this package for backward compatibility.
     [[#437], [#517] by ChanHaeng Lee]
+
+ -  `@fedify/vocab` now re-exports `LanguageString`, `DocumentLoader`,
+    `GetUserAgentOptions`, and `RemoteDocument` from `@fedify/vocab-runtime`
+    so that downstream consumers do not need to depend on
+    `@fedify/vocab-runtime` directly.  [[#560]]
+
+ -  Fixed `@fedify/vocab-runtime` being bundled inline into `@fedify/vocab`'s
+    ESM/CJS output instead of being kept as an external dependency.  This
+    caused `instanceof LanguageString` checks to fail because two distinct
+    `LanguageString` classes existed at runtime.  [[#560]]
 
 ### @fedify/sqlite
 

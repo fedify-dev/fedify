@@ -46,13 +46,13 @@
     "@opentelemetry/api": "catalog:",
     "asn1js": "catalog:",
     "es-toolkit": "catalog:",
+    "@fedify/vocab-runtime": "workspace:*",
     "jsonld": "^9.0.0",
     "multicodec": "^3.2.1",
     "pkijs": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:*",
-    "@fedify/vocab-runtime": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
     "fetch-mock": "catalog:",

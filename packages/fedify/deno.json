@@ -8,6 +8,7 @@
     "./federation": "./src/federation/mod.ts",
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",
+    "./runtime": "./src/runtime/mod.ts",
     "./sig": "./src/sig/mod.ts",
     "./utils": "./src/utils/mod.ts",
     "./vocab": "./src/vocab/mod.ts"

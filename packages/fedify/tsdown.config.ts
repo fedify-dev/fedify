@@ -10,6 +10,7 @@ export default [
       "./src/federation/mod.ts",
       "./src/nodeinfo/mod.ts",
       "./src/otel/mod.ts",
+      "./src/runtime/mod.ts",
       "./src/utils/mod.ts",
       "./src/sig/mod.ts",
       "./src/vocab/mod.ts",

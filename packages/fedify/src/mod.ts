@@ -45,5 +45,6 @@
 export * from "./compat/mod.ts";
 export * from "./federation/mod.ts";
 export * from "./nodeinfo/mod.ts";
+export * from "./runtime/mod.ts";
 export * from "./sig/mod.ts";
 export * from "./utils/mod.ts";

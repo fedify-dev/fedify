@@ -88,6 +88,16 @@
       "require": "./dist/otel/mod.cjs",
       "default": "./dist/otel/mod.js"
     },
+    "./runtime": {
+      "types": {
+        "import": "./dist/runtime/mod.d.ts",
+        "require": "./dist/runtime/mod.d.cts",
+        "default": "./dist/runtime/mod.d.ts"
+      },
+      "import": "./dist/runtime/mod.js",
+      "require": "./dist/runtime/mod.cjs",
+      "default": "./dist/runtime/mod.js"
+    },
     "./sig": {
       "types": {
         "import": "./dist/sig/mod.d.ts",
