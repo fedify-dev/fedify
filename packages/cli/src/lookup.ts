@@ -34,7 +34,6 @@ import {
   optionNames,
   or,
   string,
-  withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
@@ -44,69 +43,74 @@ import { configContext } from "./config.ts";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { configureLogging } from "./log.ts";
-import { debugOption, tunnelServiceOption } from "./options.ts";
+import {
+  debugOption,
+  tunnelServiceOption,
+  userAgentOption,
+} from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = withDefault(
-  object({
-    authorizedFetch: bindConfig(
-      map(
-        flag("-a", "--authorized-fetch", {
-          description: message`Sign the request with an one-time key.`,
-        }),
-        () => true as const,
-      ),
-      {
-        context: configContext,
-        key: (config) => config.lookup?.authorizedFetch as boolean,
-        default: false,
-      },
-    ),
-    firstKnock: withDefault(
-      option(
-        "--first-knock",
-        choice(["draft-cavage-http-signatures-12", "rfc9421"]),
-        {
-          description: message`The first-knock spec for ${
-            optionNames(["-a", "--authorized-fetch"])
-          }. It is used for the double-knocking technique.`,
-        },
-      ),
-      "draft-cavage-http-signatures-12" as const,
-    ),
-    tunnelService: tunnelServiceOption,
-  }),
-  { authorizedFetch: false } as const,
-);
-
-const traverseOption = object({
-  traverse: bindConfig(
-    withDefault(
-      flag("-t", "--traverse", {
-        description:
-          message`Traverse the given collection(s) to fetch all items.`,
+export const authorizedFetchOption = object({
+  authorizedFetch: bindConfig(
+    map(
+      flag("-a", "--authorized-fetch", {
+        description: message`Sign the request with an one-time key.`,
       }),
-      false,
+      () => true as const,
     ),
     {
       context: configContext,
-      key: (config) => config.lookup?.traverse as boolean,
+      key: (config) => config.lookup?.authorizedFetch ?? false,
+      default: false,
+    },
+  ),
+  firstKnock: bindConfig(
+    option(
+      "--first-knock",
+      choice(["draft-cavage-http-signatures-12", "rfc9421"]),
+      {
+        description: message`The first-knock spec for ${
+          optionNames(["-a", "--authorized-fetch"])
+        }. It is used for the double-knocking technique.`,
+      },
+    ),
+    {
+      context: configContext,
+      key: (config) =>
+        (config.lookup?.firstKnock ??
+          "draft-cavage-http-signatures-12") as
+            | "draft-cavage-http-signatures-12"
+            | "rfc9421",
+      default: "draft-cavage-http-signatures-12" as const,
+    },
+  ),
+  tunnelService: tunnelServiceOption,
+});
+
+const traverseOption = object({
+  traverse: bindConfig(
+    flag("-t", "--traverse", {
+      description:
+        message`Traverse the given collection(s) to fetch all items.`,
+    }),
+    {
+      context: configContext,
+      key: (config) => config.lookup?.traverse ?? false,
       default: false,
     },
   ),
   suppressErrors: bindConfig(
-    optional(
-      option("-S", "--suppress-errors", {
-        description:
-          message`Suppress partial errors while traversing the collection.`,
-      }),
-    ),
+    option("-S", "--suppress-errors", {
+      description:
+        message`Suppress partial errors while traversing the collection.`,
+    }),
     {
       context: configContext,
-      key: (config) => config.lookup?.suppressErrors,
+      key: (config) => config.lookup?.suppressErrors ?? false,
+      default: false,
     },
   ),
 });
@@ -127,51 +131,33 @@ export const lookupCommand = command(
         { min: 1 },
       ),
       format: bindConfig(
-        withDefault(
-          or(
-            map(
-              option("-r", "--raw", {
-                description: message`Print the fetched JSON-LD document as is.`,
-              }),
-              () => "raw" as const,
-            ),
-            map(
-              option("-C", "--compact", {
-                description: message`Compact the fetched JSON-LD document.`,
-              }),
-              () => "compact" as const,
-            ),
-            map(
-              option("-e", "--expand", {
-                description: message`Expand the fetched JSON-LD document.`,
-              }),
-              () => "expand" as const,
-            ),
+        or(
+          map(
+            option("-r", "--raw", {
+              description: message`Print the fetched JSON-LD document as is.`,
+            }),
+            () => "raw" as const,
           ),
-          "default" as const,
+          map(
+            option("-C", "--compact", {
+              description: message`Compact the fetched JSON-LD document.`,
+            }),
+            () => "compact" as const,
+          ),
+          map(
+            option("-e", "--expand", {
+              description: message`Expand the fetched JSON-LD document.`,
+            }),
+            () => "expand" as const,
+          ),
         ),
         {
           context: configContext,
-          key: (config) =>
-            config.lookup?.defaultFormat as
-              | "default"
-              | "raw"
-              | "compact"
-              | "expand",
+          key: (config) => config.lookup?.defaultFormat ?? "default",
           default: "default",
         },
       ),
-      userAgent: bindConfig(
-        optional(
-          option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
-            description: message`The custom User-Agent header value.`,
-          }),
-        ),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.userAgent,
-        },
-      ),
+      userAgent: userAgentOption,
       separator: bindConfig(
         option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
           description:
@@ -179,7 +165,7 @@ export const lookupCommand = command(
         }),
         {
           context: configContext,
-          key: (config) => config.lookup?.separator as string,
+          key: (config) => config.lookup?.separator ?? "----",
           default: "----",
         },
       ),
@@ -194,14 +180,14 @@ export const lookupCommand = command(
         { description: message`Specify the output file path.` },
       )),
       timeout: bindConfig(
-        optional(option(
+        option(
           "-T",
           "--timeout",
           float({ min: 0, metavar: "SECONDS" }),
           {
             description: message`Set timeout for network requests in seconds.`,
           },
-        )),
+        ),
         {
           context: configContext,
           key: (config) => config.lookup?.timeout,
@@ -426,7 +412,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       {
         specDeterminer: {
           determineSpec() {
-            return command.firstKnock;
+            return command.firstKnock ?? "draft-cavage-http-signatures-12";
           },
           rememberSpec() {
           },
