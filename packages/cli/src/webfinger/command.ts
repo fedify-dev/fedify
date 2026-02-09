@@ -13,23 +13,8 @@ import {
   option,
   string,
 } from "@optique/core";
-import { getUserAgent } from "../../../vocab-runtime/src/request.ts";
 import { configContext } from "../config.ts";
-import { debugOption } from "../options.ts";
-
-const userAgent = bindConfig(
-  option(
-    "-u",
-    "--user-agent",
-    string({ metavar: "USER_AGENT" }),
-    { description: message`The custom User-Agent header value.` },
-  ),
-  {
-    context: configContext,
-    key: (config) => config.userAgent ?? getUserAgent(),
-    default: getUserAgent(),
-  },
-);
+import { debugOption, userAgentOption } from "../options.ts";
 
 const allowPrivateAddresses = bindConfig(
   flag("-p", "--allow-private-address", {
@@ -66,7 +51,7 @@ export const webFingerCommand = command(
         }),
         { min: 1 },
       ),
-      userAgent,
+      userAgentOption,
       allowPrivateAddresses,
       maxRedirection,
     }),
