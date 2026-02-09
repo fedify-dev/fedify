@@ -145,6 +145,9 @@ importers:
       '@fedify/cfworkers':
         specifier: workspace:^
         version: link:../packages/cfworkers
+      '@fedify/debugger':
+        specifier: workspace:^
+        version: link:../packages/debugger
       '@fedify/express':
         specifier: workspace:^
         version: link:../packages/express
