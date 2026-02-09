@@ -51,10 +51,10 @@ export const webFingerCommand = command(
         }),
         { min: 1 },
       ),
-      userAgentOption,
       allowPrivateAddresses,
       maxRedirection,
     }),
+    userAgentOption,
     debugOption,
   ),
   {

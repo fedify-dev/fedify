@@ -86,24 +86,33 @@ export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
 }
 
 export const debugOption = object("Global options", {
-  debug: option("-d", "--debug", {
-    description: message`Enable debug mode.`,
-  }),
+  debug: bindConfig(
+    option("-d", "--debug", {
+      description: message`Enable debug mode.`,
+    }),
+    {
+      context: configContext,
+      key: (config) => config.debug ?? false,
+      default: false,
+    },
+  ),
 });
 
-export const userAgentOption = bindConfig(
-  option(
-    "-u",
-    "--user-agent",
-    string({ metavar: "USER_AGENT" }),
-    { description: message`The custom User-Agent header value.` },
+export const userAgentOption = object({
+  userAgent: bindConfig(
+    option(
+      "-u",
+      "--user-agent",
+      string({ metavar: "USER_AGENT" }),
+      { description: message`The custom User-Agent header value.` },
+    ),
+    {
+      context: configContext,
+      key: (config) => config.userAgent ?? getUserAgent(),
+      default: getUserAgent(),
+    },
   ),
-  {
-    context: configContext,
-    key: (config) => config.userAgent ?? getUserAgent(),
-    default: getUserAgent(),
-  },
-);
+});
 
 /**
  * Configuration file options.

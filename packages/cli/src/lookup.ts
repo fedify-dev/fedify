@@ -123,6 +123,7 @@ export const lookupCommand = command(
     traverseOption,
     authorizedFetchOption,
     debugOption,
+    userAgentOption,
     object({
       urls: multiple(
         argument(string({ metavar: "URL_OR_HANDLE" }), {
@@ -157,7 +158,6 @@ export const lookupCommand = command(
           default: "default",
         },
       ),
-      userAgent: userAgentOption,
       separator: bindConfig(
         option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
           description:
