@@ -102,6 +102,104 @@ the appropriate executable for your platform and put it in your `PATH`.
 [releases]: https://github.com/fedify-dev/fedify/releases
 
 
+Configuration file
+------------------
+
+*This feature is available since Fedify 2.0.0.*
+
+The `fedify` command supports configuration files to set default values for
+command options.  Configuration files are written in [TOML] format.
+
+[TOML]: https://toml.io/
+
+### Configuration file locations
+
+Configuration files are loaded from the following locations in order, with
+later files taking precedence over earlier ones:
+
+1.  `/etc/fedify/config.toml` (system-wide)
+2.  *<user-config-dir>/fedify/config.toml* (user-level)
+3.  `.fedify.toml` in the current working directory (project-level)
+4.  Custom path via `--config` option (explicit)
+
+The user config directory varies by operating system:
+
+ -  **Linux**: *~/.config/fedify/config.toml*
+ -  **macOS**: *~/Library/Application Support/fedify/config.toml*
+ -  **Windows**: *%APPDATA%\\fedify\\config.toml*
+
+### `--config`: Load an additional configuration file
+
+You can specify an additional configuration file to load using the `--config`
+option:
+
+~~~~ sh
+fedify --config ./my-config.toml lookup @user@example.com
+~~~~
+
+This file is loaded after all standard configuration files and takes the
+highest precedence.
+
+### `--ignore-config`: Ignore all configuration files
+
+The `--ignore-config` option skips loading all configuration files.  This is
+useful for CI environments or when you want reproducible behavior:
+
+~~~~ sh
+fedify --ignore-config lookup @user@example.com
+~~~~
+
+### Configuration file structure
+
+Below is an example configuration file showing all available options:
+
+~~~~ toml
+# Global settings (apply to all commands)
+debug = false
+userAgent = "MyApp/1.0"
+tunnelService = "localhost.run"  # "localhost.run", "serveo.net", or "pinggy.io"
+
+[webfinger]
+allowPrivateAddress = false
+maxRedirection = 5
+
+[lookup]
+authorizedFetch = false
+firstKnock = "draft-cavage-http-signatures-12"  # or "rfc9421"
+traverse = false
+suppressErrors = false
+defaultFormat = "default"  # "default", "raw", "compact", or "expand"
+separator = "----"
+timeout = 30  # seconds
+
+[inbox]
+actorName = "Fedify Ephemeral Actor"
+actorSummary = "An ephemeral actor for testing purposes."
+authorizedFetch = false
+noTunnel = false
+follow = ["@user@example.com"]
+acceptFollow = ["*"]
+
+[relay]
+protocol = "mastodon"  # or "litepub"
+port = 8000
+name = "Fedify Relay"
+persistent = "/path/to/relay.db"  # optional, uses in-memory if not specified
+noTunnel = false
+acceptFollow = ["*"]
+rejectFollow = []
+
+[nodeinfo]
+raw = false
+bestEffort = false
+showFavicon = true
+showMetadata = false
+~~~~
+
+All configuration options are optional.  Command-line arguments always take
+precedence over configuration file values.
+
+
 `fedify init`: Initializing a Fedify project
 --------------------------------------------
 
