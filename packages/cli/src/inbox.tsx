@@ -33,21 +33,20 @@ import {
   multiple,
   object,
   option,
-  optional,
   string,
 } from "@optique/core";
-import { configContext } from "./config.ts";
 import Table from "cli-table3";
 import { type Context as HonoContext, Hono } from "hono";
 import type { BlankEnv, BlankInput } from "hono/types";
 import process from "node:process";
 import ora from "ora";
 import metadata from "../deno.json" with { type: "json" };
+import { configContext } from "./config.ts";
 import { getDocumentLoader } from "./docloader.ts";
 import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { configureLogging, recordingSink } from "./log.ts";
-import { debugOption, tunnelOption } from "./options.ts";
+import { createTunnelOption, debugOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -71,24 +70,33 @@ export const inboxCommand = command(
   merge(
     object("Inbox options", {
       command: constant("inbox"),
-      follow: optional(
+      follow: bindConfig(
         multiple(
           option("-f", "--follow", string({ metavar: "URI" }), {
             description:
               message`Follow the given actor. The argument can be either an actor URI or a handle. Can be specified multiple times.`,
           }),
         ),
+        {
+          context: configContext,
+          key: (config) => config.inbox?.follow ?? [],
+          default: [],
+        },
       ),
-      acceptFollow: optional(
+      acceptFollow: bindConfig(
         multiple(
           option("-a", "--accept-follow", string({ metavar: "URI" }), {
             description:
               message`Accept follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
           }),
         ),
+        {
+          context: configContext,
+          key: (config) => config.inbox?.acceptFollow ?? [],
+          default: [],
+        },
       ),
     }),
-    tunnelOption,
     object({
       actorName: bindConfig(
         option("--actor-name", string({ metavar: "NAME" }), {
@@ -96,7 +104,7 @@ export const inboxCommand = command(
         }),
         {
           context: configContext,
-          key: (config) => config.inbox?.actorName as string,
+          key: (config) => config.inbox?.actorName ?? "Fedify Ephemeral Inbox",
           default: "Fedify Ephemeral Inbox",
         },
       ),
@@ -106,25 +114,29 @@ export const inboxCommand = command(
         }),
         {
           context: configContext,
-          key: (config) => config.inbox?.actorSummary as string,
+          key: (config) =>
+            config.inbox?.actorSummary ??
+              "An ephemeral ActivityPub inbox for testing purposes.",
           default: "An ephemeral ActivityPub inbox for testing purposes.",
         },
       ),
       authorizedFetch: bindConfig(
-        optional(option(
+        option(
           "-A",
           "--authorized-fetch",
           {
             description:
               message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
           },
-        )),
+        ),
         {
           context: configContext,
-          key: (config) => config.inbox?.authorizedFetch,
+          key: (config) => config.inbox?.authorizedFetch ?? false,
+          default: false,
         },
       ),
     }),
+    createTunnelOption("inbox"),
     debugOption,
   ),
   {
