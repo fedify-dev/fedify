@@ -1,3 +1,5 @@
+/** @jsx react-jsx */
+/** @jsxImportSource hono/jsx */
 /**
  * @module
  * Embedded ActivityPub debug dashboard for Fedify.
@@ -12,6 +14,8 @@ import type {
 } from "@fedify/fedify/federation";
 import type { FedifySpanExporter } from "@fedify/fedify/otel";
 import { Hono } from "hono";
+import { TracesListPage } from "./views/traces-list.tsx";
+import { TraceDetailPage } from "./views/trace-detail.tsx";
 
 /**
  * Options for {@link createFederationDebugger}.
@@ -116,17 +120,19 @@ function createDebugApp(
   app.get("/traces/:traceId", async (c) => {
     const traceId = c.req.param("traceId");
     const activities = await exporter.getActivitiesByTraceId(traceId);
-    return c.text(
-      `Trace ${traceId}: ${activities.length} activities`,
-      200,
+    return c.html(
+      <TraceDetailPage
+        traceId={traceId}
+        activities={activities}
+        pathPrefix={pathPrefix}
+      />,
     );
   });
 
   app.get("/", async (c) => {
     const traces = await exporter.getRecentTraces();
-    return c.text(
-      `Debug Dashboard: ${traces.length} traces`,
-      200,
+    return c.html(
+      <TracesListPage traces={traces} pathPrefix={pathPrefix} />,
     );
   });
 

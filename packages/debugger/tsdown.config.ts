@@ -1,7 +1,7 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/mod.ts"],
+  entry: ["src/mod.tsx"],
   dts: true,
   format: ["esm", "cjs"],
   platform: "node",
@@ -9,6 +9,8 @@ export default defineConfig({
     "@fedify/fedify",
     "@fedify/fedify/federation",
     "@fedify/fedify/otel",
+    "hono",
+    /^hono\//,
   ],
   outputOptions(outputOptions, format) {
     if (format === "cjs") {

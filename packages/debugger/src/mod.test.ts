@@ -1,6 +1,11 @@
 import { test } from "@fedify/fixture";
-import { assertEquals, assertNotEquals } from "@std/assert";
-import { createFederationDebugger } from "./mod.ts";
+import {
+  assert,
+  assertEquals,
+  assertNotEquals,
+  assertStringIncludes,
+} from "@std/assert";
+import { createFederationDebugger } from "./mod.tsx";
 import type {
   Federation,
   FederationFetchOptions,
@@ -220,4 +225,130 @@ test("fetch passes through onNotFound for non-debug requests", async () => {
   assertEquals(notFoundCalled, true);
   assertEquals(response.status, 404);
   assertEquals(await response.text(), "Custom Not Found");
+});
+
+test("traces list page returns HTML with trace IDs", async () => {
+  const traces: TraceSummary[] = [
+    {
+      traceId: "abcdef1234567890abcdef1234567890",
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 2,
+      activityTypes: ["Create", "Follow"],
+    },
+    {
+      traceId: "1234567890abcdef1234567890abcdef",
+      timestamp: "2026-01-02T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Like"],
+    },
+  ];
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter(traces);
+  const dbg = createFederationDebugger(federation, { exporter });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const ct = response.headers.get("content-type") ?? "";
+  assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  const html = await response.text();
+  assertStringIncludes(html, "Fedify Debug Dashboard");
+  // Check that truncated trace IDs appear
+  assertStringIncludes(html, "abcdef12");
+  assertStringIncludes(html, "12345678");
+  // Check activity types are shown
+  assertStringIncludes(html, "Create");
+  assertStringIncludes(html, "Follow");
+  assertStringIncludes(html, "Like");
+  // Check trace count
+  assertStringIncludes(html, "<strong>2</strong>");
+});
+
+test("traces list page shows empty message when no traces", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const html = await response.text();
+  assertStringIncludes(html, "No traces captured yet.");
+  assertStringIncludes(html, "<strong>0</strong>");
+});
+
+test("trace detail page returns HTML with activity details", async () => {
+  const activities: TraceActivityRecord[] = [
+    {
+      traceId: "abcdef1234567890abcdef1234567890",
+      spanId: "span123abc",
+      direction: "inbound",
+      activityType: "Create",
+      activityId: "https://remote.example/activities/1",
+      actorId: "https://remote.example/users/alice",
+      activityJson:
+        '{"type":"Create","actor":"https://remote.example/users/alice"}',
+      verified: true,
+      signatureDetails: {
+        httpSignaturesVerified: true,
+        httpSignaturesKeyId: "https://remote.example/users/alice#main-key",
+        ldSignaturesVerified: false,
+      },
+      timestamp: "2026-01-01T00:00:00Z",
+    },
+    {
+      traceId: "abcdef1234567890abcdef1234567890",
+      spanId: "span456def",
+      direction: "outbound",
+      activityType: "Accept",
+      actorId: "https://local.example/users/bob",
+      activityJson: '{"type":"Accept"}',
+      timestamp: "2026-01-01T00:00:01Z",
+      inboxUrl: "https://remote.example/inbox",
+    },
+  ];
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter([], activities);
+  const dbg = createFederationDebugger(federation, { exporter });
+  const request = new Request(
+    "https://example.com/__debug__/traces/abcdef1234567890abcdef1234567890",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const ct = response.headers.get("content-type") ?? "";
+  assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  const html = await response.text();
+  // Check page title
+  assertStringIncludes(html, "Trace abcdef12");
+  // Check activity types shown
+  assertStringIncludes(html, "Create");
+  assertStringIncludes(html, "Accept");
+  // Check direction badges
+  assertStringIncludes(html, "inbound");
+  assertStringIncludes(html, "outbound");
+  // Check actor IDs
+  assertStringIncludes(html, "https://remote.example/users/alice");
+  assertStringIncludes(html, "https://local.example/users/bob");
+  // Check activity ID
+  assertStringIncludes(html, "https://remote.example/activities/1");
+  // Check signature details
+  assertStringIncludes(
+    html,
+    "https://remote.example/users/alice#main-key",
+  );
+  // Check inbox URL for outbound
+  assertStringIncludes(html, "https://remote.example/inbox");
+  // Check back link
+  assertStringIncludes(html, "Back to traces");
+});
+
+test("trace detail page shows empty message when no activities", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter([], []);
+  const dbg = createFederationDebugger(federation, { exporter });
+  const request = new Request(
+    "https://example.com/__debug__/traces/0000000000000000",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const html = await response.text();
+  assertStringIncludes(html, "No activities found for this trace.");
 });
