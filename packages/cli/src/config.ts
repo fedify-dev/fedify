@@ -2,6 +2,7 @@ import { createConfigContext } from "@optique/config";
 import { readFileSync } from "node:fs";
 import { parse as parseToml } from "smol-toml";
 import {
+  array,
   boolean,
   type InferOutput,
   number,
@@ -15,7 +16,6 @@ import {
  * Schema for the webfinger command configuration.
  */
 const webfingerSchema = object({
-  userAgent: optional(string()),
   allowPrivateAddress: optional(boolean()),
   maxRedirection: optional(number()),
 });
@@ -32,7 +32,6 @@ const lookupSchema = object({
   suppressErrors: optional(boolean()),
   defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
   separator: optional(string()),
-  userAgent: optional(string()),
   timeout: optional(number()),
 });
 
@@ -40,13 +39,12 @@ const lookupSchema = object({
  * Schema for the inbox command configuration.
  */
 const inboxSchema = object({
-  tunnel: optional(boolean()),
-  tunnelService: optional(
-    picklist(["localhost.run", "serveo.net", "pinggy.io"]),
-  ),
   actorName: optional(string()),
   actorSummary: optional(string()),
   authorizedFetch: optional(boolean()),
+  noTunnel: optional(boolean()),
+  follow: optional(array(string())),
+  acceptFollow: optional(array(string())),
 });
 
 /**
@@ -56,31 +54,20 @@ const relaySchema = object({
   protocol: optional(picklist(["mastodon", "litepub"])),
   port: optional(number()),
   name: optional(string()),
-  tunnel: optional(boolean()),
-  tunnelService: optional(
-    picklist(["localhost.run", "serveo.net", "pinggy.io"]),
-  ),
   persistent: optional(string()),
-  acceptFollow: optional(string()),
-  rejectFollow: optional(string()),
+  noTunnel: optional(boolean()),
+  acceptFollow: optional(array(string())),
+  rejectFollow: optional(array(string())),
 });
 
 /**
  * Schema for the nodeinfo command configuration.
  */
 const nodeinfoSchema = object({
-  userAgent: optional(string()),
   raw: optional(boolean()),
   bestEffort: optional(boolean()),
-  noFavicon: optional(boolean()),
-  metadata: optional(boolean()),
-});
-
-/**
- * Schema for the tunnel command configuration.
- */
-const tunnelSchema = object({
-  service: optional(picklist(["localhost.run", "serveo.net", "pinggy.io"])),
+  showFavicon: optional(boolean()),
+  showMetadata: optional(boolean()),
 });
 
 /**
@@ -89,6 +76,11 @@ const tunnelSchema = object({
 export const configSchema = object({
   // Global settings
   debug: optional(boolean()),
+  userAgent: optional(string()),
+  logFile: optional(string()),
+  tunnelService: optional(
+    picklist(["localhost.run", "serveo.net", "pinggy.io"]),
+  ),
 
   // Command-specific sections
   webfinger: optional(webfingerSchema),
@@ -96,7 +88,6 @@ export const configSchema = object({
   inbox: optional(inboxSchema),
   relay: optional(relaySchema),
   nodeinfo: optional(nodeinfoSchema),
-  tunnel: optional(tunnelSchema),
 });
 
 /**
