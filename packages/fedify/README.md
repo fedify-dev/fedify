@@ -100,6 +100,7 @@ Here is the list of packages:
 | [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
 | [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
 | [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
+| [@fedify/debugger](/packages/debugger/)           | [JSR][jsr:@fedify/debugger]      | [npm][npm:@fedify/debugger]      | Embedded ActivityPub debug dashboard     |
 | [@fedify/denokv](/packages/denokv/)               | [JSR][jsr:@fedify/denokv]        |                                  | Deno KV integration                      |
 | [@fedify/elysia](/packages/elysia/)               |                                  | [npm][npm:@fedify/elysia]        | Elysia integration                       |
 | [@fedify/express](/packages/express/)             | [JSR][jsr:@fedify/express]       | [npm][npm:@fedify/express]       | Express integration                      |
@@ -128,6 +129,8 @@ Here is the list of packages:
 [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp
 [jsr:@fedify/cfworkers]: https://jsr.io/@fedify/cfworkers
 [npm:@fedify/cfworkers]: https://www.npmjs.com/package/@fedify/cfworkers
+[jsr:@fedify/debugger]: https://jsr.io/@fedify/debugger
+[npm:@fedify/debugger]: https://www.npmjs.com/package/@fedify/debugger
 [jsr:@fedify/denokv]: https://jsr.io/@fedify/denokv
 [npm:@fedify/elysia]: https://www.npmjs.com/package/@fedify/elysia
 [jsr:@fedify/express]: https://jsr.io/@fedify/express

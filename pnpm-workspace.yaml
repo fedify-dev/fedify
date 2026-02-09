@@ -2,6 +2,7 @@ packages:
 - packages/amqp
 - packages/cfworkers
 - packages/cli
+- packages/debugger
 - packages/elysia
 - packages/express
 - packages/fastify

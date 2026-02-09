@@ -4194,8 +4194,7 @@
       "integrity": "sha512-iYSchDJ+liQ8iwbSI2QqsQOvqv58eJCEanyJPJi+Khyu8smkcKSFUCbPwzFcL7YVtZ6eONjqRX/38caJ7QjRAQ==",
       "dependencies": [
         "tsscmp"
-      ],
-      "deprecated": true
+      ]
     },
     "keyv@4.5.4": {
       "integrity": "sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==",
@@ -5843,6 +5842,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@david/dax@~0.43.2",
+      "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
       "jsr:@std/assert@^1.0.13",
@@ -5951,6 +5951,11 @@
             "npm:srvx@~0.8.7"
           ]
         }
+      },
+      "packages/debugger": {
+        "dependencies": [
+          "jsr:@std/assert@^1.0.13"
+        ]
       },
       "packages/denokv": {
         "dependencies": [
