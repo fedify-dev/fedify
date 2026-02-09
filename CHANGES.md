@@ -231,6 +231,23 @@ To be released.
 [#529]: https://github.com/fedify-dev/fedify/pull/529
 [#531]: https://github.com/fedify-dev/fedify/pull/531
 
+### @fedify/debugger
+
+ -  Created the *@fedify/debugger* package, an embedded real-time ActivityPub
+    debug dashboard for Fedify.  It wraps an existing `Federation` object as
+    a proxy, intercepting requests to a configurable path prefix (default
+    `/__debug__`) and serving an SSR-based web UI.  [[#561]]
+
+     -  Added `createFederationDebugger()` function that returns a
+        `Federation` proxy with a built-in debug dashboard.
+     -  Traces list page showing trace IDs, activity types, activity counts,
+        and timestamps, with auto-polling for real-time updates.
+     -  Trace detail page showing activity direction, type, actor, signature
+        verification details, inbox URL, and expandable activity JSON.
+     -  JSON API endpoint at `/__debug__/api/traces` for programmatic access.
+
+[#561]: https://github.com/fedify-dev/fedify/issues/561
+
 ### @fedify/relay
 
  -  Created ActivityPub relay integration as the *@fedify/relay* package.
