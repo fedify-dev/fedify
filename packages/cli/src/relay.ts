@@ -25,7 +25,7 @@ import { DatabaseSync } from "node:sqlite";
 import ora from "ora";
 import { configContext } from "./config.ts";
 import { configureLogging } from "./log.ts";
-import { debugOption, tunnelOption } from "./options.ts";
+import { createTunnelOption, debugOption } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -52,7 +52,7 @@ export const relayCommand = command(
         ),
         {
           context: configContext,
-          key: (config) => config.relay?.protocol as string,
+          key: (config) => config.relay?.protocol ?? "mastodon",
           default: "mastodon",
         },
       ),
@@ -89,24 +89,38 @@ export const relayCommand = command(
         }),
         {
           context: configContext,
-          key: (config) => config.relay?.name as string,
+          key: (config) => config.relay?.name ?? "Fedify Relay",
           default: "Fedify Relay",
         },
       ),
-      acceptFollow: optional(multiple(
-        option("-a", "--accept-follow", string({ metavar: "URI" }), {
-          description:
-            message`Accept follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
-        }),
-      )),
-      rejectFollow: optional(multiple(
-        option("-r", "--reject-follow", string({ metavar: "URI" }), {
-          description:
-            message`Reject follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
-        }),
-      )),
+      acceptFollow: bindConfig(
+        multiple(
+          option("-a", "--accept-follow", string({ metavar: "URI" }), {
+            description:
+              message`Accept follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
+          }),
+        ),
+        {
+          context: configContext,
+          key: (config) => config.relay?.acceptFollow ?? [],
+          default: [],
+        },
+      ),
+      rejectFollow: bindConfig(
+        multiple(
+          option("-r", "--reject-follow", string({ metavar: "URI" }), {
+            description:
+              message`Reject follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
+          }),
+        ),
+        {
+          context: configContext,
+          key: (config) => config.relay?.rejectFollow ?? [],
+          default: [],
+        },
+      ),
     }),
-    tunnelOption,
+    createTunnelOption("relay"),
     debugOption,
   ),
   {
