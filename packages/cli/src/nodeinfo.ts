@@ -13,8 +13,6 @@ import {
   merge,
   message,
   object,
-  option,
-  optional,
   string,
   text,
 } from "@optique/core";
@@ -26,7 +24,7 @@ import os from "node:os";
 import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
-import { debugOption } from "./options.ts";
+import { debugOption, userAgentOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
@@ -38,53 +36,45 @@ export const Jimp = createJimp({
 
 const nodeInfoOption = object({
   raw: bindConfig(
-    optional(flag("-r", "--raw", {
+    flag("-r", "--raw", {
       description: message`Show NodeInfo document in the raw JSON format`,
-    })),
+    }),
     {
       context: configContext,
-      key: (config) => config.nodeinfo?.raw,
+      key: (config) => config.nodeinfo?.raw ?? false,
+      default: false,
     },
   ),
   bestEffort: bindConfig(
-    optional(flag("-b", "--best-effort", {
+    flag("-b", "--best-effort", {
       description:
         message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
-    })),
+    }),
     {
       context: configContext,
-      key: (config) => config.nodeinfo?.bestEffort,
+      key: (config) => config.nodeinfo?.bestEffort ?? false,
+      default: false,
     },
   ),
   noFavicon: bindConfig(
-    optional(flag("--no-favicon", {
+    flag("--no-favicon", {
       description: message`Disable fetching the favicon of the instance`,
-    })),
+    }),
     {
       context: configContext,
-      key: (config) => config.nodeinfo?.noFavicon,
+      key: (config) => config.nodeinfo?.showFavicon ?? false,
+      default: false,
     },
   ),
   metadata: bindConfig(
-    optional(flag("-m", "--metadata", {
+    flag("-m", "--metadata", {
       description:
         message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
-    })),
+    }),
     {
       context: configContext,
-      key: (config) => config.nodeinfo?.metadata,
-    },
-  ),
-});
-
-const userAgentOption = object({
-  userAgent: bindConfig(
-    optional(option("-u", "--user-agent", string(), {
-      description: message`The custom User-Agent header value.`,
-    })),
-    {
-      context: configContext,
-      key: (config) => config.nodeinfo?.userAgent,
+      key: (config) => config.nodeinfo?.showMetadata ?? false,
+      default: false,
     },
   ),
 });
