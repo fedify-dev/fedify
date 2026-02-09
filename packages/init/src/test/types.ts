@@ -1,4 +1,5 @@
 import type { TestInitCommand } from "../command.ts";
+import type { DB_TO_CHECK } from "../const.ts";
 
 export interface InitTestData extends DefineAllOptions<TestInitCommand> {
   runId: string;
@@ -25,3 +26,5 @@ export type DefineAllOptions<T extends TestInitCommand> =
   & Omit<T, MultipleOption | NoRunMode>
   & { [K in MultipleOption]: (TestInitCommand[K][number] & string)[] }
   & { [R in RunMode]: boolean };
+
+export type DbToCheckType = (typeof DB_TO_CHECK)[number];

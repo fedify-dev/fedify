@@ -1,4 +1,4 @@
-import { rmdir } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { printMessage } from "../utils.ts";
@@ -12,7 +12,7 @@ export const genTestDirPrefix = <T extends { runId: string }>({ runId }: T) =>
 export const emptyTestDir = <
   T extends { testDirPrefix: string },
 >({ testDirPrefix }: T) =>
-  rmdir(testDirPrefix, { recursive: true }).catch(() => {});
+  rm(testDirPrefix, { recursive: true }).catch(() => {});
 
 export const logTestDir = <
   T extends { runId: string; testDirPrefix: string },

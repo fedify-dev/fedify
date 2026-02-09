@@ -8,3 +8,4 @@ export const WEB_FRAMEWORK = [
 ] as const;
 export const MESSAGE_QUEUE = ["denokv", "redis", "postgres", "amqp"] as const;
 export const KV_STORE = ["denokv", "redis", "postgres"] as const;
+export const DB_TO_CHECK = ["redis", "postgres", "amqp"] as const;

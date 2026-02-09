@@ -1,6 +1,7 @@
 import { pipe, tap, when } from "@fxts/core";
 import { set } from "../utils.ts";
 import type { TestInitCommand } from "../command.ts";
+import { checkRequiredDbs } from "./db.ts";
 import { fillEmptyOptions } from "./fill.ts";
 import runTests from "./run.ts";
 import {
@@ -17,6 +18,7 @@ const runTestInit = (options: TestInitCommand) =>
     set("testDirPrefix", genTestDirPrefix),
     tap(emptyTestDir),
     fillEmptyOptions,
+    tap(checkRequiredDbs),
     tap(logTestDir),
     tap(when(isDryRun, runTests(true))),
     tap(when(isHydRun, runTests(false))),
