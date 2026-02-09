@@ -11,32 +11,34 @@ import {
   multiple,
   object,
   option,
-  optional,
   string,
 } from "@optique/core";
+import { getUserAgent } from "../../../vocab-runtime/src/request.ts";
 import { configContext } from "../config.ts";
 import { debugOption } from "../options.ts";
 
 const userAgent = bindConfig(
-  optional(option(
+  option(
     "-u",
     "--user-agent",
     string({ metavar: "USER_AGENT" }),
     { description: message`The custom User-Agent header value.` },
-  )),
+  ),
   {
     context: configContext,
-    key: (config) => config.webfinger?.userAgent,
+    key: (config) => config.userAgent ?? getUserAgent(),
+    default: getUserAgent(),
   },
 );
 
 const allowPrivateAddresses = bindConfig(
-  optional(flag("-p", "--allow-private-address", {
+  flag("-p", "--allow-private-address", {
     description: message`Allow private IP addresses in the URL.`,
-  })),
+  }),
   {
     context: configContext,
-    key: (config) => config.webfinger?.allowPrivateAddress,
+    key: (config) => config.webfinger?.allowPrivateAddress ?? false,
+    default: false,
   },
 );
 
@@ -49,7 +51,7 @@ const maxRedirection = bindConfig(
   {
     context: configContext,
     key: (config) => config.webfinger?.maxRedirection as number,
-    default: 5,
+    default: 0,
   },
 );
 
