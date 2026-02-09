@@ -19,9 +19,9 @@
     "jsr:@logtape/file@2": "2.0.0",
     "jsr:@logtape/logtape@2": "2.0.0",
     "jsr:@logtape/logtape@^1.0.4": "1.3.6",
-    "jsr:@optique/config@~0.10.0-dev.346": "0.10.0-dev.346+c6ffcffe",
-    "jsr:@optique/core@~0.10.0-dev.346": "0.10.0-dev.346+c6ffcffe",
-    "jsr:@optique/run@~0.10.0-dev.346": "0.10.0-dev.346+c6ffcffe",
+    "jsr:@optique/config@~0.10.0-dev.347": "0.10.0-dev.347+14bbe4ef",
+    "jsr:@optique/core@~0.10.0-dev.347": "0.10.0-dev.347+14bbe4ef",
+    "jsr:@optique/run@~0.10.0-dev.347": "0.10.0-dev.347+14bbe4ef",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
     "jsr:@std/assert@^1.0.13": "1.0.16",
@@ -86,11 +86,11 @@
     "npm:@opentelemetry/sdk-trace-base@^2.5.0": "2.5.0_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.38.0",
     "npm:@opentelemetry/semantic-conventions@^1.39.0": "1.39.0",
-    "npm:@optique/config@~0.10.0-dev.346": "0.10.0-dev.346_@standard-schema+spec@1.1.0",
+    "npm:@optique/config@~0.10.0-dev.347": "0.10.0-dev.347_@standard-schema+spec@1.1.0",
     "npm:@optique/core@0.9": "0.9.0",
-    "npm:@optique/core@~0.10.0-dev.346": "0.10.0-dev.346",
+    "npm:@optique/core@~0.10.0-dev.347": "0.10.0-dev.347",
     "npm:@optique/run@0.9": "0.9.0",
-    "npm:@optique/run@~0.10.0-dev.346": "0.10.0-dev.346",
+    "npm:@optique/run@~0.10.0-dev.347": "0.10.0-dev.347",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
     "npm:@preact/signals@^2.2.1": "2.5.1_preact@10.19.6",
     "npm:@preact/signals@^2.3.2": "2.5.1_preact@10.19.6",
@@ -283,8 +283,8 @@
     "@logtape/logtape@2.0.0": {
       "integrity": "c4f2d7684a8239ad9b3fc2fd4ade6eec9f04cdb3a1741bae83f370b4b34253b2"
     },
-    "@optique/config@0.10.0-dev.346+c6ffcffe": {
-      "integrity": "c909ac3f7ae2b2e570c2945fd7b4e5aa9b5a36c9e2860ba96b3551a8b2244756",
+    "@optique/config@0.10.0-dev.347+14bbe4ef": {
+      "integrity": "bb13747533b7d667d9213dfbd0d7be5f0ecac6eceef031ce6afdea7db1acb9ef",
       "dependencies": [
         "npm:@standard-schema/spec"
       ]
@@ -292,11 +292,11 @@
     "@optique/core@0.10.0-dev.333+076fceae": {
       "integrity": "1ebe1782740f08d568ae0c5258786933a8502d1e137feb49b2d8ab06d204b11a"
     },
-    "@optique/core@0.10.0-dev.346+c6ffcffe": {
-      "integrity": "10f5ad195d2078b32a397f0d71be77da968e54ccf45794f869f427eca739ec09"
+    "@optique/core@0.10.0-dev.347+14bbe4ef": {
+      "integrity": "fbb90bcf73156f3f5e32b2fb7aa4f70d006977edc68d94bfa951944f0f3d9bdc"
     },
-    "@optique/run@0.10.0-dev.346+c6ffcffe": {
-      "integrity": "ec9142be3bf75a4f25154398b6107aeb1e1e29dd2ee0f6fd3d8969c7257d5477"
+    "@optique/run@0.10.0-dev.347+14bbe4ef": {
+      "integrity": "7b8c3d3804e873ee8d124bf26eca4adcd1fa55b6d30ca6b457b43e34bac52b50"
     },
     "@std/assert@0.224.0": {
       "integrity": "8643233ec7aec38a940a8264a6e3eed9bfa44e7a71cc6b3c8874213ff401967f",
@@ -2102,23 +2102,23 @@
     "@opentelemetry/semantic-conventions@1.39.0": {
       "integrity": "sha512-R5R9tb2AXs2IRLNKLBJDynhkfmx7mX0vi8NkhZb3gUkPWHn6HXk5J8iQ/dql0U3ApfWym4kXXmBDRGO+oeOfjg=="
     },
-    "@optique/config@0.10.0-dev.346_@standard-schema+spec@1.1.0": {
-      "integrity": "sha512-DNzC++nje4NdOXL9f2s8Gz8S6eDFvaXf2GSZxM5SkqbHgucU5cTck6xii6LRj/nrNifgjF47gDMcYj6uQYCDfQ==",
+    "@optique/config@0.10.0-dev.347_@standard-schema+spec@1.1.0": {
+      "integrity": "sha512-WBtkp22O/adD6bZpK2Izw5gw4eMBOwsVVo5duI51Cn0D58sqGXUuVtbGP3+uC79iQ2AfTzBwpiEqj/L8X08a2A==",
       "dependencies": [
         "@optique/core@0.9.2",
         "@standard-schema/spec"
       ]
     },
-    "@optique/core@0.10.0-dev.346": {
-      "integrity": "sha512-R5yXMlm8yrPp9LUicjq1IumKmZcaqTdWzOEME6VY7ihkhoRvtXLs/ZuB8kEcserJXflzzquFlDT7sKw5VKq3fw=="
+    "@optique/core@0.10.0-dev.347": {
+      "integrity": "sha512-VVNLLT2AspoWCy3rp/XIi07bWWWgVBUgnU+kF86le9Qzs3m25DaCSTnmj7jZ+HAvOx5NDSzhL3UGYZbr8kt3Fw=="
     },
     "@optique/core@0.9.2": {
       "integrity": "sha512-UpDMdV1hdHF1qZJVZKsQpLOnQMajwjBny+DBjP+yyH95fBqJQPnUGrhARn6R/REPnchoxQWjwPRhSjTHnS4rPA=="
     },
-    "@optique/run@0.10.0-dev.346": {
-      "integrity": "sha512-bjdbSKcT2bFMETaFk7dDDa1BV/BlPDV5B/hAQDPiybLEPl9Z9dyzELVL0w9j4o8SLx4u9icpllcVvelX3C0f0A==",
+    "@optique/run@0.10.0-dev.347": {
+      "integrity": "sha512-rZ2GZ1zjzZkvR62/AVdWyLKOujgrOhk4eiFg2Bc9hpS1rg+4/ElMjOp3ULBc2tKuWgfjHLUyy197c5QZ+bm52g==",
       "dependencies": [
-        "@optique/core@0.10.0-dev.346"
+        "@optique/core@0.10.0-dev.347"
       ]
     },
     "@oxc-project/types@0.103.0": {
@@ -5990,9 +5990,9 @@
         "dependencies": [
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
-          "jsr:@optique/config@~0.10.0-dev.346",
-          "jsr:@optique/core@~0.10.0-dev.346",
-          "jsr:@optique/run@~0.10.0-dev.346",
+          "jsr:@optique/config@~0.10.0-dev.347",
+          "jsr:@optique/core@~0.10.0-dev.347",
+          "jsr:@optique/run@~0.10.0-dev.347",
           "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.0",
           "npm:@jimp/wasm-webp@^1.6.0",
@@ -6016,9 +6016,9 @@
             "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.0",
             "npm:@jimp/wasm-webp@^1.6.0",
-            "npm:@optique/config@~0.10.0-dev.346",
-            "npm:@optique/core@~0.10.0-dev.346",
-            "npm:@optique/run@~0.10.0-dev.346",
+            "npm:@optique/config@~0.10.0-dev.347",
+            "npm:@optique/core@~0.10.0-dev.347",
+            "npm:@optique/run@~0.10.0-dev.347",
             "npm:@poppanator/http-constants@^1.1.1",
             "npm:chalk@^5.6.2",
             "npm:cli-highlight@^2.1.11",
