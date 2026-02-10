@@ -139,6 +139,12 @@ To be released.
     code, the inbox URL, and the response body, making it easier to
     programmatically handle delivery errors.  [[#548], [#559]]
 
+ -  Added `traceId` and `spanId` to LogTape context in federation middleware
+    so that log records emitted during request handling and queue processing
+    include the OpenTelemetry trace and span IDs in their properties.  This
+    enables the `@fedify/debugger` dashboard to display per-trace logs.
+    [[#561]]
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -163,6 +169,7 @@ To be released.
 [#548]: https://github.com/fedify-dev/fedify/issues/548
 [#559]: https://github.com/fedify-dev/fedify/pull/559
 [#560]: https://github.com/fedify-dev/fedify/issues/560
+[#561]: https://github.com/fedify-dev/fedify/issues/561
 
 ### @fedify/cli
 
@@ -249,13 +256,19 @@ To be released.
      -  Trace detail page showing activity direction, type, actor, signature
         verification details, inbox URL, and expandable activity JSON.
      -  JSON API endpoint at `/__debug__/api/traces` for programmatic access.
+     -  Added per-trace log collection using LogTape.  The returned federation
+        object now includes a `sink` property (a LogTape `Sink` function)
+        that captures log records grouped by trace ID.  In the simplified
+        overload (without `exporter`), LogTape is auto-configured.
+     -  Trace detail page now shows a “Logs” section with log level, timestamp,
+        logger category, and message for each log record in the trace.
+     -  JSON API endpoint at `/__debug__/api/logs/:traceId` for retrieving
+        log records for a specific trace.
      -  Added optional `auth` configuration for protecting the debug dashboard
         with authentication.  Supports three modes: password-only,
         username + password, and request-based (e.g., IP filtering).
         Each mode supports both static credentials and callback functions.
         Uses cookie-based sessions with HMAC-signed tokens.
-
-[#561]: https://github.com/fedify-dev/fedify/issues/561
 
 ### @fedify/relay
 

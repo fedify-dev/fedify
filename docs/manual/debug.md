@@ -76,9 +76,12 @@ automatically:
  -  Creates a `MemoryKvStore` and `FedifySpanExporter` for trace data storage
  -  Creates a `BasicTracerProvider` with a `SimpleSpanProcessor`
  -  Registers it as the global [OpenTelemetry] tracer provider
+ -  Configures [LogTape] to collect logs per trace (using `getConfig()` to
+    merge with any existing configuration)
 
 This means `createFederation()` will automatically use the tracer provider
-without needing an explicit `tracerProvider` option.
+without needing an explicit `tracerProvider` option, and logs emitted by
+Fedify will be captured and displayed alongside traces in the dashboard.
 
 The `federation` object returned by `createFederationDebugger()` is a drop-in
 replacement for the original.  You can use it everywhere you would normally use
@@ -90,6 +93,7 @@ the inner federation object (e.g., passing it to framework integrations).
 > over a network, as it exposes internal trace data.
 
 [OpenTelemetry]: ./opentelemetry.md
+[LogTape]: https://logtape.org/
 
 
 Configuration
@@ -291,12 +295,23 @@ belonging to a specific trace.  For each activity, it displays:
      -  Whether Linked Data Signatures were verified
  -  **Activity JSON** (expandable, pretty-printed)
 
+Below the activities section, a **Logs** section shows all [LogTape] log
+records captured during the trace.  Each log entry displays:
+
+ -  **Timestamp** (time portion only)
+ -  **Log level** (color-coded: debug, info, warning, error, fatal)
+ -  **Logger category** (e.g., `fedify.federation.http`)
+ -  **Message** with expandable properties
+
 ### JSON API
 
 A JSON API endpoint is available at `/__debug__/api/traces` which returns
 the list of recent traces in JSON format.  This is used by the auto-polling
 mechanism on the traces list page, but you can also query it directly for
 programmatic access.
+
+A separate endpoint at `/__debug__/api/logs/:traceId` returns the log records
+for a specific trace in JSON format.
 
 
 Using with framework integrations
@@ -378,8 +393,30 @@ const federation = createFederationDebugger(innerFederation, {
 });
 ~~~~
 
+In this mode, the returned `federation` object has a `sink` property that is
+a [LogTape] `Sink` function.  You should include it in your LogTape
+configuration to enable per-trace log collection:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { configure } from "@logtape/logtape";
+declare const federation: { sink: (record: any) => void };
+// ---cut-before---
+await configure({
+  sinks: {
+    debugger: federation.sink,
+    // ... other sinks
+  },
+  loggers: [
+    { category: "fedify", sinks: ["debugger"] },
+    // ... other loggers
+  ],
+});
+~~~~
+
 In this mode, you are responsible for:
 
  -  Creating and configuring the `BasicTracerProvider`
  -  Passing `tracerProvider` to `createFederation()`
  -  Passing the same `exporter` to `createFederationDebugger()`
+ -  Configuring LogTape with `federation.sink` to collect logs per trace

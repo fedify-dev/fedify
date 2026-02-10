@@ -841,6 +841,9 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 2.0.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0

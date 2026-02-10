@@ -6,7 +6,7 @@ import {
   assertStringIncludes,
 } from "@std/assert";
 import { createFederationDebugger } from "./mod.tsx";
-import type { FederationDebuggerAuth } from "./mod.tsx";
+import type { FederationDebuggerAuth, SerializedLogRecord } from "./mod.tsx";
 import type {
   Federation,
   FederationFetchOptions,
@@ -773,4 +773,165 @@ test("auth password: logout clears session cookie", async () => {
   const setCookie = response.headers.get("set-cookie");
   assert(setCookie != null);
   assertStringIncludes(setCookie!, "Max-Age=0");
+});
+
+// ---------- Sink property tests ----------
+
+test("createFederationDebugger exposes a sink property", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+  assertNotEquals(dbg.sink, null);
+  assertNotEquals(dbg.sink, undefined);
+  assertEquals(typeof dbg.sink, "function");
+});
+
+test("simplified overload exposes a sink property", () => {
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation } = createMockFederation();
+    const dbg = createFederationDebugger(federation);
+    assertNotEquals(dbg.sink, null);
+    assertEquals(typeof dbg.sink, "function");
+  } finally {
+    trace.setGlobalTracerProvider(originalProvider);
+  }
+});
+
+// ---------- Log collection tests ----------
+
+test("sink collects logs by traceId and API returns them", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  // Simulate log records with traceId in properties
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  dbg.sink({
+    category: ["fedify", "federation", "http"],
+    level: "info",
+    message: ["GET ", "/users/alice", ": ", "200"],
+    rawMessage: "{method} {path}: {status}",
+    timestamp: Date.now(),
+    properties: {
+      traceId,
+      spanId: "1234567890abcdef",
+      method: "GET",
+      path: "/users/alice",
+      status: 200,
+    },
+  });
+
+  // Check via API
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  assertEquals(response.headers.get("content-type"), "application/json");
+  const logs = (await response.json()) as SerializedLogRecord[];
+  assertEquals(logs.length, 1);
+  assertEquals(logs[0].level, "info");
+  assertEquals(logs[0].message, "GET /users/alice: 200");
+  assertEquals(logs[0].category[0], "fedify");
+  // traceId and spanId should be excluded from properties
+  assertEquals("traceId" in logs[0].properties, false);
+  assertEquals("spanId" in logs[0].properties, false);
+  // Other properties should be preserved
+  assertEquals(logs[0].properties.method, "GET");
+});
+
+test("sink ignores log records without traceId", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  // Log without traceId — should be silently ignored
+  dbg.sink({
+    category: ["app"],
+    level: "debug",
+    message: ["some message"],
+    rawMessage: "some message",
+    timestamp: Date.now(),
+    properties: {},
+  });
+
+  // No logs should be stored for any traceId
+  const request = new Request(
+    "https://example.com/__debug__/api/logs/nonexistent",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const logs = (await response.json()) as SerializedLogRecord[];
+  assertEquals(logs.length, 0);
+});
+
+test("multiple logs for the same trace are grouped", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  for (let i = 0; i < 5; i++) {
+    dbg.sink({
+      category: ["fedify"],
+      level: "info",
+      message: [`log ${i}`],
+      rawMessage: `log ${i}`,
+      timestamp: Date.now() + i,
+      properties: { traceId, spanId: "abcdef1234567890" },
+    });
+  }
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const logs = (await response.json()) as SerializedLogRecord[];
+  assertEquals(logs.length, 5);
+  assertEquals(logs[0].message, "log 0");
+  assertEquals(logs[4].message, "log 4");
+});
+
+test("trace detail page shows log records", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  dbg.sink({
+    category: ["fedify", "federation"],
+    level: "warning",
+    message: ["Something went wrong"],
+    rawMessage: "Something went wrong",
+    timestamp: 1700000000000,
+    properties: { traceId, spanId: "1234567890abcdef" },
+  });
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const html = await response.text();
+  assertStringIncludes(html, "Logs");
+  assertStringIncludes(html, "Something went wrong");
+  assertStringIncludes(html, "warning");
+  assertStringIncludes(html, "fedify.federation");
+  // "1" and "log record" are separated by HTML tags
+  assertStringIncludes(html, "log record");
+});
+
+test("trace detail page shows empty log message", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  const request = new Request(
+    "https://example.com/__debug__/traces/0000000000000000",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const html = await response.text();
+  assertStringIncludes(html, "No logs captured for this trace.");
 });

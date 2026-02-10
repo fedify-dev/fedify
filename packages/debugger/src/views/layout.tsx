@@ -56,6 +56,15 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
           pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; font-size: 0.8125rem; }
           .empty { color: #888; font-style: italic; }
           nav a { margin-right: 0.5rem; }
+          .log-table td { font-size: 0.8125rem; vertical-align: top; }
+          .log-table time { font-family: monospace; white-space: nowrap; }
+          .badge-debug { background: #e8e8e8; color: #666; }
+          .badge-info { background: #ddf4ff; color: #0969da; }
+          .badge-warning { background: #fff8c5; color: #9a6700; }
+          .badge-error { background: #ffebe9; color: #cf222e; }
+          .badge-fatal { background: #cf222e; color: #fff; }
+          .log-error td { background: #fff5f5; }
+          .log-fatal td { background: #ffebe9; }
         `}
         </style>
       </head>

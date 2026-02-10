@@ -2,6 +2,7 @@
 /** @jsxImportSource hono/jsx */
 import type { FC } from "hono/jsx";
 import type { TraceActivityRecord } from "@fedify/fedify/otel";
+import type { SerializedLogRecord } from "../mod.tsx";
 import { Layout } from "./layout.tsx";
 
 /**
@@ -19,6 +20,11 @@ export interface TraceDetailPageProps {
   activities: TraceActivityRecord[];
 
   /**
+   * The list of log records for this trace.
+   */
+  logs: SerializedLogRecord[];
+
+  /**
    * The path prefix for the debug dashboard.
    */
   pathPrefix: string;
@@ -28,7 +34,7 @@ export interface TraceDetailPageProps {
  * The trace detail page of the debug dashboard.
  */
 export const TraceDetailPage: FC<TraceDetailPageProps> = (
-  { traceId, activities, pathPrefix },
+  { traceId, activities, logs, pathPrefix },
 ) => {
   return (
     <Layout pathPrefix={pathPrefix} title={`Trace ${traceId.slice(0, 8)}`}>
@@ -42,7 +48,8 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
       <p>
         Full ID: <code>{traceId}</code> &mdash;{" "}
         <strong>{activities.length}</strong>{" "}
-        activit{activities.length !== 1 ? "ies" : "y"}
+        activit{activities.length !== 1 ? "ies" : "y"},{" "}
+        <strong>{logs.length}</strong> log record{logs.length !== 1 ? "s" : ""}
       </p>
 
       {activities.length === 0
@@ -153,6 +160,50 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
               </details>
             </div>
           ))
+        )}
+
+      <h2>Logs</h2>
+      {logs.length === 0
+        ? <p class="empty">No logs captured for this trace.</p>
+        : (
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Level</th>
+                <th>Category</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log, i) => (
+                <tr key={i} class={`log-${log.level}`}>
+                  <td>
+                    <time datetime={new Date(log.timestamp).toISOString()}>
+                      {new Date(log.timestamp).toISOString().slice(11, 23)}
+                    </time>
+                  </td>
+                  <td>
+                    <span class={`badge badge-${log.level}`}>{log.level}</span>
+                  </td>
+                  <td>
+                    <code>{log.category.join(".")}</code>
+                  </td>
+                  <td>
+                    {log.message}
+                    {Object.keys(log.properties).length > 0 && (
+                      <details>
+                        <summary>Properties</summary>
+                        <pre>
+                          {JSON.stringify(log.properties, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
     </Layout>
   );

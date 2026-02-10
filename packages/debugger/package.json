@@ -32,6 +32,7 @@
     "@fedify/fedify": "workspace:^"
   },
   "dependencies": {
+    "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "hono": "catalog:"

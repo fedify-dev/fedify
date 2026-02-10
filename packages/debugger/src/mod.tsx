@@ -14,15 +14,112 @@ import type {
 } from "@fedify/fedify/federation";
 import { MemoryKvStore } from "@fedify/fedify/federation";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
+import type { LogRecord, Sink } from "@logtape/logtape";
+import { configure, configureSync, getConfig } from "@logtape/logtape";
 import { trace } from "@opentelemetry/api";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
 import { Hono } from "hono";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { LoginPage } from "./views/login.tsx";
 import { TracesListPage } from "./views/traces-list.tsx";
 import { TraceDetailPage } from "./views/trace-detail.tsx";
+
+/**
+ * A serialized log record for the debug dashboard.
+ */
+export interface SerializedLogRecord {
+  /**
+   * The logger category.
+   */
+  readonly category: readonly string[];
+
+  /**
+   * The log level.
+   */
+  readonly level: string;
+
+  /**
+   * The rendered log message.
+   */
+  readonly message: string;
+
+  /**
+   * The timestamp in milliseconds since the Unix epoch.
+   */
+  readonly timestamp: number;
+
+  /**
+   * The extra properties of the log record (excluding traceId and spanId).
+   */
+  readonly properties: Record<string, unknown>;
+}
+
+const DEFAULT_MAX_LOG_ENTRIES = 10_000;
+
+/**
+ * In-memory storage for log records grouped by trace ID.
+ */
+class LogStore {
+  readonly #maxEntries: number;
+  readonly #logs: Map<string, SerializedLogRecord[]> = new Map();
+  #totalEntries = 0;
+
+  constructor(maxEntries: number = DEFAULT_MAX_LOG_ENTRIES) {
+    this.#maxEntries = maxEntries;
+  }
+
+  add(traceId: string, record: SerializedLogRecord): void {
+    let list = this.#logs.get(traceId);
+    if (list == null) {
+      list = [];
+      this.#logs.set(traceId, list);
+    }
+    list.push(record);
+    this.#totalEntries++;
+    // Evict oldest trace groups when exceeding max entries
+    while (this.#totalEntries > this.#maxEntries && this.#logs.size > 0) {
+      const oldest = this.#logs.keys().next();
+      if (oldest.done) break;
+      const evicted = this.#logs.get(oldest.value);
+      if (evicted != null) this.#totalEntries -= evicted.length;
+      this.#logs.delete(oldest.value);
+    }
+  }
+
+  get(traceId: string): SerializedLogRecord[] {
+    return this.#logs.get(traceId) ?? [];
+  }
+}
+
+function serializeLogRecord(record: LogRecord): SerializedLogRecord {
+  // Render message to string
+  const messageParts: string[] = [];
+  for (const part of record.message) {
+    if (typeof part === "string") messageParts.push(part);
+    else if (part == null) messageParts.push("");
+    else messageParts.push(String(part));
+  }
+  // Exclude traceId and spanId from properties
+  const { traceId: _t, spanId: _s, ...properties } = record.properties;
+  return {
+    category: record.category,
+    level: record.level,
+    message: messageParts.join(""),
+    timestamp: record.timestamp,
+    properties,
+  };
+}
+
+function createLogSink(store: LogStore): Sink {
+  return (record: LogRecord): void => {
+    const traceId = record.properties.traceId;
+    if (typeof traceId !== "string" || traceId.length === 0) return;
+    store.add(traceId, serializeLogRecord(record));
+  };
+}
 
 /**
  * Authentication configuration for the debug dashboard.
@@ -114,8 +211,8 @@ export interface FederationDebuggerSimpleOptions {
  * When called without an `exporter`, the debugger automatically sets up
  * OpenTelemetry tracing: it creates a {@link MemoryKvStore},
  * {@link FedifySpanExporter}, and {@link BasicTracerProvider}, then registers
- * it as the global tracer provider.  This means `createFederation()` will
- * automatically use it without needing an explicit `tracerProvider` option.
+ * it as the global tracer provider.  It also auto-configures LogTape to
+ * collect logs per trace.
  *
  * @example Simple usage (recommended)
  * ```typescript
@@ -126,18 +223,21 @@ export interface FederationDebuggerSimpleOptions {
  * @template TContextData The context data type of the federation.
  * @param federation The federation object to wrap.
  * @param options Optional path configuration.
- * @returns A new {@link Federation} object with the debug dashboard attached.
+ * @returns A new {@link Federation} object with the debug dashboard attached
+ *          and a `sink` property for LogTape integration.
  */
 export function createFederationDebugger<TContextData>(
   federation: Federation<TContextData>,
   options?: FederationDebuggerSimpleOptions,
-): Federation<TContextData>;
+): Federation<TContextData> & { sink: Sink };
 
 /**
  * Wraps a {@link Federation} object with a debug dashboard.
  *
  * When called with an `exporter`, the caller is responsible for setting up
  * the OpenTelemetry tracer provider and passing it to `createFederation()`.
+ * The returned object includes a `sink` property that should be added to
+ * the LogTape configuration to collect logs per trace.
  *
  * @example Advanced usage with explicit exporter
  * ```typescript
@@ -148,23 +248,33 @@ export function createFederationDebugger<TContextData>(
  * });
  * const innerFederation = createFederation({ kv, tracerProvider });
  * const federation = createFederationDebugger(innerFederation, { exporter });
+ * await configure({
+ *   sinks: { debugger: federation.sink },
+ *   loggers: [
+ *     { category: "fedify", sinks: ["debugger"] },
+ *   ],
+ * });
  * ```
  *
  * @template TContextData The context data type of the federation.
  * @param federation The federation object to wrap.
  * @param options Options including the exporter.
- * @returns A new {@link Federation} object with the debug dashboard attached.
+ * @returns A new {@link Federation} object with the debug dashboard attached
+ *          and a `sink` property for LogTape integration.
  */
 export function createFederationDebugger<TContextData>(
   federation: Federation<TContextData>,
   options: FederationDebuggerOptions,
-): Federation<TContextData>;
+): Federation<TContextData> & { sink: Sink };
 
 export function createFederationDebugger<TContextData>(
   federation: Federation<TContextData>,
   options?: FederationDebuggerSimpleOptions | FederationDebuggerOptions,
-): Federation<TContextData> {
+): Federation<TContextData> & { sink: Sink } {
   const pathPrefix = options?.path ?? "/__debug__";
+
+  const logStore = new LogStore();
+  const sink = createLogSink(logStore);
 
   let exporter: FedifySpanExporter;
   if (options != null && "exporter" in options) {
@@ -178,13 +288,54 @@ export function createFederationDebugger<TContextData>(
       spanProcessors: [new SimpleSpanProcessor(exporter)],
     });
     trace.setGlobalTracerProvider(tracerProvider);
+
+    // Auto-configure LogTape to include the debugger sink
+    const existingConfig = getConfig();
+    if (existingConfig != null) {
+      // Merge with existing config
+      const sinks = { ...existingConfig.sinks, __fedify_debugger__: sink };
+      const loggers = existingConfig.loggers.map((l) => ({
+        ...l,
+        sinks: [...(l.sinks ?? []), "__fedify_debugger__"],
+      }));
+      if (
+        loggers.every((l) =>
+          typeof l.category === "string" ||
+          Array.isArray(l.category) && l.category.length > 0
+        )
+      ) {
+        loggers.push({ category: [], sinks: ["__fedify_debugger__"] });
+      }
+      configure(
+        {
+          contextLocalStorage: new AsyncLocalStorage(),
+          ...existingConfig,
+          reset: true,
+          sinks,
+          loggers,
+          // deno-lint-ignore no-explicit-any
+        } as any,
+      );
+    } else {
+      configureSync({
+        sinks: { __fedify_debugger__: sink },
+        loggers: [
+          { category: [], sinks: ["__fedify_debugger__"] },
+        ],
+        contextLocalStorage: new AsyncLocalStorage(),
+      });
+    }
   }
 
   const auth = options?.auth;
-  const app = createDebugApp(pathPrefix, exporter, auth);
+  const app = createDebugApp(pathPrefix, exporter, logStore, auth);
 
-  // deno-lint-ignore no-explicit-any
-  const proxy: Federation<TContextData> = Object.create(null) as any;
+  const proxy: Federation<TContextData> & { sink: Sink } =
+    // deno-lint-ignore no-explicit-any
+    Object.create(null) as any;
+
+  // Expose the sink for advanced users to include in their LogTape config
+  proxy.sink = sink;
 
   // Delegate all Federatable methods directly:
   const delegatedMethods = [
@@ -322,6 +473,7 @@ async function checkAuth(
 function createDebugApp(
   pathPrefix: string,
   exporter: FedifySpanExporter,
+  logStore: LogStore,
   auth?: FederationDebuggerAuth,
 ): Hono {
   const app = new Hono({ strict: false }).basePath(pathPrefix);
@@ -429,13 +581,21 @@ function createDebugApp(
     return c.json(traces);
   });
 
+  app.get("/api/logs/:traceId", (c) => {
+    const traceId = c.req.param("traceId");
+    const logs = logStore.get(traceId);
+    return c.json(logs);
+  });
+
   app.get("/traces/:traceId", async (c) => {
     const traceId = c.req.param("traceId");
     const activities = await exporter.getActivitiesByTraceId(traceId);
+    const logs = logStore.get(traceId);
     return c.html(
       <TraceDetailPage
         traceId={traceId}
         activities={activities}
+        logs={logs}
         pathPrefix={pathPrefix}
       />,
     );
