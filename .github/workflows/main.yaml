@@ -216,7 +216,7 @@ jobs:
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: mise run codegen
-    - run: deno publish --dry-run
+    - run: deno publish --dry-run --allow-slow-types
     - run: pnpm publish --recursive --dry-run --no-git-checks --ignore-scripts
 
   # ===========================================================================
