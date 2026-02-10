@@ -474,20 +474,29 @@ export class FederationImpl<TContextData>
           },
           extractedContext,
           async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            try {
-              await this.#listenFanoutMessage(contextData, message);
-            } catch (e) {
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: String(e),
-              });
-              throw e;
-            } finally {
-              span.end();
-            }
+            const spanCtx = span.spanContext();
+            return await withContext(
+              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+              async () => {
+                if (message.activityId != null) {
+                  span.setAttribute(
+                    "activitypub.activity.id",
+                    message.activityId,
+                  );
+                }
+                try {
+                  await this.#listenFanoutMessage(contextData, message);
+                } catch (e) {
+                  span.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: String(e),
+                  });
+                  throw e;
+                } finally {
+                  span.end();
+                }
+              },
+            );
           },
         );
       } else if (message.type === "outbox") {
@@ -502,20 +511,29 @@ export class FederationImpl<TContextData>
           },
           extractedContext,
           async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            try {
-              await this.#listenOutboxMessage(contextData, message, span);
-            } catch (e) {
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: String(e),
-              });
-              throw e;
-            } finally {
-              span.end();
-            }
+            const spanCtx = span.spanContext();
+            return await withContext(
+              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+              async () => {
+                if (message.activityId != null) {
+                  span.setAttribute(
+                    "activitypub.activity.id",
+                    message.activityId,
+                  );
+                }
+                try {
+                  await this.#listenOutboxMessage(contextData, message, span);
+                } catch (e) {
+                  span.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: String(e),
+                  });
+                  throw e;
+                } finally {
+                  span.end();
+                }
+              },
+            );
           },
         );
       } else if (message.type === "inbox") {
@@ -529,17 +547,23 @@ export class FederationImpl<TContextData>
           },
           extractedContext,
           async (span) => {
-            try {
-              await this.#listenInboxMessage(contextData, message, span);
-            } catch (e) {
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: String(e),
-              });
-              throw e;
-            } finally {
-              span.end();
-            }
+            const spanCtx = span.spanContext();
+            return await withContext(
+              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+              async () => {
+                try {
+                  await this.#listenInboxMessage(contextData, message, span);
+                } catch (e) {
+                  span.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: String(e),
+                  });
+                  throw e;
+                } finally {
+                  span.end();
+                }
+              },
+            );
           },
         );
       }
@@ -1266,55 +1290,69 @@ export class FederationImpl<TContextData>
           },
         },
         async (span) => {
-          const logger = getLogger(["fedify", "federation", "http"]);
-          if (span.isRecording()) {
-            for (const [k, v] of request.headers) {
-              span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
-            }
-          }
-          let response: Response;
-          try {
-            response = await this.#fetch(request, { ...options, span, tracer });
-            if (acceptsJsonLd(request)) {
-              response.headers.set("Vary", "Accept");
-            }
-          } catch (error) {
-            span.setStatus({
-              code: SpanStatusCode.ERROR,
-              message: `${error}`,
-            });
-            span.end();
-            logger.error(
-              "An error occurred while serving request {method} {url}: {error}",
-              { method: request.method, url: request.url, error },
-            );
-            throw error;
-          }
-          if (span.isRecording()) {
-            span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, response.status);
-            for (const [k, v] of response.headers) {
-              span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
-            }
-            span.setStatus({
-              code: response.status >= 500
-                ? SpanStatusCode.ERROR
-                : SpanStatusCode.UNSET,
-              message: response.statusText,
-            });
-          }
-          span.end();
-          const url = new URL(request.url);
-          const logTpl = "{method} {path}: {status}";
-          const values = {
-            method: request.method,
-            path: `${url.pathname}${url.search}`,
-            url: request.url,
-            status: response.status,
-          };
-          if (response.status >= 500) logger.error(logTpl, values);
-          else if (response.status >= 400) logger.warn(logTpl, values);
-          else logger.info(logTpl, values);
-          return response;
+          const spanCtx = span.spanContext();
+          return await withContext(
+            { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+            async () => {
+              const logger = getLogger(["fedify", "federation", "http"]);
+              if (span.isRecording()) {
+                for (const [k, v] of request.headers) {
+                  span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
+                }
+              }
+              let response: Response;
+              try {
+                response = await this.#fetch(request, {
+                  ...options,
+                  span,
+                  tracer,
+                });
+                if (acceptsJsonLd(request)) {
+                  response.headers.set("Vary", "Accept");
+                }
+              } catch (error) {
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: `${error}`,
+                });
+                span.end();
+                logger.error(
+                  "An error occurred while serving request " +
+                    "{method} {url}: {error}",
+                  { method: request.method, url: request.url, error },
+                );
+                throw error;
+              }
+              if (span.isRecording()) {
+                span.setAttribute(
+                  ATTR_HTTP_RESPONSE_STATUS_CODE,
+                  response.status,
+                );
+                for (const [k, v] of response.headers) {
+                  span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
+                }
+                span.setStatus({
+                  code: response.status >= 500
+                    ? SpanStatusCode.ERROR
+                    : SpanStatusCode.UNSET,
+                  message: response.statusText,
+                });
+              }
+              span.end();
+              const url = new URL(request.url);
+              const logTpl = "{method} {path}: {status}";
+              const values = {
+                method: request.method,
+                path: `${url.pathname}${url.search}`,
+                url: request.url,
+                status: response.status,
+              };
+              if (response.status >= 500) logger.error(logTpl, values);
+              else if (response.status >= 400) logger.warn(logTpl, values);
+              else logger.info(logTpl, values);
+              return response;
+            },
+          );
         },
       );
     });
