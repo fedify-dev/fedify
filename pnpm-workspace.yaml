@@ -3,6 +3,7 @@ packages:
 - packages/cfworkers
 - packages/cli
 - packages/debugger
+- packages/create-fedify-app
 - packages/elysia
 - packages/express
 - packages/fastify

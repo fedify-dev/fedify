@@ -20,7 +20,6 @@ import {
   PACKAGE_MANAGER,
   WEB_FRAMEWORK,
 } from "./const.ts";
-import { debugOption } from "./globals.ts";
 
 const webFramework = optional(option(
   "-w",
@@ -57,23 +56,33 @@ const messageQueue = optional(option(
   },
 ));
 
+const debugOption = object("Global options", {
+  debug: option("-d", "--debug", {
+    description: message`Enable debug mode.`,
+  }),
+});
+
+export const initOptions = object("Initialization options", {
+  dir: optional(argument(path({ metavar: "DIR" }), {
+    description:
+      message`The project directory to initialize.  If a specified directory does not exist, it will be created.`,
+  })),
+  webFramework,
+  packageManager,
+  kvStore,
+  messageQueue,
+  dryRun: option("--dry-run", {
+    description: message`Perform a trial run with no changes made.`,
+  }),
+  debugOption,
+});
+
 export const initCommand = command(
   "init",
-  object("Initialization options", {
-    command: constant("init"),
-    dir: optional(argument(path({ metavar: "DIR" }), {
-      description:
-        message`The project directory to initialize.  If a specified directory does not exist, it will be created.`,
-    })),
-    webFramework,
-    packageManager,
-    kvStore,
-    messageQueue,
-    dryRun: option("--dry-run", {
-      description: message`Perform a trial run with no changes made.`,
-    }),
-    debugOption,
-  }),
+  merge(
+    initOptions,
+    object({ command: constant("init") }),
+  ),
   {
     brief: message`Initialize a new Fedify project directory.`,
     description: message`Initialize a new Fedify project directory.

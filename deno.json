@@ -4,6 +4,7 @@
     "./packages/cfworkers",
     "./packages/cli",
     "./packages/debugger",
+    "./packages/create-fedify-app",
     "./packages/denokv",
     "./packages/express",
     "./packages/fastify",

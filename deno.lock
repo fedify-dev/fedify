@@ -5998,6 +5998,19 @@
           ]
         }
       },
+      "packages/create-fedify-app": {
+        "dependencies": [
+          "jsr:@fedify/init@2",
+          "jsr:@optique/core@0.9",
+          "jsr:@optique/run@0.9"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@optique/core@0.9",
+            "npm:@optique/run@0.9"
+          ]
+        }
+      },
       "packages/denokv": {
         "dependencies": [
           "jsr:@std/assert@^1.0.13",
