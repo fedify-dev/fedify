@@ -20,8 +20,48 @@ import {
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
 import { Hono } from "hono";
+import { LoginPage } from "./views/login.tsx";
 import { TracesListPage } from "./views/traces-list.tsx";
 import { TraceDetailPage } from "./views/trace-detail.tsx";
+
+/**
+ * Authentication configuration for the debug dashboard.
+ *
+ * The debug dashboard can be protected using one of three authentication modes:
+ *
+ * - `"password"` — Shows a password-only login form.
+ * - `"usernamePassword"` — Shows a username + password login form.
+ * - `"request"` — Authenticates based on the incoming request (e.g., IP
+ *   address).  No login form is shown; unauthenticated requests receive a
+ *   403 response.
+ *
+ * Each mode supports either a static credential check or a callback function.
+ */
+export type FederationDebuggerAuth =
+  | {
+    readonly type: "password";
+    authenticate(password: string): boolean | Promise<boolean>;
+  }
+  | {
+    readonly type: "password";
+    readonly password: string;
+  }
+  | {
+    readonly type: "usernamePassword";
+    authenticate(
+      username: string,
+      password: string,
+    ): boolean | Promise<boolean>;
+  }
+  | {
+    readonly type: "usernamePassword";
+    readonly username: string;
+    readonly password: string;
+  }
+  | {
+    readonly type: "request";
+    authenticate(request: Request): boolean | Promise<boolean>;
+  };
 
 /**
  * Options for {@link createFederationDebugger} with an explicit exporter.
@@ -39,6 +79,12 @@ export interface FederationDebuggerOptions {
    * The {@link FedifySpanExporter} to query trace data from.
    */
   exporter: FedifySpanExporter;
+
+  /**
+   * Authentication configuration for the debug dashboard.  When omitted,
+   * the dashboard is accessible without authentication.
+   */
+  auth?: FederationDebuggerAuth;
 }
 
 /**
@@ -54,6 +100,12 @@ export interface FederationDebuggerSimpleOptions {
    * The path prefix for the debug dashboard.  Defaults to `"/__debug__"`.
    */
   path?: string;
+
+  /**
+   * Authentication configuration for the debug dashboard.  When omitted,
+   * the dashboard is accessible without authentication.
+   */
+  auth?: FederationDebuggerAuth;
 }
 
 /**
@@ -128,7 +180,8 @@ export function createFederationDebugger<TContextData>(
     trace.setGlobalTracerProvider(tracerProvider);
   }
 
-  const app = createDebugApp(pathPrefix, exporter);
+  const auth = options?.auth;
+  const app = createDebugApp(pathPrefix, exporter, auth);
 
   // deno-lint-ignore no-explicit-any
   const proxy: Federation<TContextData> = Object.create(null) as any;
@@ -182,11 +235,194 @@ export function createFederationDebugger<TContextData>(
   return proxy;
 }
 
+const SESSION_COOKIE_NAME = "__fedify_debug_session";
+const SESSION_TOKEN = "authenticated";
+
+async function generateHmacKey(): Promise<CryptoKey> {
+  return await crypto.subtle.generateKey(
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return [...new Uint8Array(buffer)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function fromHex(hex: string): ArrayBuffer {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+async function signSession(key: CryptoKey): Promise<string> {
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(SESSION_TOKEN),
+  );
+  return toHex(signature);
+}
+
+async function verifySession(
+  key: CryptoKey,
+  signature: string,
+): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    return await crypto.subtle.verify(
+      "HMAC",
+      key,
+      fromHex(signature),
+      encoder.encode(SESSION_TOKEN),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function parseCookies(header: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  for (const pair of header.split(";")) {
+    const [name, ...rest] = pair.trim().split("=");
+    if (name) cookies[name.trim()] = rest.join("=").trim();
+  }
+  return cookies;
+}
+
+async function checkAuth(
+  auth: FederationDebuggerAuth,
+  formData: { username?: string; password: string },
+): Promise<boolean> {
+  if (auth.type === "password") {
+    if ("authenticate" in auth) {
+      return await auth.authenticate(formData.password);
+    }
+    return formData.password === auth.password;
+  }
+  if (auth.type === "usernamePassword") {
+    if ("authenticate" in auth) {
+      return await auth.authenticate(
+        formData.username ?? "",
+        formData.password,
+      );
+    }
+    return formData.username === auth.username &&
+      formData.password === auth.password;
+  }
+  return false;
+}
+
 function createDebugApp(
   pathPrefix: string,
   exporter: FedifySpanExporter,
+  auth?: FederationDebuggerAuth,
 ): Hono {
   const app = new Hono({ strict: false }).basePath(pathPrefix);
+
+  // For "password" and "usernamePassword" modes, we need an HMAC key
+  // for signing session cookies.
+  let hmacKeyPromise: Promise<CryptoKey> | undefined;
+  if (auth != null && auth.type !== "request") {
+    hmacKeyPromise = generateHmacKey();
+  }
+
+  // Auth middleware
+  if (auth != null) {
+    if (auth.type === "request") {
+      // Request-based auth: check every request, return 403 on failure
+      app.use("*", async (c, next) => {
+        const allowed = await auth.authenticate(c.req.raw);
+        if (!allowed) {
+          return c.text("Forbidden", 403);
+        }
+        await next();
+      });
+    } else {
+      // Cookie-based auth for "password" and "usernamePassword" modes
+      const showUsername = auth.type === "usernamePassword";
+
+      // POST /login handler
+      app.post("/login", async (c) => {
+        const body = await c.req.parseBody();
+        const password = typeof body.password === "string" ? body.password : "";
+        const username = typeof body.username === "string"
+          ? body.username
+          : undefined;
+        const ok = await checkAuth(auth, { username, password });
+        if (!ok) {
+          return c.html(
+            <LoginPage
+              pathPrefix={pathPrefix}
+              showUsername={showUsername}
+              error="Invalid credentials."
+            />,
+            401,
+          );
+        }
+        const key = await hmacKeyPromise!;
+        const sig = await signSession(key);
+        return new Response(null, {
+          status: 303,
+          headers: {
+            "Location": pathPrefix + "/",
+            "Set-Cookie":
+              `${SESSION_COOKIE_NAME}=${sig}; Path=${pathPrefix}; HttpOnly; SameSite=Strict`,
+          },
+        });
+      });
+
+      // GET /logout handler
+      app.get("/logout", (_c) => {
+        return new Response(null, {
+          status: 303,
+          headers: {
+            "Location": pathPrefix + "/",
+            "Set-Cookie":
+              `${SESSION_COOKIE_NAME}=; Path=${pathPrefix}; HttpOnly; SameSite=Strict; Max-Age=0`,
+          },
+        });
+      });
+
+      // Auth check middleware (skip for /login and /logout)
+      app.use("*", async (c, next) => {
+        const path = new URL(c.req.url).pathname;
+        const loginPath = pathPrefix + "/login";
+        const logoutPath = pathPrefix + "/logout";
+        if (path === loginPath || path === logoutPath) {
+          await next();
+          return;
+        }
+
+        const cookieHeader = c.req.header("cookie") ?? "";
+        const cookies = parseCookies(cookieHeader);
+        const sessionValue = cookies[SESSION_COOKIE_NAME];
+        if (sessionValue) {
+          const key = await hmacKeyPromise!;
+          const valid = await verifySession(key, sessionValue);
+          if (valid) {
+            await next();
+            return;
+          }
+        }
+
+        // Not authenticated — show login form
+        return c.html(
+          <LoginPage
+            pathPrefix={pathPrefix}
+            showUsername={showUsername}
+          />,
+          401,
+        );
+      });
+    }
+  }
 
   app.get("/api/traces", async (c) => {
     const traces = await exporter.getRecentTraces();

@@ -6,6 +6,7 @@ import {
   assertStringIncludes,
 } from "@std/assert";
 import { createFederationDebugger } from "./mod.tsx";
+import type { FederationDebuggerAuth } from "./mod.tsx";
 import type {
   Federation,
   FederationFetchOptions,
@@ -462,4 +463,314 @@ test("simplified overload JSON API returns traces", async () => {
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
+});
+
+// ---------- Auth: password (static) tests ----------
+
+test("auth password static: unauthenticated request shows login form", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 401);
+  const html = await response.text();
+  assertStringIncludes(html, "Login Required");
+  assertStringIncludes(html, 'name="password"');
+  // Should NOT have a username field for password-only mode
+  assert(!html.includes('name="username"'), "Should not have username field");
+});
+
+test("auth password static: correct password sets session cookie", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({ password: "secret123" });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 303);
+  const location = response.headers.get("location");
+  assertEquals(location, "/__debug__/");
+  const setCookie = response.headers.get("set-cookie");
+  assert(setCookie != null, "Should set a cookie");
+  assertStringIncludes(setCookie!, "__fedify_debug_session=");
+});
+
+test("auth password static: wrong password shows error", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({ password: "wrong" });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 401);
+  const html = await response.text();
+  assertStringIncludes(html, "Invalid credentials.");
+});
+
+test("auth password static: valid session cookie allows access", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+
+  // First, log in to get the session cookie
+  const loginBody = new URLSearchParams({ password: "secret123" });
+  const loginReq = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: loginBody.toString(),
+  });
+  const loginResp = await dbg.fetch(loginReq, { contextData: undefined });
+  assertEquals(loginResp.status, 303);
+  const setCookie = loginResp.headers.get("set-cookie")!;
+  // Extract cookie value
+  const cookieValue = setCookie.split(";")[0];
+
+  // Now access the dashboard with the session cookie
+  const dashReq = new Request("https://example.com/__debug__/", {
+    headers: { Cookie: cookieValue },
+  });
+  const dashResp = await dbg.fetch(dashReq, { contextData: undefined });
+  assertEquals(dashResp.status, 200);
+  const html = await dashResp.text();
+  assertStringIncludes(html, "Fedify Debug Dashboard");
+});
+
+// ---------- Auth: password (callback) tests ----------
+
+test("auth password callback: authenticate function is called", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  let receivedPassword = "";
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    authenticate(password: string) {
+      receivedPassword = password;
+      return password === "callback-pw";
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({ password: "callback-pw" });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 303);
+  assertEquals(receivedPassword, "callback-pw");
+});
+
+// ---------- Auth: usernamePassword (static) tests ----------
+
+test("auth usernamePassword static: login form shows username field", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "usernamePassword",
+    username: "admin",
+    password: "secret",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 401);
+  const html = await response.text();
+  assertStringIncludes(html, 'name="username"');
+  assertStringIncludes(html, 'name="password"');
+});
+
+test("auth usernamePassword static: correct credentials set cookie", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "usernamePassword",
+    username: "admin",
+    password: "secret",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({
+    username: "admin",
+    password: "secret",
+  });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 303);
+  const setCookie = response.headers.get("set-cookie");
+  assert(setCookie != null);
+  assertStringIncludes(setCookie!, "__fedify_debug_session=");
+});
+
+test("auth usernamePassword static: wrong username is rejected", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "usernamePassword",
+    username: "admin",
+    password: "secret",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({
+    username: "wrong",
+    password: "secret",
+  });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 401);
+  const html = await response.text();
+  assertStringIncludes(html, "Invalid credentials.");
+});
+
+// ---------- Auth: usernamePassword (callback) tests ----------
+
+test("auth usernamePassword callback: authenticate receives both args", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  let receivedUsername = "";
+  let receivedPassword = "";
+  const auth: FederationDebuggerAuth = {
+    type: "usernamePassword",
+    authenticate(username: string, password: string) {
+      receivedUsername = username;
+      receivedPassword = password;
+      return username === "user1" && password === "pass1";
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({
+    username: "user1",
+    password: "pass1",
+  });
+  const request = new Request("https://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 303);
+  assertEquals(receivedUsername, "user1");
+  assertEquals(receivedPassword, "pass1");
+});
+
+// ---------- Auth: request-based tests ----------
+
+test("auth request: allowed request passes through", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "request",
+    authenticate(_request: Request) {
+      return true;
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  const html = await response.text();
+  assertStringIncludes(html, "Fedify Debug Dashboard");
+});
+
+test("auth request: rejected request returns 403", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "request",
+    authenticate(_request: Request) {
+      return false;
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 403);
+  assertEquals(await response.text(), "Forbidden");
+});
+
+test("auth request: receives the actual Request object", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  let receivedHeader = "";
+  const auth: FederationDebuggerAuth = {
+    type: "request",
+    authenticate(request: Request) {
+      receivedHeader = request.headers.get("X-Test-Header") ?? "";
+      return receivedHeader === "allowed";
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/", {
+    headers: { "X-Test-Header": "allowed" },
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  assertEquals(receivedHeader, "allowed");
+});
+
+test("auth request: non-debug requests bypass auth", async () => {
+  const { federation, calls } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "request",
+    authenticate(_request: Request) {
+      return false; // reject everything
+    },
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  // Non-debug requests should go to the inner federation, not the auth layer
+  const request = new Request("https://example.com/users/alice");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  assertEquals(calls["fetch"]?.length, 1);
+});
+
+// ---------- Auth: logout tests ----------
+
+test("auth password: logout clears session cookie", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("https://example.com/__debug__/logout");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 303);
+  assertEquals(response.headers.get("location"), "/__debug__/");
+  const setCookie = response.headers.get("set-cookie");
+  assert(setCookie != null);
+  assertStringIncludes(setCookie!, "Max-Age=0");
 });

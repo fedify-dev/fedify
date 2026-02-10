@@ -249,6 +249,11 @@ To be released.
      -  Trace detail page showing activity direction, type, actor, signature
         verification details, inbox URL, and expandable activity JSON.
      -  JSON API endpoint at `/__debug__/api/traces` for programmatic access.
+     -  Added optional `auth` configuration for protecting the debug dashboard
+        with authentication.  Supports three modes: password-only,
+        username + password, and request-based (e.g., IP filtering).
+        Each mode supports both static credentials and callback functions.
+        Uses cookie-based sessions with HMAC-signed tokens.
 
 [#561]: https://github.com/fedify-dev/fedify/issues/561
 

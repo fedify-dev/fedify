@@ -85,8 +85,9 @@ replacement for the original.  You can use it everywhere you would normally use
 the inner federation object (e.g., passing it to framework integrations).
 
 > [!WARNING]
-> The debug dashboard is intended for development use only.  Do not enable it
-> in production, as it exposes internal trace data without authentication.
+> The debug dashboard is intended for development use only.  It is strongly
+> recommended to enable [authentication](#auth) if the dashboard is accessible
+> over a network, as it exposes internal trace data.
 
 [OpenTelemetry]: ./opentelemetry.md
 
@@ -117,6 +118,128 @@ const federation = createFederationDebugger(innerFederation, {
   path: "/_debug",
 });
 ~~~~
+
+### `auth`
+
+*Optional.*  Authentication configuration for the debug dashboard.  When
+omitted, the dashboard is accessible without authentication.
+
+The `auth` option accepts a discriminated union with three modes:
+
+#### Password-only authentication
+
+Shows a login form with a single password field.  You can provide a static
+password string or an `authenticate()` callback:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { createFederationDebugger } from "@fedify/debugger";
+
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+// ---cut-before---
+// Static password:
+const federation = createFederationDebugger(innerFederation, {
+  auth: {
+    type: "password",
+    password: Deno.env.get("DEBUG_PASSWORD")!,
+  },
+});
+~~~~
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { createFederationDebugger } from "@fedify/debugger";
+
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+// ---cut-before---
+// Callback:
+const federation = createFederationDebugger(innerFederation, {
+  auth: {
+    type: "password",
+    authenticate: (password) => password === "my-secret",
+  },
+});
+~~~~
+
+#### Username + password authentication
+
+Shows a login form with both username and password fields:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { createFederationDebugger } from "@fedify/debugger";
+
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+// ---cut-before---
+// Static credentials:
+const federation = createFederationDebugger(innerFederation, {
+  auth: {
+    type: "usernamePassword",
+    username: "admin",
+    password: Deno.env.get("DEBUG_PASSWORD")!,
+  },
+});
+~~~~
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { createFederationDebugger } from "@fedify/debugger";
+
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+// ---cut-before---
+// Callback:
+const federation = createFederationDebugger(innerFederation, {
+  auth: {
+    type: "usernamePassword",
+    authenticate: (username, password) =>
+      username === "admin" && password === "secret",
+  },
+});
+~~~~
+
+#### Request-based authentication
+
+Authenticates based on the incoming `Request` object, without showing a login
+form.  Useful for IP-based access control.  Rejected requests receive a 403
+Forbidden response.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { createFederationDebugger } from "@fedify/debugger";
+
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+// ---cut-before---
+const federation = createFederationDebugger(innerFederation, {
+  auth: {
+    type: "request",
+    authenticate: (request) => {
+      // Only allow requests from localhost
+      const url = new URL(request.url);
+      return url.hostname === "127.0.0.1" || url.hostname === "::1";
+    },
+  },
+});
+~~~~
+
+> [!NOTE]
+> Authentication only applies to the debug dashboard routes.  All other
+> requests (e.g., ActivityPub endpoints) are passed through to the inner
+> federation without any authentication check.
 
 ### `exporter`
 
