@@ -24,6 +24,7 @@ import {
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { LoginPage } from "./views/login.tsx";
 import { TracesListPage } from "./views/traces-list.tsx";
@@ -449,15 +450,6 @@ async function verifySession(
   }
 }
 
-function parseCookies(header: string): Record<string, string> {
-  const cookies: Record<string, string> = {};
-  for (const pair of header.split(";")) {
-    const [name, ...rest] = pair.trim().split("=");
-    if (name) cookies[name.trim()] = rest.join("=").trim();
-  }
-  return cookies;
-}
-
 async function checkAuth(
   auth: FederationDebuggerAuth,
   formData: { username?: string; password: string },
@@ -563,9 +555,7 @@ function createDebugApp(
           return;
         }
 
-        const cookieHeader = c.req.header("cookie") ?? "";
-        const cookies = parseCookies(cookieHeader);
-        const sessionValue = cookies[SESSION_COOKIE_NAME];
+        const sessionValue = getCookie(c, SESSION_COOKIE_NAME);
         if (sessionValue) {
           const key = await hmacKeyPromise!;
           const valid = await verifySession(key, sessionValue);

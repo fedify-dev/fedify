@@ -32,6 +32,7 @@
     "@fedify/fedify": "workspace:^"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/context-async-hooks": "catalog:",
@@ -40,7 +41,6 @@
     "hono": "catalog:"
   },
   "devDependencies": {
-    "@js-temporal/polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
