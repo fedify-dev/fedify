@@ -59,9 +59,6 @@ your federation object:
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { createFederationDebugger } from "@fedify/debugger";
 
-// NOTE: createFederationDebugger() must be called BEFORE createFederation(),
-// because it registers a global OpenTelemetry tracer provider that
-// createFederation() will pick up automatically.
 const innerFederation = createFederation<void>({
   kv: new MemoryKvStore(),
   // ... other federation options

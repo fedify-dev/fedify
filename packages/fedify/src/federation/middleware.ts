@@ -241,7 +241,7 @@ export class FederationImpl<TContextData>
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
-  tracerProvider: TracerProvider;
+  _tracerProvider: TracerProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
 
   constructor(options: FederationOptions<TContextData>) {
@@ -385,8 +385,12 @@ export class FederationImpl<TContextData>
       createExponentialBackoffPolicy();
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
-    this.tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
+    this._tracerProvider = options.tracerProvider;
     this.firstKnock = options.firstKnock;
+  }
+
+  get tracerProvider(): TracerProvider {
+    return this._tracerProvider ?? trace.getTracerProvider();
   }
 
   _initializeRouter() {
