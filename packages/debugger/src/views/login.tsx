@@ -106,6 +106,27 @@ export const LoginPage: FC<LoginPageProps> = (
           color: #666;
           font-size: 0.875rem;
         }
+
+        @media (prefers-color-scheme: dark) {
+          .login-field input {
+            background: #0d1117;
+            color: #e6edf3;
+            border-color: #30363d;
+          }
+          .login-form button {
+            background: #1f6feb;
+          }
+          .login-form button:hover {
+            background: #388bfd;
+          }
+          .login-error {
+            color: #f85149;
+            background: #3d1f20;
+          }
+          .login-description {
+            color: #9198a1;
+          }
+        }
         `}
       </style>
     </Layout>
