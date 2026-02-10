@@ -143,7 +143,7 @@ To be released.
     so that log records emitted during request handling and queue processing
     include the OpenTelemetry trace and span IDs in their properties.  This
     enables the `@fedify/debugger` dashboard to display per-trace logs.
-    [[#561]]
+    [[#561], [#564]]
 
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
@@ -170,6 +170,7 @@ To be released.
 [#559]: https://github.com/fedify-dev/fedify/pull/559
 [#560]: https://github.com/fedify-dev/fedify/issues/560
 [#561]: https://github.com/fedify-dev/fedify/issues/561
+[#564]: https://github.com/fedify-dev/fedify/pull/564
 
 ### @fedify/cli
 
@@ -243,7 +244,7 @@ To be released.
  -  Created the *@fedify/debugger* package, an embedded real-time ActivityPub
     debug dashboard for Fedify.  It wraps an existing `Federation` object as
     a proxy, intercepting requests to a configurable path prefix (default
-    `/__debug__`) and serving an SSR-based web UI.  [[#561]]
+    `/__debug__`) and serving an SSR-based web UI.  [[#561], [#564]]
 
      -  Added `createFederationDebugger()` function that returns a
         `Federation` proxy with a built-in debug dashboard.  When called
