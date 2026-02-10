@@ -16,7 +16,8 @@ import { MemoryKvStore } from "@fedify/fedify/federation";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
 import type { LogRecord, Sink } from "@logtape/logtape";
 import { configure, configureSync, getConfig } from "@logtape/logtape";
-import { trace } from "@opentelemetry/api";
+import { context, trace } from "@opentelemetry/api";
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
@@ -288,6 +289,10 @@ export function createFederationDebugger<TContextData>(
       spanProcessors: [new SimpleSpanProcessor(exporter)],
     });
     trace.setGlobalTracerProvider(tracerProvider);
+    // Register context manager so that parent-child spans share
+    // the same traceId (required for context propagation):
+    const contextManager = new AsyncLocalStorageContextManager();
+    context.setGlobalContextManager(contextManager);
 
     // Auto-configure LogTape to include the debugger sink
     const existingConfig = getConfig();

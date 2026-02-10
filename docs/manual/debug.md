@@ -76,6 +76,8 @@ automatically:
  -  Creates a `MemoryKvStore` and `FedifySpanExporter` for trace data storage
  -  Creates a `BasicTracerProvider` with a `SimpleSpanProcessor`
  -  Registers it as the global [OpenTelemetry] tracer provider
+ -  Registers an `AsyncLocalStorageContextManager` as the global OpenTelemetry
+    context manager (required for parent–child span propagation)
  -  Configures [LogTape] to collect logs per trace (using `getConfig()` to
     merge with any existing configuration)
 

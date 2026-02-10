@@ -74,6 +74,8 @@
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.11_reflect-metadata@0.2.2_rxjs@7.8.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
+    "npm:@opentelemetry/context-async-hooks@*": "2.2.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/context-async-hooks@2": "2.2.0_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/core@2": "2.3.0_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/sdk-trace-base@2": "2.3.0_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.38.0",
@@ -2013,6 +2015,12 @@
     },
     "@opentelemetry/api@1.9.0": {
       "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
+    },
+    "@opentelemetry/context-async-hooks@2.2.0_@opentelemetry+api@1.9.0": {
+      "integrity": "sha512-qRkLWiUEZNAmYapZ7KGS5C4OmBLcP/H2foXeOEaowYCR0wi89fHejrfYfbuLVCMLp/dWZXKvQusdbUEZjERfwQ==",
+      "dependencies": [
+        "@opentelemetry/api"
+      ]
     },
     "@opentelemetry/core@2.3.0_@opentelemetry+api@1.9.0": {
       "integrity": "sha512-PcmxJQzs31cfD0R2dE91YGFcLxOSN4Bxz7gez5UwSUjCai8BwH/GI5HchfVshHkWdTkUs0qcaPJgVHKXUp7I3A==",
@@ -5857,6 +5865,7 @@
       "npm:@js-temporal/polyfill@~0.5.1",
       "npm:@nestjs/common@^11.0.1",
       "npm:@opentelemetry/api@^1.9.0",
+      "npm:@opentelemetry/context-async-hooks@2",
       "npm:@opentelemetry/core@2",
       "npm:@opentelemetry/sdk-trace-base@2",
       "npm:@types/node@^22.16.0",
@@ -5957,6 +5966,7 @@
           "jsr:@logtape/logtape@2",
           "jsr:@std/assert@^1.0.13",
           "npm:@opentelemetry/api@^1.9.0",
+          "npm:@opentelemetry/context-async-hooks@2",
           "npm:@opentelemetry/sdk-trace-base@2"
         ]
       },

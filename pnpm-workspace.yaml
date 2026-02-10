@@ -43,6 +43,7 @@ catalog:
   "@logtape/logtape": ^2.0.0
   "@multiformats/base-x": ^4.0.1
   "@opentelemetry/api": ^1.9.0
+  "@opentelemetry/context-async-hooks": ^2.0.0
   "@opentelemetry/core": ^2.0.0
   "@opentelemetry/sdk-trace-base": ^2.0.0
   "@std/assert": "jsr:^1.0.13"
