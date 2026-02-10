@@ -7,8 +7,7 @@
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.0.0",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.0.0",
-    "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.0.0",
-    "@std/assert": "jsr:@std/assert@^1.0.13"
+    "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.0.0"
   },
   "exports": {
     ".": "./src/mod.tsx"

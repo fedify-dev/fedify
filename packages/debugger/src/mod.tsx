@@ -242,7 +242,7 @@ export function createFederationDebugger<TContextData>(
  * the LogTape configuration to collect logs per trace.
  *
  * @example Advanced usage with explicit exporter
- * ```typescript
+ * ```typescript ignore
  * const kv = new MemoryKvStore();
  * const exporter = new FedifySpanExporter(kv);
  * const tracerProvider = new BasicTracerProvider({

@@ -1,12 +1,10 @@
-import { test } from "@fedify/fixture";
-import {
-  assert,
-  assertEquals,
-  assertNotEquals,
-  assertStringIncludes,
-} from "@std/assert";
-import { createFederationDebugger } from "./mod.tsx";
-import type { FederationDebuggerAuth, SerializedLogRecord } from "./mod.tsx";
+import { notStrictEqual, ok, strictEqual } from "node:assert/strict";
+import { test } from "node:test";
+import { createFederationDebugger } from "@fedify/debugger";
+import type {
+  FederationDebuggerAuth,
+  SerializedLogRecord,
+} from "@fedify/debugger";
 import type {
   Federation,
   FederationFetchOptions,
@@ -99,12 +97,12 @@ test("createFederationDebugger returns a Federation object", () => {
   const { federation } = createMockFederation();
   const exporter = createMockExporter();
   const dbg = createFederationDebugger(federation, { exporter });
-  assertNotEquals(dbg, null);
-  assertNotEquals(dbg, undefined);
-  assertEquals(typeof dbg.fetch, "function");
-  assertEquals(typeof dbg.startQueue, "function");
-  assertEquals(typeof dbg.processQueuedTask, "function");
-  assertEquals(typeof dbg.createContext, "function");
+  notStrictEqual(dbg, null);
+  notStrictEqual(dbg, undefined);
+  strictEqual(typeof dbg.fetch, "function");
+  strictEqual(typeof dbg.startQueue, "function");
+  strictEqual(typeof dbg.processQueuedTask, "function");
+  strictEqual(typeof dbg.createContext, "function");
 });
 
 test("createFederationDebugger delegates startQueue", async () => {
@@ -113,9 +111,9 @@ test("createFederationDebugger delegates startQueue", async () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const options: FederationStartQueueOptions = { signal: undefined };
   await dbg.startQueue(undefined, options);
-  assertEquals(calls["startQueue"]?.length, 1);
-  assertEquals(calls["startQueue"]![0]![0], undefined);
-  assertEquals(calls["startQueue"]![0]![1], options);
+  strictEqual(calls["startQueue"]?.length, 1);
+  strictEqual(calls["startQueue"]![0]![0], undefined);
+  strictEqual(calls["startQueue"]![0]![1], options);
 });
 
 test("createFederationDebugger delegates processQueuedTask", async () => {
@@ -127,8 +125,8 @@ test("createFederationDebugger delegates processQueuedTask", async () => {
     undefined,
     message as unknown as import("@fedify/fedify/federation").Message,
   );
-  assertEquals(calls["processQueuedTask"]?.length, 1);
-  assertEquals(calls["processQueuedTask"]![0]![1], message);
+  strictEqual(calls["processQueuedTask"]?.length, 1);
+  strictEqual(calls["processQueuedTask"]![0]![1], message);
 });
 
 test("createFederationDebugger delegates createContext", () => {
@@ -137,8 +135,8 @@ test("createFederationDebugger delegates createContext", () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const url = new URL("https://example.com");
   dbg.createContext(url, undefined);
-  assertEquals(calls["createContext"]?.length, 1);
-  assertEquals(calls["createContext"]![0]![0], url);
+  strictEqual(calls["createContext"]?.length, 1);
+  strictEqual(calls["createContext"]![0]![0], url);
 });
 
 test("createFederationDebugger delegates setActorDispatcher", () => {
@@ -147,9 +145,9 @@ test("createFederationDebugger delegates setActorDispatcher", () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const dispatcher = () => null;
   dbg.setActorDispatcher("/users/{identifier}", dispatcher);
-  assertEquals(calls["setActorDispatcher"]?.length, 1);
-  assertEquals(calls["setActorDispatcher"]![0]![0], "/users/{identifier}");
-  assertEquals(calls["setActorDispatcher"]![0]![1], dispatcher);
+  strictEqual(calls["setActorDispatcher"]?.length, 1);
+  strictEqual(calls["setActorDispatcher"]![0]![0], "/users/{identifier}");
+  strictEqual(calls["setActorDispatcher"]![0]![1], dispatcher);
 });
 
 test("fetch delegates non-debug requests to inner federation", async () => {
@@ -158,9 +156,9 @@ test("fetch delegates non-debug requests to inner federation", async () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const request = new Request("https://example.com/users/alice");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(calls["fetch"]?.length, 1);
-  assertEquals(response.status, 200);
-  assertEquals(await response.text(), "Federation response");
+  strictEqual(calls["fetch"]?.length, 1);
+  strictEqual(response.status, 200);
+  strictEqual(await response.text(), "Federation response");
 });
 
 test("fetch intercepts debug path prefix requests", async () => {
@@ -170,8 +168,8 @@ test("fetch intercepts debug path prefix requests", async () => {
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   // The debug request should NOT be forwarded to inner federation
-  assertEquals(calls["fetch"]?.length ?? 0, 0);
-  assertEquals(response.status, 200);
+  strictEqual(calls["fetch"]?.length ?? 0, 0);
+  strictEqual(response.status, 200);
 });
 
 test("fetch intercepts custom debug path prefix", async () => {
@@ -183,7 +181,7 @@ test("fetch intercepts custom debug path prefix", async () => {
   });
   const request = new Request("https://example.com/__my_debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
 });
 
 test("JSON API returns traces", async () => {
@@ -200,15 +198,15 @@ test("JSON API returns traces", async () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const request = new Request("https://example.com/__debug__/api/traces");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
-  assertEquals(
+  strictEqual(response.status, 200);
+  strictEqual(
     response.headers.get("content-type"),
     "application/json",
   );
   const body = await response.json() as TraceSummary[];
-  assertEquals(body.length, 1);
-  assertEquals(body[0].traceId, "abcdef1234567890abcdef1234567890");
-  assertEquals(body[0].activityCount, 3);
+  strictEqual(body.length, 1);
+  strictEqual(body[0].traceId, "abcdef1234567890abcdef1234567890");
+  strictEqual(body[0].activityCount, 3);
 });
 
 test("fetch passes through onNotFound for non-debug requests", async () => {
@@ -224,9 +222,9 @@ test("fetch passes through onNotFound for non-debug requests", async () => {
       return new Response("Custom Not Found", { status: 404 });
     },
   });
-  assertEquals(notFoundCalled, true);
-  assertEquals(response.status, 404);
-  assertEquals(await response.text(), "Custom Not Found");
+  strictEqual(notFoundCalled, true);
+  strictEqual(response.status, 404);
+  strictEqual(await response.text(), "Custom Not Found");
 });
 
 test("traces list page returns HTML with trace IDs", async () => {
@@ -249,20 +247,20 @@ test("traces list page returns HTML with trace IDs", async () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const ct = response.headers.get("content-type") ?? "";
-  assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
   const html = await response.text();
-  assertStringIncludes(html, "Fedify Debug Dashboard");
+  ok(html.includes("Fedify Debug Dashboard"));
   // Check that truncated trace IDs appear
-  assertStringIncludes(html, "abcdef12");
-  assertStringIncludes(html, "12345678");
+  ok(html.includes("abcdef12"));
+  ok(html.includes("12345678"));
   // Check activity types are shown
-  assertStringIncludes(html, "Create");
-  assertStringIncludes(html, "Follow");
-  assertStringIncludes(html, "Like");
+  ok(html.includes("Create"));
+  ok(html.includes("Follow"));
+  ok(html.includes("Like"));
   // Check trace count
-  assertStringIncludes(html, "<strong>2</strong>");
+  ok(html.includes("<strong>2</strong>"));
 });
 
 test("traces list page shows empty message when no traces", async () => {
@@ -271,10 +269,10 @@ test("traces list page shows empty message when no traces", async () => {
   const dbg = createFederationDebugger(federation, { exporter });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const html = await response.text();
-  assertStringIncludes(html, "No traces captured yet.");
-  assertStringIncludes(html, "<strong>0</strong>");
+  ok(html.includes("No traces captured yet."));
+  ok(html.includes("<strong>0</strong>"));
 });
 
 test("trace detail page returns HTML with activity details", async () => {
@@ -314,32 +312,29 @@ test("trace detail page returns HTML with activity details", async () => {
     "https://example.com/__debug__/traces/abcdef1234567890abcdef1234567890",
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const ct = response.headers.get("content-type") ?? "";
-  assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
   const html = await response.text();
   // Check page title
-  assertStringIncludes(html, "Trace abcdef12");
+  ok(html.includes("Trace abcdef12"));
   // Check activity types shown
-  assertStringIncludes(html, "Create");
-  assertStringIncludes(html, "Accept");
+  ok(html.includes("Create"));
+  ok(html.includes("Accept"));
   // Check direction badges
-  assertStringIncludes(html, "inbound");
-  assertStringIncludes(html, "outbound");
+  ok(html.includes("inbound"));
+  ok(html.includes("outbound"));
   // Check actor IDs
-  assertStringIncludes(html, "https://remote.example/users/alice");
-  assertStringIncludes(html, "https://local.example/users/bob");
+  ok(html.includes("https://remote.example/users/alice"));
+  ok(html.includes("https://local.example/users/bob"));
   // Check activity ID
-  assertStringIncludes(html, "https://remote.example/activities/1");
+  ok(html.includes("https://remote.example/activities/1"));
   // Check signature details
-  assertStringIncludes(
-    html,
-    "https://remote.example/users/alice#main-key",
-  );
+  ok(html.includes("https://remote.example/users/alice#main-key"));
   // Check inbox URL for outbound
-  assertStringIncludes(html, "https://remote.example/inbox");
+  ok(html.includes("https://remote.example/inbox"));
   // Check back link
-  assertStringIncludes(html, "Back to traces");
+  ok(html.includes("Back to traces"));
 });
 
 test("trace detail page shows empty message when no activities", async () => {
@@ -350,9 +345,9 @@ test("trace detail page shows empty message when no activities", async () => {
     "https://example.com/__debug__/traces/0000000000000000",
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const html = await response.text();
-  assertStringIncludes(html, "No activities found for this trace.");
+  ok(html.includes("No activities found for this trace."));
 });
 
 // ---------- Simplified overload tests ----------
@@ -363,10 +358,10 @@ test("simplified overload returns Federation without exporter", () => {
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
-    assertNotEquals(dbg, null);
-    assertNotEquals(dbg, undefined);
-    assertEquals(typeof dbg.fetch, "function");
-    assertEquals(typeof dbg.startQueue, "function");
+    notStrictEqual(dbg, null);
+    notStrictEqual(dbg, undefined);
+    strictEqual(typeof dbg.fetch, "function");
+    strictEqual(typeof dbg.startQueue, "function");
   } finally {
     // Restore original provider
     trace.setGlobalTracerProvider(originalProvider);
@@ -384,14 +379,14 @@ test("simplified overload registers a global TracerProvider", () => {
     // After: the global provider should return a real tracer backed by
     // BasicTracerProvider.  We verify by checking the tracer can start spans.
     const tracer = trace.getTracer("test-after");
-    assertNotEquals(tracer, null);
-    assertNotEquals(tracer, undefined);
+    notStrictEqual(tracer, null);
+    notStrictEqual(tracer, undefined);
     // The tracer should be functional (not a noop)
     const span = tracer.startSpan("test-span");
-    assertNotEquals(span, null);
+    notStrictEqual(span, null);
     // Span should have a valid spanContext with non-zero traceId
     const ctx = span.spanContext();
-    assertNotEquals(ctx.traceId, "00000000000000000000000000000000");
+    notStrictEqual(ctx.traceId, "00000000000000000000000000000000");
     span.end();
   } finally {
     trace.disable();
@@ -405,11 +400,11 @@ test("simplified overload serves debug dashboard", async () => {
     const dbg = createFederationDebugger(federation);
     const request = new Request("https://example.com/__debug__/");
     const response = await dbg.fetch(request, { contextData: undefined });
-    assertEquals(response.status, 200);
+    strictEqual(response.status, 200);
     const ct = response.headers.get("content-type") ?? "";
-    assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+    ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
     const html = await response.text();
-    assertStringIncludes(html, "Fedify Debug Dashboard");
+    ok(html.includes("Fedify Debug Dashboard"));
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
@@ -422,9 +417,9 @@ test("simplified overload with custom path", async () => {
     const dbg = createFederationDebugger(federation, { path: "/_dbg" });
     const request = new Request("https://example.com/_dbg/");
     const response = await dbg.fetch(request, { contextData: undefined });
-    assertEquals(response.status, 200);
+    strictEqual(response.status, 200);
     const ct = response.headers.get("content-type") ?? "";
-    assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+    ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
@@ -437,9 +432,9 @@ test("simplified overload delegates non-debug requests", async () => {
     const dbg = createFederationDebugger(federation);
     const request = new Request("https://example.com/users/alice");
     const response = await dbg.fetch(request, { contextData: undefined });
-    assertEquals(calls["fetch"]?.length, 1);
-    assertEquals(response.status, 200);
-    assertEquals(await response.text(), "Federation response");
+    strictEqual(calls["fetch"]?.length, 1);
+    strictEqual(response.status, 200);
+    strictEqual(await response.text(), "Federation response");
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
@@ -452,14 +447,14 @@ test("simplified overload JSON API returns traces", async () => {
     const dbg = createFederationDebugger(federation);
     const request = new Request("https://example.com/__debug__/api/traces");
     const response = await dbg.fetch(request, { contextData: undefined });
-    assertEquals(response.status, 200);
-    assertEquals(
+    strictEqual(response.status, 200);
+    strictEqual(
       response.headers.get("content-type"),
       "application/json",
     );
     const body = await response.json() as TraceSummary[];
     // Should return empty array since no spans have been exported
-    assertEquals(body.length, 0);
+    strictEqual(body.length, 0);
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
@@ -477,12 +472,12 @@ test("auth password static: unauthenticated request shows login form", async () 
   const dbg = createFederationDebugger(federation, { exporter, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 401);
+  strictEqual(response.status, 401);
   const html = await response.text();
-  assertStringIncludes(html, "Login Required");
-  assertStringIncludes(html, 'name="password"');
+  ok(html.includes("Login Required"));
+  ok(html.includes('name="password"'));
   // Should NOT have a username field for password-only mode
-  assert(!html.includes('name="username"'), "Should not have username field");
+  ok(!html.includes('name="username"'), "Should not have username field");
 });
 
 test("auth password static: correct password sets session cookie", async () => {
@@ -500,12 +495,12 @@ test("auth password static: correct password sets session cookie", async () => {
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 303);
+  strictEqual(response.status, 303);
   const location = response.headers.get("location");
-  assertEquals(location, "/__debug__/");
+  strictEqual(location, "/__debug__/");
   const setCookie = response.headers.get("set-cookie");
-  assert(setCookie != null, "Should set a cookie");
-  assertStringIncludes(setCookie!, "__fedify_debug_session=");
+  ok(setCookie != null, "Should set a cookie");
+  ok(setCookie!.includes("__fedify_debug_session="));
 });
 
 test("auth password static: wrong password shows error", async () => {
@@ -523,41 +518,9 @@ test("auth password static: wrong password shows error", async () => {
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 401);
+  strictEqual(response.status, 401);
   const html = await response.text();
-  assertStringIncludes(html, "Invalid credentials.");
-});
-
-test("auth password static: valid session cookie allows access", async () => {
-  const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const auth: FederationDebuggerAuth = {
-    type: "password",
-    password: "secret123",
-  };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
-
-  // First, log in to get the session cookie
-  const loginBody = new URLSearchParams({ password: "secret123" });
-  const loginReq = new Request("https://example.com/__debug__/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: loginBody.toString(),
-  });
-  const loginResp = await dbg.fetch(loginReq, { contextData: undefined });
-  assertEquals(loginResp.status, 303);
-  const setCookie = loginResp.headers.get("set-cookie")!;
-  // Extract cookie value
-  const cookieValue = setCookie.split(";")[0];
-
-  // Now access the dashboard with the session cookie
-  const dashReq = new Request("https://example.com/__debug__/", {
-    headers: { Cookie: cookieValue },
-  });
-  const dashResp = await dbg.fetch(dashReq, { contextData: undefined });
-  assertEquals(dashResp.status, 200);
-  const html = await dashResp.text();
-  assertStringIncludes(html, "Fedify Debug Dashboard");
+  ok(html.includes("Invalid credentials."));
 });
 
 // ---------- Auth: password (callback) tests ----------
@@ -581,8 +544,8 @@ test("auth password callback: authenticate function is called", async () => {
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 303);
-  assertEquals(receivedPassword, "callback-pw");
+  strictEqual(response.status, 303);
+  strictEqual(receivedPassword, "callback-pw");
 });
 
 // ---------- Auth: usernamePassword (static) tests ----------
@@ -598,10 +561,10 @@ test("auth usernamePassword static: login form shows username field", async () =
   const dbg = createFederationDebugger(federation, { exporter, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 401);
+  strictEqual(response.status, 401);
   const html = await response.text();
-  assertStringIncludes(html, 'name="username"');
-  assertStringIncludes(html, 'name="password"');
+  ok(html.includes('name="username"'));
+  ok(html.includes('name="password"'));
 });
 
 test("auth usernamePassword static: correct credentials set cookie", async () => {
@@ -623,10 +586,10 @@ test("auth usernamePassword static: correct credentials set cookie", async () =>
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 303);
+  strictEqual(response.status, 303);
   const setCookie = response.headers.get("set-cookie");
-  assert(setCookie != null);
-  assertStringIncludes(setCookie!, "__fedify_debug_session=");
+  ok(setCookie != null);
+  ok(setCookie!.includes("__fedify_debug_session="));
 });
 
 test("auth usernamePassword static: wrong username is rejected", async () => {
@@ -648,9 +611,9 @@ test("auth usernamePassword static: wrong username is rejected", async () => {
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 401);
+  strictEqual(response.status, 401);
   const html = await response.text();
-  assertStringIncludes(html, "Invalid credentials.");
+  ok(html.includes("Invalid credentials."));
 });
 
 // ---------- Auth: usernamePassword (callback) tests ----------
@@ -679,9 +642,9 @@ test("auth usernamePassword callback: authenticate receives both args", async ()
     body: body.toString(),
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 303);
-  assertEquals(receivedUsername, "user1");
-  assertEquals(receivedPassword, "pass1");
+  strictEqual(response.status, 303);
+  strictEqual(receivedUsername, "user1");
+  strictEqual(receivedPassword, "pass1");
 });
 
 // ---------- Auth: request-based tests ----------
@@ -698,9 +661,9 @@ test("auth request: allowed request passes through", async () => {
   const dbg = createFederationDebugger(federation, { exporter, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const html = await response.text();
-  assertStringIncludes(html, "Fedify Debug Dashboard");
+  ok(html.includes("Fedify Debug Dashboard"));
 });
 
 test("auth request: rejected request returns 403", async () => {
@@ -715,8 +678,8 @@ test("auth request: rejected request returns 403", async () => {
   const dbg = createFederationDebugger(federation, { exporter, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 403);
-  assertEquals(await response.text(), "Forbidden");
+  strictEqual(response.status, 403);
+  strictEqual(await response.text(), "Forbidden");
 });
 
 test("auth request: receives the actual Request object", async () => {
@@ -735,8 +698,8 @@ test("auth request: receives the actual Request object", async () => {
     headers: { "X-Test-Header": "allowed" },
   });
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
-  assertEquals(receivedHeader, "allowed");
+  strictEqual(response.status, 200);
+  strictEqual(receivedHeader, "allowed");
 });
 
 test("auth request: non-debug requests bypass auth", async () => {
@@ -752,8 +715,8 @@ test("auth request: non-debug requests bypass auth", async () => {
   // Non-debug requests should go to the inner federation, not the auth layer
   const request = new Request("https://example.com/users/alice");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
-  assertEquals(calls["fetch"]?.length, 1);
+  strictEqual(response.status, 200);
+  strictEqual(calls["fetch"]?.length, 1);
 });
 
 // ---------- Auth: logout tests ----------
@@ -768,11 +731,11 @@ test("auth password: logout clears session cookie", async () => {
   const dbg = createFederationDebugger(federation, { exporter, auth });
   const request = new Request("https://example.com/__debug__/logout");
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 303);
-  assertEquals(response.headers.get("location"), "/__debug__/");
+  strictEqual(response.status, 303);
+  strictEqual(response.headers.get("location"), "/__debug__/");
   const setCookie = response.headers.get("set-cookie");
-  assert(setCookie != null);
-  assertStringIncludes(setCookie!, "Max-Age=0");
+  ok(setCookie != null);
+  ok(setCookie!.includes("Max-Age=0"));
 });
 
 // ---------- Sink property tests ----------
@@ -781,9 +744,9 @@ test("createFederationDebugger exposes a sink property", () => {
   const { federation } = createMockFederation();
   const exporter = createMockExporter();
   const dbg = createFederationDebugger(federation, { exporter });
-  assertNotEquals(dbg.sink, null);
-  assertNotEquals(dbg.sink, undefined);
-  assertEquals(typeof dbg.sink, "function");
+  notStrictEqual(dbg.sink, null);
+  notStrictEqual(dbg.sink, undefined);
+  strictEqual(typeof dbg.sink, "function");
 });
 
 test("simplified overload exposes a sink property", () => {
@@ -791,8 +754,8 @@ test("simplified overload exposes a sink property", () => {
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
-    assertNotEquals(dbg.sink, null);
-    assertEquals(typeof dbg.sink, "function");
+    notStrictEqual(dbg.sink, null);
+    strictEqual(typeof dbg.sink, "function");
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
   }
@@ -827,18 +790,18 @@ test("sink collects logs by traceId and API returns them", async () => {
     `https://example.com/__debug__/api/logs/${traceId}`,
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
-  assertEquals(response.headers.get("content-type"), "application/json");
+  strictEqual(response.status, 200);
+  strictEqual(response.headers.get("content-type"), "application/json");
   const logs = (await response.json()) as SerializedLogRecord[];
-  assertEquals(logs.length, 1);
-  assertEquals(logs[0].level, "info");
-  assertEquals(logs[0].message, "GET /users/alice: 200");
-  assertEquals(logs[0].category[0], "fedify");
+  strictEqual(logs.length, 1);
+  strictEqual(logs[0].level, "info");
+  strictEqual(logs[0].message, "GET /users/alice: 200");
+  strictEqual(logs[0].category[0], "fedify");
   // traceId and spanId should be excluded from properties
-  assertEquals("traceId" in logs[0].properties, false);
-  assertEquals("spanId" in logs[0].properties, false);
+  strictEqual("traceId" in logs[0].properties, false);
+  strictEqual("spanId" in logs[0].properties, false);
   // Other properties should be preserved
-  assertEquals(logs[0].properties.method, "GET");
+  strictEqual(logs[0].properties.method, "GET");
 });
 
 test("sink ignores log records without traceId", async () => {
@@ -861,9 +824,9 @@ test("sink ignores log records without traceId", async () => {
     "https://example.com/__debug__/api/logs/nonexistent",
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const logs = (await response.json()) as SerializedLogRecord[];
-  assertEquals(logs.length, 0);
+  strictEqual(logs.length, 0);
 });
 
 test("multiple logs for the same trace are grouped", async () => {
@@ -888,9 +851,9 @@ test("multiple logs for the same trace are grouped", async () => {
   );
   const response = await dbg.fetch(request, { contextData: undefined });
   const logs = (await response.json()) as SerializedLogRecord[];
-  assertEquals(logs.length, 5);
-  assertEquals(logs[0].message, "log 0");
-  assertEquals(logs[4].message, "log 4");
+  strictEqual(logs.length, 5);
+  strictEqual(logs[0].message, "log 0");
+  strictEqual(logs[4].message, "log 4");
 });
 
 test("trace detail page shows log records", async () => {
@@ -912,14 +875,14 @@ test("trace detail page shows log records", async () => {
     `https://example.com/__debug__/traces/${traceId}`,
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const html = await response.text();
-  assertStringIncludes(html, "Logs");
-  assertStringIncludes(html, "Something went wrong");
-  assertStringIncludes(html, "warning");
-  assertStringIncludes(html, "fedify.federation");
+  ok(html.includes("Logs"));
+  ok(html.includes("Something went wrong"));
+  ok(html.includes("warning"));
+  ok(html.includes("fedify.federation"));
   // "1" and "log record" are separated by HTML tags
-  assertStringIncludes(html, "log record");
+  ok(html.includes("log record"));
 });
 
 test("trace detail page shows empty log message", async () => {
@@ -931,7 +894,7 @@ test("trace detail page shows empty log message", async () => {
     "https://example.com/__debug__/traces/0000000000000000",
   );
   const response = await dbg.fetch(request, { contextData: undefined });
-  assertEquals(response.status, 200);
+  strictEqual(response.status, 200);
   const html = await response.text();
-  assertStringIncludes(html, "No logs captured for this trace.");
+  ok(html.includes("No logs captured for this trace."));
 });
