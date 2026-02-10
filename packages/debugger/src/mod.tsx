@@ -15,7 +15,7 @@ import type {
 import { MemoryKvStore } from "@fedify/fedify/federation";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
 import type { LogRecord, Sink } from "@logtape/logtape";
-import { configure, configureSync, getConfig } from "@logtape/logtape";
+import { configureSync, getConfig } from "@logtape/logtape";
 import { context, propagation, trace } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
@@ -318,10 +318,11 @@ export function createFederationDebugger<TContextData>(
       ) {
         loggers.push({ category: [], sinks: ["__fedify_debugger__"] });
       }
-      configure(
+      configureSync(
         {
-          contextLocalStorage: new AsyncLocalStorage(),
           ...existingConfig,
+          contextLocalStorage: existingConfig.contextLocalStorage ??
+            new AsyncLocalStorage(),
           reset: true,
           sinks,
           loggers,
