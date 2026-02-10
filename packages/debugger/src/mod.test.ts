@@ -501,6 +501,34 @@ test("auth password static: correct password sets session cookie", async () => {
   const setCookie = response.headers.get("set-cookie");
   ok(setCookie != null, "Should set a cookie");
   ok(setCookie!.includes("__fedify_debug_session="));
+  ok(
+    setCookie!.includes("; Secure"),
+    "HTTPS login cookie should include Secure",
+  );
+});
+
+test("auth password static: login cookie omits Secure on HTTP", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const body = new URLSearchParams({ password: "secret123" });
+  const request = new Request("http://example.com/__debug__/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const response = await dbg.fetch(request, { contextData: undefined });
+  strictEqual(response.status, 303);
+  const setCookie = response.headers.get("set-cookie");
+  ok(setCookie != null, "Should set a cookie");
+  ok(
+    !setCookie!.includes("; Secure"),
+    "HTTP login cookie should not include Secure",
+  );
 });
 
 test("auth password static: wrong password shows error", async () => {
@@ -736,6 +764,29 @@ test("auth password: logout clears session cookie", async () => {
   const setCookie = response.headers.get("set-cookie");
   ok(setCookie != null);
   ok(setCookie!.includes("Max-Age=0"));
+  ok(
+    setCookie!.includes("; Secure"),
+    "HTTPS logout cookie should include Secure",
+  );
+});
+
+test("auth password: logout cookie omits Secure on HTTP", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const request = new Request("http://example.com/__debug__/logout");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  strictEqual(response.status, 303);
+  const setCookie = response.headers.get("set-cookie");
+  ok(setCookie != null);
+  ok(
+    !setCookie!.includes("; Secure"),
+    "HTTP logout cookie should not include Secure",
+  );
 });
 
 // ---------- Sink property tests ----------

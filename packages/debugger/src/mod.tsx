@@ -524,24 +524,30 @@ function createDebugApp(
         }
         const key = await hmacKeyPromise!;
         const sig = await signSession(key);
+        const secure = new URL(c.req.url).protocol === "https:";
         return new Response(null, {
           status: 303,
           headers: {
             "Location": pathPrefix + "/",
             "Set-Cookie":
-              `${SESSION_COOKIE_NAME}=${sig}; Path=${pathPrefix}; HttpOnly; SameSite=Strict`,
+              `${SESSION_COOKIE_NAME}=${sig}; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
+                secure ? "; Secure" : ""
+              }`,
           },
         });
       });
 
       // GET /logout handler
-      app.get("/logout", (_c) => {
+      app.get("/logout", (c) => {
+        const secure = new URL(c.req.url).protocol === "https:";
         return new Response(null, {
           status: 303,
           headers: {
             "Location": pathPrefix + "/",
             "Set-Cookie":
-              `${SESSION_COOKIE_NAME}=; Path=${pathPrefix}; HttpOnly; SameSite=Strict; Max-Age=0`,
+              `${SESSION_COOKIE_NAME}=; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
+                secure ? "; Secure" : ""
+              }; Max-Age=0`,
           },
         });
       });
