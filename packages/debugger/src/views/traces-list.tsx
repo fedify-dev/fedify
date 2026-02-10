@@ -77,7 +77,9 @@ export const TracesListPage: FC<TracesListPageProps> = (
           __html: `
 (function() {
   var interval = setInterval(function() {
-    fetch("${pathPrefix}/api/traces")
+    fetch(${
+            JSON.stringify(pathPrefix).replace(/</g, "\\u003c")
+          } + "/api/traces")
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var countEl = document.querySelector("strong");

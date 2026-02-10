@@ -275,6 +275,27 @@ test("traces list page shows empty message when no traces", async () => {
   ok(html.includes("<strong>0</strong>"));
 });
 
+test("traces list page escapes pathPrefix in inline script", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const malicious = '/__debug__"></script><img src=x onerror=alert(1)>';
+  const dbg = createFederationDebugger(federation, {
+    exporter,
+    path: malicious,
+  });
+  const request = new Request("https://example.com" + malicious + "/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  strictEqual(response.status, 200);
+  const html = await response.text();
+  // The malicious pathPrefix must not appear unescaped in the inline script;
+  // it should be JSON-encoded with < escaped as \u003c to prevent breaking
+  // out of the <script> tag.
+  ok(
+    !html.includes("onerror=alert(1)>"),
+    "Malicious pathPrefix should be escaped in inline script",
+  );
+});
+
 test("trace detail page returns HTML with activity details", async () => {
   const activities: TraceActivityRecord[] = [
     {
