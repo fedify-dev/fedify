@@ -126,6 +126,12 @@ project.  It will ask you a few questions to set up the project:
  -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
 
+> [!TIP]
+> Projects created with `fedify init` automatically include [`@fedify/lint`]
+> for consistent code linting.  Deno projects get a lint plugin configured in
+> *deno.json*, while Node.js and Bun projects get an *eslint.config.ts* with
+> `@fedify/lint`.
+
 Alternatively, you can specify the options in the command line to skip some of
 interactive prompts:
 
@@ -142,6 +148,7 @@ interactive prompts:
 [Deno KV]: https://deno.com/kv
 [AMQP]: https://www.amqp.org/
 [RabbitMQ]: https://www.rabbitmq.com/
+[`@fedify/lint`]: /manual/lint
 
 ### `-r`/`--runtime`: JavaScript runtime
 
@@ -225,6 +232,41 @@ When using `--dry-run`, the command will:
 
 This option works with all other initialization options, allowing you to preview
 different configurations before making a decision.
+
+
+`create-fedify-app`: Creating a Fedify project without CLI
+----------------------------------------------------------
+
+*This command is available since Fedify 2.0.0.*
+
+If you prefer not to install the `@fedify/cli` toolchain globally, you can
+use `create-fedify-app` to scaffold a new Fedify project directly:
+
+::: code-group
+
+~~~~ sh [npm]
+npx create-fedify-app my-fedify-project
+~~~~
+
+~~~~ sh [pnpm]
+pnpm create fedify-app my-fedify-project
+~~~~
+
+~~~~ sh [Yarn]
+yarn create fedify-app my-fedify-project
+~~~~
+
+~~~~ sh [Bun]
+bunx create-fedify-app my-fedify-project
+~~~~
+
+:::
+
+This is functionally equivalent to `fedify init` and supports the same
+interactive prompts and command-line options (`-r`, `-p`, `-w`, `-k`, `-q`,
+`--dry-run`).  See the
+[`fedify init`](#fedify-init-initializing-a-fedify-project) section above for
+details on available options.
 
 
 `fedify lookup`: Looking up an ActivityPub object

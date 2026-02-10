@@ -98,6 +98,7 @@ Here is the list of packages:
 | ------------------------------------------------- | -------------------------------- | -------------------------------- | ---------------------------------------- |
 | [@fedify/fedify](/packages/fedify/)               | [JSR]                            | [npm]                            | The core framework of Fedify             |
 | [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
+| [create-fedify-app](/packages/create-fedify-app/) |                                  | [npm][npm:create-fedify-app]     | Create a new Fedify project (npx)        |
 | [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
 | [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
 | [@fedify/debugger](/packages/debugger/)           | [JSR][jsr:@fedify/debugger]      | [npm][npm:@fedify/debugger]      | Embedded ActivityPub debug dashboard     |
@@ -108,6 +109,7 @@ Here is the list of packages:
 | [@fedify/fresh](/packages/fresh/)                 | [JSR][jsr:@fedify/fresh]         |                                  | Fresh integration                        |
 | [@fedify/h3](/packages/h3/)                       | [JSR][jsr:@fedify/h3]            | [npm][npm:@fedify/h3]            | H3 integration                           |
 | [@fedify/hono](/packages/hono/)                   | [JSR][jsr:@fedify/hono]          | [npm][npm:@fedify/hono]          | Hono integration                         |
+| [@fedify/init](/packages/init/)                   | [JSR][jsr:@fedify/init]          | [npm][npm:@fedify/init]          | Project initializer for Fedify           |
 | [@fedify/koa](/packages/koa/)                     | [JSR][jsr:@fedify/koa]           | [npm][npm:@fedify/koa]           | Koa integration                          |
 | [@fedify/lint](/packages/lint/)                   | [JSR][jsr:@fedify/lint]          | [npm][npm:@fedify/lint]          | Linting utilities                        |
 | [@fedify/nestjs](/packages/nestjs/)               |                                  | [npm][npm:@fedify/nestjs]        | NestJS integration                       |
@@ -125,6 +127,7 @@ Here is the list of packages:
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
+[npm:create-fedify-app]: https://www.npmjs.com/package/create-fedify-app
 [jsr:@fedify/amqp]: https://jsr.io/@fedify/amqp
 [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp
 [jsr:@fedify/cfworkers]: https://jsr.io/@fedify/cfworkers
@@ -142,6 +145,8 @@ Here is the list of packages:
 [npm:@fedify/h3]: https://www.npmjs.com/package/@fedify/h3
 [jsr:@fedify/hono]: https://jsr.io/@fedify/hono
 [npm:@fedify/hono]: https://www.npmjs.com/package/@fedify/hono
+[jsr:@fedify/init]: https://jsr.io/@fedify/init
+[npm:@fedify/init]: https://www.npmjs.com/package/@fedify/init
 [jsr:@fedify/koa]: https://jsr.io/@fedify/koa
 [npm:@fedify/koa]: https://www.npmjs.com/package/@fedify/koa
 [jsr:@fedify/lint]: https://jsr.io/@fedify/lint

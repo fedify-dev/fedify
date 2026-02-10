@@ -87,6 +87,10 @@ for the complete package list.
 
 ### Other key directories
 
+ -  *packages/init/*: Project initializer (`@fedify/init`) for Fedify.
+    Separated from `@fedify/cli` to enable standalone use.
+ -  *packages/create-fedify-app/*: Standalone CLI (`create-fedify-app`)
+    for creating new Fedify projects via `npx create-fedify-app`.
  -  *docs/*: Documentation built with VitePress (see *docs/README.md*)
  -  *examples/*: Example projects
 
