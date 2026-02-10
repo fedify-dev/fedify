@@ -305,7 +305,9 @@ export function createFederationDebugger<TContextData>(
       const sinks = { ...existingConfig.sinks, __fedify_debugger__: sink };
       const loggers = existingConfig.loggers.map((l) => ({
         ...l,
-        sinks: [...(l.sinks ?? []), "__fedify_debugger__"],
+        sinks: Array.isArray(l.category) && l.category.length < 1
+          ? [...(l.sinks ?? []), "__fedify_debugger__"]
+          : l.sinks,
       }));
       if (
         loggers.every((l) =>
