@@ -16,8 +16,9 @@ import { MemoryKvStore } from "@fedify/fedify/federation";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
 import type { LogRecord, Sink } from "@logtape/logtape";
 import { configure, configureSync, getConfig } from "@logtape/logtape";
-import { context, trace } from "@opentelemetry/api";
+import { context, propagation, trace } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
@@ -293,6 +294,9 @@ export function createFederationDebugger<TContextData>(
     // the same traceId (required for context propagation):
     const contextManager = new AsyncLocalStorageContextManager();
     context.setGlobalContextManager(contextManager);
+    // Register W3C Trace Context propagator so that trace context
+    // is properly injected/extracted across queue boundaries:
+    propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
     // Auto-configure LogTape to include the debugger sink
     const existingConfig = getConfig();

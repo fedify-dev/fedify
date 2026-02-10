@@ -35,6 +35,7 @@
     "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/context-async-hooks": "catalog:",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "hono": "catalog:"
   },

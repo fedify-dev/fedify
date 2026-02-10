@@ -78,6 +78,9 @@ automatically:
  -  Registers it as the global [OpenTelemetry] tracer provider
  -  Registers an `AsyncLocalStorageContextManager` as the global OpenTelemetry
     context manager (required for parent–child span propagation)
+ -  Registers a `W3CTraceContextPropagator` as the global OpenTelemetry
+    propagator (required for trace context to propagate across message queue
+    boundaries)
  -  Configures [LogTape] to collect logs per trace (using `getConfig()` to
     merge with any existing configuration)
 
@@ -371,10 +374,18 @@ explicit `exporter` option:
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
 import { createFederationDebugger } from "@fedify/debugger";
+import { context, propagation } from "@opentelemetry/api";
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
+
+// Register context manager and propagator (required for trace
+// propagation across async boundaries and message queues):
+context.setGlobalContextManager(new AsyncLocalStorageContextManager());
+propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
 // Create a KV store and a span exporter that captures trace data:
 const kv = new MemoryKvStore();
@@ -418,6 +429,9 @@ await configure({
 
 In this mode, you are responsible for:
 
+ -  Registering an `AsyncLocalStorageContextManager` as the global context
+    manager
+ -  Registering a `W3CTraceContextPropagator` as the global propagator
  -  Creating and configuring the `BasicTracerProvider`
  -  Passing `tracerProvider` to `createFederation()`
  -  Passing the same `exporter` to `createFederationDebugger()`
