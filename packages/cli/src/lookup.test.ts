@@ -1,8 +1,11 @@
 import { Activity, Note } from "@fedify/vocab";
+import { clearActiveConfig, setActiveConfig } from "@optique/config";
+import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import test from "node:test";
+import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
 import {
   authorizedFetchOption,
@@ -183,48 +186,21 @@ test("clearTimeoutSignal - cleans up timer properly", async () => {
   assert.ok(!signal.aborted);
 });
 
-test("authorizedFetchOption - parses successfully without -a flag", () => {
-  const result = parse(authorizedFetchOption, []);
-  assert.ok(result.success);
-  if (result.success) {
-    assert.strictEqual(result.value.authorizedFetch, false);
-    // When authorizedFetch is false, firstKnock and tunnelService are not available
-  }
+test("authorizedFetchOption - parses successfully without -a flag", async () => {
+  const result = await runWithConfig(authorizedFetchOption, configContext, {
+    load: () => ({}),
+    args: [],
+  });
+  assert.strictEqual(result.authorizedFetch, false);
+  // When authorizedFetch is false, firstKnock and tunnelService still get defaults
+  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
+  assert.strictEqual(result.tunnelService, "localhost.run");
 });
 
 test("authorizedFetchOption - parses successfully with -a flag", () => {
+  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, ["-a"]);
-  assert.ok(result.success);
-  if (result.success) {
-    assert.strictEqual(result.value.authorizedFetch, true);
-    assert.strictEqual(
-      result.value.firstKnock,
-      "draft-cavage-http-signatures-12",
-    );
-    assert.strictEqual(result.value.tunnelService, undefined);
-  }
-});
-
-test("authorizedFetchOption - parses with -a and --first-knock", () => {
-  const result = parse(authorizedFetchOption, [
-    "-a",
-    "--first-knock",
-    "rfc9421",
-  ]);
-  assert.ok(result.success);
-  if (result.success) {
-    assert.strictEqual(result.value.authorizedFetch, true);
-    assert.strictEqual(result.value.firstKnock, "rfc9421");
-    assert.strictEqual(result.value.tunnelService, undefined);
-  }
-});
-
-test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
-  const result = parse(authorizedFetchOption, [
-    "-a",
-    "--tunnel-service",
-    "localhost.run",
-  ]);
+  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -233,5 +209,40 @@ test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
       "draft-cavage-http-signatures-12",
     );
     assert.strictEqual(result.value.tunnelService, "localhost.run");
+  }
+});
+
+test("authorizedFetchOption - parses with -a and --first-knock", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(authorizedFetchOption, [
+    "-a",
+    "--first-knock",
+    "rfc9421",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(result.value.firstKnock, "rfc9421");
+    assert.strictEqual(result.value.tunnelService, "localhost.run");
+  }
+});
+
+test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(authorizedFetchOption, [
+    "-a",
+    "--tunnel-service",
+    "serveo.net",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(
+      result.value.firstKnock,
+      "draft-cavage-http-signatures-12",
+    );
+    assert.strictEqual(result.value.tunnelService, "serveo.net");
   }
 });

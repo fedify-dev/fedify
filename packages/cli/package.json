@@ -1,6 +1,45 @@
 {
   "name": "@fedify/cli",
   "version": "2.0.0",
+  "type": "module",
+  "files": [
+    "README.md",
+    "package.json",
+    "src/install.mjs",
+    "src/run.mjs"
+  ],
+  "bin": {
+    "fedify": "./dist/mod.js"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/cli... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
+    "test-init": "deno task test-init",
+    "pretest:bun": "pnpm build",
+    "test:bun": "bun test",
+    "run": "pnpm build && node dist/mod.js",
+    "runi": "tsdown && node dist/mod.js",
+    "run:bun": "pnpm build && bun dist/mod.js",
+    "runi:bun": "tsdown && bun dist/mod.js"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.2.0",
+    "denp": ">=2.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "description": "CLI toolchain for Fedify and debugging ActivityPub",
   "keywords": [
     "fedify",
@@ -27,15 +66,6 @@
     "url": "git+https://github.com/fedify-dev/fedify.git",
     "directory": "packages/cli"
   },
-  "type": "module",
-  "engines": {
-    "node": ">=20.0.0",
-    "bun": ">=1.2.0",
-    "denp": ">=2.0.0"
-  },
-  "bin": {
-    "fedify": "./dist/mod.js"
-  },
   "exports": "./dist/mod.js",
   "imports": {
     "#kv": {
@@ -59,9 +89,9 @@
     "@js-temporal/polyfill": "catalog:",
     "@logtape/file": "catalog:",
     "@logtape/logtape": "catalog:",
-    "@optique/config": "^0.10.0-dev.347",
-    "@optique/core": "^0.10.0-dev.347",
-    "@optique/run": "^0.10.0-dev.347",
+    "@optique/config": "0.10.0-dev.348",
+    "@optique/core": "0.10.0-dev.348",
+    "@optique/run": "0.10.0-dev.348",
     "@poppanator/http-constants": "^1.1.1",
     "byte-encodings": "catalog:",
     "chalk": "^5.6.2",
@@ -87,20 +117,5 @@
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
-  },
-  "scripts": {
-    "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/cli... run build:self",
-    "prepack": "pnpm build",
-    "prepublish": "pnpm build",
-    "pretest": "pnpm build",
-    "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
-    "test-init": "deno task test-init",
-    "pretest:bun": "pnpm build",
-    "test:bun": "bun test",
-    "run": "pnpm build && node dist/mod.js",
-    "runi": "tsdown && node dist/mod.js",
-    "run:bun": "pnpm build && bun dist/mod.js",
-    "runi:bun": "tsdown && bun dist/mod.js"
   }
 }
