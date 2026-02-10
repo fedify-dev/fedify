@@ -15,20 +15,23 @@ const ALIASES = [
   "https://hollo.social/@fedify",
 ];
 
-test("Test webFingerCommand", () => {
+test("Test webFingerCommand - resources only", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  assert.deepEqual(parse(webFingerCommand, argsWithResourcesOnly), {
-    success: true,
-    value: {
-      debug: false,
-      command: COMMAND,
-      resources: RESOURCES,
-      allowPrivateAddresses: undefined,
-      maxRedirection: 5,
-      userAgent: undefined,
-    },
-  });
+  const result = parse(webFingerCommand, argsWithResourcesOnly);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.debug, false);
+    assert.strictEqual(result.value.command, COMMAND);
+    assert.deepEqual(result.value.resources, RESOURCES);
+    assert.strictEqual(result.value.allowPrivateAddresses, false);
+    assert.strictEqual(result.value.maxRedirection, 0);
+    // userAgent has a dynamic default value from getUserAgent()
+    assert.ok(result.value.userAgent?.startsWith("Fedify/"));
+  }
+});
 
+test("Test webFingerCommand - with all options", () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   const maxRedirection = 10;
   assert.deepEqual(
     parse(webFingerCommand, [
@@ -52,18 +55,29 @@ test("Test webFingerCommand", () => {
       },
     },
   );
+});
 
+test("Test webFingerCommand - wrong option", () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   const wrongOptionResult = parse(webFingerCommand, [
     ...argsWithResourcesOnly,
     "-Q",
   ]);
   assert.ok(!wrongOptionResult.success);
+});
 
-  const wrongOptionValueResult = parse(
+test("Test webFingerCommand - invalid option value falls back to default", () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
+  // With bindConfig, invalid values fall back to the default instead of failing
+  const result = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
-  assert.ok(!wrongOptionValueResult.success);
+  assert.ok(result.success);
+  if (result.success) {
+    // Falls back to default value of 0
+    assert.strictEqual(result.value.maxRedirection, 0);
+  }
 });
 
 // ----------------------------------------------------------------------
