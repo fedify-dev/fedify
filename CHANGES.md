@@ -239,7 +239,11 @@ To be released.
     `/__debug__`) and serving an SSR-based web UI.  [[#561]]
 
      -  Added `createFederationDebugger()` function that returns a
-        `Federation` proxy with a built-in debug dashboard.
+        `Federation` proxy with a built-in debug dashboard.  When called
+        without an `exporter` option, it automatically sets up OpenTelemetry
+        tracing (creating `MemoryKvStore`, `FedifySpanExporter`,
+        `BasicTracerProvider`) and registers it as the global tracer
+        provider—no manual OTel configuration needed.
      -  Traces list page showing trace IDs, activity types, activity counts,
         and timestamps, with auto-polling for real-time updates.
      -  Trace detail page showing activity direction, type, actor, signature

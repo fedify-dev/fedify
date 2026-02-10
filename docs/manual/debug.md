@@ -19,34 +19,29 @@ traces and activities without leaving your browser.
 Installation
 ------------
 
-You need to install both `@fedify/debugger` and `@fedify/fedify` (which
-includes the [OpenTelemetry] integration used for trace data):
-
 ::: code-group
 
 ~~~~ bash [Deno]
-deno add jsr:@fedify/debugger npm:@opentelemetry/sdk-trace-base
+deno add jsr:@fedify/debugger
 ~~~~
 
 ~~~~ bash [npm]
-npm install @fedify/debugger @opentelemetry/sdk-trace-base
+npm install @fedify/debugger
 ~~~~
 
 ~~~~ bash [pnpm]
-pnpm add @fedify/debugger @opentelemetry/sdk-trace-base
+pnpm add @fedify/debugger
 ~~~~
 
 ~~~~ bash [Yarn]
-yarn add @fedify/debugger @opentelemetry/sdk-trace-base
+yarn add @fedify/debugger
 ~~~~
 
 ~~~~ bash [Bun]
-bun add @fedify/debugger @opentelemetry/sdk-trace-base
+bun add @fedify/debugger
 ~~~~
 
 :::
-
-[OpenTelemetry]: ./opentelemetry.md
 
 
 Setup
@@ -56,44 +51,34 @@ The debugger works as a proxy that wraps your existing `Federation` object.
 It intercepts HTTP requests matching a configurable path prefix and serves
 the debug dashboard, while delegating everything else to the inner federation.
 
-To set it up, you need to:
-
-1.  Create a `FedifySpanExporter` (from `@fedify/fedify/otel`) that captures
-    trace data
-2.  Create a `BasicTracerProvider` (from `@opentelemetry/sdk-trace-base`)
-    that uses the exporter
-3.  Pass it to `createFederationDebugger()` along with your federation object
-
-Here is a basic example:
+The simplest way to set it up is to call `createFederationDebugger()` with
+your federation object:
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { FedifySpanExporter } from "@fedify/fedify/otel";
 import { createFederationDebugger } from "@fedify/debugger";
-import {
-  BasicTracerProvider,
-  SimpleSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
 
-// Create a KV store and a span exporter that captures trace data:
-const kv = new MemoryKvStore();
-const exporter = new FedifySpanExporter(kv);
-const tracerProvider = new BasicTracerProvider({
-  spanProcessors: [new SimpleSpanProcessor(exporter)],
-});
-
-const innerFederation = createFederation({
-  kv,
-  tracerProvider,
+// NOTE: createFederationDebugger() must be called BEFORE createFederation(),
+// because it registers a global OpenTelemetry tracer provider that
+// createFederation() will pick up automatically.
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
   // ... other federation options
 });
 
-// Wrap the federation with the debugger:
-const federation = createFederationDebugger(innerFederation, {
-  exporter,
-});
+const federation = createFederationDebugger(innerFederation);
 ~~~~
+
+When called without an `exporter` option, `createFederationDebugger()`
+automatically:
+
+ -  Creates a `MemoryKvStore` and `FedifySpanExporter` for trace data storage
+ -  Creates a `BasicTracerProvider` with a `SimpleSpanProcessor`
+ -  Registers it as the global [OpenTelemetry] tracer provider
+
+This means `createFederation()` will automatically use the tracer provider
+without needing an explicit `tracerProvider` option.
 
 The `federation` object returned by `createFederationDebugger()` is a drop-in
 replacement for the original.  You can use it everywhere you would normally use
@@ -102,6 +87,8 @@ the inner federation object (e.g., passing it to framework integrations).
 > [!WARNING]
 > The debug dashboard is intended for development use only.  Do not enable it
 > in production, as it exposes internal trace data without authentication.
+
+[OpenTelemetry]: ./opentelemetry.md
 
 
 Configuration
@@ -120,24 +107,28 @@ at `/_debug/` and traces at `/_debug/traces/:traceId`.
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { FedifySpanExporter } from "@fedify/fedify/otel";
 import { createFederationDebugger } from "@fedify/debugger";
 
-const kv = new MemoryKvStore();
-const exporter = new FedifySpanExporter(kv);
-const innerFederation = createFederation({ kv });
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
 // ---cut-before---
 const federation = createFederationDebugger(innerFederation, {
-  exporter,
   path: "/_debug",
 });
 ~~~~
 
 ### `exporter`
 
-*Required.*  A `FedifySpanExporter` instance that the dashboard queries for
-trace data.  You should use the same exporter instance that your OpenTelemetry
-setup is configured with, so the dashboard reflects the same data.
+*Optional.*  A `FedifySpanExporter` instance that the dashboard queries for
+trace data.
+
+When omitted (the recommended approach), the debugger automatically creates
+an exporter and sets up OpenTelemetry tracing for you.
+
+When provided, you are responsible for setting up the `BasicTracerProvider`
+and passing it to `createFederation()`.  See the
+[Advanced setup](#advanced-setup) section below.
 
 
 Dashboard pages
@@ -196,15 +187,14 @@ object.  Simply wrap the federation before passing it to your integration:
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { FedifySpanExporter } from "@fedify/fedify/otel";
 import { createFederationDebugger } from "@fedify/debugger";
 import { federation as honoFederation } from "@fedify/hono";
 import { Hono } from "hono";
 
-const kv = new MemoryKvStore();
-const exporter = new FedifySpanExporter(kv);
-const innerFederation = createFederation({ kv });
-const federation = createFederationDebugger(innerFederation, { exporter });
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+const federation = createFederationDebugger(innerFederation);
 
 const app = new Hono();
 app.use(honoFederation(federation, (_) => undefined));
@@ -215,16 +205,58 @@ app.use(honoFederation(federation, (_) => undefined));
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { FedifySpanExporter } from "@fedify/fedify/otel";
 import { createFederationDebugger } from "@fedify/debugger";
 import { integrateFederation } from "@fedify/express";
 import express from "express";
 
-const kv = new MemoryKvStore();
-const exporter = new FedifySpanExporter(kv);
-const innerFederation = createFederation({ kv });
-const federation = createFederationDebugger(innerFederation, { exporter });
+const innerFederation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+const federation = createFederationDebugger(innerFederation);
 
 const app = express();
 app.use(integrateFederation(federation, (req) => undefined));
 ~~~~
+
+
+Advanced setup
+--------------
+
+If you need full control over the OpenTelemetry setup (for example, to use
+a custom `KvStore` or to add additional span processors), you can pass an
+explicit `exporter` option:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import { createFederationDebugger } from "@fedify/debugger";
+import {
+  BasicTracerProvider,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
+
+// Create a KV store and a span exporter that captures trace data:
+const kv = new MemoryKvStore();
+const exporter = new FedifySpanExporter(kv);
+const tracerProvider = new BasicTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(exporter)],
+});
+
+const innerFederation = createFederation({
+  kv,
+  tracerProvider,
+  // ... other federation options
+});
+
+// Wrap the federation with the debugger:
+const federation = createFederationDebugger(innerFederation, {
+  exporter,
+});
+~~~~
+
+In this mode, you are responsible for:
+
+ -  Creating and configuring the `BasicTracerProvider`
+ -  Passing `tracerProvider` to `createFederation()`
+ -  Passing the same `exporter` to `createFederationDebugger()`

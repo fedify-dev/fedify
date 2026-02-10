@@ -16,6 +16,7 @@ import type {
   TraceActivityRecord,
   TraceSummary,
 } from "@fedify/fedify/otel";
+import { trace } from "@opentelemetry/api";
 
 function createMockExporter(
   traces: TraceSummary[] = [],
@@ -351,4 +352,114 @@ test("trace detail page shows empty message when no activities", async () => {
   assertEquals(response.status, 200);
   const html = await response.text();
   assertStringIncludes(html, "No activities found for this trace.");
+});
+
+// ---------- Simplified overload tests ----------
+
+test("simplified overload returns Federation without exporter", () => {
+  // Save original global tracer provider to restore later
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation } = createMockFederation();
+    const dbg = createFederationDebugger(federation);
+    assertNotEquals(dbg, null);
+    assertNotEquals(dbg, undefined);
+    assertEquals(typeof dbg.fetch, "function");
+    assertEquals(typeof dbg.startQueue, "function");
+  } finally {
+    // Restore original provider
+    trace.setGlobalTracerProvider(originalProvider);
+  }
+});
+
+test("simplified overload registers a global TracerProvider", () => {
+  // Disable any existing global provider first
+  trace.disable();
+  try {
+    const { federation } = createMockFederation();
+    // Before: the global provider should return a noop tracer
+    const _noopTracer = trace.getTracer("test-before");
+    createFederationDebugger(federation);
+    // After: the global provider should return a real tracer backed by
+    // BasicTracerProvider.  We verify by checking the tracer can start spans.
+    const tracer = trace.getTracer("test-after");
+    assertNotEquals(tracer, null);
+    assertNotEquals(tracer, undefined);
+    // The tracer should be functional (not a noop)
+    const span = tracer.startSpan("test-span");
+    assertNotEquals(span, null);
+    // Span should have a valid spanContext with non-zero traceId
+    const ctx = span.spanContext();
+    assertNotEquals(ctx.traceId, "00000000000000000000000000000000");
+    span.end();
+  } finally {
+    trace.disable();
+  }
+});
+
+test("simplified overload serves debug dashboard", async () => {
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation } = createMockFederation();
+    const dbg = createFederationDebugger(federation);
+    const request = new Request("https://example.com/__debug__/");
+    const response = await dbg.fetch(request, { contextData: undefined });
+    assertEquals(response.status, 200);
+    const ct = response.headers.get("content-type") ?? "";
+    assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+    const html = await response.text();
+    assertStringIncludes(html, "Fedify Debug Dashboard");
+  } finally {
+    trace.setGlobalTracerProvider(originalProvider);
+  }
+});
+
+test("simplified overload with custom path", async () => {
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation } = createMockFederation();
+    const dbg = createFederationDebugger(federation, { path: "/_dbg" });
+    const request = new Request("https://example.com/_dbg/");
+    const response = await dbg.fetch(request, { contextData: undefined });
+    assertEquals(response.status, 200);
+    const ct = response.headers.get("content-type") ?? "";
+    assert(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  } finally {
+    trace.setGlobalTracerProvider(originalProvider);
+  }
+});
+
+test("simplified overload delegates non-debug requests", async () => {
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation, calls } = createMockFederation();
+    const dbg = createFederationDebugger(federation);
+    const request = new Request("https://example.com/users/alice");
+    const response = await dbg.fetch(request, { contextData: undefined });
+    assertEquals(calls["fetch"]?.length, 1);
+    assertEquals(response.status, 200);
+    assertEquals(await response.text(), "Federation response");
+  } finally {
+    trace.setGlobalTracerProvider(originalProvider);
+  }
+});
+
+test("simplified overload JSON API returns traces", async () => {
+  const originalProvider = trace.getTracerProvider();
+  try {
+    const { federation } = createMockFederation();
+    const dbg = createFederationDebugger(federation);
+    const request = new Request("https://example.com/__debug__/api/traces");
+    const response = await dbg.fetch(request, { contextData: undefined });
+    assertEquals(response.status, 200);
+    assertEquals(
+      response.headers.get("content-type"),
+      "application/json",
+    );
+    const body = await response.json() as TraceSummary[];
+    // Should return empty array since no spans have been exported
+    assertEquals(body.length, 0);
+  } finally {
+    trace.setGlobalTracerProvider(originalProvider);
+  }
 });

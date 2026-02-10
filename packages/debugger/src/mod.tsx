@@ -12,13 +12,22 @@ import type {
   Federation,
   FederationFetchOptions,
 } from "@fedify/fedify/federation";
-import type { FedifySpanExporter } from "@fedify/fedify/otel";
+import { MemoryKvStore } from "@fedify/fedify/federation";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import { trace } from "@opentelemetry/api";
+import {
+  BasicTracerProvider,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
 import { Hono } from "hono";
 import { TracesListPage } from "./views/traces-list.tsx";
 import { TraceDetailPage } from "./views/trace-detail.tsx";
 
 /**
- * Options for {@link createFederationDebugger}.
+ * Options for {@link createFederationDebugger} with an explicit exporter.
+ *
+ * When `exporter` is provided, the caller is responsible for setting up
+ * the OpenTelemetry tracer provider and passing it to `createFederation()`.
  */
 export interface FederationDebuggerOptions {
   /**
@@ -33,24 +42,91 @@ export interface FederationDebuggerOptions {
 }
 
 /**
+ * Options for {@link createFederationDebugger} without an explicit exporter.
+ *
+ * When `exporter` is omitted, the debugger automatically creates a
+ * {@link MemoryKvStore}, {@link FedifySpanExporter},
+ * {@link BasicTracerProvider}, and registers it as the global tracer provider
+ * so that `createFederation()` picks it up automatically.
+ */
+export interface FederationDebuggerSimpleOptions {
+  /**
+   * The path prefix for the debug dashboard.  Defaults to `"/__debug__"`.
+   */
+  path?: string;
+}
+
+/**
  * Wraps a {@link Federation} object with a debug dashboard.
  *
- * The returned object fully implements {@link Federation}.  Requests matching
- * the debug path prefix (default `/__debug__`) are handled by an internal
- * Hono app that serves the dashboard.  All other requests and method calls
- * are delegated to the inner federation object as-is.
+ * When called without an `exporter`, the debugger automatically sets up
+ * OpenTelemetry tracing: it creates a {@link MemoryKvStore},
+ * {@link FedifySpanExporter}, and {@link BasicTracerProvider}, then registers
+ * it as the global tracer provider.  This means `createFederation()` will
+ * automatically use it without needing an explicit `tracerProvider` option.
+ *
+ * @example Simple usage (recommended)
+ * ```typescript
+ * const innerFederation = createFederation({ kv: new MemoryKvStore() });
+ * const federation = createFederationDebugger(innerFederation);
+ * ```
  *
  * @template TContextData The context data type of the federation.
  * @param federation The federation object to wrap.
- * @param options Options for the debugger.
+ * @param options Optional path configuration.
+ * @returns A new {@link Federation} object with the debug dashboard attached.
+ */
+export function createFederationDebugger<TContextData>(
+  federation: Federation<TContextData>,
+  options?: FederationDebuggerSimpleOptions,
+): Federation<TContextData>;
+
+/**
+ * Wraps a {@link Federation} object with a debug dashboard.
+ *
+ * When called with an `exporter`, the caller is responsible for setting up
+ * the OpenTelemetry tracer provider and passing it to `createFederation()`.
+ *
+ * @example Advanced usage with explicit exporter
+ * ```typescript
+ * const kv = new MemoryKvStore();
+ * const exporter = new FedifySpanExporter(kv);
+ * const tracerProvider = new BasicTracerProvider({
+ *   spanProcessors: [new SimpleSpanProcessor(exporter)],
+ * });
+ * const innerFederation = createFederation({ kv, tracerProvider });
+ * const federation = createFederationDebugger(innerFederation, { exporter });
+ * ```
+ *
+ * @template TContextData The context data type of the federation.
+ * @param federation The federation object to wrap.
+ * @param options Options including the exporter.
  * @returns A new {@link Federation} object with the debug dashboard attached.
  */
 export function createFederationDebugger<TContextData>(
   federation: Federation<TContextData>,
   options: FederationDebuggerOptions,
+): Federation<TContextData>;
+
+export function createFederationDebugger<TContextData>(
+  federation: Federation<TContextData>,
+  options?: FederationDebuggerSimpleOptions | FederationDebuggerOptions,
 ): Federation<TContextData> {
-  const pathPrefix = options.path ?? "/__debug__";
-  const exporter = options.exporter;
+  const pathPrefix = options?.path ?? "/__debug__";
+
+  let exporter: FedifySpanExporter;
+  if (options != null && "exporter" in options) {
+    exporter = options.exporter;
+  } else {
+    // Auto-setup: create MemoryKvStore, FedifySpanExporter,
+    // BasicTracerProvider, and register globally
+    const kv = new MemoryKvStore();
+    exporter = new FedifySpanExporter(kv);
+    const tracerProvider = new BasicTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
+    trace.setGlobalTracerProvider(tracerProvider);
+  }
 
   const app = createDebugApp(pathPrefix, exporter);
 

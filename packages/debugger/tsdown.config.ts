@@ -9,6 +9,7 @@ export default defineConfig({
     "@fedify/fedify",
     "@fedify/fedify/federation",
     "@fedify/fedify/otel",
+    /^@opentelemetry\//,
     "hono",
     /^hono\//,
   ],

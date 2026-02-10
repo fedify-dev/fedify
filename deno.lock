@@ -5954,7 +5954,9 @@
       },
       "packages/debugger": {
         "dependencies": [
-          "jsr:@std/assert@^1.0.13"
+          "jsr:@std/assert@^1.0.13",
+          "npm:@opentelemetry/api@^1.9.0",
+          "npm:@opentelemetry/sdk-trace-base@2"
         ]
       },
       "packages/denokv": {
