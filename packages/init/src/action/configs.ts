@@ -10,7 +10,6 @@ import {
 import { uniq } from "es-toolkit";
 import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
-import { merge } from "../utils.ts";
 import biome from "../json/biome.json" with { type: "json" };
 import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
   type: "json",
@@ -19,6 +18,7 @@ import vscodeSettings from "../json/vscode-settings.json" with {
   type: "json",
 };
 import type { InitCommandData } from "../types.ts";
+import { merge } from "../utils.ts";
 import { PACKAGES_PATH } from "./const.ts";
 import { getDependencies, getDevDependencies, joinDepsReg } from "./deps.ts";
 
@@ -38,6 +38,7 @@ export const loadDenoConfig = (
     unstable: getUnstable(data),
     nodeModulesDir: "auto",
     imports: joinDepsReg("deno")(getDependencies(data)),
+    lint: { plugins: ["jsr:@fedify/lint"] },
     ...(data.testMode ? { links: getLinks(data) } : {}),
   },
 });
@@ -116,7 +117,7 @@ export const devToolConfigs = {
   },
   vscExt: {
     path: joinPath(".vscode", "extensions.json"),
-    data: { recommendations: ["biomejs.biome"] },
+    data: { recommendations: ["biomejs.biome", "dbaeumer.vscode-eslint"] },
   },
   vscSet: {
     path: joinPath(".vscode", "settings.json"),

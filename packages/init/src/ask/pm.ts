@@ -1,8 +1,16 @@
+import { pipe, when } from "@fxts/core";
 import { select } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { print } from "@optique/run";
 import { PACKAGE_MANAGER } from "../const.ts";
-import { getInstallUrl, getLabel, isPackageManagerAvailable } from "../lib.ts";
+import {
+  getInstallUrl,
+  isPackageManagerAvailable,
+  kvStores,
+  messageQueues,
+  packageManagers,
+  runtimes,
+} from "../lib.ts";
 import type { PackageManager, WebFramework } from "../types.ts";
 import webFrameworks from "../webframeworks.ts";
 
@@ -56,3 +64,15 @@ const noticeInstallUrl = (pm: PackageManager) => {
   print(message`  You can install it from following link: ${url}`);
   print(message`  or choose another package manager:`);
 };
+
+const getLabel = (name: string) =>
+  pipe(
+    name,
+    whenHasLabel(webFrameworks),
+    whenHasLabel(packageManagers),
+    whenHasLabel(messageQueues),
+    whenHasLabel(kvStores),
+    whenHasLabel(runtimes),
+  );
+const whenHasLabel = <T extends Record<string, { label: string }>>(desc: T) =>
+  when((name: string) => name in desc, (name) => desc[name as keyof T].label);

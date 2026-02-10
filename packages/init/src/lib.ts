@@ -7,7 +7,6 @@ import {
   negate,
   pipe,
   throwIf,
-  when,
 } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import type { Message } from "@optique/core";
@@ -30,7 +29,6 @@ import type {
   Runtimes,
 } from "./types.ts";
 import { isNotFoundError, runSubCommand } from "./utils.ts";
-import webFrameworks from "./webframeworks.ts";
 
 export const PACKAGE_VERSION = metadata.version;
 export const logger = getLogger(["fedify", "cli", "init"]);
@@ -60,20 +58,8 @@ const convertPattern = <K extends string, T extends { outputPattern: string }>(
     ),
     fromEntries,
   ) as Record<K, Omit<T, "outputPattern"> & { outputPattern: RegExp }>;
-const packageManagers = convertPattern(pm) as PackageManagers;
-const runtimes = convertPattern(rt) as Runtimes;
-
-export const getLabel = (name: string) =>
-  pipe(
-    name,
-    whenHasLabel(webFrameworks),
-    whenHasLabel(packageManagers),
-    whenHasLabel(messageQueues),
-    whenHasLabel(kvStores),
-    whenHasLabel(runtimes),
-  );
-const whenHasLabel = <T extends Record<string, { label: string }>>(desc: T) =>
-  when((name: string) => name in desc, (name) => desc[name as keyof T].label);
+export const packageManagers = convertPattern(pm) as PackageManagers;
+export const runtimes = convertPattern(rt) as Runtimes;
 
 export const getInstallUrl = (pm: PackageManager) =>
   packageManagers[pm].installUrl;

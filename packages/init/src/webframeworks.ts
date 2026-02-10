@@ -18,6 +18,7 @@ const webFrameworks: WebFrameworks = {
     init: ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
+          ...defaultDenoDependencies,
           "@std/dotenv": "^0.225.2",
           "@hono/hono": "^4.5.0",
           "@hongminhee/x-forwarded-fetch": "^0.2.0",
@@ -37,7 +38,10 @@ const webFrameworks: WebFrameworks = {
           "x-forwarded-fetch": "^0.2.0",
           "@fedify/hono": PACKAGE_VERSION,
         },
-      devDependencies: pm === "bun" ? { "@types/bun": "^1.1.6" } : {},
+      devDependencies: {
+        ...defaultDevDependencies,
+        ...(pm === "bun" ? { "@types/bun": "^1.1.6" } : {}),
+      },
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
@@ -50,6 +54,9 @@ const webFrameworks: WebFrameworks = {
         "src/index.ts": readTemplate(
           `hono/index/${packageManagerToRuntime(pm)}.ts`,
         ),
+        ...(pm !== "deno"
+          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          : {}),
       },
       compilerOptions: pm === "deno" ? undefined : {
         "lib": ["ESNext", "DOM"],
@@ -74,6 +81,7 @@ const webFrameworks: WebFrameworks = {
           : pm === "bun"
           ? "bun run ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
+        ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
       },
       instruction: getInstruction(pm, 8000),
     }),
@@ -85,6 +93,7 @@ const webFrameworks: WebFrameworks = {
     init: ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
+          ...defaultDenoDependencies,
           elysia: "npm:elysia@^1.3.6",
           "@fedify/elysia": PACKAGE_VERSION,
         }
@@ -104,21 +113,23 @@ const webFrameworks: WebFrameworks = {
             }
             : {}),
         },
-      devDependencies: pm === "bun"
-        ? { "@types/bun": "^1.2.19" }
-        : pm === "deno"
-        ? {}
-        : {
+      devDependencies: {
+        ...(pm === "bun" ? { "@types/bun": "^1.2.19" } : {
           tsx: "^4.21.0",
           "@types/node": "^25.0.3",
           typescript: "^5.9.3",
-        },
+        }),
+        ...defaultDevDependencies,
+      },
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
         "src/index.ts": readTemplate(
           `elysia/index/${packageManagerToRuntime(pm)}.ts`,
         ).replace(/\/\* logger \*\//, projectName),
+        ...(pm !== "deno"
+          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          : {}),
       },
       compilerOptions: pm === "deno" || pm === "bun" ? undefined : {
         "lib": ["ESNext", "DOM"],
@@ -144,6 +155,7 @@ const webFrameworks: WebFrameworks = {
             "build": "tsc src/index.ts --outDir dist",
             "start": "NODE_ENV=production node dist/index.js",
           }),
+        ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
       },
       instruction: getInstruction(pm, 3000),
     }),
@@ -159,10 +171,12 @@ const webFrameworks: WebFrameworks = {
         ...(pm !== "deno" && pm !== "bun"
           ? { "@dotenvx/dotenvx": "^1.14.1", tsx: "^4.17.0" }
           : {}),
+        ...(pm === "deno" ? defaultDenoDependencies : {}),
       },
       devDependencies: {
         "@types/express": "^4.17.21",
         ...(pm === "bun" ? { "@types/bun": "^1.1.6" } : {}),
+        ...defaultDevDependencies,
       },
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
@@ -170,6 +184,9 @@ const webFrameworks: WebFrameworks = {
         "src/app.ts": readTemplate("express/app.ts")
           .replace(/\/\* logger \*\//, projectName),
         "src/index.ts": readTemplate("express/index.ts"),
+        ...(pm !== "deno"
+          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          : {}),
       },
       compilerOptions: pm === "deno" ? undefined : {
         "lib": ["ESNext", "DOM"],
@@ -192,6 +209,7 @@ const webFrameworks: WebFrameworks = {
           : pm === "deno"
           ? "deno run --allow-net --allow-env --allow-sys ./src/index.ts"
           : "dotenvx run -- node --import tsx ./src/index.ts",
+        ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
       },
       instruction: getInstruction(pm, 8000),
     }),
@@ -202,7 +220,11 @@ const webFrameworks: WebFrameworks = {
     packageManagers: PACKAGE_MANAGER,
     init: ({ packageManager: pm, testMode }) => ({
       command: getNitroInitCommand(pm),
-      dependencies: { "@fedify/h3": PACKAGE_VERSION },
+      dependencies: {
+        "@fedify/h3": PACKAGE_VERSION,
+        ...(pm === "deno" ? defaultDenoDependencies : {}),
+      },
+      devDependencies: defaultDevDependencies,
       federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
       files: {
@@ -214,6 +236,12 @@ const webFrameworks: WebFrameworks = {
         ...(
           testMode ? { ".env": readTemplate("nitro/.env.test") } : {}
         ),
+        ...(pm !== "deno"
+          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          : {}),
+      },
+      tasks: {
+        ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
       },
       instruction: getInstruction(pm, 3000),
     }),
@@ -225,14 +253,37 @@ const webFrameworks: WebFrameworks = {
     init: ({ packageManager: pm }) => ({
       label: "Next.js",
       command: getNextInitCommand(pm),
-      dependencies: { "@fedify/next": PACKAGE_VERSION },
-      devDependencies: { "@types/node": "^20.11.2" },
+      dependencies: {
+        "@fedify/next": PACKAGE_VERSION,
+        ...(pm === "deno" ? defaultDenoDependencies : {}),
+      },
+      devDependencies: {
+        "@types/node": "^20.11.2",
+        ...defaultDevDependencies,
+      },
       federationFile: "federation/index.ts",
       loggingFile: "logging.ts",
-      files: { "middleware.ts": readTemplate("next/middleware.ts") },
+      files: {
+        "middleware.ts": readTemplate("next/middleware.ts"),
+        ...(pm !== "deno"
+          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          : {}),
+      },
+      tasks: {
+        ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
+      },
       instruction: getInstruction(pm, 3000),
     }),
     defaultPort: 3000,
   },
 } as const;
 export default webFrameworks;
+
+const defaultDevDependencies = {
+  "eslint": "^9.0.0",
+  "@fedify/lint": PACKAGE_VERSION,
+};
+
+const defaultDenoDependencies = {
+  "@fedify/lint": PACKAGE_VERSION,
+};
