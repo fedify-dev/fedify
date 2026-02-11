@@ -26,6 +26,7 @@ import {
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { timingSafeEqual } from "node:crypto";
 import { LoginPage } from "./views/login.tsx";
 import { TracesListPage } from "./views/traces-list.tsx";
 import { TraceDetailPage } from "./views/trace-detail.tsx";
@@ -465,6 +466,23 @@ async function verifySession(
   }
 }
 
+/**
+ * Constant-time string comparison to prevent timing attacks on credential
+ * checks.  Uses {@link timingSafeEqual} from `node:crypto` under the hood.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  if (bufA.byteLength !== bufB.byteLength) {
+    // Still compare to burn the same amount of time regardless, but
+    // the result is always false when lengths differ.
+    timingSafeEqual(bufA, new Uint8Array(bufA.byteLength));
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
+
 async function checkAuth(
   auth: FederationDebuggerAuth,
   formData: { username?: string; password: string },
@@ -473,7 +491,7 @@ async function checkAuth(
     if ("authenticate" in auth) {
       return await auth.authenticate(formData.password);
     }
-    return formData.password === auth.password;
+    return constantTimeEqual(formData.password, auth.password);
   }
   if (auth.type === "usernamePassword") {
     if ("authenticate" in auth) {
@@ -482,8 +500,13 @@ async function checkAuth(
         formData.password,
       );
     }
-    return formData.username === auth.username &&
-      formData.password === auth.password;
+    // Check both fields in constant time (don't short-circuit)
+    const usernameMatch = constantTimeEqual(
+      formData.username ?? "",
+      auth.username,
+    );
+    const passwordMatch = constantTimeEqual(formData.password, auth.password);
+    return usernameMatch && passwordMatch;
   }
   return false;
 }

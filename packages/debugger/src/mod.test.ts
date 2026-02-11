@@ -887,6 +887,66 @@ test("auth password: logout cookie omits Secure on HTTP", async () => {
   );
 });
 
+// ---------- Auth: session lifecycle tests ----------
+
+test("auth password: valid session cookie grants access", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  // Step 1: login to get a session cookie
+  const loginBody = new URLSearchParams({ password: "secret123" });
+  const loginResponse = await dbg.fetch(
+    new Request("https://example.com/__debug__/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: loginBody.toString(),
+    }),
+    { contextData: undefined },
+  );
+  strictEqual(loginResponse.status, 303);
+  const setCookie = loginResponse.headers.get("set-cookie")!;
+  // Extract the cookie value
+  const cookieValue = setCookie.split(";")[0];
+
+  // Step 2: use the cookie to access a protected page
+  const dashboardResponse = await dbg.fetch(
+    new Request("https://example.com/__debug__/", {
+      headers: { Cookie: cookieValue },
+    }),
+    { contextData: undefined },
+  );
+  strictEqual(dashboardResponse.status, 200);
+  const html = await dashboardResponse.text();
+  ok(html.includes("Fedify Debug Dashboard"));
+});
+
+test("auth password: forged session cookie is rejected", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const auth: FederationDebuggerAuth = {
+    type: "password",
+    password: "secret123",
+  };
+  const dbg = createFederationDebugger(federation, { exporter, auth });
+  // Use a fake/forged cookie value
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/", {
+      headers: {
+        Cookie: "__fedify_debug_session=deadbeefdeadbeefdeadbeefdeadbeef",
+      },
+    }),
+    { contextData: undefined },
+  );
+  // Should show login form (401), not grant access
+  strictEqual(response.status, 401);
+  const html = await response.text();
+  ok(html.includes("Login Required"));
+});
+
 // ---------- Sink property tests ----------
 
 test("createFederationDebugger exposes a sink property", () => {
