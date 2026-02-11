@@ -259,6 +259,18 @@ When provided, you are responsible for setting up the `BasicTracerProvider`
 and passing it to `createFederation()`.  See the
 [Advanced setup](#advanced-setup) section below.
 
+### `kv`
+
+*Required when `exporter` is provided.*  A `KvStore` instance used to persist
+log records collected by the debug dashboard's LogTape sink.
+
+When using the simplified overload (without `exporter`), the debugger
+automatically creates a `MemoryKvStore` for log storage.
+
+When using the advanced overload (with `exporter`), you must pass the same
+`KvStore` instance so that log records written by worker processes are visible
+in the web dashboard.
+
 
 Dashboard pages
 ---------------
@@ -400,6 +412,7 @@ const innerFederation = createFederation({
 // Wrap the federation with the debugger:
 const federation = createFederationDebugger(innerFederation, {
   exporter,
+  kv,
 });
 ~~~~
 
@@ -431,5 +444,5 @@ In this mode, you are responsible for:
  -  Registering a `W3CTraceContextPropagator` as the global propagator
  -  Creating and configuring the `BasicTracerProvider`
  -  Passing `tracerProvider` to `createFederation()`
- -  Passing the same `exporter` to `createFederationDebugger()`
+ -  Passing the same `exporter` and `kv` to `createFederationDebugger()`
  -  Configuring LogTape with `federation.sink` to collect logs per trace

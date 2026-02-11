@@ -9,7 +9,9 @@ import type {
   Federation,
   FederationFetchOptions,
   FederationStartQueueOptions,
+  KvStore,
 } from "@fedify/fedify/federation";
+import { MemoryKvStore } from "@fedify/fedify/federation";
 import type {
   FedifySpanExporter,
   TraceActivityRecord,
@@ -20,8 +22,9 @@ import { trace } from "@opentelemetry/api";
 function createMockExporter(
   traces: TraceSummary[] = [],
   activities: TraceActivityRecord[] = [],
-): FedifySpanExporter {
-  return {
+): { exporter: FedifySpanExporter; kv: KvStore } {
+  const kv = new MemoryKvStore();
+  const exporter = {
     export(_spans: unknown, resultCallback: (result: unknown) => void) {
       resultCallback({ code: 0 });
     },
@@ -38,6 +41,7 @@ function createMockExporter(
       return Promise.resolve(activities);
     },
   } as unknown as FedifySpanExporter;
+  return { exporter, kv };
 }
 
 function createMockFederation(): {
@@ -95,8 +99,8 @@ function createMockFederation(): {
 
 test("createFederationDebugger returns a Federation object", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   notStrictEqual(dbg, null);
   notStrictEqual(dbg, undefined);
   strictEqual(typeof dbg.fetch, "function");
@@ -107,8 +111,8 @@ test("createFederationDebugger returns a Federation object", () => {
 
 test("createFederationDebugger delegates startQueue", async () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const options: FederationStartQueueOptions = { signal: undefined };
   await dbg.startQueue(undefined, options);
   strictEqual(calls["startQueue"]?.length, 1);
@@ -118,8 +122,8 @@ test("createFederationDebugger delegates startQueue", async () => {
 
 test("createFederationDebugger delegates processQueuedTask", async () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const message = { type: "test" };
   await dbg.processQueuedTask(
     undefined,
@@ -131,8 +135,8 @@ test("createFederationDebugger delegates processQueuedTask", async () => {
 
 test("createFederationDebugger delegates createContext", () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const url = new URL("https://example.com");
   dbg.createContext(url, undefined);
   strictEqual(calls["createContext"]?.length, 1);
@@ -141,8 +145,8 @@ test("createFederationDebugger delegates createContext", () => {
 
 test("createFederationDebugger delegates setActorDispatcher", () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const dispatcher = () => null;
   dbg.setActorDispatcher("/users/{identifier}", dispatcher);
   strictEqual(calls["setActorDispatcher"]?.length, 1);
@@ -152,8 +156,8 @@ test("createFederationDebugger delegates setActorDispatcher", () => {
 
 test("fetch delegates non-debug requests to inner federation", async () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request("https://example.com/users/alice");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(calls["fetch"]?.length, 1);
@@ -163,8 +167,8 @@ test("fetch delegates non-debug requests to inner federation", async () => {
 
 test("fetch intercepts debug path prefix requests", async () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   // The debug request should NOT be forwarded to inner federation
@@ -174,9 +178,10 @@ test("fetch intercepts debug path prefix requests", async () => {
 
 test("fetch intercepts custom debug path prefix", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const dbg = createFederationDebugger(federation, {
     exporter,
+    kv,
     path: "/__my_debug__",
   });
   const request = new Request("https://example.com/__my_debug__/");
@@ -188,29 +193,30 @@ test("fetch intercepts custom debug path prefix", async () => {
 
 test("path validation: empty string throws TypeError", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   throws(
-    () => createFederationDebugger(federation, { exporter, path: "" }),
+    () => createFederationDebugger(federation, { exporter, kv, path: "" }),
     TypeError,
   );
 });
 
 test("path validation: path without leading slash throws TypeError", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   throws(
-    () => createFederationDebugger(federation, { exporter, path: "debug" }),
+    () => createFederationDebugger(federation, { exporter, kv, path: "debug" }),
     TypeError,
   );
 });
 
 test("path validation: path with control characters throws TypeError", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   throws(
     () =>
       createFederationDebugger(federation, {
         exporter,
+        kv,
         path: "/debug\x00path",
       }),
     TypeError,
@@ -219,29 +225,38 @@ test("path validation: path with control characters throws TypeError", () => {
 
 test("path validation: path with semicolon throws TypeError", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   throws(
     () =>
-      createFederationDebugger(federation, { exporter, path: "/debug;bad" }),
+      createFederationDebugger(federation, {
+        exporter,
+        kv,
+        path: "/debug;bad",
+      }),
     TypeError,
   );
 });
 
 test("path validation: path with comma throws TypeError", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   throws(
     () =>
-      createFederationDebugger(federation, { exporter, path: "/debug,bad" }),
+      createFederationDebugger(federation, {
+        exporter,
+        kv,
+        path: "/debug,bad",
+      }),
     TypeError,
   );
 });
 
 test("path validation: trailing slash is stripped", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const dbg = createFederationDebugger(federation, {
     exporter,
+    kv,
     path: "/__debug__/",
   });
   // The trailing slash should be normalized away, so /__debug__/ still works
@@ -252,10 +267,11 @@ test("path validation: trailing slash is stripped", async () => {
 
 test("path validation: valid path is accepted", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   // Should not throw
   const dbg = createFederationDebugger(federation, {
     exporter,
+    kv,
     path: "/my-debug_panel",
   });
   notStrictEqual(dbg, null);
@@ -271,8 +287,8 @@ test("JSON API returns traces", async () => {
     },
   ];
   const { federation } = createMockFederation();
-  const exporter = createMockExporter(traces);
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter(traces);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request("https://example.com/__debug__/api/traces");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
@@ -288,8 +304,8 @@ test("JSON API returns traces", async () => {
 
 test("fetch passes through onNotFound for non-debug requests", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   let notFoundCalled = false;
   const request = new Request("https://example.com/unknown");
   const response = await dbg.fetch(request, {
@@ -320,8 +336,8 @@ test("traces list page returns HTML with trace IDs", async () => {
     },
   ];
   const { federation } = createMockFederation();
-  const exporter = createMockExporter(traces);
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter(traces);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
@@ -342,8 +358,8 @@ test("traces list page returns HTML with trace IDs", async () => {
 
 test("traces list page shows empty message when no traces", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
@@ -354,10 +370,11 @@ test("traces list page shows empty message when no traces", async () => {
 
 test("traces list page escapes pathPrefix in inline script", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const malicious = '/__debug__"></script><img src=x onerror=alert(1)>';
   const dbg = createFederationDebugger(federation, {
     exporter,
+    kv,
     path: malicious,
   });
   const request = new Request("https://example.com" + malicious + "/");
@@ -404,8 +421,8 @@ test("trace detail page returns HTML with activity details", async () => {
     },
   ];
   const { federation } = createMockFederation();
-  const exporter = createMockExporter([], activities);
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter([], activities);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request(
     "https://example.com/__debug__/traces/abcdef1234567890abcdef1234567890",
   );
@@ -437,8 +454,8 @@ test("trace detail page returns HTML with activity details", async () => {
 
 test("trace detail page shows empty message when no activities", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter([], []);
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter([], []);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   const request = new Request(
     "https://example.com/__debug__/traces/0000000000000000",
   );
@@ -574,12 +591,12 @@ test("simplified overload JSON API returns traces", async () => {
 
 test("auth password static: unauthenticated request shows login form", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 401);
@@ -592,12 +609,12 @@ test("auth password static: unauthenticated request shows login form", async () 
 
 test("auth password static: correct password sets session cookie", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({ password: "secret123" });
   const request = new Request("https://example.com/__debug__/login", {
     method: "POST",
@@ -619,12 +636,12 @@ test("auth password static: correct password sets session cookie", async () => {
 
 test("auth password static: login cookie omits Secure on HTTP", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({ password: "secret123" });
   const request = new Request("http://example.com/__debug__/login", {
     method: "POST",
@@ -643,12 +660,12 @@ test("auth password static: login cookie omits Secure on HTTP", async () => {
 
 test("auth password static: wrong password shows error", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({ password: "wrong" });
   const request = new Request("https://example.com/__debug__/login", {
     method: "POST",
@@ -665,7 +682,7 @@ test("auth password static: wrong password shows error", async () => {
 
 test("auth password callback: authenticate function is called", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   let receivedPassword = "";
   const auth: FederationDebuggerAuth = {
     type: "password",
@@ -674,7 +691,7 @@ test("auth password callback: authenticate function is called", async () => {
       return password === "callback-pw";
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({ password: "callback-pw" });
   const request = new Request("https://example.com/__debug__/login", {
     method: "POST",
@@ -690,13 +707,13 @@ test("auth password callback: authenticate function is called", async () => {
 
 test("auth usernamePassword static: login form shows username field", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "usernamePassword",
     username: "admin",
     password: "secret",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 401);
@@ -707,13 +724,13 @@ test("auth usernamePassword static: login form shows username field", async () =
 
 test("auth usernamePassword static: correct credentials set cookie", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "usernamePassword",
     username: "admin",
     password: "secret",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({
     username: "admin",
     password: "secret",
@@ -732,13 +749,13 @@ test("auth usernamePassword static: correct credentials set cookie", async () =>
 
 test("auth usernamePassword static: wrong username is rejected", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "usernamePassword",
     username: "admin",
     password: "secret",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({
     username: "wrong",
     password: "secret",
@@ -758,7 +775,7 @@ test("auth usernamePassword static: wrong username is rejected", async () => {
 
 test("auth usernamePassword callback: authenticate receives both args", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   let receivedUsername = "";
   let receivedPassword = "";
   const auth: FederationDebuggerAuth = {
@@ -769,7 +786,7 @@ test("auth usernamePassword callback: authenticate receives both args", async ()
       return username === "user1" && password === "pass1";
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const body = new URLSearchParams({
     username: "user1",
     password: "pass1",
@@ -789,14 +806,14 @@ test("auth usernamePassword callback: authenticate receives both args", async ()
 
 test("auth request: allowed request passes through", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "request",
     authenticate(_request: Request) {
       return true;
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
@@ -806,14 +823,14 @@ test("auth request: allowed request passes through", async () => {
 
 test("auth request: rejected request returns 403", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "request",
     authenticate(_request: Request) {
       return false;
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 403);
@@ -822,7 +839,7 @@ test("auth request: rejected request returns 403", async () => {
 
 test("auth request: receives the actual Request object", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   let receivedHeader = "";
   const auth: FederationDebuggerAuth = {
     type: "request",
@@ -831,7 +848,7 @@ test("auth request: receives the actual Request object", async () => {
       return receivedHeader === "allowed";
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/", {
     headers: { "X-Test-Header": "allowed" },
   });
@@ -842,14 +859,14 @@ test("auth request: receives the actual Request object", async () => {
 
 test("auth request: non-debug requests bypass auth", async () => {
   const { federation, calls } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "request",
     authenticate(_request: Request) {
       return false; // reject everything
     },
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   // Non-debug requests should go to the inner federation, not the auth layer
   const request = new Request("https://example.com/users/alice");
   const response = await dbg.fetch(request, { contextData: undefined });
@@ -861,12 +878,12 @@ test("auth request: non-debug requests bypass auth", async () => {
 
 test("auth password: logout clears session cookie", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("https://example.com/__debug__/logout");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 303);
@@ -882,12 +899,12 @@ test("auth password: logout clears session cookie", async () => {
 
 test("auth password: logout cookie omits Secure on HTTP", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   const request = new Request("http://example.com/__debug__/logout");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 303);
@@ -903,12 +920,12 @@ test("auth password: logout cookie omits Secure on HTTP", async () => {
 
 test("auth password: valid session cookie grants access", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   // Step 1: login to get a session cookie
   const loginBody = new URLSearchParams({ password: "secret123" });
   const loginResponse = await dbg.fetch(
@@ -938,12 +955,12 @@ test("auth password: valid session cookie grants access", async () => {
 
 test("auth password: forged session cookie is rejected", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
+  const { exporter, kv } = createMockExporter();
   const auth: FederationDebuggerAuth = {
     type: "password",
     password: "secret123",
   };
-  const dbg = createFederationDebugger(federation, { exporter, auth });
+  const dbg = createFederationDebugger(federation, { exporter, kv, auth });
   // Use a fake/forged cookie value
   const response = await dbg.fetch(
     new Request("https://example.com/__debug__/", {
@@ -1003,8 +1020,8 @@ test("simplified overload is idempotent: repeated calls share exporter", async (
 
 test("createFederationDebugger exposes a sink property", () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
   notStrictEqual(dbg.sink, null);
   notStrictEqual(dbg.sink, undefined);
   strictEqual(typeof dbg.sink, "function");
@@ -1028,8 +1045,8 @@ test("simplified overload exposes a sink property", () => {
 
 test("sink collects logs by traceId and API returns them", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   // Simulate log records with traceId in properties
   const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
@@ -1069,8 +1086,8 @@ test("sink collects logs by traceId and API returns them", async () => {
 
 test("sink ignores log records without traceId", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   // Log without traceId — should be silently ignored
   dbg.sink({
@@ -1094,8 +1111,8 @@ test("sink ignores log records without traceId", async () => {
 
 test("multiple logs for the same trace are grouped", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
   for (let i = 0; i < 5; i++) {
@@ -1121,8 +1138,8 @@ test("multiple logs for the same trace are grouped", async () => {
 
 test("trace detail page shows log records", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
   dbg.sink({
@@ -1150,8 +1167,8 @@ test("trace detail page shows log records", async () => {
 
 test("log API returns a snapshot: mutating the array does not affect store", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
   dbg.sink({
@@ -1183,8 +1200,8 @@ test("log API returns a snapshot: mutating the array does not affect store", asy
 
 test("trace detail page handles invalid log timestamp gracefully", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
   // Push a log with NaN timestamp (simulates corrupted data)
@@ -1209,8 +1226,8 @@ test("trace detail page handles invalid log timestamp gracefully", async () => {
 
 test("trace detail page shows empty log message", async () => {
   const { federation } = createMockFederation();
-  const exporter = createMockExporter();
-  const dbg = createFederationDebugger(federation, { exporter });
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
 
   const request = new Request(
     "https://example.com/__debug__/traces/0000000000000000",

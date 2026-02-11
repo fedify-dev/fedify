@@ -11,6 +11,8 @@
 import type {
   Federation,
   FederationFetchOptions,
+  KvKey,
+  KvStore,
 } from "@fedify/fedify/federation";
 import { MemoryKvStore } from "@fedify/fedify/federation";
 import { FedifySpanExporter } from "@fedify/fedify/otel";
@@ -61,15 +63,13 @@ export interface SerializedLogRecord {
   readonly properties: Record<string, unknown>;
 }
 
-const DEFAULT_MAX_LOG_ENTRIES = 10_000;
-
 /**
  * Cached auto-setup state so that repeated calls to
  * `createFederationDebugger()` without an explicit exporter reuse the same
  * global OpenTelemetry tracer provider and exporter instead of registering
  * duplicate providers and LogTape sinks.
  */
-let _autoSetup: { exporter: FedifySpanExporter } | undefined;
+let _autoSetup: { exporter: FedifySpanExporter; kv: KvStore } | undefined;
 
 /**
  * Resets the internal auto-setup state.  This is intended **only for tests**
@@ -83,38 +83,50 @@ export function resetAutoSetup(): void {
 }
 
 /**
- * In-memory storage for log records grouped by trace ID.
+ * Persistent storage for log records grouped by trace ID, backed by a
+ * {@link KvStore}.  When the same `KvStore` is shared across web and worker
+ * processes the dashboard can display logs produced by background tasks.
  */
 class LogStore {
-  readonly #maxEntries: number;
-  readonly #logs: Map<string, SerializedLogRecord[]> = new Map();
-  #totalEntries = 0;
+  readonly #kv: KvStore;
+  readonly #keyPrefix: KvKey;
+  /** Per-trace monotonically increasing counter so entries sort correctly. */
+  readonly #seq: Map<string, number> = new Map();
+  /** Chain of pending write promises for flush(). */
+  #pending: Promise<void> = Promise.resolve();
 
-  constructor(maxEntries: number = DEFAULT_MAX_LOG_ENTRIES) {
-    this.#maxEntries = maxEntries;
+  constructor(kv: KvStore, keyPrefix: KvKey = ["fedify", "debugger", "logs"]) {
+    this.#kv = kv;
+    this.#keyPrefix = keyPrefix;
   }
 
+  /**
+   * Enqueue a log record for writing.  The write happens asynchronously;
+   * call {@link flush} to wait for all pending writes to complete.
+   */
   add(traceId: string, record: SerializedLogRecord): void {
-    let list = this.#logs.get(traceId);
-    if (list == null) {
-      list = [];
-      this.#logs.set(traceId, list);
-    }
-    list.push(record);
-    this.#totalEntries++;
-    // Evict oldest trace groups when exceeding max entries
-    while (this.#totalEntries > this.#maxEntries && this.#logs.size > 0) {
-      const oldest = this.#logs.keys().next();
-      if (oldest.done) break;
-      const evicted = this.#logs.get(oldest.value);
-      if (evicted != null) this.#totalEntries -= evicted.length;
-      this.#logs.delete(oldest.value);
-    }
+    const seq = this.#seq.get(traceId) ?? 0;
+    this.#seq.set(traceId, seq + 1);
+    const key: KvKey = [
+      ...this.#keyPrefix,
+      traceId,
+      seq.toString().padStart(10, "0"),
+    ] as unknown as KvKey;
+    this.#pending = this.#pending.then(() => this.#kv.set(key, record));
   }
 
-  get(traceId: string): readonly SerializedLogRecord[] {
-    const logs = this.#logs.get(traceId);
-    return logs != null ? [...logs] : [];
+  /** Wait for all pending writes to complete. */
+  flush(): Promise<void> {
+    return this.#pending;
+  }
+
+  async get(traceId: string): Promise<readonly SerializedLogRecord[]> {
+    const prefix: KvKey = [...this.#keyPrefix, traceId] as unknown as KvKey;
+    const logs: SerializedLogRecord[] = [];
+    for await (const entry of this.#kv.list(prefix)) {
+      logs.push(entry.value as SerializedLogRecord);
+    }
+    return logs;
   }
 }
 
@@ -200,6 +212,14 @@ export interface FederationDebuggerOptions {
    * The {@link FedifySpanExporter} to query trace data from.
    */
   exporter: FedifySpanExporter;
+
+  /**
+   * The {@link KvStore} to persist log records to.  This should typically be
+   * the same `KvStore` instance that was passed to the `FedifySpanExporter`
+   * so that logs and traces are co-located and accessible from all processes
+   * (e.g., both web and worker nodes).
+   */
+  kv: KvStore;
 
   /**
    * Authentication configuration for the debug dashboard.  When omitted,
@@ -304,7 +324,10 @@ export function createFederationDebugger<TContextData>(
  *   spanProcessors: [new SimpleSpanProcessor(exporter)],
  * });
  * const innerFederation = createFederation({ kv, tracerProvider });
- * const federation = createFederationDebugger(innerFederation, { exporter });
+ * const federation = createFederationDebugger(innerFederation, {
+ *   exporter,
+ *   kv,
+ * });
  * await configure({
  *   sinks: { debugger: federation.sink },
  *   loggers: [
@@ -330,20 +353,21 @@ export function createFederationDebugger<TContextData>(
 ): Federation<TContextData> & { sink: Sink } {
   const pathPrefix = validatePathPrefix(options?.path ?? "/__debug__");
 
-  const logStore = new LogStore();
-  const sink = createLogSink(logStore);
-
   let exporter: FedifySpanExporter;
+  let logKv: KvStore;
   if (options != null && "exporter" in options) {
     exporter = options.exporter;
+    logKv = options.kv;
   } else if (_autoSetup != null) {
     // Reuse the exporter from a previous auto-setup call so that repeated
     // calls without an explicit exporter share the same global state.
     exporter = _autoSetup.exporter;
+    logKv = _autoSetup.kv;
   } else {
     // Auto-setup: create MemoryKvStore, FedifySpanExporter,
     // BasicTracerProvider, and register globally
     const kv = new MemoryKvStore();
+    logKv = kv;
     exporter = new FedifySpanExporter(kv);
     const tracerProvider = new BasicTracerProvider({
       spanProcessors: [new SimpleSpanProcessor(exporter)],
@@ -357,7 +381,14 @@ export function createFederationDebugger<TContextData>(
     // is properly injected/extracted across queue boundaries:
     propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
-    // Auto-configure LogTape to include the debugger sink
+    _autoSetup = { exporter, kv };
+  }
+
+  const logStore = new LogStore(logKv);
+  const sink = createLogSink(logStore);
+
+  // Auto-configure LogTape when using the simplified overload:
+  if (options == null || !("exporter" in options)) {
     const existingConfig = getConfig();
     if (existingConfig != null) {
       // Merge with existing config
@@ -396,8 +427,6 @@ export function createFederationDebugger<TContextData>(
         contextLocalStorage: new AsyncLocalStorage(),
       });
     }
-
-    _autoSetup = { exporter };
   }
 
   const auth = options?.auth;
@@ -652,16 +681,18 @@ function createDebugApp(
     return c.json(traces);
   });
 
-  app.get("/api/logs/:traceId", (c) => {
+  app.get("/api/logs/:traceId", async (c) => {
     const traceId = c.req.param("traceId");
-    const logs = logStore.get(traceId);
+    await logStore.flush();
+    const logs = await logStore.get(traceId);
     return c.json(logs);
   });
 
   app.get("/traces/:traceId", async (c) => {
     const traceId = c.req.param("traceId");
+    await logStore.flush();
     const activities = await exporter.getActivitiesByTraceId(traceId);
-    const logs = logStore.get(traceId);
+    const logs = await logStore.get(traceId);
     return c.html(
       <TraceDetailPage
         traceId={traceId}
