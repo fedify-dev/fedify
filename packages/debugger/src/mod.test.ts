@@ -1148,6 +1148,65 @@ test("trace detail page shows log records", async () => {
   ok(html.includes("log record"));
 });
 
+test("log API returns a snapshot: mutating the array does not affect store", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  dbg.sink({
+    category: ["fedify"],
+    level: "info",
+    message: ["original"],
+    rawMessage: "original",
+    timestamp: Date.now(),
+    properties: { traceId, spanId: "1234567890abcdef" },
+  });
+
+  // First fetch: get logs
+  const r1 = await dbg.fetch(
+    new Request(`https://example.com/__debug__/api/logs/${traceId}`),
+    { contextData: undefined },
+  );
+  const logs1 = (await r1.json()) as SerializedLogRecord[];
+  strictEqual(logs1.length, 1);
+
+  // Second fetch: logs should still have 1 entry (not affected by prior read)
+  const r2 = await dbg.fetch(
+    new Request(`https://example.com/__debug__/api/logs/${traceId}`),
+    { contextData: undefined },
+  );
+  const logs2 = (await r2.json()) as SerializedLogRecord[];
+  strictEqual(logs2.length, 1);
+  strictEqual(logs2[0].message, "original");
+});
+
+test("trace detail page handles invalid log timestamp gracefully", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter });
+
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  // Push a log with NaN timestamp (simulates corrupted data)
+  dbg.sink({
+    category: ["fedify"],
+    level: "info",
+    message: ["test message"],
+    rawMessage: "test message",
+    timestamp: NaN,
+    properties: { traceId, spanId: "1234567890abcdef" },
+  });
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}`,
+  );
+  // Should not throw — the page must render without crashing
+  const response = await dbg.fetch(request, { contextData: undefined });
+  strictEqual(response.status, 200);
+  const html = await response.text();
+  ok(html.includes("test message"));
+});
+
 test("trace detail page shows empty log message", async () => {
   const { federation } = createMockFederation();
   const exporter = createMockExporter();

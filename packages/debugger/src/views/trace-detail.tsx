@@ -6,6 +6,20 @@ import type { SerializedLogRecord } from "../mod.tsx";
 import { Layout } from "./layout.tsx";
 
 /**
+ * Safely formats a timestamp (milliseconds since epoch) as an ISO string.
+ * Returns `"(invalid)"` if the timestamp is not a finite number or produces
+ * an invalid `Date`.
+ */
+function safeISOString(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) return "(invalid)";
+  try {
+    return new Date(timestamp).toISOString();
+  } catch {
+    return "(invalid)";
+  }
+}
+
+/**
  * Props for the {@link TraceDetailPage} component.
  */
 export interface TraceDetailPageProps {
@@ -22,7 +36,7 @@ export interface TraceDetailPageProps {
   /**
    * The list of log records for this trace.
    */
-  logs: SerializedLogRecord[];
+  logs: readonly SerializedLogRecord[];
 
   /**
    * The path prefix for the debug dashboard.
@@ -179,8 +193,11 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
               {logs.map((log, i) => (
                 <tr key={i} class={`log-${log.level}`}>
                   <td>
-                    <time datetime={new Date(log.timestamp).toISOString()}>
-                      {new Date(log.timestamp).toISOString().slice(11, 23)}
+                    <time datetime={safeISOString(log.timestamp)}>
+                      {(() => {
+                        const iso = safeISOString(log.timestamp);
+                        return iso === "(invalid)" ? iso : iso.slice(11, 23);
+                      })()}
                     </time>
                   </td>
                   <td>

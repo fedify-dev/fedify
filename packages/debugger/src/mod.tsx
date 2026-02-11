@@ -112,8 +112,9 @@ class LogStore {
     }
   }
 
-  get(traceId: string): SerializedLogRecord[] {
-    return this.#logs.get(traceId) ?? [];
+  get(traceId: string): readonly SerializedLogRecord[] {
+    const logs = this.#logs.get(traceId);
+    return logs != null ? [...logs] : [];
   }
 }
 
