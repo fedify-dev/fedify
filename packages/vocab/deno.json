@@ -12,7 +12,6 @@
     "url": "https://hongminhee.org/"
   },
   "imports": {
-    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
     "jsonld": "npm:jsonld@^9.0.0"
