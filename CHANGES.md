@@ -230,6 +230,8 @@ To be released.
      -  Added `--config` (`-C`) option to specify a custom configuration file
         path.
      -  Added `--ignore-config` option to skip loading configuration files.
+     -  Configuration options are now bound to commands: `lookup`, `webfinger`,
+        `tunnel`, `relay`, `inbox`, and `nodeinfo`.
 
 [Elysia]: https://elysiajs.com/
 [#265]: https://github.com/fedify-dev/fedify/issues/265
