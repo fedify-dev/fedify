@@ -64,6 +64,25 @@ export interface SerializedLogRecord {
 const DEFAULT_MAX_LOG_ENTRIES = 10_000;
 
 /**
+ * Cached auto-setup state so that repeated calls to
+ * `createFederationDebugger()` without an explicit exporter reuse the same
+ * global OpenTelemetry tracer provider and exporter instead of registering
+ * duplicate providers and LogTape sinks.
+ */
+let _autoSetup: { exporter: FedifySpanExporter } | undefined;
+
+/**
+ * Resets the internal auto-setup state.  This is intended **only for tests**
+ * that need to exercise the auto-setup code path more than once within the
+ * same process.
+ *
+ * @internal
+ */
+export function resetAutoSetup(): void {
+  _autoSetup = undefined;
+}
+
+/**
  * In-memory storage for log records grouped by trace ID.
  */
 class LogStore {
@@ -316,6 +335,10 @@ export function createFederationDebugger<TContextData>(
   let exporter: FedifySpanExporter;
   if (options != null && "exporter" in options) {
     exporter = options.exporter;
+  } else if (_autoSetup != null) {
+    // Reuse the exporter from a previous auto-setup call so that repeated
+    // calls without an explicit exporter share the same global state.
+    exporter = _autoSetup.exporter;
   } else {
     // Auto-setup: create MemoryKvStore, FedifySpanExporter,
     // BasicTracerProvider, and register globally
@@ -372,6 +395,8 @@ export function createFederationDebugger<TContextData>(
         contextLocalStorage: new AsyncLocalStorage(),
       });
     }
+
+    _autoSetup = { exporter };
   }
 
   const auth = options?.auth;

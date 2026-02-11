@@ -1,6 +1,6 @@
 import { notStrictEqual, ok, strictEqual, throws } from "node:assert/strict";
 import { test } from "node:test";
-import { createFederationDebugger } from "@fedify/debugger";
+import { createFederationDebugger, resetAutoSetup } from "@fedify/debugger";
 import type {
   FederationDebuggerAuth,
   SerializedLogRecord,
@@ -453,6 +453,7 @@ test("trace detail page shows empty message when no activities", async () => {
 test("simplified overload returns Federation without exporter", () => {
   // Save original global tracer provider to restore later
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
@@ -463,12 +464,14 @@ test("simplified overload returns Federation without exporter", () => {
   } finally {
     // Restore original provider
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
 test("simplified overload registers a global TracerProvider", () => {
   // Disable any existing global provider first
   trace.disable();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     // Before: the global provider should return a noop tracer
@@ -488,11 +491,13 @@ test("simplified overload registers a global TracerProvider", () => {
     span.end();
   } finally {
     trace.disable();
+    resetAutoSetup();
   }
 });
 
 test("simplified overload serves debug dashboard", async () => {
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
@@ -505,11 +510,13 @@ test("simplified overload serves debug dashboard", async () => {
     ok(html.includes("Fedify Debug Dashboard"));
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
 test("simplified overload with custom path", async () => {
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation, { path: "/_dbg" });
@@ -520,11 +527,13 @@ test("simplified overload with custom path", async () => {
     ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
 test("simplified overload delegates non-debug requests", async () => {
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation, calls } = createMockFederation();
     const dbg = createFederationDebugger(federation);
@@ -535,11 +544,13 @@ test("simplified overload delegates non-debug requests", async () => {
     strictEqual(await response.text(), "Federation response");
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
 test("simplified overload JSON API returns traces", async () => {
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
@@ -555,6 +566,7 @@ test("simplified overload JSON API returns traces", async () => {
     strictEqual(body.length, 0);
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
@@ -947,6 +959,46 @@ test("auth password: forged session cookie is rejected", async () => {
   ok(html.includes("Login Required"));
 });
 
+// ---------- Idempotency tests ----------
+
+test("simplified overload is idempotent: repeated calls share exporter", async () => {
+  trace.disable();
+  resetAutoSetup();
+  try {
+    const { federation: fed1 } = createMockFederation();
+    const { federation: fed2 } = createMockFederation();
+    // First call: sets up global OTel + exporter
+    const dbg1 = createFederationDebugger(fed1);
+    // Second call: should reuse the same exporter, so both dashboards
+    // see the same trace data
+    const dbg2 = createFederationDebugger(fed2);
+    // Both should still be functional
+    notStrictEqual(dbg1, null);
+    notStrictEqual(dbg2, null);
+    strictEqual(typeof dbg1.fetch, "function");
+    strictEqual(typeof dbg2.fetch, "function");
+    // Both should serve the same trace data (shared exporter)
+    const r1 = await dbg1.fetch(
+      new Request("https://example.com/__debug__/api/traces"),
+      { contextData: undefined },
+    );
+    const r2 = await dbg2.fetch(
+      new Request("https://example.com/__debug__/api/traces"),
+      { contextData: undefined },
+    );
+    const t1 = await r1.json();
+    const t2 = await r2.json();
+    strictEqual(
+      JSON.stringify(t1),
+      JSON.stringify(t2),
+      "Both debugger instances should share the same exporter",
+    );
+  } finally {
+    trace.disable();
+    resetAutoSetup();
+  }
+});
+
 // ---------- Sink property tests ----------
 
 test("createFederationDebugger exposes a sink property", () => {
@@ -960,6 +1012,7 @@ test("createFederationDebugger exposes a sink property", () => {
 
 test("simplified overload exposes a sink property", () => {
   const originalProvider = trace.getTracerProvider();
+  resetAutoSetup();
   try {
     const { federation } = createMockFederation();
     const dbg = createFederationDebugger(federation);
@@ -967,6 +1020,7 @@ test("simplified overload exposes a sink property", () => {
     strictEqual(typeof dbg.sink, "function");
   } finally {
     trace.setGlobalTracerProvider(originalProvider);
+    resetAutoSetup();
   }
 });
 
