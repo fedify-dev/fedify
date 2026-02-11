@@ -114,7 +114,11 @@ class LogStore {
         Math.random().toString(36).slice(2)
       }`,
     ] as unknown as KvKey;
-    this.#pending = this.#pending.then(() => this.#kv.set(key, record));
+    // Errors are swallowed so a single failed write cannot poison the
+    // chain or cause an unhandled rejection — logging is best-effort.
+    this.#pending = this.#pending.then(
+      () => this.#kv.set(key, record),
+    ).catch(() => {});
   }
 
   /** Wait for all pending writes to complete. */
