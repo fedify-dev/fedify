@@ -288,6 +288,8 @@ trace, it displays:
  -  **Activity count**
  -  **Timestamp**
 
+![Traces list page of the debug dashboard](debug/traces-list.png)
+
 The page automatically polls the JSON API every 3 seconds and refreshes when
 new traces are detected.
 
@@ -316,6 +318,8 @@ records captured during the trace.  Each log entry displays:
  -  **Log level** (color-coded: debug, info, warning, error, fatal)
  -  **Logger category** (e.g., `fedify.federation.http`)
  -  **Message** with expandable properties
+
+![Trace detail page of the debug dashboard](debug/trace-detail.png)
 
 ### JSON API
 
