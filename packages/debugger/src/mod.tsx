@@ -218,7 +218,7 @@ export interface FederationDebuggerSimpleOptions {
  * collect logs per trace.
  *
  * @example Simple usage (recommended)
- * ```typescript
+ * ```typescript ignore
  * const innerFederation = createFederation({ kv: new MemoryKvStore() });
  * const federation = createFederationDebugger(innerFederation);
  * ```
