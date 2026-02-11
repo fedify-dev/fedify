@@ -90,8 +90,6 @@ export function resetAutoSetup(): void {
 class LogStore {
   readonly #kv: KvStore;
   readonly #keyPrefix: KvKey;
-  /** Per-trace monotonically increasing counter so entries sort correctly. */
-  readonly #seq: Map<string, number> = new Map();
   /** Chain of pending write promises for flush(). */
   #pending: Promise<void> = Promise.resolve();
 
@@ -103,14 +101,18 @@ class LogStore {
   /**
    * Enqueue a log record for writing.  The write happens asynchronously;
    * call {@link flush} to wait for all pending writes to complete.
+   *
+   * Keys use a timestamp + random suffix so that entries sort
+   * chronologically and never collide, even across multiple processes
+   * sharing the same {@link KvStore}.
    */
   add(traceId: string, record: SerializedLogRecord): void {
-    const seq = this.#seq.get(traceId) ?? 0;
-    this.#seq.set(traceId, seq + 1);
     const key: KvKey = [
       ...this.#keyPrefix,
       traceId,
-      seq.toString().padStart(10, "0"),
+      `${Date.now().toString(36).padStart(10, "0")}-${
+        Math.random().toString(36).slice(2)
+      }`,
     ] as unknown as KvKey;
     this.#pending = this.#pending.then(() => this.#kv.set(key, record));
   }
