@@ -1,6 +1,7 @@
 /** @jsx react-jsx */
 /** @jsxImportSource hono/jsx */
 import type { FC, PropsWithChildren } from "hono/jsx";
+import { FedifyLogo } from "./logo.tsx";
 
 /**
  * Props for the {@link Layout} component.
@@ -42,7 +43,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
           }
           header { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; margin-bottom: 1rem; }
           header h1 { margin: 0; font-size: 1.25rem; }
-          header h1 a { color: inherit; text-decoration: none; }
+          header h1 a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
           table { width: 100%; border-collapse: collapse; }
           th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
           th { font-weight: 600; font-size: 0.875rem; color: #666; }
@@ -93,7 +94,10 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
       <body>
         <header>
           <h1>
-            <a href={pathPrefix + "/"}>Fedify Debug Dashboard</a>
+            <a href={pathPrefix + "/"}>
+              <FedifyLogo size={24} />
+              Fedify Debug Dashboard
+            </a>
           </h1>
         </header>
         <main>
