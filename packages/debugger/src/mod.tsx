@@ -376,46 +376,8 @@ export function createFederationDebugger<TContextData>(
   const auth = options?.auth;
   const app = createDebugApp(pathPrefix, exporter, logStore, auth);
 
-  const proxy: Federation<TContextData> & { sink: Sink } =
-    // deno-lint-ignore no-explicit-any
-    Object.create(null) as any;
-
-  // Expose the sink for advanced users to include in their LogTape config
-  proxy.sink = sink;
-
-  // Delegate all Federatable methods directly:
-  const delegatedMethods = [
-    "setNodeInfoDispatcher",
-    "setWebFingerLinksDispatcher",
-    "setActorDispatcher",
-    "setObjectDispatcher",
-    "setInboxDispatcher",
-    "setOutboxDispatcher",
-    "setFollowingDispatcher",
-    "setFollowersDispatcher",
-    "setLikedDispatcher",
-    "setFeaturedDispatcher",
-    "setFeaturedTagsDispatcher",
-    "setInboxListeners",
-    "setCollectionDispatcher",
-    "setOrderedCollectionDispatcher",
-    "setOutboxPermanentFailureHandler",
-    // Federation-specific methods:
-    "startQueue",
-    "processQueuedTask",
-    "createContext",
-  ] as const;
-
-  for (const method of delegatedMethods) {
-    // deno-lint-ignore no-explicit-any
-    (proxy as any)[method] = (...args: unknown[]) => {
-      // deno-lint-ignore no-explicit-any
-      return (federation as any)[method](...args);
-    };
-  }
-
   // Override fetch to intercept debug path prefix:
-  proxy.fetch = async (
+  const debugFetch = async (
     request: Request,
     fetchOptions: FederationFetchOptions<TContextData>,
   ): Promise<Response> => {
@@ -429,7 +391,26 @@ export function createFederationDebugger<TContextData>(
     return await federation.fetch(request, fetchOptions);
   };
 
-  return proxy;
+  // Use a Proxy to dynamically delegate all methods from the inner
+  // federation, overriding only `fetch` and adding `sink`.  This avoids
+  // a hardcoded method list that could silently become stale when the
+  // Federation interface gains new methods.
+  const overrides: Record<string | symbol, unknown> = {
+    fetch: debugFetch,
+    sink,
+  };
+  return new Proxy(federation as Federation<TContextData> & { sink: Sink }, {
+    get(target, prop, receiver) {
+      if (prop in overrides) return overrides[prop];
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value === "function") return value.bind(target);
+      return value;
+    },
+    has(target, prop) {
+      if (prop in overrides) return true;
+      return Reflect.has(target, prop);
+    },
+  });
 }
 
 const SESSION_COOKIE_NAME = "__fedify_debug_session";
