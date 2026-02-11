@@ -80,10 +80,7 @@ export const authorizedFetchOption = object({
     {
       context: configContext,
       key: (config) =>
-        (config.lookup?.firstKnock ??
-          "draft-cavage-http-signatures-12") as
-            | "draft-cavage-http-signatures-12"
-            | "rfc9421",
+        config.lookup?.firstKnock ?? "draft-cavage-http-signatures-12",
       default: "draft-cavage-http-signatures-12" as const,
     },
   ),
@@ -412,7 +409,7 @@ export async function runLookup(command: InferValue<typeof lookupCommand>) {
       {
         specDeterminer: {
           determineSpec() {
-            return command.firstKnock ?? "draft-cavage-http-signatures-12";
+            return command.firstKnock;
           },
           rememberSpec() {
           },

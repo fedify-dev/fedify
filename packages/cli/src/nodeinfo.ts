@@ -62,7 +62,7 @@ const nodeInfoOption = object({
     }),
     {
       context: configContext,
-      key: (config) => config.nodeinfo?.showFavicon ?? false,
+      key: (config) => config.nodeinfo?.showFavicon === false,
       default: false,
     },
   ),

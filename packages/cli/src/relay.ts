@@ -79,7 +79,7 @@ export const relayCommand = command(
         ),
         {
           context: configContext,
-          key: (config) => config.relay?.port as number,
+          key: (config) => config.relay?.port ?? 8000,
           default: 8000,
         },
       ),
