@@ -1,6 +1,8 @@
+import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { configContext } from "../config.ts";
 import { lookupSingleWebFinger } from "./action.ts";
 import { webFingerCommand } from "./command.ts";
 
@@ -15,16 +17,19 @@ const ALIASES = [
   "https://hollo.social/@fedify",
 ];
 
-test("Test webFingerCommand - resources only", () => {
+test("Test webFingerCommand - resources only", async () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  const result = parse(webFingerCommand, argsWithResourcesOnly);
+  setActiveConfig(configContext.id, {});
+  const result = await parse(webFingerCommand, argsWithResourcesOnly);
+  clearActiveConfig(configContext.id);
+
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.debug, false);
     assert.strictEqual(result.value.command, COMMAND);
     assert.deepEqual(result.value.resources, RESOURCES);
     assert.strictEqual(result.value.allowPrivateAddresses, false);
-    assert.strictEqual(result.value.maxRedirection, 0);
+    assert.strictEqual(result.value.maxRedirection, 5);
     // userAgent has a dynamic default value from getUserAgent()
     assert.ok(result.value.userAgent?.startsWith("Fedify/"));
   }
@@ -66,17 +71,20 @@ test("Test webFingerCommand - wrong option", () => {
   assert.ok(!wrongOptionResult.success);
 });
 
-test("Test webFingerCommand - invalid option value falls back to default", () => {
+test("Test webFingerCommand - invalid option value falls back to default", async () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   // With bindConfig, invalid values fall back to the default instead of failing
-  const result = parse(
+  setActiveConfig(configContext.id, {});
+  const result = await parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
+  clearActiveConfig(configContext.id);
+
   assert.ok(result.success);
   if (result.success) {
     // Falls back to default value of 0
-    assert.strictEqual(result.value.maxRedirection, 0);
+    assert.strictEqual(result.value.maxRedirection, 5);
   }
 });
 
