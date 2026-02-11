@@ -1,4 +1,4 @@
-import { notStrictEqual, ok, strictEqual } from "node:assert/strict";
+import { notStrictEqual, ok, strictEqual, throws } from "node:assert/strict";
 import { test } from "node:test";
 import { createFederationDebugger } from "@fedify/debugger";
 import type {
@@ -182,6 +182,83 @@ test("fetch intercepts custom debug path prefix", async () => {
   const request = new Request("https://example.com/__my_debug__/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
+});
+
+// ---------- Path validation tests ----------
+
+test("path validation: empty string throws TypeError", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  throws(
+    () => createFederationDebugger(federation, { exporter, path: "" }),
+    TypeError,
+  );
+});
+
+test("path validation: path without leading slash throws TypeError", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  throws(
+    () => createFederationDebugger(federation, { exporter, path: "debug" }),
+    TypeError,
+  );
+});
+
+test("path validation: path with control characters throws TypeError", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  throws(
+    () =>
+      createFederationDebugger(federation, {
+        exporter,
+        path: "/debug\x00path",
+      }),
+    TypeError,
+  );
+});
+
+test("path validation: path with semicolon throws TypeError", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  throws(
+    () =>
+      createFederationDebugger(federation, { exporter, path: "/debug;bad" }),
+    TypeError,
+  );
+});
+
+test("path validation: path with comma throws TypeError", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  throws(
+    () =>
+      createFederationDebugger(federation, { exporter, path: "/debug,bad" }),
+    TypeError,
+  );
+});
+
+test("path validation: trailing slash is stripped", async () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  const dbg = createFederationDebugger(federation, {
+    exporter,
+    path: "/__debug__/",
+  });
+  // The trailing slash should be normalized away, so /__debug__/ still works
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  strictEqual(response.status, 200);
+});
+
+test("path validation: valid path is accepted", () => {
+  const { federation } = createMockFederation();
+  const exporter = createMockExporter();
+  // Should not throw
+  const dbg = createFederationDebugger(federation, {
+    exporter,
+    path: "/my-debug_panel",
+  });
+  notStrictEqual(dbg, null);
 });
 
 test("JSON API returns traces", async () => {

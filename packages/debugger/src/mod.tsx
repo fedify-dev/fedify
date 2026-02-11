@@ -209,6 +209,39 @@ export interface FederationDebuggerSimpleOptions {
 }
 
 /**
+ * Validates and normalizes the path prefix for the debug dashboard.
+ *
+ * The path must start with `/`, must not end with `/` (unless it is exactly
+ * `"/"`), and must not contain control characters, semicolons, or commas
+ * (which are unsafe in HTTP headers like `Set-Cookie` and `Location`).
+ *
+ * @param path The path prefix to validate.
+ * @returns The normalized path prefix (trailing slash stripped).
+ * @throws {TypeError} If the path is invalid.
+ */
+function validatePathPrefix(path: string): string {
+  if (path === "" || !path.startsWith("/")) {
+    throw new TypeError(
+      `Invalid debug dashboard path: ${JSON.stringify(path)}. ` +
+        "The path must start with '/'.",
+    );
+  }
+  // Reject control characters, semicolons, and commas (unsafe in headers)
+  // deno-lint-ignore no-control-regex
+  if (/[\x00-\x1f\x7f;,]/.test(path)) {
+    throw new TypeError(
+      `Invalid debug dashboard path: ${JSON.stringify(path)}. ` +
+        "The path must not contain control characters, semicolons, or commas.",
+    );
+  }
+  // Strip trailing slash (unless the path is exactly "/")
+  if (path.length > 1 && path.endsWith("/")) {
+    return path.slice(0, -1);
+  }
+  return path;
+}
+
+/**
  * Wraps a {@link Federation} object with a debug dashboard.
  *
  * When called without an `exporter`, the debugger automatically sets up
@@ -274,7 +307,7 @@ export function createFederationDebugger<TContextData>(
   federation: Federation<TContextData>,
   options?: FederationDebuggerSimpleOptions | FederationDebuggerOptions,
 ): Federation<TContextData> & { sink: Sink } {
-  const pathPrefix = options?.path ?? "/__debug__";
+  const pathPrefix = validatePathPrefix(options?.path ?? "/__debug__");
 
   const logStore = new LogStore();
   const sink = createLogSink(logStore);
