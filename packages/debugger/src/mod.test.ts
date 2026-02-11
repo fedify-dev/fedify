@@ -380,14 +380,28 @@ test("traces list page escapes pathPrefix in inline script", async () => {
   const request = new Request("https://example.com" + malicious + "/");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
-  const html = await response.text();
-  // The malicious pathPrefix must not appear unescaped in the inline script;
-  // it should be JSON-encoded with < escaped as \u003c to prevent breaking
-  // out of the <script> tag.
-  ok(
-    !html.includes("onerror=alert(1)>"),
-    "Malicious pathPrefix should be escaped in inline script",
-  );
+  const ct = response.headers.get("content-type") ?? "";
+  const body = await response.text();
+  if (ct.includes("text/html")) {
+    // If the dashboard is rendered, verify that the malicious pathPrefix
+    // is properly escaped so it cannot break out of the <script> tag.
+    ok(
+      body.includes("Fedify Debug Dashboard"),
+      "Response should be the debug dashboard HTML",
+    );
+    ok(
+      !body.includes("onerror=alert(1)>"),
+      "Malicious pathPrefix should be escaped in inline script",
+    );
+  } else {
+    // If the request was delegated to the inner federation instead of
+    // matching the debug route, the XSS vector is not reachable — the
+    // malicious path never appears in any rendered HTML.
+    ok(
+      !body.includes("onerror=alert(1)>"),
+      "Delegated response must not contain the malicious payload",
+    );
+  }
 });
 
 test("trace detail page returns HTML with activity details", async () => {
