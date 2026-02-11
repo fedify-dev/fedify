@@ -1114,6 +1114,140 @@ fedify nodeinfo --user-agent MyApp/1.0 mastodon.social
 ~~~~
 
 
+`fedify relay`: Running an ephemeral ActivityPub relay server
+-------------------------------------------------------------
+
+*This command is available since Fedify 2.0.0.*
+
+The `fedify relay` command is used to spin up an ephemeral ActivityPub relay
+server that forwards activities between federated instances.  The server can use
+either [Mastodon] or [LitePub] compatible relay protocol.
+
+To start a relay server, you must specify the relay protocol using the
+`-p`/`--protocol` option:
+
+~~~~ sh
+fedify relay -p mastodon
+~~~~
+
+If it goes well, you will see the output like the below (without termination;
+press <kbd>^C</kbd> to stop the server):
+
+~~~~
+✔ Relay server is running: https://f9285cf4974c86.lhr.life/
+╭───────────────┬──────────────────────────────────────────╮
+│    Actor URI: │ https://f9285cf4974c86.lhr.life/actor    │
+├───────────────┼──────────────────────────────────────────┤
+│ Shared Inbox: │ https://f9285cf4974c86.lhr.life/inbox    │
+├───────────────┼──────────────────────────────────────────┤
+│     Protocol: │ mastodon                                 │
+├───────────────┼──────────────────────────────────────────┤
+│         Name: │ Fedify Relay                             │
+├───────────────┼──────────────────────────────────────────┤
+│      Storage: │ in-memory                                │
+╰───────────────┴──────────────────────────────────────────╯
+
+Press ^C to stop the relay server.
+~~~~
+
+By default, the relay server is tunneled to the public internet so that
+external instances can connect to it.
+
+[Mastodon]: https://joinmastodon.org/
+[LitePub]: https://litepub.social/
+
+### `-p`/`--protocol`: Relay protocol
+
+The `-p`/`--protocol` option specifies which relay protocol to use.
+This option is required.  The available options are:
+
+ -  `mastodon`: [Mastodon]-compatible relay protocol
+ -  `litepub`: [LitePub]-compatible relay protocol
+
+### `--persistent`: Persistent storage
+
+The `--persistent` option specifies a path to a SQLite database file for
+persistent storage.  If not specified, the relay uses in-memory storage which
+is lost when the server stops.
+
+~~~~ sh
+fedify relay -p mastodon --persistent relay.db
+~~~~
+
+### `-P`/`--port`: Local port
+
+The `-P`/`--port` option specifies the local port to listen on.  By default,
+it listens on port 8000.
+
+~~~~ sh
+fedify relay -p mastodon -P 3000
+~~~~
+
+### `-n`/`--name`: Relay display name
+
+The `-n`/`--name` option specifies the relay display name.  By default, it is
+`Fedify Relay`.
+
+~~~~ sh
+fedify relay -p mastodon -n "My Relay"
+~~~~
+
+### `-a`/`--accept-follow`: Accept follow requests
+
+The `-a`/`--accept-follow` option specifies which actors' follow requests to
+accept.  The argument can be either an actor URI, a handle, or a wildcard (`*`).
+This option can be specified multiple times.  If a wildcard is specified, all
+follow requests will be accepted.
+
+~~~~ sh
+fedify relay -p mastodon -a @john@doe.com -a @jane@doe.com
+~~~~
+
+### `-r`/`--reject-follow`: Reject follow requests
+
+The `-r`/`--reject-follow` option specifies which actors' follow requests to
+reject.  The argument can be either an actor URI, a handle, or a wildcard (`*`).
+This option can be specified multiple times.  If a wildcard is specified, all
+follow requests will be rejected.
+
+~~~~ sh
+fedify relay -p mastodon -r @spammer@example.com
+~~~~
+
+> [!NOTE]
+> When both `-a`/`--accept-follow` and `-r`/`--reject-follow` are specified,
+> a follow request is accepted only if the actor matches the accept list and
+> does *not* match the reject list.
+
+### `-T`/`--no-tunnel`: Local server without tunneling
+
+The `-T`/`--no-tunnel` option disables the tunneling feature of the relay
+server.  By default, the relay server tunnels the local server to the public
+internet for external access.
+
+~~~~ sh
+fedify relay -p mastodon --no-tunnel
+~~~~
+
+> [!NOTE]
+> If you disable the tunneling feature, the relay server will be served via
+> HTTP instead of HTTPS.
+
+### `--tunnel-service`: Tunneling service
+
+The `--tunnel-service` option specifies which tunneling service to use for
+exposing the relay server to the public internet.  Available services can be
+found in the output of the `fedify relay --help` command.  For example, to use
+serveo.net as the tunneling service:
+
+~~~~ sh
+fedify relay -p mastodon --tunnel-service serveo.net
+~~~~
+
+> [!NOTE]
+> This option cannot be used together with `-T`/`--no-tunnel`.
+
+
 `fedify tunnel`: Exposing a local HTTP server to the public internet
 --------------------------------------------------------------------
 
