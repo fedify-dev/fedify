@@ -35,8 +35,8 @@ const maxRedirection = bindConfig(
   ),
   {
     context: configContext,
-    key: (config) => config.webfinger?.maxRedirection ?? 0,
-    default: 0,
+    key: (config) => config.webfinger?.maxRedirection ?? 5,
+    default: 5,
   },
 );
 
