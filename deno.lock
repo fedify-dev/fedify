@@ -76,9 +76,10 @@
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
-    "npm:@opentelemetry/core@2": "2.5.0_@opentelemetry+api@1.9.0",
-    "npm:@opentelemetry/sdk-trace-base@2": "2.5.0_@opentelemetry+api@1.9.0",
-    "npm:@opentelemetry/semantic-conventions@^1.27.0": "1.39.0",
+    "npm:@opentelemetry/context-async-hooks@^2.5.0": "2.5.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/core@^2.5.0": "2.5.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/sdk-trace-base@^2.5.0": "2.5.0_@opentelemetry+api@1.9.0",
+    "npm:@opentelemetry/semantic-conventions@^1.39.0": "1.39.0",
     "npm:@optique/config@0.10.0-dev.348": "0.10.0-dev.348_@standard-schema+spec@1.1.0",
     "npm:@optique/core@0.10.0-dev.348": "0.10.0-dev.348",
     "npm:@optique/run@0.10.0-dev.348": "0.10.0-dev.348",
@@ -2029,6 +2030,12 @@
     },
     "@opentelemetry/api@1.9.0": {
       "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
+    },
+    "@opentelemetry/context-async-hooks@2.5.0_@opentelemetry+api@1.9.0": {
+      "integrity": "sha512-uOXpVX0ZjO7heSVjhheW2XEPrhQAWr2BScDPoZ9UDycl5iuHG+Usyc3AIfG6kZeC1GyLpMInpQ6X5+9n69yOFw==",
+      "dependencies": [
+        "@opentelemetry/api"
+      ]
     },
     "@opentelemetry/core@2.5.0_@opentelemetry+api@1.9.0": {
       "integrity": "sha512-ka4H8OM6+DlUhSAZpONu0cPBtPPTQKxbxVzC4CzVx5+K4JnroJVBtDzLAMx4/3CDTJXRvVFhpFjtl4SaiTNoyQ==",
@@ -5877,6 +5884,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@david/dax@~0.43.2",
+      "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
       "jsr:@std/assert@^1.0.13",
@@ -5891,8 +5899,10 @@
       "npm:@js-temporal/polyfill@~0.5.1",
       "npm:@nestjs/common@^11.0.1",
       "npm:@opentelemetry/api@^1.9.0",
-      "npm:@opentelemetry/core@2",
-      "npm:@opentelemetry/sdk-trace-base@2",
+      "npm:@opentelemetry/context-async-hooks@^2.5.0",
+      "npm:@opentelemetry/core@^2.5.0",
+      "npm:@opentelemetry/sdk-trace-base@^2.5.0",
+      "npm:@opentelemetry/semantic-conventions@^1.39.0",
       "npm:@types/node@^22.16.0",
       "npm:amqplib@~0.10.9",
       "npm:byte-encodings@^1.0.11",
@@ -6015,9 +6025,6 @@
           "jsr:@std/assert@0.226",
           "jsr:@std/url@~0.225.1",
           "npm:@multiformats/base-x@^4.0.1",
-          "npm:@opentelemetry/core@2",
-          "npm:@opentelemetry/sdk-trace-base@2",
-          "npm:@opentelemetry/semantic-conventions@^1.27.0",
           "npm:asn1js@^3.0.7",
           "npm:fast-check@^3.22.0",
           "npm:fetch-mock@^12.5.2",
@@ -6032,7 +6039,6 @@
         "packageJson": {
           "dependencies": [
             "npm:@js-temporal/polyfill@~0.5.1",
-            "npm:@opentelemetry/semantic-conventions@^1.27.0",
             "npm:@types/node@^24.2.1",
             "npm:json-canon@^1.0.1",
             "npm:jsonld@9",
@@ -6096,7 +6102,6 @@
       },
       "packages/vocab": {
         "dependencies": [
-          "npm:@opentelemetry/api@^1.9.0",
           "npm:fast-check@^3.22.0",
           "npm:fetch-mock@^12.5.2",
           "npm:jsonld@9"
