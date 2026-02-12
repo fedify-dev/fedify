@@ -222,6 +222,15 @@ To be released.
     to the existing `-s`/`--service` option in `fedify tunnel` for consistency.
     [[#525], [#529], [#531] by Jiwon Kwon]
 
+ -  Added configuration file support for CLI commands.  The CLI now loads
+    settings from *.fedify.toml* in the current directory.
+    [[#555], [#566] by Jiwon Kwon]
+
+     -  Added `--config` option to specify a custom configuration file path.
+     -  Added `--ignore-config` option to skip configuration file loading.
+     -  All command options (`inbox`, `lookup`, `webfinger`, `nodeinfo`,
+        `tunnel`, `relay`) can now be configured via the configuration file.
+
 [Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374
 [#397]: https://github.com/fedify-dev/fedify/issues/397
@@ -238,6 +247,8 @@ To be released.
 [#525]: https://github.com/fedify-dev/fedify/issues/525
 [#529]: https://github.com/fedify-dev/fedify/pull/529
 [#531]: https://github.com/fedify-dev/fedify/pull/531
+[#555]: https://github.com/fedify-dev/fedify/issues/555
+[#566]: https://github.com/fedify-dev/fedify/pull/566
 
 ### @fedify/debugger
 
