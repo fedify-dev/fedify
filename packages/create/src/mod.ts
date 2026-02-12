@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { initOptions, runInit } from "@fedify/init";
 import { message, optionNames } from "@optique/core";
 import { run } from "@optique/run";
