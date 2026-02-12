@@ -118,7 +118,7 @@ Configuration files are loaded from the following locations in order, with
 later files taking precedence over earlier ones:
 
 1.  `/etc/fedify/config.toml` (system-wide)
-2.  *<user-config-dir>/fedify/config.toml* (user-level)
+2.  *&lt;user-config-dir&gt;/fedify/config.toml* (user-level)
 3.  `.fedify.toml` in the current working directory (project-level)
 4.  Custom path via `--config` option (explicit)
 
