@@ -1,5 +1,5 @@
 {
-  "name": "create-fedify-app",
+  "name": "@fedify/create",
   "version": "2.0.0",
   "description": "Create a new Fedify application",
   "keywords": [
@@ -26,11 +26,11 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
-    "directory": "packages/create-fedify-app"
+    "directory": "packages/create"
   },
   "type": "module",
   "bin": {
-    "create-fedify-app": "./dist/mod.js"
+    "@fedify/create": "./dist/mod.js"
   },
   "exports": "./dist/mod.js",
   "files": [
@@ -55,7 +55,7 @@
   },
   "scripts": {
     "build:self": "tsdown",
-    "build": "pnpm --filter create-fedify-app... run build:self",
+    "build": "pnpm --filter @fedify/create... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build"
   }

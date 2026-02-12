@@ -4,7 +4,7 @@ import { run } from "@optique/run";
 import { merge } from "es-toolkit";
 
 const result = run(initOptions, {
-  programName: "create-fedify-app",
+  programName: "@fedify/create",
   description: message`Create a new Fedify project.
 
 Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${

@@ -1,5 +1,5 @@
-Create-Fedify-app: Create a new Fedify project
-==============================================
+@fedify/create: Create a new Fedify project
+===========================================
 
 [![npm][npm badge]][npm]
 
@@ -7,8 +7,8 @@ This package provides a standalone CLI tool for creating new [Fedify] projects.
 It allows you to scaffold a new project without installing the full
 [`@fedify/cli`] toolchain, powered by [`@fedify/init`] internally.
 
-[npm badge]: https://img.shields.io/npm/v/create-fedify-app?logo=npm
-[npm]: https://www.npmjs.com/package/create-fedify-app
+[npm badge]: https://img.shields.io/npm/v/@fedify/create?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/create
 [Fedify]: https://fedify.dev/
 [`@fedify/cli`]: https://jsr.io/@fedify/cli
 [`@fedify/init`]: https://jsr.io/@fedify/init
@@ -18,10 +18,10 @@ Usage
 -----
 
 ~~~~ sh
-npx create-fedify-app my-project
-pnpm create fedify-app my-project
-yarn create fedify-app my-project
-bunx create-fedify-app my-project
+npm init @fedify my-project
+pnpm create @fedify my-project
+yarn create @fedify my-project
+bunx @fedify/create my-project
 ~~~~
 
 

@@ -332,7 +332,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/cli/*: The Fedify CLI (@fedify/cli).  Built with [Deno] and
     tested with Deno, Node.js, and [Bun].  Uses `deno compile` to create
     standalone executables.
- -  *packages/create-fedify-app/*: Standalone CLI (create-fedify-app) for
+ -  *packages/create/*: Standalone CLI (@fedify/create) for
     creating new Fedify projects.  Wraps @fedify/init.
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
  -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for
@@ -348,7 +348,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/hono/*: Hono integration (@fedify/hono) for Fedify.
  -  *packages/init/*: Project initializer (@fedify/init) for Fedify.
     Separated from @fedify/cli to enable standalone use and
-    `npx create-fedify-app`.
+    `npm init @fedify`.
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.

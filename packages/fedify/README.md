@@ -98,7 +98,7 @@ Here is the list of packages:
 | ------------------------------------------------- | -------------------------------- | -------------------------------- | ---------------------------------------- |
 | [@fedify/fedify](/packages/fedify/)               | [JSR]                            | [npm]                            | The core framework of Fedify             |
 | [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
-| [create-fedify-app](/packages/create-fedify-app/) |                                  | [npm][npm:create-fedify-app]     | Create a new Fedify project (npx)        |
+| [@fedify/create](/packages/create/)               |                                  | [npm][npm:@fedify/create]        | Create a new Fedify project              |
 | [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
 | [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
 | [@fedify/debugger](/packages/debugger/)           | [JSR][jsr:@fedify/debugger]      | [npm][npm:@fedify/debugger]      | Embedded ActivityPub debug dashboard     |
@@ -127,7 +127,7 @@ Here is the list of packages:
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
-[npm:create-fedify-app]: https://www.npmjs.com/package/create-fedify-app
+[npm:@fedify/create]: https://www.npmjs.com/package/@fedify/create
 [jsr:@fedify/amqp]: https://jsr.io/@fedify/amqp
 [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp
 [jsr:@fedify/cfworkers]: https://jsr.io/@fedify/cfworkers

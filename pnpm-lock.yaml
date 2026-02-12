@@ -854,7 +854,7 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  packages/create-fedify-app:
+  packages/create:
     dependencies:
       '@fedify/init':
         specifier: workspace:*

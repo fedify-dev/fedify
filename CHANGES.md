@@ -481,7 +481,7 @@ To be released.
  -  Created project initializer as the *@fedify/init* package.  Separated
     the `fedify init` functionality from *@fedify/cli* into a standalone
     package to improve modularity and enable reuse by other tools such as
-    `create-fedify-app`.  [[#482] by Chanhaeng Lee]
+    `@fedify/create`.  [[#482] by Chanhaeng Lee]
 
      -  Added `runInit()` function as the main initialization action handler.
      -  Added `initCommand` and `initOptions` for CLI integration.
@@ -490,14 +490,14 @@ To be released.
 
 [#482]: https://github.com/fedify-dev/fedify/issues/482
 
-### `create-fedify-app`
+### @fedify/create
 
- -  Created standalone project scaffolding CLI as the *create-fedify-app*
+ -  Created standalone project scaffolding CLI as the *@fedify/create*
     package.  This enables creating new Fedify projects without installing
     the full `@fedify/cli` toolchain.  [[#351] by Chanhaeng Lee]
 
-     -  Supports `npx create-fedify-app`, `pnpm create fedify-app`,
-        `yarn create fedify-app`, and `bunx create-fedify-app`.
+     -  Supports `npm init @fedify`, `pnpm create @fedify`,
+        `yarn create @fedify`, and `bunx @fedify/create`.
      -  Uses `@fedify/init` internally for all initialization logic.
      -  Supports the same interactive prompts and CLI options as
         `fedify init`.
