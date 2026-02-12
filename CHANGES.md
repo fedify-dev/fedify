@@ -139,6 +139,12 @@ To be released.
     code, the inbox URL, and the response body, making it easier to
     programmatically handle delivery errors.  [[#548], [#559]]
 
+ -  Added `traceId` and `spanId` to LogTape context in federation middleware
+    so that log records emitted during request handling and queue processing
+    include the OpenTelemetry trace and span IDs in their properties.  This
+    enables the `@fedify/debugger` dashboard to display per-trace logs.
+    [[#561], [#564]]
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -163,6 +169,8 @@ To be released.
 [#548]: https://github.com/fedify-dev/fedify/issues/548
 [#559]: https://github.com/fedify-dev/fedify/pull/559
 [#560]: https://github.com/fedify-dev/fedify/issues/560
+[#561]: https://github.com/fedify-dev/fedify/issues/561
+[#564]: https://github.com/fedify-dev/fedify/pull/564
 
 ### @fedify/cli
 
@@ -230,6 +238,38 @@ To be released.
 [#525]: https://github.com/fedify-dev/fedify/issues/525
 [#529]: https://github.com/fedify-dev/fedify/pull/529
 [#531]: https://github.com/fedify-dev/fedify/pull/531
+
+### @fedify/debugger
+
+ -  Created the *@fedify/debugger* package, an embedded real-time ActivityPub
+    debug dashboard for Fedify.  It wraps an existing `Federation` object as
+    a proxy, intercepting requests to a configurable path prefix (default
+    `/__debug__`) and serving an SSR-based web UI.  [[#561], [#564]]
+
+     -  Added `createFederationDebugger()` function that returns a
+        `Federation` proxy with a built-in debug dashboard.  When called
+        without an `exporter` option, it automatically sets up OpenTelemetry
+        tracing (creating `MemoryKvStore`, `FedifySpanExporter`,
+        `BasicTracerProvider`) and registers it as the global tracer
+        provider—no manual OTel configuration needed.
+     -  Traces list page showing trace IDs, activity types, activity counts,
+        and timestamps, with auto-polling for real-time updates.
+     -  Trace detail page showing activity direction, type, actor, signature
+        verification details, inbox URL, and expandable activity JSON.
+     -  JSON API endpoint at `/__debug__/api/traces` for programmatic access.
+     -  Added per-trace log collection using LogTape.  The returned federation
+        object now includes a `sink` property (a LogTape `Sink` function)
+        that captures log records grouped by trace ID.  In the simplified
+        overload (without `exporter`), LogTape is auto-configured.
+     -  Trace detail page now shows a “Logs” section with log level, timestamp,
+        logger category, and message for each log record in the trace.
+     -  JSON API endpoint at `/__debug__/api/logs/:traceId` for retrieving
+        log records for a specific trace.
+     -  Added optional `auth` configuration for protecting the debug dashboard
+        with authentication.  Supports three modes: password-only,
+        username + password, and request-based (e.g., IP filtering).
+        Each mode supports both static credentials and callback functions.
+        Uses cookie-based sessions with HMAC-signed tokens.
 
 ### @fedify/relay
 

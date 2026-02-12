@@ -1,0 +1,55 @@
+{
+  "name": "@fedify/debugger",
+  "version": "2.0.0",
+  "description": "Embedded ActivityPub debug dashboard for Fedify",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/debugger"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^"
+  },
+  "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/context-async-hooks": "catalog:",
+    "@opentelemetry/core": "catalog:",
+    "@opentelemetry/sdk-trace-base": "catalog:",
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/debugger... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "test:bun": "bun test"
+  }
+}

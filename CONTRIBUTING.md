@@ -335,6 +335,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
  -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for
     Fedify.
+ -  *packages/debugger/*: Embedded ActivityPub debug dashboard (@fedify/debugger)
+    for Fedify.
  -  *packages/denokv/*: Deno KV integration (@fedify/denokv) for Fedify.
  -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.

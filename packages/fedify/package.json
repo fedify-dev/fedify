@@ -138,7 +138,7 @@
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/core": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
-    "@opentelemetry/semantic-conventions": "^1.27.0",
+    "@opentelemetry/semantic-conventions": "catalog:",
     "byte-encodings": "catalog:",
     "es-toolkit": "catalog:",
     "json-canon": "^1.0.1",
