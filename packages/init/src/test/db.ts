@@ -1,4 +1,5 @@
 import { concat, filter, pipe, toArray, uniq } from "@fxts/core";
+import { createConnection } from "node:net";
 import type { TestInitCommand } from "../command.ts";
 import { DB_TO_CHECK } from "../const.ts";
 import DB_INFO from "../json/db-to-check.json" with { type: "json" };
@@ -6,31 +7,30 @@ import { printErrorMessage, printMessage } from "../utils.ts";
 import type { DbToCheckType, DefineAllOptions } from "./types.ts";
 
 /**
- * This function checks if a given port is open by attempting to fetch from
- * localhost at that port. So, may give false positives if the service does not
- * respond to HTTP requests.
+ * Checks if a given port is open by attempting a raw TCP connection to
+ * localhost at that port. This works reliably for non-HTTP services like
+ * Redis, PostgreSQL, or AMQP.
  * @param port The port number to check.
+ * @param timeout The timeout in milliseconds. Defaults to 3000.
  * @returns A promise that resolves to true if the port is open, else false.
  */
-async function isPortOpen(port: number): Promise<boolean> {
-  try {
-    await fetch(`http://localhost:${port}`, {
-      signal: AbortSignal.timeout(3000),
+function isPortOpen(port: number, timeout = 3000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ port, host: "localhost" });
+    socket.setTimeout(timeout);
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
     });
-    return true;
-  } catch (error: unknown) {
-    if (error instanceof TypeError) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes("refused") || msg.includes("econnrefused")) {
-        return false;
-      }
-      return true;
-    }
-    if (error instanceof DOMException && error.name === "TimeoutError") {
-      return false;
-    }
-    return false;
-  }
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
 }
 
 const getRequiredDbs = <T extends TestInitCommand>(
