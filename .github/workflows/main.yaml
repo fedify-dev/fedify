@@ -309,7 +309,7 @@ jobs:
     - run: sudo npm install -g npm@latest && npm --version
     - run: pnpm -r --filter='!./examples/**' run build:self
     - run: |
-        pnpm pack --recursive --filter='!./examples/**' --ignore-scripts
+        pnpm pack --recursive --filter='!./examples/**' --config.ignore-scripts=true
         # Remove private packages
         for pkg in fedify-*.tgz; do
           if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
