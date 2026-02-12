@@ -93,7 +93,6 @@
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
     "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
-    "test-init": "deno task test-init",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test",
     "run": "pnpm build && node dist/mod.js",
