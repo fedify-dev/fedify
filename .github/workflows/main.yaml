@@ -307,8 +307,9 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
     - run: sudo npm install -g npm@latest && npm --version
+    - run: pnpm -r --filter='!./examples/**' run build
     - run: |
-        pnpm pack --recursive --filter='!./examples/**' --config.enable-pre-post-scripts=false
+        pnpm pack --recursive --filter='!./examples/**' --ignore-scripts
         # Remove private packages
         for pkg in fedify-*.tgz; do
           if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
