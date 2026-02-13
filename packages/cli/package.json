@@ -4,9 +4,7 @@
   "type": "module",
   "files": [
     "README.md",
-    "package.json",
-    "src/install.mjs",
-    "src/run.mjs"
+    "dist/"
   ],
   "bin": {
     "fedify": "./dist/mod.js"
@@ -29,7 +27,7 @@
   "engines": {
     "node": ">=20.0.0",
     "bun": ">=1.2.0",
-    "denp": ">=2.0.0"
+    "deno": ">=2.0.0"
   },
   "os": [
     "darwin",

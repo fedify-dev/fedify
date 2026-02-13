@@ -223,13 +223,21 @@ To be released.
     [[#525], [#529], [#531] by Jiwon Kwon]
 
  -  Added configuration file support for CLI commands.  The CLI now loads
-    settings from *.fedify.toml* in the current directory.
-    [[#555], [#566] by Jiwon Kwon]
+    settings from configuration files at multiple levels, with a well-defined
+    precedence chain.  [[#555], [#566] by Jiwon Kwon]
 
-     -  Added `--config` option to specify a custom configuration file path.
+     -  By default, configuration is loaded (in order of increasing precedence)
+        from a system-wide configuration file (*/etc/fedify/config.toml*),
+        a user-level configuration file (*~/.config/fedify/config.toml*),
+        and *.fedify.toml* in the current directory; later files override
+        earlier ones.
+     -  Added `--config` option to specify a custom configuration file path;
+        this file has the highest precedence over all other configuration
+        sources.
      -  Added `--ignore-config` option to skip configuration file loading.
      -  All command options (`inbox`, `lookup`, `webfinger`, `nodeinfo`,
-        `tunnel`, `relay`) can now be configured via the configuration file.
+        `tunnel`, `relay`) can now be configured via any of the configuration
+        files.
 
 [Elysia]: https://elysiajs.com/
 [#374]: https://github.com/fedify-dev/fedify/issues/374

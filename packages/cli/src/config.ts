@@ -1,4 +1,6 @@
 import { createConfigContext } from "@optique/config";
+import { message } from "@optique/core";
+import { printError } from "@optique/run";
 import { readFileSync } from "node:fs";
 import { parse as parseToml } from "smol-toml";
 import {
@@ -77,7 +79,6 @@ export const configSchema = object({
   // Global settings
   debug: optional(boolean()),
   userAgent: optional(string()),
-  logFile: optional(string()),
   tunnelService: optional(
     picklist(["localhost.run", "serveo.net", "pinggy.io"]),
   ),
@@ -102,12 +103,20 @@ export const configContext = createConfigContext({ schema: configSchema });
 
 /**
  * Try to load and parse a TOML config file.
- * Returns an empty object if the file doesn't exist or fails to parse.
+ * Returns an empty object if the file doesn't exist.
+ * Logs a warning and returns empty object for other errors (parsing, permissions).
  */
-export function tryLoadToml(path: string): Record<string, unknown> {
+export function tryLoadToml(filePath: string): Record<string, unknown> {
   try {
-    return parseToml(readFileSync(path, "utf-8"));
-  } catch {
+    return parseToml(readFileSync(filePath, "utf-8"));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return {}; // File not found, which is fine.
+    }
+    // For other errors (e.g., parsing, permissions), warn the user.
+    printError(
+      message`Could not load or parse config file at ${filePath}. It will be ignored.`,
+    );
     return {};
   }
 }
