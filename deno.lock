@@ -82,8 +82,6 @@
     "npm:@opentelemetry/sdk-trace-base@1.30.1": "1.30.1_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/sdk-trace-base@^2.5.0": "2.5.0_@opentelemetry+api@1.9.0",
     "npm:@opentelemetry/semantic-conventions@^1.39.0": "1.39.0",
-    "npm:@optique/core@0.9": "0.9.0",
-    "npm:@optique/run@0.9": "0.9.0",
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
     "npm:@preact/signals@^2.2.1": "2.5.1_preact@10.19.6",
     "npm:@preact/signals@^2.3.2": "2.5.1_preact@10.19.6",
@@ -104,7 +102,6 @@
     "npm:chalk@^5.6.2": "5.6.2",
     "npm:cli-highlight@^2.1.11": "2.1.11",
     "npm:cli-table3@~0.6.5": "0.6.5",
-    "npm:enquirer@^2.4.1": "2.4.1",
     "npm:env-paths@3": "3.0.0",
     "npm:es-toolkit@^1.30.0": "1.43.0",
     "npm:es-toolkit@^1.31.0": "1.43.0",
@@ -125,7 +122,6 @@
     "npm:hono@^4.8.3": "4.11.3",
     "npm:icojs@~0.19.5": "0.19.5",
     "npm:inquirer-toggle@^1.0.1": "1.0.1",
-    "npm:inquirer@^12.9.4": "12.11.1_@types+node@22.19.3",
     "npm:ioredis@^5.8.2": "5.9.1",
     "npm:jimp@^1.6.0": "1.6.0",
     "npm:json-canon@^1.0.1": "1.0.1",
@@ -278,7 +274,7 @@
     "@optique/run@0.9.0": {
       "integrity": "d71b0a05a1342e874fe1718a01d10384ca6b3de3245ae485f6565d6e2f0c16ad",
       "dependencies": [
-        "jsr:@optique/core@0.9"
+        "jsr:@optique/core"
       ]
     },
     "@std/assert@0.224.0": {
@@ -2085,15 +2081,6 @@
     "@opentelemetry/semantic-conventions@1.39.0": {
       "integrity": "sha512-R5R9tb2AXs2IRLNKLBJDynhkfmx7mX0vi8NkhZb3gUkPWHn6HXk5J8iQ/dql0U3ApfWym4kXXmBDRGO+oeOfjg=="
     },
-    "@optique/core@0.9.0": {
-      "integrity": "sha512-PN5SwVRK9BPmFUKzcdNYDCV4Q18HGfR4H/1MG1yQYmA1RDNVKTuCV146dTIqI2H8F4lD/WMTiNsTl2wbGr9u1Q=="
-    },
-    "@optique/run@0.9.0": {
-      "integrity": "sha512-S9hZfXPICeyIq3HArJ61yeSaadZQTnTKc4g03wcYRXLPYd6h/K7tCeVQnOkJ4k3b01TuiuHrartxwwxr3j/dnA==",
-      "dependencies": [
-        "@optique/core"
-      ]
-    },
     "@oxc-project/types@0.103.0": {
       "integrity": "sha512-bkiYX5kaXWwUessFRSoXFkGIQTmc6dLGdxuRTrC+h8PSnIdZyuXHHlLAeTmOue5Br/a0/a7dHH0Gca6eXn9MKg=="
     },
@@ -2845,9 +2832,6 @@
         "url-parse"
       ]
     },
-    "ansi-colors@4.1.3": {
-      "integrity": "sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw=="
-    },
     "ansi-escapes@4.3.2": {
       "integrity": "sha512-gKXj5ALrKWQLsYG9jlTRmR/xKluxHV+Z9QEwNIgCfM1/uwPMCuzVVnh5mwTd+OuBZcwSIMbqssNWRm1lE51QaQ==",
       "dependencies": [
@@ -3318,13 +3302,6 @@
     },
     "encodeurl@2.0.0": {
       "integrity": "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg=="
-    },
-    "enquirer@2.4.1": {
-      "integrity": "sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ==",
-      "dependencies": [
-        "ansi-colors",
-        "strip-ansi@6.0.1"
-      ]
     },
     "env-paths@3.0.0": {
       "integrity": "sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A=="
@@ -4033,22 +4010,6 @@
       "integrity": "sha512-0cReq29SpyO4JnoVmGBZJPoBv8sBzsGXw3MDjNxilOzhAFxIvC8mOFj34bCMtlFYKfkBKNYVLmmnP/qmrVuVMg==",
       "dependencies": [
         "@inquirer/core@8.2.4"
-      ]
-    },
-    "inquirer@12.11.1_@types+node@22.19.3": {
-      "integrity": "sha512-9VF7mrY+3OmsAfjH3yKz/pLbJ5z22E23hENKw3/LNSaA/sAt3v49bDRY+Ygct1xwuKT+U+cBfTzjCPySna69Qw==",
-      "dependencies": [
-        "@inquirer/ansi",
-        "@inquirer/core@10.3.2_@types+node@22.19.3",
-        "@inquirer/prompts",
-        "@inquirer/type@3.0.10_@types+node@22.19.3",
-        "@types/node@22.19.3",
-        "mute-stream@2.0.0",
-        "run-async",
-        "rxjs"
-      ],
-      "optionalPeers": [
-        "@types/node@22.19.3"
       ]
     },
     "ioredis@5.9.1": {
@@ -4999,9 +4960,6 @@
       ],
       "bin": true
     },
-    "run-async@4.0.6": {
-      "integrity": "sha512-IoDlSLTs3Yq593mb3ZoKWKXMNu3UpObxhgA/Xuid5p4bbfi2jdY1Hj0m1K+0/tEuQTxIGMhQDqGjKb7RuxGpAQ=="
-    },
     "rxjs@7.8.2": {
       "integrity": "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==",
       "dependencies": [
@@ -5889,6 +5847,8 @@
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
+      "jsr:@optique/core@0.9",
+      "jsr:@optique/run@0.9",
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/async@^1.0.13",
       "jsr:@std/encoding@^1.0.10",
@@ -5908,6 +5868,7 @@
       "npm:@types/node@^22.16.0",
       "npm:amqplib@~0.10.9",
       "npm:byte-encodings@^1.0.11",
+      "npm:chalk@^5.6.2",
       "npm:es-toolkit@^1.43.0",
       "npm:h3@^1.15.0",
       "npm:ioredis@^5.8.2",
@@ -5957,18 +5918,13 @@
         "dependencies": [
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
-          "jsr:@optique/core@0.9",
-          "jsr:@optique/run@0.9",
-          "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.0",
           "npm:@jimp/wasm-webp@^1.6.0",
           "npm:@poppanator/http-constants@^1.1.1",
-          "npm:chalk@^5.6.2",
           "npm:cli-table3@~0.6.5",
           "npm:env-paths@3",
           "npm:fetch-mock@^12.5.4",
           "npm:icojs@~0.19.5",
-          "npm:inquirer-toggle@^1.0.1",
           "npm:ora@^8.2.0",
           "npm:shiki@^1.6.4",
           "npm:srvx@~0.8.7"
@@ -5976,21 +5932,14 @@
         "packageJson": {
           "dependencies": [
             "npm:@hongminhee/localtunnel@0.3",
-            "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.0",
             "npm:@jimp/wasm-webp@^1.6.0",
-            "npm:@optique/core@0.9",
-            "npm:@optique/run@0.9",
             "npm:@poppanator/http-constants@^1.1.1",
-            "npm:chalk@^5.6.2",
             "npm:cli-highlight@^2.1.11",
             "npm:cli-table3@~0.6.5",
-            "npm:enquirer@^2.4.1",
             "npm:env-paths@3",
             "npm:hono@^4.8.3",
             "npm:icojs@~0.19.5",
-            "npm:inquirer-toggle@^1.0.1",
-            "npm:inquirer@^12.9.4",
             "npm:jimp@^1.6.0",
             "npm:ora@^8.2.0",
             "npm:shiki@^1.6.4",
@@ -6059,21 +6008,12 @@
       },
       "packages/init": {
         "dependencies": [
-          "jsr:@logtape/logtape@2",
-          "jsr:@optique/core@0.9",
-          "jsr:@optique/run@0.9",
-          "npm:@fxts/core@^1.21.1",
           "npm:@inquirer/prompts@^7.8.4",
-          "npm:chalk@^5.6.2",
-          "npm:es-toolkit@^1.43.0",
           "npm:inquirer-toggle@^1.0.1"
         ],
         "packageJson": {
           "dependencies": [
             "npm:@inquirer/prompts@^7.8.4",
-            "npm:@optique/core@0.9",
-            "npm:@optique/run@0.9",
-            "npm:chalk@^5.6.2",
             "npm:inquirer-toggle@^1.0.1"
           ]
         }
