@@ -122,7 +122,7 @@ export const testInitCommand = command(
     optional(or(noHydRun, noDryRun)),
   ),
   {
-    brief: message`Test an initializing command .`,
+    brief: message`Test an initializing command.`,
     description: message`Test an initializing command on temporary directories.
 
 Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
