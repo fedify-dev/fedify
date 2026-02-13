@@ -100,7 +100,7 @@ const traverseOption = object({
     },
   ),
   suppressErrors: bindConfig(
-    option("-S", "--suppress-errors", {
+    flag("-S", "--suppress-errors", {
       description:
         message`Suppress partial errors while traversing the collection.`,
     }),
@@ -129,24 +129,26 @@ export const lookupCommand = command(
         { min: 1 },
       ),
       format: bindConfig(
-        or(
-          map(
-            option("-r", "--raw", {
-              description: message`Print the fetched JSON-LD document as is.`,
-            }),
-            () => "raw" as const,
-          ),
-          map(
-            option("-C", "--compact", {
-              description: message`Compact the fetched JSON-LD document.`,
-            }),
-            () => "compact" as const,
-          ),
-          map(
-            option("-e", "--expand", {
-              description: message`Expand the fetched JSON-LD document.`,
-            }),
-            () => "expand" as const,
+        optional(
+          or(
+            map(
+              flag("-r", "--raw", {
+                description: message`Print the fetched JSON-LD document as is.`,
+              }),
+              () => "raw" as const,
+            ),
+            map(
+              flag("-C", "--compact", {
+                description: message`Compact the fetched JSON-LD document.`,
+              }),
+              () => "compact" as const,
+            ),
+            map(
+              flag("-e", "--expand", {
+                description: message`Expand the fetched JSON-LD document.`,
+              }),
+              () => "expand" as const,
+            ),
           ),
         ),
         {
@@ -176,19 +178,22 @@ export const lookupCommand = command(
         }),
         { description: message`Specify the output file path.` },
       )),
-      timeout: bindConfig(
-        option(
-          "-T",
-          "--timeout",
-          float({ min: 0, metavar: "SECONDS" }),
+      timeout: optional(
+        bindConfig(
+          option(
+            "-T",
+            "--timeout",
+            float({ min: 0, metavar: "SECONDS" }),
+            {
+              description:
+                message`Set timeout for network requests in seconds.`,
+            },
+          ),
           {
-            description: message`Set timeout for network requests in seconds.`,
+            context: configContext,
+            key: (config) => config.lookup?.timeout,
           },
         ),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.timeout,
-        },
       ),
     }),
   ),
