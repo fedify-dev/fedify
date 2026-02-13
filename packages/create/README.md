@@ -36,7 +36,8 @@ The tool supports the same project configurations as `fedify init`:
  -  **Message queues**: Deno KV, Redis, PostgreSQL, AMQP
 
 See the [`@fedify/init`] package or the [Fedify CLI docs] for details on
-available options (`-r`, `-p`, `-w`, `-k`, `-q`, `--dry-run`).
+available options (`-p`, `-w`, `-k`, `-m`, `--dry-run`).
+More information is in the [`@fedify/init`] package.
 
 [Hono]: https://hono.dev/
 [Nitro]: https://nitro.build/
