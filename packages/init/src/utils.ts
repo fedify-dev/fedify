@@ -182,7 +182,7 @@ export function* product<T extends Iterable<unknown>[]>(
 }
 
 export type GeneratedType<T extends Generator> = T extends
-  Generator<unknown, infer R, unknown> ? R : never;
+  Generator<infer R, unknown, unknown> ? R : never;
 
 type PrintMessage = (...args: Parameters<typeof message>) => void;
 export const printMessage: PrintMessage = flow(message, print);
