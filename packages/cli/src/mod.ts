@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { runWithConfig } from "@optique/config/run";
-import { merge, or } from "@optique/core";
+import { merge, message, or } from "@optique/core";
+import { printError } from "@optique/run";
 import envPaths from "env-paths";
 import { merge as deepMerge } from "es-toolkit";
 import { readFileSync } from "node:fs";
@@ -46,10 +47,20 @@ async function main() {
       const user = tryLoadToml(join(userConfigDir, "config.toml"));
       const project = tryLoadToml(join(process.cwd(), ".fedify.toml"));
 
-      // Custom config via --config throws on error (required file)
-      const custom = parsed.configPath
-        ? parseToml(readFileSync(parsed.configPath, "utf-8"))
-        : {};
+      // Custom config via --config exits with error if file is missing or invalid
+      let custom: Record<string, unknown> = {};
+      if (parsed.configPath) {
+        try {
+          custom = parseToml(readFileSync(parsed.configPath, "utf-8"));
+        } catch (error) {
+          printError(
+            message`Could not load config file at ${parsed.configPath}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          process.exit(1);
+        }
+      }
 
       return [system, user, project, custom].reduce(
         (acc, config) => deepMerge(acc, config),
