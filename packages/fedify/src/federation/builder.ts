@@ -197,7 +197,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setActorDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: ActorDispatcher<TContextData>,
   ): ActorCallbackSetters<TContextData> {
     if (this.router.has("actor")) {
@@ -206,16 +206,10 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "actor");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for actor dispatcher must have one variable: {identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "actor"]).warn(
-        "The {{handle}} variable in the actor dispatcher path is deprecated. " +
-          "Use {{identifier}} instead.",
       );
     }
     const callbacks: ActorCallbacks<TContextData> = {
@@ -622,7 +616,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setInboxDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Activity,
       RequestContext<TContextData>,
@@ -647,16 +641,10 @@ export class FederationBuilderImpl<TContextData>
       const variables = this.router.add(path, "inbox");
       if (
         variables.size !== 1 ||
-        !(variables.has("identifier") || variables.has("handle"))
+        !variables.has("identifier")
       ) {
         throw new RouterError(
           "Path for inbox dispatcher must have one variable: {identifier}",
-        );
-      }
-      if (variables.has("handle")) {
-        getLogger(["fedify", "federation", "inbox"]).warn(
-          "The {{handle}} variable in the inbox dispatcher path is deprecated. " +
-            "Use {{identifier}} instead.",
         );
       }
       this.inboxPath = path;
@@ -706,7 +694,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setOutboxDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Activity,
       RequestContext<TContextData>,
@@ -724,16 +712,10 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "outbox");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for outbox dispatcher must have one variable: {identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "outbox"]).warn(
-        "The {{handle}} variable in the outbox dispatcher path is deprecated. " +
-          "Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -781,7 +763,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setFollowingDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Actor | URL,
       RequestContext<TContextData>,
@@ -799,17 +781,11 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "following");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for following collection dispatcher must have one variable: " +
           "{identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "collection"]).warn(
-        "The {{handle}} variable in the following collection dispatcher path " +
-          "is deprecated. Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -857,7 +833,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setFollowersDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Recipient,
       Context<TContextData>,
@@ -871,17 +847,11 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "followers");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for followers collection dispatcher must have one variable: " +
           "{identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "collection"]).warn(
-        "The {{handle}} variable in the followers collection dispatcher path " +
-          "is deprecated. Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -921,7 +891,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setLikedDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Like,
       RequestContext<TContextData>,
@@ -939,17 +909,11 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "liked");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for liked collection dispatcher must have one variable: " +
           "{identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "collection"]).warn(
-        "The {{handle}} variable in the liked collection dispatcher path " +
-          "is deprecated. Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -997,7 +961,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setFeaturedDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Object,
       RequestContext<TContextData>,
@@ -1015,17 +979,11 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "featured");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for featured collection dispatcher must have one variable: " +
           "{identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "collection"]).warn(
-        "The {{handle}} variable in the featured collection dispatcher path " +
-          "is deprecated. Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -1073,7 +1031,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setFeaturedTagsDispatcher(
-    path: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    path: `${string}{identifier}${string}`,
     dispatcher: CollectionDispatcher<
       Hashtag,
       RequestContext<TContextData>,
@@ -1091,17 +1049,11 @@ export class FederationBuilderImpl<TContextData>
     const variables = this.router.add(path, "featuredTags");
     if (
       variables.size !== 1 ||
-      !(variables.has("identifier") || variables.has("handle"))
+      !variables.has("identifier")
     ) {
       throw new RouterError(
         "Path for featured tags collection dispatcher must have one " +
           "variable: {identifier}",
-      );
-    }
-    if (variables.has("handle")) {
-      getLogger(["fedify", "federation", "collection"]).warn(
-        "The {{handle}} variable in the featured tags collection dispatcher " +
-          "path is deprecated. Use {{identifier}} instead.",
       );
     }
     const callbacks: CollectionCallbacks<
@@ -1149,7 +1101,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setInboxListeners(
-    inboxPath: `${string}{identifier}${string}` | `${string}{handle}${string}`,
+    inboxPath: `${string}{identifier}${string}`,
     sharedInboxPath?: string,
   ): InboxListenerSetters<TContextData> {
     if (this.inboxListeners != null) {
@@ -1165,19 +1117,13 @@ export class FederationBuilderImpl<TContextData>
       const variables = this.router.add(inboxPath, "inbox");
       if (
         variables.size !== 1 ||
-        !(variables.has("identifier") || variables.has("handle"))
+        !variables.has("identifier")
       ) {
         throw new RouterError(
           "Path for inbox must have one variable: {identifier}",
         );
       }
       this.inboxPath = inboxPath;
-      if (variables.has("handle")) {
-        getLogger(["fedify", "federation", "inbox"]).warn(
-          "The {{handle}} variable in the inbox path is deprecated. " +
-            "Use {{identifier}} instead.",
-        );
-      }
     }
     if (sharedInboxPath != null) {
       const siVars = this.router.add(sharedInboxPath, "sharedInbox");

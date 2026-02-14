@@ -1402,11 +1402,11 @@ export class FederationImpl<TContextData>
       case "actor":
         context = this.#createContext(request, contextData, {
           invokedFromActorDispatcher: {
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
           },
         });
         return await handleActor(request, {
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           context,
           actorDispatcher: this.actorCallbacks?.dispatcher,
           authorizePredicate: this.actorCallbacks?.authorizePredicate,
@@ -1432,7 +1432,7 @@ export class FederationImpl<TContextData>
       case "outbox":
         return await handleCollection(request, {
           name: "outbox",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getOutboxUri.bind(context),
           context,
           collectionCallbacks: this.outboxCallbacks,
@@ -1444,7 +1444,7 @@ export class FederationImpl<TContextData>
         if (request.method !== "POST") {
           return await handleCollection(request, {
             name: "inbox",
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
             uriGetter: context.getInboxUri.bind(context),
             context,
             collectionCallbacks: this.inboxCallbacks,
@@ -1455,7 +1455,7 @@ export class FederationImpl<TContextData>
         }
         context = this.#createContext(request, contextData, {
           documentLoader: await context.getDocumentLoader({
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
           }),
         });
         // falls through
@@ -1472,7 +1472,7 @@ export class FederationImpl<TContextData>
         }
         if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
         return await handleInbox(request, {
-          recipient: route.values.identifier ?? route.values.handle ?? null,
+          recipient: route.values.identifier ?? null,
           context,
           inboxContextFactory: context.toInboxContext.bind(context),
           kv: this.kv,
@@ -1490,7 +1490,7 @@ export class FederationImpl<TContextData>
       case "following":
         return await handleCollection(request, {
           name: "following",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFollowingUri.bind(context),
           context,
           collectionCallbacks: this.followingCallbacks,
@@ -1510,7 +1510,7 @@ export class FederationImpl<TContextData>
         }
         return await handleCollection(request, {
           name: "followers",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: baseUrl == null
             ? context.getFollowersUri.bind(context)
             : (identifier) => {
@@ -1535,7 +1535,7 @@ export class FederationImpl<TContextData>
       case "liked":
         return await handleCollection(request, {
           name: "liked",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getLikedUri.bind(context),
           context,
           collectionCallbacks: this.likedCallbacks,
@@ -1546,7 +1546,7 @@ export class FederationImpl<TContextData>
       case "featured":
         return await handleCollection(request, {
           name: "featured",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFeaturedUri.bind(context),
           context,
           collectionCallbacks: this.featuredCallbacks,
@@ -1557,7 +1557,7 @@ export class FederationImpl<TContextData>
       case "featuredTags":
         return await handleCollection(request, {
           name: "featured tags",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFeaturedTagsUri.bind(context),
           context,
           collectionCallbacks: this.featuredTagsCallbacks,
@@ -1707,7 +1707,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getActorUri(identifier: string): URL {
     const path = this.federation.router.build(
       "actor",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
@@ -1741,7 +1741,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getOutboxUri(identifier: string): URL {
     const path = this.federation.router.build(
       "outbox",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No outbox dispatcher registered.");
@@ -1761,7 +1761,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     const path = this.federation.router.build(
       "inbox",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No inbox path registered.");
@@ -1772,7 +1772,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFollowingUri(identifier: string): URL {
     const path = this.federation.router.build(
       "following",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No following collection path registered.");
@@ -1783,7 +1783,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFollowersUri(identifier: string): URL {
     const path = this.federation.router.build(
       "followers",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No followers collection path registered.");
@@ -1794,7 +1794,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getLikedUri(identifier: string): URL {
     const path = this.federation.router.build(
       "liked",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No liked collection path registered.");
@@ -1805,7 +1805,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFeaturedUri(identifier: string): URL {
     const path = this.federation.router.build(
       "featured",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No featured collection path registered.");
@@ -1816,7 +1816,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFeaturedTagsUri(identifier: string): URL {
     const path = this.federation.router.build(
       "featuredTags",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No featured tags collection path registered.");
@@ -1854,9 +1854,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         identifier: undefined,
       };
     }
-    const identifier = "identifier" in route.values
-      ? route.values.identifier
-      : route.values.handle;
+    const identifier = route.values.identifier;
     if (route.name === "actor") {
       return {
         type: "actor",

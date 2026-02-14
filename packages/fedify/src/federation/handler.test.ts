@@ -57,10 +57,10 @@ test("handleActor()", async () => {
       return new URL(`https://example.com/users/${identifier}`);
     },
   });
-  const actorDispatcher: ActorDispatcher<void> = (ctx, handle) => {
-    if (handle !== "someone") return null;
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "someone") return null;
     return new Person({
-      id: ctx.getActorUri(handle),
+      id: ctx.getActorUri(identifier),
       name: "Someone",
     });
   };
@@ -284,7 +284,7 @@ test("handleObject()", async () => {
       values: Record<string, string>,
     ) {
       return new URL(
-        `https://example.com/users/${values.handle}/notes/${values.id}`,
+        `https://example.com/users/${values.identifier}/notes/${values.id}`,
       );
     },
   });
@@ -292,7 +292,7 @@ test("handleObject()", async () => {
     ctx,
     values,
   ) => {
-    if (values.handle !== "someone" || values.id !== "123") return null;
+    if (values.identifier !== "someone" || values.id !== "123") return null;
     return new Note({
       id: ctx.getObjectUri(Note, values),
       summary: "Hello, world!",
@@ -312,7 +312,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "123" },
+      values: { identifier: "someone", id: "123" },
       onNotFound,
       onUnauthorized,
     },
@@ -326,7 +326,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "123" },
+      values: { identifier: "someone", id: "123" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -340,7 +340,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "no-one", id: "123" },
+      values: { identifier: "no-one", id: "123" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -355,7 +355,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "not-exist" },
+      values: { identifier: "someone", id: "not-exist" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -378,7 +378,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "123" },
+      values: { identifier: "someone", id: "123" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -420,7 +420,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "no-one", id: "123" },
+      values: { identifier: "no-one", id: "123" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -435,7 +435,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "not-exist" },
+      values: { identifier: "someone", id: "not-exist" },
       objectDispatcher,
       onNotFound,
       onUnauthorized,
@@ -450,7 +450,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "123" },
+      values: { identifier: "someone", id: "123" },
       objectDispatcher,
       authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
@@ -472,7 +472,7 @@ test("handleObject()", async () => {
     context.request,
     {
       context,
-      values: { handle: "someone", id: "123" },
+      values: { identifier: "someone", id: "123" },
       objectDispatcher,
       authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
         signedKey != null && signedKeyOwner != null,
@@ -530,10 +530,10 @@ test("handleCollection()", async () => {
     void
   > = (
     _ctx,
-    handle,
+    identifier,
     cursor,
   ) => {
-    if (handle !== "someone") return null;
+    if (identifier !== "someone") return null;
     const items = [
       new Create({ id: new URL("https://example.com/activities/1") }),
       new Create({ id: new URL("https://example.com/activities/2") }),
@@ -549,16 +549,16 @@ test("handleCollection()", async () => {
     }
     return { items };
   };
-  const counter: CollectionCounter<void, void> = (_ctx, handle) =>
-    handle === "someone" ? 3 : null;
+  const counter: CollectionCounter<void, void> = (_ctx, identifier) =>
+    identifier === "someone" ? 3 : null;
   const firstCursor: CollectionCursor<RequestContext<void>, void, void> = (
     _ctx,
-    handle,
-  ) => handle === "someone" ? "0" : null;
+    identifier,
+  ) => identifier === "someone" ? "0" : null;
   const lastCursor: CollectionCursor<RequestContext<void>, void, void> = (
     _ctx,
-    handle,
-  ) => handle === "someone" ? "2" : null;
+    identifier,
+  ) => identifier === "someone" ? "2" : null;
   let onNotFoundCalled: Request | null = null;
   const onNotFound = (request: Request) => {
     onNotFoundCalled = request;
@@ -1433,7 +1433,7 @@ test("handleCustomCollection()", async () => {
     values: Record<string, string>,
     cursor: string | null,
   ) => {
-    if (values.handle !== "someone") return null;
+    if (values.identifier !== "someone") return null;
     const items = [
       new Create({ id: new URL("https://example.com/activities/1") }),
       new Create({ id: new URL("https://example.com/activities/2") }),
@@ -1453,7 +1453,7 @@ test("handleCustomCollection()", async () => {
   const counter: CustomCollectionCounter<string, void> = (
     _ctx: RequestContext<void>,
     values: Record<string, string>,
-  ) => values.handle === "someone" ? 3 : null;
+  ) => values.identifier === "someone" ? 3 : null;
 
   const firstCursor: CustomCollectionCursor<
     string,
@@ -1462,7 +1462,7 @@ test("handleCustomCollection()", async () => {
   > = (
     _ctx: RequestContext<void>,
     values: Record<string, string>,
-  ) => values.handle === "someone" ? "0" : null;
+  ) => values.identifier === "someone" ? "0" : null;
 
   const lastCursor: CustomCollectionCursor<
     string,
@@ -1471,7 +1471,7 @@ test("handleCustomCollection()", async () => {
   > = (
     _ctx: RequestContext<void>,
     values: Record<string, string>,
-  ) => values.handle === "someone" ? "2" : null;
+  ) => values.identifier === "someone" ? "2" : null;
 
   const callbacks: CustomCollectionCallbacks<
     Create,
@@ -1506,7 +1506,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       ...errorHandlers,
     },
   );
@@ -1514,7 +1514,7 @@ test("handleCustomCollection()", async () => {
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
-  // Test with unknown handle (should return 404)
+  // Test with unknown identifier (should return 404)
   context = createRequestContext<void>({
     ...context,
     request: new Request(context.url, {
@@ -1528,7 +1528,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "no-one" },
+      values: { identifier: "no-one" },
       collectionCallbacks: { dispatcher },
       ...errorHandlers,
     },
@@ -1544,7 +1544,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: { dispatcher },
       ...errorHandlers,
     },
@@ -1631,7 +1631,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: {
         dispatcher,
         authorizePredicate: (_ctx, _values, key, keyOwner) =>
@@ -1656,7 +1656,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: {
         dispatcher,
         authorizePredicate: (_ctx, _values, key, keyOwner) =>
@@ -1701,7 +1701,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: callbacks,
       ...errorHandlers,
     },
@@ -1738,7 +1738,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: callbacks,
       ...errorHandlers,
     },
@@ -1779,7 +1779,7 @@ test("handleCustomCollection()", async () => {
     {
       context,
       name: "custom collection",
-      values: { handle: "someone" },
+      values: { identifier: "someone" },
       collectionCallbacks: callbacks,
       ...errorHandlers,
     },
@@ -1845,10 +1845,10 @@ test("handleInbox() records OpenTelemetry span events", async () => {
     },
   });
 
-  const actorDispatcher: ActorDispatcher<void> = (ctx, handle) => {
-    if (handle !== "someone") return null;
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "someone") return null;
     return new Person({
-      id: ctx.getActorUri(handle),
+      id: ctx.getActorUri(identifier),
       name: "Someone",
       inbox: new URL("https://example.com/users/someone/inbox"),
       publicKey: rsaPublicKey2,

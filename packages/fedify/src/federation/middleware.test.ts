@@ -1260,7 +1260,7 @@ test("Federation.setInboxListeners()", async (t) => {
       RouterError,
     );
     assertThrows(
-      () => federation.setInboxListeners("/users/{identifier}/inbox/{handle}"),
+      () => federation.setInboxListeners("/users/{identifier}/inbox/{extra}"),
       RouterError,
     );
     assertThrows(
