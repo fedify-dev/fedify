@@ -5,16 +5,16 @@ export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 
-federation.setActorDispatcher("/users/{handle}", (ctx, handle) => {
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
   return new Person({
-    id: ctx.getActorUri(handle),
-    preferredUsername: handle,
+    id: ctx.getActorUri(identifier),
+    preferredUsername: identifier,
   });
 });
 
 federation.setObjectDispatcher(
   Note,
-  "/users/{handle}/{id}",
+  "/users/{identifier}/{id}",
   (ctx, values) => {
     return new Note({
       id: ctx.getObjectUri(Note, values),

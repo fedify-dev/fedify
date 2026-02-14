@@ -23,12 +23,12 @@ and port.
 
 For example, if you make a request to */.well-known/webfinger* Fedify will
 handle the request by itself, but if you make a request to */users/alice*
-(assuming your web framework has a handler for `/users/:handle`) with
+(assuming your web framework has a handler for `/users/:identifier`) with
 `Accept: text/html` header, Fedify will dispatch the request to the web
-framework's appropriate handler for `/users/:handle`.  Or if you define an
-actor dispatcher for `/users/{handle}` in Fedify, and the request is made with
-`Accept: application/activity+json` header, Fedify will dispatch the request to
-the appropriate actor dispatcher.
+framework's appropriate handler for `/users/:identifier`.  Or if you define an
+actor dispatcher for `/users/{identifier}` in Fedify, and the request is made
+with `Accept: application/activity+json` header, Fedify will dispatch the
+request to the appropriate actor dispatcher.
 
 Here is a diagram that illustrates the architecture:
 
