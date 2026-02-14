@@ -1,0 +1,24 @@
+import { apply, pipe } from "@fxts/core";
+import { CommandError, runSubCommand } from "../utils.ts";
+import type { InitCommandData } from "../types.ts";
+
+const installDependencies = (data: InitCommandData) =>
+  pipe(
+    data,
+    ({ packageManager, dir }) =>
+      [[packageManager, "install"], { cwd: dir }] as //
+      Parameters<typeof runSubCommand>,
+    apply(runSubCommand),
+  ).catch((e) => {
+    if (e instanceof CommandError) {
+      console.error(
+        `Failed to install dependencies using ${data.packageManager}.`,
+      );
+      console.error("Command:", e.commandLine);
+      if (e.stderr) console.error("Error:", e.stderr);
+      throw e;
+    }
+    throw e;
+  });
+
+export default installDependencies;

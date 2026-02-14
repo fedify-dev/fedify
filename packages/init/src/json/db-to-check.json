@@ -1,0 +1,17 @@
+{
+  "redis": {
+    "name": "Redis",
+    "defaultPort": 6379,
+    "documentation": "https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/"
+  },
+  "postgres": {
+    "name": "PostgreSQL",
+    "defaultPort": 5432,
+    "documentation": "https://www.postgresql.org/download/"
+  },
+  "amqp": {
+    "name": "RabbitMQ",
+    "defaultPort": 5672,
+    "documentation": "https://www.rabbitmq.com/docs/download"
+  }
+}

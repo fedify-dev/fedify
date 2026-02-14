@@ -1,0 +1,30 @@
+import { pipe, tap, when } from "@fxts/core";
+import { set } from "../utils.ts";
+import type { TestInitCommand } from "../command.ts";
+import { checkRequiredDbs } from "./db.ts";
+import { fillEmptyOptions } from "./fill.ts";
+import runTests from "./run.ts";
+import {
+  emptyTestDir,
+  genRunId,
+  genTestDirPrefix,
+  logTestDir,
+} from "./utils.ts";
+
+const runTestInit = (options: TestInitCommand) =>
+  pipe(
+    options,
+    set("runId", genRunId),
+    set("testDirPrefix", genTestDirPrefix),
+    tap(emptyTestDir),
+    fillEmptyOptions,
+    tap(checkRequiredDbs),
+    tap(logTestDir),
+    tap(when(isDryRun, runTests(true))),
+    tap(when(isHydRun, runTests(false))),
+  );
+
+const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) => dryRun;
+const isHydRun = <T extends { hydRun: boolean }>({ hydRun }: T) => hydRun;
+
+export default runTestInit;

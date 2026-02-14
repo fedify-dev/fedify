@@ -65,6 +65,34 @@ in the *CLI toolchain* docs.
 
 [![The “fedify init” command demo](https://asciinema.org/a/671658.svg)](https://asciinema.org/a/671658)
 
+### Alternative: Using `@fedify/create`
+
+If you don't want to install the `fedify` CLI globally, you can use
+`@fedify/create` directly:
+
+::: code-group
+
+~~~~ sh [npm]
+npm init @fedify your-project-dir
+~~~~
+
+~~~~ sh [pnpm]
+pnpm create @fedify your-project-dir
+~~~~
+
+~~~~ sh [Yarn]
+yarn create @fedify your-project-dir
+~~~~
+
+~~~~ sh [Bun]
+bunx @fedify/create your-project-dir
+~~~~
+
+:::
+
+This works the same way as `fedify init` and will guide you through the same
+project setup wizard.
+
 
 Manual installation
 -------------------

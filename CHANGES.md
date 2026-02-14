@@ -476,6 +476,34 @@ To be released.
      -  Requires a Workers KV namespace for lock management.
      -  Due to Workers KV eventual consistency, ordering is best-effort.
 
+### @fedify/init
+
+ -  Created project initializer as the *@fedify/init* package.  Separated
+    the `fedify init` functionality from *@fedify/cli* into a standalone
+    package to improve modularity and enable reuse by other tools such as
+    `@fedify/create`.  [[#482] by Chanhaeng Lee]
+
+     -  Added `runInit()` function as the main initialization action handler.
+     -  Added `initCommand` and `initOptions` for CLI integration.
+     -  Added `testInitCommand` for comprehensive testing of all init
+        combinations.
+
+[#482]: https://github.com/fedify-dev/fedify/issues/482
+
+### @fedify/create
+
+ -  Created standalone project scaffolding CLI as the *@fedify/create*
+    package.  This enables creating new Fedify projects without installing
+    the full `@fedify/cli` toolchain.  [[#351] by Chanhaeng Lee]
+
+     -  Supports `npm init @fedify`, `pnpm create @fedify`,
+        `yarn create @fedify`, and `bunx @fedify/create`.
+     -  Uses `@fedify/init` internally for all initialization logic.
+     -  Supports the same interactive prompts and CLI options as
+        `fedify init`.
+
+[#351]: https://github.com/fedify-dev/fedify/issues/351
+
 
 Version 1.10.3
 --------------

@@ -10,6 +10,7 @@ exclude = [
   "WARP.md",
   "packages/fedify/src/cfworkers/**",
   "plan.md",
+  "**/plans/**",
 ]
 
 [heading]

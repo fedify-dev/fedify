@@ -126,6 +126,19 @@ project.  It will ask you a few questions to set up the project:
  -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
 
+> [!TIP]
+> Projects created with `fedify init` automatically include [`@fedify/lint`]
+> for consistent code linting.  Deno projects get a lint plugin configured in
+> *deno.json*, while Node.js and Bun projects get an *eslint.config.ts* with
+> `@fedify/lint`.
+
+> [!NOTE]
+> If you find the full `@fedify/cli` toolchain too heavy for your needs, you
+> can use [`@fedify/create`] instead to scaffold a new Fedify project without
+> installing the CLI globally.  See the
+> [*Alternative: Using `@fedify/create`*](./install.md#alternative-using-fedify-create)
+> section for details.
+
 Alternatively, you can specify the options in the command line to skip some of
 interactive prompts:
 
@@ -142,6 +155,8 @@ interactive prompts:
 [Deno KV]: https://deno.com/kv
 [AMQP]: https://www.amqp.org/
 [RabbitMQ]: https://www.rabbitmq.com/
+[`@fedify/lint`]: /manual/lint
+[`@fedify/create`]: https://www.npmjs.com/package/@fedify/create
 
 ### `-r`/`--runtime`: JavaScript runtime
 
