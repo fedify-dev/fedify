@@ -117,16 +117,20 @@ command options.  Configuration files are written in [TOML] format.
 Configuration files are loaded from the following locations in order, with
 later files taking precedence over earlier ones:
 
-1.  `/etc/fedify/config.toml` (system-wide)
-2.  *&lt;user-config-dir&gt;/fedify/config.toml* (user-level)
-3.  `.fedify.toml` in the current working directory (project-level)
-4.  Custom path via `--config` option (explicit)
+1.  System-wide configuration directories (see below)
+2.  *~/.config/fedify/config.toml* (user-level, or
+    `$XDG_CONFIG_HOME/fedify/config.toml`)
+3.  *.fedify.toml* in the current working directory (project-level)
+4.  Custom path specified via `--config` option (highest precedence)
 
-The user config directory varies by operating system:
+The system-wide and user-level config paths vary by operating system:
 
- -  **Linux**: *~/.config/fedify/config.toml*
- -  **macOS**: *~/Library/Application Support/fedify/config.toml*
- -  **Windows**: *%APPDATA%\\fedify\\config.toml*
+ -  **Linux/macOS (system)**: Directories listed in `$XDG_CONFIG_DIRS`
+    (default: */etc/xdg/fedify/config.toml*)
+ -  **Linux/macOS (user)**: `$XDG_CONFIG_HOME/fedify/config.toml`
+    (default: *~/.config/fedify/config.toml*)
+ -  **Windows (system)**: *%ProgramData%\\fedify\\config.toml*
+ -  **Windows (user)**: *%APPDATA%\\fedify\\config.toml*
 
 ### `--config`: Load an additional configuration file
 
