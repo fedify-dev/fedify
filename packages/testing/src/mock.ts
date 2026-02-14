@@ -838,7 +838,6 @@ class MockContext<TContextData> implements Context<TContextData> {
         return {
           type: "actor",
           identifier: parts[2],
-          handle: parts[2],
         };
       }
     }

@@ -789,8 +789,7 @@ export class FederationImpl<TContextData>
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
-          documentLoader: "identifier" in identity || "username" in identity ||
-              "handle" in identity
+          documentLoader: "identifier" in identity || "username" in identity
             ? await context.getDocumentLoader(identity)
             : context.getDocumentLoader(identity),
         });
@@ -1465,11 +1464,9 @@ export class FederationImpl<TContextData>
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
-              documentLoader:
-                "identifier" in identity || "username" in identity ||
-                  "handle" in identity
-                  ? await context.getDocumentLoader(identity)
-                  : context.getDocumentLoader(identity),
+              documentLoader: "identifier" in identity || "username" in identity
+                ? await context.getDocumentLoader(identity)
+                : context.getDocumentLoader(identity),
             });
           }
         }
@@ -1850,19 +1847,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       return null;
     }
     const route = this.federation.router.route(uri.pathname);
-    const logger = getLogger(["fedify", "federation"]);
     if (route == null) return null;
     else if (route.name === "sharedInbox") {
       return {
         type: "inbox",
         identifier: undefined,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return undefined;
-        },
       };
     }
     const identifier = "identifier" in route.values
@@ -1872,13 +1861,6 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       return {
         type: "actor",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name.startsWith("object:")) {
       const typeId = route.name.replace(/^object:/, "");
@@ -1892,85 +1874,36 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       return {
         type: "inbox",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "outbox") {
       return {
         type: "outbox",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "following") {
       return {
         type: "following",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "followers") {
       return {
         type: "followers",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "liked") {
       return {
         type: "liked",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "featured") {
       return {
         type: "featured",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "featuredTags") {
       return {
         type: "featuredTags",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     }
 
@@ -2106,33 +2039,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getDocumentLoader(
     identity:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
   ): Promise<DocumentLoader>;
   getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
   getDocumentLoader(
     identity:
       | SenderKeyPair
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
     if (
-      "identifier" in identity || "username" in identity || "handle" in identity
+      "identifier" in identity || "username" in identity
     ) {
       let identifierPromise: Promise<string | null>;
-      if ("username" in identity || "handle" in identity) {
-        let username: string;
-        if ("username" in identity) {
-          username = identity.username;
-        } else {
-          username = identity.handle;
-          getLogger(["fedify", "runtime", "docloader"]).warn(
-            'The "handle" property is deprecated; use "identifier" or ' +
-              '"username" instead.',
-            { identity },
-          );
-        }
+      if ("username" in identity) {
+        const username = identity.username;
         const mapper = this.federation.actorCallbacks?.handleMapper;
         if (mapper == null) {
           identifierPromise = Promise.resolve(username);
@@ -2228,8 +2149,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
@@ -2281,8 +2201,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection,
@@ -2291,21 +2210,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
-    if ("identifier" in sender || "username" in sender || "handle" in sender) {
+    if ("identifier" in sender || "username" in sender) {
       if ("identifier" in sender) {
         identifier = sender.identifier;
       } else {
-        let username: string;
-        if ("username" in sender) {
-          username = sender.username;
-        } else {
-          username = sender.handle;
-          logger.warn(
-            'The "handle" property for the sender parameter is deprecated; ' +
-              'use "identifier" or "username" instead.',
-            { sender },
-          );
-        }
+        const username = sender.username;
         if (this.federation.actorCallbacks?.handleMapper == null) {
           identifier = username;
         } else {
@@ -2850,16 +2759,14 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[],
     options?: ForwardActivityOptions,
   ): Promise<void>;
   forwardActivity(
     forwarder:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -2868,8 +2775,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
@@ -2906,8 +2812,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
@@ -2915,23 +2820,12 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     if (
-      "identifier" in forwarder || "username" in forwarder ||
-      "handle" in forwarder
+      "identifier" in forwarder || "username" in forwarder
     ) {
       if ("identifier" in forwarder) {
         identifier = forwarder.identifier;
       } else {
-        let username: string;
-        if ("username" in forwarder) {
-          username = forwarder.username;
-        } else {
-          username = forwarder.handle;
-          logger.warn(
-            'The "handle" property for the forwarder parameter is deprecated; ' +
-              'use "identifier" or "username" instead.',
-            { forwarder },
-          );
-        }
+        const username = forwarder.username;
         if (this.federation.actorCallbacks?.handleMapper == null) {
           identifier = username;
         } else {

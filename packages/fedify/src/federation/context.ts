@@ -225,8 +225,7 @@ export interface Context<TContextData> {
   getDocumentLoader(
     identity:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
   ): Promise<DocumentLoader>;
 
   /**
@@ -375,8 +374,7 @@ export interface Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[],
     activity: Activity,
     options?: SendActivityOptions,
@@ -392,7 +390,7 @@ export interface Context<TContextData> {
    * @since 0.14.0
    */
   sendActivity(
-    sender: { identifier: string } | { username: string } | { handle: string },
+    sender: { identifier: string } | { username: string },
     recipients: "followers",
     activity: Activity,
     options?: SendActivityOptionsForCollection,
@@ -600,8 +598,7 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[],
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -621,8 +618,7 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
   forwardActivity(
     forwarder:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -638,7 +634,6 @@ export type ParseUriResult =
   | {
     readonly type: "actor";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of an object URI.
@@ -655,7 +650,6 @@ export type ParseUriResult =
   | {
     readonly type: "inbox";
     readonly identifier: undefined;
-    readonly handle: undefined;
   }
   /**
    * The case of an personal inbox URI.
@@ -663,7 +657,6 @@ export type ParseUriResult =
   | {
     readonly type: "inbox";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of an outbox collection URI.
@@ -671,7 +664,6 @@ export type ParseUriResult =
   | {
     readonly type: "outbox";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a following collection URI.
@@ -679,7 +671,6 @@ export type ParseUriResult =
   | {
     readonly type: "following";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a followers collection URI.
@@ -687,7 +678,6 @@ export type ParseUriResult =
   | {
     readonly type: "followers";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a liked collection URI.
@@ -696,7 +686,6 @@ export type ParseUriResult =
   | {
     readonly type: "liked";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a featured collection URI.
@@ -705,7 +694,6 @@ export type ParseUriResult =
   | {
     readonly type: "featured";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a featured tags collection URI.
@@ -714,7 +702,6 @@ export type ParseUriResult =
   | {
     readonly type: "featuredTags";
     readonly identifier: string;
-    readonly handle: string;
   }
   /**
    * The case of a custom collection URI.

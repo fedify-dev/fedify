@@ -41,9 +41,6 @@ test("handleWebFinger()", async (t) => {
         return {
           type: "actor",
           identifier,
-          get handle(): string {
-            throw new Error("ParseUriResult.handle is deprecated!");
-          },
         };
       },
     });
