@@ -16,7 +16,6 @@ export {
 export * from "./kv.ts";
 export {
   createFederation,
-  type CreateFederationOptions,
   type FederationKvPrefixes,
   type FederationOrigin,
   type FederationQueueOptions,

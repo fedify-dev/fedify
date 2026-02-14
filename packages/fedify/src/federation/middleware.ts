@@ -115,16 +115,6 @@ import {
 import { handleWebFinger } from "./webfinger.ts";
 
 /**
- * Options for {@link createFederation} function.
- * @template TContextData The type of the context data.
- * @since 0.10.0
- * @deprecated Use {@link FederationOptions} instead.
- */
-export interface CreateFederationOptions<TContextData>
-  extends FederationOptions<TContextData> {
-}
-
-/**
  * Configures the task queues for sending and receiving activities.
  * @since 1.3.0
  */
@@ -185,7 +175,7 @@ export interface FederationKvPrefixes {
 }
 
 /**
- * Options for {@link CreateFederationOptions.origin} when it is not a string.
+ * Options for {@link FederationOptions.origin} when it is not a string.
  * @since 1.5.0
  */
 export interface FederationOrigin {
@@ -211,7 +201,7 @@ export interface FederationOrigin {
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
-  options: CreateFederationOptions<TContextData>,
+  options: FederationOptions<TContextData>,
 ): Federation<TContextData> {
   return new FederationImpl<TContextData>(options);
 }

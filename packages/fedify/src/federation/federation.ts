@@ -868,9 +868,9 @@ export interface FederationOptions<TContextData> {
   /**
    * Whether to allow fetching private network addresses in the document loader.
    *
-   * If turned on, {@link CreateFederationOptions.documentLoader},
-   * {@link CreateFederationOptions.contextLoader}, and
-   * {@link CreateFederationOptions.authenticatedDocumentLoaderFactory}
+   * If turned on, {@link FederationOptions.documentLoader},
+   * {@link FederationOptions.contextLoader}, and
+   * {@link FederationOptions.authenticatedDocumentLoaderFactory}
    * cannot be configured.
    *
    * Mostly useful for testing purposes.  *Do not use in production.*

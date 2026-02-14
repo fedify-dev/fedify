@@ -35,10 +35,10 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import {
-  fetchDocumentLoader,
-  getAuthenticatedDocumentLoader,
-} from "../utils/docloader.ts";
+import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
+
+const documentLoader = getDocumentLoader();
 import type { Context } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {
@@ -390,7 +390,7 @@ test({
 
       const federation2 = createFederation<number>({
         kv,
-        documentLoaderFactory: () => fetchDocumentLoader,
+        documentLoaderFactory: () => documentLoader,
         contextLoaderFactory: () => mockDocumentLoader,
       });
       const ctx2 = federation2.createContext(
@@ -2333,8 +2333,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
     await ctx.sendActivity(
       [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -2474,8 +2474,8 @@ test("ContextImpl.sendActivity()", async (t) => {
     data: undefined,
     federation: federation2,
     url: new URL("https://example.com/"),
-    documentLoader: fetchDocumentLoader,
-    contextLoader: fetchDocumentLoader,
+    documentLoader: documentLoader,
+    contextLoader: documentLoader,
   });
 
   await t.step('fanout: "force"', async () => {
@@ -2498,7 +2498,7 @@ test("ContextImpl.sendActivity()", async (t) => {
         type: "fanout",
         activity: await activity.toJsonLd({
           format: "compact",
-          contextLoader: fetchDocumentLoader,
+          contextLoader: documentLoader,
         }),
         activityId: "https://example.com/activity/1",
         activityType: "https://www.w3.org/ns/activitystreams#Create",
@@ -2609,8 +2609,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
 
     const activity = new vocab.Create({
@@ -2631,8 +2631,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
 
     const activity = new vocab.Create({
@@ -2753,7 +2753,7 @@ test({
       federation,
       data: undefined,
       documentLoader: mockDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      contextLoader: documentLoader,
     });
 
     // Unsigned & non-dereferenceable activity
@@ -2900,7 +2900,7 @@ test("ContextImpl.getCollectionUri()", () => {
     federation,
     data: undefined,
     documentLoader: mockDocumentLoader,
-    contextLoader: fetchDocumentLoader,
+    contextLoader: documentLoader,
   });
 
   const values = { id: "123" };
@@ -3000,8 +3000,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(
@@ -3031,8 +3031,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await assertRejects(() =>
@@ -3066,8 +3066,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(
@@ -3102,8 +3102,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(
