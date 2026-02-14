@@ -4,7 +4,9 @@ import {
   choice,
   constant,
   flag,
+  type InferValue,
   map,
+  merge,
   message,
   object,
   option,
@@ -126,7 +128,7 @@ export const userAgentOption = object({
  * - `{ ignoreConfig: false, configPath: string }` when `--config` is specified
  * - `{ ignoreConfig: false }` when neither is specified (default)
  */
-export const configOption = withDefault(
+const configOption = withDefault(
   or(
     object({
       ignoreConfig: map(
@@ -145,3 +147,21 @@ export const configOption = withDefault(
   ),
   { ignoreConfig: false, configPath: undefined } as const,
 );
+
+/**
+ * Global options that apply to all commands.
+ *
+ * Combines debug mode and configuration file options into a single
+ * "Global options" group.
+ */
+export const globalOptions = merge(
+  "Global options",
+  debugOption,
+  configOption,
+);
+
+/**
+ * Type representing the parsed global options.
+ * Use this to extend command types with global options in run functions.
+ */
+export type GlobalOptions = InferValue<typeof globalOptions>;

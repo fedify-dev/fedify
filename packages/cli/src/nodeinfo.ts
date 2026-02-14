@@ -24,7 +24,7 @@ import os from "node:os";
 import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
-import { debugOption, userAgentOption } from "./options.ts";
+import { userAgentOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
@@ -88,7 +88,6 @@ export const nodeInfoCommand = Command(
         description: message`Bare hostname or a full URL of the instance`,
       }),
     }),
-    debugOption,
     nodeInfoOption,
     userAgentOption,
   ),

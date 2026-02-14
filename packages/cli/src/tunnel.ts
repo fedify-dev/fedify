@@ -17,7 +17,7 @@ import { print, printError } from "@optique/run";
 import process from "node:process";
 import ora from "ora";
 import { configureLogging } from "./log.ts";
-import { debugOption, TUNNEL_SERVICES } from "./options.ts";
+import { type GlobalOptions, TUNNEL_SERVICES } from "./options.ts";
 
 export const tunnelCommand = command(
   "tunnel",
@@ -46,7 +46,6 @@ export const tunnelCommand = command(
         ),
       ),
     }),
-    debugOption,
   ),
   {
     brief:
@@ -59,7 +58,7 @@ Note that the HTTP requests through the tunnel have X-Forwarded-* headers.`,
 );
 
 export async function runTunnel(
-  command: InferValue<typeof tunnelCommand>,
+  command: InferValue<typeof tunnelCommand> & GlobalOptions,
   deps: {
     openTunnel: typeof openTunnel;
     ora: typeof ora;

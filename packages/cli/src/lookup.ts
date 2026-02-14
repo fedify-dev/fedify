@@ -44,7 +44,7 @@ import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { configureLogging } from "./log.ts";
 import {
-  debugOption,
+  type GlobalOptions,
   tunnelServiceOption,
   userAgentOption,
 } from "./options.ts";
@@ -119,7 +119,6 @@ export const lookupCommand = command(
     object({ command: constant("lookup") }),
     traverseOption,
     authorizedFetchOption,
-    debugOption,
     userAgentOption,
     object({
       urls: multiple(
@@ -328,7 +327,9 @@ function handleTimeoutError(
   );
 }
 
-export async function runLookup(command: InferValue<typeof lookupCommand>) {
+export async function runLookup(
+  command: InferValue<typeof lookupCommand> & GlobalOptions,
+) {
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
     process.exit(1);

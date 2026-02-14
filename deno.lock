@@ -5886,6 +5886,8 @@
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
+      "jsr:@optique/core@0.9",
+      "jsr:@optique/run@0.9",
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/async@^1.0.13",
       "jsr:@std/encoding@^1.0.10",
@@ -5905,6 +5907,7 @@
       "npm:@types/node@^22.16.0",
       "npm:amqplib@~0.10.9",
       "npm:byte-encodings@^1.0.11",
+      "npm:chalk@^5.6.2",
       "npm:es-toolkit@^1.43.0",
       "npm:h3@^1.15.0",
       "npm:ioredis@^5.8.2",
@@ -6057,6 +6060,18 @@
         "dependencies": [
           "jsr:@std/assert@^1.0.13"
         ]
+      },
+      "packages/init": {
+        "dependencies": [
+          "npm:@inquirer/prompts@^7.8.4",
+          "npm:inquirer-toggle@^1.0.1"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@inquirer/prompts@^7.8.4",
+            "npm:inquirer-toggle@^1.0.1"
+          ]
+        }
       },
       "packages/koa": {
         "dependencies": [

@@ -7,7 +7,7 @@ import { runTunnel, tunnelCommand } from "./tunnel.ts";
 
 test("tunnel command structure", () => {
   const testCommandWithOptions = run(tunnelCommand, {
-    args: ["tunnel", "3001", "-s", "pinggy.io", "-d"],
+    args: ["tunnel", "3001", "-s", "pinggy.io"],
   });
   const testCommandWithoutOptions = run(tunnelCommand, {
     args: ["tunnel", "3000"],
@@ -16,11 +16,9 @@ test("tunnel command structure", () => {
   deepEqual(testCommandWithOptions.command, "tunnel");
   deepEqual(testCommandWithOptions.port, 3001);
   deepEqual(testCommandWithOptions.service, "pinggy.io");
-  deepEqual(testCommandWithOptions.debug, true);
 
   deepEqual(testCommandWithoutOptions.port, 3000);
   deepEqual(testCommandWithoutOptions.service, undefined);
-  deepEqual(testCommandWithoutOptions.debug, false);
 });
 
 test("tunnel successfully creates and manages tunnel", async () => {
@@ -29,6 +27,8 @@ test("tunnel successfully creates and manages tunnel", async () => {
     port: 3001,
     service: "pinggy.io" as const,
     debug: true,
+    ignoreConfig: false as const,
+    configPath: undefined,
   };
 
   const mockTunnel: Tunnel = {
@@ -97,6 +97,8 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
     port: 3001,
     service: undefined,
     debug: false,
+    ignoreConfig: false as const,
+    configPath: undefined,
   };
 
   let openTunnelCalled = false;

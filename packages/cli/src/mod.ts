@@ -17,7 +17,7 @@ import { inboxCommand, runInbox } from "./inbox.tsx";
 import { initCommand, runInit } from "./init/mod.ts";
 import { lookupCommand, runLookup } from "./lookup.ts";
 import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
-import { configOption } from "./options.ts";
+import { globalOptions } from "./options.ts";
 import { relayCommand, runRelay } from "./relay.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
@@ -64,7 +64,7 @@ const command = merge(
     generateVocabCommand,
     relayCommand,
   ),
-  configOption,
+  globalOptions,
 );
 
 async function main() {

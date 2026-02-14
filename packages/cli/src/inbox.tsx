@@ -46,7 +46,7 @@ import { getDocumentLoader } from "./docloader.ts";
 import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { configureLogging, recordingSink } from "./log.ts";
-import { createTunnelOption, debugOption } from "./options.ts";
+import { createTunnelOption, type GlobalOptions } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -137,7 +137,6 @@ export const inboxCommand = command(
       ),
     }),
     createTunnelOption("inbox"),
-    debugOption,
   ),
   {
     brief: message`Run an ephemeral ActivityPub inbox server.`,
@@ -153,7 +152,7 @@ const peers: Record<string, Actor> = {};
 const followers: Record<string, Actor> = {};
 
 export async function runInbox(
-  command: InferValue<typeof inboxCommand>,
+  command: InferValue<typeof inboxCommand> & GlobalOptions,
 ) {
   // Reset module-level state for a clean run
   activities.length = 0;

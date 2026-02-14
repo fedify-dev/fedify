@@ -25,7 +25,7 @@ import { DatabaseSync } from "node:sqlite";
 import ora from "ora";
 import { configContext } from "./config.ts";
 import { configureLogging } from "./log.ts";
-import { createTunnelOption, debugOption } from "./options.ts";
+import { createTunnelOption, type GlobalOptions } from "./options.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -121,7 +121,6 @@ export const relayCommand = command(
       ),
     }),
     createTunnelOption("relay"),
-    debugOption,
   ),
   {
     brief: message`Run an ephemeral ActivityPub relay server.`,
@@ -135,7 +134,7 @@ export const relayCommand = command(
 );
 
 export async function runRelay(
-  command: InferValue<typeof relayCommand>,
+  command: InferValue<typeof relayCommand> & GlobalOptions,
 ): Promise<void> {
   if (command.debug) {
     await configureLogging();

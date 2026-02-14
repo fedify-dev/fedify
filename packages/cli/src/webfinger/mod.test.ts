@@ -25,7 +25,6 @@ test("Test webFingerCommand - resources only", async () => {
 
   assert.ok(result.success);
   if (result.success) {
-    assert.strictEqual(result.value.debug, false);
     assert.strictEqual(result.value.command, COMMAND);
     assert.deepEqual(result.value.resources, RESOURCES);
     assert.strictEqual(result.value.allowPrivateAddresses, false);
@@ -41,7 +40,6 @@ test("Test webFingerCommand - with all options", () => {
   assert.deepEqual(
     parse(webFingerCommand, [
       ...argsWithResourcesOnly,
-      "-d",
       "-u",
       USER_AGENT,
       "--max-redirection",
@@ -51,7 +49,6 @@ test("Test webFingerCommand - with all options", () => {
     {
       success: true,
       value: {
-        debug: true,
         command: COMMAND,
         resources: RESOURCES,
         allowPrivateAddresses: true,

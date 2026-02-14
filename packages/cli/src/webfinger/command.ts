@@ -14,7 +14,7 @@ import {
   string,
 } from "@optique/core";
 import { configContext } from "../config.ts";
-import { debugOption, userAgentOption } from "../options.ts";
+import { userAgentOption } from "../options.ts";
 
 const allowPrivateAddresses = bindConfig(
   flag("-p", "--allow-private-address", {
@@ -55,7 +55,6 @@ export const webFingerCommand = command(
       maxRedirection,
     }),
     userAgentOption,
-    debugOption,
   ),
   {
     brief: message`Look up WebFinger resources.`,
