@@ -96,7 +96,6 @@
     "cli-highlight": "^2.1.11",
     "cli-table3": "^0.6.5",
     "enquirer": "^2.4.1",
-    "env-paths": "^3.0.0",
     "es-toolkit": "catalog:",
     "fetch-mock": "catalog:",
     "hono": "^4.8.3",

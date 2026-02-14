@@ -15,7 +15,7 @@
     "jsr:@fresh/core@^2.2.0": "2.2.0",
     "jsr:@fresh/plugin-vite@^1.0.7": "1.0.8",
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
-    "jsr:@hono/hono@^4.7.1": "4.11.4",
+    "jsr:@hono/hono@^4.7.1": "4.11.9",
     "jsr:@hono/hono@^4.8.3": "4.11.9",
     "jsr:@logtape/file@2": "2.0.2",
     "jsr:@logtape/logtape@2": "2.0.2",
@@ -59,6 +59,7 @@
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.0",
     "jsr:@std/yaml@^1.0.8": "1.0.10",
+    "jsr:@valibot/valibot@^1.2.0": "1.2.0",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@babel/core@^7.28.0": "7.29.0",
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.0",
@@ -105,13 +106,11 @@
     "npm:cli-highlight@^2.1.11": "2.1.11",
     "npm:cli-table3@~0.6.5": "0.6.5",
     "npm:enquirer@^2.4.1": "2.4.1",
-    "npm:env-paths@3": "3.0.0",
-    "npm:es-toolkit@^1.30.0": "1.43.0",
-    "npm:es-toolkit@^1.31.0": "1.43.0",
-    "npm:es-toolkit@^1.39.10": "1.43.0",
-    "npm:es-toolkit@^1.39.4": "1.43.0",
-    "npm:es-toolkit@^1.42.0": "1.43.0",
-    "npm:es-toolkit@^1.43.0": "1.43.0",
+    "npm:es-toolkit@^1.30.0": "1.44.0",
+    "npm:es-toolkit@^1.31.0": "1.44.0",
+    "npm:es-toolkit@^1.39.10": "1.44.0",
+    "npm:es-toolkit@^1.42.0": "1.44.0",
+    "npm:es-toolkit@^1.43.0": "1.44.0",
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
     "npm:esbuild@0.25.7": "0.25.7",
     "npm:esbuild@~0.25.5": "0.25.12",
@@ -411,6 +410,9 @@
     },
     "@std/yaml@1.0.10": {
       "integrity": "245706ea3511cc50c8c6d00339c23ea2ffa27bd2c7ea5445338f8feff31fa58e"
+    },
+    "@valibot/valibot@1.2.0": {
+      "integrity": "61c118a4d027ed55912caf381c78f0a178f335f46ad0c4bcb136498dc1ef2285"
     }
   },
   "npm": {
@@ -3315,9 +3317,6 @@
         "strip-ansi@6.0.1"
       ]
     },
-    "env-paths@3.0.0": {
-      "integrity": "sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A=="
-    },
     "error-stack-parser-es@1.0.5": {
       "integrity": "sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA=="
     },
@@ -3336,8 +3335,8 @@
         "es-errors"
       ]
     },
-    "es-toolkit@1.43.0": {
-      "integrity": "sha512-SKCT8AsWvYzBBuUqMk4NPwFlSdqLpJwmy6AP322ERn8W2YLIB6JBXnwMI2Qsh2gfphT3q7EKAxKb23cvFHFwKA=="
+    "es-toolkit@1.44.0": {
+      "integrity": "sha512-6penXeZalaV88MM3cGkFZZfOoLGWshWWfdy0tWw/RlVVyhvMaWSBTOvXNeiW3e5FwdS5ePW0LGEu17zT139ktg=="
     },
     "esbuild-wasm@0.25.12": {
       "integrity": "sha512-rZqkjL3Y6FwLpSHzLnaEy8Ps6veCNo1kZa9EOfJvmWtBq5dJH4iVjfmOO6Mlkv9B0tt9WFPFmb/VxlgJOnueNg==",
@@ -5958,22 +5957,20 @@
           "jsr:@optique/config@~0.10.0-dev.355",
           "jsr:@optique/core@~0.10.0-dev.355",
           "jsr:@optique/run@~0.10.0-dev.355",
+          "jsr:@valibot/valibot@^1.2.0",
           "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.0",
           "npm:@jimp/wasm-webp@^1.6.0",
           "npm:@poppanator/http-constants@^1.1.1",
           "npm:chalk@^5.6.2",
           "npm:cli-table3@~0.6.5",
-          "npm:env-paths@3",
-          "npm:es-toolkit@^1.39.4",
           "npm:fetch-mock@^12.5.4",
           "npm:icojs@~0.19.5",
           "npm:inquirer-toggle@^1.0.1",
           "npm:ora@^8.2.0",
           "npm:shiki@^1.6.4",
           "npm:smol-toml@^1.6.0",
-          "npm:srvx@~0.8.7",
-          "npm:valibot@^1.2.0"
+          "npm:srvx@~0.8.7"
         ],
         "packageJson": {
           "dependencies": [
@@ -5989,7 +5986,6 @@
             "npm:cli-highlight@^2.1.11",
             "npm:cli-table3@~0.6.5",
             "npm:enquirer@^2.4.1",
-            "npm:env-paths@3",
             "npm:hono@^4.8.3",
             "npm:icojs@~0.19.5",
             "npm:inquirer-toggle@^1.0.1",

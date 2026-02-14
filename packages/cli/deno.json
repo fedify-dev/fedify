@@ -14,8 +14,6 @@
     "@poppanator/http-constants": "npm:@poppanator/http-constants@^1.1.1",
     "chalk": "npm:chalk@^5.6.2",
     "cli-table3": "npm:cli-table3@^0.6.5",
-    "env-paths": "npm:env-paths@^3.0.0",
-    "es-toolkit": "npm:es-toolkit@^1.39.4",
     "fetch-mock": "npm:fetch-mock@^12.5.4",
     "hono": "jsr:@hono/hono@^4.8.3",
     "icojs": "npm:icojs@^0.19.5",
@@ -24,7 +22,7 @@
     "shiki": "npm:shiki@^1.6.4",
     "smol-toml": "npm:smol-toml@^1.6.0",
     "srvx": "npm:srvx@^0.8.7",
-    "valibot": "npm:valibot@^1.2.0",
+    "valibot": "jsr:@valibot/valibot@^1.2.0",
     "#kv": "./src/kv.node.ts"
   },
   "exclude": [

@@ -83,7 +83,7 @@ test("Test webFingerCommand - invalid option value falls back to default", async
 
   assert.ok(result.success);
   if (result.success) {
-    // Falls back to default value of 0
+    // Falls back to default value of 5
     assert.strictEqual(result.value.maxRedirection, 5);
   }
 });
