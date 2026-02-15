@@ -48,12 +48,15 @@ catalogs:
     '@opentelemetry/semantic-conventions':
       specifier: ^1.39.0
       version: 1.39.0
+    '@optique/config':
+      specifier: ^0.10.0
+      version: 0.10.0
     '@optique/core':
-      specifier: ^0.9.0
-      version: 0.9.6
+      specifier: ^0.10.0
+      version: 0.10.0
     '@optique/run':
-      specifier: ^0.9.0
-      version: 0.9.6
+      specifier: ^0.10.0
+      version: 0.10.0
     '@std/assert':
       specifier: jsr:^1.0.13
       version: 1.0.13
@@ -790,14 +793,14 @@ importers:
         specifier: 'catalog:'
         version: 2.0.0
       '@optique/config':
-        specifier: 0.10.0-dev.376
-        version: 0.10.0-dev.376(@standard-schema/spec@1.0.0)
+        specifier: 'catalog:'
+        version: 0.10.0(@standard-schema/spec@1.0.0)
       '@optique/core':
-        specifier: 0.10.0-dev.376
-        version: 0.10.0-dev.376
+        specifier: 'catalog:'
+        version: 0.10.0
       '@optique/run':
-        specifier: 0.10.0-dev.376
-        version: 0.10.0-dev.376
+        specifier: 'catalog:'
+        version: 0.10.0
       '@poppanator/http-constants':
         specifier: ^1.1.1
         version: 1.1.1
@@ -873,10 +876,10 @@ importers:
         version: link:../init
       '@optique/core':
         specifier: 'catalog:'
-        version: 0.9.6
+        version: 0.10.0
       '@optique/run':
         specifier: 'catalog:'
-        version: 0.9.6
+        version: 0.10.0
       es-toolkit:
         specifier: 'catalog:'
         version: 1.43.0
@@ -1152,10 +1155,10 @@ importers:
         version: 2.0.0
       '@optique/core':
         specifier: 'catalog:'
-        version: 0.9.6
+        version: 0.10.0
       '@optique/run':
         specifier: 'catalog:'
-        version: 0.9.6
+        version: 0.10.0
       chalk:
         specifier: 'catalog:'
         version: 5.6.2
@@ -3662,26 +3665,18 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
 
-  '@optique/config@0.10.0-dev.376':
-    resolution: {integrity: sha512-eJ6jldeYRDHTYeQykAG1m1VHONkrUMwblwvkAyTFz9+4sI1s+Jddzyufa45jEc25WCeDkEZ+GsTfcuTRWrD7Dw==}
+  '@optique/config@0.10.0':
+    resolution: {integrity: sha512-3lGlNrZjouFyLbhDL0Q6cEVrsDhaKDNG74Ti5JSRHMoK7xJgtWiSFwY+ArfdSfpHptPQGTbpNW7oTH2dItM/rg==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
     peerDependencies:
       '@standard-schema/spec': ^1.1.0
 
-  '@optique/core@0.10.0-dev.376':
-    resolution: {integrity: sha512-nGNKIVk28HobnH+Q9T9yzNevnTOA+EoNcgAn0nDPggn3lgsjCWT22htu4PvmqzNRGNqmztFoqstjXTXF15HMbg==}
+  '@optique/core@0.10.0':
+    resolution: {integrity: sha512-PdQUfZdMCUa3mD8DWeGCV3JrD7CAvdiUP9P7JyIbgCEtQznhJ6gBWff0WGq/LRv7QDvyYbIjIvAY159GLHZ4IQ==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
-  '@optique/core@0.9.6':
-    resolution: {integrity: sha512-LZwiTSmtNWXRnTfhsfKXY3Ly83Wiy9uMjO1K294nnsBgOIQ67vv1tORT5SpJfCofxGmQpspE0Toig7dGxu0gDg==}
-    engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
-
-  '@optique/run@0.10.0-dev.376':
-    resolution: {integrity: sha512-3lNskdovUVg66GNhn//xULvHALGh0xZW1ZmfuGqQBglVDYRgMydlvetLuQY4olUftH92RwK+MeWY0jT9X3GtdQ==}
-    engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
-
-  '@optique/run@0.9.6':
-    resolution: {integrity: sha512-xG7oW9KGqwqQq7krpu+Lh7ji89O/Jl+lJ4ts4dOhlNbdyfRAVwNtBBudkanS3HGEkWTmWmD/6mgMChbMgQOpgQ==}
+  '@optique/run@0.10.0':
+    resolution: {integrity: sha512-9/mB6qb8D1Gdut5xpC3AfLHqzS7Zq4B0bh/WpjU1R0RQPPBqS8vCGxt+hbuXYlmEQXAH8BMZSAGTXX/WqmRxtw==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
   '@oxc-project/runtime@0.75.0':
@@ -11218,22 +11213,16 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 1.30.1(@opentelemetry/api@1.9.0)
 
-  '@optique/config@0.10.0-dev.376(@standard-schema/spec@1.0.0)':
+  '@optique/config@0.10.0(@standard-schema/spec@1.0.0)':
     dependencies:
-      '@optique/core': 0.10.0-dev.376
+      '@optique/core': 0.10.0
       '@standard-schema/spec': 1.0.0
 
-  '@optique/core@0.10.0-dev.376': {}
+  '@optique/core@0.10.0': {}
 
-  '@optique/core@0.9.6': {}
-
-  '@optique/run@0.10.0-dev.376':
+  '@optique/run@0.10.0':
     dependencies:
-      '@optique/core': 0.10.0-dev.376
-
-  '@optique/run@0.9.6':
-    dependencies:
-      '@optique/core': 0.9.6
+      '@optique/core': 0.10.0
 
   '@oxc-project/runtime@0.75.0': {}
 

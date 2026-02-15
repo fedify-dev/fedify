@@ -68,21 +68,13 @@ test("Test webFingerCommand - wrong option", () => {
   assert.ok(!wrongOptionResult.success);
 });
 
-test("Test webFingerCommand - invalid option value falls back to default", async () => {
+test("Test webFingerCommand - invalid option value fails", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  // With bindConfig, invalid values fall back to the default instead of failing
-  setActiveConfig(configContext.id, {});
-  const result = await parse(
+  const result = parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
-  clearActiveConfig(configContext.id);
-
-  assert.ok(result.success);
-  if (result.success) {
-    // Falls back to default value of 5
-    assert.strictEqual(result.value.maxRedirection, 5);
-  }
+  assert.ok(!result.success);
 });
 
 // ----------------------------------------------------------------------
