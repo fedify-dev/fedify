@@ -160,7 +160,7 @@ project directory and write the following code:
 ::: code-group
 
 ~~~~ typescript twoslash [Deno]
-Deno.serve(request =>
+Deno.serve({ port: 8000 }, request =>
   new Response("Hello, world", {
     headers: { "Content-Type": "text/plain" }
   })
@@ -272,6 +272,7 @@ import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 Deno.serve(
+  { port: 8000 },
   request => federation.fetch(request, { contextData: undefined })
 );
 ~~~~
@@ -402,6 +403,7 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
 });
 
 Deno.serve(
+  { port: 8000 },
   request => federation.fetch(request, { contextData: undefined })
 );
 ~~~~
@@ -649,6 +651,7 @@ const federation = null as unknown as Federation<void>;
 import { behindProxy } from "@hongminhee/x-forwarded-fetch";
 
 Deno.serve(
+  { port: 8000 },
   behindProxy(request => federation.fetch(request, { contextData: undefined }))
 );
 ~~~~
@@ -1179,7 +1182,9 @@ import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 const kv = await Deno.openKv();
 // ---cut-before---
-Deno.serve(async (request) => {
+Deno.serve(
+  { port: 8000 },
+  async (request) => {
   const url = new URL(request.url);
   // The home page:
   if (url.pathname === "/") {
