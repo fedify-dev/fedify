@@ -209,13 +209,11 @@ export type SharedInboxKeyDispatcher<TContextData> = (
   | SenderKeyPair
   | { identifier: string }
   | { username: string }
-  | { handle: string }
   | null
   | Promise<
     | SenderKeyPair
     | { identifier: string }
     | { username: string }
-    | { handle: string }
     | null
   >;
 

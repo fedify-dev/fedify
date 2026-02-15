@@ -52,7 +52,7 @@ const noopTracerProvider: any = {
 
 /**
  * Helper function to expand URI templates with values.
- * Supports simple placeholders like {identifier}, {handle}, etc.
+ * Supports simple placeholders like {identifier}, etc.
  * @param template The URI template pattern
  * @param values The values to substitute
  * @returns The expanded URI path
@@ -695,7 +695,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.actorPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -725,7 +724,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.outboxPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -739,7 +737,6 @@ class MockContext<TContextData> implements Context<TContextData> {
       ) {
         const path = expandUriTemplate(this.federation.inboxPath, {
           identifier,
-          handle: identifier,
         });
         return new URL(path, this.origin);
       }
@@ -760,7 +757,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.followingPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -773,7 +769,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.followersPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -786,7 +781,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.likedPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -799,7 +793,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.featuredPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -813,7 +806,6 @@ class MockContext<TContextData> implements Context<TContextData> {
     ) {
       const path = expandUriTemplate(this.federation.featuredTagsPath, {
         identifier,
-        handle: identifier,
       });
       return new URL(path, this.origin);
     }
@@ -838,7 +830,6 @@ class MockContext<TContextData> implements Context<TContextData> {
         return {
           type: "actor",
           identifier: parts[2],
-          handle: parts[2],
         };
       }
     }

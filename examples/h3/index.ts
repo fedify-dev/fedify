@@ -18,10 +18,10 @@ const router = createRouter();
 app.use(router);
 
 router.get(
-  "/users/:handle",
+  "/users/:identifier",
   defineEventHandler((event) => {
     setResponseHeader(event, "Content-Type", "text/html");
-    return `<h1>Hello ${event.context.params?.["handle"]}</h1>`;
+    return `<h1>Hello ${event.context.params?.["identifier"]}</h1>`;
   }),
 );
 

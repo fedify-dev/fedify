@@ -8,8 +8,8 @@ app.set("trust proxy", true);
 
 app.use(integrateFederation(federation, () => undefined));
 
-app.get("/users/:handle", (req, res) => {
-  res.type("html").send(`<p>Hello, ${req.params.handle}!</p>`);
+app.get("/users/:identifier", (req, res) => {
+  res.type("html").send(`<p>Hello, ${req.params.identifier}!</p>`);
 });
 
 app.listen(3000, () => {

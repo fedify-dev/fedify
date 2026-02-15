@@ -115,16 +115,6 @@ import {
 import { handleWebFinger } from "./webfinger.ts";
 
 /**
- * Options for {@link createFederation} function.
- * @template TContextData The type of the context data.
- * @since 0.10.0
- * @deprecated Use {@link FederationOptions} instead.
- */
-export interface CreateFederationOptions<TContextData>
-  extends FederationOptions<TContextData> {
-}
-
-/**
  * Configures the task queues for sending and receiving activities.
  * @since 1.3.0
  */
@@ -185,7 +175,7 @@ export interface FederationKvPrefixes {
 }
 
 /**
- * Options for {@link CreateFederationOptions.origin} when it is not a string.
+ * Options for {@link FederationOptions.origin} when it is not a string.
  * @since 1.5.0
  */
 export interface FederationOrigin {
@@ -211,7 +201,7 @@ export interface FederationOrigin {
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
-  options: CreateFederationOptions<TContextData>,
+  options: FederationOptions<TContextData>,
 ): Federation<TContextData> {
   return new FederationImpl<TContextData>(options);
 }
@@ -799,8 +789,7 @@ export class FederationImpl<TContextData>
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
-          documentLoader: "identifier" in identity || "username" in identity ||
-              "handle" in identity
+          documentLoader: "identifier" in identity || "username" in identity
             ? await context.getDocumentLoader(identity)
             : context.getDocumentLoader(identity),
         });
@@ -1413,11 +1402,11 @@ export class FederationImpl<TContextData>
       case "actor":
         context = this.#createContext(request, contextData, {
           invokedFromActorDispatcher: {
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
           },
         });
         return await handleActor(request, {
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           context,
           actorDispatcher: this.actorCallbacks?.dispatcher,
           authorizePredicate: this.actorCallbacks?.authorizePredicate,
@@ -1443,7 +1432,7 @@ export class FederationImpl<TContextData>
       case "outbox":
         return await handleCollection(request, {
           name: "outbox",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getOutboxUri.bind(context),
           context,
           collectionCallbacks: this.outboxCallbacks,
@@ -1455,7 +1444,7 @@ export class FederationImpl<TContextData>
         if (request.method !== "POST") {
           return await handleCollection(request, {
             name: "inbox",
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
             uriGetter: context.getInboxUri.bind(context),
             context,
             collectionCallbacks: this.inboxCallbacks,
@@ -1466,7 +1455,7 @@ export class FederationImpl<TContextData>
         }
         context = this.#createContext(request, contextData, {
           documentLoader: await context.getDocumentLoader({
-            identifier: route.values.identifier ?? route.values.handle,
+            identifier: route.values.identifier,
           }),
         });
         // falls through
@@ -1475,17 +1464,15 @@ export class FederationImpl<TContextData>
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
-              documentLoader:
-                "identifier" in identity || "username" in identity ||
-                  "handle" in identity
-                  ? await context.getDocumentLoader(identity)
-                  : context.getDocumentLoader(identity),
+              documentLoader: "identifier" in identity || "username" in identity
+                ? await context.getDocumentLoader(identity)
+                : context.getDocumentLoader(identity),
             });
           }
         }
         if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
         return await handleInbox(request, {
-          recipient: route.values.identifier ?? route.values.handle ?? null,
+          recipient: route.values.identifier ?? null,
           context,
           inboxContextFactory: context.toInboxContext.bind(context),
           kv: this.kv,
@@ -1503,7 +1490,7 @@ export class FederationImpl<TContextData>
       case "following":
         return await handleCollection(request, {
           name: "following",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFollowingUri.bind(context),
           context,
           collectionCallbacks: this.followingCallbacks,
@@ -1523,7 +1510,7 @@ export class FederationImpl<TContextData>
         }
         return await handleCollection(request, {
           name: "followers",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: baseUrl == null
             ? context.getFollowersUri.bind(context)
             : (identifier) => {
@@ -1548,7 +1535,7 @@ export class FederationImpl<TContextData>
       case "liked":
         return await handleCollection(request, {
           name: "liked",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getLikedUri.bind(context),
           context,
           collectionCallbacks: this.likedCallbacks,
@@ -1559,7 +1546,7 @@ export class FederationImpl<TContextData>
       case "featured":
         return await handleCollection(request, {
           name: "featured",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFeaturedUri.bind(context),
           context,
           collectionCallbacks: this.featuredCallbacks,
@@ -1570,7 +1557,7 @@ export class FederationImpl<TContextData>
       case "featuredTags":
         return await handleCollection(request, {
           name: "featured tags",
-          identifier: route.values.identifier ?? route.values.handle,
+          identifier: route.values.identifier,
           uriGetter: context.getFeaturedTagsUri.bind(context),
           context,
           collectionCallbacks: this.featuredTagsCallbacks,
@@ -1720,7 +1707,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getActorUri(identifier: string): URL {
     const path = this.federation.router.build(
       "actor",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
@@ -1754,7 +1741,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getOutboxUri(identifier: string): URL {
     const path = this.federation.router.build(
       "outbox",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No outbox dispatcher registered.");
@@ -1774,7 +1761,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     const path = this.federation.router.build(
       "inbox",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No inbox path registered.");
@@ -1785,7 +1772,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFollowingUri(identifier: string): URL {
     const path = this.federation.router.build(
       "following",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No following collection path registered.");
@@ -1796,7 +1783,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFollowersUri(identifier: string): URL {
     const path = this.federation.router.build(
       "followers",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No followers collection path registered.");
@@ -1807,7 +1794,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getLikedUri(identifier: string): URL {
     const path = this.federation.router.build(
       "liked",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No liked collection path registered.");
@@ -1818,7 +1805,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFeaturedUri(identifier: string): URL {
     const path = this.federation.router.build(
       "featured",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No featured collection path registered.");
@@ -1829,7 +1816,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getFeaturedTagsUri(identifier: string): URL {
     const path = this.federation.router.build(
       "featuredTags",
-      { identifier, handle: identifier },
+      { identifier },
     );
     if (path == null) {
       throw new RouterError("No featured tags collection path registered.");
@@ -1860,35 +1847,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       return null;
     }
     const route = this.federation.router.route(uri.pathname);
-    const logger = getLogger(["fedify", "federation"]);
     if (route == null) return null;
     else if (route.name === "sharedInbox") {
       return {
         type: "inbox",
         identifier: undefined,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return undefined;
-        },
       };
     }
-    const identifier = "identifier" in route.values
-      ? route.values.identifier
-      : route.values.handle;
+    const identifier = route.values.identifier;
     if (route.name === "actor") {
       return {
         type: "actor",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name.startsWith("object:")) {
       const typeId = route.name.replace(/^object:/, "");
@@ -1902,85 +1872,36 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       return {
         type: "inbox",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "outbox") {
       return {
         type: "outbox",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "following") {
       return {
         type: "following",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "followers") {
       return {
         type: "followers",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "liked") {
       return {
         type: "liked",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "featured") {
       return {
         type: "featured",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     } else if (route.name === "featuredTags") {
       return {
         type: "featuredTags",
         identifier,
-        get handle() {
-          logger.warn(
-            "The ParseUriResult.handle property is deprecated; " +
-              "use ParseUriResult.identifier instead.",
-          );
-          return identifier;
-        },
       };
     }
 
@@ -2116,33 +2037,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getDocumentLoader(
     identity:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
   ): Promise<DocumentLoader>;
   getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
   getDocumentLoader(
     identity:
       | SenderKeyPair
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
     if (
-      "identifier" in identity || "username" in identity || "handle" in identity
+      "identifier" in identity || "username" in identity
     ) {
       let identifierPromise: Promise<string | null>;
-      if ("username" in identity || "handle" in identity) {
-        let username: string;
-        if ("username" in identity) {
-          username = identity.username;
-        } else {
-          username = identity.handle;
-          getLogger(["fedify", "runtime", "docloader"]).warn(
-            'The "handle" property is deprecated; use "identifier" or ' +
-              '"username" instead.',
-            { identity },
-          );
-        }
+      if ("username" in identity) {
+        const username = identity.username;
         const mapper = this.federation.actorCallbacks?.handleMapper;
         if (mapper == null) {
           identifierPromise = Promise.resolve(username);
@@ -2238,8 +2147,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
@@ -2291,8 +2199,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection,
@@ -2301,21 +2208,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
-    if ("identifier" in sender || "username" in sender || "handle" in sender) {
+    if ("identifier" in sender || "username" in sender) {
       if ("identifier" in sender) {
         identifier = sender.identifier;
       } else {
-        let username: string;
-        if ("username" in sender) {
-          username = sender.username;
-        } else {
-          username = sender.handle;
-          logger.warn(
-            'The "handle" property for the sender parameter is deprecated; ' +
-              'use "identifier" or "username" instead.',
-            { sender },
-          );
-        }
+        const username = sender.username;
         if (this.federation.actorCallbacks?.handleMapper == null) {
           identifier = username;
         } else {
@@ -2860,16 +2757,14 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[],
     options?: ForwardActivityOptions,
   ): Promise<void>;
   forwardActivity(
     forwarder:
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -2878,8 +2773,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
@@ -2916,8 +2810,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       | SenderKeyPair
       | SenderKeyPair[]
       | { identifier: string }
-      | { username: string }
-      | { handle: string },
+      | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
@@ -2925,23 +2818,12 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     if (
-      "identifier" in forwarder || "username" in forwarder ||
-      "handle" in forwarder
+      "identifier" in forwarder || "username" in forwarder
     ) {
       if ("identifier" in forwarder) {
         identifier = forwarder.identifier;
       } else {
-        let username: string;
-        if ("username" in forwarder) {
-          username = forwarder.username;
-        } else {
-          username = forwarder.handle;
-          logger.warn(
-            'The "handle" property for the forwarder parameter is deprecated; ' +
-              'use "identifier" or "username" instead.',
-            { forwarder },
-          );
-        }
+        const username = forwarder.username;
         if (this.federation.actorCallbacks?.handleMapper == null) {
           identifier = username;
         } else {

@@ -30,6 +30,17 @@ To be released.
     `FederationOptions` interface in favor of `documentLoaderFactory` option
     for better flexibility.  [[#376], [#393] by Hasang Cho]
 
+ -  Remove `CreateFederationOptions<TContextData>` interface (which was
+    deprecated since 1.6.0).  Use `FederationOptions<TContextData>` instead.
+    [[#376]]
+
+ -  Remove `fetchDocumentLoader()` function (which was deprecated since 0.14.0).
+    Use `getDocumentLoader()` from `@fedify/vocab-runtime` instead.  [[#376]]
+
+ -  Remove `{ handle: string }` parameter form from `sendActivity()`,
+    `forwardActivity()`, `getDocumentLoader()`, and `ParseUriResult`.
+    Use `{ identifier: string }` or `{ username: string }` instead.  [[#376]]
+
  -  Changed NodeInfo `software.version` field type from `SemVer` to `string`
     to properly handle non-SemVer version strings in accordance with the
     NodeInfo specification.  [[#366], [#433] by Hyeonseo Kim]

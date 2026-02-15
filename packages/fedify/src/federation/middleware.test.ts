@@ -35,10 +35,10 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import {
-  fetchDocumentLoader,
-  getAuthenticatedDocumentLoader,
-} from "../utils/docloader.ts";
+import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
+
+const documentLoader = getDocumentLoader();
 import type { Context } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {
@@ -302,7 +302,7 @@ test({
       assertEquals(ctx.parseUri(new URL("https://example.com/")), null);
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle")),
-        { type: "actor", identifier: "handle", handle: "handle" },
+        { type: "actor", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
       assertEquals(
@@ -390,7 +390,7 @@ test({
 
       const federation2 = createFederation<number>({
         kv,
-        documentLoaderFactory: () => fetchDocumentLoader,
+        documentLoaderFactory: () => documentLoader,
         contextLoaderFactory: () => mockDocumentLoader,
       });
       const ctx2 = federation2.createContext(
@@ -439,11 +439,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/inbox")),
-        { type: "inbox", identifier: undefined, handle: undefined },
+        { type: "inbox", identifier: undefined },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/inbox")),
-        { type: "inbox", identifier: "handle", handle: "handle" },
+        { type: "inbox", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -458,7 +458,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/outbox")),
-        { type: "outbox", identifier: "handle", handle: "handle" },
+        { type: "outbox", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -473,7 +473,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/following")),
-        { type: "following", identifier: "handle", handle: "handle" },
+        { type: "following", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -488,7 +488,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/followers")),
-        { type: "followers", identifier: "handle", handle: "handle" },
+        { type: "followers", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -503,7 +503,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/liked")),
-        { type: "liked", identifier: "handle", handle: "handle" },
+        { type: "liked", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -518,7 +518,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/featured")),
-        { type: "featured", identifier: "handle", handle: "handle" },
+        { type: "featured", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
@@ -533,7 +533,7 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/tags")),
-        { type: "featuredTags", identifier: "handle", handle: "handle" },
+        { type: "featuredTags", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
     });
@@ -580,11 +580,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle")),
-        { type: "actor", handle: "handle", identifier: "handle" },
+        { type: "actor", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle")),
-        { type: "actor", handle: "handle", identifier: "handle" },
+        { type: "actor", identifier: "handle" },
       );
 
       federation.setObjectDispatcher(
@@ -627,19 +627,19 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/inbox")),
-        { type: "inbox", handle: undefined, identifier: undefined },
+        { type: "inbox", identifier: undefined },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/inbox")),
-        { type: "inbox", handle: undefined, identifier: undefined },
+        { type: "inbox", identifier: undefined },
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/inbox")),
-        { type: "inbox", handle: "handle", identifier: "handle" },
+        { type: "inbox", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle/inbox")),
-        { type: "inbox", handle: "handle", identifier: "handle" },
+        { type: "inbox", identifier: "handle" },
       );
 
       federation.setOutboxDispatcher(
@@ -652,11 +652,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/outbox")),
-        { type: "outbox", handle: "handle", identifier: "handle" },
+        { type: "outbox", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle/outbox")),
-        { type: "outbox", handle: "handle", identifier: "handle" },
+        { type: "outbox", identifier: "handle" },
       );
 
       federation.setFollowingDispatcher(
@@ -669,13 +669,13 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/following")),
-        { type: "following", handle: "handle", identifier: "handle" },
+        { type: "following", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(
           new URL("https://example.com:1234/users/handle/following"),
         ),
-        { type: "following", handle: "handle", identifier: "handle" },
+        { type: "following", identifier: "handle" },
       );
 
       federation.setFollowersDispatcher(
@@ -688,13 +688,13 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/followers")),
-        { type: "followers", handle: "handle", identifier: "handle" },
+        { type: "followers", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(
           new URL("https://example.com:1234/users/handle/followers"),
         ),
-        { type: "followers", handle: "handle", identifier: "handle" },
+        { type: "followers", identifier: "handle" },
       );
 
       federation.setLikedDispatcher(
@@ -707,11 +707,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/liked")),
-        { type: "liked", handle: "handle", identifier: "handle" },
+        { type: "liked", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle/liked")),
-        { type: "liked", handle: "handle", identifier: "handle" },
+        { type: "liked", identifier: "handle" },
       );
 
       federation.setFeaturedDispatcher(
@@ -724,11 +724,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/featured")),
-        { type: "featured", handle: "handle", identifier: "handle" },
+        { type: "featured", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle/featured")),
-        { type: "featured", handle: "handle", identifier: "handle" },
+        { type: "featured", identifier: "handle" },
       );
 
       federation.setFeaturedTagsDispatcher(
@@ -741,11 +741,11 @@ test({
       );
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/tags")),
-        { type: "featuredTags", handle: "handle", identifier: "handle" },
+        { type: "featuredTags", identifier: "handle" },
       );
       assertEquals(
         ctx.parseUri(new URL("https://example.com:1234/users/handle/tags")),
-        { type: "featuredTags", handle: "handle", identifier: "handle" },
+        { type: "featuredTags", identifier: "handle" },
       );
     });
 
@@ -1260,7 +1260,7 @@ test("Federation.setInboxListeners()", async (t) => {
       RouterError,
     );
     assertThrows(
-      () => federation.setInboxListeners("/users/{identifier}/inbox/{handle}"),
+      () => federation.setInboxListeners("/users/{identifier}/inbox/{extra}"),
       RouterError,
     );
     assertThrows(
@@ -2333,8 +2333,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
     await ctx.sendActivity(
       [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -2474,8 +2474,8 @@ test("ContextImpl.sendActivity()", async (t) => {
     data: undefined,
     federation: federation2,
     url: new URL("https://example.com/"),
-    documentLoader: fetchDocumentLoader,
-    contextLoader: fetchDocumentLoader,
+    documentLoader: documentLoader,
+    contextLoader: documentLoader,
   });
 
   await t.step('fanout: "force"', async () => {
@@ -2498,7 +2498,7 @@ test("ContextImpl.sendActivity()", async (t) => {
         type: "fanout",
         activity: await activity.toJsonLd({
           format: "compact",
-          contextLoader: fetchDocumentLoader,
+          contextLoader: documentLoader,
         }),
         activityId: "https://example.com/activity/1",
         activityType: "https://www.w3.org/ns/activitystreams#Create",
@@ -2609,8 +2609,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
 
     const activity = new vocab.Create({
@@ -2631,8 +2631,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       data: undefined,
       federation,
       url: new URL("https://example.com/"),
-      documentLoader: fetchDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
     });
 
     const activity = new vocab.Create({
@@ -2753,7 +2753,7 @@ test({
       federation,
       data: undefined,
       documentLoader: mockDocumentLoader,
-      contextLoader: fetchDocumentLoader,
+      contextLoader: documentLoader,
     });
 
     // Unsigned & non-dereferenceable activity
@@ -2900,7 +2900,7 @@ test("ContextImpl.getCollectionUri()", () => {
     federation,
     data: undefined,
     documentLoader: mockDocumentLoader,
-    contextLoader: fetchDocumentLoader,
+    contextLoader: documentLoader,
   });
 
   const values = { id: "123" };
@@ -3000,8 +3000,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(
@@ -3031,8 +3031,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await assertRejects(() =>
@@ -3066,8 +3066,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(
@@ -3102,8 +3102,8 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
         data: undefined,
         federation,
         url: new URL("https://example.com/"),
-        documentLoader: fetchDocumentLoader,
-        contextLoader: fetchDocumentLoader,
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
       },
     );
     await ctx.forwardActivity(

@@ -468,8 +468,8 @@ export const builder = createFederationBuilder<void>();
 
 // Register your dispatchers and listeners here...
 builder.setActorDispatcher(
-  "/users/{handle}",
-  async (ctx, handle) => {
+  "/users/{identifier}",
+  async (ctx, identifier) => {
     // Omitted for brevity
   }
 );
@@ -499,8 +499,8 @@ import { Person } from "@fedify/vocab";
 const builder = null as unknown as FederationBuilder<void>;
 // ---cut-before---
 builder.setActorDispatcher(
-  "/users/{handle}",
-  async (ctx, handle) => {
+  "/users/{identifier}",
+  async (ctx, identifier) => {
     const federation = ctx.federation; // Access the `Federation` object
     // Omitted for brevity
 // ---cut-start---
@@ -853,7 +853,7 @@ parameter within the `Context` object:
 import { type Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
+federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
   // There is a database connection in `ctx.data`.
 });
 ~~~~
@@ -882,8 +882,8 @@ the virtual host information:
 import { type Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-federation.setActorDispatcher("/@{handle}", (ctx, handle) => {
-  const fullHandle = `${handle}@${ctx.host}`;
+federation.setActorDispatcher("/@{identifier}", (ctx, identifier) => {
+  const fullHandle = `${identifier}@${ctx.host}`;
   // Omitted for brevity
 });
 ~~~~
