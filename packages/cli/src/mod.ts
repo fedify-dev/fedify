@@ -3,8 +3,8 @@ import { runWithConfig } from "@optique/config/run";
 import { merge, message, or } from "@optique/core";
 import { printError } from "@optique/run";
 import { merge as deepMerge } from "es-toolkit";
-import { homedir } from "node:os";
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { parse as parseToml } from "smol-toml";
@@ -107,6 +107,7 @@ async function main() {
       mode: "both",
       onShow: () => process.exit(0),
     },
+    onError: () => process.exit(1),
   });
   if (result.command === "init") {
     await runInit(result);
