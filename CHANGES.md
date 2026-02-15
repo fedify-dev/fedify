@@ -227,7 +227,7 @@ To be released.
     precedence chain.  [[#555], [#566] by Jiwon Kwon]
 
      -  By default, configuration is loaded (in order of increasing precedence)
-        from a system-wide configuration file (*/etc/fedify/config.toml*),
+        from a system-wide configuration file (*/etc/xdg/fedify/config.toml*),
         a user-level configuration file (*~/.config/fedify/config.toml*),
         and *.fedify.toml* in the current directory; later files override
         earlier ones.
