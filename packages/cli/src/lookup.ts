@@ -15,6 +15,7 @@ import {
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   argument,
   choice,
@@ -33,59 +34,83 @@ import {
   optionNames,
   or,
   string,
-  withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
 import process from "node:process";
 import ora from "ora";
+import { configContext } from "./config.ts";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
-import { configureLogging, debugOption } from "./globals.ts";
 import { renderImages } from "./imagerenderer.ts";
-import { tunnelServiceOption } from "./options.ts";
+import { configureLogging } from "./log.ts";
+import {
+  type GlobalOptions,
+  tunnelServiceOption,
+  userAgentOption,
+} from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = withDefault(
-  object({
-    authorizedFetch: map(
+export const authorizedFetchOption = object({
+  authorizedFetch: bindConfig(
+    map(
       flag("-a", "--authorized-fetch", {
         description: message`Sign the request with an one-time key.`,
       }),
       () => true as const,
     ),
-    firstKnock: withDefault(
-      option(
-        "--first-knock",
-        choice(["draft-cavage-http-signatures-12", "rfc9421"]),
-        {
-          description: message`The first-knock spec for ${
-            optionNames(["-a", "--authorized-fetch"])
-          }. It is used for the double-knocking technique.`,
-        },
-      ),
-      "draft-cavage-http-signatures-12" as const,
+    {
+      context: configContext,
+      key: (config) => config.lookup?.authorizedFetch ?? false,
+      default: false,
+    },
+  ),
+  firstKnock: bindConfig(
+    option(
+      "--first-knock",
+      choice(["draft-cavage-http-signatures-12", "rfc9421"]),
+      {
+        description: message`The first-knock spec for ${
+          optionNames(["-a", "--authorized-fetch"])
+        }. It is used for the double-knocking technique.`,
+      },
     ),
-    tunnelService: tunnelServiceOption,
-  }),
-  { authorizedFetch: false } as const,
-);
+    {
+      context: configContext,
+      key: (config) =>
+        config.lookup?.firstKnock ?? "draft-cavage-http-signatures-12",
+      default: "draft-cavage-http-signatures-12" as const,
+    },
+  ),
+  tunnelService: tunnelServiceOption,
+});
 
-const traverseOption = withDefault(
-  object({
-    traverse: flag("-t", "--traverse", {
+const traverseOption = object({
+  traverse: bindConfig(
+    flag("-t", "--traverse", {
       description:
         message`Traverse the given collection(s) to fetch all items.`,
     }),
-    suppressErrors: option("-S", "--suppress-errors", {
+    {
+      context: configContext,
+      key: (config) => config.lookup?.traverse ?? false,
+      default: false,
+    },
+  ),
+  suppressErrors: bindConfig(
+    flag("-S", "--suppress-errors", {
       description:
         message`Suppress partial errors while traversing the collection.`,
     }),
-  }),
-  { traverse: false } as const,
-);
+    {
+      context: configContext,
+      key: (config) => config.lookup?.suppressErrors ?? false,
+      default: false,
+    },
+  ),
+});
 
 export const lookupCommand = command(
   "lookup",
@@ -94,7 +119,7 @@ export const lookupCommand = command(
     object({ command: constant("lookup") }),
     traverseOption,
     authorizedFetchOption,
-    debugOption,
+    userAgentOption,
     object({
       urls: multiple(
         argument(string({ metavar: "URL_OR_HANDLE" }), {
@@ -102,40 +127,45 @@ export const lookupCommand = command(
         }),
         { min: 1 },
       ),
-      format: withDefault(
-        or(
-          map(
-            option("-r", "--raw", {
-              description: message`Print the fetched JSON-LD document as is.`,
-            }),
-            () => "raw" as const,
-          ),
-          map(
-            option("-C", "--compact", {
-              description: message`Compact the fetched JSON-LD document.`,
-            }),
-            () => "compact" as const,
-          ),
-          map(
-            option("-e", "--expand", {
-              description: message`Expand the fetched JSON-LD document.`,
-            }),
-            () => "expand" as const,
+      format: bindConfig(
+        optional(
+          or(
+            map(
+              flag("-r", "--raw", {
+                description: message`Print the fetched JSON-LD document as is.`,
+              }),
+              () => "raw" as const,
+            ),
+            map(
+              flag("-C", "--compact", {
+                description: message`Compact the fetched JSON-LD document.`,
+              }),
+              () => "compact" as const,
+            ),
+            map(
+              flag("-e", "--expand", {
+                description: message`Expand the fetched JSON-LD document.`,
+              }),
+              () => "expand" as const,
+            ),
           ),
         ),
-        "default" as const,
+        {
+          context: configContext,
+          key: (config) => config.lookup?.defaultFormat ?? "default",
+          default: "default",
+        },
       ),
-      userAgent: optional(
-        option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
-          description: message`The custom User-Agent header value.`,
-        }),
-      ),
-      separator: withDefault(
+      separator: bindConfig(
         option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
           description:
             message`Specify the separator between adjacent output objects or collection items.`,
         }),
-        "----",
+        {
+          context: configContext,
+          key: (config) => config.lookup?.separator ?? "----",
+          default: "----",
+        },
       ),
       output: optional(option(
         "-o",
@@ -147,12 +177,23 @@ export const lookupCommand = command(
         }),
         { description: message`Specify the output file path.` },
       )),
-      timeout: optional(option(
-        "-T",
-        "--timeout",
-        float({ min: 0, metavar: "SECONDS" }),
-        { description: message`Set timeout for network requests in seconds.` },
-      )),
+      timeout: optional(
+        bindConfig(
+          option(
+            "-T",
+            "--timeout",
+            float({ min: 0, metavar: "SECONDS" }),
+            {
+              description:
+                message`Set timeout for network requests in seconds.`,
+            },
+          ),
+          {
+            context: configContext,
+            key: (config) => config.lookup?.timeout,
+          },
+        ),
+      ),
     }),
   ),
   {
@@ -286,7 +327,9 @@ function handleTimeoutError(
   );
 }
 
-export async function runLookup(command: InferValue<typeof lookupCommand>) {
+export async function runLookup(
+  command: InferValue<typeof lookupCommand> & GlobalOptions,
+) {
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
     process.exit(1);

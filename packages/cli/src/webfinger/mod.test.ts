@@ -1,6 +1,8 @@
+import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { configContext } from "../config.ts";
 import { lookupSingleWebFinger } from "./action.ts";
 import { webFingerCommand } from "./command.ts";
 
@@ -15,25 +17,29 @@ const ALIASES = [
   "https://hollo.social/@fedify",
 ];
 
-test("Test webFingerCommand", () => {
+test("Test webFingerCommand - resources only", async () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  assert.deepEqual(parse(webFingerCommand, argsWithResourcesOnly), {
-    success: true,
-    value: {
-      debug: false,
-      command: COMMAND,
-      resources: RESOURCES,
-      allowPrivateAddresses: undefined,
-      maxRedirection: 5,
-      userAgent: undefined,
-    },
-  });
+  setActiveConfig(configContext.id, {});
+  const result = await parse(webFingerCommand, argsWithResourcesOnly);
+  clearActiveConfig(configContext.id);
 
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.command, COMMAND);
+    assert.deepEqual(result.value.resources, RESOURCES);
+    assert.strictEqual(result.value.allowPrivateAddresses, false);
+    assert.strictEqual(result.value.maxRedirection, 5);
+    // userAgent has a dynamic default value from getUserAgent()
+    assert.ok(result.value.userAgent?.startsWith("Fedify/"));
+  }
+});
+
+test("Test webFingerCommand - with all options", () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   const maxRedirection = 10;
   assert.deepEqual(
     parse(webFingerCommand, [
       ...argsWithResourcesOnly,
-      "-d",
       "-u",
       USER_AGENT,
       "--max-redirection",
@@ -43,7 +49,6 @@ test("Test webFingerCommand", () => {
     {
       success: true,
       value: {
-        debug: true,
         command: COMMAND,
         resources: RESOURCES,
         allowPrivateAddresses: true,
@@ -52,18 +57,32 @@ test("Test webFingerCommand", () => {
       },
     },
   );
+});
 
+test("Test webFingerCommand - wrong option", () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
   const wrongOptionResult = parse(webFingerCommand, [
     ...argsWithResourcesOnly,
     "-Q",
   ]);
   assert.ok(!wrongOptionResult.success);
+});
 
-  const wrongOptionValueResult = parse(
+test("Test webFingerCommand - invalid option value falls back to default", async () => {
+  const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
+  // With bindConfig, invalid values fall back to the default instead of failing
+  setActiveConfig(configContext.id, {});
+  const result = await parse(
     webFingerCommand,
     [...argsWithResourcesOnly, "--max-redirection", "-10"],
   );
-  assert.ok(!wrongOptionValueResult.success);
+  clearActiveConfig(configContext.id);
+
+  assert.ok(result.success);
+  if (result.success) {
+    // Falls back to default value of 5
+    assert.strictEqual(result.value.maxRedirection, 5);
+  }
 });
 
 // ----------------------------------------------------------------------

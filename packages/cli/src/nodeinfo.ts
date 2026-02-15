@@ -3,6 +3,7 @@ import { getUserAgent } from "@fedify/vocab-runtime";
 import { createJimp } from "@jimp/core";
 import webp from "@jimp/wasm-webp";
 import { getLogger } from "@logtape/logtape";
+import { bindConfig } from "@optique/config";
 import {
   argument,
   command as Command,
@@ -12,9 +13,6 @@ import {
   merge,
   message,
   object,
-  option,
-  optional,
-  or,
   string,
   text,
 } from "@optique/core";
@@ -22,10 +20,11 @@ import { print, printError } from "@optique/run";
 import type { ChalkInstance } from "chalk";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
-import ora from "ora";
 import os from "node:os";
 import process from "node:process";
-import { debugOption } from "./globals.ts";
+import ora from "ora";
+import { configContext } from "./config.ts";
+import { userAgentOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
@@ -35,34 +34,50 @@ export const Jimp = createJimp({
   plugins: defaultPlugins,
 });
 
-const nodeInfoOption = optional(
-  or(
-    object({
-      raw: flag("-r", "--raw", {
-        description: message`Show NodeInfo document in the raw JSON format`,
-      }),
+const nodeInfoOption = object({
+  raw: bindConfig(
+    flag("-r", "--raw", {
+      description: message`Show NodeInfo document in the raw JSON format`,
     }),
-    object({
-      bestEffort: optional(flag("-b", "--best-effort", {
-        description:
-          message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
-      })),
-      noFavicon: optional(flag("--no-favicon", {
-        description: message`Disable fetching the favicon of the instance`,
-      })),
-      metadata: optional(flag("-m", "--metadata", {
-        description:
-          message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
-      })),
-    }),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.raw ?? false,
+      default: false,
+    },
   ),
-);
-
-const userAgentOption = optional(object({
-  userAgent: option("-u", "--user-agent", string(), {
-    description: message`The custom User-Agent header value.`,
-  }),
-}));
+  bestEffort: bindConfig(
+    flag("-b", "--best-effort", {
+      description:
+        message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
+    }),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.bestEffort ?? false,
+      default: false,
+    },
+  ),
+  noFavicon: bindConfig(
+    flag("--no-favicon", {
+      description: message`Disable fetching the favicon of the instance`,
+    }),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.showFavicon === false,
+      default: false,
+    },
+  ),
+  metadata: bindConfig(
+    flag("-m", "--metadata", {
+      description:
+        message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
+    }),
+    {
+      context: configContext,
+      key: (config) => config.nodeinfo?.showMetadata ?? false,
+      default: false,
+    },
+  ),
+});
 
 export const nodeInfoCommand = Command(
   "nodeinfo",
@@ -73,7 +88,6 @@ export const nodeInfoCommand = Command(
         description: message`Bare hostname or a full URL of the instance`,
       }),
     }),
-    debugOption,
     nodeInfoOption,
     userAgentOption,
   ),
@@ -99,7 +113,7 @@ export async function runNodeInfo(
     URL.canParse(command.host) ? command.host : `https://${command.host}`,
   );
 
-  if ("raw" in command && command.raw) {
+  if (command.raw) {
     const nodeInfo = await getNodeInfo(url, {
       parse: "none",
       userAgent: command.userAgent,
@@ -116,16 +130,14 @@ export async function runNodeInfo(
     return;
   }
   const nodeInfo = await getNodeInfo(url, {
-    parse: "bestEffort" in command && command.bestEffort
-      ? "best-effort"
-      : "strict",
+    parse: command.bestEffort ? "best-effort" : "strict",
     userAgent: command.userAgent,
   });
   logger.debug("NodeInfo document: {nodeInfo}", { nodeInfo });
   if (nodeInfo == undefined) {
     spinner.fail("No NodeInfo document found or it is invalid.");
     printError(message`No NodeInfo document found or it is invalid.`);
-    if (!("bestEffort" in command && command.bestEffort)) {
+    if (!command.bestEffort) {
       printError(
         message`Use the -b/--best-effort option to try to parse the document anyway.`,
       );
@@ -136,7 +148,7 @@ export async function runNodeInfo(
   let layout: string[];
   let defaultWidth = 0;
 
-  if (!("noFavicon" in command && command.noFavicon)) {
+  if (!command.noFavicon) {
     spinner.text = "Fetching the favicon...";
     try {
       const faviconUrl = await getFaviconUrl(url, command.userAgent);
@@ -259,7 +271,7 @@ export async function runNodeInfo(
   }
 
   if (
-    "metadata" in command && command.metadata && nodeInfo.metadata != null &&
+    command.metadata && nodeInfo.metadata != null &&
     Object.keys(nodeInfo.metadata).length > 0
   ) {
     layout[next()] += colors.bold(colors.dim("Metadata:"));
