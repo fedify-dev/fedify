@@ -750,6 +750,9 @@ importers:
       '@fedify/fedify':
         specifier: workspace:*
         version: link:../fedify
+      '@fedify/init':
+        specifier: workspace:*
+        version: link:../init
       '@fedify/relay':
         specifier: workspace:*
         version: link:../relay
