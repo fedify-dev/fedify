@@ -117,7 +117,8 @@ async function main() {
       name: "both",
     },
     onError: () => process.exit(1),
-    colors: process.stdout.isTTY,
+    colors: process.stdout.isTTY &&
+      (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
     maxWidth: process.stdout.columns,
     showDefault: true,
     showChoices: true,
