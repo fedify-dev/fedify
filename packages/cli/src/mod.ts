@@ -21,6 +21,7 @@ import { globalOptions } from "./options.ts";
 import { relayCommand, runRelay } from "./relay.ts";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
+import metadata from "../deno.json" with { type: "json" };
 
 /**
  * Returns the system-wide configuration file paths.
@@ -107,31 +108,39 @@ async function main() {
       mode: "both",
       onShow: () => process.exit(0),
     },
+    version: {
+      mode: "both",
+      value: metadata.version,
+    },
+    completion: {
+      mode: "command",
+      name: "both",
+    },
     onError: () => process.exit(1),
+    colors: process.stdout.isTTY,
+    maxWidth: process.stdout.columns,
+    showDefault: true,
+    showChoices: true,
   });
   if (result.command === "init") {
     await runInit(result);
-  }
-  if (result.command === "lookup") {
+  } else if (result.command === "lookup") {
     await runLookup(result);
-  }
-  if (result.command === "webfinger") {
+  } else if (result.command === "webfinger") {
     await runWebFinger(result);
-  }
-  if (result.command === "inbox") {
+  } else if (result.command === "inbox") {
     runInbox(result);
-  }
-  if (result.command === "nodeinfo") {
+  } else if (result.command === "nodeinfo") {
     runNodeInfo(result);
-  }
-  if (result.command === "tunnel") {
+  } else if (result.command === "tunnel") {
     await runTunnel(result);
-  }
-  if (result.command === "generate-vocab") {
+  } else if (result.command === "generate-vocab") {
     await runGenerateVocab(result);
-  }
-  if (result.command === "relay") {
+  } else if (result.command === "relay") {
     await runRelay(result);
+  } else {
+    // Make this branch exhaustive for type safety, even though it should never happen:
+    const _exhaustiveCheck: never = result;
   }
 }
 
