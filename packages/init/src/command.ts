@@ -56,12 +56,6 @@ const messageQueue = optional(option(
   },
 ));
 
-const debugOption = object("Global options", {
-  debug: option("-d", "--debug", {
-    description: message`Enable debug mode.`,
-  }),
-});
-
 export const initOptions = object("Initialization options", {
   dir: optional(argument(path({ metavar: "DIR" }), {
     description:
@@ -74,7 +68,6 @@ export const initOptions = object("Initialization options", {
   dryRun: option("--dry-run", {
     description: message`Perform a trial run with no changes made.`,
   }),
-  debugOption,
 });
 
 export const initCommand = command(
@@ -117,7 +110,6 @@ export const testInitCommand = command(
       packageManager: multiple(packageManager),
       kvStore: multiple(kvStore),
       messageQueue: multiple(messageQueue),
-      debugOption,
     }),
     optional(or(noHydRun, noDryRun)),
   ),

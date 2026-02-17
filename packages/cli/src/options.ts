@@ -87,7 +87,7 @@ export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
   });
 }
 
-export const debugOption = object("Global options", {
+export const debugOption = object({
   debug: bindConfig(
     option("-d", "--debug", {
       description: message`Enable debug mode.`,

@@ -19,8 +19,8 @@
     "test-init": "deno task test-init",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test",
-    "run": "pnpm build && node dist/mod.js",
-    "runi": "tsdown && node dist/mod.js",
+    "run": "pnpm build && node --disable-warning=ExperimentalWarning dist/mod.js",
+    "runi": "tsdown && node --disable-warning=ExperimentalWarning dist/mod.js",
     "run:bun": "pnpm build && bun dist/mod.js",
     "runi:bun": "tsdown && bun dist/mod.js"
   },
@@ -73,6 +73,7 @@
   },
   "dependencies": {
     "@fedify/fedify": "workspace:*",
+    "@fedify/init": "workspace:*",
     "@fedify/relay": "workspace:*",
     "@fedify/sqlite": "workspace:*",
     "@fedify/vocab": "workspace:*",
