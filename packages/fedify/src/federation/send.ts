@@ -187,6 +187,47 @@ export function sendActivity(
   );
 }
 
+const MAX_ERROR_RESPONSE_BODY_BYTES = 1024;
+
+async function readLimitedResponseBody(
+  response: Response,
+  maxBytes: number,
+): Promise<string> {
+  if (response.body == null) {
+    return "";
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let totalBytes = 0;
+  let truncated = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (totalBytes + value.length > maxBytes) {
+        const remaining = maxBytes - totalBytes;
+        if (remaining > 0) {
+          chunks.push(
+            decoder.decode(value.slice(0, remaining), { stream: true }),
+          );
+        }
+        truncated = true;
+        break;
+      }
+      chunks.push(decoder.decode(value, { stream: true }));
+      totalBytes += value.length;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  let result = chunks.join("");
+  if (truncated) {
+    result += "… (truncated)";
+  }
+  return result;
+}
+
 async function sendActivityInternal(
   {
     activity,
@@ -246,9 +287,12 @@ async function sendActivityInternal(
     throw error;
   }
   if (!response.ok) {
-    let error;
+    let error: string;
     try {
-      error = await response.text();
+      error = await readLimitedResponseBody(
+        response,
+        MAX_ERROR_RESPONSE_BODY_BYTES,
+      );
     } catch (_) {
       error = "";
     }
@@ -298,7 +342,10 @@ export class SendActivityError extends Error {
   readonly statusCode: number;
 
   /**
-   * The response body from the inbox, if any.
+   * The response body from the inbox, if any.  Note that this may be
+   * truncated to a maximum of 1 KiB to prevent excessive memory consumption
+   * when remote servers return large error pages (e.g., Cloudflare error pages).
+   * If truncated, the string will end with `"… (truncated)"`.
    */
   readonly responseBody: string;
 

@@ -156,6 +156,13 @@ To be released.
     enables the `@fedify/debugger` dashboard to display per-trace logs.
     [[#561], [#564]]
 
+ -  Fixed unbounded memory consumption when activity delivery fails with large
+    error responses.  The `SendActivityError.responseBody` property is now
+    limited to 1 KiB to prevent memory pressure when remote servers return
+    large HTML error pages (e.g., Cloudflare error pages of 50–100 KB each).
+    This prevents potential OOM crashes in production environments with many
+    unreachable inboxes.  [[#569]]
+
 [#280]: https://github.com/fedify-dev/fedify/issues/280
 [#366]: https://github.com/fedify-dev/fedify/issues/366
 [#376]: https://github.com/fedify-dev/fedify/issues/376
@@ -182,6 +189,7 @@ To be released.
 [#560]: https://github.com/fedify-dev/fedify/issues/560
 [#561]: https://github.com/fedify-dev/fedify/issues/561
 [#564]: https://github.com/fedify-dev/fedify/pull/564
+[#569]: https://github.com/fedify-dev/fedify/issues/569
 
 ### @fedify/cli
 

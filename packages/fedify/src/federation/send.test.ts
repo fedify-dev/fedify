@@ -339,6 +339,94 @@ test("sendActivity()", async (t) => {
     }
   });
 
+  // Test for issue #569: response body truncation to prevent memory pressure
+  const longErrorBody = "x".repeat(1500); // 1500 bytes, exceeds 1024 limit
+  fetchMock.post("https://example.com/inbox-long-error", {
+    status: 500,
+    body: longErrorBody,
+  });
+
+  await t.step("long error response body is truncated", async () => {
+    const activity: unknown = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person",
+    };
+    try {
+      await sendActivity({
+        activity,
+        activityId: "https://example.com/activity",
+        keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        inbox: new URL("https://example.com/inbox-long-error"),
+      });
+      assert(false, "Should have thrown");
+    } catch (e) {
+      assertInstanceOf(e, SendActivityError);
+      assertEquals(e.statusCode, 500);
+      assertEquals(e.inbox, new URL("https://example.com/inbox-long-error"));
+      // Response body should be truncated to 1024 chars + truncation suffix
+      const expectedTruncated = "x".repeat(1024) + "… (truncated)";
+      assertEquals(e.responseBody, expectedTruncated);
+      assertEquals(e.message.includes("… (truncated)"), true);
+    }
+  });
+
+  // Test that short error responses are not truncated
+  await t.step("short error response body is not truncated", async () => {
+    const activity: unknown = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person",
+    };
+    try {
+      await sendActivity({
+        activity,
+        activityId: "https://example.com/activity",
+        keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        inbox: new URL("https://example.com/inbox2"), // Uses "something went wrong"
+      });
+      assert(false, "Should have thrown");
+    } catch (e) {
+      assertInstanceOf(e, SendActivityError);
+      assertEquals(e.responseBody, "something went wrong");
+      assertEquals(e.message.includes("… (truncated)"), false);
+    }
+  });
+
+  // Test edge case: exactly 1024 bytes
+  const exactLimitBody = "y".repeat(1024);
+  fetchMock.post("https://example.com/inbox-exact-limit", {
+    status: 500,
+    body: exactLimitBody,
+  });
+
+  await t.step(
+    "error response body exactly at limit is not truncated",
+    async () => {
+      const activity: unknown = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Create",
+        "id": "https://example.com/activity",
+        "actor": "https://example.com/person",
+      };
+      try {
+        await sendActivity({
+          activity,
+          activityId: "https://example.com/activity",
+          keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+          inbox: new URL("https://example.com/inbox-exact-limit"),
+        });
+        assert(false, "Should have thrown");
+      } catch (e) {
+        assertInstanceOf(e, SendActivityError);
+        assertEquals(e.responseBody, exactLimitBody);
+        assertEquals(e.message.includes("… (truncated)"), false);
+      }
+    },
+  );
+
   fetchMock.hardReset();
 });
 
