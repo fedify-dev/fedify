@@ -1,10 +1,18 @@
 import { test } from "@fedify/fixture";
 import { PostgresMessageQueue } from "@fedify/postgres/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
+import * as temporal from "@js-temporal/polyfill";
 import { deepStrictEqual } from "node:assert/strict";
 import process from "node:process";
 import { test as nodeTest } from "node:test";
 import postgres from "postgres";
+
+let Temporal: typeof temporal.Temporal;
+if ("Temporal" in globalThis) {
+  Temporal = globalThis.Temporal;
+} else {
+  Temporal = temporal.Temporal;
+}
 
 const dbUrl = process.env.POSTGRES_URL;
 
@@ -496,6 +504,114 @@ nodeTest(
       await mq.drop();
       await sql.end();
       await sqlCheck.end();
+    }
+  },
+);
+
+// Regression test for delayed NOTIFY timeout handle retention.
+//
+// If fired timeout handles are not removed from the internal `timeouts` set,
+// abort cleanup calls clearTimeout() for already-fired handles, and the set can
+// grow monotonically under delayed retry traffic.
+//
+// See: https://github.com/fedify-dev/fedify/issues/570
+nodeTest(
+  "PostgresMessageQueue removes fired delayed timeouts from tracking set",
+  { skip: dbUrl == null, concurrency: false },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+    const delayMs = 50;
+    const messageCount = 20;
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+
+    const delayedHandles = new Set<ReturnType<typeof setTimeout>>();
+    const firedDelayedHandles = new Set<ReturnType<typeof setTimeout>>();
+    let clearedFiredDelayedHandles = 0;
+
+    globalThis.setTimeout = ((callback, timeout, ...args) => {
+      if (timeout !== delayMs) {
+        return originalSetTimeout(callback, timeout, ...args);
+      }
+      // deno-lint-ignore prefer-const
+      let handle: ReturnType<typeof setTimeout>;
+      const wrapped = (...wrappedArgs: unknown[]) => {
+        firedDelayedHandles.add(handle);
+        if (typeof callback === "function") {
+          return callback(...wrappedArgs);
+        }
+      };
+      handle = originalSetTimeout(wrapped, timeout, ...args);
+      delayedHandles.add(handle);
+      return handle;
+    }) as typeof setTimeout;
+
+    globalThis.clearTimeout = ((handle) => {
+      if (
+        delayedHandles.has(handle as ReturnType<typeof setTimeout>) &&
+        firedDelayedHandles.has(handle as ReturnType<typeof setTimeout>)
+      ) {
+        clearedFiredDelayedHandles++;
+      }
+      return originalClearTimeout(handle);
+    }) as typeof clearTimeout;
+
+    try {
+      await mq.initialize();
+
+      const controller = new AbortController();
+      const received: number[] = [];
+      const listening = mq.listen((message: number) => {
+        received.push(message);
+        if (received.length >= messageCount) controller.abort();
+      }, { signal: controller.signal });
+
+      // Give LISTEN subscription a brief moment to become active.
+      await new Promise((resolve) => {
+        originalSetTimeout(resolve, 200);
+      });
+
+      for (let i = 0; i < messageCount; i++) {
+        await mq.enqueue(i, {
+          delay: Temporal.Duration.from({ milliseconds: delayMs }),
+        });
+      }
+
+      const start = Date.now();
+      while (received.length < messageCount && Date.now() - start < 15_000) {
+        await new Promise((resolve) => {
+          originalSetTimeout(resolve, 50);
+        });
+      }
+      if (!controller.signal.aborted) controller.abort();
+      await listening;
+
+      deepStrictEqual(
+        received.length,
+        messageCount,
+        `All ${messageCount} delayed messages should be processed`,
+      );
+      deepStrictEqual(
+        clearedFiredDelayedHandles,
+        0,
+        "Abort cleanup should not clear already-fired delayed timeout handles",
+      );
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+      await mq.drop();
+      await sql.end();
     }
   },
 );

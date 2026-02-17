@@ -302,13 +302,20 @@ export class PostgresMessageQueue implements MessageQueue {
         const duration = Temporal.Duration.from(delay);
         const durationMs = duration.total("millisecond");
         if (durationMs < 1) await serializedPoll();
-        else timeouts.add(setTimeout(serializedPoll, durationMs));
+        else {
+          const timeout = setTimeout(() => {
+            timeouts.delete(timeout);
+            void serializedPoll();
+          }, durationMs);
+          timeouts.add(timeout);
+        }
       },
       serializedPoll,
     );
     signal?.addEventListener("abort", () => {
       listen.unlisten();
       for (const timeout of timeouts) clearTimeout(timeout);
+      timeouts.clear();
     });
     while (!signal?.aborted) {
       let timeout: ReturnType<typeof setTimeout> | undefined;
