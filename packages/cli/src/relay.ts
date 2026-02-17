@@ -127,7 +127,7 @@ export const relayCommand = command(
     description:
       message`Spins up an ActivityPub relay server that forwards activities between federated instances. The server can use either Mastodon or LitePub compatible relay protocol.
 
-        By default, the server is tunneled to the public internet for external access. Use ${
+By default, the server is tunneled to the public internet for external access. Use ${
         optionName("--no-tunnel")
       } to run locally only.`,
   },
