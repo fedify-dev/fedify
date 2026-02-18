@@ -157,7 +157,7 @@ jobs:
         mise run codegen
         max_attempts=5
         attempt=1
-        until deno publish --allow-dirty; do
+        until deno publish --allow-dirty --allow-slow-types; do
           exit_code=$?
           if [[ $attempt -ge $max_attempts ]]; then
             echo "deno publish failed after $max_attempts attempts"
