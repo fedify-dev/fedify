@@ -16,14 +16,14 @@
     "jsr:@fresh/plugin-vite@^1.0.7": "1.0.8",
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
     "jsr:@hono/hono@^4.7.1": "4.11.9",
-    "jsr:@hono/hono@^4.8.3": "4.11.9",
+    "jsr:@hono/hono@^4.8.3": "4.11.10",
     "jsr:@logtape/file@2": "2.0.2",
     "jsr:@logtape/logtape@2": "2.0.2",
     "jsr:@logtape/logtape@^1.0.4": "1.3.7",
     "jsr:@logtape/logtape@^2.0.2": "2.0.2",
-    "jsr:@optique/config@~0.10.2": "0.10.2",
-    "jsr:@optique/core@~0.10.2": "0.10.2",
-    "jsr:@optique/run@~0.10.2": "0.10.2",
+    "jsr:@optique/config@~0.10.4": "0.10.4",
+    "jsr:@optique/core@~0.10.4": "0.10.4",
+    "jsr:@optique/run@~0.10.4": "0.10.4",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
     "jsr:@std/assert@^1.0.13": "1.0.18",
@@ -258,6 +258,9 @@
     "@hono/hono@4.11.9": {
       "integrity": "c82c6b846abc3c1879d921d8365287d77cdef8073019f509ff80bf53033bdcba"
     },
+    "@hono/hono@4.11.10": {
+      "integrity": "a5a6dac87ab5a8bcf3f92aeaca22417128d584c2732860c20bbf6fdb3cafbcc5"
+    },
     "@logtape/file@2.0.2": {
       "integrity": "a912459fe0d27213e05c95e6fadf716000f27eafa27e67c2737820ba24097fdc",
       "dependencies": [
@@ -277,8 +280,8 @@
     "@logtape/logtape@2.0.2": {
       "integrity": "546fcd514e66f2b841c6f261fa3a3d905b52d876dc1bba8ffe1a087d9275c4c9"
     },
-    "@optique/config@0.10.2": {
-      "integrity": "35f9c90ecc9c1563c3096b108109e4f24a8cc1a381c0ef94ce688927c1dae577",
+    "@optique/config@0.10.4": {
+      "integrity": "108c1c77c98bb22fbd4675d9410531adcd212a19ec510bb4461173252ba490f3",
       "dependencies": [
         "jsr:@optique/core",
         "npm:@standard-schema/spec"
@@ -287,11 +290,11 @@
     "@optique/core@0.10.0-dev.333+076fceae": {
       "integrity": "1ebe1782740f08d568ae0c5258786933a8502d1e137feb49b2d8ab06d204b11a"
     },
-    "@optique/core@0.10.2": {
-      "integrity": "bc95e9133e9db2499fa544bfd13480126f33c7131650b09a808199ebb7e36478"
+    "@optique/core@0.10.4": {
+      "integrity": "fa750a168ad5743128e4dcc50c8f63ce3c0ad6e753f99ddf1b34f8a9cece6602"
     },
-    "@optique/run@0.10.2": {
-      "integrity": "3425599e09c6f67fe4813625dee1e67297e92d0ae18a0a70b36fd76879bccb05",
+    "@optique/run@0.10.4": {
+      "integrity": "39a4bf4258b82291594fb86be20e42b1768b403610d8977d1521b46a2526578f",
       "dependencies": [
         "jsr:@optique/core"
       ]
@@ -5874,9 +5877,9 @@
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
-      "jsr:@optique/config@~0.10.2",
-      "jsr:@optique/core@~0.10.2",
-      "jsr:@optique/run@~0.10.2",
+      "jsr:@optique/config@~0.10.4",
+      "jsr:@optique/core@~0.10.4",
+      "jsr:@optique/run@~0.10.4",
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/async@^1.0.13",
       "jsr:@std/encoding@^1.0.10",
