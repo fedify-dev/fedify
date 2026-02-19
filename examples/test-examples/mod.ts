@@ -776,6 +776,26 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── Unregistered examples ────────────────────────────────────────────────
+  // Collect every example name that appears in any registry.
+  const registeredNames = new Set([
+    ...SERVER_EXAMPLES.map((e) => e.name),
+    ...SCRIPT_EXAMPLES.map((e) => e.name),
+    ...MULTI_HANDLE_EXAMPLES.map((e) => e.name),
+    ...SKIPPED_EXAMPLES.map((e) => e.name),
+  ]);
+
+  // Scan the examples/ directory for sub-directories that are not registered.
+  const unregistered: string[] = [];
+  for await (const entry of Deno.readDir(EXAMPLES_DIR)) {
+    if (!entry.isDirectory) continue;
+    // The test-examples directory is the test runner itself — skip it.
+    if (entry.name === "test-examples") continue;
+    if (!registeredNames.has(entry.name)) {
+      unregistered.push(entry.name);
+    }
+  }
+
   // ── Summary ──────────────────────────────────────────────────────────────
   const passed = results.filter((r) => r.status === "pass");
   const failed = results.filter((r) => r.status === "fail");
@@ -785,6 +805,22 @@ async function main(): Promise<void> {
   console.log(c.green(`  ✓ Passed : ${passed.length}`));
   console.log(c.red(`  ✗ Failed : ${failed.length}`));
   console.log(c.yellow(`  ⊘ Skipped: ${skipped.length}`));
+
+  if (unregistered.length > 0) {
+    unregistered.sort();
+    console.log(
+      c.yellow(
+        `\n  ⚠ ${unregistered.length} example(s) not registered in test runner:`,
+      ),
+    );
+    for (const name of unregistered) {
+      console.log(c.yellow(`    • ${name}`));
+    }
+    logger.warn(
+      "{count} unregistered example(s): {names}",
+      { count: unregistered.length, names: unregistered.join(", ") },
+    );
+  }
 
   logger.info("Test run complete", {
     passed: passed.length,
@@ -803,6 +839,8 @@ async function main(): Promise<void> {
     }
     Deno.exit(1);
   }
+
+  Deno.exit(0);
 }
 
 await main();
