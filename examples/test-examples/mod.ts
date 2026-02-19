@@ -22,7 +22,7 @@
  */
 
 import { configure, getConsoleSink, getLogger } from "@logtape/logtape";
-import { join } from "@std/path";
+import { fromFileUrl, join } from "@std/path";
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
