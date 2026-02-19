@@ -12,7 +12,6 @@ import {
   option,
   or,
   string,
-  valueSet,
   withDefault,
 } from "@optique/core";
 import { type Config, configContext } from "./config.ts";
@@ -39,11 +38,7 @@ export const tunnelServiceOption = bindConfig(
   option(
     "--tunnel-service",
     choice(TUNNEL_SERVICES, { metavar: "SERVICE" }),
-    {
-      description: message`The tunneling service to use: ${
-        valueSet(TUNNEL_SERVICES)
-      }.`,
-    },
+    { description: message`The tunneling service to use.` },
   ),
   {
     context: configContext,
