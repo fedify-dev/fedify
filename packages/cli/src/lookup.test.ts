@@ -192,9 +192,19 @@ test("authorizedFetchOption - parses successfully without -a flag", async () => 
     args: [],
   });
   assert.strictEqual(result.authorizedFetch, false);
-  // When authorizedFetch is false, firstKnock and tunnelService still get defaults
+  // When authorizedFetch is false, firstKnock still gets a default.
+  // tunnelService stays undefined and is picked later by tunnel setup.
   assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
-  assert.strictEqual(result.tunnelService, "localhost.run");
+  assert.strictEqual(result.tunnelService, undefined);
+});
+
+test("authorizedFetchOption - parses with -a without tunnelService config", async () => {
+  const result = await runWithConfig(authorizedFetchOption, configContext, {
+    load: () => ({}),
+    args: ["-a"],
+  });
+  assert.strictEqual(result.authorizedFetch, true);
+  assert.strictEqual(result.tunnelService, undefined);
 });
 
 test("authorizedFetchOption - parses successfully with -a flag", () => {
@@ -208,7 +218,7 @@ test("authorizedFetchOption - parses successfully with -a flag", () => {
       result.value.firstKnock,
       "draft-cavage-http-signatures-12",
     );
-    assert.strictEqual(result.value.tunnelService, "localhost.run");
+    assert.strictEqual(result.value.tunnelService, undefined);
   }
 });
 
@@ -224,7 +234,7 @@ test("authorizedFetchOption - parses with -a and --first-knock", () => {
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
     assert.strictEqual(result.value.firstKnock, "rfc9421");
-    assert.strictEqual(result.value.tunnelService, "localhost.run");
+    assert.strictEqual(result.value.tunnelService, undefined);
   }
 });
 

@@ -44,8 +44,8 @@ import { getContextLoader, getDocumentLoader } from "./docloader.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { configureLogging } from "./log.ts";
 import {
+  createTunnelServiceOption,
   type GlobalOptions,
-  tunnelServiceOption,
   userAgentOption,
 } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
@@ -84,7 +84,7 @@ export const authorizedFetchOption = object("Authorized fetch options", {
       default: "draft-cavage-http-signatures-12" as const,
     },
   ),
-  tunnelService: tunnelServiceOption,
+  tunnelService: createTunnelServiceOption(),
 });
 
 const traverseOption = object("Traverse options", {

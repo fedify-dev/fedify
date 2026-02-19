@@ -8,16 +8,12 @@ import {
   merge,
   message,
   object,
-  option,
-  optional,
-  valueSet,
 } from "@optique/core";
-import { choice } from "@optique/core/valueparser";
 import { print, printError } from "@optique/run";
 import process from "node:process";
 import ora from "ora";
 import { configureLogging } from "./log.ts";
-import { type GlobalOptions, TUNNEL_SERVICES } from "./options.ts";
+import { createTunnelServiceOption, type GlobalOptions } from "./options.ts";
 
 export const tunnelCommand = command(
   "tunnel",
@@ -30,21 +26,10 @@ export const tunnelCommand = command(
       port: argument(integer({ metavar: "PORT", min: 0, max: 65535 }), {
         description: message`The local port number to expose.`,
       }),
-      service: optional(
-        option(
-          "-s",
-          "--service",
-          "--tunnel-service",
-          choice(TUNNEL_SERVICES, {
-            metavar: "SERVICE",
-          }),
-          {
-            description: message`The tunneling service to use: ${
-              valueSet(TUNNEL_SERVICES)
-            }.`,
-          },
-        ),
-      ),
+      service: createTunnelServiceOption([
+        "-s",
+        "--service",
+      ]),
     }),
   ),
   {

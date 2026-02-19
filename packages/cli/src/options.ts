@@ -10,6 +10,7 @@ import {
   message,
   object,
   option,
+  type OptionName,
   or,
   string,
   withDefault,
@@ -31,21 +32,32 @@ export const TUNNEL_SERVICES = [
 export type TunnelService = typeof TUNNEL_SERVICES[number];
 
 /**
- * Option for selecting a tunneling service.
- * Uses the global `tunnelService` config setting.
+ * Creates a tunnel service option with customizable option names.
  */
-export const tunnelServiceOption = bindConfig(
-  option(
-    "--tunnel-service",
-    choice(TUNNEL_SERVICES, { metavar: "SERVICE" }),
-    { description: message`The tunneling service to use.` },
-  ),
-  {
-    context: configContext,
-    key: (config) => config.tunnelService ?? "localhost.run",
-    default: "localhost.run" as const,
-  },
-);
+export function createTunnelServiceOption(
+  optionNames: OptionName[] = ["--tunnel-service"],
+) {
+  // Note that we don't provide a default value here, since the tunneling
+  // implementation will randomly select a service if none is specified.
+  return withDefault(
+    bindConfig(
+      option(
+        ...optionNames,
+        choice(TUNNEL_SERVICES, { metavar: "SERVICE" }),
+        {
+          description: message`The tunneling service to use.
+By default, any of the supported tunneling services will be used
+(randomly selected for each tunnel).`,
+        },
+      ),
+      {
+        context: configContext,
+        key: (config) => config.tunnelService,
+      },
+    ),
+    undefined,
+  );
+}
 
 /**
  * Config sections that support the noTunnel option.
@@ -78,7 +90,7 @@ export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
         default: true,
       },
     ),
-    tunnelService: tunnelServiceOption,
+    tunnelService: createTunnelServiceOption(),
   });
 }
 
