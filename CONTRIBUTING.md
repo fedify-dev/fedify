@@ -545,6 +545,17 @@ The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
 > to configure the init command to use local workspace packages instead of
 > published versions.
 
+#### Testing the examples
+
+If you want to test the example projects, you can run the following command
+from the root:
+
+~~~~ bash
+mise run test:examples
+~~~~
+
+This command runs the tests for all example projects.
+
 ### Building the docs
 
 If you want to change the Fedify docs, you would like to preview the changes

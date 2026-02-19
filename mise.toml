@@ -169,6 +169,10 @@ for PACKAGE in ${usage_packages}; do
 done
 '''
 
+[tasks."test:examples"]
+description = "Run tests for all example projects"
+run = "deno run -A examples/test-examples/mod.ts"
+
 # Snapshot updates
 # Note: vocab uses @std/testing/snapshot which only works on Deno
 # vocab-tools has separate snapshots for each runtime
