@@ -21,6 +21,7 @@
  *   deno run --allow-all examples/test-examples/mod.ts --debug hono-sample
  */
 
+import $, { type CommandChild } from "@david/dax";
 import { configure, getConsoleSink, getLogger } from "@logtape/logtape";
 import { fromFileUrl, join } from "@std/path";
 
@@ -286,36 +287,29 @@ const c = {
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-function decodeChunks(chunks: Uint8Array[]): string {
-  let total = 0;
-  for (const chunk of chunks) total += chunk.length;
-  const buf = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    buf.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return new TextDecoder().decode(buf);
-}
-
 /**
  * Drains a ReadableStream into `chunks` in the background, logging each chunk
  * at DEBUG level so that raw server/tunnel output is visible with --debug.
  */
 function drainLogging(
   stream: ReadableStream<Uint8Array>,
-  chunks: Uint8Array[],
+  chunks: string[],
   streamLogger: ReturnType<typeof getLogger>,
 ): void {
   (async () => {
     const reader = stream.getReader();
     const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      const text = decoder.decode(value).trim();
-      if (text) streamLogger.debug("{output}", { output: text });
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        chunks.push(text);
+        const trimmed = text.trim();
+        if (trimmed) streamLogger.debug("{output}", { output: trimmed });
+      }
+    } catch {
+      // Stream may error when the process is killed.
     }
   })();
 }
@@ -352,22 +346,17 @@ async function waitForServer(url: string, timeoutMs: number): Promise<boolean> {
 async function killPortUsers(port: number): Promise<void> {
   let pids: string[];
   try {
-    const result = await new Deno.Command("lsof", {
-      args: ["-ti", `:${port}`, "-sTCP:LISTEN"],
-      stdout: "piped",
-      stderr: "null",
-    }).output();
-    pids = new TextDecoder()
-      .decode(result.stdout)
-      .trim()
-      .split("\n")
-      .filter(Boolean);
+    const text = await $`lsof -ti ${`:${port}`} -sTCP:LISTEN`
+      .stderr("null")
+      .noThrow()
+      .text();
+    pids = text.trim().split("\n").filter(Boolean);
   } catch {
     return; // lsof unavailable or no match — nothing to do.
   }
   for (const pid of pids) {
     try {
-      await new Deno.Command("kill", { args: ["-9", pid] }).output();
+      await $`kill -9 ${pid}`.quiet("both").noThrow();
       logger.debug("Force-killed PID {pid} on port {port}", { pid, port });
     } catch {
       // Already gone.
@@ -376,15 +365,20 @@ async function killPortUsers(port: number): Promise<void> {
 }
 
 /**
- * Sends SIGKILL to `proc` immediately and awaits its exit status.
+ * Sends SIGKILL to `child` immediately.  A rejection handler is attached to
+ * the CommandChild promise (which extends Promise<CommandResult>) so that the
+ * eventual rejection from the killed process does not surface as an unhandled
+ * promise rejection.  We intentionally do **not** await the promise because
+ * dax keeps it pending until all piped streams are fully consumed, which may
+ * never happen once the process is forcibly killed.
  */
-async function forceKillProc(proc: Deno.ChildProcess): Promise<void> {
+function forceKillChild(child: CommandChild): void {
+  child.catch(() => {});
   try {
-    proc.kill("SIGKILL");
+    child.kill("SIGKILL");
   } catch {
     // Process already exited.
   }
-  await proc.status.catch(() => {});
 }
 
 // ─── Tunnel ───────────────────────────────────────────────────────────────────
@@ -399,16 +393,16 @@ async function forceKillProc(proc: Deno.ChildProcess): Promise<void> {
 async function startTunnel(
   port: number,
   timeoutMs: number,
-): Promise<{ proc: Deno.ChildProcess; url: string } | null> {
+): Promise<{ child: CommandChild; url: string } | null> {
   const tunnelLogger = getLogger(["fedify", "examples", "tunnel"]);
   tunnelLogger.info("Opening localhost.run tunnel on port {port}", { port });
 
-  const proc = new Deno.Command("deno", {
-    args: ["task", "cli", "tunnel", "-s", "pinggy.io", String(port)],
-    cwd: REPO_ROOT,
-    stdout: "piped",
-    stderr: "piped",
-  }).spawn();
+  const child = $`deno task cli tunnel -s pinggy.io ${String(port)}`
+    .cwd(REPO_ROOT)
+    .stdout("piped")
+    .stderr("piped")
+    .noThrow()
+    .spawn();
 
   // Accumulate text from both streams while logging each chunk at DEBUG.
   const textChunks: string[] = [];
@@ -417,19 +411,23 @@ async function startTunnel(
   const readStream = (stream: ReadableStream<Uint8Array>) => {
     (async () => {
       const reader = stream.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        textChunks.push(text);
-        const trimmed = text.trim();
-        if (trimmed) tunnelLogger.debug("{output}", { output: trimmed });
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value, { stream: true });
+          textChunks.push(text);
+          const trimmed = text.trim();
+          if (trimmed) tunnelLogger.debug("{output}", { output: trimmed });
+        }
+      } catch {
+        // Stream may error when the process is killed.
       }
     })();
   };
 
-  readStream(proc.stdout);
-  readStream(proc.stderr);
+  readStream(child.stdout());
+  readStream(child.stderr());
 
   // Poll until we find an https URL in the accumulated output.
   // The `message` template tag from @optique/run may wrap the URL in double
@@ -439,7 +437,7 @@ async function startTunnel(
     const match = textChunks.join("").match(/https:\/\/[^\s"']+/);
     if (match) {
       tunnelLogger.info("Tunnel established at {url}", { url: match[0] });
-      return { proc, url: match[0] };
+      return { child, url: match[0] };
     }
     await new Promise((r) => setTimeout(r, 200));
   }
@@ -448,7 +446,7 @@ async function startTunnel(
     "Tunnel did not produce a URL within {timeout} ms",
     { timeout: timeoutMs },
   );
-  await forceKillProc(proc);
+  forceKillChild(child);
   return null;
 }
 
@@ -482,30 +480,25 @@ async function testServerExample(
     console.log(c.dim(`  cwd : ${buildCwd}`));
     serverLogger.info("Building {name}", { name, cmd: buildCmd.join(" ") });
 
-    let buildResult: Deno.CommandOutput;
+    let buildResult;
     try {
-      buildResult = await new Deno.Command(buildCmd[0], {
-        args: buildCmd.slice(1),
-        cwd: buildCwd,
-        stdout: "piped",
-        stderr: "piped",
-      }).output();
+      buildResult = await $`${buildCmd}`
+        .cwd(buildCwd)
+        .stdout("piped")
+        .stderr("piped")
+        .noThrow();
     } catch (e) {
-      if (e instanceof Deno.errors.NotFound) {
-        const error = `Build command not found: ${buildCmd[0]}`;
-        serverLogger.error("{error}", { error });
-        return { name, status: "fail", error, output: "" };
-      }
-      throw e;
+      const error = `Build command not found: ${buildCmd[0]}`;
+      serverLogger.error("{error}", { error });
+      return { name, status: "fail", error, output: String(e) };
     }
 
-    const buildOutput = new TextDecoder().decode(buildResult.stdout) +
-      new TextDecoder().decode(buildResult.stderr);
+    const buildOutput = buildResult.stdout + buildResult.stderr;
     serverLogger.debug("Build output:\n{output}", {
       output: buildOutput.trim(),
     });
 
-    if (!buildResult.success) {
+    if (buildResult.code !== 0) {
       const error = `Build failed with exit code ${buildResult.code}`;
       serverLogger.error("{error}", { error });
       return { name, status: "fail", error, output: buildOutput };
@@ -525,33 +518,27 @@ async function testServerExample(
 
   serverLogger.info("Starting {name}", { name, cmd: startCmd.join(" "), cwd });
 
-  let serverProc: Deno.ChildProcess;
+  let serverChild: CommandChild;
   try {
-    serverProc = new Deno.Command(startCmd[0], {
-      args: startCmd.slice(1),
-      cwd: cwd,
-      stdout: "piped",
-      stderr: "piped",
-      env: env ? { ...Deno.env.toObject(), ...env } : undefined,
-    }).spawn();
+    let cmd = $`${startCmd}`.cwd(cwd).stdout("piped").stderr("piped")
+      .noThrow();
+    if (env) cmd = cmd.env(env);
+    serverChild = cmd.spawn();
   } catch (e) {
-    if (e instanceof Deno.errors.NotFound) {
-      const error = `Command not found: ${startCmd[0]}`;
-      serverLogger.error("{error}", { error });
-      return { name, status: "fail", error, output: "" };
-    }
-    throw e;
+    const error = `Command not found: ${startCmd[0]}`;
+    serverLogger.error("{error}", { error });
+    return { name, status: "fail", error, output: String(e) };
   }
 
-  const stdoutChunks: Uint8Array[] = [];
-  const stderrChunks: Uint8Array[] = [];
-  drainLogging(serverProc.stdout, stdoutChunks, serverLogger);
-  drainLogging(serverProc.stderr, stderrChunks, serverLogger);
+  const stdoutChunks: string[] = [];
+  const stderrChunks: string[] = [];
+  drainLogging(serverChild.stdout(), stdoutChunks, serverLogger);
+  drainLogging(serverChild.stderr(), stderrChunks, serverLogger);
 
   const collectServerOutput = () =>
-    decodeChunks(stdoutChunks) + decodeChunks(stderrChunks);
+    stdoutChunks.join("") + stderrChunks.join("");
 
-  let tunnelProc: Deno.ChildProcess | null = null;
+  let tunnelChild: CommandChild | null = null;
 
   try {
     console.log(
@@ -576,12 +563,12 @@ async function testServerExample(
 
     const tunnel = await startTunnel(port, 30_000);
     if (tunnel == null) {
-      const error = "fedify tunnel did not produce a URL within 5 minutes";
+      const error = "fedify tunnel did not produce a URL within 30s";
       serverLogger.error("{error}", { error });
       return { name, status: "fail", error, output: collectServerOutput() };
     }
 
-    tunnelProc = tunnel.proc;
+    tunnelChild = tunnel.child;
     const tunnelHostname = new URL(tunnel.url).hostname;
     const handle = `@${actor}@${tunnelHostname}`;
 
@@ -589,15 +576,13 @@ async function testServerExample(
     console.log(c.dim(`  running    : fedify lookup ${handle} -d`));
     serverLogger.info("Running fedify lookup {handle}", { handle });
 
-    const lookup = await new Deno.Command("deno", {
-      args: ["task", "cli", "lookup", handle, "-d"],
-      cwd: REPO_ROOT,
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
+    const lookup = await $`deno task cli lookup ${handle} -d`
+      .cwd(REPO_ROOT)
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow();
 
-    const lookupOutput = new TextDecoder().decode(lookup.stdout) +
-      new TextDecoder().decode(lookup.stderr);
+    const lookupOutput = lookup.stdout + lookup.stderr;
     serverLogger.debug("Lookup output:\n{output}", {
       output: lookupOutput.trim(),
     });
@@ -611,12 +596,12 @@ async function testServerExample(
     return { name, status: "fail", error, output: lookupOutput };
   } finally {
     // Force-kill tunnel first (it holds a connection to the server).
-    if (tunnelProc != null) {
+    if (tunnelChild != null) {
       serverLogger.debug("Force-killing tunnel process");
-      await forceKillProc(tunnelProc);
+      forceKillChild(tunnelChild);
     }
     serverLogger.debug("Force-killing server process");
-    await forceKillProc(serverProc);
+    forceKillChild(serverChild);
 
     // Kill any lingering processes still bound to the port.
     serverLogger.debug("Killing remaining processes on port {port}", { port });
@@ -636,15 +621,13 @@ async function testScriptExample(example: ScriptExample): Promise<TestResult> {
     cmd: cmd.join(" "),
   });
 
-  const result = await new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+  const result = await $`${cmd}`
+    .cwd(cwd)
+    .stdout("piped")
+    .stderr("piped")
+    .noThrow();
 
-  const output = new TextDecoder().decode(result.stdout) +
-    new TextDecoder().decode(result.stderr);
+  const output = result.stdout + result.stderr;
   scriptLogger.debug("Script output:\n{output}", { output: output.trim() });
 
   if (result.code === 0) {
@@ -675,15 +658,13 @@ async function testMultiHandleExample(
     console.log(c.dim(`  cmd : ${fullCmd.join(" ")}`));
     scriptLogger.info("Trying handle {handle}", { handle });
 
-    const result = await new Deno.Command(fullCmd[0], {
-      args: fullCmd.slice(1),
-      cwd,
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
+    const result = await $`${fullCmd}`
+      .cwd(cwd)
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow();
 
-    const output = new TextDecoder().decode(result.stdout) +
-      new TextDecoder().decode(result.stderr);
+    const output = result.stdout + result.stderr;
     scriptLogger.debug("Output:\n{output}", { output: output.trim() });
     lastOutput = output;
 
