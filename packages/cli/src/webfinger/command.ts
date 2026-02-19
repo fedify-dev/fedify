@@ -4,6 +4,7 @@ import {
   command,
   constant,
   flag,
+  group,
   type InferValue,
   integer,
   merge,
@@ -43,13 +44,17 @@ const maxRedirection = bindConfig(
 export const webFingerCommand = command(
   "webfinger",
   merge(
+    "Network options",
     object({
       command: constant("webfinger"),
-      resources: multiple(
-        argument(string({ metavar: "RESOURCE" }), {
-          description: message`WebFinger resource(s) to look up.`,
-        }),
-        { min: 1 },
+      resources: group(
+        "Arguments",
+        multiple(
+          argument(string({ metavar: "RESOURCE" }), {
+            description: message`WebFinger resource(s) to look up.`,
+          }),
+          { min: 1 },
+        ),
       ),
       allowPrivateAddresses,
       maxRedirection,

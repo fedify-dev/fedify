@@ -9,6 +9,7 @@ import {
   command as Command,
   constant,
   flag,
+  group,
   type InferValue,
   merge,
   message,
@@ -34,62 +35,66 @@ export const Jimp = createJimp({
   plugins: defaultPlugins,
 });
 
-const nodeInfoOption = object({
-  raw: bindConfig(
-    flag("-r", "--raw", {
-      description: message`Show NodeInfo document in the raw JSON format`,
-    }),
-    {
-      context: configContext,
-      key: (config) => config.nodeinfo?.raw ?? false,
-      default: false,
-    },
-  ),
-  bestEffort: bindConfig(
-    flag("-b", "--best-effort", {
-      description:
-        message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
-    }),
-    {
-      context: configContext,
-      key: (config) => config.nodeinfo?.bestEffort ?? false,
-      default: false,
-    },
-  ),
-  noFavicon: bindConfig(
-    flag("--no-favicon", {
-      description: message`Disable fetching the favicon of the instance`,
-    }),
-    {
-      context: configContext,
-      key: (config) => config.nodeinfo?.showFavicon === false,
-      default: false,
-    },
-  ),
-  metadata: bindConfig(
-    flag("-m", "--metadata", {
-      description:
-        message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
-    }),
-    {
-      context: configContext,
-      key: (config) => config.nodeinfo?.showMetadata ?? false,
-      default: false,
-    },
-  ),
-});
+const nodeInfoOption = merge(
+  object("Display options", {
+    raw: bindConfig(
+      flag("-r", "--raw", {
+        description: message`Show NodeInfo document in the raw JSON format`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.nodeinfo?.raw ?? false,
+        default: false,
+      },
+    ),
+    noFavicon: bindConfig(
+      flag("--no-favicon", {
+        description: message`Disable fetching the favicon of the instance`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.nodeinfo?.showFavicon === false,
+        default: false,
+      },
+    ),
+    metadata: bindConfig(
+      flag("-m", "--metadata", {
+        description:
+          message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.nodeinfo?.showMetadata ?? false,
+        default: false,
+      },
+    ),
+  }),
+  object("Parsing options", {
+    bestEffort: bindConfig(
+      flag("-b", "--best-effort", {
+        description:
+          message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.nodeinfo?.bestEffort ?? false,
+        default: false,
+      },
+    ),
+  }),
+);
 
 export const nodeInfoCommand = Command(
   "nodeinfo",
   merge(
-    object({
+    object("Arguments", {
       command: constant("nodeinfo"),
       host: argument(string({ metavar: "HOST" }), {
         description: message`Bare hostname or a full URL of the instance`,
       }),
     }),
     nodeInfoOption,
-    userAgentOption,
+    group("Network options", userAgentOption),
   ),
   {
     brief:
