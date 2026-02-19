@@ -1,6 +1,6 @@
 #!/usr/bin/env node --disable-warning=ExperimentalWarning
 import { runWithConfig } from "@optique/config/run";
-import { merge, message, or } from "@optique/core";
+import { group, merge, message, or } from "@optique/core";
 import { printError } from "@optique/run";
 import { merge as deepMerge } from "es-toolkit";
 import { readFileSync } from "node:fs";
@@ -56,14 +56,27 @@ function getUserConfigPath(): string {
 
 const command = merge(
   or(
-    initCommand,
-    webFingerCommand,
-    lookupCommand,
-    inboxCommand,
-    nodeInfoCommand,
-    tunnelCommand,
-    generateVocabCommand,
-    relayCommand,
+    group(
+      "Generating code",
+      or(
+        initCommand,
+        generateVocabCommand,
+      ),
+    ),
+    group(
+      "ActivityPub tools",
+      or(
+        webFingerCommand,
+        lookupCommand,
+        inboxCommand,
+        nodeInfoCommand,
+        relayCommand,
+      ),
+    ),
+    group(
+      "Network tools",
+      tunnelCommand,
+    ),
   ),
   globalOptions,
 );
@@ -107,14 +120,18 @@ async function main() {
     help: {
       mode: "both",
       onShow: () => process.exit(0),
+      group: "Meta commands",
     },
     version: {
       mode: "both",
       value: metadata.version,
+      group: "Meta commands",
     },
     completion: {
       mode: "command",
       name: "both",
+      helpVisibility: "plural",
+      group: "Meta commands",
     },
     onError: () => process.exit(1),
     colors: process.stdout.isTTY &&

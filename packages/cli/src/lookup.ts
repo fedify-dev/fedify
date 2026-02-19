@@ -53,7 +53,7 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = object({
+export const authorizedFetchOption = object("Authorized fetch options", {
   authorizedFetch: bindConfig(
     map(
       flag("-a", "--authorized-fetch", {
@@ -87,7 +87,7 @@ export const authorizedFetchOption = object({
   tunnelService: tunnelServiceOption,
 });
 
-const traverseOption = object({
+const traverseOption = object("Traverse options", {
   traverse: bindConfig(
     flag("-t", "--traverse", {
       description:
@@ -115,18 +115,41 @@ const traverseOption = object({
 export const lookupCommand = command(
   "lookup",
   merge(
-    "Looking up options",
     object({ command: constant("lookup") }),
     traverseOption,
     authorizedFetchOption,
-    userAgentOption,
-    object({
+    merge(
+      "Network options",
+      userAgentOption,
+      object({
+        timeout: optional(
+          bindConfig(
+            option(
+              "-T",
+              "--timeout",
+              float({ min: 0, metavar: "SECONDS" }),
+              {
+                description:
+                  message`Set timeout for network requests in seconds.`,
+              },
+            ),
+            {
+              context: configContext,
+              key: (config) => config.lookup?.timeout,
+            },
+          ),
+        ),
+      }),
+    ),
+    object("Arguments", {
       urls: multiple(
         argument(string({ metavar: "URL_OR_HANDLE" }), {
           description: message`One or more URLs or handles to look up.`,
         }),
         { min: 1 },
       ),
+    }),
+    object("Output options", {
       format: bindConfig(
         optional(
           or(
@@ -177,23 +200,6 @@ export const lookupCommand = command(
         }),
         { description: message`Specify the output file path.` },
       )),
-      timeout: optional(
-        bindConfig(
-          option(
-            "-T",
-            "--timeout",
-            float({ min: 0, metavar: "SECONDS" }),
-            {
-              description:
-                message`Set timeout for network requests in seconds.`,
-            },
-          ),
-          {
-            context: configContext,
-            key: (config) => config.lookup?.timeout,
-          },
-        ),
-      ),
     }),
   ),
   {

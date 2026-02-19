@@ -6,6 +6,7 @@ import { bindConfig } from "@optique/config";
 import {
   command,
   constant,
+  group,
   type InferValue,
   integer,
   merge,
@@ -120,7 +121,7 @@ export const relayCommand = command(
         },
       ),
     }),
-    createTunnelOption("relay"),
+    group("Tunnel options", createTunnelOption("relay")),
   ),
   {
     brief: message`Run an ephemeral ActivityPub relay server.`,

@@ -27,6 +27,7 @@ import { bindConfig } from "@optique/config";
 import {
   command,
   constant,
+  group,
   type InferValue,
   merge,
   message,
@@ -96,8 +97,6 @@ export const inboxCommand = command(
           default: [],
         },
       ),
-    }),
-    object({
       actorName: bindConfig(
         option("--actor-name", string({ metavar: "NAME" }), {
           description: message`Customize the actor display name.`,
@@ -136,7 +135,7 @@ export const inboxCommand = command(
         },
       ),
     }),
-    createTunnelOption("inbox"),
+    group("Tunnel options", createTunnelOption("inbox")),
   ),
   {
     brief: message`Run an ephemeral ActivityPub inbox server.`,
