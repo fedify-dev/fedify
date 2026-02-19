@@ -186,16 +186,16 @@ test("clearTimeoutSignal - cleans up timer properly", async () => {
   assert.ok(!signal.aborted);
 });
 
-test("authorizedFetchOption - parses successfully without -a flag", async () => {
-  const result = await runWithConfig(authorizedFetchOption, configContext, {
-    load: () => ({}),
-    args: [],
-  });
-  assert.strictEqual(result.authorizedFetch, false);
-  // When authorizedFetch is false, firstKnock still gets a default.
-  // tunnelService stays undefined and is picked later by tunnel setup.
-  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
-  assert.strictEqual(result.tunnelService, undefined);
+test("authorizedFetchOption - parses successfully without -a flag", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(authorizedFetchOption, []);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, false);
+    assert.strictEqual(result.value.firstKnock, undefined);
+    assert.strictEqual(result.value.tunnelService, undefined);
+  }
 });
 
 test("authorizedFetchOption - parses with -a without tunnelService config", async () => {
@@ -204,7 +204,54 @@ test("authorizedFetchOption - parses with -a without tunnelService config", asyn
     args: ["-a"],
   });
   assert.strictEqual(result.authorizedFetch, true);
+  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
   assert.strictEqual(result.tunnelService, undefined);
+});
+
+test("authorizedFetchOption - uses config to enable authorized fetch", async () => {
+  const result = await runWithConfig(authorizedFetchOption, configContext, {
+    load: () => ({ lookup: { authorizedFetch: true } }),
+    args: [],
+  });
+  assert.strictEqual(result.authorizedFetch, true);
+  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
+  assert.strictEqual(result.tunnelService, undefined);
+});
+
+test("authorizedFetchOption - reads firstKnock from config", async () => {
+  const result = await runWithConfig(authorizedFetchOption, configContext, {
+    load: () => ({
+      lookup: {
+        authorizedFetch: true,
+        firstKnock: "rfc9421",
+      },
+      tunnelService: "serveo.net",
+    }),
+    args: [],
+  });
+  assert.strictEqual(result.authorizedFetch, true);
+  assert.strictEqual(result.firstKnock, "rfc9421");
+  assert.strictEqual(result.tunnelService, undefined);
+});
+
+test("authorizedFetchOption - invalid when --first-knock is used without -a", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(authorizedFetchOption, [
+    "--first-knock",
+    "rfc9421",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(!result.success);
+});
+
+test("authorizedFetchOption - invalid when --tunnel-service is used without -a", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(authorizedFetchOption, [
+    "--tunnel-service",
+    "serveo.net",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(!result.success);
 });
 
 test("authorizedFetchOption - parses successfully with -a flag", () => {

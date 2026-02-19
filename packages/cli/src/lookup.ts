@@ -34,6 +34,7 @@ import {
   optionNames,
   or,
   string,
+  withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
@@ -53,39 +54,45 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
-export const authorizedFetchOption = object("Authorized fetch options", {
-  authorizedFetch: bindConfig(
-    map(
-      flag("-a", "--authorized-fetch", {
-        description: message`Sign the request with an one-time key.`,
-      }),
-      () => true as const,
-    ),
-    {
-      context: configContext,
-      key: (config) => config.lookup?.authorizedFetch ?? false,
-      default: false,
-    },
-  ),
-  firstKnock: bindConfig(
-    option(
-      "--first-knock",
-      choice(["draft-cavage-http-signatures-12", "rfc9421"]),
+export const authorizedFetchOption = withDefault(
+  object("Authorized fetch options", {
+    authorizedFetch: bindConfig(
+      map(
+        flag("-a", "--authorized-fetch", {
+          description: message`Sign the request with an one-time key.`,
+        }),
+        () => true as const,
+      ),
       {
-        description: message`The first-knock spec for ${
-          optionNames(["-a", "--authorized-fetch"])
-        }. It is used for the double-knocking technique.`,
+        context: configContext,
+        key: (config) => config.lookup?.authorizedFetch ? true : undefined,
       },
     ),
-    {
-      context: configContext,
-      key: (config) =>
-        config.lookup?.firstKnock ?? "draft-cavage-http-signatures-12",
-      default: "draft-cavage-http-signatures-12" as const,
-    },
-  ),
-  tunnelService: createTunnelServiceOption(),
-});
+    firstKnock: bindConfig(
+      option(
+        "--first-knock",
+        choice(["draft-cavage-http-signatures-12", "rfc9421"]),
+        {
+          description: message`The first-knock spec for ${
+            optionNames(["-a", "--authorized-fetch"])
+          }. It is used for the double-knocking technique.`,
+        },
+      ),
+      {
+        context: configContext,
+        key: (config) =>
+          config.lookup?.firstKnock ?? "draft-cavage-http-signatures-12",
+        default: "draft-cavage-http-signatures-12" as const,
+      },
+    ),
+    tunnelService: createTunnelServiceOption(),
+  }),
+  {
+    authorizedFetch: false as const,
+    firstKnock: undefined,
+    tunnelService: undefined,
+  } as const,
+);
 
 const traverseOption = object("Traverse options", {
   traverse: bindConfig(
