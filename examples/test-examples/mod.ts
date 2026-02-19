@@ -26,8 +26,8 @@ import { fromFileUrl, join } from "@std/path";
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-const EXAMPLES_DIR = new URL("../", import.meta.url).pathname;
-const REPO_ROOT = new URL("../../", import.meta.url).pathname;
+const EXAMPLES_DIR = fromFileUrl(new URL("../", import.meta.url));
+const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
 //
