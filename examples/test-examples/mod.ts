@@ -682,8 +682,7 @@ async function testMultiHandleExample(
       stderr: "piped",
     }).output();
 
-    const output =
-      new TextDecoder().decode(result.stdout) +
+    const output = new TextDecoder().decode(result.stdout) +
       new TextDecoder().decode(result.stderr);
     scriptLogger.debug("Output:\n{output}", { output: output.trim() });
     lastOutput = output;

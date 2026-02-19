@@ -71,7 +71,7 @@ export function integrateFederation<TContextData>(
 
 function fromERequest(req: ERequest): Request {
   const url = `${req.protocol}://${
-    req.header("Host") ?? req.hostname
+    req.hostname ?? req.header("Host")
   }${req.url}`;
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
