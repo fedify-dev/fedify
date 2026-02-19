@@ -1,4 +1,4 @@
-import type { Note, Person } from "@fedify/fedify";
+import type { Note, Person } from "@fedify/vocab";
 
 declare global {
   var keyPairsStore: Map<string, Array<CryptoKeyPair>>;
