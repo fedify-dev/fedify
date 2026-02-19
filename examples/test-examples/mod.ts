@@ -390,7 +390,7 @@ async function forceKillProc(proc: Deno.ChildProcess): Promise<void> {
 // ─── Tunnel ───────────────────────────────────────────────────────────────────
 
 /**
- * Starts `fedify tunnel -s localhost.run <port>` and waits up to `timeoutMs`
+ * Starts `fedify tunnel -s pinggy.io <port>` and waits up to `timeoutMs`
  * for the tunnel URL to appear in its output.  The tunnel process is kept
  * alive and returned to the caller; it must be killed when no longer needed.
  *
