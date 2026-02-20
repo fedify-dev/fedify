@@ -1,7 +1,7 @@
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
 import Fastify from "fastify";
-import fedifyPlugin from "../../packages/fastify/src/index.ts";
+import fedifyPlugin from "@fedify/fastify";
 
 const fastify = Fastify({ logger: true });
 

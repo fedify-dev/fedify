@@ -1,4 +1,4 @@
-import { createFederation, MemoryKvStore } from "@fedify/fedify/federation";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { federation } from "@fedify/hono";
 import { Person } from "@fedify/vocab";
 import { Hono } from "hono";

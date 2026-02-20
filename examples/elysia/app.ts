@@ -11,7 +11,7 @@ federation.setNodeInfoDispatcher("/nodeinfo/2.1", (ctx) => {
   return {
     software: {
       name: "fedify-elysia", // Lowercase, digits, and hyphens only.
-      version: { major: 1, minor: 0, patch: 0 },
+      version: "1.0.0",
       homepage: new URL(ctx.canonicalOrigin),
     },
     protocols: ["activitypub"],

@@ -1,3 +1,4 @@
+import { integrateFederation, onError } from "@fedify/h3";
 import {
   createApp,
   createRouter,
@@ -5,8 +6,7 @@ import {
   setResponseHeader,
   toWebHandler,
 } from "h3";
-import { integrateFederation, onError } from "../src";
-import { federation } from "./federation";
+import { federation } from "./federation.ts";
 
 export const app = createApp({
   onError,

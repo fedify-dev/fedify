@@ -1,4 +1,5 @@
-import { createFederation, MemoryKvStore, Note } from "@fedify/fedify";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
 
 // Mock data - in a real application, this would query your database
 const POSTS = [

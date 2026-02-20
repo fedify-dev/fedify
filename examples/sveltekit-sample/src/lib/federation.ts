@@ -2,7 +2,6 @@ import {
   createFederation,
   generateCryptoKeyPair,
   MemoryKvStore,
-  PUBLIC_COLLECTION,
 } from "@fedify/fedify";
 import {
   Accept,
@@ -11,6 +10,7 @@ import {
   Image,
   Note,
   Person,
+  PUBLIC_COLLECTION,
   type Recipient,
   Undo,
 } from "@fedify/vocab";

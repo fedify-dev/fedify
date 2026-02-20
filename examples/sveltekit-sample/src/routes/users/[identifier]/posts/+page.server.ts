@@ -1,7 +1,7 @@
 import { default as federation, default as fedi } from "$lib/federation";
 import { getPosts, getUser } from "$lib/fetch";
 import { postStore } from "$lib/store";
-import { Create, Note } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 import { error, redirect } from "@sveltejs/kit";
 import type { Action, Actions, PageServerLoad } from "./$types";
 
