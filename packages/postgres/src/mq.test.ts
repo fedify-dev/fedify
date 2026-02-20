@@ -231,6 +231,39 @@ nodeTest(
   },
 );
 
+// Regression test for duplicate object race during concurrent initialization.
+//
+// PostgreSQL can raise duplicate object errors (code 42710) even when
+// CREATE TABLE IF NOT EXISTS is used concurrently on the same table.
+// Multiple queue instances often initialize in parallel in real deployments
+// and in cross-runtime test runners.
+nodeTest(
+  "PostgresMessageQueue concurrent initialization tolerates duplicate object races",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+    const sqls = Array.from({ length: 12 }, () => postgres(dbUrl!));
+    const mqs = sqls.map((sql) =>
+      new PostgresMessageQueue(sql, { tableName, channelName })
+    );
+
+    try {
+      await Promise.all(mqs.map((mq) => mq.initialize()));
+      await mqs[0].enqueue("initialize-race-smoke");
+    } finally {
+      try {
+        await mqs[0].drop();
+      } catch {
+        // Ignore cleanup errors to preserve original test failure context.
+      }
+      await Promise.all(sqls.map((sql) => sql.end()));
+    }
+  },
+);
+
 // Regression test for poll serialization ensuring no messages are lost.
 // When multiple messages are enqueued BEFORE listen() starts, there are no
 // NOTIFY signals to trigger immediate polling — the listener must discover

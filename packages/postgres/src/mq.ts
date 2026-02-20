@@ -9,6 +9,23 @@ import postgres from "postgres";
 import { driverSerializesJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "postgres", "mq"]);
+const INITIALIZE_MAX_ATTEMPTS = 5;
+const INITIALIZE_BACKOFF_MS = 10;
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function isInitializationRaceError(error: unknown): boolean {
+  return error instanceof postgres.PostgresError &&
+    (
+      // When concurrent CREATE TABLE IF NOT EXISTS statements race, PostgreSQL
+      // may still raise duplicate-type errors for the table's implicit row type.
+      error.constraint_name === "pg_type_typname_nsp_index" ||
+      error.code === "42P07" || // duplicate_table
+      error.code === "42710" // duplicate_object
+    );
+}
 
 /**
  * Options for the PostgreSQL message queue.
@@ -348,8 +365,9 @@ export class PostgresMessageQueue implements MessageQueue {
     logger.debug("Initializing the message queue table {tableName}...", {
       tableName: this.#tableName,
     });
-    try {
-      await this.#sql`
+    for (let attempt = 1; attempt <= INITIALIZE_MAX_ATTEMPTS; attempt++) {
+      try {
+        await this.#sql`
       CREATE TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         message jsonb NOT NULL,
@@ -358,26 +376,35 @@ export class PostgresMessageQueue implements MessageQueue {
         ordering_key text
       );
     `;
-      // Add ordering_key column if it doesn't exist (for existing tables)
-      await this.#sql`
+        // Add ordering_key column if it doesn't exist (for existing tables)
+        await this.#sql`
       ALTER TABLE ${this.#sql(this.#tableName)}
       ADD COLUMN IF NOT EXISTS ordering_key text;
     `;
-    } catch (error) {
-      if (
-        !(error instanceof postgres.PostgresError &&
-          (error.constraint_name === "pg_type_typname_nsp_index" ||
-            // When multiple PostgresMessageQueue instances sharing the same
-            // table name initialize concurrently (e.g., mq1 and mq2 in
-            // tests), the concurrent CREATE TABLE IF NOT EXISTS statements
-            // can race and one may fail with 42P07 (duplicate_table).
-            // This is safe to ignore because the table already exists.
-            error.code === "42P07"))
-      ) {
-        logger.error("Failed to initialize the message queue table: {error}", {
-          error,
-        });
-        throw error;
+        break;
+      } catch (error) {
+        if (
+          !isInitializationRaceError(error) ||
+          attempt >= INITIALIZE_MAX_ATTEMPTS
+        ) {
+          logger.error(
+            "Failed to initialize the message queue table: {error}",
+            { error },
+          );
+          throw error;
+        }
+        const backoffMs = INITIALIZE_BACKOFF_MS * 2 ** (attempt - 1);
+        logger.debug(
+          "Initialization raced for table {tableName}; retrying in {backoffMs}ms (attempt {attempt}/{maxAttempts}).",
+          {
+            tableName: this.#tableName,
+            backoffMs,
+            attempt,
+            maxAttempts: INITIALIZE_MAX_ATTEMPTS,
+            error,
+          },
+        );
+        await sleep(backoffMs);
       }
     }
     this.#driverSerializesJson = await driverSerializesJson(this.#sql);
