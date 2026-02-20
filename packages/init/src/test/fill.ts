@@ -39,11 +39,11 @@ const fillOption = <
   : DefineOption<T, K> =>
   ({
     ...options,
-    [key]: (isEmpty(options[key])
+    [key]: isEmpty(options[key])
       ? allValues
       : (options[key].filter((i) =>
         (allValues as readonly unknown[]).includes(i)
-      ) as T[K])),
+      ) as T[K]),
   }) as T extends Awaited<DefineOption<T, infer J>> | DefineOption<T, infer J>
     ? DefineOption<T, J | K>
     : DefineOption<T, K>;

@@ -6,4 +6,4 @@ runs:
   steps:
   - uses: denoland/setup-deno@v2
     with:
-      deno-version: 2.6.4  # Keep in sync with mise.toml
+      deno-version: 2.6.10  # Keep in sync with mise.toml
