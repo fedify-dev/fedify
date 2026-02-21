@@ -369,6 +369,30 @@ snapshot[`Deno.inspect(PropertyValue) [auto] 2`] = `'PropertyValue { id: URL "ht
 
 snapshot[`Deno.inspect(PropertyValue) [auto] 3`] = `'PropertyValue { id: URL "https://example.com/", name: "hello", value: "hello" }'`;
 
+snapshot[`Deno.inspect(Measure) [auto] 1`] = `
+'Measure {
+  id: URL "https://example.com/",
+  hasUnit: "hello",
+  hasNumericalValue: "hello"
+}'
+`;
+
+snapshot[`Deno.inspect(Measure) [auto] 2`] = `
+'Measure {
+  id: URL "https://example.com/",
+  hasUnit: "hello",
+  hasNumericalValue: "hello"
+}'
+`;
+
+snapshot[`Deno.inspect(Measure) [auto] 3`] = `
+'Measure {
+  id: URL "https://example.com/",
+  hasUnit: "hello",
+  hasNumericalValue: "hello"
+}'
+`;
+
 snapshot[`Deno.inspect(Export) [auto] 1`] = `
 'Export {
   id: URL "https://example.com/",
@@ -534,6 +558,165 @@ snapshot[`Deno.inspect(Multikey) [auto] 3`] = `
     algorithm: { name: "Ed25519" },
     usages: [ "verify" ]
   }
+}'
+`;
+
+snapshot[`Deno.inspect(Intent) [auto] 1`] = `
+'Intent {
+  id: URL "https://example.com/",
+  action: "hello",
+  resourceConformsTo: URL "https://example.com/",
+  resourceQuantity: Measure {},
+  availableQuantity: Measure {},
+  minimumQuantity: Measure {}
+}'
+`;
+
+snapshot[`Deno.inspect(Intent) [auto] 2`] = `
+'Intent {
+  id: URL "https://example.com/",
+  action: "hello",
+  resourceConformsTo: URL "https://example.com/",
+  resourceQuantity: Measure {},
+  availableQuantity: Measure {},
+  minimumQuantity: Measure {}
+}'
+`;
+
+snapshot[`Deno.inspect(Intent) [auto] 3`] = `
+'Intent {
+  id: URL "https://example.com/",
+  action: "hello",
+  resourceConformsTo: URL "https://example.com/",
+  resourceQuantity: Measure {},
+  availableQuantity: Measure {},
+  minimumQuantity: Measure {}
+}'
+`;
+
+snapshot[`Deno.inspect(Proposal) [auto] 1`] = `
+'Proposal {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Link {}, PropertyValue {} ],
+  attributions: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
+  audience: Object {},
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ Object {}, Link {} ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Link {} ],
+  icon: Image {},
+  image: Image {},
+  replyTargets: [ Object {}, Link {} ],
+  locations: [ Object {}, Link {} ],
+  previews: [ Link {}, Object {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ Object {}, Link {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: Object {},
+  bto: Object {},
+  cc: Object {},
+  bcc: Object {},
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: DataIntegrityProof {},
+  purpose: "hello",
+  publishes: Intent {},
+  reciprocal: Intent {},
+  unitBased: true
+}'
+`;
+
+snapshot[`Deno.inspect(Proposal) [auto] 2`] = `
+'Proposal {
+  id: URL "https://example.com/",
+  attachments: [ URL "https://example.com/" ],
+  attribution: URL "https://example.com/",
+  audience: URL "https://example.com/",
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ URL "https://example.com/" ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ URL "https://example.com/" ],
+  icon: URL "https://example.com/",
+  image: URL "https://example.com/",
+  replyTarget: URL "https://example.com/",
+  location: URL "https://example.com/",
+  preview: URL "https://example.com/",
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: URL "https://example.com/",
+  shares: URL "https://example.com/",
+  likes: URL "https://example.com/",
+  emojiReactions: URL "https://example.com/",
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ URL "https://example.com/" ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: URL "https://example.com/",
+  bto: URL "https://example.com/",
+  cc: URL "https://example.com/",
+  bcc: URL "https://example.com/",
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: URL "https://example.com/",
+  purpose: "hello",
+  publishes: URL "https://example.com/",
+  reciprocal: URL "https://example.com/",
+  unitBased: true
+}'
+`;
+
+snapshot[`Deno.inspect(Proposal) [auto] 3`] = `
+'Proposal {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Object {} ],
+  attributions: [ Application {}, Application {} ],
+  audiences: [ Object {}, Object {} ],
+  contents: [ "hello", "hello" ],
+  contexts: [ Object {}, Object {} ],
+  names: [ "hello", "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Object {} ],
+  icons: [ Image {}, Image {} ],
+  images: [ Image {}, Image {} ],
+  replyTargets: [ Object {}, Object {} ],
+  locations: [ Object {}, Object {} ],
+  previews: [ Link {}, Link {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", "hello" ],
+  tags: [ Object {}, Object {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", URL "https://example.com/" ],
+  tos: [ Object {}, Object {} ],
+  btos: [ Object {}, Object {} ],
+  ccs: [ Object {}, Object {} ],
+  bccs: [ Object {}, Object {} ],
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proofs: [ DataIntegrityProof {}, DataIntegrityProof {} ],
+  purpose: "hello",
+  publishes: Intent {},
+  reciprocal: Intent {},
+  unitBased: true
 }'
 `;
 
