@@ -363,6 +363,21 @@ To be released.
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
 
+### @fedify/vocab
+
+ -  Added vocabulary types for economic resource coordination
+    in federated networks.  [[#578]]
+
+     -  Added `Proposal` class for publishing offers or requests.
+     -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+     -  Added `Measure` class for representing quantities with units of
+        measure, with `hasUnit` and `hasNumericalValue` properties.
+
+[#578]: https://github.com/fedify-dev/fedify/issues/578
+[ValueFlows]: https://www.valueflo.ws/
+
 ### @fedify/elysia
 
  -  Added *deno.json* configuration file to enable proper Deno tooling support
