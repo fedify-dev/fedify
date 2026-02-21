@@ -1,0 +1,72 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Intent
+compactName: Intent
+uri: "https://w3id.org/valueflows/ont/vf#Intent"
+entity: true
+description: |
+  A proposed economic transaction describing what is being offered or requested
+  in a {@link Proposal}.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- vf: "https://w3id.org/valueflows/ont/vf#"
+  om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  Intent: "vf:Intent"
+  action: "vf:action"
+  resourceConformsTo:
+    "@id": "vf:resourceConformsTo"
+    "@type": "@id"
+  resourceQuantity: "vf:resourceQuantity"
+  availableQuantity: "vf:availableQuantity"
+  minimumQuantity: "vf:minimumQuantity"
+  hasUnit: "om2:hasUnit"
+  hasNumericalValue: "om2:hasNumericalValue"
+
+properties:
+- singularName: action
+  functional: true
+  compactName: action
+  uri: "https://w3id.org/valueflows/ont/vf#action"
+  description: |
+    The type of economic transaction.  The value of this property should be
+    either `"deliverService"` or `"transfer"`.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+
+- singularName: resourceConformsTo
+  functional: true
+  compactName: resourceConformsTo
+  uri: "https://w3id.org/valueflows/ont/vf#resourceConformsTo"
+  description: |
+    The type of an economic resource.  Could be any URI.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: resourceQuantity
+  functional: true
+  compactName: resourceQuantity
+  uri: "https://w3id.org/valueflows/ont/vf#resourceQuantity"
+  untyped: true
+  description: |
+    The amount and unit of the economic resource.
+  range:
+  - "http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"
+
+- singularName: availableQuantity
+  functional: true
+  compactName: availableQuantity
+  uri: "https://w3id.org/valueflows/ont/vf#availableQuantity"
+  untyped: true
+  description: |
+    The quantity of the offered resource currently available.
+  range:
+  - "http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"
+
+- singularName: minimumQuantity
+  functional: true
+  compactName: minimumQuantity
+  uri: "https://w3id.org/valueflows/ont/vf#minimumQuantity"
+  untyped: true
+  description: |
+    The minimum possible quantity of the resource.
+  range:
+  - "http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"

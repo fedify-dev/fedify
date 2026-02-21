@@ -1,0 +1,72 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Proposal
+compactName: Proposal
+uri: "https://w3id.org/valueflows/ont/vf#Proposal"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  A published request or offer, sometimes with what is expected in return.
+
+  Proposals contain a primary {@link Intent} (via `publishes`) describing
+  what is being offered or requested, and optionally a reciprocal
+  {@link Intent} describing what is expected or offered in return.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- vf: "https://w3id.org/valueflows/ont/vf#"
+  om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  Proposal: "vf:Proposal"
+  Intent: "vf:Intent"
+  purpose: "vf:purpose"
+  unitBased: "vf:unitBased"
+  publishes: "vf:publishes"
+  reciprocal: "vf:reciprocal"
+  action: "vf:action"
+  resourceConformsTo:
+    "@id": "vf:resourceConformsTo"
+    "@type": "@id"
+  resourceQuantity: "vf:resourceQuantity"
+  availableQuantity: "vf:availableQuantity"
+  minimumQuantity: "vf:minimumQuantity"
+  hasUnit: "om2:hasUnit"
+  hasNumericalValue: "om2:hasNumericalValue"
+
+properties:
+- singularName: purpose
+  functional: true
+  compactName: purpose
+  uri: "https://w3id.org/valueflows/ont/vf#purpose"
+  description: |
+    The type of proposal.  Possible values are `"offer"` and `"request"`.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+
+- singularName: publishes
+  functional: true
+  compactName: publishes
+  uri: "https://w3id.org/valueflows/ont/vf#publishes"
+  description: |
+    The primary intent of this proposal, describing what is being offered
+    or requested.
+  range:
+  - "https://w3id.org/valueflows/ont/vf#Intent"
+
+- singularName: reciprocal
+  functional: true
+  compactName: reciprocal
+  uri: "https://w3id.org/valueflows/ont/vf#reciprocal"
+  description: |
+    The reciprocal intent of this proposal, describing what is expected
+    or offered in return.
+  range:
+  - "https://w3id.org/valueflows/ont/vf#Intent"
+
+- singularName: unitBased
+  functional: true
+  compactName: unitBased
+  uri: "https://w3id.org/valueflows/ont/vf#unitBased"
+  description: |
+    Indicates whether the quantities expressed in the proposal can be
+    multiplied or not.  The default is `false`.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#boolean"
