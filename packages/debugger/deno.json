@@ -1,13 +1,19 @@
 {
   "name": "@fedify/debugger",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.tsx"
   },
-  "exclude": ["dist/", "node_modules/"],
+  "exclude": [
+    "dist/",
+    "node_modules/"
+  ],
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/**/*.ts src/**/*.tsx",
