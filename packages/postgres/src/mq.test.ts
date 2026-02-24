@@ -649,4 +649,202 @@ nodeTest(
   },
 );
 
+// Regression test for unhandled rejection in onsubscribe poll.
+//
+// If handler throws during the initial poll triggered by LISTEN subscription,
+// listen() must continue running and process subsequent messages.
+//
+// See: https://github.com/fedify-dev/fedify/issues/581
+nodeTest(
+  "PostgresMessageQueue survives handler error during subscribe poll",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 80 },
+    });
+
+    try {
+      await mq.initialize();
+      // Pre-enqueue to ensure the first handler invocation happens in
+      // the subscribe-triggered initial poll.
+      await mq.enqueue(1);
+
+      let threwOnFirstMessage = false;
+      let processedSecondMessage = false;
+      const controller = new AbortController();
+      const listening = mq.listen(
+        (message: number) => {
+          if (message === 1 && !threwOnFirstMessage) {
+            threwOnFirstMessage = true;
+            throw new Error("test: first subscribe poll handler failure");
+          }
+          if (message === 2) {
+            processedSecondMessage = true;
+            controller.abort();
+          }
+        },
+        { signal: controller.signal },
+      );
+
+      const firstStart = Date.now();
+      while (!threwOnFirstMessage && Date.now() - firstStart < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      deepStrictEqual(
+        threwOnFirstMessage,
+        true,
+        "First pre-enqueued message should trigger a handler error",
+      );
+
+      await mq.enqueue(2);
+      const secondStart = Date.now();
+      while (!processedSecondMessage && Date.now() - secondStart < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      deepStrictEqual(
+        processedSecondMessage,
+        true,
+        "Listener should continue and process messages after subscribe poll failure",
+      );
+
+      if (!controller.signal.aborted) controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for unhandled rejection in fallback interval poll.
+//
+// If poll() throws during periodic polling (without NOTIFY), listener must
+// remain alive and retry on the next interval.
+//
+// See: https://github.com/fedify-dev/fedify/issues/581
+nodeTest(
+  "PostgresMessageQueue survives handler error during interval poll",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 80 },
+    });
+
+    try {
+      await mq.initialize();
+
+      let threwOnFirstMessage = false;
+      let processedSecondMessage = false;
+      const controller = new AbortController();
+      const listening = mq.listen(
+        (message: number) => {
+          if (message === 1 && !threwOnFirstMessage) {
+            threwOnFirstMessage = true;
+            throw new Error("test: first interval poll handler failure");
+          }
+          if (message === 2) {
+            processedSecondMessage = true;
+            controller.abort();
+          }
+        },
+        { signal: controller.signal },
+      );
+
+      // Ensure initial subscribe poll has run before inserting direct rows.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Insert directly to avoid NOTIFY; processing must happen via interval poll.
+      await sql`
+        INSERT INTO ${sql(tableName)} (message, delay, ordering_key)
+        VALUES ('1'::jsonb, '0 seconds'::interval, NULL)
+      `;
+      const firstStart = Date.now();
+      while (!threwOnFirstMessage && Date.now() - firstStart < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      deepStrictEqual(
+        threwOnFirstMessage,
+        true,
+        "First directly inserted message should trigger a handler error",
+      );
+
+      await sql`
+        INSERT INTO ${sql(tableName)} (message, delay, ordering_key)
+        VALUES ('2'::jsonb, '0 seconds'::interval, NULL)
+      `;
+      const secondStart = Date.now();
+      while (!processedSecondMessage && Date.now() - secondStart < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      deepStrictEqual(
+        processedSecondMessage,
+        true,
+        "Listener should continue and process later interval-polled messages",
+      );
+
+      if (!controller.signal.aborted) controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for missing created index used by dequeue query ordering.
+//
+// See: https://github.com/fedify-dev/fedify/issues/581
+nodeTest(
+  "PostgresMessageQueue initialize creates created index",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, { tableName, channelName });
+
+    try {
+      await mq.initialize();
+
+      const rows = await sql`
+        SELECT indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname = current_schema()
+          AND tablename = ${tableName}
+      `;
+      const hasCreatedIndex = rows.some((row) =>
+        row.indexname.startsWith("idx_fedify_mq_created_") &&
+        row.indexdef.includes("(created)")
+      );
+      deepStrictEqual(
+        hasCreatedIndex,
+        true,
+        "initialize() should create an index on the created column",
+      );
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cspell: ignore sqls
