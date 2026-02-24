@@ -1,6 +1,6 @@
 {
   "name": "@fedify/debugger",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Embedded ActivityPub debug dashboard for Fedify",
   "type": "module",
   "main": "./dist/mod.cjs",
