@@ -19,6 +19,15 @@ To be released.
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 
+### @fedify/astro
+
+ -  Added `@fedify/astro` package for integrating Fedify with [Astro].
+    It provides `fedifyIntegration()` for Vite SSR configuration and
+    `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
+
+[Astro]: https://astro.build/
+[#50]: https://github.com/fedify-dev/fedify/issues/50
+
 ### @fedify/init
 
  -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
