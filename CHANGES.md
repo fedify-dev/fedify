@@ -3,10 +3,47 @@
 Fedify changelog
 ================
 
-Version 2.0.0
+Version 2.1.0
 -------------
 
 To be released.
+
+
+Version 2.0.1
+-------------
+
+Released on February 24, 2026.
+
+### @fedify/cli
+
+ -  Fixed `fedify` command hanging indefinitely when invoked as an executable
+    (e.g., via `npx @fedify/cli` or `npm exec -- fedify`) on Linux.  The
+    shebang line `#!/usr/bin/env node --disable-warning=ExperimentalWarning`
+    was passing `node --disable-warning=ExperimentalWarning` as a single
+    argument to `env`, which caused an infinite exec loop on Linux because the
+    kernel passes all shebang arguments as one string.  Fixed by using
+    `env -S` to properly split arguments:
+    `#!/usr/bin/env -S node --disable-warning=ExperimentalWarning`.
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue.listen()` permanently stopping message
+    processing when `poll()` throws (e.g., transient PostgreSQL errors or
+    handler failures).  `listen()` now catches polling errors for subscribe,
+    notify, and interval-triggered polls, logs them, and retries on subsequent
+    triggers instead of terminating the listener.  [[#581]]
+
+ -  `PostgresMessageQueue.initialize()` now creates an index on the `created`
+    column (`idx_{table}_created`) to improve dequeue query performance under
+    backlog growth.  [[#581]]
+
+[#581]: https://github.com/fedify-dev/fedify/issues/581
+
+
+Version 2.0.0
+-------------
+
+Released on February 22, 2026.
 
 ### @fedify/fedify
 

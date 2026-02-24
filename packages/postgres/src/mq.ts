@@ -22,9 +22,21 @@ function isInitializationRaceError(error: unknown): boolean {
       // When concurrent CREATE TABLE IF NOT EXISTS statements race, PostgreSQL
       // may still raise duplicate-type errors for the table's implicit row type.
       error.constraint_name === "pg_type_typname_nsp_index" ||
+      // Concurrent CREATE INDEX IF NOT EXISTS can race on pg_class metadata.
+      error.constraint_name === "pg_class_relname_nsp_index" ||
       error.code === "42P07" || // duplicate_table
       error.code === "42710" // duplicate_object
     );
+}
+
+function getCreatedIndexName(tableName: string): string {
+  // Keep identifier short and deterministic to avoid PostgreSQL's 63-byte
+  // identifier truncation collisions for long/UUID-based table names.
+  let hash = 0;
+  for (let i = 0; i < tableName.length; i++) {
+    hash = (hash * 31 + tableName.charCodeAt(i)) >>> 0;
+  }
+  return `idx_fedify_mq_created_${hash.toString(16).padStart(8, "0")}`;
 }
 
 /**
@@ -312,22 +324,32 @@ export class PostgresMessageQueue implements MessageQueue {
       pollLock = next.catch(() => {});
       return next;
     };
+    const safeSerializedPoll = async (trigger: string) => {
+      try {
+        await serializedPoll();
+      } catch (error) {
+        logger.error(
+          "Error while polling for messages ({trigger}); will retry on next trigger: {error}",
+          { trigger, error },
+        );
+      }
+    };
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
     const listen = await this.#sql.listen(
       this.#channelName,
       async (delay) => {
         const duration = Temporal.Duration.from(delay);
         const durationMs = duration.total("millisecond");
-        if (durationMs < 1) await serializedPoll();
+        if (durationMs < 1) await safeSerializedPoll("notify-immediate");
         else {
           const timeout = setTimeout(() => {
             timeouts.delete(timeout);
-            void serializedPoll();
+            void safeSerializedPoll("notify-delayed");
           }, durationMs);
           timeouts.add(timeout);
         }
       },
-      serializedPoll,
+      () => safeSerializedPoll("subscribe"),
     );
     signal?.addEventListener("abort", () => {
       listen.unlisten();
@@ -345,7 +367,7 @@ export class PostgresMessageQueue implements MessageQueue {
         timeouts.add(timeout);
       });
       if (timeout != null) timeouts.delete(timeout);
-      await serializedPoll();
+      await safeSerializedPoll("interval");
     }
     await new Promise<void>((resolve) => {
       signal?.addEventListener("abort", () => resolve());
@@ -380,6 +402,12 @@ export class PostgresMessageQueue implements MessageQueue {
         await this.#sql`
       ALTER TABLE ${this.#sql(this.#tableName)}
       ADD COLUMN IF NOT EXISTS ordering_key text;
+    `;
+        await this.#sql`
+      CREATE INDEX IF NOT EXISTS ${
+          this.#sql(getCreatedIndexName(this.#tableName))
+        }
+      ON ${this.#sql(this.#tableName)} (created);
     `;
         break;
       } catch (error) {
