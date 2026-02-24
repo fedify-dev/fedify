@@ -1,4 +1,4 @@
-#!/usr/bin/env node --disable-warning=ExperimentalWarning
+#!/usr/bin/env -S node --disable-warning=ExperimentalWarning
 import { runWithConfig } from "@optique/config/run";
 import { group, merge, message, or } from "@optique/core";
 import { printError } from "@optique/run";

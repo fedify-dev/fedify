@@ -8,6 +8,17 @@ Version 2.0.1
 
 To be released.
 
+### @fedify/cli
+
+ -  Fixed `fedify` command hanging indefinitely when invoked as an executable
+    (e.g., via `npx @fedify/cli` or `npm exec -- fedify`) on Linux.  The
+    shebang line `#!/usr/bin/env node --disable-warning=ExperimentalWarning`
+    was passing `node --disable-warning=ExperimentalWarning` as a single
+    argument to `env`, which caused an infinite exec loop on Linux because the
+    kernel passes all shebang arguments as one string.  Fixed by using
+    `env -S` to properly split arguments:
+    `#!/usr/bin/env -S node --disable-warning=ExperimentalWarning`.
+
 
 Version 2.0.0
 -------------
