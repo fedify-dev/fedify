@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/astro: Integrate Fedify with Astro
-==========================================
+@fedify/astro: Integrate Fedify with `Astro`
+============================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -35,7 +35,7 @@ const federation = createFederation<void>({
 
 export const onRequest = fedifyMiddleware(
   federation,
-  (context) => undefined,
+  (context) => void 0,
 );
 ~~~~
 
@@ -47,6 +47,38 @@ export const onRequest = fedifyMiddleware(
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Astro]: https://astro.build/
+
+
+For Deno users
+--------------
+
+If you are using Deno, you should import `@deno/vite-adapter` in
+*astro.config.mjs* and use it as the adapter:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import deno from "@deno/vite-adapter";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: deno(),
+});
+~~~~
+
+And the tasks in *deno.json* should be updated to use `deno run npm:astro`
+instead of `astro`:
+
+~~~~ json
+{
+  "tasks": {
+    "dev": "deno run -A npm:astro dev",
+    "build": "deno run -A npm:astro build",
+    "preview": "deno run -A npm:astro preview"
+  }
+}
+~~~~
 
 
 How it works
