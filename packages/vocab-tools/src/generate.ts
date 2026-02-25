@@ -5,7 +5,7 @@ import { loadSchemaFiles } from "./schema.ts";
 export default async function generateVocab(
   schemaDir: string,
   generatedPath: string,
-) {
+): Promise<void> {
   const types = await loadSchemaFiles(schemaDir);
   const encoder = new TextEncoder();
 

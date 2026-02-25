@@ -15,7 +15,7 @@ export default [
       "./src/sig/mod.ts",
       "./src/vocab/mod.ts",
     ],
-    dts: true,
+    dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
     external: [/^node:/],
@@ -40,7 +40,6 @@ export default [
       ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
         .map((f) => f.replace(sep, "/")),
     ],
-    dts: true,
     external: [/^node:/],
     inputOptions: {
       onwarn(warning, defaultHandler) {

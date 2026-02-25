@@ -1,7 +1,7 @@
 import { generateDecoder, generateEncoder } from "./codec.ts";
 import { generateCloner, generateConstructor } from "./constructor.ts";
 import { generateFields } from "./field.ts";
-import { generateInspector } from "./inspector.ts";
+import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
 import type { TypeSchema } from "./schema.ts";
 import { emitOverride } from "./type.ts";
@@ -104,6 +104,9 @@ async function* generateClass(
   for await (const code of generateDecoder(typeUri, types)) yield code;
   for await (const code of generateInspector(typeUri, types)) yield code;
   yield "}\n\n";
+  for await (const code of generateInspectorPostClass(typeUri, types)) {
+    yield code;
+  }
 }
 
 /**

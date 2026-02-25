@@ -151,8 +151,8 @@ export function integrateFederation<TContextData>(
   contextDataFactory: ContextDataFactory<TContextData> = () =>
     undefined as TContextData,
   errorHandlers?: Partial<ErrorHandlers>,
-) {
-  return async (request: Request) =>
+): (request: Request) => Promise<Response> {
+  return async (request: Request): Promise<Response> =>
     await federation.fetch(
       request,
       {
