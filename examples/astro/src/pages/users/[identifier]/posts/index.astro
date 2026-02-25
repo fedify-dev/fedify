@@ -1,0 +1,137 @@
+---
+import Layout from "../../../../layouts/Layout.astro";
+import federation from "../../../../lib/federation";
+import { postStore } from "../../../../lib/store";
+import { Create, Note } from "@fedify/vocab";
+
+const { identifier } = Astro.params;
+
+if (identifier !== "demo") {
+  return Astro.redirect("/");
+}
+
+const ctx = federation.createContext(Astro.request, undefined);
+const actor = await ctx.getActor(identifier);
+
+if (!actor) {
+  return Astro.redirect("/");
+}
+
+const user = await actor.toJsonLd() as {
+  icon: { url: string };
+  name: string;
+  preferredUsername: string;
+  url: string;
+  summary: string;
+};
+
+// Handle POST request (create new post)
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const content = formData.get("content");
+
+  if (typeof content === "string" && content.trim()) {
+    const id = crypto.randomUUID();
+    const attribution = ctx.getActorUri(identifier);
+    const url = new URL(`/users/${identifier}/posts/${id}`, attribution);
+    const post = new Note({
+      id: url,
+      attribution,
+      content,
+      url,
+    });
+    try {
+      postStore.append([post]);
+      const note = await ctx.getObject(Note, { identifier, id });
+      await ctx.sendActivity(
+        { identifier },
+        "followers",
+        new Create({
+          id: new URL("#activity", attribution),
+          object: note,
+          actors: note?.attributionIds,
+          tos: note?.toIds,
+          ccs: note?.ccIds,
+        }),
+      );
+    } catch {
+      postStore.delete(url);
+    }
+    return Astro.redirect(`/users/${identifier}/posts`, 303);
+  }
+}
+
+const host = new URL(user.url).host;
+
+// Get all posts
+const allPosts = postStore.getAll();
+const posts = await Promise.all(
+  allPosts.map(async (p) => {
+    const jsonLd = await p.toJsonLd() as {
+      published?: string;
+      content: string;
+      url: string;
+    };
+    return { ...jsonLd, author: user };
+  }),
+);
+---
+
+<Layout title={`Posts - ${user.name} - Fedify Astro Example`}>
+  <form method="POST" class="post-form">
+    <div class="profile-header">
+      <div class="avatar-section">
+        <img
+          src={user.icon?.url ?? "/demo-profile.png"}
+          alt={`${user.name}'s profile`}
+          class="avatar"
+        />
+      </div>
+      <div class="user-info">
+        <h1 class="user-name">{user.name}</h1>
+        <p class="user-handle">@{user.preferredUsername}@{host}</p>
+        {user.summary && <p class="user-bio">{user.summary}</p>}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">
+        New post
+        <textarea
+          name="content"
+          class="form-textarea"
+          placeholder="What's up?"
+          rows="3"
+        ></textarea>
+      </label>
+    </div>
+    <button type="submit" class="post-button">Post</button>
+  </form>
+
+  <div class="posts-container">
+    <h2 class="posts-title">Posts</h2>
+    <div class="posts-grid">
+      {posts.map((note) => (
+        <article class="post-card">
+          <a href={note.url} class="post-link">
+            <div class="post-header">
+              <img
+                src={note.author.icon?.url ?? "/demo-profile.png"}
+                alt={`${note.author.name}'s profile`}
+                class="post-avatar"
+              />
+              <div class="post-user-info">
+                <h3 class="post-user-name">{note.author.name}</h3>
+                <p class="post-user-handle">
+                  @{identifier}@{host}
+                </p>
+              </div>
+            </div>
+            <div class="post-content">
+              <p>{note.content}</p>
+            </div>
+          </a>
+        </article>
+      ))}
+    </div>
+  </div>
+</Layout>

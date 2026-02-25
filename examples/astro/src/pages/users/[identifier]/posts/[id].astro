@@ -1,0 +1,73 @@
+---
+import Layout from "../../../../layouts/Layout.astro";
+import federation from "../../../../lib/federation";
+import { Note } from "@fedify/vocab";
+
+const { identifier, id } = Astro.params;
+
+if (identifier !== "demo" || !id) {
+  return Astro.redirect("/");
+}
+
+const ctx = federation.createContext(Astro.request, undefined);
+const actor = await ctx.getActor(identifier);
+const noteObj = await ctx.getObject(Note, { identifier, id });
+
+if (!actor || !noteObj) {
+  return new Response("Not Found", { status: 404 });
+}
+
+const user = await actor.toJsonLd() as {
+  icon: { url: string };
+  name: string;
+  preferredUsername: string;
+  url: string;
+  summary: string;
+};
+
+const post = await noteObj.toJsonLd() as {
+  published?: string;
+  content: string;
+  url: string;
+};
+
+const host = new URL(user.url).host;
+---
+
+<Layout title={`Post - ${user.name} - Fedify Astro Example`}>
+  <div class="post-detail-container">
+    <a class="back-link" href={`/users/${identifier}/posts`}>
+      &larr; Back to posts
+    </a>
+    <article class="post-detail-card">
+      <a class="post-detail-author" href={`/users/${identifier}`}>
+        <img
+          src={user.icon?.url ?? "/demo-profile.png"}
+          alt={`${user.name}'s profile`}
+          class="author-avatar"
+        />
+        <div class="author-info">
+          <h1 class="author-name">{user.name}</h1>
+          <p class="author-handle">
+            @{user.preferredUsername}@{host}
+          </p>
+          {post.published && (
+            <time class="post-timestamp" datetime={post.published}>
+              {new Date(post.published).toLocaleString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </time>
+          )}
+        </div>
+      </a>
+
+      <div class="post-detail-content">
+        <p>{post.content}</p>
+      </div>
+    </article>
+  </div>
+</Layout>

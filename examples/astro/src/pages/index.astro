@@ -1,25 +1,69 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { relationStore } from "../lib/store";
 
 const host = Astro.url.host;
+const addresses = Array.from(relationStore.keys());
+
+const bannerText = `
+ _______  _______  _______   __   ___________    ____
+|   ____||   ____||       \\ |  | |   ____\\   \\  /   /
+|  |__   |  |__   |  .--.  ||  | |  |__   \\   \\/   /
+|   __|  |   __|  |  |  |  ||  | |   __|   \\_    _/
+|  |     |  |____ |  '--'  ||  | |  |        |  |
+|__|     |_______||_______/ |__| |__|        |__|     `;
 ---
 
 <Layout title="Fedify Astro Example">
-  <img src="/demo-profile.png" alt="Demo Profile Picture" width="100" height="100" />
-  <h1>Fedify Astro Example</h1>
-  <p>
-    This is a sample application that demonstrates how to integrate 
-    <a href="https://fedify.dev/">Fedify</a>
-    with <a href="https://astro.build/">Astro</a> on
-    <a href="https://deno.com/">Deno</a>.
-  </p>
-  <p>
-    Visit <a href="/demo">/demo</a> to see the demo actor page.
-  </p>
-  <p>
-    Try fetching the actor with an ActivityPub client with Fedify:
-  </p>
-  <pre><code>fedify lookup @demo@{host}</code></pre>
-  <p>Or with curl:</p>
-  <pre><code>curl -H "Accept: application/activity+json" {Astro.url.origin + "/demo"}</code></pre>
+  <main class="home-container">
+    <img
+      src="/astro-fedify-logo.svg"
+      alt="Fedify + Astro Logo"
+      class="home-logo"
+    />
+    <div class="home-banner">
+      <span>{bannerText}</span>
+      <span class="with-astro">
+        with
+        <a href="https://astro.build/">
+          <img
+            src="/astro-horizonal.svg"
+            alt="Astro"
+            class="astro-horizontal-logo"
+          />
+        </a>
+      </span>
+    </div>
+    <p>
+      This small federated server app is a demo of
+      <a href="https://fedify.dev" class="fedify-anchor" target="_blank">
+        Fedify
+      </a>. The only one thing it does is to accept follow requests.
+    </p>
+    <p>
+      You can follow this demo app via the below handle:{" "}
+      <code class="home-handle">@demo@{host}</code>
+    </p>
+    {addresses.length === 0 ? (
+      <p>
+        No followers yet. Try to add a follower using{" "}
+        <a
+          href="https://activitypub.academy/"
+          target="_blank"
+          style="color: #3b82f6;"
+        >
+          ActivityPub.Academy
+        </a>.
+      </p>
+    ) : (
+      <>
+        <p>This account has the below {addresses.length} followers:</p>
+        <ul class="follower-list">
+          {addresses.map((address) => (
+            <li class="follower-item">{address}</li>
+          ))}
+        </ul>
+      </>
+    )}
+  </main>
 </Layout>
