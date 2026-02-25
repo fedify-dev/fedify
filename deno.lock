@@ -103,6 +103,7 @@
     "npm:amqplib@~0.10.9": "0.10.9",
     "npm:asn1js@^3.0.6": "3.0.7",
     "npm:asn1js@^3.0.7": "3.0.7",
+    "npm:astro@*": "5.17.3_rollup@4.57.1_ioredis@5.9.2_@types+node@22.19.10_tsx@4.21.0_yaml@2.8.2_vite@6.4.1__@types+node@22.19.10__tsx@4.21.0__yaml@2.8.2__picomatch@4.0.3_zod@3.25.76",
     "npm:astro@^5.17.3": "5.17.3_rollup@4.57.1_ioredis@5.9.2_@types+node@22.19.10_tsx@4.21.0_yaml@2.8.2_vite@6.4.1__@types+node@22.19.10__tsx@4.21.0__yaml@2.8.2__picomatch@4.0.3_zod@3.25.76",
     "npm:byte-encodings@^1.0.11": "1.0.11",
     "npm:chalk@^5.6.2": "5.6.2",
