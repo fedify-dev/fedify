@@ -8,6 +8,7 @@
     "preview": "astro preview --config astro.config.node.ts"
   },
   "dependencies": {
+    "@astrojs/node": "^9.5.4",
     "@deno/astro-adapter": "^0.3.2",
     "@fedify/astro": "workspace:^",
     "@fedify/fedify": "workspace:^",

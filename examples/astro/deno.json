@@ -8,6 +8,8 @@
     "preview": "deno run -A npm:astro preview --config astro.config.deno.ts"
   },
   "exclude": [
-    ".astro"
+    ".astro",
+    "dist",
+    "node_modules"
   ]
 }

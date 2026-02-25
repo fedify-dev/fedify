@@ -14,14 +14,7 @@ import type {
   Federation,
   FederationFetchOptions,
 } from "@fedify/fedify/federation";
-import type { AstroIntegration } from "astro";
-
-/**
- * An Astro context object.
- */
-interface AstroContext {
-  request: Request;
-}
+import type { APIContext, AstroIntegration, MiddlewareHandler } from "astro";
 
 /**
  * A factory function to create a context data for the {@link Federation}
@@ -34,7 +27,7 @@ interface AstroContext {
  * @since 2.1.0
  */
 export type ContextDataFactory<TContextData> = (
-  context: AstroContext,
+  context: APIContext,
 ) => TContextData | Promise<TContextData>;
 
 /**
@@ -105,10 +98,7 @@ export function fedifyIntegration(): AstroIntegration {
 export function fedifyMiddleware<TContextData>(
   federation: Federation<TContextData>,
   contextDataFactory: ContextDataFactory<TContextData>,
-): (
-  context: AstroContext,
-  next: () => Promise<Response>,
-) => Promise<Response> {
+): MiddlewareHandler {
   return async (context, next) => {
     const contextData = await contextDataFactory(context);
     return await federation.fetch(context.request, {

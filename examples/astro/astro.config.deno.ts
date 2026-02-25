@@ -7,8 +7,6 @@ export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
   adapter: deno(),
-  server: {
-    host: true,
-    allowedHosts: true,
-  },
+  server: { host: true, allowedHosts: true },
+  security: { allowedDomains: [{}] },
 });
