@@ -2806,7 +2806,7 @@ If you've done this much, let's check if the home page comes out well.
 When you open the <http://localhost:8000/> page in your web browser,
 you should see something like this:
 
-![Home page](https://hackmd.io/_uploads/HJF35y7nR.png)
+![Home page](./microblog/home.png)
 
 ### Record insertion
 
