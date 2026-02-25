@@ -11137,28 +11137,32 @@ get urls(): ((URL | Link))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Object.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Object,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Object \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Object.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Object,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Object \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a custom emoji.
+  };
+  /** Represents a custom emoji.
  */
 export class Emoji extends Object {
 
@@ -11470,28 +11474,32 @@ proofs?: (DataIntegrityProof | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Emoji.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Emoji,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Emoji \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Emoji.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Emoji,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Emoji \\" + inspect(proxy, options);
-  }
-  }
-
-/** \`ChatMessage\`s are the messages sent in 1-on-1 chats.  They are similar to
+  };
+  /** \`ChatMessage\`s are the messages sent in 1-on-1 chats.  They are similar to
  * {@link Note}s, but the addressing is done by having a single AP actor in
  * the \`to\` field.  Addressing multiple actors is not allowed.  These messages
  * are always private, there is no public version of them.  They are created with
@@ -11946,28 +11954,32 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(ChatMessage.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: ChatMessage,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"ChatMessage \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(ChatMessage.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: ChatMessage,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"ChatMessage \\" + inspect(proxy, options);
-  }
-  }
-
-/** An Activity is a subtype of {@link Object} that describes some form of action
+  };
+  /** An Activity is a subtype of {@link Object} that describes some form of action
  * that may happen, is currently happening, or has already happened.
  * The {@link Activity} type itself serves as an abstract base type for all types
  * of activities.  It is important to note that the {@link Activity} type itself
@@ -15278,28 +15290,32 @@ instruments?: (Object | URL)[];}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Activity.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Activity,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Activity \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Activity.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Activity,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Activity \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents an emoji reaction.  See also [FEP-c0e0](https://w3id.org/fep/c0e0).
+  };
+  /** Represents an emoji reaction.  See also [FEP-c0e0](https://w3id.org/fep/c0e0).
  * 
  */
 export class EmojiReact extends Activity {
@@ -15607,28 +15623,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(EmojiReact.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: EmojiReact,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"EmojiReact \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(EmojiReact.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: EmojiReact,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"EmojiReact \\" + inspect(proxy, options);
-  }
-  }
-
-/** A pair of property name and value.
+  };
+  /** A pair of property name and value.
  */
 export class PropertyValue {
 
@@ -16204,28 +16224,32 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(PropertyValue.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: PropertyValue,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"PropertyValue \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(PropertyValue.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: PropertyValue,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"PropertyValue \\" + inspect(proxy, options);
-  }
-  }
-
-/** Means of communicating or interacting with the DID subject or associated
+  };
+  /** Means of communicating or interacting with the DID subject or associated
  * entities via one or more service endpoints. Examples include discovery
  * services, agent services, social networking services, file storage services,
  * and verifiable credential repository services. 
@@ -16715,28 +16739,32 @@ get endpoints(): (URL)[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(DidService.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: DidService,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"DidService \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(DidService.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: DidService,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"DidService \\" + inspect(proxy, options);
-  }
-  }
-
-/** \\"Export Actor\\" service.
+  };
+  /** \\"Export Actor\\" service.
  * 
  */
 export class Export extends DidService {
@@ -16991,28 +17019,32 @@ endpoints?: (URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Export.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Export,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Export \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Export.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Export,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Export \\" + inspect(proxy, options);
-  }
-  }
-
-/** A proof that can be added to any activity or object, allowing recipients to
+  };
+  /** A proof that can be added to any activity or object, allowing recipients to
  * verify the identity of the actor and the integrity of the data.
  * 
  */
@@ -18009,28 +18041,32 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(DataIntegrityProof.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: DataIntegrityProof,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"DataIntegrityProof \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(DataIntegrityProof.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: DataIntegrityProof,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"DataIntegrityProof \\" + inspect(proxy, options);
-  }
-  }
-
-/** A key owned by an actor.
+  };
+  /** A key owned by an actor.
  */
 export class CryptographicKey {
 
@@ -18869,28 +18905,32 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(CryptographicKey.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: CryptographicKey,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"CryptographicKey \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(CryptographicKey.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: CryptographicKey,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"CryptographicKey \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a key owned by an actor according to [FEP-521a: Representing
+  };
+  /** Represents a key owned by an actor according to [FEP-521a: Representing
  * actor's public keys.][1]
  * 
  * [1]: https://w3id.org/fep/521a
@@ -19740,28 +19780,32 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Multikey.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Multikey,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Multikey \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Multikey.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Multikey,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Multikey \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` accepts the \`object\`.  The \`target\` property can be
+  };
+  /** Indicates that the \`actor\` accepts the \`object\`.  The \`target\` property can be
  * used in certain circumstances to indicate the context into which the \`object\`
  * has been accepted.
  * 
@@ -20075,28 +20119,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Accept.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Accept,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Accept \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Accept.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Accept,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Accept \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has added the \`object\` to the \`target\`.
+  };
+  /** Indicates that the \`actor\` has added the \`object\` to the \`target\`.
  * If the \`target\` property is not explicitly specified, the target would need
  * to be determined implicitly by context.  The \`origin\` can be used to identify
  * the context from which the \`object\` originated.
@@ -20407,28 +20455,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Add.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Add,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Add \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Add.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Add,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Add \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is calling the \`target\`'s attention the \`object\`.
+  };
+  /** Indicates that the \`actor\` is calling the \`target\`'s attention the \`object\`.
  * 
  * The \`origin\` typically has no defined meaning.
  * 
@@ -20738,28 +20790,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Announce.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Announce,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Announce \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Announce.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Announce,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Announce \\" + inspect(proxy, options);
-  }
-  }
-
-/** Describes a software application.
+  };
+  /** Describes a software application.
  */
 export class Application extends Object {
 
@@ -27324,28 +27380,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Application.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Application,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Application \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Application.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Application,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Application \\" + inspect(proxy, options);
-  }
-  }
-
-/** Instances of \`IntransitiveActivity\` are a subtype of {@link Activity}
+  };
+  /** Instances of \`IntransitiveActivity\` are a subtype of {@link Activity}
  * representing intransitive actions.  The \`object\` property is therefore
  * inappropriate for these activities.
  * 
@@ -27667,28 +27727,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(IntransitiveActivity.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: IntransitiveActivity,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"IntransitiveActivity \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(IntransitiveActivity.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: IntransitiveActivity,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"IntransitiveActivity \\" + inspect(proxy, options);
-  }
-  }
-
-/** An \`IntransitiveActivity\` that indicates that the \`actor\` has arrived at the \`location\`.
+  };
+  /** An \`IntransitiveActivity\` that indicates that the \`actor\` has arrived at the \`location\`.
  * The \`origin\` can be used to identify the context from which the \`actor\` originated.
  * The \`target\` typically has no defined meaning.
  * 
@@ -27998,28 +28062,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Arrive.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Arrive,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Arrive \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Arrive.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Arrive,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Arrive \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents any kind of multi-paragraph written work.
+  };
+  /** Represents any kind of multi-paragraph written work.
  */
 export class Article extends Object {
 
@@ -28469,28 +28537,32 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Article.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Article,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Article \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Article.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Article,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Article \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a document of any kind.
+  };
+  /** Represents a document of any kind.
  */
 export class Document extends Object {
 
@@ -29040,28 +29112,32 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Document.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Document,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Document \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Document.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Document,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Document \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents an audio document of any kind.
+  };
+  /** Represents an audio document of any kind.
  */
 export class Audio extends Document {
 
@@ -29373,28 +29449,32 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Audio.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Audio,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Audio \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Audio.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Audio,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Audio \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is ignoring the \`object\`.  The \`target\` and
+  };
+  /** Indicates that the \`actor\` is ignoring the \`object\`.  The \`target\` and
  * \`origin\` typically have no defined meaning.
  * 
  */
@@ -29707,28 +29787,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Ignore.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Ignore,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Ignore \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Ignore.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Ignore,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Ignore \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is blocking the \`object\`.  Blocking is a stronger
+  };
+  /** Indicates that the \`actor\` is blocking the \`object\`.  Blocking is a stronger
  * form of {@link Ignore}.  The typical use is to support social systems that
  * allow one user to block activities or content of other users.  The \`target\`
  * and \`origin\` typically have no defined meaning.
@@ -30039,28 +30123,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Block.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Block,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Block \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Block.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Block,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Block \\" + inspect(proxy, options);
-  }
-  }
-
-/** A \`Collection\` is a subtype of {@link Object} that represents ordered or
+  };
+  /** A \`Collection\` is a subtype of {@link Object} that represents ordered or
  * unordered sets of {@link Object} or {@link Link} instances.
  * 
  * Refer to the Activity Streams 2.0 Core specification for a complete
@@ -34496,28 +34584,32 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Collection.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Collection,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Collection \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Collection.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Collection,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Collection \\" + inspect(proxy, options);
-  }
-  }
-
-/** Used to represent distinct subsets of items from a \`Collection\`.
+  };
+  /** Used to represent distinct subsets of items from a \`Collection\`.
  * Refer to the Activity Streams 2.0 Core for a complete description of
  * the \`CollectionPage\` object.
  * 
@@ -35823,28 +35915,32 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(CollectionPage.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: CollectionPage,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"CollectionPage \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(CollectionPage.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: CollectionPage,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"CollectionPage \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has created the \`object\`.
+  };
+  /** Indicates that the \`actor\` has created the \`object\`.
  */
 export class Create extends Activity {
 
@@ -36151,28 +36247,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Create.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Create,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Create \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Create.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Create,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Create \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has deleted the \`object\`.  If specified,
+  };
+  /** Indicates that the \`actor\` has deleted the \`object\`.  If specified,
  * the \`origin\` indicates the context from which the \`object\` was deleted.
  * 
  */
@@ -36481,28 +36581,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Delete.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Delete,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Delete \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Delete.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Delete,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Delete \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` dislikes the \`object\`.
+  };
+  /** Indicates that the \`actor\` dislikes the \`object\`.
  */
 export class Dislike extends Activity {
 
@@ -36809,28 +36913,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Dislike.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Dislike,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Dislike \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Dislike.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Dislike,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Dislike \\" + inspect(proxy, options);
-  }
-  }
-
-/** Contents of {@link Actor}'s \`endpoints\`.
+  };
+  /** Contents of {@link Actor}'s \`endpoints\`.
  */
 export class Endpoints {
 
@@ -37909,28 +38017,32 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Endpoints.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Endpoints,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Endpoints \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Endpoints.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Endpoints,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Endpoints \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents any kind of event.
+  };
+  /** Represents any kind of event.
  */
 export class Event extends Object {
 
@@ -38242,28 +38354,32 @@ proofs?: (DataIntegrityProof | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Event.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Event,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Event \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Event.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Event,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Event \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is \\"flagging\\" the \`object\`.  Flagging is defined
+  };
+  /** Indicates that the \`actor\` is \\"flagging\\" the \`object\`.  Flagging is defined
  * in the sense common to many social platforms as reporting content as being
  * inappropriate for any number of reasons.
  * 
@@ -38573,28 +38689,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Flag.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Flag,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Flag \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Flag.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Flag,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Flag \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is \\"following\\" the \`object\`.  Following is defined
+  };
+  /** Indicates that the \`actor\` is \\"following\\" the \`object\`.  Following is defined
  * in the sense typically used within Social systems in which the actor is
  * interested in any activity performed by or on the object.  The \`target\` and
  * \`origin\` typically have no defined meaning.
@@ -38905,28 +39025,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Follow.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Follow,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Follow \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Follow.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Follow,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Follow \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a formal or informal collective of Actors.
+  };
+  /** Represents a formal or informal collective of Actors.
  */
 export class Group extends Object {
 
@@ -45491,28 +45615,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Group.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Group,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Group \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Group.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Group,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Group \\" + inspect(proxy, options);
-  }
-  }
-
-/** A Link is an indirect, qualified reference to a resource identified by a URL.
+  };
+  /** A Link is an indirect, qualified reference to a resource identified by a URL.
  * The fundamental model for links is established by RFC 5988. Many of the
  * properties defined by the Activity Vocabulary allow values that are either
  * instances of {@link Object} or {@link Link}. When a {@link Link} is used,
@@ -47152,28 +47280,32 @@ get names(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Link.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Link,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Link \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Link.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Link,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Link \\" + inspect(proxy, options);
-  }
-  }
-
-/** A specialized {@link Link} that represents an #hashtag.
+  };
+  /** A specialized {@link Link} that represents an #hashtag.
  * 
  * See also <https://swicg.github.io/miscellany/#Hashtag>.
  * 
@@ -47449,28 +47581,32 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Hashtag.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Hashtag,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Hashtag \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Hashtag.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Hashtag,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Hashtag \\" + inspect(proxy, options);
-  }
-  }
-
-/** An image document of any kind.
+  };
+  /** An image document of any kind.
  */
 export class Image extends Document {
 
@@ -47782,28 +47918,32 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Image.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Image,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Image \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Image.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Image,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Image \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the actor is offering the object.
+  };
+  /** Indicates that the actor is offering the object.
  * If specified, the target indicates the entity to which
  * the object is being offered.
  * 
@@ -48117,28 +48257,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Offer.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Offer,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Offer \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Offer.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Offer,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Offer \\" + inspect(proxy, options);
-  }
-  }
-
-/** A specialization of \`Offer\` in which the \`actor\` is extending an invitation
+  };
+  /** A specialization of \`Offer\` in which the \`actor\` is extending an invitation
  * for the \`object\` to the \`target\`.
  * 
  */
@@ -48447,28 +48591,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Invite.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Invite,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Invite \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Invite.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Invite,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Invite \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has joined the \`object\`.
+  };
+  /** Indicates that the \`actor\` has joined the \`object\`.
  * The \`target\` and \`origin\` typically have no defined meaning.
  * 
  */
@@ -48777,28 +48925,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Join.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Join,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Join \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Join.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Join,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Join \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has left the \`object\`.
+  };
+  /** Indicates that the \`actor\` has left the \`object\`.
  * The \`target\` and \`origin\` typically have no meaning.
  * 
  */
@@ -49107,28 +49259,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Leave.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Leave,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Leave \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Leave.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Leave,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Leave \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` likes, recommends or endorses the \`object\`.
+  };
+  /** Indicates that the \`actor\` likes, recommends or endorses the \`object\`.
  * The \`target\` and \`origin\` typically have no defined meaning.
  * 
  */
@@ -49437,28 +49593,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Like.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Like,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Like \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Like.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Like,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Like \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has listened to the \`object\`.
+  };
+  /** Indicates that the \`actor\` has listened to the \`object\`.
  */
 export class Listen extends Activity {
 
@@ -49765,28 +49925,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Listen.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Listen,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Listen \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Listen.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Listen,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Listen \\" + inspect(proxy, options);
-  }
-  }
-
-/** A specialized {@link Link} that represents an @mention.
+  };
+  /** A specialized {@link Link} that represents an @mention.
  */
 export class Mention extends Link {
 
@@ -50059,28 +50223,32 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Mention.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Mention,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Mention \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Mention.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Mention,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Mention \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has moved \`object\` from \`origin\` to \`target\`.
+  };
+  /** Indicates that the \`actor\` has moved \`object\` from \`origin\` to \`target\`.
  * If the \`origin\` or \`target\` are not specified,
  * either can be determined by context.
  * 
@@ -50390,28 +50558,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Move.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Move,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Move \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Move.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Move,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Move \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a short written work typically less than a single paragraph in
+  };
+  /** Represents a short written work typically less than a single paragraph in
  * length.
  * 
  */
@@ -50863,28 +51035,32 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Note.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Note,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Note \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Note.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Note,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Note \\" + inspect(proxy, options);
-  }
-  }
-
-/** A subtype of {@link Collection} in which members of the logical collection
+  };
+  /** A subtype of {@link Collection} in which members of the logical collection
  * are assumed to always be strictly ordered.
  * 
  */
@@ -51568,28 +51744,32 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(OrderedCollection.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: OrderedCollection,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"OrderedCollection \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(OrderedCollection.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: OrderedCollection,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"OrderedCollection \\" + inspect(proxy, options);
-  }
-  }
-
-/** Used to represent ordered subsets of items from an \`OrderedCollection\`.
+  };
+  /** Used to represent ordered subsets of items from an \`OrderedCollection\`.
  * Refer to the Activity Streams 2.0 Core for a complete description of
  * the \`OrderedCollectionPage\` object.
  * 
@@ -52385,28 +52565,32 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(OrderedCollectionPage.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: OrderedCollectionPage,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"OrderedCollectionPage \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(OrderedCollectionPage.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: OrderedCollectionPage,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"OrderedCollectionPage \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents an organization.
+  };
+  /** Represents an organization.
  */
 export class Organization extends Object {
 
@@ -58971,28 +59155,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Organization.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Organization,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Organization \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Organization.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Organization,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Organization \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a Web Page.
+  };
+  /** Represents a Web Page.
  */
 export class Page extends Document {
 
@@ -59304,28 +59492,32 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Page.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Page,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Page \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Page.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Page,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Page \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents an individual person.
+  };
+  /** Represents an individual person.
  */
 export class Person extends Object {
 
@@ -65890,28 +66082,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Person.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Person,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Person \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Person.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Person,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Person \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a logical or physical location.  See [5.3 Representing
+  };
+  /** Represents a logical or physical location.  See [5.3 Representing
  * Places](https://www.w3.org/TR/activitystreams-vocabulary/#places)
  * for additional information.
  * 
@@ -66913,28 +67109,32 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Place.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Place,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Place \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Place.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Place,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Place \\" + inspect(proxy, options);
-  }
-  }
-
-/** A {@link Profile} is a content object that describes another {@link Object},
+  };
+  /** A {@link Profile} is a content object that describes another {@link Object},
  * typically used to describe [Actor
  * Type](https://www.w3.org/TR/activitystreams-vocabulary/#actor-types) objects.
  * The {@link Profile.describes} property is used to reference the object being
@@ -67581,28 +67781,32 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Profile.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Profile,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Profile \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Profile.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Profile,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Profile \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a question being asked.  Question objects are an extension of
+  };
+  /** Represents a question being asked.  Question objects are an extension of
  * {@link IntransitiveActivity}.  That is, the Question object is an Activity,
  * but the direct object is the question itself and therefore it would not
  * contain an \`object\` property.
@@ -68891,28 +69095,32 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Question.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Question,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Question \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Question.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Question,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Question \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has read the \`object\`.
+  };
+  /** Indicates that the \`actor\` has read the \`object\`.
  * 
  */
 export class Read extends Activity {
@@ -69220,28 +69428,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Read.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Read,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Read \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Read.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Read,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Read \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is rejecting the \`object\`.  The \`target\` and
+  };
+  /** Indicates that the \`actor\` is rejecting the \`object\`.  The \`target\` and
  * \`origin\` typically have no defined meaning.
  * 
  */
@@ -69554,28 +69766,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Reject.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Reject,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Reject \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Reject.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Reject,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Reject \\" + inspect(proxy, options);
-  }
-  }
-
-/** Describes a relationship between two individuals.
+  };
+  /** Describes a relationship between two individuals.
  * The {@link Relationship.subject} and {@link Relationship.object} properties
  * are used to identify the connected individuals.
  * 
@@ -71204,28 +71420,32 @@ relationships?: (Object | URL)[];}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Relationship.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Relationship,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Relationship \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Relationship.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Relationship,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Relationship \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is removing the \`object\`.  If specified,
+  };
+  /** Indicates that the \`actor\` is removing the \`object\`.  If specified,
  * the \`origin\` indicates the context from which the \`object\` is being removed.
  * 
  */
@@ -71534,28 +71754,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Remove.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Remove,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Remove \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Remove.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Remove,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Remove \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a service of any kind.
+  };
+  /** Represents a service of any kind.
  */
 export class Service extends Object {
 
@@ -78120,28 +78344,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Service.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Service,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Service \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Service.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Service,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Service \\" + inspect(proxy, options);
-  }
-  }
-
-/** Contents of {@link Object}'s \`source\`.
+  };
+  /** Contents of {@link Object}'s \`source\`.
  */
 export class Source {
 
@@ -78757,28 +78985,32 @@ get contents(): ((string | LanguageString))[] {
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Source.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Source,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Source \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-   [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Source.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Source,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Source \\" + inspect(proxy, options);
-  }
-  }
-
-/** A specialization of {@link Accept} indicating that
+  };
+  /** A specialization of {@link Accept} indicating that
  * the acceptance is tentative.
  * 
  */
@@ -79087,28 +79319,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(TentativeAccept.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: TentativeAccept,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"TentativeAccept \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(TentativeAccept.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: TentativeAccept,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"TentativeAccept \\" + inspect(proxy, options);
-  }
-  }
-
-/** A specialization of {@link Reject} in which
+  };
+  /** A specialization of {@link Reject} in which
  * the rejection is considered tentative.
  * 
  */
@@ -79417,28 +79653,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(TentativeReject.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: TentativeReject,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"TentativeReject \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(TentativeReject.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: TentativeReject,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"TentativeReject \\" + inspect(proxy, options);
-  }
-  }
-
-/** A \`Tombstone\` represents a content object that has been deleted.
+  };
+  /** A \`Tombstone\` represents a content object that has been deleted.
  * It can be used in {@link Collection}s to signify that there used to be
  * an object at this position, but it has been deleted.
  * 
@@ -79868,28 +80108,32 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
       
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Tombstone.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Tombstone,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Tombstone \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Tombstone.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Tombstone,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Tombstone \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is traveling to \`target\` from \`origin\`.
+  };
+  /** Indicates that the \`actor\` is traveling to \`target\` from \`origin\`.
  * \`Travel\` is an \`IntransitiveObject\` whose \`actor\` specifies the direct object.
  * If the \`target\` or \`origin\` are not specified,
  * either can be determined by context.
@@ -80200,28 +80444,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Travel.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Travel,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Travel \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Travel.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Travel,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Travel \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` is undoing the \`object\`.  In most cases,
+  };
+  /** Indicates that the \`actor\` is undoing the \`object\`.  In most cases,
  * the \`object\` will be an {@link Activity} describing some previously performed
  * action (for instance, a person may have previously \\"liked\\" an article but,
  * for whatever reason, might choose to undo that like at some later point in
@@ -80535,28 +80783,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Undo.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Undo,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Undo \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Undo.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Undo,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Undo \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has updated the \`object\`.  Note, however,
+  };
+  /** Indicates that the \`actor\` has updated the \`object\`.  Note, however,
  * that this vocabulary does not define a mechanism for describing the actual
  * set of modifications made to \`object\`.
  * 
@@ -80868,28 +81120,32 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Update.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Update,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Update \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Update.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Update,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Update \\" + inspect(proxy, options);
-  }
-  }
-
-/** Represents a video document of any kind.
+  };
+  /** Represents a video document of any kind.
  */
 export class Video extends Document {
 
@@ -81201,28 +81457,32 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(Video.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: Video,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Video \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(Video.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: Video,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"Video \\" + inspect(proxy, options);
-  }
-  }
-
-/** Indicates that the \`actor\` has viewed the object.
+  };
+  /** Indicates that the \`actor\` has viewed the object.
  * 
  */
 export class View extends Activity {
@@ -81530,26 +81790,30 @@ instruments?: (Object | URL)[];}
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
     return proxy;
   }
+  }
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"Deno.customInspect\\")](
+
+// deno-lint-ignore no-explicit-any
+(View.prototype as any)[Symbol.for(\\"Deno.customInspect\\")] =
+  function (
+    this: View,
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"View \\" + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  override [Symbol.for(\\"nodejs.util.inspect.custom\\")](
+// deno-lint-ignore no-explicit-any
+(View.prototype as any)[Symbol.for(\\"nodejs.util.inspect.custom\\")] =
+  function (
+    this: View,
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return \\"View \\" + inspect(proxy, options);
-  }
-  }
-
-"
+  };
+  "
 `;

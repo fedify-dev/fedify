@@ -103,7 +103,7 @@ export function getUserAgent(
  * @param request The request to log.
  * @internal
  */
-export function logRequest(logger: Logger, request: Request) {
+export function logRequest(logger: Logger, request: Request): void {
   logger.debug(
     "Fetching document: {method} {url} {headers}",
     {

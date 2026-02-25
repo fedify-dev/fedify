@@ -2,7 +2,7 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/mod.ts", "src/codec.ts", "src/kv.ts", "src/mq.ts"],
-  dts: true,
+  dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   unbundle: true,
   format: ["esm", "cjs"],
   platform: "node",

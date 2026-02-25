@@ -72,7 +72,9 @@ const constants: Array<[BaseName, BaseCode, CodecFactory, string]> = [
   ],
 ];
 
-export const names = constants.reduce<Record<BaseName, Base>>(
+export const names: Record<BaseName, Base> = constants.reduce<
+  Record<BaseName, Base>
+>(
   (prev, tupple) => {
     prev[tupple[0]] = new Base(tupple[0], tupple[1], tupple[2], tupple[3]);
     return prev;
@@ -80,7 +82,9 @@ export const names = constants.reduce<Record<BaseName, Base>>(
   {} as Record<BaseName, Base>,
 );
 
-export const codes = constants.reduce<Record<BaseCode, Base>>(
+export const codes: Record<BaseCode, Base> = constants.reduce<
+  Record<BaseCode, Base>
+>(
   (prev, tupple) => {
     prev[tupple[1]] = names[tupple[0]];
     return prev;
