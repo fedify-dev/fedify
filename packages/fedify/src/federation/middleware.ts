@@ -383,12 +383,12 @@ export class FederationImpl<TContextData>
     return this._tracerProvider ?? trace.getTracerProvider();
   }
 
-  _initializeRouter() {
+  _initializeRouter(): void {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
   }
 
-  override _getTracer() {
+  override _getTracer(): Tracer {
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
@@ -2472,7 +2472,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   protected async routeActivityInternal(
     recipient: string | null,
     activity: Activity,
-    options: RouteActivityOptions = {},
+    options: RouteActivityOptions | undefined = {},
     span: Span,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "inbox"]);

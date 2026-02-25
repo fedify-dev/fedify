@@ -266,7 +266,7 @@ export class SqliteKvStore implements KvStore {
    * Creates the table used by the key–value store if it does not already exist.
    * Does nothing if the table already exists.
    */
-  initialize() {
+  initialize(): void {
     if (this.#initialized) {
       return;
     }
@@ -309,7 +309,7 @@ export class SqliteKvStore implements KvStore {
    * Drops the table used by the key–value store.  Does nothing if the table
    * does not exist.
    */
-  drop() {
+  drop(): void {
     this.#db.exec(`DROP TABLE IF EXISTS "${this.#tableName}"`);
     this.#initialized = false;
   }

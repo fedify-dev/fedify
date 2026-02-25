@@ -2,7 +2,14 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/index.ts"],
-  dts: true,
+  dts: {
+    compilerOptions: {
+      experimentalDecorators: true,
+      emitDecoratorMetadata: true,
+      isolatedDeclarations: true,
+      declaration: true,
+    },
+  },
   platform: "node",
-  format: ["commonjs", "esm"],
+  format: ["esm", "cjs"],
 });

@@ -8,7 +8,7 @@ export default defineConfig({
     "src/sqlite.node.ts",
     "src/sqlite.bun.ts",
   ],
-  dts: true,
+  dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   unbundle: true,
   format: ["esm", "cjs"],
   platform: "node",

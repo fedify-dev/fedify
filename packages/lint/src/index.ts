@@ -4,8 +4,8 @@
  */
 import { fromEntries, keys, map, pipe } from "@fxts/core";
 import parser from "@typescript-eslint/parser";
-import type { ESLint, Rule } from "eslint";
-import metadata from "../deno.json" with { type: "json" };
+import type { ESLint, Linter, Rule } from "eslint";
+import metadataRaw from "../deno.json" with { type: "json" };
 import { RULE_IDS } from "./lib/const.ts";
 import {
   eslint as actorAssertionMethodRequired,
@@ -104,7 +104,7 @@ const recommendedRuleIds: (keyof typeof rules)[] = [
 /**
  * Recommended configuration - enables all rules as warnings
  */
-const recommendedRules = pipe(
+const recommendedRules: Record<string, "error" | "warn"> = pipe(
   rules,
   keys,
   map((key) =>
@@ -116,35 +116,43 @@ const recommendedRules = pipe(
   fromEntries,
 );
 
+const pluginName: string = metadataRaw.name;
+const pluginVersion: string = metadataRaw.version;
+
 /**
  * Strict configuration - enables all rules as errors
  */
-const strictRules = pipe(
+const strictRules: Record<string, "error"> = pipe(
   rules,
   keys,
-  map((key) => [`${metadata.name as "@fedify/lint"}/${key}`, "error"] as const),
+  map((key) => [`${pluginName}/${key}`, "error"] as const),
   fromEntries,
 );
 
-export const plugin = {
+interface FedifyLintPlugin extends ESLint.Plugin {
+  configs: {
+    recommended: { rules: typeof recommendedRules };
+    strict: { rules: typeof strictRules };
+  };
+}
+
+export const plugin: FedifyLintPlugin = {
   meta: {
-    name: metadata.name,
-    version: metadata.version,
+    name: pluginName,
+    version: pluginVersion,
   },
   rules,
   configs: {
     recommended: {
-      plugins: [metadata.name],
       rules: recommendedRules,
     },
     strict: {
-      plugins: [metadata.name],
       rules: strictRules,
     },
   },
-} as const satisfies ESLint.Plugin;
+};
 
-const recommendedConfig = {
+const recommendedConfig: Linter.Config = {
   files: ["federation", "federation/*"].map((filename) => [
     filename + ".ts",
     filename + ".tsx",
@@ -154,7 +162,7 @@ const recommendedConfig = {
     filename + ".cjs",
   ]).flat(),
   languageOptions: { parser },
-  plugins: { [metadata.name]: plugin },
+  plugins: { [pluginName]: plugin },
   rules: recommendedRules,
 };
 
