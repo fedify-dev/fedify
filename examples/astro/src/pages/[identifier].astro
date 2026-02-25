@@ -1,0 +1,21 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const { identifier } = Astro.params;
+
+if (identifier !== "demo") {
+  return Astro.redirect("/");
+}
+---
+
+<Layout title="Demo - Fedify–Astro Example">
+  <h1>Demo</h1>
+  <p>Hi, I am Fedify–Astro Demo!</p>
+  <p>
+    This page is served by Astro when you request it with a web browser.
+    When an ActivityPub client (e.g., Mastodon) requests this page
+    with <code>Accept: application/activity+json</code>, Fedify serves the
+    ActivityPub actor object instead.
+  </p>
+  <p><a href="/">Back to home</a></p>
+</Layout>

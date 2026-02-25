@@ -28,6 +28,7 @@ packages:
 - packages/vocab-tools
 - packages/webfinger
 - docs
+- examples/astro
 - examples/cloudflare-workers
 - examples/elysia
 - examples/express

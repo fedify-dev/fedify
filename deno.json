@@ -26,6 +26,7 @@
     "./packages/vocab-runtime",
     "./packages/vocab-tools",
     "./packages/webfinger",
+    "./examples/astro",
     "./examples/fresh",
     "./examples/hono-sample"
   ],

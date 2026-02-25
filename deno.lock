@@ -71,6 +71,7 @@
     "npm:@cloudflare/vitest-pool-workers@~0.8.31": "0.8.71_@vitest+runner@3.2.4_@vitest+snapshot@3.2.4_vitest@3.2.4__@types+node@22.19.10__vite@7.3.1___@types+node@22.19.10___tsx@4.21.0___yaml@2.8.2___picomatch@4.0.3__tsx@4.21.0__yaml@2.8.2_@types+node@22.19.10_@cloudflare+workers-types@4.20260210.0_tsx@4.21.0_yaml@2.8.2",
     "npm:@cloudflare/workers-types@^4.20250529.0": "4.20260210.0",
     "npm:@cloudflare/workers-types@^4.20250906.0": "4.20260210.0",
+    "npm:@deno/astro-adapter@~0.3.2": "0.3.2_@opentelemetry+api@1.9.0_astro@5.17.3__rollup@4.57.1__ioredis@5.9.2__@types+node@22.19.10__tsx@4.21.0__yaml@2.8.2__vite@6.4.1___@types+node@22.19.10___tsx@4.21.0___yaml@2.8.2___picomatch@4.0.3__zod@3.25.76_rollup@4.57.1_ioredis@5.9.2_@types+node@22.19.10_tsx@4.21.0_yaml@2.8.2",
     "npm:@fxts/core@^1.21.1": "1.25.0",
     "npm:@hongminhee/localtunnel@0.3": "0.3.0",
     "npm:@inquirer/prompts@^7.8.4": "7.10.1_@types+node@22.19.10",
@@ -762,6 +763,16 @@
       "integrity": "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==",
       "dependencies": [
         "@jridgewell/trace-mapping@0.3.9"
+      ]
+    },
+    "@deno/astro-adapter@0.3.2_@opentelemetry+api@1.9.0_astro@5.17.3__rollup@4.57.1__ioredis@5.9.2__@types+node@22.19.10__tsx@4.21.0__yaml@2.8.2__vite@6.4.1___@types+node@22.19.10___tsx@4.21.0___yaml@2.8.2___picomatch@4.0.3__zod@3.25.76_rollup@4.57.1_ioredis@5.9.2_@types+node@22.19.10_tsx@4.21.0_yaml@2.8.2": {
+      "integrity": "sha512-nN0kQGobRs2XE3R+O/DWYQanEWpteJNsIf5TD65787qFEw2CrqkFNcNolZFJiKUF/2Y/TKyOLRjMS3F6auECVg==",
+      "dependencies": [
+        "@opentelemetry/api",
+        "astro"
+      ],
+      "optionalPeers": [
+        "@opentelemetry/api"
       ]
     },
     "@digitalbazaar/http-client@4.2.0": {
@@ -7410,6 +7421,16 @@
       "npm:tsdown@~0.18.4"
     ],
     "members": {
+      "examples/astro": {
+        "dependencies": [
+          "npm:@deno/astro-adapter@~0.3.2"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@deno/astro-adapter@~0.3.2"
+          ]
+        }
+      },
       "examples/fresh": {
         "dependencies": [
           "jsr:@fresh/core@^2.1.4",

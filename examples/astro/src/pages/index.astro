@@ -1,0 +1,25 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const host = Astro.url.host;
+---
+
+<Layout title="Fedify Astro Example">
+  <img src="/demo-profile.png" alt="Demo Profile Picture" width="100" height="100" />
+  <h1>Fedify Astro Example</h1>
+  <p>
+    This is a sample application that demonstrates how to integrate 
+    <a href="https://fedify.dev/">Fedify</a>
+    with <a href="https://astro.build/">Astro</a> on
+    <a href="https://deno.com/">Deno</a>.
+  </p>
+  <p>
+    Visit <a href="/demo">/demo</a> to see the demo actor page.
+  </p>
+  <p>
+    Try fetching the actor with an ActivityPub client with Fedify:
+  </p>
+  <pre><code>fedify lookup @demo@{host}</code></pre>
+  <p>Or with curl:</p>
+  <pre><code>curl -H "Accept: application/activity+json" {Astro.url.origin + "/demo"}</code></pre>
+</Layout>
