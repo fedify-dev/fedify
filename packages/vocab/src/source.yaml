@@ -3,6 +3,7 @@ name: Source
 compactName: as:Source
 uri: "https://www.w3.org/ns/activitystreams#Source"
 entity: false
+typeless: true
 description: Contents of {@link Object}'s `source`.
 defaultContext: "https://www.w3.org/ns/activitystreams"
 

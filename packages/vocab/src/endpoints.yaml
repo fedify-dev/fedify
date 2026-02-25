@@ -3,6 +3,7 @@ name: Endpoints
 compactName: as:Endpoints
 uri: "https://www.w3.org/ns/activitystreams#Endpoints"
 entity: false
+typeless: true
 description: Contents of {@link Actor}'s `endpoints`.
 defaultContext: "https://www.w3.org/ns/activitystreams"
 

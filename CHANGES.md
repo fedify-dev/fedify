@@ -8,6 +8,28 @@ Version 2.1.0
 
 To be released.
 
+### @fedify/vocab
+
+ -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
+    `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
+    type does not exist in the ActivityStreams vocabulary, and its presence
+    caused validation failures on implementations like [browser.pub].
+    [[#576]]
+
+ -  Fixed `Source.toJsonLd()` to no longer emit invalid
+    `"type": "as:Source"` in the serialized JSON-LD.  The `as:Source` type
+    does not exist in the ActivityStreams vocabulary either.
+
+[browser.pub]: https://browser.pub/
+[#576]: https://github.com/fedify-dev/fedify/issues/576
+
+### @fedify/vocab-tools
+
+ -  Added `typeless` field to the type YAML schema.  When set to `true`,
+    the generated `toJsonLd()` method does not emit `@type` (or `type` in
+    compact form) in the serialized JSON-LD.  This is useful for types
+    that are not real vocabulary types but rather anonymous object structures.
+
 
 Version 2.0.1
 -------------

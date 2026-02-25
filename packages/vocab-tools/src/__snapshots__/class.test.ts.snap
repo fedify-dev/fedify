@@ -37458,7 +37458,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         
       }
       
-      result["type"] = "as:Endpoints";
+      
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
       return result;
@@ -37557,7 +37557,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     
     }
     
-    values["@type"] = ["https://www.w3.org/ns/activitystreams#Endpoints"];
+    
     if (this.id != null) values["@id"] = this.id.href;
     if (options.format === "expand") {
       return await jsonld.expand(
@@ -78693,7 +78693,7 @@ get contents(): ((string | LanguageString))[] {
         
       }
       
-      result["type"] = "as:Source";
+      
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
       return result;
@@ -78735,7 +78735,7 @@ get contents(): ((string | LanguageString))[] {
     
     }
     
-    values["@type"] = ["https://www.w3.org/ns/activitystreams#Source"];
+    
     if (this.id != null) values["@id"] = this.id.href;
     if (options.format === "expand") {
       return await jsonld.expand(
