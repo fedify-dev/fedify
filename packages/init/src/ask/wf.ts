@@ -1,7 +1,7 @@
 import { select } from "@inquirer/prompts";
 import { WEB_FRAMEWORK } from "../const.ts";
 import type { WebFramework } from "../types.ts";
-import webFrameworks from "../webframeworks.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 
 /**
  * Fills in the web framework by prompting the user if not provided.

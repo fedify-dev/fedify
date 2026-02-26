@@ -9,8 +9,6 @@ import {
   throwIf,
 } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
-import type { Message } from "@optique/core";
-import { commandLine, message } from "@optique/core/message";
 import { toMerged } from "es-toolkit";
 import { readFileSync } from "node:fs";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
@@ -130,29 +128,6 @@ export const readTemplate: (templatePath: string) => string = (
   );
 
 /**
- * Generates the post-initialization instruction message that shows
- * the user how to start the dev server and look up an actor.
- *
- * @param packageManager - The chosen package manager
- * @param port - The default port for the dev server
- * @returns A formatted `Message` with startup instructions
- */
-export const getInstruction: (
-  packageManager: PackageManager,
-  port: number,
-) => Message = (pm, port) =>
-  message`
-To start the server, run the following command:
-
-  ${commandLine(getDevCommand(pm))}
-
-Then, try look up an actor from your server:
-
-  ${commandLine(`fedify lookup http://localhost:${port}/users/john`)}
-
-`;
-
-/**
  * Returns the shell command string to start the dev server for the given
  * package manager (e.g., `"deno task dev"`, `"bun dev"`, `"npm run dev"`).
  */
@@ -217,60 +192,6 @@ export const isDirectoryEmpty = async (
     return true;
   }
 };
-
-/**
- * Converts a package manager to its corresponding runtime.
- * @param pm - The package manager (deno, bun, npm, yarn, pnpm)
- * @returns The runtime name (deno, bun, or node)
- */
-export const packageManagerToRuntime = (
-  pm: PackageManager,
-): "deno" | "bun" | "node" =>
-  pm === "deno" ? "deno" : pm === "bun" ? "bun" : "node";
-
-/**
- * Returns the shell command array to scaffold a new Next.js project
- * in the current directory using the given package manager.
- */
-export const getNextInitCommand = (
-  pm: PackageManager,
-): string[] => [...createNextAppCommand(pm), ".", "--yes"];
-
-const createNextAppCommand = (pm: PackageManager): string[] =>
-  pm === "deno"
-    ? ["deno", "-Ar", "npm:create-next-app@latest"]
-    : pm === "bun"
-    ? ["bun", "create", "next-app"]
-    : pm === "npm"
-    ? ["npx", "create-next-app"]
-    : [pm, "dlx", "create-next-app"];
-
-/**
- * Returns the shell command array to scaffold a new Nitro project
- * in the current directory using the given package manager.
- * Also removes the default `nitro.config.ts` so it can be replaced by a template.
- */
-export const getNitroInitCommand = (
-  pm: PackageManager,
-): string[] => [
-  ...createNitroAppCommand(pm),
-  pm === "deno" ? "npm:giget@latest" : "giget@latest",
-  "nitro",
-  ".",
-  "&&",
-  "rm",
-  "nitro.config.ts", // Remove default nitro config file
-  // This file will be created from template
-];
-
-const createNitroAppCommand = (pm: PackageManager): string[] =>
-  pm === "deno"
-    ? ["deno", "run", "-A"]
-    : pm === "bun"
-    ? ["bunx"]
-    : pm === "npm"
-    ? ["npx"]
-    : [pm, "dlx"];
 
 /** Returns `true` if the current run is in test mode. */
 export const isTest: <

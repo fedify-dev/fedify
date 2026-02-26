@@ -12,7 +12,7 @@ import {
   runtimes,
 } from "../lib.ts";
 import type { PackageManager, WebFramework } from "../types.ts";
-import webFrameworks from "../webframeworks.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 
 /**
  * Fills in the package manager by prompting the user if not provided.

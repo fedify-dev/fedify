@@ -509,23 +509,22 @@ with Node.js and Bun.  If you followed the setup instructions above using
 #### Testing the `init` command
 
 If you want to test some integration packages like `@fedify/hono` or
-`@fedify/denokv`, you can test them with `test-init` task.  This task runs
+`@fedify/denokv`, you can test them with `test:init` task.  This task runs
 the `fedify init` command with various combinations of web frameworks,
 package managers, KvStore implementations, and MessageQueue implementations.
 
 ~~~~ bash
-# From /packages/cli
-deno task test-init
+mise test:init
 ~~~~
 
 You can also specify specific options to test:
 
 ~~~~ bash
 # Test with specific web framework and package manager
-deno task test-init -w hono -p deno
+mise test:init -w hono -p deno
 
 # Test with multiple options
-deno task test-init -w hono -w express -p deno -p npm -k denokv -m denokv
+mise test:init -w hono -w express -p deno -p npm -k denokv -m denokv
 ~~~~
 
 If some options are not specified, all combinations are tested by default.
@@ -533,8 +532,8 @@ If some options are not specified, all combinations are tested by default.
 You can skip dry run or hydration tests:
 
 ~~~~ bash
-deno task test-init --no-dry-run   # Only run hydration tests
-deno task test-init --no-hyd-run   # Only run dry-run tests
+mise test:init --no-dry-run   # Only run hydration tests
+mise test:init --no-hyd-run   # Only run dry-run tests
 ~~~~
 
 The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
@@ -556,6 +555,12 @@ mise run test:examples
 ~~~~
 
 This command runs the tests for all example projects.
+
+If you want to test specific examples, you can test them by adding arguments:
+
+~~~~ bash
+mise run test:examples astro sveltekit-sample
+~~~~
 
 ### Building the docs
 

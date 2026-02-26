@@ -14,7 +14,7 @@ import type {
   PackageManager,
   WebFramework,
 } from "../types.ts";
-import webFrameworks from "../webframeworks.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 
 const HANDLE = "john";
 const STARTUP_TIMEOUT = 30000; // 30 seconds

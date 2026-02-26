@@ -1,14 +1,25 @@
 import {
+  always,
+  cases,
   concat,
   filter,
+  head,
+  isArray,
+  isEmpty,
+  isNull,
+  isString,
   keys,
   map,
   pick,
   pipe,
+  prop,
   toArray,
+  uniq,
+  unless,
+  when,
+  zip,
 } from "@fxts/core/index.js";
 import { getLogger } from "@logtape/logtape";
-import { uniq } from "es-toolkit";
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
@@ -33,54 +44,48 @@ const logger = getLogger(["fedify", "init", "action", "configs"]);
  * @param param0 - Destructured initialization data containing KV, MQ, initializer, and directory
  * @returns Configuration object with path and Deno-specific settings
  */
-export const loadDenoConfig = (
-  data: InitCommandData,
-) => {
-  const unstable = getUnstable(data);
-  return {
-    path: "deno.json",
-    data: {
-      ...pick(["compilerOptions", "tasks"], data.initializer),
-      ...(unstable.length > 0 ? { unstable } : {}),
-      nodeModulesDir: "auto",
-      imports: joinDepsReg("deno")(getDependencies(data)),
-      lint: { plugins: ["jsr:@fedify/lint"] },
-      ...(data.testMode ? { links: getLinks(data) } : {}),
-    },
-  };
-};
+export const loadDenoConfig = (data: InitCommandData) => ({
+  path: "deno.json",
+  data: {
+    ...pick(["compilerOptions", "tasks"], data.initializer),
+    ...getUnstable(data),
+    nodeModulesDir: "auto",
+    imports: joinDepsReg("deno")(getDependencies(data)),
+    lint: { plugins: ["jsr:@fedify/lint"] },
+    ...(data.testMode ? { links: getLinks(data) } : {}),
+  },
+});
 
 const getUnstable = <T extends Pick<InitCommandData, "kv" | "mq">>({
   kv: { denoUnstable: kv = [] },
   mq: { denoUnstable: mq = [] },
-}: T) =>
+}: T): { unstable?: string[] } =>
   pipe(
     needsUnstableTemporal() ? ["temporal"] : [],
     concat(kv),
     concat(mq),
-    toArray,
     uniq,
+    toArray,
+    cases(isEmpty, always({}), (unstable) => ({ unstable })),
+  ) as { unstable?: string[] };
+
+type Version = [number, number, number];
+const TEMPORAL_STABLE_FROM: Version = [2, 7, 0] as const;
+
+const needsUnstableTemporal = (): boolean =>
+  pipe(
+    getDenoVersionFromRuntime(),
+    when(isNull, getDenoVersionFromCommand),
+    when(isString, parseVersion),
+    cases(isArray, isLaterOrEqualThan(TEMPORAL_STABLE_FROM), always(true)),
   );
 
-const TEMPORAL_STABLE_FROM = [2, 7, 0] as const;
-
-const needsUnstableTemporal = (): boolean => {
-  const version = getInstalledDenoVersion();
-  if (version == null) return true;
-  return compareVersions(version, TEMPORAL_STABLE_FROM) < 0;
-};
-
-const getInstalledDenoVersion = (): [number, number, number] | null => {
-  const deno = getDenoVersionFromRuntime();
-  if (deno != null) return deno;
+const getDenoVersionFromCommand = (): string | null => {
   try {
-    const output = execFileSync("deno", ["--version"], {
+    return execFileSync("deno", ["--version"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
-    const version = output.match(/^deno\s+(\d+)\.(\d+)\.(\d+)/m);
-    if (version == null) return null;
-    return [Number(version[1]), Number(version[2]), Number(version[3])];
   } catch (error) {
     logger.debug(
       "Failed to get Deno version by executing `deno --version`: {error}",
@@ -90,25 +95,27 @@ const getInstalledDenoVersion = (): [number, number, number] | null => {
   }
 };
 
-const getDenoVersionFromRuntime = (): [number, number, number] | null => {
-  const deno = (globalThis as { Deno?: { version?: { deno?: string } } }).Deno
-    ?.version?.deno;
-  if (deno == null) return null;
-  const version = deno.match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (version == null) return null;
-  return [Number(version[1]), Number(version[2]), Number(version[3])];
-};
+const getDenoVersionFromRuntime = (): string | null =>
+  pipe(
+    globalThis,
+    prop("Deno"),
+    prop("version"),
+    prop("deno"),
+  );
 
-const compareVersions = (
-  a: readonly [number, number, number],
-  b: readonly [number, number, number],
-): number => {
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] < b[i]) return -1;
-    if (a[i] > b[i]) return 1;
-  }
-  return 0;
-};
+const parseVersion: (match: string) => Version | null = (deno: string) =>
+  pipe(
+    deno.match(/^(\d+)\.(\d+)\.(\d+)/),
+    unless(isNull, (arr) => arr.map(Number) as Version),
+  );
+
+const isLaterOrEqualThan = (basis: Version) => (target: Version): boolean =>
+  pipe(
+    zip(basis, target),
+    filter(([b, t]) => t !== b),
+    head,
+    (a) => a ? a[0] < a[1] : true,
+  );
 
 const getLinks = <
   T extends Pick<InitCommandData, "kv" | "mq" | "initializer" | "dir">,
@@ -122,7 +129,7 @@ const getLinks = <
     filter((dep) => dep.includes("@fedify/")),
     map((dep) => dep.replace("@fedify/", "")),
     map((dep) => joinPath(PACKAGES_PATH, dep)),
-    map((absolutePath) => realpathSync(absolutePath)),
+    map(realpathSync as (path: string) => string),
     map((realAbsolutePath) => relative(realpathSync(dir), realAbsolutePath)),
     toArray,
   );

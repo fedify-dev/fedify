@@ -173,6 +173,10 @@ done
 description = "Run tests for all example projects"
 run = "deno run -A examples/test-examples/mod.ts"
 
+[tasks."test:init"]
+description = "Run tests for the init package"
+run = "deno task -f @fedify/init test-init"
+
 # Snapshot updates
 # Note: vocab uses @std/testing/snapshot which only works on Deno
 # vocab-tools has separate snapshots for each runtime

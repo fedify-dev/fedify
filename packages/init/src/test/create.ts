@@ -19,7 +19,7 @@ import {
   product,
   runSubCommand,
 } from "../utils.ts";
-import webFrameworks from "../webframeworks.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
 
 const BANNED_PMS: PackageManager[] = ["bun", "yarn"];
