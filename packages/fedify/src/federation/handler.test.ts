@@ -193,8 +193,9 @@ test("handleActor()", async () => {
       context,
       identifier: "someone",
       actorDispatcher,
-      authorizePredicate: (_ctx, _handle, signedKey, signedKeyOwner) =>
-        signedKey != null && signedKeyOwner != null,
+      authorizePredicate: async (ctx, _handle) =>
+        await ctx.getSignedKey() != null &&
+        await ctx.getSignedKeyOwner() != null,
       onNotFound,
       onUnauthorized,
     },
@@ -215,8 +216,9 @@ test("handleActor()", async () => {
       context,
       identifier: "someone",
       actorDispatcher,
-      authorizePredicate: (_ctx, _handle, signedKey, signedKeyOwner) =>
-        signedKey != null && signedKeyOwner != null,
+      authorizePredicate: async (ctx, _handle) =>
+        await ctx.getSignedKey() != null &&
+        await ctx.getSignedKeyOwner() != null,
       onNotFound,
       onUnauthorized,
     },
@@ -452,8 +454,9 @@ test("handleObject()", async () => {
       context,
       values: { identifier: "someone", id: "123" },
       objectDispatcher,
-      authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
-        signedKey != null && signedKeyOwner != null,
+      authorizePredicate: async (ctx, _values) =>
+        await ctx.getSignedKey() != null &&
+        await ctx.getSignedKeyOwner() != null,
       onNotFound,
       onUnauthorized,
     },
@@ -474,8 +477,9 @@ test("handleObject()", async () => {
       context,
       values: { identifier: "someone", id: "123" },
       objectDispatcher,
-      authorizePredicate: (_ctx, _values, signedKey, signedKeyOwner) =>
-        signedKey != null && signedKeyOwner != null,
+      authorizePredicate: async (ctx, _values) =>
+        await ctx.getSignedKey() != null &&
+        await ctx.getSignedKeyOwner() != null,
       onNotFound,
       onUnauthorized,
     },
@@ -751,8 +755,9 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: {
         dispatcher,
-        authorizePredicate: (_ctx, _handle, key, keyOwner) =>
-          key != null && keyOwner != null,
+        authorizePredicate: async (ctx, _handle) =>
+          await ctx.getSignedKey() != null &&
+          await ctx.getSignedKeyOwner() != null,
       },
       onNotFound,
       onUnauthorized,
@@ -779,8 +784,9 @@ test("handleCollection()", async () => {
       },
       collectionCallbacks: {
         dispatcher,
-        authorizePredicate: (_ctx, _handle, key, keyOwner) =>
-          key != null && keyOwner != null,
+        authorizePredicate: async (ctx, _handle) =>
+          await ctx.getSignedKey() != null &&
+          await ctx.getSignedKeyOwner() != null,
       },
       onNotFound,
       onUnauthorized,
@@ -1634,8 +1640,9 @@ test("handleCustomCollection()", async () => {
       values: { identifier: "someone" },
       collectionCallbacks: {
         dispatcher,
-        authorizePredicate: (_ctx, _values, key, keyOwner) =>
-          key != null && keyOwner != null,
+        authorizePredicate: async (ctx, _values) =>
+          await ctx.getSignedKey() != null &&
+          await ctx.getSignedKeyOwner() != null,
       },
       ...errorHandlers,
     },
@@ -1659,8 +1666,9 @@ test("handleCustomCollection()", async () => {
       values: { identifier: "someone" },
       collectionCallbacks: {
         dispatcher,
-        authorizePredicate: (_ctx, _values, key, keyOwner) =>
-          key != null && keyOwner != null,
+        authorizePredicate: async (ctx, _values) =>
+          await ctx.getSignedKey() != null &&
+          await ctx.getSignedKeyOwner() != null,
       },
       ...errorHandlers,
     },
