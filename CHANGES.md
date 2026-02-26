@@ -8,6 +8,17 @@ Version 2.1.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `RequestContext.getSignedKeyOwner()` to return `null` instead of
+    throwing an error when the remote server requires authorized fetch and
+    returns `401 Unauthorized` for the key owner lookup.  Previously, this
+    caused a `500 Internal Server Error` when interoperating with servers like
+    GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
+
+[#473]: https://github.com/fedify-dev/fedify/issues/473
+[#589]: https://github.com/fedify-dev/fedify/pull/589
+
 ### @fedify/init
 
  -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
@@ -56,7 +67,6 @@ Released on February 27, 2026.
     invoking the predicate has also been removed; predicates should now
     call those methods themselves when needed.  [[#473], [#590]]
 
-[#473]: https://github.com/fedify-dev/fedify/issues/473
 [#590]: https://github.com/fedify-dev/fedify/pull/590
 
 
