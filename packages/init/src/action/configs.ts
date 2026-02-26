@@ -7,6 +7,7 @@ import {
   pipe,
   toArray,
 } from "@fxts/core/index.js";
+import { getLogger } from "@logtape/logtape";
 import { uniq } from "es-toolkit";
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
@@ -22,6 +23,8 @@ import type { InitCommandData } from "../types.ts";
 import { merge } from "../utils.ts";
 import { PACKAGES_PATH } from "./const.ts";
 import { getDependencies, getDevDependencies, joinDepsReg } from "./deps.ts";
+
+const logger = getLogger(["fedify", "init", "action", "configs"]);
 
 /**
  * Loads Deno configuration object with compiler options, unstable features, and tasks.
@@ -78,7 +81,11 @@ const getInstalledDenoVersion = (): [number, number, number] | null => {
     const version = output.match(/^deno\s+(\d+)\.(\d+)\.(\d+)/m);
     if (version == null) return null;
     return [Number(version[1]), Number(version[2]), Number(version[3])];
-  } catch {
+  } catch (error) {
+    logger.debug(
+      "Failed to get Deno version by executing `deno --version`: {error}",
+      { error },
+    );
     return null;
   }
 };
