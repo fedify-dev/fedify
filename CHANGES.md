@@ -8,6 +8,14 @@ Version 2.1.0
 
 To be released.
 
+### @fedify/init
+
+ -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
+    field only when the installed Deno version is earlier than 2.7.0.
+    On Deno 2.7.0 or later, it is no longer added.
+ -  `fedify init` now omits the `"unstable"` field entirely when no unstable
+    feature is required for the generated Deno project.
+
 ### @fedify/vocab
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
