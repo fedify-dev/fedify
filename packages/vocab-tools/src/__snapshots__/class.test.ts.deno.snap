@@ -16229,10 +16229,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   }
   }
 
-/** A quantity with a unit of measure, as defined by the Ontology of units of
- * Measure (OM2).  Used by {@link Intent} to express resource quantities
- * in {@link Proposal} objects.
- * 
+/** A quantity with a unit of measure.
  */
 export class Measure {
 
@@ -20329,11 +20326,8 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   }
   }
 
-/** A proposed economic transaction, as defined by the
- * [ValueFlows](https://www.valueflo.ws/) vocabulary.  Intents describe what is
- * being offered or requested in a {@link Proposal}.  The primary intent
- * describes what is being offered or requested, and the reciprocal intent
- * describes what is expected or offered in return.
+/** A proposed economic transaction describing what is being offered or requested
+ * in a {@link Proposal}.
  * 
  */
 export class Intent {
@@ -21252,8 +21246,6 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
   }
 
 /** A published request or offer, sometimes with what is expected in return.
- * Defined by the [ValueFlows](https://www.valueflo.ws/) vocabulary for
- * representing economic proposals in federated networks.
  * 
  * Proposals contain a primary {@link Intent} (via \`publishes\`) describing
  * what is being offered or requested, and optionally a reciprocal

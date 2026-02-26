@@ -8,6 +8,19 @@ Version 2.1.0
 
 To be released.
 
+### @fedify/vocab
+
+ -  Added vocabulary types for economic resource coordination
+    in federated networks.  [[#578] by scammo]
+-  Added `Proposal` class for publishing offers or requests.
+  -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+-  Added `Measure` class for representing quantities with units of
+        measure, with `hasUnit` and `hasNumericalValue` properties.
+
+[#578]: https://github.com/fedify-dev/fedify/issues/578
+
 
 Version 2.0.1
 -------------
