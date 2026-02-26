@@ -166,14 +166,33 @@ Instance actor
 --------------
 
 When you enable authorized fetch, you need to fetch actors from other servers
-to retrieve their public keys.  However, fetching resources from other servers
-may cause an infinite loop if the other server also requires authorized fetch,
-which causes another request to your server for the public key, and so on.
+to retrieve their public keys.  However, this can cause problems when the other
+server also has authorized fetch enabled:
 
-The most common way to prevent it is a pattern called [instance actor], which
-is an actor that represents the whole instance and exceptionally does not
-require authorized fetch.  You can use the instance actor to fetch resources
-from other servers without causing an infinite loop.
+ -  *Unauthenticated appearance*: If the remote server requires a signed
+    request to fetch its actor, and your server fetches it without a signature,
+    the remote server returns an HTTP 401 error.  In this case,
+    `~RequestContext.getSignedKeyOwner()` returns `null`, so the requester
+    appears unauthenticated to your `AuthorizePredicate`—which will typically
+    deny the request.
+
+ -  *Infinite loop*: If both servers require authorized fetch, fetching the
+    remote actor requires your server to be authenticated, which in turn
+    requires fetching *your* actor, which requires authentication, and so on.
+
+> [!NOTE]
+> Even without the infinite loop, if the remote server requires authorized
+> fetch, `~RequestContext.getSignedKeyOwner()` returns `null` for requests
+> from that server (since fetching the key owner fails with HTTP 401).
+> This means such requests appear unauthenticated to your
+> `AuthorizePredicate`.  To properly authenticate those requests, implement
+> the instance actor pattern below.
+
+The most common way to prevent both problems is a pattern called
+[instance actor], which is an actor that represents the whole instance and
+exceptionally does not require authorized fetch.  You can use the instance
+actor to fetch resources from other servers with a valid signature, without
+causing an infinite loop.
 
 Usually, many ActivityPub implementations name their instance actor as their
 domain name, such as `example.com@example.com`.  Here is an example of how to

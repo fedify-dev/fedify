@@ -48,6 +48,17 @@ export interface TypeSchema {
   entity: boolean;
 
   /**
+   * Whether the type omits `@type` in JSON-LD serialization.  When `true`,
+   * the generated `toJsonLd()` method will not emit `@type` (or `type` in
+   * compact form) in the serialized JSON-LD.  The generated `fromJsonLd()`
+   * method will still accept `@type` if present for backward compatibility.
+   *
+   * This is useful for types that are not real vocabulary types but rather
+   * anonymous object structures (e.g., `Endpoints`, `Source` in ActivityStreams).
+   */
+  typeless?: boolean;
+
+  /**
    * The description of the type.  It is used as the doc comment of
    * the generated class.
    */

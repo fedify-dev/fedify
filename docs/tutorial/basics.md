@@ -55,7 +55,7 @@ Let's create a new project directory and initialize a new project:
 ~~~~ sh [Deno]
 mkdir follow-server
 cd follow-server/
-echo '{ "unstable": ["kv", "temporal"] }' > deno.json
+echo '{ "unstable": ["kv"] }' > deno.json
 deno add jsr:@fedify/fedify
 ~~~~
 
@@ -84,7 +84,7 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 
 ~~~~ json [Deno]
 {
-  "unstable": ["kv", "temporal"],
+  "unstable": ["kv"],
   "imports": {
     "@fedify/fedify": "jsr:@fedify/fedify@^1.1.0"
   }
@@ -120,10 +120,9 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 :::
 
 > [!NOTE]
-> The [`"unstable"`] field in the *deno.json* file is required because Fedify
-> uses [`Temporal`] API, which is an unstable feature in Deno as of November
-> 2024.  By adding `"temporal"` to the `"unstable"` field, you can use the
-> Fedify framework without any issues.
+> If you use Deno 2.7.0 or later, you do not need any extra setting for
+> [`Temporal`].  If you use Deno earlier than 2.7.0, add `"temporal"` to the
+> [`"unstable"`] field in *deno.json*.
 
 > [!NOTE]
 > In Bun and Node.js, we recommend adding [`"type": "module"`] to the
@@ -143,8 +142,8 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 [Deno]: https://deno.com/
 [Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
-[`"unstable"`]: https://docs.deno.com/runtime/manual/tools/unstable_flags/#configuring-flags-in-deno.json
 [`Temporal`]: https://tc39.es/proposal-temporal/docs/
+[`"unstable"`]: https://docs.deno.com/runtime/manual/tools/unstable_flags/#configuring-flags-in-deno.json
 [`"type": "module"`]: https://nodejs.org/api/packages.html#type
 [ESM]: https://nodejs.org/api/esm.html
 [CommonJS]: https://nodejs.org/docs/latest/api/modules.html

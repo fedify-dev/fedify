@@ -73,24 +73,44 @@ export async function* generateInspector(
   yield `
     return proxy;
   }
+  `;
+}
 
-  // @ts-ignore: suppressing TS4127
-  ${emitOverride(typeUri, types)} [Symbol.for("Deno.customInspect")](
+/**
+ * Generates code that must appear *after* the class closing brace: prototype
+ * assignments for the Deno and Node.js custom-inspect hooks.
+ *
+ * These are emitted outside the class body because computed property names
+ * using `Symbol.for()` are incompatible with `isolatedDeclarations` mode.
+ */
+export async function* generateInspectorPostClass(
+  typeUri: string,
+  types: Record<string, TypeSchema>,
+): AsyncIterable<string> {
+  const type = types[typeUri];
+  const className = type.name;
+  yield `
+// deno-lint-ignore no-explicit-any
+(${className}.prototype as any)[Symbol.for("Deno.customInspect")] =
+  function (
+    this: ${className},
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return ${JSON.stringify(type.name + " ")} + inspect(proxy, options);
-  }
+  };
 
-  // @ts-ignore: suppressing TS4127
-  ${emitOverride(typeUri, types)} [Symbol.for("nodejs.util.inspect.custom")](
+// deno-lint-ignore no-explicit-any
+(${className}.prototype as any)[Symbol.for("nodejs.util.inspect.custom")] =
+  function (
+    this: ${className},
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return ${JSON.stringify(type.name + " ")} + inspect(proxy, options);
-  }
+  };
   `;
 }

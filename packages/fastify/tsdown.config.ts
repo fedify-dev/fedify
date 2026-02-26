@@ -2,7 +2,7 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/index.ts"],
-  dts: true,
+  dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   platform: "node",
   format: ["esm", "cjs"],
   outputOptions: {

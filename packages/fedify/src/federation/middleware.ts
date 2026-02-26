@@ -22,7 +22,7 @@ import type {
   DocumentLoaderFactoryOptions,
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
-import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -383,12 +383,12 @@ export class FederationImpl<TContextData>
     return this._tracerProvider ?? trace.getTracerProvider();
   }
 
-  _initializeRouter() {
+  _initializeRouter(): void {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
   }
 
-  override _getTracer() {
+  override _getTracer(): Tracer {
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
@@ -2472,7 +2472,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   protected async routeActivityInternal(
     recipient: string | null,
     activity: Activity,
-    options: RouteActivityOptions = {},
+    options: RouteActivityOptions | undefined = {},
     span: Span,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
@@ -2705,11 +2705,24 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     if (this.#signedKeyOwner != null) return this.#signedKeyOwner;
     const key = await this.getSignedKey(options);
     if (key == null) return this.#signedKeyOwner = null;
-    return this.#signedKeyOwner = await getKeyOwner(key, {
-      contextLoader: options.contextLoader ?? this.contextLoader,
-      documentLoader: options.documentLoader ?? this.documentLoader,
-      tracerProvider: options.tracerProvider ?? this.tracerProvider,
-    });
+    try {
+      return this.#signedKeyOwner = await getKeyOwner(key, {
+        contextLoader: options.contextLoader ?? this.contextLoader,
+        documentLoader: options.documentLoader ?? this.documentLoader,
+        tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      });
+    } catch (error) {
+      if (error instanceof FetchError) {
+        getLogger(["fedify", "federation", "actor"]).warn(
+          "Failed to fetch the key owner {keyOwner} of {keyId} while " +
+            "verifying the request signature; treating the request as " +
+            "unauthenticated: {error}",
+          { keyId: key.id?.href, keyOwner: error.url.href, error },
+        );
+        return this.#signedKeyOwner = null;
+      }
+      throw error;
+    }
   }
 }
 

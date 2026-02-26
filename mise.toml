@@ -1,6 +1,6 @@
 [tools]
 bun = "1.2.22"
-deno = "2.6.10"
+deno = "2.7.1"
 node = "22"
 pnpm = "10.28.0"
 
@@ -59,7 +59,7 @@ run = "deno lint"
 
 [tasks."check:types"]
 description = "Check TypeScript types"
-run = "deno check --unstable-temporal $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
+run = "deno check $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
 
 [tasks."check:md"]
 description = "Check Markdown formatting"

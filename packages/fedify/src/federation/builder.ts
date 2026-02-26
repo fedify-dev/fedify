@@ -9,6 +9,7 @@ import type {
 import { getTypeId } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import type { Tracer } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import type {
   ActorAliasMapper,
@@ -192,7 +193,7 @@ export class FederationBuilderImpl<TContextData>
     return f;
   }
 
-  _getTracer() {
+  _getTracer(): Tracer {
     return trace.getTracer(metadata.name, metadata.version);
   }
 
@@ -486,7 +487,7 @@ export class FederationBuilderImpl<TContextData>
   setNodeInfoDispatcher(
     path: string,
     dispatcher: NodeInfoDispatcher<TContextData>,
-  ) {
+  ): void {
     if (this.router.has("nodeInfo")) {
       throw new RouterError("NodeInfo dispatcher already set.");
     }

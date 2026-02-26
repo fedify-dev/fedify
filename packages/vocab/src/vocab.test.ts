@@ -23,6 +23,7 @@ import {
   Create,
   CryptographicKey,
   type DataIntegrityProof,
+  Endpoints,
   Follow,
   Hashtag,
   Link,
@@ -654,6 +655,388 @@ test("Person.toJsonLd()", async () => {
     alsoKnownAs: "https://example.com/alias",
     type: "Person",
   });
+});
+
+test("Endpoints.toJsonLd() omits type", async () => {
+  const ep = new Endpoints({
+    sharedInbox: new URL("https://example.com/inbox"),
+  });
+
+  // Compact heuristic path (format == null)
+  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "compact heuristic output should not have 'type'");
+  deepStrictEqual(compact["sharedInbox"], "https://example.com/inbox");
+  deepStrictEqual(compact["@context"], "https://www.w3.org/ns/activitystreams");
+
+  // Expanded format
+  const expanded = await ep.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  ok(
+    !("@type" in expanded[0]),
+    "expanded output should not have '@type'",
+  );
+
+  // Compact via JSON-LD library
+  const compactLib = await ep.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  ok(
+    !("type" in compactLib),
+    "compact (library) output should not have 'type'",
+  );
+
+  // Round-trip: compact heuristic → fromJsonLd → compare
+  const restored = await Endpoints.fromJsonLd(compact, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored, ep);
+});
+
+test("Source.toJsonLd() omits type", async () => {
+  const src = new Source({
+    content: "Hello, world!",
+    mediaType: "text/plain",
+  });
+
+  // Compact heuristic path (format == null)
+  const compact = await src.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "compact heuristic output should not have 'type'");
+  deepStrictEqual(compact["mediaType"], "text/plain");
+
+  // Expanded format
+  const expanded = await src.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  ok(
+    !("@type" in expanded[0]),
+    "expanded output should not have '@type'",
+  );
+
+  // Round-trip: compact heuristic → fromJsonLd → compare
+  const restored = await Source.fromJsonLd(compact, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored, src);
+});
+
+test("Endpoints.fromJsonLd() accepts input with @type (backward compat)", async () => {
+  // Older Fedify instances may still send @type for Endpoints
+  const ep = await Endpoints.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "as:Endpoints",
+    "sharedInbox": "https://example.com/inbox",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(ep, Endpoints);
+  deepStrictEqual(ep.sharedInbox?.href, "https://example.com/inbox");
+});
+
+test("Source.fromJsonLd() accepts input with @type (backward compat)", async () => {
+  const src = await Source.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "as:Source",
+    "content": "Hello",
+    "mediaType": "text/plain",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(src, Source);
+  deepStrictEqual(src.content, "Hello");
+  deepStrictEqual(src.mediaType, "text/plain");
+});
+
+test("Endpoints with all properties set omits type", async () => {
+  const ep = new Endpoints({
+    proxyUrl: new URL("https://example.com/proxy"),
+    oauthAuthorizationEndpoint: new URL("https://example.com/oauth/authorize"),
+    oauthTokenEndpoint: new URL("https://example.com/oauth/token"),
+    provideClientKey: new URL("https://example.com/provide-key"),
+    signClientKey: new URL("https://example.com/sign-key"),
+    sharedInbox: new URL("https://example.com/inbox"),
+  });
+
+  // Compact heuristic path
+  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "compact output should not have 'type'");
+  deepStrictEqual(compact["proxyUrl"], "https://example.com/proxy");
+  deepStrictEqual(
+    compact["oauthAuthorizationEndpoint"],
+    "https://example.com/oauth/authorize",
+  );
+  deepStrictEqual(
+    compact["oauthTokenEndpoint"],
+    "https://example.com/oauth/token",
+  );
+  deepStrictEqual(
+    compact["provideClientKey"],
+    "https://example.com/provide-key",
+  );
+  deepStrictEqual(compact["signClientKey"], "https://example.com/sign-key");
+  deepStrictEqual(compact["sharedInbox"], "https://example.com/inbox");
+
+  // Round-trip all three formats
+  for (
+    const format of [undefined, "compact" as const, "expand" as const]
+  ) {
+    const jsonLd = await ep.toJsonLd({
+      format,
+      contextLoader: mockDocumentLoader,
+    });
+    const restored = await Endpoints.fromJsonLd(jsonLd, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    deepStrictEqual(
+      restored,
+      ep,
+      `round-trip failed for format=${format ?? "heuristic"}`,
+    );
+  }
+});
+
+test("Empty Endpoints omits type", async () => {
+  const ep = new Endpoints({});
+
+  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "empty compact output should not have 'type'");
+
+  const expanded = await ep.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  ok(
+    !("@type" in (expanded[0] ?? {})),
+    "empty expanded output should not have '@type'",
+  );
+});
+
+test("Empty Source omits type", async () => {
+  const src = new Source({});
+
+  const compact = await src.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "empty compact output should not have 'type'");
+
+  const expanded = await src.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  ok(
+    !("@type" in (expanded[0] ?? {})),
+    "empty expanded output should not have '@type'",
+  );
+});
+
+test("Person.toJsonLd() embeds Endpoints without type", async () => {
+  const person = new Person({
+    id: new URL("https://example.com/person/1"),
+    endpoints: new Endpoints({
+      sharedInbox: new URL("https://example.com/inbox"),
+    }),
+  });
+
+  // Compact heuristic path (the real-world code path)
+  const compact = await person.toJsonLd() as Record<string, unknown>;
+  const endpoints = compact["endpoints"] as Record<string, unknown>;
+  ok(endpoints != null, "endpoints should be present");
+  ok(
+    !("type" in endpoints),
+    "embedded endpoints should not have 'type'",
+  );
+  deepStrictEqual(endpoints["sharedInbox"], "https://example.com/inbox");
+
+  // Round-trip
+  const restored = await Person.fromJsonLd(compact, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored.id, person.id);
+  deepStrictEqual(
+    restored.endpoints?.sharedInbox,
+    person.endpoints?.sharedInbox,
+  );
+
+  // Expanded format
+  const expanded = await person.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  const expandedEndpoints =
+    (expanded[0]["https://www.w3.org/ns/activitystreams#endpoints"] as Record<
+      string,
+      unknown
+    >[])?.[0];
+  ok(expandedEndpoints != null, "expanded endpoints should be present");
+  ok(
+    !("@type" in expandedEndpoints),
+    "expanded embedded endpoints should not have '@type'",
+  );
+
+  // Expanded round-trip
+  const restored2 = await Person.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    restored2.endpoints?.sharedInbox,
+    person.endpoints?.sharedInbox,
+  );
+
+  // Compact via JSON-LD library
+  const compactLib = await person.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: "https://www.w3.org/ns/activitystreams",
+  }) as Record<string, unknown>;
+  const endpointsLib = compactLib["endpoints"] as Record<string, unknown>;
+  ok(endpointsLib != null, "compact-lib endpoints should be present");
+  ok(
+    !("type" in endpointsLib),
+    "compact-lib endpoints should not have 'type'",
+  );
+
+  // Compact library round-trip
+  const restored3 = await Person.fromJsonLd(compactLib, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    restored3.endpoints?.sharedInbox,
+    person.endpoints?.sharedInbox,
+  );
+});
+
+test("Object.toJsonLd() embeds Source without type", async () => {
+  const obj = new Object({
+    id: new URL("https://example.com/object/1"),
+    source: new Source({
+      content: "Hello, world!",
+      mediaType: "text/plain",
+    }),
+  });
+
+  // Compact heuristic path
+  const compact = await obj.toJsonLd() as Record<string, unknown>;
+  const source = compact["source"] as Record<string, unknown>;
+  ok(source != null, "source should be present");
+  ok(!("type" in source), "embedded source should not have 'type'");
+  deepStrictEqual(source["mediaType"], "text/plain");
+
+  // Round-trip
+  const restored = await Object.fromJsonLd(compact, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored.source?.content, "Hello, world!");
+  deepStrictEqual(restored.source?.mediaType, "text/plain");
+});
+
+test("Person.fromJsonLd() with Mastodon-style endpoints (no type)", async () => {
+  // Mastodon serializes endpoints without a type field
+  const person = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    "id": "https://mastodon.social/users/testuser",
+    "type": "Person",
+    "preferredUsername": "testuser",
+    "inbox": "https://mastodon.social/users/testuser/inbox",
+    "outbox": "https://mastodon.social/users/testuser/outbox",
+    "endpoints": {
+      "sharedInbox": "https://mastodon.social/inbox",
+    },
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(person, Person);
+  deepStrictEqual(
+    person.endpoints?.sharedInbox?.href,
+    "https://mastodon.social/inbox",
+  );
+});
+
+test("Person.fromJsonLd() with old Fedify-style endpoints (with type)", async () => {
+  // Older Fedify versions serialized endpoints with type: "as:Endpoints"
+  const person = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    "id": "https://example.com/users/testuser",
+    "type": "Person",
+    "endpoints": {
+      "type": "as:Endpoints",
+      "sharedInbox": "https://example.com/inbox",
+    },
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(person, Person);
+  deepStrictEqual(
+    person.endpoints?.sharedInbox?.href,
+    "https://example.com/inbox",
+  );
+});
+
+test("Source with LanguageString content omits type", async () => {
+  const src = new Source({
+    contents: [
+      new LanguageString("Hello", "en"),
+      new LanguageString("Bonjour", "fr"),
+    ],
+    mediaType: "text/plain",
+  });
+
+  const compact = await src.toJsonLd() as Record<string, unknown>;
+  ok(!("type" in compact), "source with LanguageString should not have 'type'");
+
+  // Round-trip
+  const restored = await Source.fromJsonLd(compact, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored, src);
+});
+
+test("Cross-format round-trip for Endpoints", async () => {
+  const ep = new Endpoints({
+    sharedInbox: new URL("https://example.com/inbox"),
+    proxyUrl: new URL("https://example.com/proxy"),
+  });
+
+  // compact heuristic → expanded → compact heuristic
+  const compact1 = await ep.toJsonLd();
+  const restored1 = await Endpoints.fromJsonLd(compact1, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const expanded = await restored1.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  });
+  const restored2 = await Endpoints.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const compact2 = await restored2.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const restored3 = await Endpoints.fromJsonLd(compact2, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored3, ep);
 });
 
 test("Collection.fromJsonLd()", async () => {
@@ -1860,18 +2243,29 @@ for (const typeUri in types) {
         "@type": typeUri,
       },
     );
-    deepStrictEqual(
-      await instance.toJsonLd({
+    if (type.typeless) {
+      const compactJsonLd = await instance.toJsonLd({
         format: "compact",
         contextLoader: mockDocumentLoader,
-      }),
-      {
-        "@context": type.defaultContext,
-        "id": "https://example.com/",
-        "type": type.compactName ??
-          (type.name === "DataIntegrityProof" ? type.name : type.uri),
-      },
-    );
+      }) as Record<string, unknown>;
+      ok(
+        !("type" in compactJsonLd),
+        `${type.name} is typeless; compact output should not have 'type'`,
+      );
+    } else {
+      deepStrictEqual(
+        await instance.toJsonLd({
+          format: "compact",
+          contextLoader: mockDocumentLoader,
+        }),
+        {
+          "@context": type.defaultContext,
+          "id": "https://example.com/",
+          "type": type.compactName ??
+            (type.name === "DataIntegrityProof" ? type.name : type.uri),
+        },
+      );
+    }
 
     if (type.extends != null) {
       await rejects(() =>

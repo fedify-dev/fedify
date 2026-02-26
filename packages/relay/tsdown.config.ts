@@ -5,7 +5,7 @@ import { defineConfig } from "tsdown";
 export default [
   defineConfig({
     entry: ["src/mod.ts"],
-    dts: true,
+    dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "node",
     outputOptions(outputOptions, format) {
@@ -24,7 +24,6 @@ export default [
   defineConfig({
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
       .map((f) => f.replace(sep, "/")),
-    dts: true,
     external: [/^node:/],
     outputOptions: {
       intro: `

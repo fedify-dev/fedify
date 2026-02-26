@@ -92,27 +92,7 @@ export async function handleActor<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
-    let key = await context.getSignedKey();
-    key = key?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "actor"],
-        message: "The third parameter of AuthorizePredicate is deprecated " +
-          "in favor of RequestContext.getSignedKey() method.  The third " +
-          "parameter will be removed in a future release.",
-      },
-    }) ?? null;
-    let keyOwner = await context.getSignedKeyOwner();
-    keyOwner = keyOwner?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "actor"],
-        message: "The fourth parameter of AuthorizePredicate is deprecated " +
-          "in favor of RequestContext.getSignedKeyOwner() method.  The " +
-          "fourth parameter will be removed in a future release.",
-      },
-    }) ?? null;
-    if (!await authorizePredicate(context, identifier, key, keyOwner)) {
+    if (!await authorizePredicate(context, identifier)) {
       return await onUnauthorized(request);
     }
   }
@@ -160,27 +140,7 @@ export async function handleObject<TContextData>(
   const object = await objectDispatcher(context, values);
   if (object == null) return await onNotFound(request);
   if (authorizePredicate != null) {
-    let key = await context.getSignedKey();
-    key = key?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "object"],
-        message: "The third parameter of ObjectAuthorizePredicate is " +
-          "deprecated in favor of RequestContext.getSignedKey() method.  " +
-          "The third parameter will be removed in a future release.",
-      },
-    }) ?? null;
-    let keyOwner = await context.getSignedKeyOwner();
-    keyOwner = keyOwner?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "object"],
-        message: "The fourth parameter of ObjectAuthorizePredicate is " +
-          "deprecated in favor of RequestContext.getSignedKeyOwner() method.  " +
-          "The fourth parameter will be removed in a future release.",
-      },
-    }) ?? null;
-    if (!await authorizePredicate(context, values, key, keyOwner)) {
+    if (!await authorizePredicate(context, values)) {
       return await onUnauthorized(request);
     }
   }
@@ -430,34 +390,8 @@ export async function handleCollection<
     });
   }
   if (collectionCallbacks.authorizePredicate != null) {
-    let key = await context.getSignedKey();
-    key = key?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "collection"],
-        message: "The third parameter of AuthorizePredicate is deprecated in " +
-          "favor of RequestContext.getSignedKey() method.  The third " +
-          "parameter will be removed in a future release.",
-      },
-    }) ?? null;
-    let keyOwner = await context.getSignedKeyOwner();
-    keyOwner = keyOwner?.clone({}, {
-      // @ts-expect-error: $warning is not part of the type definition
-      $warning: {
-        category: ["fedify", "federation", "collection"],
-        message:
-          "The fourth parameter of AuthorizePredicate is deprecated in " +
-          "favor of RequestContext.getSignedKeyOwner() method.  The fourth " +
-          "parameter will be removed in a future release.",
-      },
-    }) ?? null;
     if (
-      !await collectionCallbacks.authorizePredicate(
-        context,
-        identifier,
-        key,
-        keyOwner,
-      )
+      !await collectionCallbacks.authorizePredicate(context, identifier)
     ) {
       return await onUnauthorized(request);
     }
@@ -1468,37 +1402,10 @@ const authIfNeeded = async <TContextData>(
   },
 ): Promise<void | never> => {
   if (authorize === undefined) return;
-  const key = (await context.getSignedKey())
-    // @ts-expect-error: $warning is not part of the type definition
-    ?.clone({}, warning.key) ?? null;
-  const keyOwner = (await context.getSignedKeyOwner())
-    // @ts-expect-error: $warning is not part of the type definition
-    ?.clone({}, warning.keyOwner) ?? null;
-  if (!await authorize(context, values, key, keyOwner)) {
+  if (!await authorize(context, values)) {
     throw new UnauthorizedError();
   }
 };
-
-/** Warning messages for `authIfNeeded`. */
-const warning = {
-  key: {
-    $warning: {
-      category: ["fedify", "federation", "collection"],
-      message:
-        "The third parameter of AuthorizePredicate is deprecated in favor of " +
-        "RequestContext.getSignedKey() method.  The third parameter will be " +
-        "removed in a future release.",
-    },
-  },
-  keyOwner: {
-    $warning: {
-      category: ["fedify", "federation", "collection"],
-      message: "The fourth parameter of AuthorizePredicate is deprecated in " +
-        "favor of RequestContext.getSignedKeyOwner() method.  The fourth " +
-        "parameter will be removed in a future release.",
-    },
-  },
-} as const;
 
 /**
  * Appends a cursor parameter to a URL if the cursor exists.

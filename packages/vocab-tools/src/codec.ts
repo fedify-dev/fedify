@@ -125,7 +125,11 @@ export async function* generateEncoder(
       `;
     }
     yield `
-      result["type"] = ${JSON.stringify(type.compactName ?? type.uri)};
+      ${
+      type.typeless
+        ? ""
+        : `result["type"] = ${JSON.stringify(type.compactName ?? type.uri)};`
+    }
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ${JSON.stringify(type.defaultContext)};
       return result;
@@ -197,7 +201,7 @@ export async function* generateEncoder(
     `;
   }
   yield `
-    values["@type"] = [${JSON.stringify(type.uri)}];
+    ${type.typeless ? "" : `values["@type"] = [${JSON.stringify(type.uri)}];`}
     if (this.id != null) values["@id"] = this.id.href;
     if (options.format === "expand") {
       return await jsonld.expand(

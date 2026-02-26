@@ -8,18 +8,76 @@ Version 2.1.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `RequestContext.getSignedKeyOwner()` to return `null` instead of
+    throwing an error when the remote server requires authorized fetch and
+    returns `401 Unauthorized` for the key owner lookup.  Previously, this
+    caused a `500 Internal Server Error` when interoperating with servers like
+    GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
+
+[#473]: https://github.com/fedify-dev/fedify/issues/473
+[#589]: https://github.com/fedify-dev/fedify/pull/589
+
+### @fedify/init
+
+ -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
+    field only when the installed Deno version is earlier than 2.7.0.
+    On Deno 2.7.0 or later, it is no longer added.
+ -  `fedify init` now omits the `"unstable"` field entirely when no unstable
+    feature is required for the generated Deno project.
+
 ### @fedify/vocab
 
  -  Added vocabulary types for economic resource coordination
     in federated networks.  [[#578] by scammo]
--  Added `Proposal` class for publishing offers or requests.
-  -  Added `Intent` class for describing economic transactions within
-        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
-        `availableQuantity`, and `minimumQuantity` properties.
--  Added `Measure` class for representing quantities with units of
-        measure, with `hasUnit` and `hasNumericalValue` properties.
+ -  Added `Proposal` class for publishing offers or requests.
+ -  Added `Intent` class for describing economic transactions within
+    a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+    `availableQuantity`, and `minimumQuantity` properties.
+ -  Added `Measure` class for representing quantities with units of
+    measure, with `hasUnit` and `hasNumericalValue` properties.
+
+ -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
+    `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
+    type does not exist in the ActivityStreams vocabulary, and its presence
+    caused validation failures on implementations like [browser.pub].
+    [[#576]]
+
+ -  Fixed `Source.toJsonLd()` to no longer emit invalid
+    `"type": "as:Source"` in the serialized JSON-LD.  The `as:Source` type
+    does not exist in the ActivityStreams vocabulary either.
 
 [#578]: https://github.com/fedify-dev/fedify/issues/578
+[browser.pub]: https://browser.pub/
+[#576]: https://github.com/fedify-dev/fedify/issues/576
+
+### @fedify/vocab-tools
+
+ -  Added `typeless` field to the type YAML schema.  When set to `true`,
+    the generated `toJsonLd()` method does not emit `@type` (or `type` in
+    compact form) in the serialized JSON-LD.  This is useful for types
+    that are not real vocabulary types but rather anonymous object structures.
+
+
+Version 2.0.2
+-------------
+
+Released on February 27, 2026.
+
+### @fedify/fedify
+
+ -  Removed the deprecated third and fourth parameters (`signedKey` and
+    `signedKeyOwner`) from `AuthorizePredicate` and
+    `ObjectAuthorizePredicate`.  These parameters were deprecated since
+    Fedify 1.5.0 in favor of `RequestContext.getSignedKey()` and
+    `RequestContext.getSignedKeyOwner()` methods, but were mistakenly
+    left in the Fedify 2.0.0 release.  The internal handler code that
+    eagerly called `getSignedKey()` and `getSignedKeyOwner()` before
+    invoking the predicate has also been removed; predicates should now
+    call those methods themselves when needed.  [[#473], [#590]]
+
+[#590]: https://github.com/fedify-dev/fedify/pull/590
 
 
 Version 2.0.1

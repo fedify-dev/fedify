@@ -36,10 +36,13 @@ bun install -g @fedify/cli
 ~~~~
 
 ~~~~ sh [Deno]
-deno install -gA --unstable-fs --unstable-kv --unstable-temporal -n fedify jsr:@fedify/cli
+deno install -gA --unstable-fs --unstable-kv -n fedify jsr:@fedify/cli
 ~~~~
 
 :::
+
+If you use Deno earlier than 2.7.0, add `--unstable-temporal` to the Deno
+installation command above.
 
 There are other ways to install the `fedify` command.  Please refer to the
 [*Installation* section](./cli.md#installation) in the *CLI toolchain* docs.
@@ -115,9 +118,9 @@ via the following command:
 deno add jsr:@fedify/fedify
 ~~~~
 
-Since Fedify requires [`Temporal`] API, which is an unstable feature in Deno as
-of November 2024, you need to add the `"temporal"` to the `"unstable"` field of
-the *deno.json* file:
+Fedify requires the [`Temporal`] API.  On Deno 2.7.0 or later, it is stable and
+no extra setting is needed.  On Deno versions earlier than 2.7.0, add
+`"temporal"` to the `"unstable"` field in *deno.json*:
 
 ~~~~ json{5}
 {
