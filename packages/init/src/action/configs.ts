@@ -8,6 +8,7 @@ import {
   toArray,
 } from "@fxts/core/index.js";
 import { uniq } from "es-toolkit";
+import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
 import biome from "../json/biome.json" with { type: "json" };
@@ -31,29 +32,76 @@ import { getDependencies, getDevDependencies, joinDepsReg } from "./deps.ts";
  */
 export const loadDenoConfig = (
   data: InitCommandData,
-) => ({
-  path: "deno.json",
-  data: {
-    ...pick(["compilerOptions", "tasks"], data.initializer),
-    unstable: getUnstable(data),
-    nodeModulesDir: "auto",
-    imports: joinDepsReg("deno")(getDependencies(data)),
-    lint: { plugins: ["jsr:@fedify/lint"] },
-    ...(data.testMode ? { links: getLinks(data) } : {}),
-  },
-});
+) => {
+  const unstable = getUnstable(data);
+  return {
+    path: "deno.json",
+    data: {
+      ...pick(["compilerOptions", "tasks"], data.initializer),
+      ...(unstable.length > 0 ? { unstable } : {}),
+      nodeModulesDir: "auto",
+      imports: joinDepsReg("deno")(getDependencies(data)),
+      lint: { plugins: ["jsr:@fedify/lint"] },
+      ...(data.testMode ? { links: getLinks(data) } : {}),
+    },
+  };
+};
 
 const getUnstable = <T extends Pick<InitCommandData, "kv" | "mq">>({
   kv: { denoUnstable: kv = [] },
   mq: { denoUnstable: mq = [] },
 }: T) =>
   pipe(
-    ["temporal"],
+    needsUnstableTemporal() ? ["temporal"] : [],
     concat(kv),
     concat(mq),
     toArray,
     uniq,
   );
+
+const TEMPORAL_STABLE_FROM = [2, 7, 0] as const;
+
+const needsUnstableTemporal = (): boolean => {
+  const version = getInstalledDenoVersion();
+  if (version == null) return true;
+  return compareVersions(version, TEMPORAL_STABLE_FROM) < 0;
+};
+
+const getInstalledDenoVersion = (): [number, number, number] | null => {
+  const deno = getDenoVersionFromRuntime();
+  if (deno != null) return deno;
+  try {
+    const output = execFileSync("deno", ["--version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const version = output.match(/^deno\s+(\d+)\.(\d+)\.(\d+)/m);
+    if (version == null) return null;
+    return [Number(version[1]), Number(version[2]), Number(version[3])];
+  } catch {
+    return null;
+  }
+};
+
+const getDenoVersionFromRuntime = (): [number, number, number] | null => {
+  const deno = (globalThis as { Deno?: { version?: { deno?: string } } }).Deno
+    ?.version?.deno;
+  if (deno == null) return null;
+  const version = deno.match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (version == null) return null;
+  return [Number(version[1]), Number(version[2]), Number(version[3])];
+};
+
+const compareVersions = (
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+): number => {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
+  }
+  return 0;
+};
 
 const getLinks = <
   T extends Pick<InitCommandData, "kv" | "mq" | "initializer" | "dir">,

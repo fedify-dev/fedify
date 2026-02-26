@@ -52,7 +52,7 @@ command:
 # Linux/macOS
 deno install \
   -A \
-  --unstable-fs --unstable-kv --unstable-temporal \
+  --unstable-fs --unstable-kv \
   -n fedify \
   jsr:@fedify/cli
 ~~~~
@@ -61,10 +61,13 @@ deno install \
 # Windows
 deno install `
   -A `
-  --unstable-fs --unstable-kv --unstable-temporal `
+  --unstable-fs --unstable-kv `
   -n fedify `
   jsr:@fedify/cli
 ~~~~
+
+On Deno versions earlier than 2.7.0, add `--unstable-temporal` to the install
+command above.
 
 [Deno]: https://deno.com/
 
