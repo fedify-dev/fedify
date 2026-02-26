@@ -8,6 +8,21 @@ Version 2.0.2
 
 To be released.
 
+### @fedify/fedify
+
+ -  Removed the deprecated third and fourth parameters (`signedKey` and
+    `signedKeyOwner`) from `AuthorizePredicate` and
+    `ObjectAuthorizePredicate`.  These parameters were deprecated since
+    Fedify 1.5.0 in favor of `RequestContext.getSignedKey()` and
+    `RequestContext.getSignedKeyOwner()` methods, but were mistakenly
+    left in the Fedify 2.0.0 release.  The internal handler code that
+    eagerly called `getSignedKey()` and `getSignedKeyOwner()` before
+    invoking the predicate has also been removed; predicates should now
+    call those methods themselves when needed.  [[#473], [#590]]
+
+[#473]: https://github.com/fedify-dev/fedify/issues/473
+[#590]: https://github.com/fedify-dev/fedify/pull/590
+
 
 Version 2.0.1
 -------------
