@@ -2714,10 +2714,10 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     } catch (error) {
       if (error instanceof FetchError) {
         getLogger(["fedify", "federation", "actor"]).warn(
-          "Failed to fetch the key owner {keyId} while verifying the " +
-            "request signature; treating the request as unauthenticated: " +
-            "{error}",
-          { keyId: key.id?.href, error },
+          "Failed to fetch the key owner {keyOwner} of {keyId} while " +
+            "verifying the request signature; treating the request as " +
+            "unauthenticated: {error}",
+          { keyId: key.id?.href, keyOwner: error.url.href, error },
         );
         return this.#signedKeyOwner = null;
       }
