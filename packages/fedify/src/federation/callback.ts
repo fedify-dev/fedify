@@ -1,4 +1,4 @@
-import type { Activity, Actor, CryptographicKey, Object } from "@fedify/vocab";
+import type { Activity, Actor, Object } from "@fedify/vocab";
 import type { Link } from "@fedify/webfinger";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
@@ -273,25 +273,14 @@ export type OutboxPermanentFailureHandler<TContextData> = (
  *
  * @template TContextData The context data to pass to the {@link Context}.
  * @param context The request context.
- * @param identifier The internal identifier of the actor that is being requested.
- * @param signedKey *Deprecated in Fedify 1.5.0 in favor of
- *                  {@link RequestContext.getSignedKey} method.*
- *                  The key that was used to sign the request, or `null` if
- *                  the request was not signed or the signature was invalid.
- * @param signedKeyOwner *Deprecated in Fedify 1.5.0 in favor of
- *                       {@link RequestContext.getSignedKeyOwner} method.*
- *                       The actor that owns the key that was used to sign the
- *                       request, or `null` if the request was not signed or the
- *                       signature was invalid, or if the key is not associated
- *                       with an actor.
+ * @param identifier The internal identifier of the actor that is being
+ *                   requested.
  * @returns `true` if the request is authorized, `false` otherwise.
  * @since 0.7.0
  */
 export type AuthorizePredicate<TContextData> = (
   context: RequestContext<TContextData>,
   identifier: string,
-  signedKey: CryptographicKey | null,
-  signedKeyOwner: Actor | null,
 ) => boolean | Promise<boolean>;
 
 /**
@@ -301,24 +290,12 @@ export type AuthorizePredicate<TContextData> = (
  * @template TParam The parameter names of the requested URL.
  * @param context The request context.
  * @param values The parameters of the requested URL.
- * @param signedKey *Deprecated in Fedify 1.5.0 in favor of
- *                  {@link RequestContext.getSignedKey} method.*
- *                  The key that was used to sign the request, or `null` if
- *                  the request was not signed or the signature was invalid.
- * @param signedKeyOwner *Deprecated in Fedify 1.5.0 in favor of
- *                       {@link RequestContext.getSignedKeyOwner} method.*
- *                       The actor that owns the key that was used to sign the
- *                       request, or `null` if the request was not signed or the
- *                       signature was invalid, or if the key is not associated
- *                       with an actor.
  * @returns `true` if the request is authorized, `false` otherwise.
  * @since 0.7.0
  */
 export type ObjectAuthorizePredicate<TContextData, TParam extends string> = (
   context: RequestContext<TContextData>,
   values: Record<TParam, string>,
-  signedKey: CryptographicKey | null,
-  signedKeyOwner: Actor | null,
 ) => boolean | Promise<boolean>;
 
 /**

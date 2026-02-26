@@ -1690,8 +1690,9 @@ federation
     }
   )
   .setFirstCursor(async (ctx, values) => "")
-  .authorize(async (ctx, values, signedKey, signedKeyOwner) => {
+  .authorize(async (ctx, values) => {
     // Only allow access if the viewer is the owner of the bookmarks
+    const signedKeyOwner = await ctx.getSignedKeyOwner();
     if (signedKeyOwner == null) return false;
 
     const viewerId = await getActorIdentifier(signedKeyOwner.id);
