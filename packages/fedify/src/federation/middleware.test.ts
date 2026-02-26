@@ -35,7 +35,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
@@ -941,6 +941,52 @@ test({
         new vocab.Note({ summary: "Note 123 by john" }),
       );
     });
+
+    await t.step(
+      "RequestContext.getSignedKeyOwner() returns null on FetchError",
+      async () => {
+        // Regression test for <https://github.com/fedify-dev/fedify/issues/473>:
+        // When the key owner actor fetch fails (e.g., GoToSocial returns 401 for
+        // authorized fetch), getSignedKeyOwner() should return null instead of
+        // throwing a FetchError.
+        //
+        // Custom document loader that simulates a server with authorized fetch
+        // enabled (returns 401 for actor URL but allows key URL with fragment):
+        const customDocumentLoader = async (url: string) => {
+          if (url === "https://example.com/person2#key3") {
+            // Key URL (with fragment): return actor document for sig verification
+            return await mockDocumentLoader("https://example.com/person2");
+          }
+          if (url === "https://example.com/person2") {
+            // Actor URL (without fragment): simulate 401 Unauthorized
+            throw new FetchError(
+              new URL(url),
+              "HTTP 401: Unauthorized",
+            );
+          }
+          return mockDocumentLoader(url);
+        };
+
+        const signedReq = await signRequest(
+          new Request("https://example.com/", {
+            headers: { accept: "application/activity+json" },
+          }),
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+        );
+
+        const fed = createFederation<void>({
+          kv,
+          documentLoaderFactory: () => customDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        const ctx = fed.createContext(signedReq, undefined);
+
+        // Before fix: throws FetchError (causes 500 Internal Server Error)
+        // After fix: returns null gracefully
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+      },
+    );
 
     await t.step("RequestContext.clone()", () => {
       const federation = createFederation<number>({

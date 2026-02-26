@@ -22,7 +22,7 @@ import type {
   DocumentLoaderFactoryOptions,
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
-import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -2705,11 +2705,24 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     if (this.#signedKeyOwner != null) return this.#signedKeyOwner;
     const key = await this.getSignedKey(options);
     if (key == null) return this.#signedKeyOwner = null;
-    return this.#signedKeyOwner = await getKeyOwner(key, {
-      contextLoader: options.contextLoader ?? this.contextLoader,
-      documentLoader: options.documentLoader ?? this.documentLoader,
-      tracerProvider: options.tracerProvider ?? this.tracerProvider,
-    });
+    try {
+      return this.#signedKeyOwner = await getKeyOwner(key, {
+        contextLoader: options.contextLoader ?? this.contextLoader,
+        documentLoader: options.documentLoader ?? this.documentLoader,
+        tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      });
+    } catch (error) {
+      if (error instanceof FetchError) {
+        getLogger(["fedify", "federation", "actor"]).warn(
+          "Failed to fetch the key owner {keyId} while verifying the " +
+            "request signature; treating the request as unauthenticated: " +
+            "{error}",
+          { keyId: key.id?.href, error },
+        );
+        return this.#signedKeyOwner = null;
+      }
+      throw error;
+    }
   }
 }
 
