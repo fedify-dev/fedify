@@ -1,14 +1,21 @@
 import { join as joinPath } from "node:path";
 import type { InitCommandData } from "../types.ts";
 
+/** Returns `true` if the current run is in dry-run mode. */
 export const isDry = ({ dryRun }: InitCommandData) => dryRun;
 
+/** Returns `true` if the framework initializer has a precommand to execute. */
 export const hasCommand = (data: InitCommandData) => !!data.initializer.command;
 
+/** Returns `true` if the selected package manager is Deno. */
 export const isDeno = (
   { packageManager }: Pick<InitCommandData, "packageManager">,
 ) => packageManager === "deno";
 
+/**
+ * Returns a function that prepends the project directory to a
+ * `[filename, content]` tuple, resolving the filename into an absolute path.
+ */
 export const joinDir =
   (dir: string) => ([filename, content]: readonly [string, string | object]) =>
     [joinPath(dir, ...filename.split("/")), content] as [

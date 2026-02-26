@@ -11,6 +11,13 @@ import {
 import type { WebFrameworks } from "./types.ts";
 import { replace } from "./utils.ts";
 
+/**
+ * Registry of all supported web framework configurations.
+ * Each entry defines the framework's label, supported package managers,
+ * default port, and an `init()` factory that produces a
+ * {@link WebFrameworkInitializer} with dependencies, templates, tasks,
+ * and instructions tailored to the selected package manager.
+ */
 const webFrameworks: WebFrameworks = {
   hono: {
     label: "Hono",
