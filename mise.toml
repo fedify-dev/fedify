@@ -5,7 +5,7 @@ node = "22"
 pnpm = "10.28.0"
 
 [tools."github:dahlia/hongdown"]
-version = "0.3.5"
+version = "0.3.7"
 
 [tools."github:dahlia/hongdown".platforms]
 linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
@@ -22,7 +22,7 @@ run = "deno task codegen"
 
 [tasks.prepare]
 description = "Prepare the development environment (codegen, install, build fixtures)"
-env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
+env = { CI = "true" } # Prevent pnpm from prompting for confirmation
 depends = ["install"]
 run = "pnpm -r run build:self"
 
