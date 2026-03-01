@@ -8,9 +8,9 @@ import {
   when,
 } from "@fxts/core";
 import { join as joinPath } from "node:path";
-import { merge, replace } from "../utils.ts";
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
+import { merge, replace } from "../utils.ts";
 import { PACKAGES_PATH } from "./const.ts";
 import { isDeno } from "./utils.ts";
 
@@ -83,9 +83,9 @@ const convertFedifyToLocal = (name: string): string =>
  * @returns A record of devDependencies with their versions
  */
 export const getDevDependencies = (
-  { initializer, kv, mq, packageManager }: Pick<
+  { initializer, kv, mq, packageManager, testMode }: Pick<
     InitCommandData,
-    "initializer" | "kv" | "mq" | "packageManager"
+    "initializer" | "kv" | "mq" | "packageManager" | "testMode"
   >,
 ): Deps =>
   pipe(
@@ -95,6 +95,10 @@ export const getDevDependencies = (
     merge(initializer.devDependencies),
     merge(kv.devDependencies),
     merge(mq.devDependencies),
+    when(
+      always(testMode),
+      isDeno({ packageManager }) ? removeFedifyDeps : addLocalFedifyDeps,
+    ),
     normalizePackageNames(packageManager),
   );
 

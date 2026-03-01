@@ -4,6 +4,7 @@
     "@cloudflare/workers-types": "catalog:",
     "@deno/kv": "^0.8.4",
     "@fedify/amqp": "workspace:^",
+    "@fedify/astro": "workspace:^",
     "@fedify/cfworkers": "workspace:^",
     "@fedify/debugger": "workspace:^",
     "@fedify/express": "workspace:^",

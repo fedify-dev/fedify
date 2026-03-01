@@ -1,0 +1,22 @@
+{
+  "name": "@fedify/astro",
+  "version": "2.1.0",
+  "license": "MIT",
+  "imports": {},
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts"
+  }
+}

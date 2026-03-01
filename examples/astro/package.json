@@ -1,0 +1,19 @@
+{
+  "name": "astro-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --config astro.config.node.ts",
+    "build": "astro build --config astro.config.node.ts",
+    "preview": "astro preview --config astro.config.node.ts"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.4",
+    "@deno/astro-adapter": "^0.3.2",
+    "@fedify/astro": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "astro": "catalog:"
+  }
+}

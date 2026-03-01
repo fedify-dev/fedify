@@ -775,6 +775,99 @@ found in the Next.js official documentation [`config` in `middleware.js`].
 [`config` in `middleware.js`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 
 
+Astro
+-----
+
+_This API is available since Fedify 2.1.0._
+
+[Astro] is a web framework for content-driven websites. The _@fedify/astro_
+package provides an integration and middleware to integrate Fedify with Astro:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/astro
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/astro
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/astro
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/astro
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/astro
+~~~~
+
+:::
+
+First, add the Fedify integration to your _astro.config.ts_:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()], // [!code highlight]
+  output: "server",
+});
+~~~~
+
+Then, create your middleware in _src/middleware.ts_:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { fedifyMiddleware } from "@fedify/astro";
+
+const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+
+export const onRequest = fedifyMiddleware( // [!code highlight]
+  federation, // [!code highlight]
+  (context) => void 0, // [!code highlight]
+); // [!code highlight]
+~~~~
+
+[Astro]: https://astro.build/
+
+### For Deno users
+
+If you are using Deno, you should import `@deno/vite-adapter` in
+_astro.config.ts_ and use it as the adapter:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import deno from "@deno/astro-adapter";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: deno(),
+});
+~~~~
+
+And the tasks in _deno.json_ should be updated to use `deno run npm:astro`
+instead of `astro`:
+
+~~~~ json
+{
+  "tasks": {
+    "dev": "deno run -A npm:astro dev",
+    "build": "deno run -A npm:astro build",
+    "preview": "deno run -A npm:astro preview"
+  }
+}
+~~~~
+
+
 Fresh
 -----
 

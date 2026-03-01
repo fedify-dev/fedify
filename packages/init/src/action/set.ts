@@ -13,7 +13,7 @@ import type {
   MessageQueueDescription,
   WebFrameworkDescription,
 } from "../types.ts";
-import webFrameworks from "../webframeworks.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 
 /**
  * Set all necessary data for initializing the project.

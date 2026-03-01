@@ -1,0 +1,69 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { relationStore } from "../lib/store";
+
+const host = Astro.url.host;
+const addresses = Array.from(relationStore.keys());
+
+const bannerText = `
+ _______  _______  _______   __   ___________    ____
+|   ____||   ____||       \\ |  | |   ____\\   \\  /   /
+|  |__   |  |__   |  .--.  ||  | |  |__   \\   \\/   /
+|   __|  |   __|  |  |  |  ||  | |   __|   \\_    _/
+|  |     |  |____ |  '--'  ||  | |  |        |  |
+|__|     |_______||_______/ |__| |__|        |__|     `;
+---
+
+<Layout title="Fedify Astro Example">
+  <main class="home-container">
+    <img
+      src="/astro-fedify-logo.svg"
+      alt="Fedify + Astro Logo"
+      class="home-logo"
+    />
+    <div class="home-banner">
+      <span>{bannerText}</span>
+      <span class="with-astro">
+        with
+        <a href="https://astro.build/">
+          <img
+            src="/astro-horizonal.svg"
+            alt="Astro"
+            class="astro-horizontal-logo"
+          />
+        </a>
+      </span>
+    </div>
+    <p>
+      This small federated server app is a demo of
+      <a href="https://fedify.dev" class="fedify-anchor" target="_blank">
+        Fedify
+      </a>. The only one thing it does is to accept follow requests.
+    </p>
+    <p>
+      You can follow this demo app via the below handle:{" "}
+      <code class="home-handle">@demo@{host}</code>
+    </p>
+    {addresses.length === 0 ? (
+      <p>
+        No followers yet. Try to add a follower using{" "}
+        <a
+          href="https://activitypub.academy/"
+          target="_blank"
+          style="color: #3b82f6;"
+        >
+          ActivityPub.Academy
+        </a>.
+      </p>
+    ) : (
+      <>
+        <p>This account has the below {addresses.length} followers:</p>
+        <ul class="follower-list">
+          {addresses.map((address) => (
+            <li class="follower-item">{address}</li>
+          ))}
+        </ul>
+      </>
+    )}
+  </main>
+</Layout>

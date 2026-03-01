@@ -56,6 +56,11 @@ const messageQueue = optional(option(
   },
 ));
 
+/**
+ * The `@optique/core` option schema for the `fedify init` command.
+ * Defines `dir`, `webFramework`, `packageManager`, `kvStore`, `messageQueue`,
+ * and `dryRun` options that the CLI parser will accept.
+ */
 export const initOptions = object("Initialization options", {
   dir: optional(argument(path({ metavar: "DIR" }), {
     description:
@@ -70,6 +75,9 @@ export const initOptions = object("Initialization options", {
   }),
 });
 
+/**
+ * The `fedify init` CLI command parser.
+ */
 export const initCommand = command(
   "init",
   merge(
@@ -90,6 +98,7 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
   },
 );
 
+/** The inferred value type produced by parsing the `fedify init` command. */
 export type InitCommand = InferValue<typeof initCommand>;
 
 const noHydRun = object({
@@ -102,6 +111,9 @@ const noDryRun = object({
     description: message`Test with files creations and installations.`,
   }),
 });
+/**
+ * The `test-init` CLI command parser.
+ */
 export const testInitCommand = command(
   "test-init",
   merge(
@@ -125,4 +137,5 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
   },
 );
 
+/** The inferred value type produced by parsing the `test-init` command. */
 export type TestInitCommand = InferValue<typeof testInitCommand>;

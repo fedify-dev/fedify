@@ -17,6 +17,6 @@ export const emptyTestDir = <
 export const logTestDir = <
   T extends { runId: string; testDirPrefix: string },
 >({ runId, testDirPrefix }: T) =>
-  printMessage`Test run completed.
+  printMessage`Test running with
 Run ID: ${runId}
 Path: ${testDirPrefix}`;

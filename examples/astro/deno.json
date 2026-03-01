@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2"
+  },
+  "tasks": {
+    "dev": "deno run -A npm:astro dev --config astro.config.deno.ts",
+    "build": "deno run -A npm:astro build --config astro.config.deno.ts",
+    "preview": "deno run -A npm:astro preview --config astro.config.deno.ts"
+  },
+  "exclude": [
+    ".astro",
+    "dist",
+    "node_modules"
+  ]
+}
