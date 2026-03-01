@@ -5,7 +5,7 @@ node = "22"
 pnpm = "10.28.0"
 
 [tools."github:dahlia/hongdown"]
-version = "0.3.4"
+version = "0.3.5"
 
 [tools."github:dahlia/hongdown".platforms]
 linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
@@ -22,7 +22,7 @@ run = "deno task codegen"
 
 [tasks.prepare]
 description = "Prepare the development environment (codegen, install, build fixtures)"
-env = { CI = "true" }  # Prevent pnpm from prompting for confirmation
+env = { CI = "true" }                                                                  # Prevent pnpm from prompting for confirmation
 depends = ["install"]
 run = "pnpm -r run build:self"
 
@@ -197,7 +197,11 @@ run = "pnpm --filter @fedify/vocab-tools test:bun:update_snapshots"
 
 [tasks."test:update_snapshots"]
 description = "Update test snapshots for all environments (Deno, Node.js, Bun)"
-depends = ["test:deno:update_snapshots", "test:node:update_snapshots", "test:bun:update_snapshots"]
+depends = [
+  "test:deno:update_snapshots",
+  "test:node:update_snapshots",
+  "test:bun:update_snapshots",
+]
 
 # Documentation
 [tasks.docs]
