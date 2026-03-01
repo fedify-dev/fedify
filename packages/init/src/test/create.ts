@@ -55,6 +55,9 @@ async (
       await saveOutputs(testDir, { stdout: "", stderr: errorMessage });
     }
     printMessage`  Fail: ${vals}`;
+    printMessage`    Check out these files for more details:
+      ${join(testDir, "out.txt")} and 
+      ${join(testDir, "err.txt")}\n`;
     return "";
   }
 };
@@ -81,7 +84,7 @@ function* genInitCommand(
   yield kvStore;
   yield "-m";
   yield messageQueue;
-  if (dry) yield "-d";
+  if (dry) yield "--dry-run";
 }
 
 export const generateTestCases = <T extends Pick<InitTestData, MultipleOption>>(

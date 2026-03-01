@@ -1,4 +1,5 @@
 import type { WebFrameworks } from "../types.ts";
+import astro from "./astro.ts";
 import elysia from "./elysia.ts";
 import express from "./express.ts";
 import hono from "./hono.ts";
@@ -13,6 +14,7 @@ import nitro from "./nitro.ts";
  * and instructions tailored to the selected package manager.
  */
 const webFrameworks: WebFrameworks = {
+  astro,
   elysia,
   express,
   hono,

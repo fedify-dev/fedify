@@ -7,6 +7,7 @@ export const WEB_FRAMEWORK = [
   "nitro",
   "next",
   "elysia",
+  "astro",
   "express",
 ] as const;
 

@@ -1,8 +1,8 @@
 import { PACKAGE_VERSION } from "../lib.ts";
 
 export const defaultDevDependencies = {
-  "eslint": "^9.0.0",
   "@fedify/lint": PACKAGE_VERSION,
+  "eslint": "^9.0.0",
 };
 
 export const defaultDenoDependencies = {

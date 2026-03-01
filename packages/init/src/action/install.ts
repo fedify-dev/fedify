@@ -1,6 +1,6 @@
 import { apply, pipe } from "@fxts/core";
-import { CommandError, runSubCommand } from "../utils.ts";
 import type { InitCommandData } from "../types.ts";
+import { CommandError, runSubCommand } from "../utils.ts";
 
 /**
  * Runs `<packageManager> install` in the project directory to install all

@@ -52,7 +52,7 @@ export const loadDenoConfig = (data: InitCommandData) => ({
     nodeModulesDir: "auto",
     imports: joinDepsReg("deno")(getDependencies(data)),
     lint: { plugins: ["jsr:@fedify/lint"] },
-    ...(data.testMode ? { links: getLinks(data) } : {}),
+    ...(data.testMode && !data.dryRun ? { links: getLinks(data) } : {}),
   },
 });
 
