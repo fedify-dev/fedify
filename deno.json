@@ -1,6 +1,7 @@
 {
   "workspace": [
     "./packages/amqp",
+    "./packages/astro",
     "./packages/cfworkers",
     "./packages/cli",
     "./packages/debugger",
@@ -25,8 +26,9 @@
     "./packages/vocab-runtime",
     "./packages/vocab-tools",
     "./packages/webfinger",
-    "./examples/hono-sample",
-    "./examples/fresh"
+    "./examples/astro",
+    "./examples/fresh",
+    "./examples/hono-sample"
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
@@ -53,6 +55,7 @@
     "@std/yaml": "jsr:@std/yaml@^1.0.8",
     "@types/node": "npm:@types/node@^22.16.0",
     "amqplib": "npm:amqplib@^0.10.9",
+    "astro": "npm:astro@^5.17.3",
     "byte-encodings": "npm:byte-encodings@^1.0.11",
     "chalk": "npm:chalk@^5.6.2",
     "es-toolkit": "npm:es-toolkit@^1.43.0",

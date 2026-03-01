@@ -238,6 +238,17 @@ const SERVER_EXAMPLES: ServerExample[] = [
     actor: "demo",
     readyUrl: "http://localhost:4173/",
   },
+  {
+    // Astro sample using @fedify/astro; actor path is /users/{identifier}.
+    // Built with astro build; served with astro preview on port 4321.
+    name: "astro",
+    dir: "astro",
+    buildCmd: ["pnpm", "build"],
+    startCmd: ["pnpm", "preview"],
+    port: 4321,
+    actor: "demo",
+    readyUrl: "http://localhost:4321/",
+  },
 ];
 
 const SCRIPT_EXAMPLES: ScriptExample[] = [

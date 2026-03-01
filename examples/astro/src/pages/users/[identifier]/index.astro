@@ -1,0 +1,77 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import federation from "../../../lib/federation";
+
+const { identifier } = Astro.params;
+
+if (identifier !== "demo") {
+  return Astro.redirect("/");
+}
+
+const ctx = federation.createContext(Astro.request, undefined);
+const actor = await ctx.getActor(identifier);
+
+if (!actor) {
+  return Astro.redirect("/");
+}
+
+const user = await actor.toJsonLd() as {
+  icon: { url: string };
+  name: string;
+  preferredUsername: string;
+  url: string;
+  summary: string;
+};
+
+const host = new URL(user.url).host;
+---
+
+<Layout title={`${user.name} - Fedify Astro Example`}>
+  <div class="profile-container">
+    <div class="profile-header">
+      <div class="avatar-section">
+        <img
+          src={user.icon?.url ?? "/demo-profile.png"}
+          alt={`${user.name}'s profile`}
+          class="avatar"
+        />
+      </div>
+      <div class="user-info">
+        <h1 class="user-name">{user.name}</h1>
+        <p class="user-handle">@{user.preferredUsername}@{host}</p>
+        {user.summary && <p class="user-bio">{user.summary}</p>}
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <div class="info-card">
+        <h3>Profile Information</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Information</span>
+            <span class="info-value">
+              This profile is demo for
+              <a href="https://fedify.dev" class="fedify-anchor" target="_blank">
+                Fedify
+              </a>&ndash;<a href="https://astro.build/">
+                <img
+                  src="/astro-horizonal.svg"
+                  alt="Astro"
+                  class="astro-inline-logo"
+                />
+              </a> integration.
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <h3>Posts</h3>
+        <p>
+          <a href={`/users/${identifier}/posts`}>
+            View and create posts &rarr;
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</Layout>

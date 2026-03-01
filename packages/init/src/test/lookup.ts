@@ -6,7 +6,6 @@ import { createWriteStream } from "node:fs";
 import { join, sep } from "node:path";
 import process from "node:process";
 import type Stream from "node:stream";
-import { printErrorMessage, printMessage, runSubCommand } from "../utils.ts";
 import { getDevCommand } from "../lib.ts";
 import type {
   KvStore,
@@ -14,7 +13,8 @@ import type {
   PackageManager,
   WebFramework,
 } from "../types.ts";
-import webFrameworks from "../webframeworks.ts";
+import { printErrorMessage, printMessage, runSubCommand } from "../utils.ts";
+import webFrameworks from "../webframeworks/mod.ts";
 
 const HANDLE = "john";
 const STARTUP_TIMEOUT = 30000; // 30 seconds
@@ -81,7 +81,7 @@ async function testApp(dir: string): Promise<boolean> {
     dir,
     getDevCommand(pm),
     sendLookup,
-  );
+  ).catch(() => false);
 
   printMessage`    Lookup ${result ? "successful" : "failed"} for ${
     values([wf, pm, kv, mq])

@@ -92,6 +92,7 @@ const REFERENCES = {
     // Don't include @fedify/cli and @fedify/lint here
     { text: "@fedify/fedify", link: "https://jsr.io/@fedify/fedify/doc" },
     { text: "@fedify/amqp", link: "https://jsr.io/@fedify/amqp/doc" },
+    { text: "@fedify/astro", link: "https://jsr.io/@fedify/astro/doc" },
     { text: "@fedify/cfworkers", link: "https://jsr.io/@fedify/cfworkers/doc" },
     { text: "@fedify/debugger", link: "https://jsr.io/@fedify/debugger/doc" },
     { text: "@fedify/denokv", link: "https://jsr.io/@fedify/denokv/doc" },
