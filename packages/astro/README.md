@@ -59,6 +59,7 @@ If you are using Deno, you should import `@deno/vite-adapter` in
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
 import deno from "@deno/vite-adapter";
+import deno from "@deno/astro-adapter";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],

@@ -845,7 +845,7 @@ _astro.config.ts_ and use it as the adapter:
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
-import deno from "@deno/vite-adapter";
+import deno from "@deno/astro-adapter";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],

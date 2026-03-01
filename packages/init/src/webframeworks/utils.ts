@@ -20,7 +20,7 @@ To start the server, run the following command:
 
   ${commandLine(getDevCommand(pm))}
 
-Then, try look up an actor from your server:
+Then, try to look up an actor from your server:
 
   ${commandLine(`fedify lookup http://localhost:${port}/users/john`)}
 
