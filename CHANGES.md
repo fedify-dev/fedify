@@ -43,6 +43,15 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added vocabulary types for economic resource coordination
+    in federated networks.  [[#578] by scammo]
+ -  Added `Proposal` class for publishing offers or requests.
+ -  Added `Intent` class for describing economic transactions within
+    a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+    `availableQuantity`, and `minimumQuantity` properties.
+ -  Added `Measure` class for representing quantities with units of
+    measure, with `hasUnit` and `hasNumericalValue` properties.
+
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
     `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
     type does not exist in the ActivityStreams vocabulary, and its presence
@@ -53,6 +62,7 @@ To be released.
     `"type": "as:Source"` in the serialized JSON-LD.  The `as:Source` type
     does not exist in the ActivityStreams vocabulary either.
 
+[#578]: https://github.com/fedify-dev/fedify/issues/578
 [browser.pub]: https://browser.pub/
 [#576]: https://github.com/fedify-dev/fedify/issues/576
 
@@ -474,6 +484,21 @@ Released on February 22, 2026.
      -  Separated language string processing (`LanguageString` class).
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
+
+### @fedify/vocab
+
+ -  Added vocabulary types for economic resource coordination
+    in federated networks.  [[#578]]
+
+     -  Added `Proposal` class for publishing offers or requests.
+     -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+     -  Added `Measure` class for representing quantities with units of
+        measure, with `hasUnit` and `hasNumericalValue` properties.
+
+[#578]: https://github.com/fedify-dev/fedify/issues/578
+[ValueFlows]: https://www.valueflo.ws/
 
 ### @fedify/elysia
 
