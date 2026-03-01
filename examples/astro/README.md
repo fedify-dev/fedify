@@ -52,12 +52,12 @@ How it works
      -  Followers collection at `/users/{identifier}/followers`
  -  *src/middleware.ts* wires the federation into Astro via
     `fedifyMiddleware()`.
- -  *src/pages/users/[identifier]/index.astro* renders an HTML profile page.
+ -  *src/pages/users/\[identifier\]/index.astro* renders an HTML profile page.
     Fedify and Astro share the route and do content negotiation depending on
     the `Accept` header.
- -  *src/pages/users/[identifier]/posts/index.astro* lists posts and handles
+ -  *src/pages/users/\[identifier\]/posts/index.astro* lists posts and handles
     new post creation via a form `POST`.
- -  *src/pages/users/[identifier]/posts/[id].astro* renders an individual post
+ -  *src/pages/users/\[identifier\]/posts/[id].astro* renders an individual post
     detail page.
 
 > [!NOTE]
@@ -80,7 +80,7 @@ src/
 └── pages/
     ├── index.astro               # Home page (handle & followers)
     └── users/
-        └── [identifier]/
+        └── \[identifier\]/
             ├── index.astro       # User profile page
             └── posts/
                 ├── index.astro   # Posts list & create form

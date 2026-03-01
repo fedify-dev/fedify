@@ -807,7 +807,7 @@ bun add @fedify/astro
 
 :::
 
-First, add the Fedify integration to your _astro.config.mjs_:
+First, add the Fedify integration to your _astro.config.ts_:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
@@ -840,7 +840,7 @@ export const onRequest = fedifyMiddleware( // [!code highlight]
 ### For Deno users
 
 If you are using Deno, you should import `@deno/vite-adapter` in
-_astro.config.mjs_ and use it as the adapter:
+_astro.config.ts_ and use it as the adapter:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
