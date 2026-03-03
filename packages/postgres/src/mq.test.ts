@@ -924,4 +924,173 @@ nodeTest(
   },
 );
 
+// Regression test for serializedPoll permanently stalling when handler hangs.
+//
+// In PostgresMessageQueue.listen(), the serializedPoll mechanism chains every
+// poll() invocation onto a single promise (pollLock).  If a poll() call never
+// resolves—because the message handler hangs indefinitely on a network request
+// or other I/O—then all subsequent poll() invocations are chained onto the
+// pending promise and also never execute, permanently halting all message
+// processing.
+//
+// This test verifies that with handlerTimeout configured, a hung handler is
+// aborted after the timeout, allowing the poll loop to recover and process
+// subsequent messages.
+//
+// See: https://github.com/fedify-dev/fedify/issues/595
+nodeTest(
+  "PostgresMessageQueue continues processing when handler hangs (no ordering key)",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+      handlerTimeout: { seconds: 1 },
+    });
+
+    try {
+      await mq.initialize();
+
+      // Enqueue two messages — the handler will hang on the first one
+      await mq.enqueue("hang");
+      await mq.enqueue("normal");
+
+      const processed: string[] = [];
+      const controller = new AbortController();
+
+      const listening = mq.listen(
+        async (message: string) => {
+          if (message === "hang") {
+            // Simulate a handler that hangs forever (e.g., unresponsive
+            // remote server)
+            await new Promise(() => {}); // never resolves
+          }
+          processed.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // Wait for the second message to be processed.
+      // Without the timeout fix, this would hang forever because the first
+      // handler never completes and serializedPoll blocks all subsequent
+      // polls.
+      const start = Date.now();
+      while (!processed.includes("normal") && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        processed.includes("normal"),
+        true,
+        "Second message should be processed despite first handler hanging",
+      );
+
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for serializedPoll stalling with ordering key messages.
+//
+// Same issue as above, but for messages with ordering keys.  This also verifies
+// that the advisory lock and reserved connection are properly released when the
+// handler times out, so subsequent messages with the same ordering key can be
+// processed.
+//
+// See: https://github.com/fedify-dev/fedify/issues/595
+nodeTest(
+  "PostgresMessageQueue continues processing when handler hangs (ordering key)",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const sqlCheck = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+      handlerTimeout: { seconds: 1 },
+    });
+
+    const orderingKey = "hang-test-key";
+
+    try {
+      await mq.initialize();
+
+      // Enqueue two messages with the same ordering key
+      await mq.enqueue("hang", { orderingKey });
+      await mq.enqueue("normal", { orderingKey });
+
+      const processed: string[] = [];
+      const controller = new AbortController();
+
+      const listening = mq.listen(
+        async (message: string) => {
+          if (message === "hang") {
+            await new Promise(() => {}); // never resolves
+          }
+          processed.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // Wait for the second message to be processed
+      const start = Date.now();
+      while (!processed.includes("normal") && Date.now() - start < 15_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        processed.includes("normal"),
+        true,
+        "Second message should be processed despite first handler hanging " +
+          "(ordering key)",
+      );
+
+      controller.abort();
+      await listening;
+
+      // Verify advisory lock was released after timeout
+      const lockResult = await sqlCheck`
+        SELECT pg_try_advisory_lock(
+          hashtext(${tableName}),
+          hashtext(${orderingKey})
+        ) AS acquired
+      `;
+      deepStrictEqual(
+        lockResult[0].acquired,
+        true,
+        "Advisory lock should be released after handler timeout",
+      );
+      if (lockResult[0].acquired) {
+        await sqlCheck`
+          SELECT pg_advisory_unlock(
+            hashtext(${tableName}),
+            hashtext(${orderingKey})
+          )
+        `;
+      }
+    } finally {
+      await mq.drop();
+      await sql.end();
+      await sqlCheck.end();
+    }
+  },
+);
+
 // cspell: ignore sqls
