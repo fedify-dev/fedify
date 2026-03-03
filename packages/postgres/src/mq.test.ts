@@ -847,4 +847,81 @@ nodeTest(
   },
 );
 
+// Regression test for unhandled Temporal.Duration.from() error in NOTIFY
+// callback crashing the process.
+//
+// When the NOTIFY payload is malformed (e.g., empty string or invalid duration
+// format), Temporal.Duration.from() throws a RangeError.  Without a try-catch,
+// this error propagates as an unhandled promise rejection through the postgres
+// driver's NotificationResponse handler, crashing the entire process.
+//
+// This test sends a malformed NOTIFY payload directly via SQL, then verifies
+// that the listener survives and continues to process subsequent messages.
+//
+// See: https://github.com/fedify-dev/fedify/issues/594
+nodeTest(
+  "PostgresMessageQueue survives malformed NOTIFY payload",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      pollInterval: { milliseconds: 100 },
+    });
+
+    try {
+      await mq.initialize();
+
+      const messages: string[] = [];
+      const controller = new AbortController();
+
+      const listening = mq.listen(
+        (message: string) => {
+          messages.push(message);
+        },
+        { signal: controller.signal },
+      );
+
+      // Wait for the LISTEN subscription to become active
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Send malformed NOTIFY payloads that will cause
+      // Temporal.Duration.from() to throw a RangeError
+      await sql`SELECT pg_notify(${channelName}, '')`;
+      await sql`SELECT pg_notify(${channelName}, 'not-a-duration')`;
+      await sql`SELECT pg_notify(${channelName}, '!!!')`;
+
+      // Give the listener time to process (and survive) the bad payloads
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Now enqueue a real message and verify the listener is still alive
+      await mq.enqueue("after-malformed");
+
+      const start = Date.now();
+      while (messages.length < 1 && Date.now() - start < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      deepStrictEqual(
+        messages,
+        ["after-malformed"],
+        "Listener should survive malformed NOTIFY payloads and continue " +
+          "processing subsequent messages",
+      );
+
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cspell: ignore sqls

@@ -8,6 +8,17 @@ Version 2.0.3
 
 To be released.
 
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue.listen()` crashing the process when a
+    malformed `NOTIFY` payload is received.  `Temporal.Duration.from()`
+    was called without error handling, so an invalid duration string
+    caused an unhandled `RangeError` that propagated through the postgres
+    driver.  The `NOTIFY` callback is now wrapped in a `try`–`catch` that
+    logs the error and falls back to an immediate poll.  [[#594]]
+
+[#594]: https://github.com/fedify-dev/fedify/issues/594
+
 
 Version 2.0.2
 -------------

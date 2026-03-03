@@ -338,15 +338,23 @@ export class PostgresMessageQueue implements MessageQueue {
     const listen = await this.#sql.listen(
       this.#channelName,
       async (delay) => {
-        const duration = Temporal.Duration.from(delay);
-        const durationMs = duration.total("millisecond");
-        if (durationMs < 1) await safeSerializedPoll("notify-immediate");
-        else {
-          const timeout = setTimeout(() => {
-            timeouts.delete(timeout);
-            void safeSerializedPoll("notify-delayed");
-          }, durationMs);
-          timeouts.add(timeout);
+        try {
+          const duration = Temporal.Duration.from(delay);
+          const durationMs = duration.total("millisecond");
+          if (durationMs < 1) await safeSerializedPoll("notify-immediate");
+          else {
+            const timeout = setTimeout(() => {
+              timeouts.delete(timeout);
+              void safeSerializedPoll("notify-delayed");
+            }, durationMs);
+            timeouts.add(timeout);
+          }
+        } catch (error) {
+          logger.error(
+            "Error parsing NOTIFY payload {delay}: {error}",
+            { delay, error },
+          );
+          await safeSerializedPoll("notify-fallback");
         }
       },
       () => safeSerializedPoll("subscribe"),
