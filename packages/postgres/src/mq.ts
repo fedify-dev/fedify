@@ -16,6 +16,27 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function withTimeout(
+  result: void | Promise<void>,
+  timeoutMs: number,
+): Promise<void> {
+  const resolved = Promise.resolve(result);
+  if (timeoutMs <= 0) return resolved;
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(`Message handler timed out after ${timeoutMs}ms`),
+        ),
+      timeoutMs,
+    );
+  });
+  return Promise.race([resolved, timeoutPromise]).finally(() =>
+    clearTimeout(timer!)
+  );
+}
+
 function isInitializationRaceError(error: unknown): boolean {
   return error instanceof postgres.PostgresError &&
     (
@@ -68,6 +89,20 @@ export interface PostgresMessageQueueOptions {
    * @default `{ seconds: 5 }`
    */
   readonly pollInterval?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
+   * The maximum time to wait for a message handler to complete before
+   * considering it hung.  When a handler exceeds this timeout, it is
+   * treated as an error and the poll loop moves on to the next message,
+   * preventing a single hung handler from permanently blocking the queue.
+   *
+   * Set to zero to disable the timeout (not recommended in production).
+   *
+   * 60 seconds by default.
+   * @default `{ seconds: 60 }`
+   * @since 2.0.3
+   */
+  readonly handlerTimeout?: Temporal.Duration | Temporal.DurationLike;
 }
 
 /**
@@ -93,6 +128,7 @@ export class PostgresMessageQueue implements MessageQueue {
   readonly #tableName: string;
   readonly #channelName: string;
   readonly #pollIntervalMs: number;
+  readonly #handlerTimeoutMs: number;
   #initialized: boolean;
   #initPromise?: Promise<void>;
   #driverSerializesJson = false;
@@ -107,6 +143,9 @@ export class PostgresMessageQueue implements MessageQueue {
     this.#channelName = options?.channelName ?? "fedify_channel";
     this.#pollIntervalMs = Temporal.Duration.from(
       options?.pollInterval ?? { seconds: 5 },
+    ).total("millisecond");
+    this.#handlerTimeoutMs = Temporal.Duration.from(
+      options?.handlerTimeout ?? { seconds: 60 },
     ).total("millisecond");
     this.#initialized = options?.initialized ?? false;
   }
@@ -212,7 +251,7 @@ export class PostgresMessageQueue implements MessageQueue {
         `
         ) {
           if (signal?.aborted) return;
-          await handler(row.message);
+          await withTimeout(handler(row.message), this.#handlerTimeoutMs);
           processed = true;
         }
 
@@ -285,7 +324,10 @@ export class PostgresMessageQueue implements MessageQueue {
 
                 for (const row of deleteResult) {
                   if (signal?.aborted) return;
-                  await handler(row.message);
+                  await withTimeout(
+                    handler(row.message),
+                    this.#handlerTimeoutMs,
+                  );
                   processed = true;
                 }
               } finally {
@@ -338,15 +380,23 @@ export class PostgresMessageQueue implements MessageQueue {
     const listen = await this.#sql.listen(
       this.#channelName,
       async (delay) => {
-        const duration = Temporal.Duration.from(delay);
-        const durationMs = duration.total("millisecond");
-        if (durationMs < 1) await safeSerializedPoll("notify-immediate");
-        else {
-          const timeout = setTimeout(() => {
-            timeouts.delete(timeout);
-            void safeSerializedPoll("notify-delayed");
-          }, durationMs);
-          timeouts.add(timeout);
+        try {
+          const duration = Temporal.Duration.from(delay);
+          const durationMs = duration.total("millisecond");
+          if (durationMs < 1) await safeSerializedPoll("notify-immediate");
+          else {
+            const timeout = setTimeout(() => {
+              timeouts.delete(timeout);
+              void safeSerializedPoll("notify-delayed");
+            }, durationMs);
+            timeouts.add(timeout);
+          }
+        } catch (error) {
+          logger.error(
+            "Error parsing NOTIFY payload {delay}: {error}",
+            { delay, error },
+          );
+          await safeSerializedPoll("notify-fallback");
         }
       },
       () => safeSerializedPoll("subscribe"),

@@ -64,6 +64,34 @@ To be released.
     that are not real vocabulary types but rather anonymous object structures.
 
 
+Version 2.0.3
+-------------
+
+Released on March 3, 2026.
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue.listen()` crashing the process when a
+    malformed `NOTIFY` payload is received.  `Temporal.Duration.from()`
+    was called without error handling, so an invalid duration string
+    caused an unhandled `RangeError` that propagated through the postgres
+    driver.  The `NOTIFY` callback is now wrapped in a `try`–`catch` that
+    logs the error and falls back to an immediate poll.  [[#594]]
+
+ -  Fixed `PostgresMessageQueue.listen()` permanently stalling all message
+    processing when a message handler hangs indefinitely (e.g., due to an
+    unresponsive remote server).  The `serializedPoll` mechanism chains
+    every `poll()` invocation onto a single promise, so a single hung
+    handler blocked the entire queue permanently.  Handler invocations
+    are now wrapped with a configurable timeout (default: 60 seconds)
+    via the new `handlerTimeout` option in `PostgresMessageQueueOptions`.
+    When a handler exceeds the timeout, it is treated as an error and the
+    poll loop moves on, preventing permanent stalls.  [[#595]]
+
+[#594]: https://github.com/fedify-dev/fedify/issues/594
+[#595]: https://github.com/fedify-dev/fedify/issues/595
+
+
 Version 2.0.2
 -------------
 
