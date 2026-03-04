@@ -65,6 +65,14 @@ To be released.
 
 ### @fedify/mysql
 
+ -  Added `MysqlMessageQueue` class to the `@fedify/mysql` package, a
+    MySQL/MariaDB-backed `MessageQueue` implementation.  It uses periodic
+    polling (`SELECT … FOR UPDATE SKIP LOCKED`) to deliver messages and
+    MySQL advisory locks (`GET_LOCK`/`RELEASE_LOCK`) for ordering-key
+    serialization.  Supports delayed delivery, ordering keys,
+    `enqueueMany()`, and concurrent workers.  Requires MySQL 8.0+ or
+    MariaDB 10.6+.  [[#586], [#599]]
+
  -  Added `@fedify/mysql` package, a MySQL/MariaDB-backed `KvStore`
     implementation.  It provides `MysqlKvStore`, which stores key–value
     pairs in a MySQL table using the [`mysql2`] driver.  Supports TTL,
@@ -73,7 +81,9 @@ To be released.
 
 [`mysql2`]: https://www.npmjs.com/package/mysql2
 [#585]: https://github.com/fedify-dev/fedify/issues/585
+[#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
+[#599]: https://github.com/fedify-dev/fedify/pull/599
 
 
 Version 2.0.3

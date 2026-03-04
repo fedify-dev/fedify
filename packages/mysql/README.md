@@ -6,20 +6,22 @@
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
 
-This package provides [Fedify]'s [`KvStore`] implementation for
-MySQL/MariaDB:
+This package provides [Fedify]'s [`KvStore`] and [`MessageQueue`]
+implementations for MySQL/MariaDB:
 
  -  [`MysqlKvStore`]
+ -  [`MysqlMessageQueue`]
 
 ~~~~ typescript
 import { createFederation } from "@fedify/fedify";
-import { MysqlKvStore } from "@fedify/mysql";
+import { MysqlKvStore, MysqlMessageQueue } from "@fedify/mysql";
 import mysql from "mysql2/promise";
 
 const pool = mysql.createPool("mysql://user:password@localhost/dbname");
 
 const federation = createFederation({
   kv: new MysqlKvStore(pool),
+  queue: new MysqlMessageQueue(pool),
 });
 ~~~~
 
@@ -29,7 +31,9 @@ const federation = createFederation({
 [npm]: https://www.npmjs.com/package/@fedify/mysql
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
+[`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/~/MysqlKvStore
+[`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 
 
 Installation

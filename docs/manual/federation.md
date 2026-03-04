@@ -115,8 +115,10 @@ runtime).
 
 As separate packages, [`@fedify/redis`] provides [`RedisMessageQueue`] class,
 which is a Redis-backed implementation for production use,
-and [`@fedify/postgres`] provides [`PostgresMessageQueue`] class, which is a
-PostgreSQL-backed implementation for production use, and [`@fedify/amqp`]
+[`@fedify/postgres`] provides [`PostgresMessageQueue`] class, which is a
+PostgreSQL-backed implementation for production use,
+[`@fedify/mysql`] provides [`MysqlMessageQueue`] class, which is a
+MySQL/MariaDB-backed implementation for production use, and [`@fedify/amqp`]
 provides [`AmqpMessageQueue`] class, which is an AMQP broker-backed
 implementation for production use.
 
@@ -187,6 +189,7 @@ Further details are explained in the [*Message queue* section](./mq.md).
 
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/mq/~/PostgresMessageQueue
+[`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 [`@fedify/amqp`]: https://github.com/fedify-dev/fedify/tree/main/packages/amqp
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
 

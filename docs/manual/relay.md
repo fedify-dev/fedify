@@ -154,7 +154,8 @@ Configuration options
     ~~~~
 
     > [!NOTE]
-    > For production, use [`RedisMessageQueue`] or [`PostgresMessageQueue`].
+    > For production, use [`RedisMessageQueue`], [`PostgresMessageQueue`],
+    > or [`MysqlMessageQueue`].
 
 `subscriptionHandler` (required)
 :   Callback to approve or reject subscription requests. See
@@ -177,6 +178,7 @@ Configuration options
 
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/mq/~/PostgresMessageQueue
+[`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 
 
 Relay types

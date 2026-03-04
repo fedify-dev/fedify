@@ -349,8 +349,9 @@ const federation = createFederation({
 > The `InProcessMessageQueue` is a simple in-memory message queue that is
 > suitable for development and testing.  For production use, you should
 > consider using a more robust message queue, such as [`DenoKvMessageQueue`]
-> from [`@fedify/denokv`] package or [`RedisMessageQueue`] from
-> [`@fedify/redis`] package.
+> from [`@fedify/denokv`] package, [`RedisMessageQueue`] from
+> [`@fedify/redis`] package, or [`MysqlMessageQueue`] from
+> [`@fedify/mysql`] package.
 >
 > For more information, see the [*Message queue* section](./mq.md).
 
@@ -389,6 +390,8 @@ duplicate retry mechanisms and leverages the backend's optimized retry features.
 [`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
 [`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
+[`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
+[`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
 
 
 Activity idempotency
