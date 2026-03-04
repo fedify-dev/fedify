@@ -71,7 +71,7 @@ To be released.
     MySQL advisory locks (`GET_LOCK`/`RELEASE_LOCK`) for ordering-key
     serialization.  Supports delayed delivery, ordering keys,
     `enqueueMany()`, and concurrent workers.  Requires MySQL 8.0+ or
-    MariaDB 10.6+.  [[#586]]
+    MariaDB 10.6+.  [[#586], [#599]]
 
  -  Added `@fedify/mysql` package, a MySQL/MariaDB-backed `KvStore`
     implementation.  It provides `MysqlKvStore`, which stores key–value
@@ -83,6 +83,7 @@ To be released.
 [#585]: https://github.com/fedify-dev/fedify/issues/585
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
+[#599]: https://github.com/fedify-dev/fedify/pull/599
 
 
 Version 2.0.3
