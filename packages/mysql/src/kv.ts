@@ -238,7 +238,7 @@ export class MysqlKvStore implements KvStore {
         serializedPrefix.slice(0, -1).replace(/[%_\\]/g, "\\$&") + ",%";
       [rows] = await this.#pool.query<RowDataPacket[]>(
         `SELECT \`key\`, \`value\` FROM \`${this.#tableName}\`
-         WHERE (\`key\` = ? OR \`key\` LIKE ?)
+         WHERE (\`key\` = ? OR \`key\` LIKE ? ESCAPE '\\\\')
            AND (\`expires\` IS NULL OR \`expires\` > NOW(6))
          ORDER BY \`key\``,
         [serializedPrefix, likePrefix],

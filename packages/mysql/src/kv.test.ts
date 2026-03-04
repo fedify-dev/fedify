@@ -276,6 +276,45 @@ test(
 );
 
 test(
+  "MysqlKvStore.list() - keys with LIKE special characters",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, store } = getStore();
+    try {
+      // Keys whose serialized form contains %, _, or \ characters
+      await store.set(["50%", "off"], "discount");
+      await store.set(["50%", "extra"], "extra-discount");
+      await store.set(["snake_case", "key"], "snake");
+      await store.set(["back\\slash", "key"], "backslash");
+      await store.set(["unrelated"], "noise");
+
+      const percentEntries: unknown[] = [];
+      for await (const entry of store.list(["50%"])) {
+        percentEntries.push(entry.key);
+      }
+      assert.strictEqual(percentEntries.length, 2);
+
+      const underscoreEntries: unknown[] = [];
+      for await (const entry of store.list(["snake_case"])) {
+        underscoreEntries.push(entry.key);
+      }
+      assert.strictEqual(underscoreEntries.length, 1);
+
+      const backslashEntries: unknown[] = [];
+      for await (const entry of store.list(["back\\slash"])) {
+        backslashEntries.push(entry.key);
+      }
+      assert.strictEqual(backslashEntries.length, 1);
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
+test(
   "MysqlKvStore.list() - empty prefix",
   { skip: dbUrl == null },
   async () => {
