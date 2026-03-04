@@ -857,6 +857,47 @@ test(
 );
 
 // ---------------------------------------------------------------------------
+// Abort during long poll interval resolves promptly (clearTimeout regression)
+// ---------------------------------------------------------------------------
+
+test(
+  "MysqlMessageQueue listen() resolves promptly when aborted during poll interval",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = randomTableName("clrtmo");
+    // Use a very long poll interval so the test would hang if clearTimeout
+    // is missing: the setTimeout would keep the event loop alive and the
+    // listen() promise would not resolve until the timer fires.
+    const mq = new MysqlMessageQueue(pool, {
+      tableName,
+      pollInterval: { seconds: 60 },
+    });
+    const controller = new AbortController();
+    try {
+      const listening = mq.listen(() => {}, { signal: controller.signal });
+
+      // Give the listener time to enter the poll-interval sleep, then abort.
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      controller.abort();
+
+      // listen() must resolve well within the 60-second poll interval.
+      const deadline = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("listen() did not resolve in time")),
+          3_000,
+        )
+      );
+      await Promise.race([listening, deadline]);
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
 // getRandomKey() integration: using @fedify/testing helpers
 // ---------------------------------------------------------------------------
 

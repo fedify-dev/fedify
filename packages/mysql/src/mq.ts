@@ -392,13 +392,17 @@ export class MysqlMessageQueue implements MessageQueue {
 
     while (!signal?.aborted) {
       await new Promise<unknown>((resolve) => {
-        const onAbort = () => resolve(undefined);
-        signal?.addEventListener("abort", onAbort, { once: true });
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           signal?.removeEventListener("abort", onAbort);
           resolve(0);
         }, this.#pollIntervalMs);
+        function onAbort() {
+          clearTimeout(timeoutId);
+          resolve(undefined);
+        }
+        signal?.addEventListener("abort", onAbort, { once: true });
       });
+      if (signal?.aborted) break;
       await safeSerializedPoll("interval");
     }
   }
