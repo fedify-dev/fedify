@@ -266,7 +266,7 @@ export class MysqlKvStore implements KvStore {
     });
     await this.#pool.query(
       `CREATE TABLE IF NOT EXISTS \`${this.#tableName}\` (
-        \`key\` VARCHAR(512) NOT NULL,
+        \`key\` VARCHAR(768) NOT NULL,
         \`value\` JSON NOT NULL,
         \`expires\` DATETIME(6) NULL DEFAULT NULL,
         PRIMARY KEY (\`key\`)

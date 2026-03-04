@@ -60,6 +60,17 @@ test("MysqlKvStore.initialize()", { skip: dbUrl == null }, async () => {
       [tableName],
     );
     assert.strictEqual(rows[0].cnt, 1);
+
+    // Verify key column length is at least 768
+    const [cols] = await pool.query<mysql.RowDataPacket[]>(
+      `SELECT CHARACTER_MAXIMUM_LENGTH
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = ?
+         AND column_name = 'key'`,
+      [tableName],
+    );
+    assert.ok(cols[0].CHARACTER_MAXIMUM_LENGTH >= 768);
   } finally {
     await store.drop();
     await pool.end();
