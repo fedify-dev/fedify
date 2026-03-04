@@ -322,7 +322,8 @@ export class MysqlKvStore implements KvStore {
 
   /**
    * Drops the table used by the key-value store.  Does nothing if the table
-   * does not exist.
+   * does not exist.  Resets the initialized flag so that
+   * {@link MysqlKvStore.initialize} can recreate the table on the next call.
    *
    * @since 2.1.0
    */
@@ -330,6 +331,7 @@ export class MysqlKvStore implements KvStore {
     await this.#pool.query(
       `DROP TABLE IF EXISTS \`${this.#tableName}\``,
     );
+    this.#initialized = false;
   }
 }
 

@@ -281,6 +281,33 @@ test("MysqlKvStore.drop()", { skip: dbUrl == null }, async () => {
   }
 });
 
+test(
+  "MysqlKvStore.drop() resets initialized flag so re-initialize works",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, tableName, store } = getStore();
+    try {
+      await store.initialize();
+      await store.drop();
+
+      // After drop(), calling initialize() again must recreate the table
+      await store.initialize();
+      const [rows] = await pool.query<mysql.RowDataPacket[]>(
+        `SELECT COUNT(*) AS cnt
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = ?`,
+        [tableName],
+      );
+      assert.strictEqual(rows[0].cnt, 1);
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
 test("MysqlKvStore.list()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return;
 
