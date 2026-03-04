@@ -183,29 +183,36 @@ export class MysqlKvStore implements KvStore {
         return false;
       }
 
-      const jsonValue = JSON.stringify(newValue);
-      if (options?.ttl != null) {
-        const ttlSeconds = durationToSeconds(options.ttl);
+      if (newValue === undefined) {
         await conn.query(
-          `INSERT INTO \`${this.#tableName}\`
-             (\`key\`, \`value\`, \`expires\`)
-           VALUES (?, CAST(? AS JSON),
-                   DATE_ADD(NOW(6), INTERVAL ? SECOND))
-           ON DUPLICATE KEY UPDATE
-             \`value\` = VALUES(\`value\`),
-             \`expires\` = VALUES(\`expires\`)`,
-          [serializedKey, jsonValue, ttlSeconds],
+          `DELETE FROM \`${this.#tableName}\` WHERE \`key\` = ?`,
+          [serializedKey],
         );
       } else {
-        await conn.query(
-          `INSERT INTO \`${this.#tableName}\`
-             (\`key\`, \`value\`, \`expires\`)
-           VALUES (?, CAST(? AS JSON), NULL)
-           ON DUPLICATE KEY UPDATE
-             \`value\` = VALUES(\`value\`),
-             \`expires\` = NULL`,
-          [serializedKey, jsonValue],
-        );
+        const jsonValue = JSON.stringify(newValue);
+        if (options?.ttl != null) {
+          const ttlSeconds = durationToSeconds(options.ttl);
+          await conn.query(
+            `INSERT INTO \`${this.#tableName}\`
+               (\`key\`, \`value\`, \`expires\`)
+             VALUES (?, CAST(? AS JSON),
+                     DATE_ADD(NOW(6), INTERVAL ? SECOND))
+             ON DUPLICATE KEY UPDATE
+               \`value\` = VALUES(\`value\`),
+               \`expires\` = VALUES(\`expires\`)`,
+            [serializedKey, jsonValue, ttlSeconds],
+          );
+        } else {
+          await conn.query(
+            `INSERT INTO \`${this.#tableName}\`
+               (\`key\`, \`value\`, \`expires\`)
+             VALUES (?, CAST(? AS JSON), NULL)
+             ON DUPLICATE KEY UPDATE
+               \`value\` = VALUES(\`value\`),
+               \`expires\` = NULL`,
+            [serializedKey, jsonValue],
+          );
+        }
       }
 
       await conn.commit();

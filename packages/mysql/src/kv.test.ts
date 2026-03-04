@@ -404,6 +404,36 @@ test("MysqlKvStore.cas()", { skip: dbUrl == null }, async () => {
 });
 
 test(
+  "MysqlKvStore.cas() with undefined newValue deletes the key",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, store } = getStore();
+    try {
+      // Set up a key then CAS it away with undefined newValue
+      await store.set(["foo"], "bar");
+      assert.strictEqual(
+        await store.cas!(["foo"], "bar", undefined),
+        true,
+      );
+      assert.strictEqual(await store.get(["foo"]), undefined);
+
+      // CAS with wrong expected value and undefined newValue should fail
+      await store.set(["baz"], "qux");
+      assert.strictEqual(
+        await store.cas!(["baz"], "wrong", undefined),
+        false,
+      );
+      assert.deepStrictEqual(await store.get(["baz"]), "qux");
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
+test(
   "MysqlKvStore.cas() with TTL",
   { skip: dbUrl == null },
   async () => {
