@@ -128,10 +128,26 @@ test("MysqlMessageQueue.initialize()", { skip: dbUrl == null }, async () => {
        FROM information_schema.statistics
        WHERE table_schema = DATABASE()
          AND table_name = ?
-         AND column_name = 'deliver_after'`,
-      [tableName],
+         AND index_name = ?`,
+      [tableName, `idx_${tableName}_deliver_after`],
     );
     assert.strictEqual(idxRows[0].cnt, 1, "deliver_after index must exist");
+
+    // The composite (ordering_key, deliver_after) index must exist so that
+    // #findOrderingKeyCandidate() can scan efficiently.
+    const [compIdxRows] = await pool.query<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) AS cnt
+       FROM information_schema.statistics
+       WHERE table_schema = DATABASE()
+         AND table_name = ?
+         AND index_name = ?`,
+      [tableName, `idx_${tableName}_ok_da`],
+    );
+    assert.strictEqual(
+      compIdxRows[0].cnt,
+      2,
+      "composite (ordering_key, deliver_after) index must exist with 2 columns",
+    );
 
     // id column must be CHAR(36) (for UUID storage)
     const [cols] = await pool.query<mysql.RowDataPacket[]>(

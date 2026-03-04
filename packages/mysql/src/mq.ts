@@ -550,6 +550,17 @@ export class MysqlMessageQueue implements MessageQueue {
           // Ignore duplicate index (ER_DUP_KEYNAME) from concurrent init
           if ((e as { code?: string }).code !== "ER_DUP_KEYNAME") throw e;
         }
+        try {
+          // Composite index to speed up #findOrderingKeyCandidate():
+          // scans for the oldest ready message per ordering key.
+          await this.#pool.query(
+            `CREATE INDEX \`idx_${this.#tableName}_ok_da\`
+             ON \`${this.#tableName}\` (\`ordering_key\`, \`deliver_after\`)`,
+          );
+        } catch (e) {
+          // Ignore duplicate index (ER_DUP_KEYNAME) from concurrent init
+          if ((e as { code?: string }).code !== "ER_DUP_KEYNAME") throw e;
+        }
         break;
       } catch (error) {
         if (attempt >= INITIALIZE_MAX_ATTEMPTS) {
