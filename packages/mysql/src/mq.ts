@@ -369,18 +369,9 @@ export class MysqlMessageQueue implements MessageQueue {
       }
     };
 
-    // Serialize poll() calls to prevent concurrent database contention.
-    // If poll() is still running when the next timer fires, the new call
-    // waits for the current one to finish before starting another.
-    let pollLock: Promise<void> = Promise.resolve();
-    const serializedPoll = () => {
-      const next = pollLock.then(poll);
-      pollLock = next.catch(() => {});
-      return next;
-    };
-    const safeSerializedPoll = async (trigger: string) => {
+    const safePoll = async (trigger: string) => {
       try {
-        await serializedPoll();
+        await poll();
       } catch (error) {
         logger.error(
           "Error while polling for messages ({trigger}); " +
@@ -393,7 +384,7 @@ export class MysqlMessageQueue implements MessageQueue {
     // Immediately process any messages that were enqueued before listen() was
     // called, so that pre-queued messages are not delayed by the first
     // poll interval.
-    await safeSerializedPoll("initial");
+    await safePoll("initial");
 
     while (!signal?.aborted) {
       await new Promise<unknown>((resolve) => {
@@ -408,7 +399,7 @@ export class MysqlMessageQueue implements MessageQueue {
         signal?.addEventListener("abort", onAbort, { once: true });
       });
       if (signal?.aborted) break;
-      await safeSerializedPoll("interval");
+      await safePoll("interval");
     }
   }
 
