@@ -29,7 +29,8 @@
     "./packages/webfinger",
     "./examples/astro",
     "./examples/fresh",
-    "./examples/hono-sample"
+    "./examples/hono-sample",
+    "./test/smoke/harness"
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",

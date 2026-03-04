@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# Interoperability smoke tests.
+# Spins up a Mastodon instance via Docker Compose and verifies that Fedify
+# can correctly exchange ActivityPub messages with it.
+# See: https://github.com/fedify-dev/fedify/issues/481
+name: smoke-mastodon
+
+on:
+  push:
+    branches:
+      - main
+      - next
+      - "*.*-maintenance"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only need mise for Deno (orchestrator); skip full workspace build
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2025.12.12
+          install: true
+
+      - name: Generate Mastodon secrets
+        run: |
+          IMAGE=ghcr.io/mastodon/mastodon:v4.3.9
+          docker pull "$IMAGE"
+
+          SECRET1=$(docker run --rm "$IMAGE" bundle exec rails secret)
+          SECRET2=$(docker run --rm "$IMAGE" bundle exec rails secret)
+
+          {
+            echo "SECRET_KEY_BASE=$SECRET1"
+            echo "OTP_SECRET=$SECRET2"
+            docker run --rm "$IMAGE" bundle exec rails mastodon:webpush:generate_vapid_key \
+              | grep -E '^[A-Z_]+=.+'
+            docker run --rm "$IMAGE" bundle exec rails db:encryption:init \
+              | grep -E '^[A-Z_]+=.+'
+          } >> test/smoke/mastodon/mastodon.env
+
+      - name: Start database and redis
+        run: |
+          docker compose -f test/smoke/mastodon/docker-compose.yml up -d db redis
+          docker compose -f test/smoke/mastodon/docker-compose.yml exec -T db \
+            sh -c 'until pg_isready -U mastodon; do sleep 1; done'
+
+      - name: Run DB setup and migrations
+        run: |
+          docker compose -f test/smoke/mastodon/docker-compose.yml run --rm -T \
+            mastodon-web bundle exec rails db:setup
+        timeout-minutes: 5
+
+      - name: Start Mastodon stack
+        run: docker compose -f test/smoke/mastodon/docker-compose.yml up --wait
+        timeout-minutes: 12
+
+      - name: Provision Mastodon
+        run: bash test/smoke/mastodon/provision.sh
+
+      - name: Verify connectivity
+        run: |
+          echo "=== Harness health (from mastodon-web) ==="
+          docker compose -f test/smoke/mastodon/docker-compose.yml exec -T mastodon-web \
+            curl -sf http://fedify-harness:3001/_test/health && echo " OK" || echo " FAIL"
+
+          echo "=== Harness health (from mastodon-sidekiq) ==="
+          docker compose -f test/smoke/mastodon/docker-compose.yml exec -T mastodon-sidekiq \
+            curl -sf http://fedify-harness:3001/_test/health && echo " OK" || echo " FAIL"
+
+      - name: Run smoke tests
+        run: |
+          set -a && source test/smoke/.env.test && set +a
+          deno run --allow-net --allow-env --unstable-temporal \
+            test/smoke/orchestrator.ts
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose logs ==="
+          docker compose -f test/smoke/mastodon/docker-compose.yml logs --tail=500
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f test/smoke/mastodon/docker-compose.yml down -v
