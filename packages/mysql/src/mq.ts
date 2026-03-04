@@ -9,6 +9,10 @@ import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 const logger = getLogger(["fedify", "mysql", "mq"]);
 const INITIALIZE_MAX_ATTEMPTS = 5;
 const INITIALIZE_BACKOFF_MS = 10;
+// Maximum number of distinct ordering-key candidates fetched per poll cycle.
+// Raising this reduces the chance of missing a key under high contention, at
+// the cost of a slightly larger result set from the GROUP BY query.
+const ORDERING_KEY_CANDIDATE_LIMIT = 10;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -320,15 +324,13 @@ export class MysqlMessageQueue implements MessageQueue {
         // dedicated connection (pool.getConnection()) for the entire
         // lock → dequeue → handler → unlock sequence so that the lock and
         // unlock are guaranteed to execute on the same connection.
-        const attemptedOrderingKeys = new Set<string>();
-        while (!signal?.aborted) {
-          const candidate = await this.#findOrderingKeyCandidate(
-            attemptedOrderingKeys,
-          );
-          if (candidate == null) break;
-
-          const { orderingKey } = candidate;
-          attemptedOrderingKeys.add(orderingKey);
+        //
+        // We fetch up to ORDERING_KEY_CANDIDATE_LIMIT distinct ordering keys
+        // in a single GROUP BY query and iterate over them in memory, avoiding
+        // the O(n) NOT IN list that would grow with each failed lock attempt.
+        const candidates = await this.#findOrderingKeyCandidates();
+        for (const orderingKey of candidates) {
+          if (signal?.aborted) break;
           const lockName = getMysqlLockName(this.#tableName, orderingKey);
 
           let conn: PoolConnection | undefined;
@@ -446,37 +448,23 @@ export class MysqlMessageQueue implements MessageQueue {
   }
 
   /**
-   * Finds the oldest ready candidate message that has an ordering key and
-   * whose ordering key is not in `excludeKeys`.  Returns `null` when none
-   * is found.
+   * Returns up to {@link ORDERING_KEY_CANDIDATE_LIMIT} distinct ordering keys
+   * that have at least one ready message, ordered by their earliest
+   * `deliver_after`.  Fetching a batch in one query avoids the growing
+   * `NOT IN (…)` list that results from repeatedly calling a single-result
+   * version after each failed lock attempt.
    */
-  async #findOrderingKeyCandidate(
-    excludeKeys: ReadonlySet<string>,
-  ): Promise<{ id: string; orderingKey: string } | null> {
-    const excludeArray = [...excludeKeys];
-    let queryStr: string;
-    const params: unknown[] = [];
-    if (excludeArray.length === 0) {
-      queryStr = `SELECT \`id\`, \`ordering_key\` FROM \`${this.#tableName}\`
-         WHERE \`deliver_after\` <= NOW(6) AND \`ordering_key\` IS NOT NULL
-         ORDER BY \`deliver_after\`
-         LIMIT 1`;
-    } else {
-      const placeholders = excludeArray.map(() => "?").join(", ");
-      queryStr = `SELECT \`id\`, \`ordering_key\` FROM \`${this.#tableName}\`
-         WHERE \`deliver_after\` <= NOW(6)
-           AND \`ordering_key\` IS NOT NULL
-           AND \`ordering_key\` NOT IN (${placeholders})
-         ORDER BY \`deliver_after\`
-         LIMIT 1`;
-      params.push(...excludeArray);
-    }
-    const [rows] = await this.#pool.query<RowDataPacket[]>(queryStr, params);
-    if (rows.length === 0) return null;
-    return {
-      id: rows[0].id as string,
-      orderingKey: rows[0].ordering_key as string,
-    };
+  async #findOrderingKeyCandidates(): Promise<string[]> {
+    const [rows] = await this.#pool.query<RowDataPacket[]>(
+      `SELECT \`ordering_key\`
+       FROM \`${this.#tableName}\`
+       WHERE \`deliver_after\` <= NOW(6) AND \`ordering_key\` IS NOT NULL
+       GROUP BY \`ordering_key\`
+       ORDER BY MIN(\`deliver_after\`)
+       LIMIT ?`,
+      [ORDERING_KEY_CANDIDATE_LIMIT],
+    );
+    return rows.map((r) => r.ordering_key as string);
   }
 
   /**
