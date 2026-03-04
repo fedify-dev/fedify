@@ -10,10 +10,19 @@
  *   HARNESS_BASE_URL, HARNESS_ORIGIN, SERVER_INTERNAL_HOST
  */
 
-const SERVER_URL = Deno.env.get("SERVER_BASE_URL")!;
-const SERVER_TOKEN = Deno.env.get("SERVER_ACCESS_TOKEN")!;
-const HARNESS_URL = Deno.env.get("HARNESS_BASE_URL")!;
-const SERVER_INTERNAL_HOST = Deno.env.get("SERVER_INTERNAL_HOST")!;
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
+const SERVER_URL = requireEnv("SERVER_BASE_URL");
+const SERVER_TOKEN = requireEnv("SERVER_ACCESS_TOKEN");
+const HARNESS_URL = requireEnv("HARNESS_BASE_URL");
+const HARNESS_ORIGIN = requireEnv("HARNESS_ORIGIN");
+const SERVER_INTERNAL_HOST = requireEnv("SERVER_INTERNAL_HOST");
+
+const HARNESS_HOST = new URL(HARNESS_ORIGIN).host;
 
 const POLL_INTERVAL_MS = 2_000;
 const POLL_TIMEOUT_MS = 90_000;
@@ -98,7 +107,7 @@ let fedifyAccountId: string | undefined;
 async function lookupFedifyAccount(): Promise<string> {
   if (fedifyAccountId) return fedifyAccountId;
 
-  const handle = `testuser@fedify-harness:3001`;
+  const handle = `testuser@${HARNESS_HOST}`;
 
   const searchResult = await poll("Fedify user resolvable", async () => {
     const results = await serverGet(
@@ -244,7 +253,7 @@ async function testCreateNote(): Promise<void> {
 async function testReply(): Promise<void> {
   await harnessPost("/_test/reset");
 
-  const handle = `@testuser@fedify-harness:3001`;
+  const handle = `@testuser@${HARNESS_HOST}`;
   const replyContent = `Reply smoke test ${Date.now()} ${handle}`;
 
   await serverPost("/api/v1/statuses", {
