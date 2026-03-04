@@ -168,7 +168,9 @@ Development
 Production
 :   Consider [`PostgresKvStore`](./kv.md#postgreskvstore) and
     [`PostgresMessageQueue`](./mq.md#postgresmessagequeue) if you already use
-    PostgreSQL, or [`RedisKvStore`](./kv.md#rediskvstore) and
+    PostgreSQL, [`MysqlKvStore`](./kv.md#mysqlkvstore) and
+    [`MysqlMessageQueue`](./mq.md#mysqlmessagequeue) if you already use
+    MySQL or MariaDB, or [`RedisKvStore`](./kv.md#rediskvstore) and
     [`RedisMessageQueue`](./mq.md#redismessagequeue) for dedicated caching
     infrastructure. There is also [`AmqpMessageQueue`](./mq.md#amqpmessagequeue)
     for RabbitMQ users.
