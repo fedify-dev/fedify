@@ -63,7 +63,7 @@ To be released.
     It provides `fedifyIntegration()` for Vite SSR configuration and
     `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
 
-### @fedify/MySQL
+### @fedify/mysql
 
  -  Added `@fedify/mysql` package, a MySQL/MariaDB-backed `KvStore`
     implementation.  It provides `MysqlKvStore`, which stores key–value

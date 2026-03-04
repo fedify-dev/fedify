@@ -1,6 +1,6 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/MySQL: MySQL/MariaDB drivers for Fedify
+@fedify/mysql: MySQL/MariaDB drivers for Fedify
 ===============================================
 
 [![JSR][JSR badge]][JSR]
