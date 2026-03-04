@@ -1,0 +1,23 @@
+{
+  "name": "@fedify/mysql",
+  "version": "2.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./kv": "./src/kv.ts"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test --allow-net --allow-env"
+  }
+}

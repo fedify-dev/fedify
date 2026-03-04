@@ -19,28 +19,6 @@ To be released.
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 
-### @fedify/astro
-
- -  Added `@fedify/astro` package for integrating Fedify with [Astro].
-    It provides `fedifyIntegration()` for Vite SSR configuration and
-    `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
-
-[Astro]: https://astro.build/
-[#50]: https://github.com/fedify-dev/fedify/issues/50
-
-### @fedify/init
-
- -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
-    field only when the installed Deno version is earlier than 2.7.0.
-    On Deno 2.7.0 or later, it is no longer added.
-
- -  `fedify init` now omits the `"unstable"` field entirely when no unstable
-    feature is required for the generated Deno project.
-
- -  Supported [Astro] as a web framework option in `fedify init`, with
-    runtime-specific templates for Deno, Bun, and Node.js environments.
-    [[#50] by ChanHaeng Lee]
-
 ### @fedify/vocab
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
@@ -62,6 +40,40 @@ To be released.
     the generated `toJsonLd()` method does not emit `@type` (or `type` in
     compact form) in the serialized JSON-LD.  This is useful for types
     that are not real vocabulary types but rather anonymous object structures.
+
+### @fedify/init
+
+ -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
+    field only when the installed Deno version is earlier than 2.7.0.
+    On Deno 2.7.0 or later, it is no longer added.
+
+ -  `fedify init` now omits the `"unstable"` field entirely when no unstable
+    feature is required for the generated Deno project.
+
+ -  Supported [Astro] as a web framework option in `fedify init`, with
+    runtime-specific templates for Deno, Bun, and Node.js environments.
+    [[#50] by ChanHaeng Lee]
+
+[Astro]: https://astro.build/
+[#50]: https://github.com/fedify-dev/fedify/issues/50
+
+### @fedify/astro
+
+ -  Added `@fedify/astro` package for integrating Fedify with [Astro].
+    It provides `fedifyIntegration()` for Vite SSR configuration and
+    `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
+
+### @fedify/mysql
+
+ -  Added `@fedify/mysql` package, a MySQL/MariaDB-backed `KvStore`
+    implementation.  It provides `MysqlKvStore`, which stores key–value
+    pairs in a MySQL table using the [`mysql2`] driver.  Supports TTL,
+    prefix listing, and compare-and-swap (`cas()`) operations.
+    [[#585], [#597]]
+
+[`mysql2`]: https://www.npmjs.com/package/mysql2
+[#585]: https://github.com/fedify-dev/fedify/issues/585
+[#597]: https://github.com/fedify-dev/fedify/pull/597
 
 
 Version 2.0.3

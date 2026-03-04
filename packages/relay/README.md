@@ -254,11 +254,12 @@ Any `KvStore` implementation from Fedify can be used, including:
  -  `DenoKvStore` (Deno KV)
  -  `RedisKvStore` (Redis)
  -  `PostgresKvStore` (PostgreSQL)
+ -  `MysqlKvStore` (MySQL/MariaDB)
  -  `SqliteKvStore` (SQLite)
 
-For production use, choose a persistent storage backend like Redis or
-PostgreSQL.  See the [Fedify documentation on key–value stores] for more
-details.
+For production use, choose a persistent storage backend like Redis,
+PostgreSQL, or MySQL/MariaDB.  See the
+[Fedify documentation on key–value stores] for more details.
 
 [Fedify documentation on key–value stores]: https://fedify.dev/manual/kv
 

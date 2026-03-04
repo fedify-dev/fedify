@@ -29,6 +29,21 @@
       "POSTGRES_URL": "postgres://postgres@localhost:5432/postgres"
     }
   },
+  "mysql": {
+    "label": "MySQL/MariaDB",
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "dependencies": {
+      "npm:mysql2": "^3.18.0"
+    },
+    "imports": {
+      "@fedify/mysql": { "MysqlKvStore": "MysqlKvStore" },
+      "mysql2/promise": { "default": "mysql" }
+    },
+    "object": "new MysqlKvStore(mysql.createPool(process.env.MYSQL_URL))",
+    "env": {
+      "MYSQL_URL": "mysql://root@localhost/fedify"
+    }
+  },
   "denokv": {
     "label": "Deno KV",
     "packageManagers": ["deno"],
