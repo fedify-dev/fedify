@@ -136,7 +136,7 @@ test("MysqlMessageQueue.initialize()", { skip: dbUrl == null }, async () => {
     assert.strictEqual(idxRows[0].cnt, 1, "deliver_after index must exist");
 
     // The composite (ordering_key, deliver_after) index must exist so that
-    // #findOrderingKeyCandidate() can scan efficiently.
+    // #findOrderingKeyCandidates() can scan efficiently.
     const [compIdxRows] = await pool.query<mysql.RowDataPacket[]>(
       `SELECT COUNT(*) AS cnt
        FROM information_schema.statistics

@@ -540,7 +540,7 @@ export class MysqlMessageQueue implements MessageQueue {
           if ((e as { code?: string }).code !== "ER_DUP_KEYNAME") throw e;
         }
         try {
-          // Composite index to speed up #findOrderingKeyCandidate():
+          // Composite index to speed up #findOrderingKeyCandidates():
           // scans for the oldest ready message per ordering key.
           // ordering_key uses a 766-character prefix because TEXT columns
           // require a prefix length for indexing, and InnoDB's 3072-byte key
