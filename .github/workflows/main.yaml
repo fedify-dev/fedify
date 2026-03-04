@@ -56,8 +56,21 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: fedify
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 3306:3306
     env:
       AMQP_URL: amqp://guest:guest@localhost:5672
+      MYSQL_URL: mysql://root:mysql@localhost:3306/fedify
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
@@ -127,8 +140,21 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: fedify
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 3306:3306
     env:
       AMQP_URL: amqp://guest:guest@localhost:5672
+      MYSQL_URL: mysql://root:mysql@localhost:3306/fedify
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
@@ -177,8 +203,21 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: fedify
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 3306:3306
     env:
       AMQP_URL: amqp://guest:guest@localhost:5672
+      MYSQL_URL: mysql://root:mysql@localhost:3306/fedify
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:

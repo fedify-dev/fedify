@@ -1,0 +1,86 @@
+{
+  "name": "@fedify/mysql",
+  "version": "2.1.0",
+  "description": "MySQL/MariaDB drivers for Fedify",
+  "keywords": [
+    "fedify",
+    "mysql",
+    "mariadb"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/mysql"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./kv": {
+      "types": {
+        "import": "./dist/kv.d.ts",
+        "require": "./dist/kv.d.cts",
+        "default": "./dist/kv.d.ts"
+      },
+      "import": "./dist/kv.js",
+      "require": "./dist/kv.cjs",
+      "default": "./dist/kv.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "@js-temporal/polyfill": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "es-toolkit": "catalog:"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^",
+    "mysql2": "catalog:"
+  },
+  "devDependencies": {
+    "@fedify/fixture": "workspace:^",
+    "@fedify/testing": "workspace:^",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/mysql... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "pretest:bun": "pnpm build",
+    "test:bun": "bun test --timeout=60000"
+  }
+}

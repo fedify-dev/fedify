@@ -52,9 +52,10 @@ implementation for production use (as you can guess from the name, it is only
 available in Deno runtime).
 
 As separate packages, [`@fedify/redis`] provides [`RedisKvStore`] class, which
-is a Redis-backed implementation for production use, and [`@fedify/postgres`]
+is a Redis-backed implementation for production use, [`@fedify/postgres`]
 provides [`PostgresKvStore`] class, which is a PostgreSQL-backed implementation
-for production use.
+for production use, and [`@fedify/mysql`] provides [`MysqlKvStore`] class, which
+is a MySQL/MariaDB-backed implementation for production use.
 
 Further details are explained in the [*Key–value store* section](./kv.md).
 
@@ -62,6 +63,8 @@ Further details are explained in the [*Key–value store* section](./kv.md).
 [`RedisKvStore`]: https://jsr.io/@fedify/redis/doc/kv/~/RedisKvStore
 [`@fedify/postgres`]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
+[`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
+[`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
 
 ### `kvPrefixes`
 

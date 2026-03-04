@@ -118,7 +118,8 @@ serve({
 > [!WARNING]
 > `MemoryKvStore` is for development only. For production, use a persistent
 > store like `RedisKvStore` from *@fedify/redis*, `PostgresKvStore` from
-> *@fedify/postgres*, or `DenoKvStore` from *@fedify/denokv*.
+> *@fedify/postgres*, `MysqlKvStore` from *@fedify/mysql*, or `DenoKvStore`
+> from *@fedify/denokv*.
 >
 > See the [*Key–value store* section](./kv.md) for details.
 
