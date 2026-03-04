@@ -539,10 +539,10 @@ export class MysqlMessageQueue implements MessageQueue {
       try {
         await this.#pool.query(
           `CREATE TABLE IF NOT EXISTS \`${this.#tableName}\` (
-            \`id\`            CHAR(36)     NOT NULL,
-            \`message\`       JSON         NOT NULL,
-            \`deliver_after\` DATETIME(6)  NOT NULL DEFAULT NOW(6),
-            \`ordering_key\`  VARCHAR(512) NULL     DEFAULT NULL,
+            \`id\`            CHAR(36)    NOT NULL,
+            \`message\`       JSON        NOT NULL,
+            \`deliver_after\` DATETIME(6) NOT NULL DEFAULT NOW(6),
+            \`ordering_key\`  TEXT        NULL     DEFAULT NULL,
             PRIMARY KEY (\`id\`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`,
         );
@@ -558,9 +558,14 @@ export class MysqlMessageQueue implements MessageQueue {
         try {
           // Composite index to speed up #findOrderingKeyCandidate():
           // scans for the oldest ready message per ordering key.
+          // ordering_key uses a 766-character prefix because TEXT columns
+          // require a prefix length for indexing, and InnoDB's 3072-byte key
+          // limit in utf8mb4 (4 bytes/char) leaves room for 766 chars once the
+          // DATETIME(6) companion column (8 bytes) is included:
+          // 766 * 4 + 8 = 3072 bytes exactly.
           await this.#pool.query(
             `CREATE INDEX \`idx_${this.#tableName}_ok_da\`
-             ON \`${this.#tableName}\` (\`ordering_key\`, \`deliver_after\`)`,
+             ON \`${this.#tableName}\` (\`ordering_key\`(766), \`deliver_after\`)`,
           );
         } catch (e) {
           // Ignore duplicate index (ER_DUP_KEYNAME) from concurrent init
