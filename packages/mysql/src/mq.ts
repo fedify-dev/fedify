@@ -89,9 +89,14 @@ export interface MysqlMessageQueueOptions {
 
   /**
    * The maximum time to wait for a message handler to complete before
-   * considering it hung.  When a handler exceeds this timeout, it is
-   * treated as an error and the poll loop moves on, preventing a single
-   * hung handler from permanently blocking the queue.
+   * the queue moves on.  This is a *soft* timeout: when a handler exceeds
+   * the limit, the queue stops waiting and logs a timeout error, but it
+   * cannot cancel the handler itself — the handler's promise continues
+   * running in the background.  In the ordered-key path the advisory lock
+   * is always released in a `finally` block, so a timed-out handler will
+   * not permanently block the same ordering key.  However, concurrent
+   * side-effects from the still-running handler may interleave with the
+   * next handler for the same key; callers should be aware of this.
    *
    * Set to zero to disable the timeout (not recommended in production).
    *
