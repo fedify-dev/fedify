@@ -114,12 +114,13 @@ export interface MysqlMessageQueueOptions {
  * @example
  * ```ts
  * import { createFederation } from "@fedify/fedify";
- * import { MysqlMessageQueue } from "@fedify/mysql";
+ * import { MysqlKvStore, MysqlMessageQueue } from "@fedify/mysql";
  * import mysql from "mysql2/promise";
  *
  * const pool = mysql.createPool("mysql://user:pass@localhost/db");
  *
  * const federation = createFederation({
+ *   kv: new MysqlKvStore(pool),
  *   queue: new MysqlMessageQueue(pool),
  * });
  * ```
