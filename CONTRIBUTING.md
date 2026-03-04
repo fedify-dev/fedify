@@ -352,6 +352,7 @@ The repository is organized as a monorepo with the following packages:
     `npm init @fedify`.
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
+ -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
  -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
  -  *packages/relay/*: ActivityPub relay support (@fedify/relay) for Fedify.
