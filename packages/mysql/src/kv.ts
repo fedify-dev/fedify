@@ -203,21 +203,35 @@ export class MysqlKvStore implements KvStore {
       conn = await this.#pool.getConnection();
       await conn.beginTransaction();
 
-      // NOTE: `FOR UPDATE` acquires a gap lock on a missing row under
-      // InnoDB REPEATABLE READ (the default isolation level), preventing
-      // concurrent inserts for the same key until this transaction commits
-      // or rolls back.  If the connection pool is configured to use
-      // READ COMMITTED, the gap lock is not applied for missing rows and
-      // concurrent CAS operations on the same key may race.
-      const [rows] = await conn.query<RowDataPacket[]>(
-        `SELECT \`value\` FROM \`${this.#tableName}\`
+      // NOTE: The expiry predicate is intentionally omitted from the WHERE
+      // clause here so that `FOR UPDATE` always locks the physical row (if
+      // it exists), even when that row has an expired `expires` value.
+      // Including `AND (expires IS NULL OR expires > NOW(6))` in the WHERE
+      // would cause MySQL to skip (and therefore not lock) physically-present
+      // but expired rows, allowing two concurrent `cas(key, undefined, ...)`
+      // calls to both pass the expected-value check and both insert — a CAS
+      // atomicity violation.
+      //
+      // NOTE: Under InnoDB REPEATABLE READ (the default isolation level), a
+      // `FOR UPDATE` on a missing row acquires a gap lock preventing concurrent
+      // inserts.  Under READ COMMITTED, that gap lock is not applied, so
+      // concurrent CAS operations on a logically-absent key may race.
+      const [rows] = await conn.query<
+        (RowDataPacket & { is_expired: 0 | 1 })[]
+      >(
+        `SELECT
+           \`value\`,
+           (\`expires\` IS NOT NULL AND \`expires\` <= NOW(6)) AS \`is_expired\`
+         FROM \`${this.#tableName}\`
          WHERE \`key\` = ?
-           AND (\`expires\` IS NULL OR \`expires\` > NOW(6))
          FOR UPDATE`,
         [serializedKey],
       );
 
-      const currentValue = rows.length > 0 ? rows[0].value : undefined;
+      const row = rows[0];
+      const currentValue = !row || row.is_expired
+        ? undefined
+        : (row as RowDataPacket).value;
 
       if (!isEqual(currentValue, expectedValue)) {
         await conn.rollback();

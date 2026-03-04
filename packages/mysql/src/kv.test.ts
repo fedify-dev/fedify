@@ -584,6 +584,104 @@ test(
 );
 
 test(
+  "MysqlKvStore.cas() treats physically-present but expired rows as undefined",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, tableName, store } = getStore();
+    try {
+      await store.initialize();
+
+      // Insert a row that is already expired — it physically exists in the
+      // table but should be treated as absent by cas().
+      await pool.query(
+        `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
+         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+        [JSON.stringify(["key"]), JSON.stringify("old-value")],
+      );
+
+      // cas with the actual (stale) value should fail — expired ≡ undefined
+      assert.strictEqual(
+        await store.cas!(["key"], "old-value", "new-value"),
+        false,
+      );
+      // Regardless of whether the physical row was cleaned up by #expire(),
+      // the logical value must be absent (expired ≡ undefined).
+      assert.strictEqual(await store.get(["key"]), undefined);
+
+      // cas with expectedValue=undefined should succeed (expired ≡ undefined),
+      // locking the physical row so concurrent inserts can't race.
+      assert.strictEqual(
+        await store.cas!(["key"], undefined, "new-value"),
+        true,
+      );
+      assert.deepStrictEqual(await store.get(["key"]), "new-value");
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
+test(
+  "MysqlKvStore.cas() concurrent create-if-absent on expired key is atomic",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    // Disable expiry cleanup so the expired row is never auto-deleted during
+    // the test; we need it to remain physically present throughout.
+    const store = new MysqlKvStore(pool, { tableName, expireCleanupRate: 0 });
+    try {
+      await store.initialize();
+
+      // Insert a row that is physically present but logically expired, so
+      // both concurrent CAS calls will see expectedValue=undefined as matching.
+      // This is the scenario that triggered the locking bug: without locking
+      // the expired row, SELECT ... FOR UPDATE (with the expiry predicate)
+      // returned no rows and acquired no lock, allowing both concurrent
+      // cas(undefined, ...) calls to proceed past the comparison and both
+      // write — violating CAS atomicity.
+      await pool.query(
+        `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
+         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+        [JSON.stringify(["key"]), JSON.stringify("stale")],
+      );
+
+      // Fire two concurrent cas(undefined → value) calls on the same key.
+      // Both treat the expired row as "absent" (undefined), so both will
+      // pass the expected-value check.  With correct locking, only one
+      // INSERT wins; the other must see the committed value and return false.
+      const [a, b] = await Promise.all([
+        store.cas!(["key"], undefined, "value-A"),
+        store.cas!(["key"], undefined, "value-B"),
+      ]);
+
+      const wins = (a ? 1 : 0) + (b ? 1 : 0);
+      assert.strictEqual(
+        wins,
+        1,
+        `Expected exactly one concurrent CAS to succeed, got a=${a} b=${b}`,
+      );
+
+      const stored = await store.get(["key"]);
+      assert.ok(
+        stored === "value-A" || stored === "value-B",
+        `Stored value must be one of the two attempted values, got ${
+          JSON.stringify(stored)
+        }`,
+      );
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
+test(
   "MysqlKvStore.cas() with TTL",
   { skip: dbUrl == null },
   async () => {
