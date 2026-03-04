@@ -216,6 +216,7 @@ export class MysqlKvStore implements KvStore {
       }
 
       await conn.commit();
+      await this.#expire();
       return true;
     } catch (e) {
       if (conn) await conn.rollback();

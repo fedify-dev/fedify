@@ -434,6 +434,51 @@ test(
 );
 
 test(
+  "MysqlKvStore.cas() triggers expiry cleanup",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, tableName, store } = getStore();
+    try {
+      // Set up the target key first (this triggers #expire() in set())
+      await store.set(["target"], "original");
+
+      // Now insert an already-expired row directly — after the set() call so
+      // set()'s #expire() does not clean it up
+      await pool.query(
+        `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
+         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+        [JSON.stringify(["expired-key"]), JSON.stringify("expired-value")],
+      );
+
+      // Verify the expired row is physically present before the CAS
+      const [before] = await pool.query<mysql.RowDataPacket[]>(
+        `SELECT COUNT(*) AS cnt FROM \`${tableName}\`
+         WHERE \`key\` = ?`,
+        [JSON.stringify(["expired-key"])],
+      );
+      assert.strictEqual(before[0].cnt, 1);
+
+      // Perform a successful CAS; this should trigger #expire()
+      const result = await store.cas!(["target"], "original", "updated");
+      assert.strictEqual(result, true);
+
+      // The expired row should have been cleaned up by cas()'s #expire() call
+      const [after] = await pool.query<mysql.RowDataPacket[]>(
+        `SELECT COUNT(*) AS cnt FROM \`${tableName}\`
+         WHERE \`key\` = ?`,
+        [JSON.stringify(["expired-key"])],
+      );
+      assert.strictEqual(after[0].cnt, 0);
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
+test(
   "MysqlKvStore.cas() with TTL",
   { skip: dbUrl == null },
   async () => {
