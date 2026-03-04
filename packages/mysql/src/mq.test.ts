@@ -246,6 +246,37 @@ test(
   },
 );
 
+test(
+  "MysqlMessageQueue.drop() waits for in-flight initialize() before dropping",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = randomTableName("droprace");
+    const mq = new MysqlMessageQueue(pool, { tableName });
+    try {
+      // Fire initialize() but do not await it yet; then immediately drop().
+      // Without the fix, drop() could complete before initialize() finishes,
+      // leaving #initialized === true with no table in the database.
+      const initPromise = mq.initialize();
+      await mq.drop();
+      await initPromise;
+
+      // After drop(), the table must not exist and #initialized must be false
+      // (verified indirectly: a subsequent initialize() + enqueue() must work).
+      await mq.initialize();
+      await mq.enqueue("after-drop");
+      const [rows] = await pool.query<mysql.RowDataPacket[]>(
+        `SELECT COUNT(*) AS cnt FROM \`${tableName}\``,
+      );
+      assert.strictEqual(rows[0].cnt, 1, "message must survive drop+reinit");
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Concurrent initialization
 // ---------------------------------------------------------------------------

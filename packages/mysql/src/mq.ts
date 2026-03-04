@@ -600,6 +600,17 @@ export class MysqlMessageQueue implements MessageQueue {
    * @since 2.1.0
    */
   async drop(): Promise<void> {
+    // Wait for any in-flight initialization to complete before dropping the
+    // table.  Without this, drop() could finish before #doInitialize() sets
+    // #initialized = true, leaving the instance in a state where it believes
+    // the table exists even though it has already been dropped.
+    if (this.#initPromise != null) {
+      try {
+        await this.#initPromise;
+      } catch {
+        // Ignore initialization errors — we are dropping the table anyway.
+      }
+    }
     await this.#pool.query(
       `DROP TABLE IF EXISTS \`${this.#tableName}\``,
     );
