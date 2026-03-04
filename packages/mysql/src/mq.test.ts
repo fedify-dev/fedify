@@ -477,6 +477,45 @@ test(
   },
 );
 
+test(
+  "MysqlMessageQueue.enqueueMany() delivers all 100 messages via single INSERT",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = randomTableName("bulk");
+    const mq = new MysqlMessageQueue(pool, {
+      tableName,
+      pollInterval: { milliseconds: 200 },
+    });
+    const controller = new AbortController();
+    const received: number[] = [];
+    try {
+      const listening = mq.listen(
+        (msg: number) => {
+          received.push(msg);
+        },
+        { signal: controller.signal },
+      );
+
+      const msgs = Array.from({ length: 100 }, (_, i) => i);
+      await mq.enqueueMany(msgs);
+
+      await waitFor(() => received.length >= 100, 30_000);
+      assert.deepStrictEqual(
+        new Set(received),
+        new Set(msgs),
+        "all 100 messages must be delivered",
+      );
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Handler error survival
 // ---------------------------------------------------------------------------

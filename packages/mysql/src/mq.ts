@@ -242,23 +242,24 @@ export class MysqlMessageQueue implements MessageQueue {
         orderingKey,
       });
     }
+    const placeholders = messages.map(() =>
+      "(UUID(), CAST(? AS JSON), DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)"
+    ).join(", ");
+    const values = messages.flatMap((message) => [
+      JSON.stringify(message),
+      delayMs * 1000,
+      orderingKey,
+    ]);
     let conn: PoolConnection | undefined;
     try {
       conn = await this.#pool.getConnection();
       await conn.beginTransaction();
-      for (const message of messages) {
-        await conn.query(
-          `INSERT INTO \`${this.#tableName}\`
-             (\`id\`, \`message\`, \`deliver_after\`, \`ordering_key\`)
-           VALUES (
-             UUID(),
-             CAST(? AS JSON),
-             DATE_ADD(NOW(6), INTERVAL ? MICROSECOND),
-             ?
-           )`,
-          [JSON.stringify(message), delayMs * 1000, orderingKey],
-        );
-      }
+      await conn.query(
+        `INSERT INTO \`${this.#tableName}\`
+           (\`id\`, \`message\`, \`deliver_after\`, \`ordering_key\`)
+         VALUES ${placeholders}`,
+        values,
+      );
       await conn.commit();
     } catch (e) {
       if (conn != null) await conn.rollback();
