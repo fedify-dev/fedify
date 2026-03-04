@@ -62,7 +62,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: mysql
           MYSQL_DATABASE: fedify
         options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pmysql"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -146,7 +146,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: mysql
           MYSQL_DATABASE: fedify
         options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pmysql"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -209,7 +209,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: mysql
           MYSQL_DATABASE: fedify
         options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pmysql"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
