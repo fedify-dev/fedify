@@ -71,6 +71,17 @@ test("MysqlKvStore.initialize()", { skip: dbUrl == null }, async () => {
       [tableName],
     );
     assert.ok(cols[0].CHARACTER_MAXIMUM_LENGTH >= 768);
+
+    // Verify that an index on the expires column exists
+    const [idxRows] = await pool.query<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) AS cnt
+       FROM information_schema.statistics
+       WHERE table_schema = DATABASE()
+         AND table_name = ?
+         AND column_name = 'expires'`,
+      [tableName],
+    );
+    assert.strictEqual(idxRows[0].cnt, 1);
   } finally {
     await store.drop();
     await pool.end();

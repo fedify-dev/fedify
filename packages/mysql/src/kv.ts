@@ -272,6 +272,15 @@ export class MysqlKvStore implements KvStore {
         PRIMARY KEY (\`key\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`,
     );
+    try {
+      await this.#pool.query(
+        `CREATE INDEX \`idx_${this.#tableName}_expires\`
+         ON \`${this.#tableName}\` (\`expires\`)`,
+      );
+    } catch (e) {
+      // Ignore if the index already exists (ER_DUP_KEYNAME)
+      if ((e as { code?: string }).code !== "ER_DUP_KEYNAME") throw e;
+    }
     this.#initialized = true;
     logger.debug("Initialized the key-value store table {tableName}.", {
       tableName: this.#tableName,
