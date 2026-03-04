@@ -328,7 +328,16 @@ export class MysqlMessageQueue implements MessageQueue {
               `SELECT GET_LOCK(?, 0) AS acquired`,
               [lockName],
             );
-            if (lockResult[0].acquired === 1) {
+            if (lockResult[0].acquired === null) {
+              // GET_LOCK() returns NULL when an error occurred (e.g. the
+              // server ran out of lock resources).  Log a warning and skip
+              // this ordering key so the worker can still process others.
+              logger.warn(
+                "GET_LOCK({lockName}) returned NULL (server error); " +
+                  "skipping ordering key {orderingKey}.",
+                { lockName, orderingKey },
+              );
+            } else if (lockResult[0].acquired === 1) {
               try {
                 const msg = await this.#dequeueOrderedMessage(
                   conn,
@@ -345,7 +354,7 @@ export class MysqlMessageQueue implements MessageQueue {
               }
               if (processed) break;
             }
-            // Lock not acquired → try next ordering key
+            // acquired === 0: lock not acquired → try next ordering key
           } finally {
             conn?.release();
           }
