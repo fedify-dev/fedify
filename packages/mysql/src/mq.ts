@@ -40,7 +40,7 @@ function withTimeout(
 function getMysqlLockName(tableName: string, orderingKey: string): string {
   const raw = `${tableName}:${orderingKey}`;
   if (raw.length <= 64) return raw;
-  // Use two djb2-variant hash functions to produce a 21-char collision-resistant
+  // Use two djb2-variant hash functions to produce a 20-char collision-resistant
   // name that fits within MySQL's advisory lock name length limit.
   let h1 = 0;
   let h2 = 5381;

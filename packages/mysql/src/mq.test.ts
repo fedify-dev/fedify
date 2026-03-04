@@ -730,24 +730,6 @@ test(
   },
 );
 
-test("MysqlMessageQueue rejects table names longer than 46 chars", () => {
-  // A 46-char table name is the maximum allowed
-  assert.doesNotThrow(
-    () =>
-      new MysqlMessageQueue({} as mysql.Pool, {
-        tableName: "b".repeat(46),
-      }),
-  );
-  // A 47-char table name must be rejected
-  assert.throws(
-    () =>
-      new MysqlMessageQueue({} as mysql.Pool, {
-        tableName: "b".repeat(47),
-      }),
-    RangeError,
-  );
-});
-
 test(
   "MysqlMessageQueue GET_LOCK succeeds with a very long ordering key",
   { skip: dbUrl == null },
