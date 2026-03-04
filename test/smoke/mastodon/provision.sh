@@ -58,19 +58,21 @@ echo "→ Pre-registering Fedify remote account in Mastodon..."
 # Insert the remote account directly into Mastodon's database with values
 # matching the harness actor dispatcher configuration.
 HARNESS_ORIGIN="http://fedify-harness:3001"
-$COMPOSE exec -T mastodon-web bin/rails runner - <<RUBY
+$COMPOSE exec -T -e HARNESS_ORIGIN="$HARNESS_ORIGIN" \
+  mastodon-web bin/rails runner - <<'RUBY'
+origin = ENV.fetch('HARNESS_ORIGIN')
 account = Account.find_or_initialize_by(
   username: 'testuser',
   domain: 'fedify-harness:3001'
 )
 account.update!(
   protocol: :activitypub,
-  uri: '$HARNESS_ORIGIN/users/testuser',
-  url: '$HARNESS_ORIGIN/users/testuser',
-  inbox_url: '$HARNESS_ORIGIN/users/testuser/inbox',
-  shared_inbox_url: '$HARNESS_ORIGIN/inbox',
-  outbox_url: '$HARNESS_ORIGIN/users/testuser/outbox',
-  followers_url: '$HARNESS_ORIGIN/users/testuser/followers',
+  uri: "#{origin}/users/testuser",
+  url: "#{origin}/users/testuser",
+  inbox_url: "#{origin}/users/testuser/inbox",
+  shared_inbox_url: "#{origin}/inbox",
+  outbox_url: "#{origin}/users/testuser/outbox",
+  followers_url: "#{origin}/users/testuser/followers",
   display_name: 'Fedify Smoke Test User',
   note: '',
   actor_type: 'Person'

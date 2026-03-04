@@ -26,11 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Only need mise for Deno (orchestrator); skip full workspace build
-      - uses: jdx/mise-action@v2
-        with:
-          version: 2025.12.12
-          install: true
+      - uses: ./.github/actions/setup-mise
 
       - name: Generate Mastodon secrets
         run: |
