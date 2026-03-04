@@ -320,19 +320,19 @@ deno add jsr:@fedify/mysql
 ~~~~
 
 ~~~~ bash [npm]
-npm add @fedify/mysql
+npm add @fedify/mysql mysql2
 ~~~~
 
 ~~~~ bash [pnpm]
-pnpm add @fedify/mysql
+pnpm add @fedify/mysql mysql2
 ~~~~
 
 ~~~~ bash [Yarn]
-yarn add @fedify/mysql
+yarn add @fedify/mysql mysql2
 ~~~~
 
 ~~~~ bash [Bun]
-bun add @fedify/mysql
+bun add @fedify/mysql mysql2
 ~~~~
 
 :::

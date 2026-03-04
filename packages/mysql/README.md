@@ -36,9 +36,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/mysql  # Deno
-npm  add     @fedify/mysql  # npm
-pnpm add     @fedify/mysql  # pnpm
-yarn add     @fedify/mysql  # Yarn
-bun  add     @fedify/mysql  # Bun
+deno add jsr:@fedify/mysql              # Deno
+npm  add     @fedify/mysql mysql2       # npm
+pnpm add     @fedify/mysql mysql2       # pnpm
+yarn add     @fedify/mysql mysql2       # Yarn
+bun  add     @fedify/mysql mysql2       # Bun
 ~~~~
