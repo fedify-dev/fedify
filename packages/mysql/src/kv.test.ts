@@ -156,6 +156,29 @@ test("MysqlKvStore.set()", { skip: dbUrl == null }, async () => {
   }
 });
 
+test(
+  "MysqlKvStore.set() - undefined value is a no-op",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const { pool, store } = getStore();
+    try {
+      // Setting undefined on a nonexistent key should leave the key absent
+      await store.set(["foo"], undefined);
+      assert.strictEqual(await store.get(["foo"]), undefined);
+
+      // Setting a real value then overwriting with undefined should be a no-op
+      await store.set(["bar"], "value");
+      await store.set(["bar"], undefined);
+      assert.deepStrictEqual(await store.get(["bar"]), "value");
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
 test("MysqlKvStore.delete()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return;
 

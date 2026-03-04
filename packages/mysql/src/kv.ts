@@ -109,6 +109,7 @@ export class MysqlKvStore implements KvStore {
     value: unknown,
     options?: KvStoreSetOptions | undefined,
   ): Promise<void> {
+    if (value === undefined) return;
     await this.initialize();
     const serializedKey = JSON.stringify([...key]);
     const jsonValue = JSON.stringify(value);
