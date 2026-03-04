@@ -109,10 +109,20 @@ test("MysqlKvStore rejects invalid table names", () => {
     () => new MysqlKvStore({} as mysql.Pool, { tableName: "has space" }),
     RangeError,
   );
+  // table name > 50 chars: derived index name would exceed MySQL's 64-char limit
+  assert.throws(
+    () =>
+      new MysqlKvStore({} as mysql.Pool, {
+        tableName: "a".repeat(51),
+      }),
+    RangeError,
+  );
   // valid names should not throw
   new MysqlKvStore({} as mysql.Pool, { tableName: "valid_name" });
   new MysqlKvStore({} as mysql.Pool, { tableName: "_leading_underscore" });
   new MysqlKvStore({} as mysql.Pool, { tableName: "CamelCase123" });
+  // exactly 50 chars is valid
+  new MysqlKvStore({} as mysql.Pool, { tableName: "a".repeat(50) });
 });
 
 test("MysqlKvStore.initialize()", { skip: dbUrl == null }, async () => {

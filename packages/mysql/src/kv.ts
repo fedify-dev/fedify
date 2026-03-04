@@ -82,6 +82,17 @@ export class MysqlKvStore implements KvStore {
           "only letters, digits, and underscores.",
       );
     }
+    // MySQL identifiers are limited to 64 characters.  The derived index name
+    // is "idx_<tableName>_expires" (12 extra chars), so the table name itself
+    // must be at most 50 characters long.
+    if (tableName.length > 50) {
+      throw new RangeError(
+        `Invalid table name: ${JSON.stringify(tableName)}. ` +
+          "Table names must be at most 50 characters long (MySQL identifier " +
+          'limit is 64 chars; the derived index "idx_<name>_expires" uses ' +
+          "12 more).",
+      );
+    }
     this.#tableName = tableName;
     const expireCleanupRate = options.expireCleanupRate ?? 1;
     if (expireCleanupRate < 0 || expireCleanupRate > 1) {
