@@ -7,6 +7,9 @@ dist-tests/
 node_modules/
 package-lock.json
 repomix-output.xml
+test/smoke/.env.test
+test/smoke/mastodon/mastodon.env
+smoke.log
 t.ts
 t2.ts
 plan.md
