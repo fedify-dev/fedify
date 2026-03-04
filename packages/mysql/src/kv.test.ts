@@ -28,6 +28,74 @@ function getStore(): {
   };
 }
 
+test("MysqlKvStore rejects invalid expireCleanupRate", () => {
+  assert.throws(
+    () =>
+      new MysqlKvStore({} as mysql.Pool, {
+        tableName: "valid_name",
+        expireCleanupRate: -0.1,
+      }),
+    RangeError,
+  );
+  assert.throws(
+    () =>
+      new MysqlKvStore({} as mysql.Pool, {
+        tableName: "valid_name",
+        expireCleanupRate: 1.1,
+      }),
+    RangeError,
+  );
+  // valid rates should not throw
+  new MysqlKvStore({} as mysql.Pool, {
+    tableName: "valid_name",
+    expireCleanupRate: 0,
+  });
+  new MysqlKvStore({} as mysql.Pool, {
+    tableName: "valid_name",
+    expireCleanupRate: 0.5,
+  });
+  new MysqlKvStore({} as mysql.Pool, {
+    tableName: "valid_name",
+    expireCleanupRate: 1,
+  });
+});
+
+test(
+  "MysqlKvStore with expireCleanupRate=0 skips expiry cleanup",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    // rate=0 means never clean up
+    const store = new MysqlKvStore(pool, { tableName, expireCleanupRate: 0 });
+    try {
+      await store.initialize();
+
+      // Insert an already-expired row directly
+      await pool.query(
+        `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
+         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+        [JSON.stringify(["expired-key"]), JSON.stringify("expired-value")],
+      );
+
+      // set() should not clean up when rate=0
+      await store.set(["another"], "value");
+
+      const [rows] = await pool.query<mysql.RowDataPacket[]>(
+        `SELECT COUNT(*) AS cnt FROM \`${tableName}\`
+         WHERE \`key\` = ?`,
+        [JSON.stringify(["expired-key"])],
+      );
+      assert.strictEqual(rows[0].cnt, 1);
+    } finally {
+      await store.drop();
+      await pool.end();
+    }
+  },
+);
+
 test("MysqlKvStore rejects invalid table names", () => {
   assert.throws(
     () => new MysqlKvStore({} as mysql.Pool, { tableName: "bad-name!" }),

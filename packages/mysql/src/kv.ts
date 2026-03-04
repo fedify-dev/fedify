@@ -30,6 +30,15 @@ export interface MysqlKvStoreOptions {
    * @since 2.1.0
    */
   readonly initialized?: boolean;
+
+  /**
+   * The probability (between 0 and 1, inclusive) that expired entries are
+   * cleaned up on each mutation.  Defaults to `1` (always clean up).
+   * Set to `0` to disable automatic expiry cleanup entirely.
+   * @default `1`
+   * @since 2.1.0
+   */
+  readonly expireCleanupRate?: number;
 }
 
 /**
@@ -54,6 +63,7 @@ export interface MysqlKvStoreOptions {
 export class MysqlKvStore implements KvStore {
   readonly #pool: Pool;
   readonly #tableName: string;
+  readonly #expireCleanupRate: number;
   #initialized: boolean;
 
   /**
@@ -73,10 +83,24 @@ export class MysqlKvStore implements KvStore {
       );
     }
     this.#tableName = tableName;
+    const expireCleanupRate = options.expireCleanupRate ?? 1;
+    if (expireCleanupRate < 0 || expireCleanupRate > 1) {
+      throw new RangeError(
+        `Invalid expireCleanupRate: ${expireCleanupRate}. ` +
+          "Must be a number between 0 and 1 inclusive.",
+      );
+    }
+    this.#expireCleanupRate = expireCleanupRate;
     this.#initialized = options.initialized ?? false;
   }
 
   async #expire(): Promise<void> {
+    if (this.#expireCleanupRate <= 0) return;
+    if (
+      this.#expireCleanupRate < 1 && Math.random() >= this.#expireCleanupRate
+    ) {
+      return;
+    }
     await this.#pool.query(
       `DELETE FROM \`${this.#tableName}\`
        WHERE \`expires\` IS NOT NULL AND \`expires\` < NOW(6)`,
