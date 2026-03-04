@@ -207,7 +207,7 @@ export class MysqlMessageQueue implements MessageQueue {
          (\`id\`, \`message\`, \`deliver_after\`, \`ordering_key\`)
        VALUES (
          UUID(),
-         CAST(? AS JSON),
+         ?,
          DATE_ADD(NOW(6), INTERVAL ? MICROSECOND),
          ?
        )`,
@@ -243,7 +243,7 @@ export class MysqlMessageQueue implements MessageQueue {
       });
     }
     const placeholders = messages.map(() =>
-      "(UUID(), CAST(? AS JSON), DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)"
+      "(UUID(), ?, DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)"
     ).join(", ");
     // Each row gets a monotonically increasing interval so that messages
     // sharing the same orderingKey are assigned distinct deliver_after values
