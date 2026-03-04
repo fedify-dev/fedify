@@ -575,6 +575,48 @@ test(
   },
 );
 
+test(
+  "MysqlMessageQueue.enqueueMany() preserves insertion order for same ordering key",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = randomTableName("bord");
+    const mq = new MysqlMessageQueue(pool, {
+      tableName,
+      pollInterval: { milliseconds: 50 },
+    });
+    const controller = new AbortController();
+    const received: number[] = [];
+    try {
+      const listening = mq.listen(
+        (msg: number) => {
+          received.push(msg);
+        },
+        { signal: controller.signal },
+      );
+
+      // All 5 messages share the same ordering key.  Without per-row
+      // tie-breaker timestamps, all deliver_after values would be identical
+      // (NOW(6) is constant within a single SQL statement) and dequeue order
+      // would be nondeterministic.
+      await mq.enqueueMany([1, 2, 3, 4, 5], { orderingKey: "order-test" });
+
+      await waitFor(() => received.length >= 5, 10_000);
+      assert.deepStrictEqual(
+        received,
+        [1, 2, 3, 4, 5],
+        "enqueueMany() must deliver messages in insertion order for the same ordering key",
+      );
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Handler error survival
 // ---------------------------------------------------------------------------

@@ -245,9 +245,14 @@ export class MysqlMessageQueue implements MessageQueue {
     const placeholders = messages.map(() =>
       "(UUID(), CAST(? AS JSON), DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)"
     ).join(", ");
-    const values = messages.flatMap((message) => [
+    // Each row gets a monotonically increasing interval so that messages
+    // sharing the same orderingKey are assigned distinct deliver_after values
+    // within a single INSERT statement.  Without this tie-breaker, all rows
+    // would receive the same NOW(6) timestamp (MySQL evaluates NOW(6) once per
+    // statement), making dequeue order nondeterministic for ordered keys.
+    const values = messages.flatMap((message, index) => [
       JSON.stringify(message),
-      delayMs * 1000,
+      delayMs * 1000 + index,
       orderingKey,
     ]);
     let conn: PoolConnection | undefined;
