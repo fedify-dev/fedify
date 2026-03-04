@@ -344,6 +344,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.
  -  *packages/fastify/*: Fastify integration (@fedify/fastify) for Fedify.
+ -  *packages/fixture/*: Testing utilities (@fedify/fixture) providing
+    runtime-agnostic test adapters.
  -  *packages/fresh/*: Fresh integration (@fedify/fresh) for Fedify.
  -  *packages/h3/*: h3 framework integration (@fedify/h3) for Fedify.
  -  *packages/hono/*: Hono integration (@fedify/hono) for Fedify.
@@ -353,11 +355,11 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
  -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
+ -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
+ -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
  -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
  -  *packages/relay/*: ActivityPub relay support (@fedify/relay) for Fedify.
- -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
- -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
  -  *packages/sqlite/*: SQLite driver (@fedify/sqlite) for Fedify.
  -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit) for Fedify.
  -  *packages/testing/*: Testing utilities (@fedify/testing) for Fedify.
@@ -368,8 +370,6 @@ The repository is organized as a monorepo with the following packages:
     (@fedify/vocab-tools) for Fedify.
  -  *packages/webfinger/*: WebFinger client library (@fedify/webfinger) for
     ActivityPub.
- -  *packages/fixture/*: Testing utilities (@fedify/fixture) providing
-    runtime-agnostic test adapters.
  -  *docs/*: The Fedify docs.  The docs are built with [Node.js] and
     [VitePress].
  -  *examples/*: The example projects.  Some examples are built with Deno, and
