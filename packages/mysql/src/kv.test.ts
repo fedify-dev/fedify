@@ -28,6 +28,25 @@ function getStore(): {
   };
 }
 
+test("MysqlKvStore rejects invalid table names", () => {
+  assert.throws(
+    () => new MysqlKvStore({} as mysql.Pool, { tableName: "bad-name!" }),
+    RangeError,
+  );
+  assert.throws(
+    () => new MysqlKvStore({} as mysql.Pool, { tableName: "1_starts_digit" }),
+    RangeError,
+  );
+  assert.throws(
+    () => new MysqlKvStore({} as mysql.Pool, { tableName: "has space" }),
+    RangeError,
+  );
+  // valid names should not throw
+  new MysqlKvStore({} as mysql.Pool, { tableName: "valid_name" });
+  new MysqlKvStore({} as mysql.Pool, { tableName: "_leading_underscore" });
+  new MysqlKvStore({} as mysql.Pool, { tableName: "CamelCase123" });
+});
+
 test("MysqlKvStore.initialize()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return;
 

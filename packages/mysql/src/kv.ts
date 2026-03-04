@@ -64,7 +64,15 @@ export class MysqlKvStore implements KvStore {
    */
   constructor(pool: Pool, options: MysqlKvStoreOptions = {}) {
     this.#pool = pool;
-    this.#tableName = options.tableName ?? "fedify_kv";
+    const tableName = options.tableName ?? "fedify_kv";
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+      throw new RangeError(
+        `Invalid table name: ${JSON.stringify(tableName)}. ` +
+          "Table names must start with a letter or underscore and contain " +
+          "only letters, digits, and underscores.",
+      );
+    }
+    this.#tableName = tableName;
     this.#initialized = options.initialized ?? false;
   }
 
