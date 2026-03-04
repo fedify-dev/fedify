@@ -714,44 +714,61 @@ test(
   },
 );
 
+test("MysqlMessageQueue rejects table names longer than 46 chars", () => {
+  // A 46-char table name is the maximum allowed
+  assert.doesNotThrow(
+    () =>
+      new MysqlMessageQueue({} as mysql.Pool, {
+        tableName: "b".repeat(46),
+      }),
+  );
+  // A 47-char table name must be rejected
+  assert.throws(
+    () =>
+      new MysqlMessageQueue({} as mysql.Pool, {
+        tableName: "b".repeat(47),
+      }),
+    RangeError,
+  );
+});
+
 test(
-  "MysqlMessageQueue lock name is deterministic and fits MySQL limit",
-  () => {
-    // Access the internal function via a private test by checking the behavior:
-    // We create queues with table names of varying lengths and ordering keys
-    // and verify that enqueue() succeeds (no truncation errors).
-    // The lock name must always be ≤ 64 chars.
-
-    // Verify that a very long orderingKey doesn't cause MySQL errors when
-    // GET_LOCK is called (the lock name must be hashed to ≤ 64 chars).
-    // We can test this indirectly via the getMysqlLockName helper logic:
-    // a 100-char ordering key combined with a 20-char table name is > 64 chars.
-    const tableNameLen20 = "a".repeat(20); // 20 chars
-    // combined = 20 + 1 (colon) + 100-char key = 121 chars > 64
-
-    // Instead of accessing the private helper, we verify via queue construction
-    // that no RangeError is thrown for a valid table name
-    assert.doesNotThrow(
-      () =>
-        new MysqlMessageQueue({} as mysql.Pool, {
-          tableName: tableNameLen20,
-        }),
-    );
-    // A 46-char table name is the maximum allowed
-    assert.doesNotThrow(
-      () =>
-        new MysqlMessageQueue({} as mysql.Pool, {
-          tableName: "b".repeat(46),
-        }),
-    );
-    // A 47-char table name must be rejected
-    assert.throws(
-      () =>
-        new MysqlMessageQueue({} as mysql.Pool, {
-          tableName: "b".repeat(47),
-        }),
-      RangeError,
-    );
+  "MysqlMessageQueue GET_LOCK succeeds with a very long ordering key",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+    // A 200-char ordering key combined with a 20-char table name produces a
+    // raw lock name that is 221 chars — well over MySQL's 64-char limit.
+    // The lock name hashing logic must shorten it before calling GET_LOCK,
+    // otherwise MySQL returns an error or NULL.
+    const pool = mysql.createPool(dbUrl!);
+    const tableName = randomTableName("lockname");
+    const mq = new MysqlMessageQueue(pool, {
+      tableName,
+      pollInterval: { milliseconds: 200 },
+    });
+    const longOrderingKey = "x".repeat(200);
+    const controller = new AbortController();
+    const received: string[] = [];
+    try {
+      const listening = mq.listen(
+        (msg: string) => {
+          received.push(msg);
+        },
+        { signal: controller.signal },
+      );
+      // Enqueue a message with the very long ordering key; if GET_LOCK were
+      // called with the raw (>64-char) name, MySQL would return an error or
+      // NULL and the message would never be processed.
+      await mq.enqueue("long-key-msg", { orderingKey: longOrderingKey });
+      await waitFor(() => received.length >= 1, 10_000);
+      assert.deepStrictEqual(received, ["long-key-msg"]);
+      controller.abort();
+      await listening;
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
   },
 );
 
