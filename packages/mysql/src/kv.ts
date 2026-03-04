@@ -334,16 +334,8 @@ export class MysqlKvStore implements KvStore {
 }
 
 function durationToSeconds(duration: Temporal.Duration): number {
-  const rounded = duration.round({
-    largestUnit: "hour",
+  return duration.total({
+    unit: "second",
     relativeTo: Temporal.Now.plainDateTimeISO(),
   });
-  return (
-    rounded.hours * 3600 +
-    rounded.minutes * 60 +
-    rounded.seconds +
-    rounded.milliseconds / 1000 +
-    rounded.microseconds / 1_000_000 +
-    rounded.nanoseconds / 1_000_000_000
-  );
 }
