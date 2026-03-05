@@ -9,6 +9,11 @@
     "defaultPort": 5432,
     "documentation": "https://www.postgresql.org/download/"
   },
+  "mysql": {
+    "name": "MySQL/MariaDB",
+    "defaultPort": 3306,
+    "documentation": "https://dev.mysql.com/doc/mysql-installation-excerpt/en/"
+  },
   "amqp": {
     "name": "RabbitMQ",
     "defaultPort": 5672,
