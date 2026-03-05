@@ -60,8 +60,7 @@ export function fedifyMiddleware<TContextData>(
     onRequest: async (event: FetchEvent) => {
       const response = await federation.fetch(event.request, {
         contextData: await createContextData(event),
-        onNotFound: async () =>
-          new Response("Not Found", { status: 404 }),
+        onNotFound: async () => new Response("Not Found", { status: 404 }),
         onNotAcceptable: async () =>
           new Response("Not Acceptable", {
             status: 406,
