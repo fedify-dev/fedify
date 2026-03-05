@@ -1,6 +1,6 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/solidstart: Integrate Fedify with SolidStart
+@fedify/solidstart: Integrate Fedify with solidstart
 ====================================================
 
 [![npm][npm badge]][npm]

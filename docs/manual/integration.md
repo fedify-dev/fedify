@@ -872,7 +872,7 @@ instead of `astro`:
 ~~~~
 
 
-SolidStart
+Solidstart
 ----------
 
 *This API is available since Fedify 2.1.0.*
