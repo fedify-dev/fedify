@@ -36,12 +36,30 @@ async function poll<T>(
   fn: () => Promise<T | null>,
 ): Promise<T> {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
+  let lastError: unknown = null;
   while (Date.now() < deadline) {
-    const result = await fn();
-    if (result !== null) return result;
+    try {
+      const result = await fn();
+      if (result !== null) return result;
+    } catch (err) {
+      lastError = err;
+    }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
-  throw new Error(`Timed out waiting for: ${label}`);
+  const suffix = lastError instanceof Error
+    ? ` (last error: ${lastError.message})`
+    : "";
+  throw new Error(`Timed out waiting for: ${label}${suffix}`);
+}
+
+function pollHarnessInbox(
+  activityType: string,
+): Promise<{ type: string; id: string }> {
+  return poll(`${activityType} in harness inbox`, async () => {
+    const res = await fetch(`${HARNESS_URL}/_test/inbox`);
+    const items = await res.json() as { type: string; id: string }[];
+    return items.find((a) => a.type === activityType) ?? null;
+  });
 }
 
 async function serverGet(path: string): Promise<unknown> {
@@ -179,11 +197,7 @@ async function testFollowMastodonToFedify(): Promise<void> {
   await assertNotFollowing(accountId, "following");
   await serverPost(`/api/v1/accounts/${accountId}/follow`);
 
-  await poll("Follow in harness inbox", async () => {
-    const res = await fetch(`${HARNESS_URL}/_test/inbox`);
-    const items = await res.json() as { type: string; id: string }[];
-    return items.find((a) => a.type === "Follow") ?? null;
-  });
+  await pollHarnessInbox("Follow");
 
   await poll("follow accepted", async () => {
     const rels = await serverGet(
@@ -216,11 +230,7 @@ async function testFollowFedifyToMastodon(): Promise<void> {
     return rel?.followed_by ? rel : null;
   });
 
-  await poll("Accept in harness inbox", async () => {
-    const res = await fetch(`${HARNESS_URL}/_test/inbox`);
-    const items = await res.json() as { type: string; id: string }[];
-    return items.find((a) => a.type === "Accept") ?? null;
-  });
+  await pollHarnessInbox("Accept");
 }
 
 // ---------------------------------------------------------------------------
@@ -260,11 +270,7 @@ async function testReply(): Promise<void> {
     status: replyContent,
   });
 
-  await poll("Create in harness inbox", async () => {
-    const res = await fetch(`${HARNESS_URL}/_test/inbox`);
-    const items = await res.json() as { type: string; id: string }[];
-    return items.find((a) => a.type === "Create") ?? null;
-  });
+  await pollHarnessInbox("Create");
 }
 
 // ---------------------------------------------------------------------------
@@ -277,11 +283,7 @@ async function testUnfollowMastodonFromFedify(): Promise<void> {
   const accountId = await lookupFedifyAccount();
   await serverPost(`/api/v1/accounts/${accountId}/unfollow`);
 
-  await poll("Undo in harness inbox", async () => {
-    const res = await fetch(`${HARNESS_URL}/_test/inbox`);
-    const items = await res.json() as { type: string; id: string }[];
-    return items.find((a) => a.type === "Undo") ?? null;
-  });
+  await pollHarnessInbox("Undo");
 
   await poll("unfollow confirmed", async () => {
     const rels = await serverGet(

@@ -29,7 +29,7 @@ services:
   # Fedify test harness — runs inside the Docker network so Mastodon's
   # Resolv::DNS can resolve "fedify-harness" natively via Docker DNS.
   fedify-harness:
-    image: denoland/deno:latest
+    image: denoland/deno:2.7.1
     working_dir: /workspace
     volumes:
       - ../../../:/workspace
