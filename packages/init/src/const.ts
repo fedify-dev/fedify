@@ -12,13 +12,19 @@ export const WEB_FRAMEWORK = [
 ] as const;
 
 /** All supported message queue backend identifiers. */
-export const MESSAGE_QUEUE = ["denokv", "redis", "postgres", "amqp"] as const;
+export const MESSAGE_QUEUE = [
+  "denokv",
+  "redis",
+  "postgres",
+  "mysql",
+  "amqp",
+] as const;
 
 /** All supported key-value store backend identifiers. */
-export const KV_STORE = ["denokv", "redis", "postgres"] as const;
+export const KV_STORE = ["denokv", "redis", "postgres", "mysql"] as const;
 
 /**
  * External database services that need to be running for integration tests.
  * Used by the test suite to check service availability before running tests.
  */
-export const DB_TO_CHECK = ["redis", "postgres", "amqp"] as const;
+export const DB_TO_CHECK = ["redis", "postgres", "mysql", "amqp"] as const;
