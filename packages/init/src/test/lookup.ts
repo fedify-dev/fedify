@@ -66,8 +66,10 @@ function filterWebFrameworks(
     } is not supported in lookup test yet.`;
   }
   return dirs.filter((dir) => {
-    const [wf, pm] = dir.split(sep).slice(-4, -2) as
-      [WebFramework, PackageManager];
+    const [wf, pm] = dir.split(sep).slice(-4, -2) as [
+      WebFramework,
+      PackageManager,
+    ];
     if (BANNED_WFS.includes(wf)) return false;
     if (BANNED_COMBOS.some(([bwf, bpm]) => bwf === wf && bpm === pm)) {
       return false;
