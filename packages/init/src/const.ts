@@ -9,6 +9,7 @@ export const WEB_FRAMEWORK = [
   "elysia",
   "astro",
   "express",
+  "solidstart",
 ] as const;
 
 /** All supported message queue backend identifiers. */
