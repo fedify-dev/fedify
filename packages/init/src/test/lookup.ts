@@ -24,6 +24,9 @@ const STARTUP_TIMEOUT = 30000; // 30 seconds
 const CWD = join(import.meta.dirname!, "..");
 const BANNED_WFS: WebFramework[] = ["next"];
 const BASE_PORT = 10000;
+const BANNED_COMBOS: [WebFramework, PackageManager][] = [
+  ["solidstart", "deno"],
+];
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -62,16 +65,23 @@ function filterWebFrameworks(
     dirs.map((dir) => dir.split(sep).slice(-4, -3)[0] as WebFramework),
   );
   const hasBanned = BANNED_WFS.filter((wf) => wfs.has(wf));
-  if (isEmpty(hasBanned)) {
-    return dirs;
+  if (!isEmpty(hasBanned)) {
+    const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
+    printErrorMessage`\n${
+      values(bannedLabels)
+    } is not supported in lookup test yet.`;
   }
-  const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
-  printErrorMessage`\n${
-    values(bannedLabels)
-  } is not supported in lookup test yet.`;
-  return dirs.filter((dir) =>
-    !BANNED_WFS.includes(dir.split(sep).slice(-4, -3)[0] as WebFramework)
-  );
+  return dirs.filter((dir) => {
+    const [wf, pm] = dir.split(sep).slice(-4, -2) as [
+      WebFramework,
+      PackageManager,
+    ];
+    if (BANNED_WFS.includes(wf)) return false;
+    if (BANNED_COMBOS.some(([bwf, bpm]) => bwf === wf && bpm === pm)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
