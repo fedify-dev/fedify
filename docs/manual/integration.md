@@ -591,6 +591,8 @@ an exceptional developer experience.  Powered by Bun, it delivers high
 performance and modern tooling.  The *@fedify/elysia* package provides
 a seamless plugin for integrating Fedify with Elysia:
 
+::: code-group
+
 ~~~~ sh [Bun]
 bun add @fedify/elysia
 ~~~~
@@ -610,6 +612,8 @@ pnpm add @fedify/elysia
 ~~~~ sh [Yarn]
 yarn add @fedify/elysia
 ~~~~
+
+:::
 
 ~~~~ typescript
 import { fedify } from "@fedify/elysia";
