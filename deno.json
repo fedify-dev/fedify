@@ -20,6 +20,7 @@
     "./packages/postgres",
     "./packages/redis",
     "./packages/relay",
+    "./packages/solidstart",
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
