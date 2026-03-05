@@ -9,6 +9,19 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+// Build recipient manually — Mastodon's WebFinger requires HTTPS but our
+// harness only has HTTP.  Parse the handle (user@domain) to construct the
+// actor URI and inbox URL directly.
+function parseRecipient(
+  handle: string,
+): { id: URL; inboxId: URL; actorId: URL } {
+  const [user, domain] = handle.split("@");
+  const inboxId = new URL(`http://${domain}/users/${user}/inbox`);
+  // Mastodon generates https:// actor URIs; use that as the canonical id
+  const actorId = new URL(`https://${domain}/users/${user}`);
+  return { id: actorId, inboxId, actorId };
+}
+
 export async function handleBackdoor(
   request: Request,
   federation: Federation<void>,
@@ -43,14 +56,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    // Build the recipient manually — Mastodon's WebFinger requires HTTPS
-    // but we only have HTTP.  Parse the handle (user@domain) to construct
-    // the actor URI and inbox URL directly.
-    const [user, domain] = to.split("@");
-    const inboxUrl = new URL(`http://${domain}/users/${user}/inbox`);
-    // Mastodon generates https:// actor URIs; use that as the canonical id
-    const actorId = new URL(`https://${domain}/users/${user}`);
-    const recipient = { id: actorId, inboxId: inboxUrl };
+    const { actorId, ...recipient } = parseRecipient(to);
 
     const noteId = crypto.randomUUID();
     const note = new Note({
@@ -92,10 +98,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const [user, domain] = target.split("@");
-    const inboxUrl = new URL(`http://${domain}/users/${user}/inbox`);
-    const actorId = new URL(`https://${domain}/users/${user}`);
-    const recipient = { id: actorId, inboxId: inboxUrl };
+    const { actorId, ...recipient } = parseRecipient(target);
 
     const follow = new Follow({
       id: new URL(
@@ -128,10 +131,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const [user, domain] = target.split("@");
-    const inboxUrl = new URL(`http://${domain}/users/${user}/inbox`);
-    const actorId = new URL(`https://${domain}/users/${user}`);
-    const recipient = { id: actorId, inboxId: inboxUrl };
+    const { actorId, ...recipient } = parseRecipient(target);
 
     const undo = new Undo({
       id: new URL(
