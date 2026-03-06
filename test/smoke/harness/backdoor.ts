@@ -14,12 +14,12 @@ function json(data: unknown, status = 200): Response {
 // actor URI and inbox URL directly.
 function parseRecipient(
   handle: string,
-): { id: URL; inboxId: URL; actorId: URL } {
+): { inboxId: URL; actorId: URL } {
   const [user, domain] = handle.split("@");
   const inboxId = new URL(`http://${domain}/users/${user}/inbox`);
   // Mastodon generates https:// actor URIs; use that as the canonical id
   const actorId = new URL(`https://${domain}/users/${user}`);
-  return { id: actorId, inboxId, actorId };
+  return { inboxId, actorId };
 }
 
 export async function handleBackdoor(
@@ -56,7 +56,8 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, ...recipient } = parseRecipient(to);
+    const { actorId, inboxId } = parseRecipient(to);
+    const recipient = { id: actorId, inboxId };
 
     const noteId = crypto.randomUUID();
     const note = new Note({
@@ -98,7 +99,8 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, ...recipient } = parseRecipient(target);
+    const { actorId, inboxId } = parseRecipient(target);
+    const recipient = { id: actorId, inboxId };
 
     const follow = new Follow({
       id: new URL(
@@ -131,7 +133,8 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, ...recipient } = parseRecipient(target);
+    const { actorId, inboxId } = parseRecipient(target);
+    const recipient = { id: actorId, inboxId };
 
     const undo = new Undo({
       id: new URL(
