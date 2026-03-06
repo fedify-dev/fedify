@@ -1969,6 +1969,29 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return result;
   }
 
+  async getActorKeysByUsage(identifier: string): Promise<{
+    publicKeys: CryptographicKey[];
+    assertionMethods: Multikey[];
+  }> {
+    const keys = await this.getActorKeyPairs(identifier);
+    return {
+      publicKeys: keys.map((key) => key.cryptographicKey),
+      assertionMethods: keys.map((key) => key.multikey),
+    };
+  }
+
+  async getActorFirstKeyByUsage(identifier: string): Promise<{
+    publicKey: CryptographicKey | undefined;
+    assertionMethod: Multikey | undefined;
+  }> {
+    const { publicKeys, assertionMethods } =
+      await this.getActorKeysByUsage(identifier);
+    return {
+      publicKey: publicKeys[0],
+      assertionMethod: assertionMethods[0],
+    };
+  }
+
   protected async getKeyPairsFromIdentifier(
     identifier: string,
   ): Promise<(CryptoKeyPair & { keyId: URL })[]> {

@@ -305,8 +305,9 @@ test({
         { type: "actor", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
+      const keyPairs = await ctx.getActorKeyPairs("handle");
       assertEquals(
-        await ctx.getActorKeyPairs("handle"),
+        keyPairs,
         [
           {
             keyId: new URL("https://example.com/users/handle#main-key"),
@@ -338,6 +339,14 @@ test({
           },
         ],
       );
+      assertEquals(await ctx.getActorKeysByUsage("handle"), {
+        publicKeys: keyPairs.map((key) => key.cryptographicKey),
+        assertionMethods: keyPairs.map((key) => key.multikey),
+      });
+      assertEquals(await ctx.getActorFirstKeyByUsage("handle"), {
+        publicKey: keyPairs[0].cryptographicKey,
+        assertionMethod: keyPairs[0].multikey,
+      });
       const loader = await ctx.getDocumentLoader({ identifier: "handle" });
       assertEquals(await loader("https://example.com/auth-check"), {
         contextUrl: null,
