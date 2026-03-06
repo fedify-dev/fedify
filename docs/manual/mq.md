@@ -221,9 +221,22 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+> [!WARNING]
+> When using `PostgresMessageQueue` together with
+> [`ParallelMessageQueue`](#parallel-message-processing)`(queue, N)`,
+> make sure the PostgreSQL connection pool is sized to at least `N` plus a few
+> extra connections.  This is because each parallel worker may hold a database
+> connection, and poll operations also require additional connections for
+> advisory lock management.  If the pool is shared with other parts of your
+> application (e.g., a KV store, HTTP request handlers), increase the pool size
+> accordingly—or use a dedicated pool for the queue.  Using the default pool
+> size of 10 with `ParallelMessageQueue(queue, 10)` can cause connection
+> starvation that makes the application appear hung.  [[#603]]
+
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/mq/~/PostgresMessageQueue
 [`LISTEN`]: https://www.postgresql.org/docs/current/sql-listen.html
 [`NOTIFY`]: https://www.postgresql.org/docs/current/sql-notify.html
+[#603]: https://github.com/fedify-dev/fedify/issues/603
 
 ### `AmqpMessageQueue`
 
@@ -645,6 +658,14 @@ const federation = createFederation<void>({
 > If your [inbox listeners](./inbox.md) are CPU-bound, you should consider
 > running multiple nodes of your application so that each node can process
 > messages in parallel with the shared message queue.
+
+> [!WARNING]
+> When using `ParallelMessageQueue(queue, N)` with [`PostgresMessageQueue`],
+> make sure the PostgreSQL connection pool is sized to at least `N` plus a few
+> extra connections.  If the pool is shared with other parts of your application
+> (e.g., a KV store, HTTP request handlers), increase the pool size
+> accordingly—or use a dedicated pool for the queue.  See the
+> [*`PostgresMessageQueue`* section](#postgresmessagequeue) for details.
 
 
 Separating message processing from the main process
