@@ -5,6 +5,7 @@ import express from "./express.ts";
 import hono from "./hono.ts";
 import next from "./next.ts";
 import nitro from "./nitro.ts";
+import solidstart from "./solidstart.ts";
 
 /**
  * Registry of all supported web framework configurations.
@@ -20,6 +21,7 @@ const webFrameworks: WebFrameworks = {
   hono,
   next,
   nitro,
+  solidstart,
 } as const;
 
 export default webFrameworks;
