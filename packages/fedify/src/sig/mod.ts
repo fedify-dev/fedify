@@ -4,6 +4,13 @@
  * @module
  */
 export {
+  type AcceptSignatureMember,
+  type AcceptSignatureParameters,
+  formatAcceptSignature,
+  parseAcceptSignature,
+  validateAcceptSignatureForRequest,
+} from "./accept.ts";
+export {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   signRequest,
