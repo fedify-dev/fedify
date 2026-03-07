@@ -1,0 +1,32 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Measure
+compactName: om2:Measure
+uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"
+entity: false
+description: A quantity with a unit of measure.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  hasUnit: "om2:hasUnit"
+  hasNumericalValue: "om2:hasNumericalValue"
+
+properties:
+- singularName: hasUnit
+  functional: true
+  compactName: hasUnit
+  uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"
+  description: |
+    The name of the unit, according to the Ontology of units of Measure
+    classification.  The recommended unit for countable items is `"one"`.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+
+- singularName: hasNumericalValue
+  functional: true
+  compactName: hasNumericalValue
+  uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue"
+  description: |
+    The amount of the resource.  If not specified, arbitrary amounts can be
+    used when responding to the proposal.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
