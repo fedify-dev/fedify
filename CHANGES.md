@@ -19,6 +19,23 @@ To be released.
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 
+### @fedify/cli
+
+ -  Fixed `fedify lookup` printing separators with extra quotes between
+    adjacent objects/items in some output paths (e.g., recurse/traverse
+    flows).  Separators are now printed as plain text consistently.
+    [[#608]]
+
+ -  Added `--recurse` and `--recurse-depth` options to `fedify lookup` for
+    recursively following object relationships (e.g., reply chains via
+    `replyTarget` / `inReplyTo`).  `--traverse` and `--recurse` are now
+    mutually exclusive, `--recurse-depth` depends on `--recurse`, and
+    `--suppress-errors` now works in recurse mode as best-effort lookup.
+    [[#606], [#608]]
+
+[#606]: https://github.com/fedify-dev/fedify/issues/606
+[#608]: https://github.com/fedify-dev/fedify/pull/608
+
 ### @fedify/vocab
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid

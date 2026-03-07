@@ -481,8 +481,9 @@ option.
 
 > [!NOTE]
 > The `fedify lookup` command cannot take multiple argument if
-> [`-t`/`--traverse`](#t-traverse-traverse-the-collection) option is turned
-> on.
+> [`-t`/`--traverse`](#t-traverse-traverse-the-collection) or
+> [`--recurse`](#recurse-recurse-through-object-relationships) option is
+> turned on.
 
 ### `-t`/`--traverse`: Traverse the collection
 
@@ -502,23 +503,66 @@ output the collection object itself.
 
 This option only works with a single argument, and it has to be a collection.
 
-### `-S`/`--suppress-errors`: Suppress partial errors during traversal
+### `--recurse`: Recurse through object relationships
+
+*This option is available since Fedify 2.1.0.*
+
+The `--recurse` option is used to recursively follow an object relationship.
+This is useful when you want to walk a reply chain through `replyTarget`.
+
+~~~~ sh
+fedify lookup --recurse=replyTarget https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+You can also provide the fully qualified property IRI:
+
+~~~~ sh
+fedify lookup --recurse=https://www.w3.org/ns/activitystreams#inReplyTo https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+For short names, only Fedify property naming is accepted.  For example,
+`replyTarget` is accepted, while `inReplyTo` is not accepted as a short form.
+
+> [!NOTE]
+> `--recurse` and [`-t`/`--traverse`](#t-traverse-traverse-the-collection)
+> are mutually exclusive.
+
+### `--recurse-depth`: Set recursion depth limit
+
+*This option is available since Fedify 2.1.0.*
+
+The `--recurse-depth` option sets the maximum recursion depth when using
+[`--recurse`](#recurse-recurse-through-object-relationships).  By default, it
+is set to `20`.
+
+~~~~ sh
+fedify lookup --recurse=replyTarget --recurse-depth=10 https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+This option depends on the `--recurse` option.
+
+### `-S`/`--suppress-errors`: Suppress partial errors during traversal or recursion
 
 *This option is available since Fedify 0.14.0.*
 
 The `-S`/`--suppress-errors` option is used to suppress partial errors during
-traversal.  For example, the below command looks up a collection object with
-the `-t`/`--traverse` option:
+traversal or recursion.
+
+For traversal mode:
 
 ~~~~ sh
 fedify lookup --traverse --suppress-errors https://fosstodon.org/users/hongminhee/outbox
 ~~~~
 
-The difference between with and without the `-S`/`--suppress-errors` option is
-that the former will suppress the partial errors during traversal, while the
-latter will stop the traversal when an error occurs.
+For recursion mode:
 
-This option depends on the `-t`/`--traverse` option.
+~~~~ sh
+fedify lookup --recurse=replyTarget --suppress-errors https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+The difference between with and without the `-S`/`--suppress-errors` option is
+that the former will suppress the partial errors during traversal or recursion,
+while the latter will stop on the first such error.
 
 ### `-c`/`--compact`: Compact JSON-LD
 

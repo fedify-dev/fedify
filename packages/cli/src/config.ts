@@ -31,6 +31,13 @@ const lookupSchema = object({
     picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
   ),
   traverse: optional(boolean()),
+  recurse: optional(
+    picklist([
+      "replyTarget",
+      "https://www.w3.org/ns/activitystreams#inReplyTo",
+    ]),
+  ),
+  recurseDepth: optional(number()),
   suppressErrors: optional(boolean()),
   defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
   separator: optional(string()),
