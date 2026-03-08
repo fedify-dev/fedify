@@ -479,12 +479,6 @@ As you can see, the outputs are separated by `----` by default.  You can change
 the separator by using the [`-s`/`--separator`](#s-separator-output-separator)
 option.
 
-> [!NOTE]
-> The `fedify lookup` command cannot take multiple argument if
-> [`-t`/`--traverse`](#t-traverse-traverse-the-collection) or
-> [`--recurse`](#recurse-recurse-through-object-relationships) option is
-> turned on.
-
 ### `-t`/`--traverse`: Traverse the collection
 
 *This option is available since Fedify 0.14.0.*
@@ -501,7 +495,7 @@ The difference between with and without the `-t`/`--traverse` option is that
 the former will output the objects in the collection, while the latter will
 output the collection object itself.
 
-This option only works with a single argument, and it has to be a collection.
+When this option is enabled, each argument has to resolve to a collection.
 
 ### `--recurse`: Recurse through object relationships
 
