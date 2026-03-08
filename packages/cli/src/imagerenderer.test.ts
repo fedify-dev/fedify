@@ -149,3 +149,24 @@ test("downloadImage - cancels redirect body when location is missing", async () 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("downloadImage - cancels body for non-ok terminal response", async () => {
+  let cancelled = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) => {
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled++;
+      },
+    });
+    return Promise.resolve(new Response(body, { status: 500 }));
+  }) as typeof fetch;
+
+  try {
+    const result = await downloadImage("https://example.com/image.png");
+    assert.equal(result, null);
+    assert.equal(cancelled, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

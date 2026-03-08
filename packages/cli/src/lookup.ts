@@ -534,11 +534,25 @@ export async function collectRecursiveObjects(
     try {
       next = await lookup(target);
     } catch (error) {
-      if (options.suppressErrors) break;
+      if (options.suppressErrors) {
+        logger.debug(
+          "Failed to recursively fetch object {target}, " +
+            "but suppressing error: {error}",
+          { target, error },
+        );
+        break;
+      }
       throw error;
     }
     if (next == null) {
-      if (options.suppressErrors) break;
+      if (options.suppressErrors) {
+        logger.debug(
+          "Failed to recursively fetch object {target} " +
+            "(not found), but suppressing error.",
+          { target },
+        );
+        break;
+      }
       throw new RecursiveLookupError(target);
     }
     results.push(next);
@@ -950,16 +964,26 @@ export async function runLookup(
             suppressError: command.suppressErrors,
           })
         ) {
-          if (totalItems > 0 || collectionItems > 0) {
-            await writeSeparator(command.separator, getOutputStream());
+          try {
+            if (totalItems > 0 || collectionItems > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              item,
+              command.output,
+              command.format,
+              contextLoader,
+              getOutputStream(),
+            );
+          } catch (error) {
+            logger.error("Failed to write output for {url}: {error}", {
+              url,
+              error,
+            });
+            spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
+            await finalizeAndExit(1);
+            return;
           }
-          await writeObjectToStream(
-            item,
-            command.output,
-            command.format,
-            contextLoader,
-            getOutputStream(),
-          );
           collectionItems++;
           totalItems++;
         }
