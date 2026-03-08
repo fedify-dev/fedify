@@ -1,4 +1,4 @@
-import { Activity, Note } from "@fedify/vocab";
+import { Activity, Collection, Note } from "@fedify/vocab";
 import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
@@ -22,6 +22,7 @@ import {
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
+  runLookup,
   shouldPrintLookupFailureHint,
   shouldSuggestSuppressErrorsForLookupFailure,
   TimeoutError,
@@ -902,4 +903,225 @@ test("collectAsyncItems - keeps partial items when iteration fails", async () =>
   assert.deepEqual(result.items, ["first"]);
   assert.ok(result.error instanceof Error);
   assert.equal((result.error as Error).message, "boom");
+});
+
+class ExitSignal extends Error {
+  code: number;
+  constructor(code: number) {
+    super(`Exited with code ${code}`);
+    this.code = code;
+  }
+}
+
+function createLookupRunCommand(
+  overrides: Partial<Parameters<typeof runLookup>[0]>,
+): Parameters<typeof runLookup>[0] {
+  return {
+    command: "lookup",
+    urls: [],
+    traverse: false,
+    recurse: undefined,
+    recurseDepth: undefined,
+    suppressErrors: false,
+    authorizedFetch: false,
+    firstKnock: undefined,
+    tunnelService: undefined,
+    userAgent: "FedifyTest/1.0",
+    allowPrivateAddress: true,
+    timeout: undefined,
+    reverse: false,
+    format: "raw",
+    separator: "----",
+    output: undefined,
+    debug: false,
+    ignoreConfig: false,
+    ...overrides,
+  } as Parameters<typeof runLookup>[0];
+}
+
+async function runLookupAndCaptureExitCode(
+  command: Parameters<typeof runLookup>[0],
+  deps?: Parameters<typeof runLookup>[1],
+): Promise<number | null> {
+  const originalExit = process.exit;
+  process.exit = ((code?: number) => {
+    throw new ExitSignal(code ?? 0);
+  }) as typeof process.exit;
+  try {
+    await runLookup(command, deps);
+    return null;
+  } catch (error) {
+    if (error instanceof ExitSignal) return error.code;
+    throw error;
+  } finally {
+    process.exit = originalExit;
+  }
+}
+
+function extractIdsFromRawOutput(content: string): string[] {
+  return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>
+    match[1]
+  );
+}
+
+test("runLookup - reverses output order in default multi-input mode", async () => {
+  const testDir = "./test_output_runlookup_default_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const objects = new Map([
+      [
+        "u1",
+        new Note({
+          id: new URL("https://example.com/notes/1"),
+          content: "one",
+        }),
+      ],
+      [
+        "u2",
+        new Note({
+          id: new URL("https://example.com/notes/2"),
+          content: "two",
+        }),
+      ],
+      [
+        "u3",
+        new Note({
+          id: new URL("https://example.com/notes/3"),
+          content: "three",
+        }),
+      ],
+    ]);
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["u1", "u2", "u3"],
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(
+            objects.get(typeof url === "string" ? url : url.href) ?? null,
+          ),
+        traverseCollection: () => {
+          throw new Error("not used");
+        },
+      },
+    );
+    assert.equal(exitCode, null);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/notes/3",
+      "https://example.com/notes/2",
+      "https://example.com/notes/1",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - reverses output order in recurse mode", async () => {
+  const testDir = "./test_output_runlookup_recurse_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const u1 = "https://lookup.test/u1";
+    const u2 = "https://lookup.test/u2";
+    const u3 = "https://lookup.test/u3";
+    const objects = new Map([
+      [
+        u1,
+        new Note({
+          id: new URL("https://example.com/notes/1"),
+          content: "one",
+        }),
+      ],
+      [
+        u2,
+        new Note({
+          id: new URL("https://example.com/notes/2"),
+          replyTarget: new URL(u1),
+          content: "two",
+        }),
+      ],
+      [
+        u3,
+        new Note({
+          id: new URL("https://example.com/notes/3"),
+          replyTarget: new URL(u2),
+          content: "three",
+        }),
+      ],
+    ]);
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: [u3],
+        recurse: "replyTarget",
+        recurseDepth: 20,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(
+            objects.get(typeof url === "string" ? url : url.href) ?? null,
+          ),
+        traverseCollection: () => {
+          throw new Error("not used");
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/notes/1",
+      "https://example.com/notes/2",
+      "https://example.com/notes/3",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - reverses output order in traverse mode", async () => {
+  const testDir = "./test_output_runlookup_traverse_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collection = new Collection({
+      id: new URL("https://example.com/collection"),
+    });
+    const items = [
+      new Note({ id: new URL("https://example.com/items/1"), content: "one" }),
+      new Note({ id: new URL("https://example.com/items/2"), content: "two" }),
+      new Note({
+        id: new URL("https://example.com/items/3"),
+        content: "three",
+      }),
+    ];
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-url"],
+        traverse: true,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(url === "collection-url" ? collection : null),
+        async *traverseCollection() {
+          for (const item of items) yield item;
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/3",
+      "https://example.com/items/2",
+      "https://example.com/items/1",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
 });

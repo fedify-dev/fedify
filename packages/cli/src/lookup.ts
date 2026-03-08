@@ -674,6 +674,13 @@ export async function collectRecursiveObjects(
 
 export async function runLookup(
   command: InferValue<typeof lookupCommand> & GlobalOptions,
+  deps: {
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+  } = {
+    lookupObject,
+    traverseCollection,
+  },
 ) {
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
@@ -885,7 +892,7 @@ export async function runLookup(
       }
       let current: APObject | null = null;
       try {
-        current = await lookupObject(url, {
+        current = await deps.lookupObject(url, {
           documentLoader: initialLookupDocumentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -923,7 +930,7 @@ export async function runLookup(
           command.recurse,
           recurseDepth,
           (target) =>
-            lookupObject(target, {
+            deps.lookupObject(target, {
               documentLoader: recursiveLookupDocumentLoader,
               contextLoader: recursiveContextLoader,
               userAgent: command.userAgent,
@@ -1035,7 +1042,7 @@ export async function runLookup(
 
       let collection: APObject | null = null;
       try {
-        collection = await lookupObject(url, {
+        collection = await deps.lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -1076,7 +1083,7 @@ export async function runLookup(
             items: traversedItems,
             error: traversalError,
           } = await collectAsyncItems(
-            traverseCollection(collection, {
+            deps.traverseCollection(collection, {
               documentLoader: authLoader ?? documentLoader,
               contextLoader,
               suppressError: command.suppressErrors,
@@ -1110,7 +1117,7 @@ export async function runLookup(
           }
         } else {
           for await (
-            const item of traverseCollection(collection, {
+            const item of deps.traverseCollection(collection, {
               documentLoader: authLoader ?? documentLoader,
               contextLoader,
               suppressError: command.suppressErrors,
@@ -1173,7 +1180,7 @@ export async function runLookup(
 
   for (const url of command.urls) {
     promises.push(
-      lookupObject(url, {
+      deps.lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
         userAgent: command.userAgent,
