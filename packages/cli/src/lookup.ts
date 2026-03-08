@@ -452,9 +452,9 @@ export async function writeSeparator(
 export function toPresentationOrder<T>(
   items: readonly T[],
   reverse: boolean,
-): T[] {
+): readonly T[] {
   if (reverse) return [...items].reverse();
-  return Array.isArray(items) ? items : [...items];
+  return items;
 }
 
 export async function collectAsyncItems<T>(
