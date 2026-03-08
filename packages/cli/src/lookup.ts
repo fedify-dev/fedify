@@ -442,15 +442,9 @@ function handleTimeoutError(
 
 export function getRecursiveTargetId(
   object: APObject,
-  recurseProperty: RecurseProperty,
+  _recurseProperty: RecurseProperty,
 ): URL | null {
-  switch (recurseProperty) {
-    case "replyTarget":
-    case IN_REPLY_TO_IRI:
-      return object.replyTargetId;
-    default:
-      return null;
-  }
+  return object.replyTargetId;
 }
 
 export async function collectRecursiveObjects(
