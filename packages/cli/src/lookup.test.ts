@@ -601,6 +601,23 @@ for (
   });
 }
 
+test("getRecursiveTargetId - returns null for unknown recurse property", () => {
+  const quoteUrl = new URL("https://example.com/notes/quoted");
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    quoteUrl,
+  });
+  assert.equal(
+    getRecursiveTargetId(
+      note,
+      "https://example.com/custom#prop" as Parameters<
+        typeof getRecursiveTargetId
+      >[1],
+    ),
+    null,
+  );
+});
+
 test("collectRecursiveObjects - follows chain up to depth limit", async () => {
   const note1 = new Note({
     id: new URL("https://example.com/notes/1"),

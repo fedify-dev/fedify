@@ -503,8 +503,15 @@ export function getRecursiveTargetId(
   ) {
     return object.replyTargetId;
   }
-  const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
-  return quoteUrl instanceof URL ? quoteUrl : null;
+  if (
+    recurseProperty === "quoteUrl" || recurseProperty === QUOTE_URL_IRI ||
+    recurseProperty === MISSKEY_QUOTE_IRI ||
+    recurseProperty === FEDIBIRD_QUOTE_IRI
+  ) {
+    const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
+    return quoteUrl instanceof URL ? quoteUrl : null;
+  }
+  return null;
 }
 
 /**
