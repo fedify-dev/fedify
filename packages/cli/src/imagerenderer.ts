@@ -1,5 +1,5 @@
 import { encodeBase64 } from "byte-encodings/base64";
-import { UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
+import { validatePublicUrl } from "@fedify/vocab-runtime";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -114,8 +114,7 @@ export async function downloadImage(url: string): Promise<string | null> {
     await fs.writeFile(tempPath, imageData);
 
     return tempPath;
-  } catch (error) {
-    if (error instanceof UrlError) return null;
+  } catch (_error) {
     return null;
   }
 }
