@@ -4,6 +4,9 @@ import path from "node:path";
 import test from "node:test";
 import { downloadImage } from "./imagerenderer.ts";
 
+const TEST_PUBLIC_IMAGE_URL = "https://198.51.100.10/image.png";
+const TEST_PUBLIC_REDIRECT_URL = "https://198.51.100.11/final.png";
+
 test("downloadImage - skips private URL without fetching", async () => {
   let called = false;
   const originalFetch = globalThis.fetch;
@@ -28,7 +31,7 @@ test("downloadImage - writes file for public URL", async () => {
 
   let result: string | null = null;
   try {
-    result = await downloadImage("https://example.com/image.png");
+    result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.notEqual(result, null);
     const fileStat = await stat(result!);
     assert.equal(fileStat.isFile(), true);
@@ -46,7 +49,7 @@ test("downloadImage - rejects redirect to private URL", async () => {
   globalThis.fetch = ((input: URL | RequestInfo) => {
     calls++;
     const target = typeof input === "string" ? input : input.toString();
-    if (target === "https://example.com/image.png") {
+    if (target === TEST_PUBLIC_IMAGE_URL) {
       return Promise.resolve(
         new Response(null, {
           status: 302,
@@ -58,7 +61,7 @@ test("downloadImage - rejects redirect to private URL", async () => {
   }) as typeof fetch;
 
   try {
-    const result = await downloadImage("https://example.com/image.png");
+    const result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.equal(result, null);
     assert.equal(calls, 1);
   } finally {
@@ -70,11 +73,11 @@ test("downloadImage - follows validated redirects", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = ((input: URL | RequestInfo) => {
     const target = typeof input === "string" ? input : input.toString();
-    if (target === "https://example.com/image.png") {
+    if (target === TEST_PUBLIC_IMAGE_URL) {
       return Promise.resolve(
         new Response(null, {
           status: 302,
-          headers: { location: "https://cdn.example.com/final.png" },
+          headers: { location: TEST_PUBLIC_REDIRECT_URL },
         }),
       );
     }
@@ -83,7 +86,7 @@ test("downloadImage - follows validated redirects", async () => {
 
   let result: string | null = null;
   try {
-    result = await downloadImage("https://example.com/image.png");
+    result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.notEqual(result, null);
     const fileStat = await stat(result!);
     assert.equal(fileStat.isFile(), true);
@@ -100,7 +103,7 @@ test("downloadImage - cancels redirect response body before following", async ()
   const originalFetch = globalThis.fetch;
   globalThis.fetch = ((input: URL | RequestInfo) => {
     const target = typeof input === "string" ? input : input.toString();
-    if (target === "https://example.com/image.png") {
+    if (target === TEST_PUBLIC_IMAGE_URL) {
       const body = new ReadableStream<Uint8Array>({
         cancel() {
           cancelled++;
@@ -109,7 +112,7 @@ test("downloadImage - cancels redirect response body before following", async ()
       return Promise.resolve(
         new Response(body, {
           status: 302,
-          headers: { location: "https://cdn.example.com/final.png" },
+          headers: { location: TEST_PUBLIC_REDIRECT_URL },
         }),
       );
     }
@@ -118,7 +121,7 @@ test("downloadImage - cancels redirect response body before following", async ()
 
   let result: string | null = null;
   try {
-    result = await downloadImage("https://example.com/image.png");
+    result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.notEqual(result, null);
     assert.equal(cancelled, 1);
   } finally {
@@ -142,7 +145,7 @@ test("downloadImage - cancels redirect body when location is missing", async () 
   }) as typeof fetch;
 
   try {
-    const result = await downloadImage("https://example.com/image.png");
+    const result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.equal(result, null);
     assert.equal(cancelled, 1);
   } finally {
@@ -163,7 +166,7 @@ test("downloadImage - cancels body for non-ok terminal response", async () => {
   }) as typeof fetch;
 
   try {
-    const result = await downloadImage("https://example.com/image.png");
+    const result = await downloadImage(TEST_PUBLIC_IMAGE_URL);
     assert.equal(result, null);
     assert.equal(cancelled, 1);
   } finally {

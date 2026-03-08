@@ -30,7 +30,7 @@ export function getDocumentLoaderCachePrefix(
 }
 
 export async function getDocumentLoader(
-  { userAgent, allowPrivateAddress = false }: DocumentLoaderOptions = {},
+  { userAgent, allowPrivateAddress = true }: DocumentLoaderOptions = {},
 ): Promise<DocumentLoader> {
   const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}`;
   if (documentLoaders[cacheKey]) return documentLoaders[cacheKey];

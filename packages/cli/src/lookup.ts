@@ -630,9 +630,11 @@ export async function runLookup(
     return outputStream;
   };
   const finalizeAndExit = async (code: number) => {
+    let cleanupFailed = false;
     try {
       await closeWriteStream(outputStream);
     } catch (error) {
+      cleanupFailed = true;
       logger.error("Failed to close output stream during shutdown: {error}", {
         error,
       });
@@ -640,6 +642,7 @@ export async function runLookup(
     try {
       await server?.close();
     } catch (error) {
+      cleanupFailed = true;
       logger.error(
         "Failed to close temporary server during shutdown: {error}",
         {
@@ -647,7 +650,7 @@ export async function runLookup(
         },
       );
     }
-    process.exit(code);
+    process.exit(cleanupFailed && code === 0 ? 1 : code);
   };
 
   if (command.authorizedFetch) {
