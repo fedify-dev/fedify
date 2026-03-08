@@ -530,6 +530,10 @@ and `quoteUri` are not accepted as short forms.
 > [!NOTE]
 > `--recurse` and [`-t`/`--traverse`](#t-traverse-traverse-the-collection)
 > are mutually exclusive.
+>
+> Recursive fetches always disallow private/localhost addresses for safety.
+> `-p`/`--allow-private-address` only applies to explicit lookup/traverse
+> targets, not to recursive steps.
 
 ### `--recurse-depth`: Set recursion depth limit
 

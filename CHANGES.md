@@ -37,7 +37,8 @@ To be released.
  -  Hardened `fedify lookup` by disallowing private/localhost document loads
     by default.  For local-development workflows, `-p`/`--allow-private-address`
     (or `lookup.allowPrivateAddress = true` in config) can re-enable private
-    address access for explicit lookup/traverse requests.
+    address access for explicit lookup/traverse requests.  This option does
+    not apply to recursive fetches, which always disallow private addresses.
     [[#608]]
 
 [#606]: https://github.com/fedify-dev/fedify/issues/606
