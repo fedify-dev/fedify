@@ -7,10 +7,13 @@ import {
   array,
   boolean,
   type InferOutput,
+  integer,
+  minValue,
   number,
   object,
   optional,
   picklist,
+  pipe,
   string,
 } from "valibot";
 
@@ -31,6 +34,13 @@ const lookupSchema = object({
     picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
   ),
   traverse: optional(boolean()),
+  recurse: optional(
+    picklist([
+      "replyTarget",
+      "https://www.w3.org/ns/activitystreams#inReplyTo",
+    ]),
+  ),
+  recurseDepth: optional(pipe(number(), integer(), minValue(1))),
   suppressErrors: optional(boolean()),
   defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
   separator: optional(string()),
