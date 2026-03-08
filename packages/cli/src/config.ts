@@ -6,11 +6,16 @@ import { parse as parseToml } from "smol-toml";
 import {
   array,
   boolean,
+  check,
+  forward,
   type InferOutput,
+  integer,
+  minValue,
   number,
   object,
   optional,
   picklist,
+  pipe,
   string,
 } from "valibot";
 
@@ -25,17 +30,45 @@ const webfingerSchema = object({
 /**
  * Schema for the lookup command configuration.
  */
-const lookupSchema = object({
-  authorizedFetch: optional(boolean()),
-  firstKnock: optional(
-    picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
+const lookupSchema = pipe(
+  object({
+    authorizedFetch: optional(boolean()),
+    firstKnock: optional(
+      picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
+    ),
+    allowPrivateAddress: optional(boolean()),
+    traverse: optional(boolean()),
+    recurse: optional(
+      picklist([
+        "replyTarget",
+        "quoteUrl",
+        "https://www.w3.org/ns/activitystreams#inReplyTo",
+        "https://www.w3.org/ns/activitystreams#quoteUrl",
+        "https://misskey-hub.net/ns#_misskey_quote",
+        "http://fedibird.com/ns#quoteUri",
+      ]),
+    ),
+    recurseDepth: optional(pipe(number(), integer(), minValue(1))),
+    suppressErrors: optional(boolean()),
+    defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
+    separator: optional(string()),
+    timeout: optional(number()),
+  }),
+  forward(
+    check(
+      (input) => !(input.traverse === true && input.recurse != null),
+      "lookup.traverse and lookup.recurse cannot be used together.",
+    ),
+    ["recurse"],
   ),
-  traverse: optional(boolean()),
-  suppressErrors: optional(boolean()),
-  defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
-  separator: optional(string()),
-  timeout: optional(number()),
-});
+  forward(
+    check(
+      (input) => input.recurse != null || input.recurseDepth == null,
+      "lookup.recurseDepth requires lookup.recurse.",
+    ),
+    ["recurseDepth"],
+  ),
+);
 
 /**
  * Schema for the inbox command configuration.

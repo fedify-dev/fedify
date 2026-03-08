@@ -19,6 +19,31 @@ To be released.
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 
+### @fedify/cli
+
+ -  Fixed `fedify lookup` printing separators with extra quotes between
+    adjacent objects/items in some output paths (e.g., recurse/traverse
+    flows).  Separators are now printed as plain text consistently.
+    [[#608]]
+
+ -  Added `--recurse` and `--recurse-depth` options to `fedify lookup` for
+    recursively following object relationships (e.g., reply chains via
+    `replyTarget` / `inReplyTo`, and quote chains via `quoteUrl` and quote
+    IRIs).  `--traverse` and `--recurse` are now mutually exclusive,
+    `--recurse-depth` depends on `--recurse`, and `--suppress-errors` now
+    works in recurse mode as best-effort lookup.
+    [[#606], [#608]]
+
+ -  Hardened `fedify lookup` by disallowing private/localhost document loads
+    by default.  For local-development workflows, `-p`/`--allow-private-address`
+    (or `lookup.allowPrivateAddress = true` in config) can re-enable private
+    address access for explicit lookup/traverse requests.  This option does
+    not apply to recursive fetches, which always disallow private addresses.
+    [[#608]]
+
+[#606]: https://github.com/fedify-dev/fedify/issues/606
+[#608]: https://github.com/fedify-dev/fedify/pull/608
+
 ### @fedify/vocab
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
