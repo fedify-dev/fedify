@@ -2,6 +2,7 @@ import { Activity, Note } from "@fedify/vocab";
 import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
+import { UrlError } from "@fedify/vocab-runtime";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
@@ -16,6 +17,7 @@ import {
   clearTimeoutSignal,
   collectRecursiveObjects,
   createTimeoutSignal,
+  getLookupFailureHint,
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
@@ -615,6 +617,29 @@ test("getRecursiveTargetId - returns null for unknown recurse property", () => {
       >[1],
     ),
     null,
+  );
+});
+
+test("getLookupFailureHint - suggests private-address for UrlError", () => {
+  assert.equal(
+    getLookupFailureHint(new UrlError("Localhost is not allowed")),
+    "private-address",
+  );
+});
+
+test("getLookupFailureHint - suggests recursive-private-address in recurse mode", () => {
+  assert.equal(
+    getLookupFailureHint(new UrlError("Invalid or private address"), {
+      recursive: true,
+    }),
+    "recursive-private-address",
+  );
+});
+
+test("getLookupFailureHint - suggests authorized-fetch for non-URL errors", () => {
+  assert.equal(
+    getLookupFailureHint(new Error("401 Unauthorized")),
+    "authorized-fetch",
   );
 });
 

@@ -12,7 +12,7 @@ import {
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { bindConfig } from "@optique/config";
@@ -491,6 +491,53 @@ function handleTimeoutError(
   );
 }
 
+function isPrivateAddressError(error: unknown): boolean {
+  if (error instanceof UrlError) return true;
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = errorMessage.toLowerCase();
+  return (
+    lowerMessage.includes("private address") ||
+    lowerMessage.includes("private ip") ||
+    lowerMessage.includes("localhost") ||
+    lowerMessage.includes("loopback")
+  );
+}
+
+export function getLookupFailureHint(
+  error: unknown,
+  options: { recursive?: boolean } = {},
+): "private-address" | "recursive-private-address" | "authorized-fetch" {
+  if (isPrivateAddressError(error)) {
+    return options.recursive ? "recursive-private-address" : "private-address";
+  }
+  return "authorized-fetch";
+}
+
+function printLookupFailureHint(
+  authLoader: DocumentLoader | undefined,
+  error: unknown,
+  options: { recursive?: boolean } = {},
+): void {
+  if (authLoader != null) return;
+  switch (getLookupFailureHint(error, options)) {
+    case "private-address":
+      printError(
+        message`The URL appears to be private or localhost.  Try with -p/--allow-private-address.`,
+      );
+      return;
+    case "recursive-private-address":
+      printError(
+        message`Recursive fetches do not allow private/localhost URLs.  Use -S/--suppress-errors to skip blocked steps, or fetch those targets explicitly without --recurse.`,
+      );
+      return;
+    case "authorized-fetch":
+      printError(
+        message`It may be a private object.  Try with -a/--authorized-fetch.`,
+      );
+      return;
+  }
+}
+
 /**
  * Gets the next recursion target URL from an ActivityPub object.
  */
@@ -796,11 +843,7 @@ export async function runLookup(
           handleTimeoutError(spinner, command.timeout, url);
         } else {
           spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          }
+          printLookupFailureHint(authLoader, error);
         }
         await finalizeAndExit(1);
         return;
@@ -874,9 +917,7 @@ export async function runLookup(
         } else {
           spinner.fail("Failed to recursively fetch object.");
           if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
+            printLookupFailureHint(authLoader, error, { recursive: true });
           } else {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
@@ -936,11 +977,7 @@ export async function runLookup(
           handleTimeoutError(spinner, command.timeout, url);
         } else {
           spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          }
+          printLookupFailureHint(authLoader, error);
         }
         await finalizeAndExit(1);
         return;
@@ -1009,9 +1046,7 @@ export async function runLookup(
             `Failed to complete the traversal for: ${colors.red(url)}.`,
           );
           if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
+            printLookupFailureHint(authLoader, error);
           } else {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
