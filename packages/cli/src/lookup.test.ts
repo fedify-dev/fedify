@@ -435,6 +435,44 @@ test("lookupCommand - accepts IRI inReplyTo", () => {
   }
 });
 
+test("lookupCommand - accepts short-form quoteUrl", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(lookupCommand, [
+    "lookup",
+    "--recurse",
+    "quoteUrl",
+    "https://example.com/notes/1",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.recurse, "quoteUrl");
+  }
+});
+
+for (
+  const recurseProperty of [
+    "https://www.w3.org/ns/activitystreams#quoteUrl",
+    "https://misskey-hub.net/ns#_misskey_quote",
+    "http://fedibird.com/ns#quoteUri",
+  ]
+) {
+  test(`lookupCommand - accepts IRI ${recurseProperty}`, () => {
+    setActiveConfig(configContext.id, {});
+    const result = parse(lookupCommand, [
+      "lookup",
+      "--recurse",
+      recurseProperty,
+      "https://example.com/notes/1",
+    ]);
+    clearActiveConfig(configContext.id);
+    assert.ok(result.success);
+    if (result.success) {
+      assert.strictEqual(result.value.recurse, recurseProperty);
+    }
+  });
+}
+
 test("getRecursiveTargetId - returns reply target for short name", () => {
   const replyTarget = new URL("https://example.com/notes/0");
   const note = new Note({
@@ -458,6 +496,32 @@ test("getRecursiveTargetId - returns reply target for IRI", () => {
     replyTarget,
   );
 });
+
+test("getRecursiveTargetId - returns quote URL for short name", () => {
+  const quoteUrl = new URL("https://example.com/notes/quoted");
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    quoteUrl,
+  });
+  assert.equal(getRecursiveTargetId(note, "quoteUrl"), quoteUrl);
+});
+
+for (
+  const recurseProperty of [
+    "https://www.w3.org/ns/activitystreams#quoteUrl",
+    "https://misskey-hub.net/ns#_misskey_quote",
+    "http://fedibird.com/ns#quoteUri",
+  ] as const
+) {
+  test(`getRecursiveTargetId - returns quote URL for IRI ${recurseProperty}`, () => {
+    const quoteUrl = new URL("https://example.com/notes/quoted");
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      quoteUrl,
+    });
+    assert.equal(getRecursiveTargetId(note, recurseProperty), quoteUrl);
+  });
+}
 
 test("collectRecursiveObjects - follows chain up to depth limit", async () => {
   const note1 = new Note({

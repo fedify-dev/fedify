@@ -28,9 +28,10 @@ To be released.
 
  -  Added `--recurse` and `--recurse-depth` options to `fedify lookup` for
     recursively following object relationships (e.g., reply chains via
-    `replyTarget` / `inReplyTo`).  `--traverse` and `--recurse` are now
-    mutually exclusive, `--recurse-depth` depends on `--recurse`, and
-    `--suppress-errors` now works in recurse mode as best-effort lookup.
+    `replyTarget` / `inReplyTo`, and quote chains via `quoteUrl` and quote
+    IRIs).  `--traverse` and `--recurse` are now mutually exclusive,
+    `--recurse-depth` depends on `--recurse`, and `--suppress-errors` now
+    works in recurse mode as best-effort lookup.
     [[#606], [#608]]
 
 [#606]: https://github.com/fedify-dev/fedify/issues/606

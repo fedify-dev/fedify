@@ -502,7 +502,8 @@ When this option is enabled, each argument has to resolve to a collection.
 *This option is available since Fedify 2.1.0.*
 
 The `--recurse` option is used to recursively follow an object relationship.
-This is useful when you want to walk a reply chain through `replyTarget`.
+This is useful when you want to walk a reply chain through `replyTarget`, or
+follow quote relationships through `quoteUrl`.
 
 ~~~~ sh
 fedify lookup --recurse=replyTarget https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
@@ -514,8 +515,16 @@ You can also provide the fully qualified property IRI:
 fedify lookup --recurse=https://www.w3.org/ns/activitystreams#inReplyTo https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
 ~~~~
 
+For quote relationships, both the short form and the full IRI are accepted:
+
+~~~~ sh
+fedify lookup --recurse=quoteUrl https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+fedify lookup --recurse=https://www.w3.org/ns/activitystreams#quoteUrl https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
 For short names, only Fedify property naming is accepted.  For example,
-`replyTarget` is accepted, while `inReplyTo` is not accepted as a short form.
+`replyTarget` and `quoteUrl` are accepted, while `inReplyTo`, `_misskey_quote`,
+and `quoteUri` are not accepted as short forms.
 
 > [!NOTE]
 > `--recurse` and [`-t`/`--traverse`](#t-traverse-traverse-the-collection)

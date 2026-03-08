@@ -56,7 +56,17 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
 const IN_REPLY_TO_IRI = "https://www.w3.org/ns/activitystreams#inReplyTo";
-const recurseProperties = ["replyTarget", IN_REPLY_TO_IRI] as const;
+const QUOTE_URL_IRI = "https://www.w3.org/ns/activitystreams#quoteUrl";
+const MISSKEY_QUOTE_IRI = "https://misskey-hub.net/ns#_misskey_quote";
+const FEDIBIRD_QUOTE_IRI = "http://fedibird.com/ns#quoteUri";
+const recurseProperties = [
+  "replyTarget",
+  "quoteUrl",
+  IN_REPLY_TO_IRI,
+  QUOTE_URL_IRI,
+  MISSKEY_QUOTE_IRI,
+  FEDIBIRD_QUOTE_IRI,
+] as const;
 type RecurseProperty = typeof recurseProperties[number];
 
 export const authorizedFetchOption = withDefault(
@@ -109,8 +119,8 @@ const lookupModeOption = withDefault(
           choice(recurseProperties, { metavar: "PROPERTY" }),
           {
             description: message`Recursively follow a relationship property (${
-              optionNames(["replyTarget"])
-            } or ${IN_REPLY_TO_IRI}).`,
+              optionNames(["replyTarget", "quoteUrl"])
+            }, ${IN_REPLY_TO_IRI}, ${QUOTE_URL_IRI}, ${MISSKEY_QUOTE_IRI}, or ${FEDIBIRD_QUOTE_IRI}).`,
           },
         ),
         {
@@ -458,9 +468,15 @@ function handleTimeoutError(
 
 export function getRecursiveTargetId(
   object: APObject,
-  _recurseProperty: RecurseProperty,
+  recurseProperty: RecurseProperty,
 ): URL | null {
-  return object.replyTargetId;
+  if (
+    recurseProperty === "replyTarget" || recurseProperty === IN_REPLY_TO_IRI
+  ) {
+    return object.replyTargetId;
+  }
+  const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
+  return quoteUrl instanceof URL ? quoteUrl : null;
 }
 
 export async function collectRecursiveObjects(

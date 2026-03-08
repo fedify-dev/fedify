@@ -37,7 +37,11 @@ const lookupSchema = object({
   recurse: optional(
     picklist([
       "replyTarget",
+      "quoteUrl",
       "https://www.w3.org/ns/activitystreams#inReplyTo",
+      "https://www.w3.org/ns/activitystreams#quoteUrl",
+      "https://misskey-hub.net/ns#_misskey_quote",
+      "http://fedibird.com/ns#quoteUri",
     ]),
   ),
   recurseDepth: optional(pipe(number(), integer(), minValue(1))),
