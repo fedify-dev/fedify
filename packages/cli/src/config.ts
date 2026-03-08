@@ -50,6 +50,7 @@ const lookupSchema = pipe(
     ),
     recurseDepth: optional(pipe(number(), integer(), minValue(1))),
     suppressErrors: optional(boolean()),
+    reverse: optional(boolean()),
     defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
     separator: optional(string()),
     timeout: optional(number()),

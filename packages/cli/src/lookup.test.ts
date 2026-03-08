@@ -15,6 +15,7 @@ import { getContextLoader } from "./docloader.ts";
 import {
   authorizedFetchOption,
   clearTimeoutSignal,
+  collectAsyncItems,
   collectRecursiveObjects,
   createTimeoutSignal,
   getLookupFailureHint,
@@ -24,6 +25,7 @@ import {
   shouldPrintLookupFailureHint,
   shouldSuggestSuppressErrorsForLookupFailure,
   TimeoutError,
+  toPresentationOrder,
   writeObjectToStream,
   writeSeparator,
 } from "./lookup.ts";
@@ -445,6 +447,28 @@ test("lookupCommand - reads allowPrivateAddress from config", async () => {
   assert.strictEqual(result.allowPrivateAddress, true);
 });
 
+test("lookupCommand - parses --reverse", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(lookupCommand, [
+    "lookup",
+    "--reverse",
+    "https://example.com/notes/1",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.reverse, true);
+  }
+});
+
+test("lookupCommand - reads reverse from config", async () => {
+  const result = await runWithConfig(lookupCommand, configContext, {
+    load: () => ({ lookup: { reverse: true } }),
+    args: ["lookup", "https://example.com/notes/1"],
+  });
+  assert.strictEqual(result.reverse, true);
+});
+
 test("lookupCommand - parses recurse option", () => {
   setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
@@ -821,3 +845,61 @@ test(
     assert.equal(visited.has("https://example.com/notes/1"), false);
   },
 );
+
+test(
+  "toPresentationOrder - keeps order when reverse is false (default mode)",
+  () => {
+    assert.deepEqual(
+      toPresentationOrder(
+        ["https://example.com/1", "https://example.com/2"],
+        false,
+      ),
+      ["https://example.com/1", "https://example.com/2"],
+    );
+  },
+);
+
+test("toPresentationOrder - reverses order when reverse is true (default mode)", () => {
+  assert.deepEqual(
+    toPresentationOrder(
+      ["https://example.com/1", "https://example.com/2"],
+      true,
+    ),
+    ["https://example.com/2", "https://example.com/1"],
+  );
+});
+
+test("toPresentationOrder - reverses recursive chain order when reverse is true", () => {
+  assert.deepEqual(
+    toPresentationOrder(["self", "parent", "root"], true),
+    ["root", "parent", "self"],
+  );
+});
+
+test("toPresentationOrder - reverses traversed item order when reverse is true", () => {
+  assert.deepEqual(
+    toPresentationOrder(["item-1", "item-2", "item-3"], true),
+    ["item-3", "item-2", "item-1"],
+  );
+});
+
+test("collectAsyncItems - collects items without error", async () => {
+  async function* source() {
+    yield 1;
+    yield 2;
+  }
+  const result = await collectAsyncItems(source());
+  assert.deepEqual(result.items, [1, 2]);
+  assert.equal(result.error, undefined);
+});
+
+test("collectAsyncItems - keeps partial items when iteration fails", async () => {
+  async function* source() {
+    yield "first";
+    throw new Error("boom");
+  }
+  const result = await collectAsyncItems(source());
+  assert.deepEqual(result.items, ["first"]);
+  assert.ok(result.error instanceof Error);
+  assert.equal((result.error as Error).message, "boom");
+});

@@ -176,6 +176,7 @@ firstKnock = "draft-cavage-http-signatures-12"  # or "rfc9421"
 allowPrivateAddress = false
 traverse = false
 suppressErrors = false
+reverse = false
 defaultFormat = "default"  # "default", "raw", "compact", or "expand"
 separator = "----"
 timeout = 30  # seconds
@@ -1020,6 +1021,22 @@ It does not affect the output when looking up a single object.
 > [!TIP]
 > The separator is also used when looking up a collection object with the
 > [`-t`/`--traverse`](#t-traverse-traverse-the-collection) option.
+
+### `--reverse`: Reverse output order
+
+*This option is available since Fedify 2.1.0.*
+
+The `--reverse` option reverses presentation order of fetched results.
+It affects output order only, and does not change lookup semantics.
+
+~~~~ sh
+fedify lookup @fedify@hollo.social @hongminhee@fosstodon.org --reverse
+fedify lookup --traverse https://fosstodon.org/users/hongminhee/outbox --reverse
+fedify lookup --recurse=replyTarget https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf --reverse
+~~~~
+
+When using `--reverse`, `fedify lookup` buffers results before printing.
+This may increase memory usage for large traversals or long recursion chains.
 
 ### `-o`/`--output`: Output file path
 
