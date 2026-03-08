@@ -290,6 +290,9 @@ export class TimeoutError extends Error {
   }
 }
 
+/**
+ * Error thrown when a recursive lookup target cannot be fetched.
+ */
 export class RecursiveLookupError extends Error {
   target: string;
   constructor(target: string) {
@@ -405,7 +408,7 @@ export async function writeObjectToStream(
   if (object instanceof APObject) {
     imageUrls = await findAllImages(object);
   }
-  if (!outputPath && imageUrls.length > 0) {
+  if (localStream === process.stdout && imageUrls.length > 0) {
     await renderImages(imageUrls);
   }
 }
@@ -475,6 +478,9 @@ function handleTimeoutError(
   );
 }
 
+/**
+ * Gets the next recursion target URL from an ActivityPub object.
+ */
 export function getRecursiveTargetId(
   object: APObject,
   recurseProperty: RecurseProperty,
@@ -488,6 +494,9 @@ export function getRecursiveTargetId(
   return quoteUrl instanceof URL ? quoteUrl : null;
 }
 
+/**
+ * Collects recursively linked objects up to a depth limit.
+ */
 export async function collectRecursiveObjects(
   initialObject: APObject,
   recurseProperty: RecurseProperty,
