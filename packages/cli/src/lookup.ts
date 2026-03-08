@@ -1023,40 +1023,68 @@ export async function runLookup(
         return;
       }
 
-      const chainEntries = command.reverse
-        ? toPresentationOrder(
-          [
-            { object: current, objectContextLoader: contextLoader },
-            ...chain.map((next) => ({
-              object: next,
-              objectContextLoader: recursiveContextLoader,
-            })),
-          ],
-          true,
-        )
-        : chain.map((next) => ({
+      if (command.reverse) {
+        const chainEntries = [
+          { object: current, objectContextLoader: contextLoader },
+          ...chain.map((next) => ({
+            object: next,
+            objectContextLoader: recursiveContextLoader,
+          })),
+        ];
+        for (
+          let chainIndex = chainEntries.length - 1;
+          chainIndex >= 0;
+          chainIndex--
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex < chainEntries.length - 1) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
+      } else {
+        const chainEntries = chain.map((next) => ({
           object: next,
           objectContextLoader: recursiveContextLoader,
         }));
-      for (let chainIndex = 0; chainIndex < chainEntries.length; chainIndex++) {
-        const entry = chainEntries[chainIndex];
-        try {
-          if (totalObjects > 0 || chainIndex > 0) {
-            await writeSeparator(command.separator, getOutputStream());
+        for (
+          let chainIndex = 0;
+          chainIndex < chainEntries.length;
+          chainIndex++
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
           }
-          await writeObjectToStream(
-            entry.object,
-            command.output,
-            command.format,
-            entry.objectContextLoader,
-            getOutputStream(),
-          );
-          totalObjects++;
-        } catch (error) {
-          logger.error("Failed to write lookup output: {error}", { error });
-          spinner.fail("Failed to write output.");
-          await finalizeAndExit(1);
-          return;
         }
       }
     }
@@ -1127,7 +1155,8 @@ export async function runLookup(
               suppressError: command.suppressErrors,
             }),
           );
-          for (const item of toPresentationOrder(traversedItems, true)) {
+          for (let index = traversedItems.length - 1; index >= 0; index--) {
+            const item = traversedItems[index];
             try {
               if (totalItems > 0) {
                 await writeSeparator(command.separator, getOutputStream());
