@@ -419,6 +419,28 @@ test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
   }
 });
 
+test("lookupCommand - parses --allow-private-address", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(lookupCommand, [
+    "lookup",
+    "--allow-private-address",
+    "https://example.com/notes/1",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.allowPrivateAddress, true);
+  }
+});
+
+test("lookupCommand - reads allowPrivateAddress from config", async () => {
+  const result = await runWithConfig(lookupCommand, configContext, {
+    load: () => ({ lookup: { allowPrivateAddress: true } }),
+    args: ["lookup", "https://example.com/notes/1"],
+  });
+  assert.strictEqual(result.allowPrivateAddress, true);
+});
+
 test("lookupCommand - parses recurse option", () => {
   setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [

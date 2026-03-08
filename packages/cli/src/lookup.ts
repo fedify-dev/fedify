@@ -81,6 +81,18 @@ const suppressErrorsOption = bindConfig(
   },
 );
 
+const allowPrivateAddressOption = bindConfig(
+  flag("-p", "--allow-private-address", {
+    description:
+      message`Allow private IP addresses for explicit lookup/traverse requests.`,
+  }),
+  {
+    context: configContext,
+    key: (config) => config.lookup?.allowPrivateAddress ?? false,
+    default: false,
+  },
+);
+
 export const authorizedFetchOption = withDefault(
   object("Authorized fetch options", {
     authorizedFetch: bindConfig(
@@ -193,6 +205,7 @@ export const lookupCommand = command(
       "Network options",
       userAgentOption,
       object({
+        allowPrivateAddress: allowPrivateAddressOption,
         timeout: optional(
           bindConfig(
             option(
@@ -568,6 +581,7 @@ export async function runLookup(
   let server: TemporaryServer | undefined = undefined;
   const baseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
+    allowPrivateAddress: command.allowPrivateAddress,
   });
   const documentLoader = wrapDocumentLoaderWithTimeout(
     baseDocumentLoader,
@@ -575,6 +589,7 @@ export async function runLookup(
   );
   const baseContextLoader = await getContextLoader({
     userAgent: command.userAgent,
+    allowPrivateAddress: command.allowPrivateAddress,
   });
   const contextLoader = wrapDocumentLoaderWithTimeout(
     baseContextLoader,

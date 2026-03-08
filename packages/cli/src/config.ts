@@ -36,6 +36,7 @@ const lookupSchema = pipe(
     firstKnock: optional(
       picklist(["draft-cavage-http-signatures-12", "rfc9421"]),
     ),
+    allowPrivateAddress: optional(boolean()),
     traverse: optional(boolean()),
     recurse: optional(
       picklist([

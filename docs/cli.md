@@ -173,6 +173,7 @@ maxRedirection = 5
 [lookup]
 authorizedFetch = false
 firstKnock = "draft-cavage-http-signatures-12"  # or "rfc9421"
+allowPrivateAddress = false
 traverse = false
 suppressErrors = false
 defaultFormat = "default"  # "default", "raw", "compact", or "expand"
@@ -982,6 +983,21 @@ below command:
 ~~~~ sh
 fedify lookup --user-agent MyApp/1.0 @fedify@hollo.social
 ~~~~
+
+### `-p`/`--allow-private-address`: Allow private IP addresses
+
+By default, `fedify lookup` does not fetch private or localhost addresses.
+The `-p`/`--allow-private-address` option allows explicit lookup/traverse
+requests to private addresses when needed for local development.
+
+~~~~ sh
+fedify lookup --allow-private-address http://localhost:8000/users/alice
+~~~~
+
+> [!NOTE]
+> Recursive fetches enabled by
+> [`--recurse`](#recurse-recurse-through-object-relationships) continue to
+> disallow private addresses.
 
 ### `-s`/`--separator`: Output separator
 

@@ -34,6 +34,12 @@ To be released.
     works in recurse mode as best-effort lookup.
     [[#606], [#608]]
 
+ -  Hardened `fedify lookup` by disallowing private/localhost document loads
+    by default.  For local-development workflows, `-p`/`--allow-private-address`
+    (or `lookup.allowPrivateAddress = true` in config) can re-enable private
+    address access for explicit lookup/traverse requests.
+    [[#608]]
+
 [#606]: https://github.com/fedify-dev/fedify/issues/606
 [#608]: https://github.com/fedify-dev/fedify/pull/608
 

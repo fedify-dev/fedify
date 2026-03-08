@@ -104,10 +104,26 @@ export async function renderImageITerm2(
 
 export async function downloadImage(url: string): Promise<string | null> {
   try {
-    await validatePublicUrl(url);
-    const response = await fetch(url);
+    let targetUrl = url;
+    let response: Response | null = null;
+    for (let redirectCount = 0; redirectCount < 10; redirectCount++) {
+      await validatePublicUrl(targetUrl);
+      response = await fetch(targetUrl, { redirect: "manual" });
+      if (
+        response.status === 301 || response.status === 302 ||
+        response.status === 303 || response.status === 307 ||
+        response.status === 308
+      ) {
+        const location = response.headers.get("location");
+        if (location == null) return null;
+        targetUrl = new URL(location, targetUrl).href;
+        continue;
+      }
+      break;
+    }
+    if (response == null || !response.ok) return null;
     const imageData = new Uint8Array(await response.arrayBuffer());
-    const extension = new URL(url).pathname.split(".").pop() || "jpg";
+    const extension = new URL(targetUrl).pathname.split(".").pop() || "jpg";
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "fedify"));
     const tempPath = path.join(tempDir, `image.${extension}`);
 
