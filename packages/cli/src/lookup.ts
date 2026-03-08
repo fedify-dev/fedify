@@ -400,7 +400,12 @@ export async function writeSeparator(
   stream?: NodeJS.WritableStream,
 ): Promise<void> {
   if (stream == null) {
-    console.log(separator);
+    await new Promise<void>((resolve, reject) => {
+      process.stdout.write(`${separator}\n`, (error) => {
+        if (error != null) reject(error);
+        else resolve();
+      });
+    });
     return;
   }
   await new Promise<void>((resolve, reject) => {

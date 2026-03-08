@@ -3,8 +3,10 @@ import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
+import process from "node:process";
 import test from "node:test";
 import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
@@ -165,6 +167,25 @@ test("writeSeparator - writes to provided output stream", async () => {
   const content = await readFile(testFile, { encoding: "utf8" });
   assert.strictEqual(content, "----\n");
   await rm(testDir, { recursive: true });
+});
+
+test("writeSeparator - writes to stdout when no stream is provided", async () => {
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write =
+    ((chunk: string | Uint8Array, callback?: () => void) => {
+      output += typeof chunk === "string"
+        ? chunk
+        : Buffer.from(chunk).toString();
+      callback?.();
+      return true;
+    }) as typeof process.stdout.write;
+  try {
+    await writeSeparator("----");
+    assert.strictEqual(output, "----\n");
+  } finally {
+    process.stdout.write = originalWrite;
+  }
 });
 
 test("writeObjectToStream - writes to stdout when no output file specified", async () => {
