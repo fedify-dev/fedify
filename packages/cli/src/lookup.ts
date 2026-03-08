@@ -640,24 +640,23 @@ export async function runLookup(
       : "object"
   }...`;
 
-  const recursiveBaseDocumentLoader = await getDocumentLoader({
-    userAgent: command.userAgent,
-    allowPrivateAddress: false,
-  });
-  const recursiveDocumentLoader = wrapDocumentLoaderWithTimeout(
-    recursiveBaseDocumentLoader,
-    command.timeout,
-  );
-  const recursiveBaseContextLoader = await getContextLoader({
-    userAgent: command.userAgent,
-    allowPrivateAddress: false,
-  });
-  const recursiveContextLoader = wrapDocumentLoaderWithTimeout(
-    recursiveBaseContextLoader,
-    command.timeout,
-  );
-
   if (command.recurse != null) {
+    const recursiveBaseDocumentLoader = await getDocumentLoader({
+      userAgent: command.userAgent,
+      allowPrivateAddress: false,
+    });
+    const recursiveDocumentLoader = wrapDocumentLoaderWithTimeout(
+      recursiveBaseDocumentLoader,
+      command.timeout,
+    );
+    const recursiveBaseContextLoader = await getContextLoader({
+      userAgent: command.userAgent,
+      allowPrivateAddress: false,
+    });
+    const recursiveContextLoader = wrapDocumentLoaderWithTimeout(
+      recursiveBaseContextLoader,
+      command.timeout,
+    );
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
 
