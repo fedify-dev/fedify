@@ -94,3 +94,58 @@ test("downloadImage - follows validated redirects", async () => {
     }
   }
 });
+
+test("downloadImage - cancels redirect response body before following", async () => {
+  let cancelled = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((input: URL | RequestInfo) => {
+    const target = typeof input === "string" ? input : input.toString();
+    if (target === "https://example.com/image.png") {
+      const body = new ReadableStream<Uint8Array>({
+        cancel() {
+          cancelled++;
+        },
+      });
+      return Promise.resolve(
+        new Response(body, {
+          status: 302,
+          headers: { location: "https://cdn.example.com/final.png" },
+        }),
+      );
+    }
+    return Promise.resolve(new Response(new Uint8Array([1, 2, 3])));
+  }) as typeof fetch;
+
+  let result: string | null = null;
+  try {
+    result = await downloadImage("https://example.com/image.png");
+    assert.notEqual(result, null);
+    assert.equal(cancelled, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (result != null) {
+      await rm(path.dirname(result), { recursive: true, force: true });
+    }
+  }
+});
+
+test("downloadImage - cancels redirect body when location is missing", async () => {
+  let cancelled = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) => {
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled++;
+      },
+    });
+    return Promise.resolve(new Response(body, { status: 302 }));
+  }) as typeof fetch;
+
+  try {
+    const result = await downloadImage("https://example.com/image.png");
+    assert.equal(result, null);
+    assert.equal(cancelled, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

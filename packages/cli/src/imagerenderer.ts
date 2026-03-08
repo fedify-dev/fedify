@@ -115,7 +115,11 @@ export async function downloadImage(url: string): Promise<string | null> {
         response.status === 308
       ) {
         const location = response.headers.get("location");
-        if (location == null) return null;
+        if (location == null) {
+          await response.body?.cancel();
+          return null;
+        }
+        await response.body?.cancel();
         targetUrl = new URL(location, targetUrl).href;
         continue;
       }

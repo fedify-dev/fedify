@@ -597,6 +597,9 @@ export async function runLookup(
   );
 
   let authLoader: DocumentLoader | undefined = undefined;
+  let authIdentity:
+    | { keyId: URL; privateKey: CryptoKey }
+    | undefined = undefined;
   let outputStream: WriteStream | undefined;
   let outputStreamError: Error | undefined;
   const getOutputStream = (): WriteStream | undefined => {
@@ -671,12 +674,15 @@ export async function runLookup(
         { contextLoader },
       );
     }, { service: command.tunnelService });
+    authIdentity = {
+      keyId: new URL("#main-key", server.url),
+      privateKey: key.privateKey,
+    };
     const baseAuthLoader = getAuthenticatedDocumentLoader(
+      authIdentity,
       {
-        keyId: new URL("#main-key", server.url),
-        privateKey: key.privateKey,
-      },
-      {
+        allowPrivateAddress: command.allowPrivateAddress,
+        userAgent: command.userAgent,
         specDeterminer: {
           determineSpec() {
             return command.firstKnock;
@@ -719,7 +725,29 @@ export async function runLookup(
       recursiveBaseContextLoader,
       command.timeout,
     );
-    const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
+    const recursiveAuthLoader = command.authorizedFetch &&
+        authIdentity != null
+      ? wrapDocumentLoaderWithTimeout(
+        getAuthenticatedDocumentLoader(
+          authIdentity,
+          {
+            allowPrivateAddress: false,
+            userAgent: command.userAgent,
+            specDeterminer: {
+              determineSpec() {
+                return command.firstKnock;
+              },
+              rememberSpec() {
+              },
+            },
+          },
+        ),
+        command.timeout,
+      )
+      : undefined;
+    const initialLookupDocumentLoader: DocumentLoader = authLoader ??
+      documentLoader;
+    const recursiveLookupDocumentLoader: DocumentLoader = recursiveAuthLoader ??
       recursiveDocumentLoader;
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
@@ -735,8 +763,8 @@ export async function runLookup(
       let current: APObject | null = null;
       try {
         current = await lookupObject(url, {
-          documentLoader: recursiveLookupDocumentLoader,
-          contextLoader: recursiveContextLoader,
+          documentLoader: initialLookupDocumentLoader,
+          contextLoader,
           userAgent: command.userAgent,
         });
       } catch (error) {
@@ -772,7 +800,7 @@ export async function runLookup(
           current,
           command.output,
           command.format,
-          recursiveContextLoader,
+          contextLoader,
           getOutputStream(),
         );
       } catch (error) {
