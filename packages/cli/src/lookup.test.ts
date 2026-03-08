@@ -1173,6 +1173,132 @@ test("runLookup - emits reversed partial items on traverse reverse failure", asy
   }
 });
 
+test("runLookup - writes separators between adjacent traversed items", async () => {
+  const testDir = "./test_output_runlookup_traverse_separator";
+  const testFile = `${testDir}/out.jsonl`;
+  const separator = "<SEP>";
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collectionA = new Collection({
+      id: new URL("https://example.com/collections/a"),
+    });
+    const collectionB = new Collection({
+      id: new URL("https://example.com/collections/b"),
+    });
+    const a1 = new Note({
+      id: new URL("https://example.com/items/a1"),
+      content: "a1",
+    });
+    const a2 = new Note({
+      id: new URL("https://example.com/items/a2"),
+      content: "a2",
+    });
+    const b1 = new Note({
+      id: new URL("https://example.com/items/b1"),
+      content: "b1",
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-a", "collection-b"],
+        traverse: true,
+        separator,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) => {
+          const key = typeof url === "string" ? url : url.href;
+          if (key === "collection-a") return Promise.resolve(collectionA);
+          if (key === "collection-b") return Promise.resolve(collectionB);
+          return Promise.resolve(null);
+        },
+        async *traverseCollection(collection) {
+          if (collection === collectionA) {
+            yield a1;
+            yield a2;
+          } else if (collection === collectionB) {
+            yield b1;
+          }
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/a1",
+      "https://example.com/items/a2",
+      "https://example.com/items/b1",
+    ]);
+    assert.equal(content.split(`${separator}\n`).length - 1, 2);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test(
+  "runLookup - writes separators between adjacent traversed items in reverse mode",
+  async () => {
+    const testDir = "./test_output_runlookup_traverse_separator_reverse";
+    const testFile = `${testDir}/out.jsonl`;
+    const separator = "<SEP>";
+    await mkdir(testDir, { recursive: true });
+    try {
+      const collectionA = new Collection({
+        id: new URL("https://example.com/collections/a"),
+      });
+      const collectionB = new Collection({
+        id: new URL("https://example.com/collections/b"),
+      });
+      const a1 = new Note({
+        id: new URL("https://example.com/items/a1"),
+        content: "a1",
+      });
+      const a2 = new Note({
+        id: new URL("https://example.com/items/a2"),
+        content: "a2",
+      });
+      const b1 = new Note({
+        id: new URL("https://example.com/items/b1"),
+        content: "b1",
+      });
+      const exitCode = await runLookupAndCaptureExitCode(
+        createLookupRunCommand({
+          urls: ["collection-a", "collection-b"],
+          traverse: true,
+          reverse: true,
+          separator,
+          output: testFile,
+        }),
+        {
+          lookupObject: (url) => {
+            const key = typeof url === "string" ? url : url.href;
+            if (key === "collection-a") return Promise.resolve(collectionA);
+            if (key === "collection-b") return Promise.resolve(collectionB);
+            return Promise.resolve(null);
+          },
+          async *traverseCollection(collection) {
+            if (collection === collectionA) {
+              yield a1;
+              yield a2;
+            } else if (collection === collectionB) {
+              yield b1;
+            }
+          },
+        },
+      );
+      assert.equal(exitCode, 0);
+      const content = await readFile(testFile, "utf8");
+      assert.deepEqual(extractIdsFromRawOutput(content), [
+        "https://example.com/items/a2",
+        "https://example.com/items/a1",
+        "https://example.com/items/b1",
+      ]);
+      assert.equal(content.split(`${separator}\n`).length - 1, 2);
+    } finally {
+      await rm(testDir, { recursive: true });
+    }
+  },
+);
+
 test("runLookup - emits root object on recurse reverse failure", async () => {
   const testDir = "./test_output_runlookup_recurse_reverse_partial_failure";
   const testFile = `${testDir}/out.jsonl`;
