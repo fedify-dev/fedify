@@ -579,8 +579,23 @@ export async function runLookup(
     return outputStream;
   };
   const finalizeAndExit = async (code: number) => {
-    await closeWriteStream(outputStream);
-    await server?.close();
+    try {
+      await closeWriteStream(outputStream);
+    } catch (error) {
+      logger.error("Failed to close output stream during shutdown: {error}", {
+        error,
+      });
+    }
+    try {
+      await server?.close();
+    } catch (error) {
+      logger.error(
+        "Failed to close temporary server during shutdown: {error}",
+        {
+          error,
+        },
+      );
+    }
     process.exit(code);
   };
 
