@@ -12,7 +12,7 @@ import {
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, validatePublicUrl } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { bindConfig } from "@optique/config";
@@ -678,6 +678,13 @@ export async function runLookup(
       recursiveBaseContextLoader,
       command.timeout,
     );
+    const recursiveLookupDocumentLoader: DocumentLoader = async (
+      url,
+      options,
+    ) => {
+      await validatePublicUrl(url);
+      return (authLoader ?? recursiveDocumentLoader)(url, options);
+    };
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
 
@@ -692,8 +699,8 @@ export async function runLookup(
       let current: APObject | null = null;
       try {
         current = await lookupObject(url, {
-          documentLoader: authLoader ?? documentLoader,
-          contextLoader,
+          documentLoader: recursiveLookupDocumentLoader,
+          contextLoader: recursiveContextLoader,
           userAgent: command.userAgent,
         });
       } catch (error) {
@@ -752,7 +759,7 @@ export async function runLookup(
           recurseDepth,
           (target) =>
             lookupObject(target, {
-              documentLoader: authLoader ?? recursiveDocumentLoader,
+              documentLoader: recursiveLookupDocumentLoader,
               contextLoader: recursiveContextLoader,
               userAgent: command.userAgent,
             }),
