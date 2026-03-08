@@ -1026,7 +1026,7 @@ It does not affect the output when looking up a single object.
 
 *This option is available since Fedify 2.1.0.*
 
-The `--reverse` option reverses presentation order of fetched results.
+The `--reverse` option reverses the output order of fetched results.
 It affects output order only, and does not change lookup semantics.
 
 ~~~~ sh

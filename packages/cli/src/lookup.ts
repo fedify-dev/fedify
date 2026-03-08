@@ -453,7 +453,8 @@ export function toPresentationOrder<T>(
   items: readonly T[],
   reverse: boolean,
 ): T[] {
-  return reverse ? [...items].reverse() : [...items];
+  if (reverse) return [...items].reverse();
+  return Array.isArray(items) ? items : [...items];
 }
 
 export async function collectAsyncItems<T>(
