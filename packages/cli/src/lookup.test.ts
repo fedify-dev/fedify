@@ -189,6 +189,20 @@ test("writeSeparator - writes to stdout when no stream is provided", async () =>
   }
 });
 
+test("writeSeparator - rejects when stream emits write error", async () => {
+  const stream = new Writable({
+    write(_chunk, _encoding, callback) {
+      this.emit("error", new Error("separator write failed"));
+      callback();
+    },
+  });
+
+  await assert.rejects(
+    () => writeSeparator("----", stream),
+    /separator write failed/,
+  );
+});
+
 test("writeObjectToStream - writes to stdout when no output file specified", async () => {
   const note = new Note({
     id: new URL("https://example.com/notes/1"),

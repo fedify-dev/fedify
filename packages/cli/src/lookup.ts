@@ -307,6 +307,39 @@ export class RecursiveLookupError extends Error {
   }
 }
 
+function writeToStream(
+  stream: NodeJS.WritableStream,
+  chunk: string | Uint8Array,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      stream.off("error", onError);
+      reject(error);
+    };
+    stream.once("error", onError);
+    stream.write(chunk, (error) => {
+      stream.off("error", onError);
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+}
+
+function endWritableStream(stream: WriteStream): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      stream.off("error", onError);
+      reject(error);
+    };
+    stream.once("error", onError);
+    stream.end((error?: Error | null) => {
+      stream.off("error", onError);
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+}
+
 async function findAllImages(obj: APObject): Promise<URL[]> {
   const result: URL[] = [];
   const icon = await obj.getIcon();
@@ -334,32 +367,6 @@ export async function writeObjectToStream(
   const localFileStream = stream == null && outputPath != null
     ? localStream as WriteStream
     : undefined;
-  const writeChunk = (target: NodeJS.WritableStream, chunk: Uint8Array) =>
-    new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => {
-        target.off("error", onError);
-        reject(error);
-      };
-      target.once("error", onError);
-      target.write(chunk, (error) => {
-        target.off("error", onError);
-        if (error != null) reject(error);
-        else resolve();
-      });
-    });
-  const endStream = (target: WriteStream) =>
-    new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => {
-        target.off("error", onError);
-        reject(error);
-      };
-      target.once("error", onError);
-      target.end((error?: Error | null) => {
-        target.off("error", onError);
-        if (error != null) reject(error);
-        else resolve();
-      });
-    });
 
   let content;
   let json = true;
@@ -387,10 +394,10 @@ export async function writeObjectToStream(
   const encoder = new TextEncoder();
   const bytes = encoder.encode(content + "\n");
 
-  await writeChunk(localStream, bytes);
+  await writeToStream(localStream, bytes);
 
   if (localFileStream != null) {
-    await endStream(localFileStream);
+    await endWritableStream(localFileStream);
   }
 
   if (object instanceof APObject) {
@@ -403,33 +410,14 @@ export async function writeObjectToStream(
 
 async function closeWriteStream(stream?: WriteStream): Promise<void> {
   if (stream == null) return;
-  await new Promise<void>((resolve, reject) => {
-    stream.end((error?: Error | null) => {
-      if (error != null) reject(error);
-      else resolve();
-    });
-  });
+  await endWritableStream(stream);
 }
 
 export async function writeSeparator(
   separator: string,
   stream?: NodeJS.WritableStream,
 ): Promise<void> {
-  if (stream == null) {
-    await new Promise<void>((resolve, reject) => {
-      process.stdout.write(`${separator}\n`, (error) => {
-        if (error != null) reject(error);
-        else resolve();
-      });
-    });
-    return;
-  }
-  await new Promise<void>((resolve, reject) => {
-    stream.write(`${separator}\n`, (error) => {
-      if (error != null) reject(error);
-      else resolve();
-    });
-  });
+  await writeToStream(stream ?? process.stdout, `${separator}\n`);
 }
 
 const signalTimers = new WeakMap<AbortSignal, number>();
