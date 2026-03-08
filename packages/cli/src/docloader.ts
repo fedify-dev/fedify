@@ -9,14 +9,16 @@ const documentLoaders: Record<string, DocumentLoader> = {};
 
 export interface DocumentLoaderOptions {
   userAgent?: string;
+  allowPrivateAddress?: boolean;
 }
 
 export async function getDocumentLoader(
-  { userAgent }: DocumentLoaderOptions = {},
+  { userAgent, allowPrivateAddress = true }: DocumentLoaderOptions = {},
 ): Promise<DocumentLoader> {
-  if (documentLoaders[userAgent ?? ""]) return documentLoaders[userAgent ?? ""];
+  const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}`;
+  if (documentLoaders[cacheKey]) return documentLoaders[cacheKey];
   const kv = await getKvStore();
-  return documentLoaders[userAgent ?? ""] = kvCache({
+  return documentLoaders[cacheKey] = kvCache({
     kv,
     rules: [
       [
@@ -54,7 +56,7 @@ export async function getDocumentLoader(
       ],
     ],
     loader: getDefaultDocumentLoader({
-      allowPrivateAddress: true,
+      allowPrivateAddress,
       userAgent,
     }),
   });

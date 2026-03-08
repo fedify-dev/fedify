@@ -14,9 +14,7 @@ import {
   collectRecursiveObjects,
   createTimeoutSignal,
   getRecursiveTargetId,
-  isPrivateAddressTarget,
   lookupCommand,
-  PrivateAddressLookupError,
   RecursiveLookupError,
   TimeoutError,
   writeObjectToStream,
@@ -542,36 +540,6 @@ test("collectRecursiveObjects - suppresses errors in best-effort mode", async ()
     { suppressErrors: true },
   );
   assert.deepEqual(result, []);
-});
-
-test("isPrivateAddressTarget - detects localhost and private IP ranges", () => {
-  assert.equal(isPrivateAddressTarget("https://localhost/object"), true);
-  assert.equal(isPrivateAddressTarget("http://127.0.0.1:3000/"), true);
-  assert.equal(isPrivateAddressTarget("http://169.254.169.254/latest"), true);
-  assert.equal(isPrivateAddressTarget("https://example.com/object"), false);
-});
-
-test("collectRecursiveObjects - blocks private address targets", async () => {
-  const note = new Note({
-    id: new URL("https://example.com/notes/1"),
-    replyTarget: new URL("http://localhost/internal"),
-  });
-  await assert.rejects(
-    () =>
-      collectRecursiveObjects(
-        note,
-        "replyTarget",
-        5,
-        (target) => {
-          if (isPrivateAddressTarget(target)) {
-            throw new PrivateAddressLookupError(target);
-          }
-          return Promise.resolve(null);
-        },
-        { suppressErrors: false },
-      ),
-    PrivateAddressLookupError,
-  );
 });
 
 test(
