@@ -674,17 +674,26 @@ export async function collectRecursiveObjects(
 
 export async function runLookup(
   command: InferValue<typeof lookupCommand> & GlobalOptions,
-  deps: {
+  deps: Partial<{
     lookupObject: typeof lookupObject;
     traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
+  }> = {},
+) {
+  const effectiveDeps: {
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
   } = {
     lookupObject,
     traverseCollection,
-  },
-) {
+    exit: (code: number) => process.exit(code),
+    ...deps,
+  };
+
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
-    process.exit(1);
+    effectiveDeps.exit(1);
   }
 
   // Enable Debug mode if requested
@@ -763,7 +772,7 @@ export async function runLookup(
         },
       );
     }
-    process.exit(cleanupFailed && code === 0 ? 1 : code);
+    effectiveDeps.exit(cleanupFailed && code === 0 ? 1 : code);
   };
 
   if (command.authorizedFetch) {
@@ -892,7 +901,7 @@ export async function runLookup(
       }
       let current: APObject | null = null;
       try {
-        current = await deps.lookupObject(url, {
+        current = await effectiveDeps.lookupObject(url, {
           documentLoader: initialLookupDocumentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -923,21 +932,7 @@ export async function runLookup(
         visited.add(current.id.href);
       }
 
-      let chain: APObject[] = [];
-      try {
-        chain = await collectRecursiveObjects(
-          current,
-          command.recurse,
-          recurseDepth,
-          (target) =>
-            deps.lookupObject(target, {
-              documentLoader: recursiveLookupDocumentLoader,
-              contextLoader: recursiveContextLoader,
-              userAgent: command.userAgent,
-            }),
-          { suppressErrors: command.suppressErrors, visited },
-        );
-      } catch (error) {
+      if (!command.reverse) {
         try {
           if (totalObjects > 0) {
             await writeSeparator(command.separator, getOutputStream());
@@ -950,13 +945,50 @@ export async function runLookup(
             getOutputStream(),
           );
           totalObjects++;
-        } catch (writeError) {
-          logger.error("Failed to write lookup output: {error}", {
-            error: writeError,
-          });
+        } catch (error) {
+          logger.error("Failed to write lookup output: {error}", { error });
           spinner.fail("Failed to write output.");
           await finalizeAndExit(1);
           return;
+        }
+      }
+
+      let chain: APObject[] = [];
+      try {
+        chain = await collectRecursiveObjects(
+          current,
+          command.recurse,
+          recurseDepth,
+          (target) =>
+            effectiveDeps.lookupObject(target, {
+              documentLoader: recursiveLookupDocumentLoader,
+              contextLoader: recursiveContextLoader,
+              userAgent: command.userAgent,
+            }),
+          { suppressErrors: command.suppressErrors, visited },
+        );
+      } catch (error) {
+        if (command.reverse) {
+          try {
+            if (totalObjects > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              current,
+              command.output,
+              command.format,
+              contextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (writeError) {
+            logger.error("Failed to write lookup output: {error}", {
+              error: writeError,
+            });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
         }
         logger.error(
           "Failed to recursively fetch an object in chain: {error}",
@@ -990,16 +1022,21 @@ export async function runLookup(
         return;
       }
 
-      const chainEntries = toPresentationOrder(
-        [
-          { object: current, objectContextLoader: contextLoader },
-          ...chain.map((next) => ({
-            object: next,
-            objectContextLoader: recursiveContextLoader,
-          })),
-        ],
-        command.reverse,
-      );
+      const chainEntries = command.reverse
+        ? toPresentationOrder(
+          [
+            { object: current, objectContextLoader: contextLoader },
+            ...chain.map((next) => ({
+              object: next,
+              objectContextLoader: recursiveContextLoader,
+            })),
+          ],
+          true,
+        )
+        : chain.map((next) => ({
+          object: next,
+          objectContextLoader: recursiveContextLoader,
+        }));
       for (let chainIndex = 0; chainIndex < chainEntries.length; chainIndex++) {
         const entry = chainEntries[chainIndex];
         try {
@@ -1042,7 +1079,7 @@ export async function runLookup(
 
       let collection: APObject | null = null;
       try {
-        collection = await deps.lookupObject(url, {
+        collection = await effectiveDeps.lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -1083,7 +1120,7 @@ export async function runLookup(
             items: traversedItems,
             error: traversalError,
           } = await collectAsyncItems(
-            deps.traverseCollection(collection, {
+            effectiveDeps.traverseCollection(collection, {
               documentLoader: authLoader ?? documentLoader,
               contextLoader,
               suppressError: command.suppressErrors,
@@ -1117,7 +1154,7 @@ export async function runLookup(
           }
         } else {
           for await (
-            const item of deps.traverseCollection(collection, {
+            const item of effectiveDeps.traverseCollection(collection, {
               documentLoader: authLoader ?? documentLoader,
               contextLoader,
               suppressError: command.suppressErrors,
@@ -1180,7 +1217,7 @@ export async function runLookup(
 
   for (const url of command.urls) {
     promises.push(
-      deps.lookupObject(url, {
+      effectiveDeps.lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
         userAgent: command.userAgent,

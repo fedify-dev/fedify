@@ -943,18 +943,17 @@ async function runLookupAndCaptureExitCode(
   command: Parameters<typeof runLookup>[0],
   deps?: Parameters<typeof runLookup>[1],
 ): Promise<number | null> {
-  const originalExit = process.exit;
-  process.exit = ((code?: number) => {
-    throw new ExitSignal(code ?? 0);
-  }) as typeof process.exit;
   try {
-    await runLookup(command, deps);
+    await runLookup(command, {
+      ...deps,
+      exit: (code: number) => {
+        throw new ExitSignal(code);
+      },
+    });
     return null;
   } catch (error) {
     if (error instanceof ExitSignal) return error.code;
     throw error;
-  } finally {
-    process.exit = originalExit;
   }
 }
 
