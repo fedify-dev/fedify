@@ -118,9 +118,7 @@ const lookupModeOption = withDefault(
           "--recurse",
           choice(recurseProperties, { metavar: "PROPERTY" }),
           {
-            description: message`Recursively follow a relationship property (${
-              optionNames(["replyTarget", "quoteUrl"])
-            }, ${IN_REPLY_TO_IRI}, ${QUOTE_URL_IRI}, ${MISSKEY_QUOTE_IRI}, or ${FEDIBIRD_QUOTE_IRI}).`,
+            description: message`Recursively follow a relationship property.`,
           },
         ),
         {
