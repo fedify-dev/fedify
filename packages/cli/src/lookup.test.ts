@@ -22,6 +22,7 @@ import {
   lookupCommand,
   RecursiveLookupError,
   shouldPrintLookupFailureHint,
+  shouldSuggestSuppressErrorsForLookupFailure,
   TimeoutError,
   writeObjectToStream,
   writeSeparator,
@@ -668,6 +669,33 @@ test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () 
   assert.equal(
     shouldPrintLookupFailureHint(loader, "recursive-private-address"),
     true,
+  );
+});
+
+test("shouldSuggestSuppressErrorsForLookupFailure - only for authorized-fetch with auth", () => {
+  const loader =
+    ((_url: string) =>
+      Promise.reject(new Error("not used"))) as unknown as Parameters<
+        typeof shouldSuggestSuppressErrorsForLookupFailure
+      >[0];
+  assert.equal(
+    shouldSuggestSuppressErrorsForLookupFailure(loader, "authorized-fetch"),
+    true,
+  );
+  assert.equal(
+    shouldSuggestSuppressErrorsForLookupFailure(loader, "private-address"),
+    false,
+  );
+  assert.equal(
+    shouldSuggestSuppressErrorsForLookupFailure(
+      loader,
+      "recursive-private-address",
+    ),
+    false,
+  );
+  assert.equal(
+    shouldSuggestSuppressErrorsForLookupFailure(undefined, "authorized-fetch"),
+    false,
   );
 });
 

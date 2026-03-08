@@ -525,6 +525,13 @@ export function shouldPrintLookupFailureHint(
   return hint !== "authorized-fetch" || authLoader == null;
 }
 
+export function shouldSuggestSuppressErrorsForLookupFailure(
+  authLoader: DocumentLoader | undefined,
+  hint: ReturnType<typeof getLookupFailureHint>,
+): boolean {
+  return authLoader != null && hint === "authorized-fetch";
+}
+
 function printLookupFailureHint(
   authLoader: DocumentLoader | undefined,
   error: unknown,
@@ -929,12 +936,13 @@ export async function runLookup(
           }
         } else {
           spinner.fail("Failed to recursively fetch object.");
-          if (authLoader == null) {
-            printLookupFailureHint(authLoader, error, { recursive: true });
-          } else {
+          const hint = getLookupFailureHint(error, { recursive: true });
+          if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
             );
+          } else {
+            printLookupFailureHint(authLoader, error, { recursive: true });
           }
         }
         await finalizeAndExit(1);
@@ -1058,12 +1066,13 @@ export async function runLookup(
           spinner.fail(
             `Failed to complete the traversal for: ${colors.red(url)}.`,
           );
-          if (authLoader == null) {
-            printLookupFailureHint(authLoader, error);
-          } else {
+          const hint = getLookupFailureHint(error);
+          if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
             );
+          } else {
+            printLookupFailureHint(authLoader, error);
           }
         }
         await finalizeAndExit(1);
