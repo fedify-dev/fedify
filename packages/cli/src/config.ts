@@ -7,10 +7,13 @@ import {
   array,
   boolean,
   type InferOutput,
+  integer,
+  minValue,
   number,
   object,
   optional,
   picklist,
+  pipe,
   string,
 } from "valibot";
 
@@ -37,7 +40,7 @@ const lookupSchema = object({
       "https://www.w3.org/ns/activitystreams#inReplyTo",
     ]),
   ),
-  recurseDepth: optional(number()),
+  recurseDepth: optional(pipe(number(), integer(), minValue(1))),
   suppressErrors: optional(boolean()),
   defaultFormat: optional(picklist(["default", "raw", "compact", "expand"])),
   separator: optional(string()),
