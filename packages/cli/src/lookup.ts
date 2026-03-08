@@ -387,6 +387,22 @@ async function closeWriteStream(stream?: WriteStream): Promise<void> {
   });
 }
 
+export async function writeSeparator(
+  separator: string,
+  stream?: NodeJS.WritableStream,
+): Promise<void> {
+  if (stream == null) {
+    console.log(separator);
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    stream.write(`${separator}\n`, (error) => {
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+}
+
 const signalTimers = new WeakMap<AbortSignal, number>();
 
 export function createTimeoutSignal(
@@ -671,8 +687,8 @@ export async function runLookup(
         return;
       }
 
-      if (totalObjects > 0 && !command.output) {
-        console.log(command.separator);
+      if (totalObjects > 0) {
+        await writeSeparator(command.separator, outputStream);
       }
       await writeObjectToStream(
         current,
@@ -736,9 +752,7 @@ export async function runLookup(
       }
 
       for (const next of chain) {
-        if (!command.output) {
-          console.log(command.separator);
-        }
+        await writeSeparator(command.separator, outputStream);
         await writeObjectToStream(
           next,
           command.output,
@@ -817,8 +831,8 @@ export async function runLookup(
             suppressError: command.suppressErrors,
           })
         ) {
-          if (!command.output && (totalItems > 0 || collectionItems > 0)) {
-            console.log(command.separator);
+          if (totalItems > 0 || collectionItems > 0) {
+            await writeSeparator(command.separator, outputStream);
           }
           await writeObjectToStream(
             item,
@@ -901,7 +915,9 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
-      if (printedCount > 0 && !command.output) console.log(command.separator);
+      if (printedCount > 0) {
+        await writeSeparator(command.separator, outputStream);
+      }
       await writeObjectToStream(
         obj,
         command.output,

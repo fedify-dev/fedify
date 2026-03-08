@@ -18,6 +18,7 @@ import {
   RecursiveLookupError,
   TimeoutError,
   writeObjectToStream,
+  writeSeparator,
 } from "./lookup.ts";
 
 test("writeObjectToStream - writes Note object with default options", async () => {
@@ -144,6 +145,25 @@ test("writeObjectToStream - supports reusing an output stream", async () => {
   assert.match(content, /First note/);
   assert.match(content, /Second note/);
 
+  await rm(testDir, { recursive: true });
+});
+
+test("writeSeparator - writes to provided output stream", async () => {
+  const testDir = "./test_output_separator";
+  const testFile = `${testDir}/separator.txt`;
+  await mkdir(testDir, { recursive: true });
+
+  const stream = createWriteStream(testFile);
+  await writeSeparator("----", stream);
+  await new Promise<void>((resolve, reject) => {
+    stream.end((error?: Error | null) => {
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+
+  const content = await readFile(testFile, { encoding: "utf8" });
+  assert.strictEqual(content, "----\n");
   await rm(testDir, { recursive: true });
 });
 
