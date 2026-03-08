@@ -1,4 +1,4 @@
-import { Activity, Note } from "@fedify/vocab";
+import { Activity, Collection, Note } from "@fedify/vocab";
 import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
@@ -15,15 +15,18 @@ import { getContextLoader } from "./docloader.ts";
 import {
   authorizedFetchOption,
   clearTimeoutSignal,
+  collectAsyncItems,
   collectRecursiveObjects,
   createTimeoutSignal,
   getLookupFailureHint,
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
+  runLookup,
   shouldPrintLookupFailureHint,
   shouldSuggestSuppressErrorsForLookupFailure,
   TimeoutError,
+  toPresentationOrder,
   writeObjectToStream,
   writeSeparator,
 } from "./lookup.ts";
@@ -445,6 +448,28 @@ test("lookupCommand - reads allowPrivateAddress from config", async () => {
   assert.strictEqual(result.allowPrivateAddress, true);
 });
 
+test("lookupCommand - parses --reverse", () => {
+  setActiveConfig(configContext.id, {});
+  const result = parse(lookupCommand, [
+    "lookup",
+    "--reverse",
+    "https://example.com/notes/1",
+  ]);
+  clearActiveConfig(configContext.id);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.reverse, true);
+  }
+});
+
+test("lookupCommand - reads reverse from config", async () => {
+  const result = await runWithConfig(lookupCommand, configContext, {
+    load: () => ({ lookup: { reverse: true } }),
+    args: ["lookup", "https://example.com/notes/1"],
+  });
+  assert.strictEqual(result.reverse, true);
+});
+
 test("lookupCommand - parses recurse option", () => {
   setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
@@ -821,3 +846,496 @@ test(
     assert.equal(visited.has("https://example.com/notes/1"), false);
   },
 );
+
+test(
+  "toPresentationOrder - keeps order when reverse is false (default mode)",
+  () => {
+    assert.deepEqual(
+      toPresentationOrder(
+        ["https://example.com/1", "https://example.com/2"],
+        false,
+      ),
+      ["https://example.com/1", "https://example.com/2"],
+    );
+  },
+);
+
+test("toPresentationOrder - reverses order when reverse is true (default mode)", () => {
+  assert.deepEqual(
+    toPresentationOrder(
+      ["https://example.com/1", "https://example.com/2"],
+      true,
+    ),
+    ["https://example.com/2", "https://example.com/1"],
+  );
+});
+
+test("toPresentationOrder - reverses recursive chain order when reverse is true", () => {
+  assert.deepEqual(
+    toPresentationOrder(["self", "parent", "root"], true),
+    ["root", "parent", "self"],
+  );
+});
+
+test("toPresentationOrder - reverses traversed item order when reverse is true", () => {
+  assert.deepEqual(
+    toPresentationOrder(["item-1", "item-2", "item-3"], true),
+    ["item-3", "item-2", "item-1"],
+  );
+});
+
+test("collectAsyncItems - collects items without error", async () => {
+  async function* source() {
+    yield 1;
+    yield 2;
+  }
+  const result = await collectAsyncItems(source());
+  assert.deepEqual(result.items, [1, 2]);
+  assert.equal(result.error, undefined);
+});
+
+test("collectAsyncItems - keeps partial items when iteration fails", async () => {
+  async function* source() {
+    yield "first";
+    throw new Error("boom");
+  }
+  const result = await collectAsyncItems(source());
+  assert.deepEqual(result.items, ["first"]);
+  assert.ok(result.error instanceof Error);
+  assert.equal((result.error as Error).message, "boom");
+});
+
+class ExitSignal extends Error {
+  code: number;
+  constructor(code: number) {
+    super(`Exited with code ${code}`);
+    this.code = code;
+  }
+}
+
+function createLookupRunCommand(
+  overrides: Partial<Parameters<typeof runLookup>[0]>,
+): Parameters<typeof runLookup>[0] {
+  const baseCommand = {
+    command: "lookup",
+    urls: [],
+    traverse: false,
+    recurse: undefined,
+    recurseDepth: undefined,
+    suppressErrors: false,
+    authorizedFetch: false,
+    firstKnock: undefined,
+    tunnelService: undefined,
+    userAgent: "FedifyTest/1.0",
+    allowPrivateAddress: true,
+    timeout: undefined,
+    reverse: false,
+    format: "raw",
+    separator: "----",
+    output: undefined,
+    debug: false,
+    ignoreConfig: false,
+    configPath: undefined,
+  } satisfies Parameters<typeof runLookup>[0];
+  return { ...baseCommand, ...overrides } as Parameters<typeof runLookup>[0];
+}
+
+async function runLookupAndCaptureExitCode(
+  command: Parameters<typeof runLookup>[0],
+  deps?: Parameters<typeof runLookup>[1],
+): Promise<number | null> {
+  try {
+    await runLookup(command, {
+      ...deps,
+      exit: (code: number) => {
+        throw new ExitSignal(code);
+      },
+    });
+    return null;
+  } catch (error) {
+    if (error instanceof ExitSignal) return error.code;
+    throw error;
+  }
+}
+
+function extractIdsFromRawOutput(content: string): string[] {
+  return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>
+    match[1]
+  );
+}
+
+test("runLookup - reverses output order in default multi-input mode", async () => {
+  const testDir = "./test_output_runlookup_default_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const objects = new Map([
+      [
+        "u1",
+        new Note({
+          id: new URL("https://example.com/notes/1"),
+          content: "one",
+        }),
+      ],
+      [
+        "u2",
+        new Note({
+          id: new URL("https://example.com/notes/2"),
+          content: "two",
+        }),
+      ],
+      [
+        "u3",
+        new Note({
+          id: new URL("https://example.com/notes/3"),
+          content: "three",
+        }),
+      ],
+    ]);
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["u1", "u2", "u3"],
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(
+            objects.get(typeof url === "string" ? url : url.href) ?? null,
+          ),
+        traverseCollection: () => {
+          throw new Error("not used");
+        },
+      },
+    );
+    assert.equal(exitCode, null);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/notes/3",
+      "https://example.com/notes/2",
+      "https://example.com/notes/1",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - reverses output order in recurse mode", async () => {
+  const testDir = "./test_output_runlookup_recurse_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const u1 = "https://lookup.test/u1";
+    const u2 = "https://lookup.test/u2";
+    const u3 = "https://lookup.test/u3";
+    const objects = new Map([
+      [
+        u1,
+        new Note({
+          id: new URL("https://example.com/notes/1"),
+          content: "one",
+        }),
+      ],
+      [
+        u2,
+        new Note({
+          id: new URL("https://example.com/notes/2"),
+          replyTarget: new URL(u1),
+          content: "two",
+        }),
+      ],
+      [
+        u3,
+        new Note({
+          id: new URL("https://example.com/notes/3"),
+          replyTarget: new URL(u2),
+          content: "three",
+        }),
+      ],
+    ]);
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: [u3],
+        recurse: "replyTarget",
+        recurseDepth: 20,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(
+            objects.get(typeof url === "string" ? url : url.href) ?? null,
+          ),
+        traverseCollection: () => {
+          throw new Error("not used");
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/notes/1",
+      "https://example.com/notes/2",
+      "https://example.com/notes/3",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - reverses output order in traverse mode", async () => {
+  const testDir = "./test_output_runlookup_traverse_reverse";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collection = new Collection({
+      id: new URL("https://example.com/collection"),
+    });
+    const items = [
+      new Note({ id: new URL("https://example.com/items/1"), content: "one" }),
+      new Note({ id: new URL("https://example.com/items/2"), content: "two" }),
+      new Note({
+        id: new URL("https://example.com/items/3"),
+        content: "three",
+      }),
+    ];
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-url"],
+        traverse: true,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(url === "collection-url" ? collection : null),
+        async *traverseCollection() {
+          for (const item of items) yield item;
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/3",
+      "https://example.com/items/2",
+      "https://example.com/items/1",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - emits reversed partial items on traverse reverse failure", async () => {
+  const testDir = "./test_output_runlookup_traverse_reverse_partial_failure";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collection = new Collection({
+      id: new URL("https://example.com/collection"),
+    });
+    const item1 = new Note({
+      id: new URL("https://example.com/items/1"),
+      content: "one",
+    });
+    const item2 = new Note({
+      id: new URL("https://example.com/items/2"),
+      content: "two",
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-url"],
+        traverse: true,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) =>
+          Promise.resolve(
+            (typeof url === "string" ? url : url.href) === "collection-url"
+              ? collection
+              : null,
+          ),
+        async *traverseCollection() {
+          yield item1;
+          yield item2;
+          throw new Error("traversal failed");
+        },
+      },
+    );
+    assert.equal(exitCode, 1);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/2",
+      "https://example.com/items/1",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - writes separators between adjacent traversed items", async () => {
+  const testDir = "./test_output_runlookup_traverse_separator";
+  const testFile = `${testDir}/out.jsonl`;
+  const separator = "<SEP>";
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collectionA = new Collection({
+      id: new URL("https://example.com/collections/a"),
+    });
+    const collectionB = new Collection({
+      id: new URL("https://example.com/collections/b"),
+    });
+    const a1 = new Note({
+      id: new URL("https://example.com/items/a1"),
+      content: "a1",
+    });
+    const a2 = new Note({
+      id: new URL("https://example.com/items/a2"),
+      content: "a2",
+    });
+    const b1 = new Note({
+      id: new URL("https://example.com/items/b1"),
+      content: "b1",
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-a", "collection-b"],
+        traverse: true,
+        separator,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) => {
+          const key = typeof url === "string" ? url : url.href;
+          if (key === "collection-a") return Promise.resolve(collectionA);
+          if (key === "collection-b") return Promise.resolve(collectionB);
+          return Promise.resolve(null);
+        },
+        async *traverseCollection(collection) {
+          if (collection === collectionA) {
+            yield a1;
+            yield a2;
+          } else if (collection === collectionB) {
+            yield b1;
+          }
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/a1",
+      "https://example.com/items/a2",
+      "https://example.com/items/b1",
+    ]);
+    assert.equal(content.split(`${separator}\n`).length - 1, 2);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test(
+  "runLookup - writes separators between adjacent traversed items in reverse mode",
+  async () => {
+    const testDir = "./test_output_runlookup_traverse_separator_reverse";
+    const testFile = `${testDir}/out.jsonl`;
+    const separator = "<SEP>";
+    await mkdir(testDir, { recursive: true });
+    try {
+      const collectionA = new Collection({
+        id: new URL("https://example.com/collections/a"),
+      });
+      const collectionB = new Collection({
+        id: new URL("https://example.com/collections/b"),
+      });
+      const a1 = new Note({
+        id: new URL("https://example.com/items/a1"),
+        content: "a1",
+      });
+      const a2 = new Note({
+        id: new URL("https://example.com/items/a2"),
+        content: "a2",
+      });
+      const b1 = new Note({
+        id: new URL("https://example.com/items/b1"),
+        content: "b1",
+      });
+      const exitCode = await runLookupAndCaptureExitCode(
+        createLookupRunCommand({
+          urls: ["collection-a", "collection-b"],
+          traverse: true,
+          reverse: true,
+          separator,
+          output: testFile,
+        }),
+        {
+          lookupObject: (url) => {
+            const key = typeof url === "string" ? url : url.href;
+            if (key === "collection-a") return Promise.resolve(collectionA);
+            if (key === "collection-b") return Promise.resolve(collectionB);
+            return Promise.resolve(null);
+          },
+          async *traverseCollection(collection) {
+            if (collection === collectionA) {
+              yield a1;
+              yield a2;
+            } else if (collection === collectionB) {
+              yield b1;
+            }
+          },
+        },
+      );
+      assert.equal(exitCode, 0);
+      const content = await readFile(testFile, "utf8");
+      assert.deepEqual(extractIdsFromRawOutput(content), [
+        "https://example.com/items/a2",
+        "https://example.com/items/a1",
+        "https://example.com/items/b1",
+      ]);
+      assert.equal(content.split(`${separator}\n`).length - 1, 2);
+    } finally {
+      await rm(testDir, { recursive: true });
+    }
+  },
+);
+
+test("runLookup - emits root object on recurse reverse failure", async () => {
+  const testDir = "./test_output_runlookup_recurse_reverse_partial_failure";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const u3 = "https://lookup.test/u3";
+    const root = new Note({
+      id: new URL("https://example.com/notes/3"),
+      replyTarget: new URL("https://lookup.test/u2"),
+      content: "three",
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: [u3],
+        recurse: "replyTarget",
+        recurseDepth: 20,
+        reverse: true,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) => {
+          const key = typeof url === "string" ? url : url.href;
+          if (key === u3) return Promise.resolve(root);
+          throw new Error("recursive lookup failed");
+        },
+        traverseCollection: () => {
+          throw new Error("not used");
+        },
+      },
+    );
+    assert.equal(exitCode, 1);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/notes/3",
+    ]);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});

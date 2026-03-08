@@ -21,6 +21,11 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added `--reverse` option to `fedify lookup` to reverse presentation order
+    of emitted results.  It now works across default multi-input lookup,
+    `--traverse` collection traversal output, and `--recurse` object chains,
+    while preserving existing fetch/error semantics.  [[#607], [#609]]
+
  -  Fixed `fedify lookup` printing separators with extra quotes between
     adjacent objects/items in some output paths (e.g., recurse/traverse
     flows).  Separators are now printed as plain text consistently.
@@ -42,7 +47,9 @@ To be released.
     [[#608]]
 
 [#606]: https://github.com/fedify-dev/fedify/issues/606
+[#607]: https://github.com/fedify-dev/fedify/issues/607
 [#608]: https://github.com/fedify-dev/fedify/pull/608
+[#609]: https://github.com/fedify-dev/fedify/pull/609
 
 ### @fedify/vocab
 

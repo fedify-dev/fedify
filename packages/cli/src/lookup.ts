@@ -234,6 +234,17 @@ export const lookupCommand = command(
       ),
     }),
     object("Output options", {
+      reverse: bindConfig(
+        flag("--reverse", {
+          description:
+            message`Reverse the output order of fetched objects or items.`,
+        }),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.reverse ?? false,
+          default: false,
+        },
+      ),
       format: bindConfig(
         optional(
           or(
@@ -436,6 +447,28 @@ export async function writeSeparator(
   stream?: NodeJS.WritableStream,
 ): Promise<void> {
   await writeToStream(stream ?? process.stdout, `${separator}\n`);
+}
+
+export function toPresentationOrder<T>(
+  items: readonly T[],
+  reverse: boolean,
+): readonly T[] {
+  if (reverse) return [...items].reverse();
+  return items;
+}
+
+export async function collectAsyncItems<T>(
+  iterable: AsyncIterable<T>,
+): Promise<{ items: T[]; error?: unknown }> {
+  const items: T[] = [];
+  try {
+    for await (const item of iterable) {
+      items.push(item);
+    }
+    return { items };
+  } catch (error) {
+    return { items, error };
+  }
 }
 
 const signalTimers = new WeakMap<AbortSignal, number>();
@@ -642,10 +675,26 @@ export async function collectRecursiveObjects(
 
 export async function runLookup(
   command: InferValue<typeof lookupCommand> & GlobalOptions,
+  deps: Partial<{
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
+  }> = {},
 ) {
+  const effectiveDeps: {
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
+  } = {
+    lookupObject,
+    traverseCollection,
+    exit: (code: number) => process.exit(code),
+    ...deps,
+  };
+
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
-    process.exit(1);
+    effectiveDeps.exit(1);
   }
 
   // Enable Debug mode if requested
@@ -724,7 +773,7 @@ export async function runLookup(
         },
       );
     }
-    process.exit(cleanupFailed && code === 0 ? 1 : code);
+    effectiveDeps.exit(cleanupFailed && code === 0 ? 1 : code);
   };
 
   if (command.authorizedFetch) {
@@ -853,7 +902,7 @@ export async function runLookup(
       }
       let current: APObject | null = null;
       try {
-        current = await lookupObject(url, {
+        current = await effectiveDeps.lookupObject(url, {
           documentLoader: initialLookupDocumentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -879,27 +928,30 @@ export async function runLookup(
         return;
       }
 
-      try {
-        if (totalObjects > 0) {
-          await writeSeparator(command.separator, getOutputStream());
-        }
-        await writeObjectToStream(
-          current,
-          command.output,
-          command.format,
-          contextLoader,
-          getOutputStream(),
-        );
-      } catch (error) {
-        logger.error("Failed to write lookup output: {error}", { error });
-        spinner.fail("Failed to write output.");
-        await finalizeAndExit(1);
-        return;
-      }
-      totalObjects++;
       visited.add(url);
       if (current.id != null) {
         visited.add(current.id.href);
+      }
+
+      if (!command.reverse) {
+        try {
+          if (totalObjects > 0) {
+            await writeSeparator(command.separator, getOutputStream());
+          }
+          await writeObjectToStream(
+            current,
+            command.output,
+            command.format,
+            contextLoader,
+            getOutputStream(),
+          );
+          totalObjects++;
+        } catch (error) {
+          logger.error("Failed to write lookup output: {error}", { error });
+          spinner.fail("Failed to write output.");
+          await finalizeAndExit(1);
+          return;
+        }
       }
 
       let chain: APObject[] = [];
@@ -909,7 +961,7 @@ export async function runLookup(
           command.recurse,
           recurseDepth,
           (target) =>
-            lookupObject(target, {
+            effectiveDeps.lookupObject(target, {
               documentLoader: recursiveLookupDocumentLoader,
               contextLoader: recursiveContextLoader,
               userAgent: command.userAgent,
@@ -917,6 +969,28 @@ export async function runLookup(
           { suppressErrors: command.suppressErrors, visited },
         );
       } catch (error) {
+        if (command.reverse) {
+          try {
+            if (totalObjects > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              current,
+              command.output,
+              command.format,
+              contextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (writeError) {
+            logger.error("Failed to write lookup output: {error}", {
+              error: writeError,
+            });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
         logger.error(
           "Failed to recursively fetch an object in chain: {error}",
           {
@@ -949,22 +1023,68 @@ export async function runLookup(
         return;
       }
 
-      for (const next of chain) {
-        try {
-          await writeSeparator(command.separator, getOutputStream());
-          await writeObjectToStream(
-            next,
-            command.output,
-            command.format,
-            recursiveContextLoader,
-            getOutputStream(),
-          );
-          totalObjects++;
-        } catch (error) {
-          logger.error("Failed to write lookup output: {error}", { error });
-          spinner.fail("Failed to write output.");
-          await finalizeAndExit(1);
-          return;
+      if (command.reverse) {
+        const chainEntries = [
+          { object: current, objectContextLoader: contextLoader },
+          ...chain.map((next) => ({
+            object: next,
+            objectContextLoader: recursiveContextLoader,
+          })),
+        ];
+        for (
+          let chainIndex = chainEntries.length - 1;
+          chainIndex >= 0;
+          chainIndex--
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex < chainEntries.length - 1) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
+      } else {
+        const chainEntries = chain.map((next) => ({
+          object: next,
+          objectContextLoader: recursiveContextLoader,
+        }));
+        for (
+          let chainIndex = 0;
+          chainIndex < chainEntries.length;
+          chainIndex++
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
         }
       }
     }
@@ -988,7 +1108,7 @@ export async function runLookup(
 
       let collection: APObject | null = null;
       try {
-        collection = await lookupObject(url, {
+        collection = await effectiveDeps.lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -1024,36 +1144,74 @@ export async function runLookup(
       spinner.succeed(`Fetched collection: ${colors.green(url)}.`);
 
       try {
-        let collectionItems = 0;
-        for await (
-          const item of traverseCollection(collection, {
-            documentLoader: authLoader ?? documentLoader,
-            contextLoader,
-            suppressError: command.suppressErrors,
-          })
-        ) {
-          try {
-            if (totalItems > 0 || collectionItems > 0) {
-              await writeSeparator(command.separator, getOutputStream());
-            }
-            await writeObjectToStream(
-              item,
-              command.output,
-              command.format,
+        if (command.reverse) {
+          const {
+            items: traversedItems,
+            error: traversalError,
+          } = await collectAsyncItems(
+            effectiveDeps.traverseCollection(collection, {
+              documentLoader: authLoader ?? documentLoader,
               contextLoader,
-              getOutputStream(),
-            );
-          } catch (error) {
-            logger.error("Failed to write output for {url}: {error}", {
-              url,
-              error,
-            });
-            spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
-            await finalizeAndExit(1);
-            return;
+              suppressError: command.suppressErrors,
+            }),
+          );
+          for (let index = traversedItems.length - 1; index >= 0; index--) {
+            const item = traversedItems[index];
+            try {
+              if (totalItems > 0) {
+                await writeSeparator(command.separator, getOutputStream());
+              }
+              await writeObjectToStream(
+                item,
+                command.output,
+                command.format,
+                contextLoader,
+                getOutputStream(),
+              );
+            } catch (error) {
+              logger.error("Failed to write output for {url}: {error}", {
+                url,
+                error,
+              });
+              spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
+              await finalizeAndExit(1);
+              return;
+            }
+            totalItems++;
           }
-          collectionItems++;
-          totalItems++;
+          if (traversalError != null) {
+            throw traversalError;
+          }
+        } else {
+          for await (
+            const item of effectiveDeps.traverseCollection(collection, {
+              documentLoader: authLoader ?? documentLoader,
+              contextLoader,
+              suppressError: command.suppressErrors,
+            })
+          ) {
+            try {
+              if (totalItems > 0) {
+                await writeSeparator(command.separator, getOutputStream());
+              }
+              await writeObjectToStream(
+                item,
+                command.output,
+                command.format,
+                contextLoader,
+                getOutputStream(),
+              );
+            } catch (error) {
+              logger.error("Failed to write output for {url}: {error}", {
+                url,
+                error,
+              });
+              spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
+              await finalizeAndExit(1);
+              return;
+            }
+            totalItems++;
+          }
         }
       } catch (error) {
         logger.error("Failed to complete the traversal for {url}: {error}", {
@@ -1089,7 +1247,7 @@ export async function runLookup(
 
   for (const url of command.urls) {
     promises.push(
-      lookupObject(url, {
+      effectiveDeps.lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
         userAgent: command.userAgent,
@@ -1113,6 +1271,7 @@ export async function runLookup(
   spinner.stop();
   let success = true;
   let printedCount = 0;
+  const successfulObjects: APObject[] = [];
   for (const [i, obj] of objects.entries()) {
     const url = command.urls[i];
     if (obj == null) {
@@ -1125,25 +1284,28 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
-      try {
-        if (printedCount > 0) {
-          await writeSeparator(command.separator, getOutputStream());
-        }
-        await writeObjectToStream(
-          obj,
-          command.output,
-          command.format,
-          contextLoader,
-          getOutputStream(),
-        );
-      } catch (error) {
-        logger.error("Failed to write lookup output: {error}", { error });
-        spinner.fail("Failed to write output.");
-        await finalizeAndExit(1);
-        return;
-      }
-      printedCount++;
+      successfulObjects.push(obj);
     }
+  }
+  for (const obj of toPresentationOrder(successfulObjects, command.reverse)) {
+    try {
+      if (printedCount > 0) {
+        await writeSeparator(command.separator, getOutputStream());
+      }
+      await writeObjectToStream(
+        obj,
+        command.output,
+        command.format,
+        contextLoader,
+        getOutputStream(),
+      );
+    } catch (error) {
+      logger.error("Failed to write lookup output: {error}", { error });
+      spinner.fail("Failed to write output.");
+      await finalizeAndExit(1);
+      return;
+    }
+    printedCount++;
   }
   if (success) {
     spinner.succeed(
