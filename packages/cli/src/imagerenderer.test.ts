@@ -173,3 +173,19 @@ test("downloadImage - cancels body for non-ok terminal response", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("downloadImage - rejects unsafe extension containing path traversal", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch =
+    ((_input: URL | RequestInfo) =>
+      Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
+
+  try {
+    const result = await downloadImage(
+      "https://198.51.100.10/image.png/../../../../etc/passwd",
+    );
+    assert.equal(result, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

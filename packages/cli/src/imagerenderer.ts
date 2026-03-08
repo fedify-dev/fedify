@@ -132,6 +132,12 @@ export async function downloadImage(url: string): Promise<string | null> {
     }
     const imageData = new Uint8Array(await response.arrayBuffer());
     const extension = new URL(targetUrl).pathname.split(".").pop() || "jpg";
+    if (
+      extension.includes("/") || extension.includes("\\") ||
+      extension.includes("..")
+    ) {
+      return null;
+    }
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "fedify"));
     const tempPath = path.join(tempDir, `image.${extension}`);
 
