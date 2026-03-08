@@ -182,7 +182,7 @@ test("downloadImage - rejects unsafe extension containing path traversal", async
 
   try {
     const result = await downloadImage(
-      "https://198.51.100.10/image.png/../../../../etc/passwd",
+      "https://198.51.100.10/image.png/..%2f..%2f..%2fetc%2fpasswd",
     );
     assert.equal(result, null);
   } finally {
@@ -201,6 +201,28 @@ test("downloadImage - falls back to jpg when URL has no extension", async () => 
     result = await downloadImage("https://198.51.100.10/image");
     assert.notEqual(result, null);
     assert.equal(path.extname(result!), ".jpg");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (result != null) {
+      await rm(path.dirname(result), { recursive: true, force: true });
+    }
+  }
+});
+
+test("downloadImage - falls back to content type for extensionless nested path", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) =>
+    Promise.resolve(
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "image/png" },
+      }),
+    )) as typeof fetch;
+
+  let result: string | null = null;
+  try {
+    result = await downloadImage("https://198.51.100.10/media/12345");
+    assert.notEqual(result, null);
+    assert.equal(path.extname(result!), ".png");
   } finally {
     globalThis.fetch = originalFetch;
     if (result != null) {

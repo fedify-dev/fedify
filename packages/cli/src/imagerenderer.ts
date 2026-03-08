@@ -20,6 +20,30 @@ const KITTY_IDENTIFIERS: string[] = [
 
 type KittyCommand = Record<string, string | number>;
 
+function getExtensionFromContentType(contentType: string | null): string {
+  const mime = contentType?.split(";")[0]?.trim().toLowerCase() ?? "";
+  switch (mime) {
+    case "image/jpeg":
+    case "image/jpg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/gif":
+      return "gif";
+    case "image/webp":
+      return "webp";
+    case "image/avif":
+      return "avif";
+    case "image/bmp":
+      return "bmp";
+    case "image/svg+xml":
+      return "svg";
+    default:
+      if (mime.startsWith("image/")) return mime.slice("image/".length);
+      return "jpg";
+  }
+}
+
 export function detectTerminalCapabilities(): TerminalType {
   const termProgram = (process.env.TERM_PROGRAM || "").toLowerCase();
 
@@ -132,15 +156,20 @@ export async function downloadImage(url: string): Promise<string | null> {
     }
     const imageData = new Uint8Array(await response.arrayBuffer());
     const pathname = new URL(targetUrl).pathname;
+    const lowerPathname = pathname.toLowerCase();
+    if (
+      lowerPathname.includes("%2f") || lowerPathname.includes("%5c") ||
+      lowerPathname.includes("..")
+    ) {
+      return null;
+    }
     const pathSegments = pathname.split("/").filter((segment) =>
       segment !== ""
     );
     const filename = pathSegments[pathSegments.length - 1] ?? "";
     const extension = filename.includes(".")
       ? path.extname(filename).slice(1)
-      : pathSegments.length === 1
-      ? "jpg"
-      : "";
+      : getExtensionFromContentType(response.headers.get("content-type"));
     if (extension.length < 1) return null;
     if (
       extension.includes("/") || extension.includes("\\") ||
