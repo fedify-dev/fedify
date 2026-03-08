@@ -915,7 +915,7 @@ class ExitSignal extends Error {
 
 function createLookupRunCommand(
   overrides: Partial<Parameters<typeof runLookup>[0]>,
-) {
+): Parameters<typeof runLookup>[0] {
   const baseCommand = {
     command: "lookup",
     urls: [],
@@ -937,15 +937,15 @@ function createLookupRunCommand(
     ignoreConfig: false,
     configPath: undefined,
   } satisfies Parameters<typeof runLookup>[0];
-  return { ...baseCommand, ...overrides };
+  return { ...baseCommand, ...overrides } as Parameters<typeof runLookup>[0];
 }
 
 async function runLookupAndCaptureExitCode(
-  command: ReturnType<typeof createLookupRunCommand>,
+  command: Parameters<typeof runLookup>[0],
   deps?: Parameters<typeof runLookup>[1],
 ): Promise<number | null> {
   try {
-    await runLookup(command as Parameters<typeof runLookup>[0], {
+    await runLookup(command, {
       ...deps,
       exit: (code: number) => {
         throw new ExitSignal(code);
