@@ -724,7 +724,7 @@ export async function runLookup(
           recurseDepth,
           (target) =>
             lookupObject(target, {
-              documentLoader: recursiveDocumentLoader,
+              documentLoader: authLoader ?? recursiveDocumentLoader,
               contextLoader: recursiveContextLoader,
               userAgent: command.userAgent,
             }),
