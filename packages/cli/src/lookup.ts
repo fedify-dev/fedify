@@ -69,6 +69,18 @@ const recurseProperties = [
 ] as const;
 type RecurseProperty = typeof recurseProperties[number];
 
+const suppressErrorsOption = bindConfig(
+  flag("-S", "--suppress-errors", {
+    description:
+      message`Suppress partial errors during traversal or recursion.`,
+  }),
+  {
+    context: configContext,
+    key: (config) => config.lookup?.suppressErrors ?? false,
+    default: false,
+  },
+);
+
 export const authorizedFetchOption = withDefault(
   object("Authorized fetch options", {
     authorizedFetch: bindConfig(
@@ -144,17 +156,7 @@ const lookupModeOption = withDefault(
         ),
         20,
       ),
-      suppressErrors: bindConfig(
-        flag("-S", "--suppress-errors", {
-          description:
-            message`Suppress partial errors during traversal or recursion.`,
-        }),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.suppressErrors ?? false,
-          default: false,
-        },
-      ),
+      suppressErrors: suppressErrorsOption,
     }),
     object("Traverse options", {
       traverse: bindConfig(
@@ -170,17 +172,7 @@ const lookupModeOption = withDefault(
       ),
       recurse: constant(undefined),
       recurseDepth: constant(undefined),
-      suppressErrors: bindConfig(
-        flag("-S", "--suppress-errors", {
-          description:
-            message`Suppress partial errors during traversal or recursion.`,
-        }),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.suppressErrors ?? false,
-          default: false,
-        },
-      ),
+      suppressErrors: suppressErrorsOption,
     }),
   ),
   {
