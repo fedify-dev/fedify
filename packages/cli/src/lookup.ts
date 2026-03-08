@@ -612,10 +612,10 @@ export async function runLookup(
 
   if (command.recurse != null) {
     let totalObjects = 0;
-    const visited = new Set<string>();
     const recurseDepth = command.recurseDepth ?? 20;
 
     for (let urlIndex = 0; urlIndex < command.urls.length; urlIndex++) {
+      const visited = new Set<string>();
       const url = command.urls[urlIndex];
       if (urlIndex > 0) {
         spinner.text = `Looking up object chain ${
@@ -884,7 +884,7 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
-      if (printedCount > 0) console.log(command.separator);
+      if (printedCount > 0 && !command.output) console.log(command.separator);
       await writeObjectToStream(
         obj,
         command.output,
