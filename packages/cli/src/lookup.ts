@@ -334,6 +334,32 @@ export async function writeObjectToStream(
   const localFileStream = stream == null && outputPath != null
     ? localStream as WriteStream
     : undefined;
+  const writeChunk = (target: NodeJS.WritableStream, chunk: Uint8Array) =>
+    new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => {
+        target.off("error", onError);
+        reject(error);
+      };
+      target.once("error", onError);
+      target.write(chunk, (error) => {
+        target.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    });
+  const endStream = (target: WriteStream) =>
+    new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => {
+        target.off("error", onError);
+        reject(error);
+      };
+      target.once("error", onError);
+      target.end((error?: Error | null) => {
+        target.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    });
 
   let content;
   let json = true;
@@ -361,20 +387,10 @@ export async function writeObjectToStream(
   const encoder = new TextEncoder();
   const bytes = encoder.encode(content + "\n");
 
-  await new Promise<void>((resolve, reject) => {
-    localStream.write(bytes, (error) => {
-      if (error != null) reject(error);
-      else resolve();
-    });
-  });
+  await writeChunk(localStream, bytes);
 
   if (localFileStream != null) {
-    await new Promise<void>((resolve, reject) => {
-      localFileStream.end((error?: Error | null) => {
-        if (error != null) reject(error);
-        else resolve();
-      });
-    });
+    await endStream(localFileStream);
   }
 
   if (object instanceof APObject) {

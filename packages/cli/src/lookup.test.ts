@@ -7,6 +7,7 @@ import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import process from "node:process";
+import { Writable } from "node:stream";
 import test from "node:test";
 import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
@@ -219,6 +220,26 @@ test("writeObjectToStream - handles empty content properly", async () => {
   assert.ok(content.includes("Note"));
 
   await rm(testDir, { recursive: true });
+});
+
+test("writeObjectToStream - rejects when stream emits write error", async () => {
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    content: "Test stream error",
+  });
+  const contextLoader = await getContextLoader({});
+  const stream = new Writable({
+    write(_chunk, _encoding, callback) {
+      this.emit("error", new Error("write failed"));
+      callback();
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      writeObjectToStream(note, undefined, undefined, contextLoader, stream),
+    /write failed/,
+  );
 });
 
 test("createTimeoutSignal - returns undefined when no timeout specified", () => {
