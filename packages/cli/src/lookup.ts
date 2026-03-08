@@ -975,16 +975,23 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
-      if (printedCount > 0) {
-        await writeSeparator(command.separator, getOutputStream());
+      try {
+        if (printedCount > 0) {
+          await writeSeparator(command.separator, getOutputStream());
+        }
+        await writeObjectToStream(
+          obj,
+          command.output,
+          command.format,
+          contextLoader,
+          getOutputStream(),
+        );
+      } catch (error) {
+        logger.error("Failed to write lookup output: {error}", { error });
+        spinner.fail("Failed to write output.");
+        await finalizeAndExit(1);
+        return;
       }
-      await writeObjectToStream(
-        obj,
-        command.output,
-        command.format,
-        contextLoader,
-        getOutputStream(),
-      );
       printedCount++;
     }
   }
