@@ -39,6 +39,7 @@ import {
 } from "@optique/core";
 import { path, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
+import { isIP } from "node:net";
 import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
@@ -297,6 +298,58 @@ export class RecursiveLookupError extends Error {
     this.name = "RecursiveLookupError";
     this.target = target;
   }
+}
+
+export class PrivateAddressLookupError extends Error {
+  target: string;
+  constructor(target: string) {
+    super(`Blocked recursive fetch to private address: ${target}`);
+    this.name = "PrivateAddressLookupError";
+    this.target = target;
+  }
+}
+
+function isPrivateIpv4(host: string): boolean {
+  const parts = host.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => Number.parseInt(part, 10));
+  if (octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+  const [a, b] = octets;
+  return a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168);
+}
+
+function isPrivateIpv6(host: string): boolean {
+  const normalized = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (normalized === "::1" || normalized === "::") return true;
+  if (normalized.startsWith("::ffff:")) {
+    const mapped = normalized.slice("::ffff:".length);
+    return isPrivateIpv4(mapped);
+  }
+  return normalized.startsWith("fc") || normalized.startsWith("fd") ||
+    normalized.startsWith("fe8") || normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") || normalized.startsWith("feb");
+}
+
+export function isPrivateAddressTarget(target: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(target);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (isIP(host) === 4) return isPrivateIpv4(host);
+  if (isIP(host.replace(/^\[|\]$/g, "")) === 6) return isPrivateIpv6(host);
+  return false;
 }
 
 async function findAllImages(obj: APObject): Promise<URL[]> {
@@ -612,7 +665,7 @@ export async function runLookup(
 
   if (command.recurse != null) {
     let totalObjects = 0;
-    const recurseDepth = command.recurseDepth ?? 20;
+    const recurseDepth = command.recurseDepth!;
 
     for (let urlIndex = 0; urlIndex < command.urls.length; urlIndex++) {
       const visited = new Set<string>();
@@ -676,12 +729,16 @@ export async function runLookup(
           current,
           command.recurse,
           recurseDepth,
-          (target) =>
-            lookupObject(target, {
+          (target) => {
+            if (isPrivateAddressTarget(target)) {
+              throw new PrivateAddressLookupError(target);
+            }
+            return lookupObject(target, {
               documentLoader: authLoader ?? documentLoader,
               contextLoader,
               userAgent: command.userAgent,
-            }),
+            });
+          },
           { suppressErrors: command.suppressErrors, visited },
         );
       } catch (error) {
@@ -693,6 +750,12 @@ export async function runLookup(
         );
         if (error instanceof TimeoutError) {
           handleTimeoutError(spinner, command.timeout);
+        } else if (error instanceof PrivateAddressLookupError) {
+          spinner.fail(
+            `Blocked recursive fetch to private address: ${
+              colors.red(error.target)
+            }.`,
+          );
         } else if (error instanceof RecursiveLookupError) {
           spinner.fail(
             `Failed to recursively fetch object: ${colors.red(error.target)}.`,
