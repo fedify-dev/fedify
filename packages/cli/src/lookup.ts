@@ -545,20 +545,20 @@ export function getRecursiveTargetId(
   object: APObject,
   recurseProperty: RecurseProperty,
 ): URL | null {
-  if (
-    recurseProperty === "replyTarget" || recurseProperty === IN_REPLY_TO_IRI
-  ) {
-    return object.replyTargetId;
+  switch (recurseProperty) {
+    case "replyTarget":
+    case IN_REPLY_TO_IRI:
+      return object.replyTargetId;
+    case "quoteUrl":
+    case QUOTE_URL_IRI:
+    case MISSKEY_QUOTE_IRI:
+    case FEDIBIRD_QUOTE_IRI: {
+      const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
+      return quoteUrl instanceof URL ? quoteUrl : null;
+    }
+    default:
+      return null;
   }
-  if (
-    recurseProperty === "quoteUrl" || recurseProperty === QUOTE_URL_IRI ||
-    recurseProperty === MISSKEY_QUOTE_IRI ||
-    recurseProperty === FEDIBIRD_QUOTE_IRI
-  ) {
-    const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
-    return quoteUrl instanceof URL ? quoteUrl : null;
-  }
-  return null;
 }
 
 /**
