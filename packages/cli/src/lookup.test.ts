@@ -21,6 +21,7 @@ import {
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
+  shouldPrintLookupFailureHint,
   TimeoutError,
   writeObjectToStream,
   writeSeparator,
@@ -640,6 +641,33 @@ test("getLookupFailureHint - suggests authorized-fetch for non-URL errors", () =
   assert.equal(
     getLookupFailureHint(new Error("401 Unauthorized")),
     "authorized-fetch",
+  );
+});
+
+test("getLookupFailureHint - does not treat all UrlError values as private", () => {
+  assert.equal(
+    getLookupFailureHint(new UrlError("Unsupported protocol: ftp:")),
+    "authorized-fetch",
+  );
+});
+
+test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () => {
+  const loader =
+    ((_url: string) =>
+      Promise.reject(new Error("not used"))) as unknown as Parameters<
+        typeof shouldPrintLookupFailureHint
+      >[0];
+  assert.equal(
+    shouldPrintLookupFailureHint(loader, "authorized-fetch"),
+    false,
+  );
+  assert.equal(
+    shouldPrintLookupFailureHint(loader, "private-address"),
+    true,
+  );
+  assert.equal(
+    shouldPrintLookupFailureHint(loader, "recursive-private-address"),
+    true,
   );
 });
 

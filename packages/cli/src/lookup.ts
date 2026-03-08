@@ -492,9 +492,14 @@ function handleTimeoutError(
 }
 
 function isPrivateAddressError(error: unknown): boolean {
-  if (error instanceof UrlError) return true;
   const errorMessage = error instanceof Error ? error.message : String(error);
   const lowerMessage = errorMessage.toLowerCase();
+  if (error instanceof UrlError) {
+    return (
+      lowerMessage.includes("invalid or private address") ||
+      lowerMessage.includes("localhost is not allowed")
+    );
+  }
   return (
     lowerMessage.includes("private address") ||
     lowerMessage.includes("private ip") ||
@@ -513,13 +518,21 @@ export function getLookupFailureHint(
   return "authorized-fetch";
 }
 
+export function shouldPrintLookupFailureHint(
+  authLoader: DocumentLoader | undefined,
+  hint: ReturnType<typeof getLookupFailureHint>,
+): boolean {
+  return hint !== "authorized-fetch" || authLoader == null;
+}
+
 function printLookupFailureHint(
   authLoader: DocumentLoader | undefined,
   error: unknown,
   options: { recursive?: boolean } = {},
 ): void {
-  if (authLoader != null) return;
-  switch (getLookupFailureHint(error, options)) {
+  const hint = getLookupFailureHint(error, options);
+  if (!shouldPrintLookupFailureHint(authLoader, hint)) return;
+  switch (hint) {
     case "private-address":
       printError(
         message`The URL appears to be private or localhost.  Try with -p/--allow-private-address.`,
