@@ -583,9 +583,21 @@ export async function runLookup(
   );
 
   let authLoader: DocumentLoader | undefined = undefined;
-  const outputStream = command.output == null
-    ? undefined
-    : createWriteStream(command.output);
+  let outputStream: WriteStream | undefined;
+  let outputStreamError: Error | undefined;
+  const getOutputStream = (): WriteStream | undefined => {
+    if (command.output == null) return undefined;
+    if (outputStream == null) {
+      outputStream = createWriteStream(command.output);
+      outputStream.once("error", (error) => {
+        outputStreamError = error;
+      });
+    }
+    if (outputStreamError != null) {
+      throw outputStreamError;
+    }
+    return outputStream;
+  };
   const finalizeAndExit = async (code: number) => {
     await closeWriteStream(outputStream);
     await server?.close();
@@ -722,14 +734,14 @@ export async function runLookup(
       }
 
       if (totalObjects > 0) {
-        await writeSeparator(command.separator, outputStream);
+        await writeSeparator(command.separator, getOutputStream());
       }
       await writeObjectToStream(
         current,
         command.output,
         command.format,
         contextLoader,
-        outputStream,
+        getOutputStream(),
       );
       totalObjects++;
       visited.add(url);
@@ -786,13 +798,13 @@ export async function runLookup(
       }
 
       for (const next of chain) {
-        await writeSeparator(command.separator, outputStream);
+        await writeSeparator(command.separator, getOutputStream());
         await writeObjectToStream(
           next,
           command.output,
           command.format,
           contextLoader,
-          outputStream,
+          getOutputStream(),
         );
         totalObjects++;
       }
@@ -866,14 +878,14 @@ export async function runLookup(
           })
         ) {
           if (totalItems > 0 || collectionItems > 0) {
-            await writeSeparator(command.separator, outputStream);
+            await writeSeparator(command.separator, getOutputStream());
           }
           await writeObjectToStream(
             item,
             command.output,
             command.format,
             contextLoader,
-            outputStream,
+            getOutputStream(),
           );
           collectionItems++;
           totalItems++;
@@ -950,14 +962,14 @@ export async function runLookup(
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
       if (printedCount > 0) {
-        await writeSeparator(command.separator, outputStream);
+        await writeSeparator(command.separator, getOutputStream());
       }
       await writeObjectToStream(
         obj,
         command.output,
         command.format,
         contextLoader,
-        outputStream,
+        getOutputStream(),
       );
       printedCount++;
     }
