@@ -390,7 +390,7 @@ export async function writeObjectToStream(
     json = false;
   }
 
-  const enableColors = colorEnabled && outputPath === undefined;
+  const enableColors = colorEnabled && localStream === process.stdout;
   content = formatObject(content, enableColors, json);
 
   const encoder = new TextEncoder();
@@ -1013,8 +1013,15 @@ export async function runLookup(
     await finalizeAndExit(1);
     return;
   }
-  await closeWriteStream(outputStream);
-  await server?.close();
+  try {
+    await closeWriteStream(outputStream);
+    await server?.close();
+  } catch (error) {
+    logger.error("Failed to finalize lookup resources: {error}", { error });
+    spinner.fail("Failed to finalize output.");
+    await finalizeAndExit(1);
+    return;
+  }
   if (success && command.output) {
     spinner.succeed(
       `Successfully wrote output to ${colors.green(command.output)}.`,
