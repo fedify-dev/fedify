@@ -309,11 +309,16 @@ function writeToStream(
       reject(error);
     };
     stream.once("error", onError);
-    stream.write(chunk, (error) => {
+    try {
+      stream.write(chunk, (error) => {
+        stream.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    } catch (error) {
       stream.off("error", onError);
-      if (error != null) reject(error);
-      else resolve();
-    });
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 
@@ -324,11 +329,16 @@ function endWritableStream(stream: WriteStream): Promise<void> {
       reject(error);
     };
     stream.once("error", onError);
-    stream.end((error?: Error | null) => {
+    try {
+      stream.end((error?: Error | null) => {
+        stream.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    } catch (error) {
       stream.off("error", onError);
-      if (error != null) reject(error);
-      else resolve();
-    });
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 
