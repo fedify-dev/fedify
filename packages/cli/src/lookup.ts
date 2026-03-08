@@ -741,7 +741,7 @@ export async function runLookup(
           current,
           command.output,
           command.format,
-          contextLoader,
+          recursiveContextLoader,
           getOutputStream(),
         );
       } catch (error) {
@@ -811,7 +811,7 @@ export async function runLookup(
             next,
             command.output,
             command.format,
-            contextLoader,
+            recursiveContextLoader,
             getOutputStream(),
           );
           totalObjects++;
