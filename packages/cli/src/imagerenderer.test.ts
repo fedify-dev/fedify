@@ -189,3 +189,22 @@ test("downloadImage - rejects unsafe extension containing path traversal", async
     globalThis.fetch = originalFetch;
   }
 });
+
+test("downloadImage - falls back to jpg when URL has no extension", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch =
+    ((_input: URL | RequestInfo) =>
+      Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
+
+  let result: string | null = null;
+  try {
+    result = await downloadImage("https://198.51.100.10/image");
+    assert.notEqual(result, null);
+    assert.equal(path.extname(result!), ".jpg");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (result != null) {
+      await rm(path.dirname(result), { recursive: true, force: true });
+    }
+  }
+});

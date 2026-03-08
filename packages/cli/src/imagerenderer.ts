@@ -131,7 +131,17 @@ export async function downloadImage(url: string): Promise<string | null> {
       return null;
     }
     const imageData = new Uint8Array(await response.arrayBuffer());
-    const extension = new URL(targetUrl).pathname.split(".").pop() || "jpg";
+    const pathname = new URL(targetUrl).pathname;
+    const pathSegments = pathname.split("/").filter((segment) =>
+      segment !== ""
+    );
+    const filename = pathSegments[pathSegments.length - 1] ?? "";
+    const extension = filename.includes(".")
+      ? path.extname(filename).slice(1)
+      : pathSegments.length === 1
+      ? "jpg"
+      : "";
+    if (extension.length < 1) return null;
     if (
       extension.includes("/") || extension.includes("\\") ||
       extension.includes("..")
