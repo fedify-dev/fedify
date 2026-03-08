@@ -319,10 +319,13 @@ export async function writeObjectToStream(
   outputPath: string | undefined,
   format: string | undefined,
   contextLoader: DocumentLoader,
+  stream?: NodeJS.WritableStream,
 ): Promise<void> {
-  const stream: WriteStream | NodeJS.WritableStream = outputPath
-    ? createWriteStream(outputPath)
-    : process.stdout;
+  const localStream: WriteStream | NodeJS.WritableStream = stream ??
+    (outputPath ? createWriteStream(outputPath) : process.stdout);
+  const localFileStream = stream == null && outputPath != null
+    ? localStream as WriteStream
+    : undefined;
 
   let content;
   let json = true;
@@ -350,7 +353,21 @@ export async function writeObjectToStream(
   const encoder = new TextEncoder();
   const bytes = encoder.encode(content + "\n");
 
-  stream.write(bytes);
+  await new Promise<void>((resolve, reject) => {
+    localStream.write(bytes, (error) => {
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+
+  if (localFileStream != null) {
+    await new Promise<void>((resolve, reject) => {
+      localFileStream.end((error?: Error | null) => {
+        if (error != null) reject(error);
+        else resolve();
+      });
+    });
+  }
 
   if (object instanceof APObject) {
     imageUrls = await findAllImages(object);
@@ -358,6 +375,16 @@ export async function writeObjectToStream(
   if (!outputPath && imageUrls.length > 0) {
     await renderImages(imageUrls);
   }
+}
+
+async function closeWriteStream(stream?: WriteStream): Promise<void> {
+  if (stream == null) return;
+  await new Promise<void>((resolve, reject) => {
+    stream.end((error?: Error | null) => {
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
 }
 
 const signalTimers = new WeakMap<AbortSignal, number>();
@@ -511,6 +538,14 @@ export async function runLookup(
   );
 
   let authLoader: DocumentLoader | undefined = undefined;
+  const outputStream = command.output == null
+    ? undefined
+    : createWriteStream(command.output);
+  const finalizeAndExit = async (code: number) => {
+    await closeWriteStream(outputStream);
+    await server?.close();
+    process.exit(code);
+  };
 
   if (command.authorizedFetch) {
     spinner.text = "Generating a one-time key pair...";
@@ -593,7 +628,7 @@ export async function runLookup(
           urlIndex + 1
         }/${command.urls.length}...`;
       }
-      let current: APObject | null;
+      let current: APObject | null = null;
       try {
         current = await lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
@@ -611,8 +646,8 @@ export async function runLookup(
             );
           }
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       if (current == null) {
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
@@ -621,8 +656,8 @@ export async function runLookup(
             message`It may be a private object.  Try with -a/--authorized-fetch.`,
           );
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
 
       if (totalObjects > 0 && !command.output) {
@@ -633,6 +668,7 @@ export async function runLookup(
         command.output,
         command.format,
         contextLoader,
+        outputStream,
       );
       totalObjects++;
       visited.add(url);
@@ -640,7 +676,7 @@ export async function runLookup(
         visited.add(current.id.href);
       }
 
-      let chain: APObject[];
+      let chain: APObject[] = [];
       try {
         chain = await collectRecursiveObjects(
           current,
@@ -684,8 +720,8 @@ export async function runLookup(
             );
           }
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
 
       for (const next of chain) {
@@ -697,14 +733,15 @@ export async function runLookup(
           command.output,
           command.format,
           contextLoader,
+          outputStream,
         );
         totalObjects++;
       }
     }
 
     spinner.succeed("Successfully fetched all reachable objects in the chain.");
-    await server?.close();
-    process.exit(0);
+    await finalizeAndExit(0);
+    return;
   }
 
   if (command.traverse) {
@@ -719,7 +756,7 @@ export async function runLookup(
         }/${command.urls.length}...`;
       }
 
-      let collection: APObject | null;
+      let collection: APObject | null = null;
       try {
         collection = await lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
@@ -737,8 +774,8 @@ export async function runLookup(
             );
           }
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       if (collection == null) {
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
@@ -747,16 +784,16 @@ export async function runLookup(
             message`It may be a private object.  Try with -a/--authorized-fetch.`,
           );
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       if (!(collection instanceof Collection)) {
         spinner.fail(
           `Not a collection: ${colors.red(url)}.  ` +
             "The -t/--traverse option requires a collection.",
         );
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       spinner.succeed(`Fetched collection: ${colors.green(url)}.`);
 
@@ -777,6 +814,7 @@ export async function runLookup(
             command.output,
             command.format,
             contextLoader,
+            outputStream,
           );
           collectionItems++;
           totalItems++;
@@ -802,14 +840,14 @@ export async function runLookup(
             );
           }
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
     }
     spinner.succeed("Successfully fetched all items in the collection.");
 
-    await server?.close();
-    process.exit(0);
+    await finalizeAndExit(0);
+    return;
   }
 
   const promises: Promise<APObject | null>[] = [];
@@ -829,12 +867,12 @@ export async function runLookup(
     );
   }
 
-  let objects: (APObject | null)[];
+  let objects: (APObject | null)[] = [];
   try {
     objects = await Promise.all(promises);
   } catch (_error) {
-    await server?.close();
-    process.exit(1);
+    await finalizeAndExit(1);
+    return;
   }
 
   spinner.stop();
@@ -858,6 +896,7 @@ export async function runLookup(
         command.output,
         command.format,
         contextLoader,
+        outputStream,
       );
       printedCount++;
     }
@@ -869,10 +908,12 @@ export async function runLookup(
         : "Successfully fetched the object.",
     );
   }
-  await server?.close();
   if (!success) {
-    process.exit(1);
+    await finalizeAndExit(1);
+    return;
   }
+  await closeWriteStream(outputStream);
+  await server?.close();
   if (success && command.output) {
     spinner.succeed(
       `Successfully wrote output to ${colors.green(command.output)}.`,

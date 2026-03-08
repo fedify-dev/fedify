@@ -3,6 +3,7 @@ import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import test from "node:test";
 import { configContext } from "./config.ts";
@@ -108,6 +109,40 @@ test("writeObjectToStream - writes object in expanded JSON-LD format", async () 
   const content = await readFile(testFile);
   assert.ok(content);
   assert.ok(content.includes("Test note for expansion"));
+
+  await rm(testDir, { recursive: true });
+});
+
+test("writeObjectToStream - supports reusing an output stream", async () => {
+  const testDir = "./test_output_reused_stream";
+  const testFile = `${testDir}/notes.txt`;
+
+  await mkdir(testDir, { recursive: true });
+
+  const note1 = new Note({
+    id: new URL("https://example.com/notes/1"),
+    content: "First note",
+  });
+  const note2 = new Note({
+    id: new URL("https://example.com/notes/2"),
+    content: "Second note",
+  });
+
+  const contextLoader = await getContextLoader({});
+  const stream = createWriteStream(testFile);
+
+  await writeObjectToStream(note1, testFile, undefined, contextLoader, stream);
+  await writeObjectToStream(note2, testFile, undefined, contextLoader, stream);
+  await new Promise<void>((resolve, reject) => {
+    stream.end((error?: Error | null) => {
+      if (error != null) reject(error);
+      else resolve();
+    });
+  });
+
+  const content = await readFile(testFile, { encoding: "utf8" });
+  assert.match(content, /First note/);
+  assert.match(content, /Second note/);
 
   await rm(testDir, { recursive: true });
 });
