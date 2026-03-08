@@ -12,7 +12,7 @@ import {
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
-import { type DocumentLoader, validatePublicUrl } from "@fedify/vocab-runtime";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { bindConfig } from "@optique/config";
@@ -685,13 +685,8 @@ export async function runLookup(
       recursiveBaseContextLoader,
       command.timeout,
     );
-    const recursiveLookupDocumentLoader: DocumentLoader = async (
-      url,
-      options,
-    ) => {
-      await validatePublicUrl(url);
-      return (authLoader ?? recursiveDocumentLoader)(url, options);
-    };
+    const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
+      recursiveDocumentLoader;
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
 
