@@ -472,7 +472,6 @@ export async function collectRecursiveObjects(
     if (targetId == null) break;
     const target = targetId.href;
     if (visited.has(target)) break;
-    visited.add(target);
 
     let next: APObject | null;
     try {
@@ -486,6 +485,7 @@ export async function collectRecursiveObjects(
       throw new RecursiveLookupError(target);
     }
     results.push(next);
+    visited.add(target);
     if (next.id != null) {
       visited.add(next.id.href);
     }

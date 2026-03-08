@@ -541,3 +541,23 @@ test("collectRecursiveObjects - suppresses errors in best-effort mode", async ()
   );
   assert.deepEqual(result, []);
 });
+
+test(
+  "collectRecursiveObjects - suppress mode does not poison visited set",
+  async () => {
+    const note2 = new Note({
+      id: new URL("https://example.com/notes/2"),
+      replyTarget: new URL("https://example.com/notes/1"),
+    });
+    const visited = new Set<string>();
+    const result = await collectRecursiveObjects(
+      note2,
+      "replyTarget",
+      10,
+      () => Promise.reject(new Error("temporary failure")),
+      { suppressErrors: true, visited },
+    );
+    assert.deepEqual(result, []);
+    assert.equal(visited.has("https://example.com/notes/1"), false);
+  },
+);
