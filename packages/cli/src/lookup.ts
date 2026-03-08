@@ -733,16 +733,23 @@ export async function runLookup(
         return;
       }
 
-      if (totalObjects > 0) {
-        await writeSeparator(command.separator, getOutputStream());
+      try {
+        if (totalObjects > 0) {
+          await writeSeparator(command.separator, getOutputStream());
+        }
+        await writeObjectToStream(
+          current,
+          command.output,
+          command.format,
+          contextLoader,
+          getOutputStream(),
+        );
+      } catch (error) {
+        logger.error("Failed to write lookup output: {error}", { error });
+        spinner.fail("Failed to write output.");
+        await finalizeAndExit(1);
+        return;
       }
-      await writeObjectToStream(
-        current,
-        command.output,
-        command.format,
-        contextLoader,
-        getOutputStream(),
-      );
       totalObjects++;
       visited.add(url);
       if (current.id != null) {
@@ -798,15 +805,22 @@ export async function runLookup(
       }
 
       for (const next of chain) {
-        await writeSeparator(command.separator, getOutputStream());
-        await writeObjectToStream(
-          next,
-          command.output,
-          command.format,
-          contextLoader,
-          getOutputStream(),
-        );
-        totalObjects++;
+        try {
+          await writeSeparator(command.separator, getOutputStream());
+          await writeObjectToStream(
+            next,
+            command.output,
+            command.format,
+            contextLoader,
+            getOutputStream(),
+          );
+          totalObjects++;
+        } catch (error) {
+          logger.error("Failed to write lookup output: {error}", { error });
+          spinner.fail("Failed to write output.");
+          await finalizeAndExit(1);
+          return;
+        }
       }
     }
 
