@@ -839,11 +839,9 @@ export async function runLookup(
 
   spinner.stop();
   let success = true;
-  let i = 0;
-  for (const obj of objects) {
+  let printedCount = 0;
+  for (const [i, obj] of objects.entries()) {
     const url = command.urls[i];
-    if (i > 0) console.log(command.separator);
-    i++;
     if (obj == null) {
       spinner.fail(`Failed to fetch ${colors.red(url)}`);
       if (authLoader == null) {
@@ -854,15 +852,14 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
+      if (printedCount > 0) console.log(command.separator);
       await writeObjectToStream(
         obj,
         command.output,
         command.format,
         contextLoader,
       );
-      if (i < command.urls.length - 1) {
-        console.log(command.separator);
-      }
+      printedCount++;
     }
   }
   if (success) {
