@@ -63,7 +63,10 @@ test("KvKeyCache.get()", async () => {
   assertInstanceOf(multikey, Multikey);
   assertEquals(multikey?.id?.href, "https://example.com/key2");
 
-  cache.nullKeys.add("https://example.com/null");
+  cache.nullKeys.set(
+    "https://example.com/null",
+    Temporal.Now.instant().add(Temporal.Duration.from({ minutes: 10 })),
+  );
   assertEquals(await cache.get(new URL("https://example.com/null")), null);
 
   await kv.set(["pk", "https://example.com/null2"], null);
@@ -105,5 +108,23 @@ test("KvKeyCache fetch error metadata", async () => {
   assertEquals(nonHttpError.error.message, "boom");
 
   await cache.setFetchError(keyId, null);
+  assertEquals(await cache.getFetchError(keyId), undefined);
+});
+
+test("KvKeyCache unavailable entries expire", async () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"], {
+    unavailableKeyTtl: Temporal.Duration.from({ milliseconds: 1 }),
+  });
+  const keyId = new URL("https://example.com/expired");
+
+  await cache.set(keyId, null);
+  await cache.setFetchError(keyId, {
+    status: 410,
+    response: new Response(null, { status: 410 }),
+  });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assertEquals(await cache.get(keyId), undefined);
   assertEquals(await cache.getFetchError(keyId), undefined);
 });

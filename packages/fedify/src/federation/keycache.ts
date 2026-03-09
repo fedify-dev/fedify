@@ -6,19 +6,23 @@ import type { KvKey, KvStore } from "./kv.ts";
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
+  unavailableKeyTtl?: Temporal.Duration;
 }
 
 export class KvKeyCache implements KeyCache {
   readonly kv: KvStore;
   readonly prefix: KvKey;
   readonly options: KvKeyCacheOptions;
-  readonly nullKeys: Set<string>;
+  readonly unavailableKeyTtl: Temporal.Duration;
+  readonly nullKeys: Map<string, Temporal.Instant>;
 
   constructor(kv: KvStore, prefix: KvKey, options: KvKeyCacheOptions = {}) {
     this.kv = kv;
     this.prefix = prefix;
-    this.nullKeys = new Set();
     this.options = options;
+    this.unavailableKeyTtl = options.unavailableKeyTtl ??
+      Temporal.Duration.from({ minutes: 10 });
+    this.nullKeys = new Map();
   }
 
   #getFetchErrorKey(keyId: URL): KvKey {
@@ -28,11 +32,20 @@ export class KvKeyCache implements KeyCache {
   async get(
     keyId: URL,
   ): Promise<CryptographicKey | Multikey | null | undefined> {
-    if (this.nullKeys.has(keyId.href)) return null;
+    const negativeExpiration = this.nullKeys.get(keyId.href);
+    if (negativeExpiration != null) {
+      if (Temporal.Now.instant().until(negativeExpiration).sign >= 0) {
+        return null;
+      }
+      this.nullKeys.delete(keyId.href);
+    }
     const serialized = await this.kv.get([...this.prefix, keyId.href]);
     if (serialized === undefined) return undefined;
     if (serialized === null) {
-      this.nullKeys.add(keyId.href);
+      this.nullKeys.set(
+        keyId.href,
+        Temporal.Now.instant().add(this.unavailableKeyTtl),
+      );
       return null;
     }
     try {
@@ -52,8 +65,13 @@ export class KvKeyCache implements KeyCache {
     key: CryptographicKey | Multikey | null,
   ): Promise<void> {
     if (key == null) {
-      this.nullKeys.add(keyId.href);
-      await this.kv.set([...this.prefix, keyId.href], null);
+      this.nullKeys.set(
+        keyId.href,
+        Temporal.Now.instant().add(this.unavailableKeyTtl),
+      );
+      await this.kv.set([...this.prefix, keyId.href], null, {
+        ttl: this.unavailableKeyTtl,
+      });
       return;
     }
     this.nullKeys.delete(keyId.href);
@@ -106,6 +124,7 @@ export class KvKeyCache implements KeyCache {
           headers: Array.from(error.response.headers.entries()),
           body: await error.response.clone().text(),
         },
+        { ttl: this.unavailableKeyTtl },
       );
       return;
     }
@@ -115,6 +134,7 @@ export class KvKeyCache implements KeyCache {
         errorName: error.error.name,
         errorMessage: error.error.message,
       },
+      { ttl: this.unavailableKeyTtl },
     );
   }
 }
