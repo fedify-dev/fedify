@@ -3,6 +3,7 @@ import { deepStrictEqual, strictEqual } from "node:assert/strict";
 import {
   type AcceptSignatureMember,
   formatAcceptSignature,
+  fulfillAcceptSignature,
   parseAcceptSignature,
   validateAcceptSignatureForRequest,
 } from "./accept.ts";
@@ -188,3 +189,104 @@ test(
     deepStrictEqual(result, [valid]);
   },
 );
+
+// ---------------------------------------------------------------------------
+// fulfillAcceptSignature()
+// ---------------------------------------------------------------------------
+
+test("fulfillAcceptSignature(): compatible alg and keyid", () => {
+  const entry: AcceptSignatureMember = {
+    label: "sig1",
+    components: ["@method", "@target-uri", "content-digest"],
+    parameters: {
+      alg: "rsa-v1_5-sha256",
+      keyid: "https://example.com/key",
+      nonce: "abc",
+      tag: "t1",
+    },
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+  strictEqual(result != null, true);
+  strictEqual(result!.label, "sig1");
+  deepStrictEqual(result!.components, [
+    "@method",
+    "@target-uri",
+    "content-digest",
+    "@authority",
+  ]);
+  strictEqual(result!.nonce, "abc");
+  strictEqual(result!.tag, "t1");
+});
+
+test("fulfillAcceptSignature(): incompatible alg", () => {
+  const entry: AcceptSignatureMember = {
+    label: "sig1",
+    components: ["@method"],
+    parameters: { alg: "ecdsa-p256-sha256" },
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+  strictEqual(result, null);
+});
+
+test("fulfillAcceptSignature(): incompatible keyid", () => {
+  const entry: AcceptSignatureMember = {
+    label: "sig1",
+    components: ["@method"],
+    parameters: { keyid: "https://other.example/key" },
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+  strictEqual(result, null);
+});
+
+test("fulfillAcceptSignature(): minimum component set preserved", () => {
+  const entry: AcceptSignatureMember = {
+    label: "sig1",
+    components: ["content-digest"],
+    parameters: {},
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+  strictEqual(result != null, true);
+  // Minimum set should be merged in
+  strictEqual(result!.components.includes("@method"), true);
+  strictEqual(result!.components.includes("@target-uri"), true);
+  strictEqual(result!.components.includes("@authority"), true);
+  strictEqual(result!.components.includes("content-digest"), true);
+});
+
+test("fulfillAcceptSignature(): no alg/keyid constraints", () => {
+  const entry: AcceptSignatureMember = {
+    label: "custom",
+    components: ["@method", "@target-uri", "@authority"],
+    parameters: {},
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+  strictEqual(result != null, true);
+  strictEqual(result!.label, "custom");
+  deepStrictEqual(result!.components, [
+    "@method",
+    "@target-uri",
+    "@authority",
+  ]);
+  strictEqual(result!.nonce, undefined);
+  strictEqual(result!.tag, undefined);
+});

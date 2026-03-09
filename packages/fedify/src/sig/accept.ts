@@ -6,6 +6,7 @@
  */
 import {
   compactObject,
+  concat,
   entries,
   evolve,
   filter,
@@ -15,6 +16,7 @@ import {
   pick,
   pipe,
   toArray,
+  uniq,
 } from "@fxts/core";
 import { getLogger, type Logger } from "@logtape/logtape";
 import {
@@ -238,5 +240,75 @@ const logLabel = (logger: Logger, label: string): undefined =>
       "covered components include response-only identifier @status.",
     { label },
   ) as undefined;
+
+/**
+ * The result of {@link fulfillAcceptSignature}.  This can be used directly
+ * as the `rfc9421` option of {@link SignRequestOptions}.
+ * @since 2.1.0
+ */
+export interface FulfillAcceptSignatureResult {
+  /** The label for the signature. */
+  label: string;
+  /** The merged set of covered component identifiers. */
+  components: string[];
+  /** The nonce requested by the challenge, if any. */
+  nonce?: string;
+  /** The tag requested by the challenge, if any. */
+  tag?: string;
+}
+
+/**
+ * The minimum set of covered component identifiers that Fedify always
+ * includes in RFC 9421 signatures for security.
+ */
+const MINIMUM_COMPONENTS = ["@method", "@target-uri", "@authority"];
+
+/**
+ * Attempts to translate an {@link AcceptSignatureMember} challenge into
+ * RFC 9421 signing options that the local signer can fulfill.
+ *
+ * Returns `null` if the challenge cannot be fulfilled—for example, if
+ * the requested `alg` or `keyid` is incompatible with the local key.
+ *
+ * Safety constraints:
+ * - `alg`: only honored if it matches `localAlg`.
+ * - `keyid`: only honored if it matches `localKeyId`.
+ * - `components`: merged with the minimum required set
+ *   (`@method`, `@target-uri`, `@authority`).
+ * - `nonce` and `tag` are passed through directly.
+ *
+ * @param entry The challenge entry from the `Accept-Signature` header.
+ * @param localKeyId The local key identifier (e.g., the actor key URL).
+ * @param localAlg The algorithm of the local private key
+ *                 (e.g., `"rsa-v1_5-sha256"`).
+ * @returns Signing options if the challenge can be fulfilled, or `null`.
+ * @since 2.1.0
+ */
+export function fulfillAcceptSignature(
+  entry: AcceptSignatureMember,
+  localKeyId: string,
+  localAlg: string,
+): FulfillAcceptSignatureResult | null {
+  // Check algorithm compatibility
+  if (entry.parameters.alg != null && entry.parameters.alg !== localAlg) {
+    return null;
+  }
+  // Check key ID compatibility
+  if (
+    entry.parameters.keyid != null && entry.parameters.keyid !== localKeyId
+  ) {
+    return null;
+  }
+  return {
+    label: entry.label,
+    components: concatMinimumComponents(entry.components),
+    nonce: entry.parameters.nonce,
+    tag: entry.parameters.tag,
+  };
+}
+
+/** Merge components: challenge components + minimum required set */
+const concatMinimumComponents = (components: string[]): string[] =>
+  pipe(MINIMUM_COMPONENTS, concat(components), uniq, toArray);
 
 // cspell: ignore keyid
