@@ -10,6 +10,7 @@ import {
   type Object,
   Person,
 } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import {
@@ -1914,7 +1915,7 @@ test("handleInbox() records OpenTelemetry span events", async () => {
 
   // Verify event attributes
   assert(event.attributes != null);
-  assertEquals(event.attributes["activitypub.activity.verified"], true);
+  assertEquals(event.attributes["activitypub.activity.verified"], false);
   assertEquals(event.attributes["http_signatures.verified"], false);
   assert(typeof event.attributes["activitypub.activity.json"] === "string");
 
@@ -1924,4 +1925,111 @@ test("handleInbox() records OpenTelemetry span events", async () => {
   );
   assertEquals(recordedActivity.id, "https://example.com/activity");
   assertEquals(recordedActivity.type, "Create");
+});
+
+test("handleInbox() records unverified HTTP signature details", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({ kv, tracerProvider });
+  const keyId = new URL("https://gone.example/users/someone#main-key");
+
+  const activity = new Create({
+    id: new URL("https://example.com/activity"),
+    actor: new URL("https://gone.example/users/someone"),
+    object: new Note({
+      id: new URL("https://example.com/note"),
+      content: "Hello, world!",
+    }),
+  });
+
+  const request = new Request("https://example.com/users/someone/inbox", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/activity+json",
+    },
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const signed = await signRequest(request, rsaPrivateKey3, keyId);
+
+  const documentLoader = (url: string) => {
+    if (url === keyId.href) {
+      throw new FetchError(
+        keyId,
+        `HTTP 410: ${keyId.href}`,
+        new Response(null, { status: 410 }),
+      );
+    }
+    return mockDocumentLoader(url);
+  };
+
+  const context = createRequestContext<void>({
+    federation,
+    request: signed,
+    url: new URL(signed.url),
+    data: undefined,
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      name: "Someone",
+      inbox: new URL("https://example.com/users/someone/inbox"),
+      publicKey: rsaPublicKey2,
+    });
+  };
+
+  const response = await handleInbox(signed, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...context, clone: undefined });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["activityIdempotence"],
+      publicKey: ["publicKey"],
+    },
+    actorDispatcher,
+    inboxListeners: new InboxListenerSet<void>(),
+    inboxErrorHandler: undefined,
+    unverifiedActivityHandler() {
+      return new Response("", { status: 202 });
+    },
+    onNotFound: (_request) => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: false,
+    skipSignatureVerification: false,
+    tracerProvider,
+  });
+
+  assertEquals(response.status, 202);
+
+  const verifySpans = exporter.getSpans("http_signatures.verify");
+  assertEquals(verifySpans.length, 1);
+  assertEquals(
+    verifySpans[0].attributes["http_signatures.failure_reason"],
+    "keyFetchError",
+  );
+  assertEquals(
+    verifySpans[0].attributes["http_signatures.key_fetch_status"],
+    410,
+  );
+
+  const events = exporter.getEvents(
+    "activitypub.inbox",
+    "activitypub.activity.received",
+  );
+  assertEquals(events.length, 1);
+  const event = events[0];
+  assert(event.attributes != null);
+  assertEquals(
+    event.attributes["http_signatures.failure_reason"],
+    "keyFetchError",
+  );
+  assertEquals(event.attributes["http_signatures.key_fetch_status"], 410);
 });

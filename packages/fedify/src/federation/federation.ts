@@ -33,6 +33,7 @@ import type {
   OutboxErrorHandler,
   OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
+  UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
@@ -459,6 +460,36 @@ export interface Federatable<TContextData> {
     inboxPath: `${string}${Rfc6570Expression<"identifier">}${string}`,
     sharedInboxPath?: string,
   ): InboxListenerSetters<TContextData>;
+
+  /**
+   * Registers a callback for incoming activities whose HTTP signatures could
+   * not be verified.
+   *
+   * The regular inbox listeners registered through
+   * {@link InboxListenerSetters.on} continue to receive only verified
+   * activities.  This hook is an opt-in escape hatch for applications that
+   * need to inspect unverified deliveries and optionally override the default
+   * `401 Unauthorized` response.
+   *
+   * @example
+   * ``` typescript
+   * federation.onUnverifiedActivity((ctx, activity, reason) => {
+   *   if (
+   *     reason.type === "keyFetchError" &&
+   *     "status" in reason.result &&
+   *     reason.result.status === 410
+   *   ) {
+   *     return new Response(null, { status: 202 });
+   *   }
+   * });
+   * ```
+   *
+   * @param handler A callback to handle an unverified activity.
+   * @since 2.1.0
+   */
+  onUnverifiedActivity(
+    handler: UnverifiedActivityHandler<TContextData>,
+  ): void;
 
   /**
    * Registers a collection of objects dispatcher.

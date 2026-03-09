@@ -1,6 +1,10 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import type { CryptographicKey, Multikey } from "@fedify/vocab";
-import { exportSpki } from "@fedify/vocab-runtime";
+import { exportSpki, FetchError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -29,6 +33,7 @@ import {
   signRequest,
   timingSafeEqual,
   verifyRequest,
+  verifyRequestDetailed,
   type VerifyRequestOptions,
 } from "./http.ts";
 import { exportJwk, type KeyCache } from "./key.ts";
@@ -250,6 +255,116 @@ test("verifyRequest() [draft-cavage]", async () => {
     currentTime: Temporal.Instant.from("2025-08-25T12:58:14Z"),
   };
   assert(await verifyRequest(request2, options2) != null);
+});
+
+test("verifyRequestDetailed() classifies malformed signatures as invalid", async () => {
+  const draftMissingKeyId = await verifyRequestDetailed(
+    new Request("https://example.com/", {
+      method: "POST",
+      headers: {
+        Date: "Tue, 05 Mar 2024 07:49:44 GMT",
+        Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+        Signature: 'headers="(request-target) date digest",signature="AAAA"',
+      },
+      body: "",
+    }),
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertFalse(draftMissingKeyId.verified);
+  assertEquals(draftMissingKeyId.reason.type, "invalidSignature");
+  assertFalse("keyId" in draftMissingKeyId.reason);
+
+  const draftInvalidKeyId = await verifyRequestDetailed(
+    new Request("https://example.com/", {
+      method: "POST",
+      headers: {
+        Date: "Tue, 05 Mar 2024 07:49:44 GMT",
+        Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+        Signature: 'keyId="not a url",headers="(request-target) date digest",' +
+          'signature="AAAA"',
+      },
+      body: "",
+    }),
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertFalse(draftInvalidKeyId.verified);
+  assertEquals(draftInvalidKeyId.reason.type, "invalidSignature");
+  assertFalse("keyId" in draftInvalidKeyId.reason);
+
+  const rfcMissingKeyId = await verifyRequestDetailed(
+    new Request("https://example.com/api/resource", {
+      method: "GET",
+      headers: {
+        Host: "example.com",
+        Date: "Tue, 05 Mar 2024 07:49:44 GMT",
+        "Signature-Input":
+          'sig1=("@method" "@target-uri" "@authority");created=1709626184',
+        Signature: "sig1=:AAAA:",
+      },
+    }),
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      spec: "rfc9421",
+    },
+  );
+  assertFalse(rfcMissingKeyId.verified);
+  assertEquals(rfcMissingKeyId.reason.type, "invalidSignature");
+  assertFalse("keyId" in rfcMissingKeyId.reason);
+});
+
+test("verifyRequestDetailed() records failure details on span", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const keyId = new URL("https://gone.example/actors/alice#main-key");
+  const request = await signRequest(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/activity+json",
+        accept: "application/ld+json",
+      },
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        actor: "https://gone.example/actors/alice",
+      }),
+    }),
+    rsaPrivateKey2,
+    keyId,
+  );
+
+  const result = await verifyRequestDetailed(request, {
+    tracerProvider,
+    contextLoader: mockDocumentLoader,
+    documentLoader(url) {
+      if (url === keyId.href) {
+        throw new FetchError(
+          keyId,
+          `HTTP 410: ${keyId.href}`,
+          new Response(null, { status: 410 }),
+        );
+      }
+      return mockDocumentLoader(url);
+    },
+  });
+
+  assertFalse(result.verified);
+  const spans = exporter.getSpans("http_signatures.verify");
+  assertEquals(spans.length, 1);
+  const span = spans[0];
+  assertEquals(span.attributes["http_signatures.verified"], false);
+  assertEquals(
+    span.attributes["http_signatures.failure_reason"],
+    "keyFetchError",
+  );
+  assertEquals(span.attributes["http_signatures.key_id"], keyId.href);
+  assertEquals(span.attributes["http_signatures.key_fetch_status"], 410);
 });
 
 test("signRequest() and verifyRequest() [rfc9421] implementation", async () => {

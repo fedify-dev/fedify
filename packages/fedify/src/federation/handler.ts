@@ -20,7 +20,7 @@ import type {
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
-import { verifyRequest } from "../sig/http.ts";
+import { verifyRequestDetailed } from "../sig/http.ts";
 import { detachSignature, verifyJsonLd } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { verifyObject } from "../sig/proof.ts";
@@ -36,6 +36,7 @@ import type {
   InboxErrorHandler,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
+  UnverifiedActivityHandler,
 } from "./callback.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
@@ -465,6 +466,7 @@ export interface InboxHandlerParameters<TContextData> {
   actorDispatcher?: ActorDispatcher<TContextData>;
   inboxListeners?: InboxListenerSet<TContextData>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
+  unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
@@ -532,6 +534,7 @@ async function handleInboxInternal<TContextData>(
     actorDispatcher,
     inboxListeners,
     inboxErrorHandler,
+    unverifiedActivityHandler,
     onNotFound,
     signatureTimeWindow,
     skipSignatureVerification,
@@ -620,9 +623,11 @@ async function handleInboxInternal<TContextData>(
   }
   const jsonWithoutSig = detachSignature(json);
   let activity: Activity | null = null;
+  let activityVerified = false;
   if (ldSigVerified) {
     logger.debug("Linked Data Signatures are verified.", { recipient, json });
     activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
+    activityVerified = true;
   } else {
     logger.debug(
       "Linked Data Signatures are not verified.",
@@ -668,39 +673,110 @@ async function handleInboxInternal<TContextData>(
         "Object Integrity Proofs are verified.",
         { recipient, activity: json },
       );
+      activityVerified = true;
     }
   }
   let httpSigKey: CryptographicKey | null = null;
   if (activity == null) {
     if (!skipSignatureVerification) {
-      const key = await verifyRequest(request, {
+      const verification = await verifyRequestDetailed(request, {
         contextLoader: ctx.contextLoader,
         documentLoader: ctx.documentLoader,
         timeWindow: signatureTimeWindow,
         keyCache,
         tracerProvider,
       });
-      if (key == null) {
+      if (verification.verified === false) {
+        const reason = verification.reason;
         logger.error(
           "Failed to verify the request's HTTP Signatures.",
-          { recipient },
+          {
+            recipient,
+            reason: reason.type,
+            keyId: "keyId" in reason ? reason.keyId?.href : undefined,
+          },
         );
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: `Failed to verify the request's HTTP Signatures.`,
         });
-        const response = new Response(
+        if (unverifiedActivityHandler == null) {
+          return new Response(
+            "Failed to verify the request signature.",
+            {
+              status: 401,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            },
+          );
+        }
+        try {
+          activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
+        } catch (error) {
+          logger.error("Failed to parse activity:\n{error}", {
+            recipient,
+            activity: json,
+            error,
+          });
+          try {
+            await inboxErrorHandler?.(ctx, error as Error);
+          } catch (error) {
+            logger.error(
+              "An unexpected error occurred in inbox error handler:\n{error}",
+              { error, activity: json, recipient },
+            );
+          }
+          return new Response("Invalid activity.", {
+            status: 400,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+        if (activity.id != null) {
+          span.setAttribute("activitypub.activity.id", activity.id.href);
+        }
+        span.setAttribute(
+          "activitypub.activity.type",
+          getTypeId(activity).href,
+        );
+        const eventAttributes: Record<string, string | number | boolean> = {
+          "activitypub.activity.json": JSON.stringify(json),
+          "activitypub.activity.verified": false,
+          "ld_signatures.verified": ldSigVerified,
+          "http_signatures.verified": false,
+          "http_signatures.key_id": "keyId" in reason
+            ? (reason.keyId?.href ?? "")
+            : "",
+          "http_signatures.failure_reason": reason.type,
+        };
+        if (reason.type === "keyFetchError") {
+          if ("status" in reason.result) {
+            eventAttributes["http_signatures.key_fetch_status"] =
+              reason.result.status;
+          } else {
+            eventAttributes["http_signatures.key_fetch_error"] =
+              reason.result.error.name ||
+              reason.result.error.constructor.name ||
+              "Error";
+          }
+        }
+        span.addEvent("activitypub.activity.received", eventAttributes);
+        const response = await unverifiedActivityHandler(
+          ctx,
+          activity,
+          reason,
+        );
+        if (response instanceof Response) return response;
+        return new Response(
           "Failed to verify the request signature.",
           {
             status: 401,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
           },
         );
-        return response;
       } else {
         logger.debug("HTTP Signatures are verified.", { recipient });
+        activityVerified = true;
       }
-      httpSigKey = key;
+      httpSigKey = verification.key;
     }
     activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
   }
@@ -712,7 +788,7 @@ async function handleInboxInternal<TContextData>(
   // Record the received activity with verification details
   span.addEvent("activitypub.activity.received", {
     "activitypub.activity.json": JSON.stringify(json),
-    "activitypub.activity.verified": activity != null,
+    "activitypub.activity.verified": activityVerified,
     "ld_signatures.verified": ldSigVerified,
     "http_signatures.verified": httpSigKey != null,
     "http_signatures.key_id": httpSigKey?.id?.href ?? "",

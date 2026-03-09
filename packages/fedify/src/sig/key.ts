@@ -4,7 +4,11 @@ import {
   type Multikey,
   Object,
 } from "@fedify/vocab";
-import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  FetchError,
+  getDocumentLoader,
+} from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   SpanKind,
@@ -191,6 +195,68 @@ export interface FetchKeyResult<T extends CryptographicKey | Multikey> {
 }
 
 /**
+ * Detailed fetch failure information from {@link fetchKeyDetailed}.
+ * @since 2.1.0
+ */
+export type FetchKeyErrorResult =
+  | {
+    readonly status: number;
+    readonly response: Response;
+  }
+  | {
+    readonly error: Error;
+  };
+
+/**
+ * The result of {@link fetchKeyDetailed}.
+ * @since 2.1.0
+ */
+export interface FetchKeyDetailedResult<T extends CryptographicKey | Multikey>
+  extends FetchKeyResult<T> {
+  /**
+   * The error that occurred while fetching the key, if fetching failed before
+   * a document could be parsed.
+   */
+  readonly fetchError?: FetchKeyErrorResult;
+}
+
+async function withFetchKeySpan<T extends { cached: boolean }>(
+  keyId: URL,
+  tracerProvider: TracerProvider | undefined,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  tracerProvider ??= trace.getTracerProvider();
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+  return await tracer.startActiveSpan(
+    "activitypub.fetch_key",
+    {
+      kind: SpanKind.CLIENT,
+      attributes: {
+        "http.method": "GET",
+        "url.full": keyId.href,
+        "url.scheme": keyId.protocol.replace(/:$/, ""),
+        "url.domain": keyId.hostname,
+        "url.path": keyId.pathname,
+        "url.query": keyId.search.replace(/^\?/, ""),
+        "url.fragment": keyId.hash.replace(/^#/, ""),
+      },
+    },
+    async (span) => {
+      try {
+        const result = await fetcher();
+        span.setAttribute("activitypub.actor.key.cached", result.cached);
+        return result;
+      } catch (e) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+        throw e;
+      } finally {
+        span.end();
+      }
+    },
+  );
+}
+
+/**
  * Fetches a {@link CryptographicKey} or {@link Multikey} from the given URL.
  * If the given URL contains an {@link Actor} object, it tries to find
  * the corresponding key in the `publicKey` or `assertionMethod` property.
@@ -218,34 +284,184 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
   },
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyResult<T>> {
-  const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   keyId = typeof keyId === "string" ? new URL(keyId) : keyId;
-  return tracer.startActiveSpan(
-    "activitypub.fetch_key",
-    {
-      kind: SpanKind.CLIENT,
-      attributes: {
-        "http.method": "GET",
-        "url.full": keyId.href,
-        "url.scheme": keyId.protocol.replace(/:$/, ""),
-        "url.domain": keyId.hostname,
-        "url.path": keyId.pathname,
-        "url.query": keyId.search.replace(/^\?/, ""),
-        "url.fragment": keyId.hash.replace(/^#/, ""),
+  return withFetchKeySpan(
+    keyId,
+    options.tracerProvider,
+    () => fetchKeyInternal(keyId, cls, options),
+  );
+}
+
+/**
+ * Fetches a {@link CryptographicKey} or {@link Multikey} from the given URL,
+ * preserving transport-level fetch failures for callers that need to inspect
+ * why the key could not be loaded.
+ *
+ * @template T The type of the key to fetch.  Either {@link CryptographicKey}
+ *              or {@link Multikey}.
+ * @param keyId The URL of the key.
+ * @param cls The class of the key to fetch.  Either {@link CryptographicKey}
+ *            or {@link Multikey}.
+ * @param options Options for fetching the key.
+ * @returns The fetched key, or detailed fetch failure information.
+ * @since 2.1.0
+ */
+export async function fetchKeyDetailed<T extends CryptographicKey | Multikey>(
+  keyId: URL | string,
+  // deno-lint-ignore no-explicit-any
+  cls: (new (...args: any[]) => T) & {
+    fromJsonLd(
+      jsonLd: unknown,
+      options: {
+        documentLoader?: DocumentLoader;
+        contextLoader?: DocumentLoader;
+        tracerProvider?: TracerProvider;
       },
-    },
-    async (span) => {
-      try {
-        const result = await fetchKeyInternal(keyId, cls, options);
-        span.setAttribute("activitypub.actor.key.cached", result.cached);
-        return result;
-      } catch (e) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-        throw e;
-      } finally {
-        span.end();
+    ): Promise<T>;
+  },
+  { documentLoader, contextLoader, keyCache, tracerProvider }: FetchKeyOptions =
+    {},
+): Promise<FetchKeyDetailedResult<T>> {
+  const cacheKey = typeof keyId === "string" ? new URL(keyId) : keyId;
+  return await withFetchKeySpan(
+    cacheKey,
+    tracerProvider,
+    async () => {
+      const logger = getLogger(["fedify", "sig", "key"]);
+      keyId = typeof keyId === "string" ? keyId : keyId.href;
+      if (keyCache != null) {
+        const cachedKey = await keyCache.get(cacheKey);
+        if (cachedKey instanceof cls && cachedKey.publicKey != null) {
+          logger.debug("Key {keyId} found in cache.", { keyId });
+          return {
+            key: cachedKey as T & { publicKey: CryptoKey },
+            cached: true,
+          };
+        } else if (cachedKey === null) {
+          logger.debug(
+            "Entry {keyId} found in cache, but it is unavailable.",
+            { keyId },
+          );
+          return { key: null, cached: true };
+        }
       }
+      logger.debug("Fetching key {keyId} to verify signature...", { keyId });
+      let document: unknown;
+      try {
+        const remoteDocument = await (documentLoader ?? getDocumentLoader())(
+          keyId,
+        );
+        document = remoteDocument.document;
+      } catch (error) {
+        logger.debug("Failed to fetch key {keyId}.", { keyId, error });
+        await keyCache?.set(cacheKey, null);
+        if (error instanceof FetchError && error.response != null) {
+          return {
+            key: null,
+            cached: false,
+            fetchError: {
+              status: error.response.status,
+              response: error.response.clone(),
+            },
+          };
+        }
+        return {
+          key: null,
+          cached: false,
+          fetchError: {
+            error: error instanceof Error ? error : new Error(String(error)),
+          },
+        };
+      }
+      let object: Object | T;
+      try {
+        object = await Object.fromJsonLd(document, {
+          documentLoader,
+          contextLoader,
+          tracerProvider,
+        });
+      } catch (e) {
+        if (!(e instanceof TypeError)) throw e;
+        try {
+          object = await cls.fromJsonLd(document, {
+            documentLoader,
+            contextLoader,
+            tracerProvider,
+          });
+        } catch (e) {
+          if (e instanceof TypeError) {
+            logger.debug(
+              "Failed to verify; key {keyId} returned an invalid object.",
+              { keyId },
+            );
+            await keyCache?.set(cacheKey, null);
+            return { key: null, cached: false };
+          }
+          throw e;
+        }
+      }
+      let key: T | null = null;
+      if (object instanceof cls) key = object;
+      else if (isActor(object)) {
+        // @ts-ignore: cls is either CryptographicKey or Multikey
+        const keys = cls === CryptographicKey
+          ? object.getPublicKeys({
+            documentLoader,
+            contextLoader,
+            tracerProvider,
+          })
+          : object.getAssertionMethods({
+            documentLoader,
+            contextLoader,
+            tracerProvider,
+          });
+        let length = 0;
+        let lastKey: T | null = null;
+        for await (const k of keys) {
+          length++;
+          lastKey = k as T;
+          if (k.id?.href === keyId) {
+            key = k as T;
+            break;
+          }
+        }
+        const keyIdUrl = new URL(keyId);
+        if (key == null && keyIdUrl.hash === "" && length === 1) {
+          key = lastKey;
+        }
+        if (key == null) {
+          logger.debug(
+            "Failed to verify; object {keyId} returned an {actorType}, " +
+              "but has no key matching {keyId}.",
+            { keyId, actorType: object.constructor.name },
+          );
+          await keyCache?.set(cacheKey, null);
+          return { key: null, cached: false };
+        }
+      } else {
+        logger.debug(
+          "Failed to verify; key {keyId} returned an invalid object.",
+          { keyId },
+        );
+        await keyCache?.set(cacheKey, null);
+        return { key: null, cached: false };
+      }
+      if (key.publicKey == null) {
+        logger.debug(
+          "Failed to verify; key {keyId} has no publicKeyPem field.",
+          { keyId },
+        );
+        await keyCache?.set(cacheKey, null);
+        return { key: null, cached: false };
+      }
+      if (keyCache != null) {
+        await keyCache.set(cacheKey, key);
+        logger.debug("Key {keyId} cached.", { keyId });
+      }
+      return {
+        key: key as T & { publicKey: CryptoKey },
+        cached: false,
+      };
     },
   );
 }

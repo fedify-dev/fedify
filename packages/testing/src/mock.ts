@@ -201,6 +201,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private featuredDispatcher?: any;
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
+  private unverifiedActivityHandler?: any;
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -247,6 +248,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     return {
       authorize: () => this as any,
     };
+  }
+
+  onUnverifiedActivity(handler: any): void {
+    this.unverifiedActivityHandler = handler;
   }
 
   setInboxDispatcher(_path: any, dispatcher: any): any {

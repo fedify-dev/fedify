@@ -1527,6 +1527,241 @@ test("Federation.setInboxListeners()", async (t) => {
     ]);
   });
 
+  await t.step("onUnverifiedActivity()", async (t) => {
+    const options = {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    };
+
+    async function createInboxRequest(
+      activity: vocab.Create,
+      signature?: { privateKey: CryptoKey; keyId: URL },
+    ): Promise<Request> {
+      let request = new Request("https://example.com/inbox", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/activity+json",
+          accept: "application/ld+json",
+        },
+        body: JSON.stringify(await activity.toJsonLd(options)),
+      });
+      if (signature != null) {
+        request = await signRequest(
+          request,
+          signature.privateKey,
+          signature.keyId,
+        );
+      }
+      return request;
+    }
+
+    function createFederationWithLoader(
+      documentLoader: typeof mockDocumentLoader,
+    ) {
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        documentLoaderFactory: () => documentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      const verified: vocab.Create[] = [];
+      federation.setActorDispatcher("/users/{identifier}", () => {
+        return new vocab.Person({});
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, (_ctx, activity) => {
+          verified.push(activity);
+        });
+      return { federation, verified };
+    }
+
+    await t.step("receives noSignature reason", async () => {
+      const { federation, verified } = createFederationWithLoader(
+        mockDocumentLoader,
+      );
+      let receivedReason: unknown = null;
+      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+        receivedReason = reason;
+        return new Response(null, { status: 202 });
+      });
+
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://remote.example/activities/no-signature"),
+            actor: new URL("https://remote.example/actors/alice"),
+          }),
+        ),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(receivedReason, { type: "noSignature" });
+      assertEquals(verified, []);
+    });
+
+    await t.step("receives keyFetchError for 410 responses", async () => {
+      const goneKeyId = new URL("https://gone.example/actors/alice#main-key");
+      const goneLoader = async (url: string) => {
+        if (url === goneKeyId.href) {
+          throw new FetchError(
+            goneKeyId,
+            `HTTP 410: ${goneKeyId.href}`,
+            new Response(null, { status: 410 }),
+          );
+        }
+        return await mockDocumentLoader(url);
+      };
+      const { federation, verified } = createFederationWithLoader(goneLoader);
+      let receivedReason: unknown = null;
+      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+        receivedReason = reason;
+        return new Response(null, { status: 202 });
+      });
+
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://gone.example/activities/delete"),
+            actor: new URL("https://gone.example/actors/alice"),
+          }),
+          { privateKey: rsaPrivateKey3, keyId: goneKeyId },
+        ),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(verified, []);
+      assertEquals(
+        (receivedReason as { type: string }).type,
+        "keyFetchError",
+      );
+      assertEquals(
+        (receivedReason as { keyId: URL }).keyId.href,
+        goneKeyId.href,
+      );
+      assertEquals(
+        (
+          receivedReason as {
+            result: { status: number; response: Response };
+          }
+        ).result.status,
+        410,
+      );
+    });
+
+    await t.step("falls back to 401 when handler returns void", async () => {
+      const missingKeyId = new URL(
+        "https://missing.example/actors/alice#main-key",
+      );
+      const missingLoader = async (url: string) => {
+        if (url === missingKeyId.href) {
+          throw new FetchError(
+            missingKeyId,
+            `HTTP 404: ${missingKeyId.href}`,
+            new Response(null, { status: 404 }),
+          );
+        }
+        return await mockDocumentLoader(url);
+      };
+      const { federation, verified } = createFederationWithLoader(
+        missingLoader,
+      );
+      let receivedReason: unknown = null;
+      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+        receivedReason = reason;
+      });
+
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://missing.example/activities/delete"),
+            actor: new URL("https://missing.example/actors/alice"),
+          }),
+          { privateKey: rsaPrivateKey3, keyId: missingKeyId },
+        ),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 401);
+      assertEquals(verified, []);
+      assertEquals(
+        (receivedReason as { type: string }).type,
+        "keyFetchError",
+      );
+      assertEquals(
+        (
+          receivedReason as {
+            result: { status: number; response: Response };
+          }
+        ).result.status,
+        404,
+      );
+    });
+
+    await t.step("receives invalidSignature reason", async () => {
+      const { federation, verified } = createFederationWithLoader(
+        mockDocumentLoader,
+      );
+      let receivedReason: unknown = null;
+      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+        receivedReason = reason;
+        return new Response(null, { status: 202 });
+      });
+
+      const keyId = new URL("https://example.com/person2#key3");
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://example.com/activities/invalid-signature"),
+            actor: new URL("https://example.com/person2"),
+          }),
+          { privateKey: rsaPrivateKey2, keyId },
+        ),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(verified, []);
+      assertEquals(
+        (receivedReason as { type: string }).type,
+        "invalidSignature",
+      );
+      assertEquals(
+        (receivedReason as { keyId: URL }).keyId.href,
+        keyId.href,
+      );
+    });
+
+    await t.step("does not run for verified activities", async () => {
+      const { federation, verified } = createFederationWithLoader(
+        mockDocumentLoader,
+      );
+      let unverifiedCalls = 0;
+      federation.onUnverifiedActivity(() => {
+        unverifiedCalls++;
+        return new Response(null, { status: 202 });
+      });
+
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://example.com/activities/verified"),
+            actor: new URL("https://example.com/person2"),
+          }),
+          {
+            privateKey: rsaPrivateKey3,
+            keyId: new URL("https://example.com/person2#key3"),
+          },
+        ),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(unverifiedCalls, 0);
+      assertEquals(verified.length, 1);
+    });
+  });
+
   await t.step("onError()", async () => {
     const federation = createFederation<void>({
       kv,

@@ -1,4 +1,8 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { CryptographicKey, Multikey } from "@fedify/vocab";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
@@ -11,6 +15,7 @@ import {
 import {
   exportJwk,
   fetchKey,
+  fetchKeyDetailed,
   type FetchKeyOptions,
   generateCryptoKeyPair,
   importJwk,
@@ -350,4 +355,54 @@ test("fetchKey()", async () => {
       cached: false,
     },
   );
+});
+
+test("fetchKeyDetailed()", async () => {
+  const cache: Record<string, CryptographicKey | Multikey | null> = {
+    "https://example.com/nothing": null,
+  };
+  let documentLoaderCalls = 0;
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const options: FetchKeyOptions = {
+    documentLoader(url) {
+      documentLoaderCalls++;
+      return mockDocumentLoader(url);
+    },
+    contextLoader: mockDocumentLoader,
+    tracerProvider,
+    keyCache: {
+      get(keyId) {
+        return Promise.resolve(cache[keyId.href]);
+      },
+      set(keyId, key) {
+        cache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    } satisfies KeyCache,
+  };
+
+  assertEquals(
+    await fetchKeyDetailed(
+      "https://example.com/nothing",
+      CryptographicKey,
+      options,
+    ),
+    { key: null, cached: true },
+  );
+  assertEquals(documentLoaderCalls, 0);
+
+  assertEquals(
+    await fetchKeyDetailed(
+      "https://example.com/key",
+      CryptographicKey,
+      options,
+    ),
+    { key: rsaPublicKey1, cached: false },
+  );
+  assertEquals(documentLoaderCalls, 1);
+
+  const spans = exporter.getSpans("activitypub.fetch_key");
+  assertEquals(spans.length, 2);
+  assertEquals(spans[0].attributes["activitypub.actor.key.cached"], true);
+  assertEquals(spans[1].attributes["activitypub.actor.key.cached"], false);
 });
