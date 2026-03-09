@@ -1656,6 +1656,65 @@ test("Federation.setInboxListeners()", async (t) => {
       );
     });
 
+    await t.step("preserves keyFetchError details across retries", async () => {
+      const keyId = new URL("https://gone.example/actors/alice#main-key");
+      let keyFetches = 0;
+      const goneLoader = async (url: string) => {
+        if (url === keyId.href) {
+          keyFetches++;
+          throw new FetchError(
+            keyId,
+            `HTTP 410: ${keyId.href}`,
+            new Response(null, { status: 410 }),
+          );
+        }
+        return await mockDocumentLoader(url);
+      };
+      const { federation, inboxListeners } = createFederationWithLoader(
+        goneLoader,
+      );
+      const reasons: unknown[] = [];
+      inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
+        reasons.push(reason);
+        return new Response(null, { status: 202 });
+      });
+
+      const request = await createInboxRequest(
+        new vocab.Create({
+          id: new URL("https://gone.example/activities/retry"),
+          actor: new URL("https://gone.example/actors/alice"),
+        }),
+        { privateKey: rsaPrivateKey3, keyId },
+      );
+
+      const first = await federation.fetch(request.clone() as Request, {
+        contextData: undefined,
+      });
+      const second = await federation.fetch(request.clone() as Request, {
+        contextData: undefined,
+      });
+
+      assertEquals(first.status, 202);
+      assertEquals(second.status, 202);
+      assertEquals(keyFetches, 1);
+      assertEquals(
+        (reasons[0] as { type: string }).type,
+        "keyFetchError",
+      );
+      assertEquals(
+        (reasons[1] as { type: string }).type,
+        "keyFetchError",
+      );
+      assertEquals(
+        (
+          reasons[1] as {
+            result: { status: number; response: Response };
+          }
+        ).result.status,
+        410,
+      );
+    });
+
     await t.step("falls back to 401 when handler returns void", async () => {
       const missingKeyId = new URL(
         "https://missing.example/actors/alice#main-key",

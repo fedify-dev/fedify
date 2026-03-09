@@ -220,6 +220,14 @@ export interface FetchKeyDetailedResult<T extends CryptographicKey | Multikey>
   readonly fetchError?: FetchKeyErrorResult;
 }
 
+interface FetchErrorMetadataCache extends KeyCache {
+  getFetchError?(keyId: URL): Promise<FetchKeyErrorResult | undefined>;
+  setFetchError?(
+    keyId: URL,
+    error: FetchKeyErrorResult | null,
+  ): Promise<void>;
+}
+
 type FetchableKeyClass<T extends CryptographicKey | Multikey> =
   // deno-lint-ignore no-explicit-any
   (new (...args: any[]) => T) & {
@@ -319,29 +327,54 @@ export async function fetchKeyDetailed<T extends CryptographicKey | Multikey>(
     cacheKey,
     options.tracerProvider,
     async () => {
-      return await fetchKeyWithResult(
+      return await fetchKeyWithResult<T, FetchKeyDetailedResult<T>>(
         cacheKey,
         cls,
         options,
+        async (cacheKey, keyId, keyCache, logger) => {
+          const fetchError = await keyCache?.getFetchError?.(cacheKey);
+          if (fetchError != null) {
+            logger.debug(
+              "Entry {keyId} found in cache with preserved fetch failure " +
+                "details.",
+              { keyId },
+            );
+            return {
+              key: null,
+              cached: true,
+              fetchError,
+            };
+          }
+          logger.debug(
+            "Entry {keyId} found in cache, but no fetch failure details " +
+              "are available.",
+            { keyId },
+          );
+          return { key: null, cached: true };
+        },
         async (error, cacheKey, keyId, keyCache, logger) => {
           logger.debug("Failed to fetch key {keyId}.", { keyId, error });
           await keyCache?.set(cacheKey, null);
           if (error instanceof FetchError && error.response != null) {
+            const fetchError = {
+              status: error.response.status,
+              response: error.response.clone(),
+            } satisfies FetchKeyErrorResult;
+            await keyCache?.setFetchError?.(cacheKey, fetchError);
             return {
               key: null,
               cached: false,
-              fetchError: {
-                status: error.response.status,
-                response: error.response.clone(),
-              },
+              fetchError,
             };
           }
+          const fetchError = {
+            error: error instanceof Error ? error : new Error(String(error)),
+          } satisfies FetchKeyErrorResult;
+          await keyCache?.setFetchError?.(cacheKey, fetchError);
           return {
             key: null,
             cached: false,
-            fetchError: {
-              error: error instanceof Error ? error : new Error(String(error)),
-            },
+            fetchError,
           };
         },
       );
@@ -374,6 +407,16 @@ async function getCachedFetchKey<T extends CryptographicKey | Multikey>(
   return null;
 }
 
+async function clearFetchErrorMetadata(
+  keyId: URL,
+  keyCache: KeyCache | undefined,
+): Promise<void> {
+  await (keyCache as FetchErrorMetadataCache | undefined)?.setFetchError?.(
+    keyId,
+    null,
+  );
+}
+
 async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   document: unknown,
   cacheKey: URL,
@@ -404,6 +447,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
           { keyId },
         );
         await keyCache?.set(cacheKey, null);
+        await clearFetchErrorMetadata(cacheKey, keyCache);
         return { key: null, cached: false };
       }
       throw e;
@@ -441,6 +485,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
         { keyId, actorType: object.constructor.name },
       );
       await keyCache?.set(cacheKey, null);
+      await clearFetchErrorMetadata(cacheKey, keyCache);
       return { key: null, cached: false };
     }
   } else {
@@ -449,6 +494,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       { keyId },
     );
     await keyCache?.set(cacheKey, null);
+    await clearFetchErrorMetadata(cacheKey, keyCache);
     return { key: null, cached: false };
   }
   if (key.publicKey == null) {
@@ -457,12 +503,14 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       { keyId },
     );
     await keyCache?.set(cacheKey, null);
+    await clearFetchErrorMetadata(cacheKey, keyCache);
     return { key: null, cached: false };
   }
   if (keyCache != null) {
     await keyCache.set(cacheKey, key);
     logger.debug("Key {keyId} cached.", { keyId });
   }
+  await clearFetchErrorMetadata(cacheKey, keyCache);
   return {
     key: key as T & { publicKey: CryptoKey },
     cached: false,
@@ -476,23 +524,33 @@ async function fetchKeyWithResult<
   cacheKey: URL,
   cls: FetchableKeyClass<T>,
   options: FetchKeyOptions,
+  onCachedUnavailable: (
+    cacheKey: URL,
+    keyId: string,
+    keyCache: FetchErrorMetadataCache | undefined,
+    logger: ReturnType<typeof getLogger>,
+  ) => Promise<TResult> | TResult,
   onFetchError: (
     error: unknown,
     cacheKey: URL,
     keyId: string,
-    keyCache: KeyCache | undefined,
+    keyCache: FetchErrorMetadataCache | undefined,
     logger: ReturnType<typeof getLogger>,
   ) => Promise<TResult> | TResult,
 ): Promise<TResult> {
   const logger = getLogger(["fedify", "sig", "key"]);
   const keyId = cacheKey.href;
+  const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
   const cached = await getCachedFetchKey(
     cacheKey,
     keyId,
     cls,
-    options.keyCache,
+    keyCache,
     logger,
   );
+  if (cached?.key === null && cached.cached) {
+    return await onCachedUnavailable(cacheKey, keyId, keyCache, logger);
+  }
   if (cached != null) return cached as TResult;
   logger.debug("Fetching key {keyId} to verify signature...", { keyId });
   let document: unknown;
@@ -507,7 +565,7 @@ async function fetchKeyWithResult<
       error,
       cacheKey,
       keyId,
-      options.keyCache,
+      keyCache,
       logger,
     );
   }
@@ -527,13 +585,26 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyResult<T>> {
   const cacheKey = typeof keyId === "string" ? new URL(keyId) : keyId;
-  return await fetchKeyWithResult(
+  return await fetchKeyWithResult<T, FetchKeyResult<T>>(
     cacheKey,
     cls,
     options,
-    async (_error, cacheKey, keyId, keyCache, logger) => {
-      logger.debug("Failed to fetch key {keyId}.", { keyId });
+    (_cacheKey, _keyId, _keyCache, _logger) => {
+      return { key: null, cached: true };
+    },
+    async (error, cacheKey, keyId, keyCache, logger) => {
+      logger.debug("Failed to fetch key {keyId}.", { keyId, error });
       await keyCache?.set(cacheKey, null);
+      if (error instanceof FetchError && error.response != null) {
+        await keyCache?.setFetchError?.(cacheKey, {
+          status: error.response.status,
+          response: error.response.clone(),
+        });
+      } else {
+        await keyCache?.setFetchError?.(cacheKey, {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
       return { key: null, cached: false };
     },
   );

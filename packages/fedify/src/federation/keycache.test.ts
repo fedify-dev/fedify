@@ -38,6 +38,7 @@ test("KvKeyCache.set()", async () => {
 
   await cache.set(new URL("https://example.com/null"), null);
   assert(cache.nullKeys.has("https://example.com/null"));
+  assertEquals(await kv.get(["pk", "https://example.com/null"]), null);
 });
 
 test("KvKeyCache.get()", async () => {
@@ -64,4 +65,45 @@ test("KvKeyCache.get()", async () => {
 
   cache.nullKeys.add("https://example.com/null");
   assertEquals(await cache.get(new URL("https://example.com/null")), null);
+
+  await kv.set(["pk", "https://example.com/null2"], null);
+  const cache2 = new KvKeyCache(kv, ["pk"]);
+  assertEquals(await cache2.get(new URL("https://example.com/null2")), null);
+});
+
+test("KvKeyCache fetch error metadata", async () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"]);
+  const keyId = new URL("https://example.com/key");
+
+  await cache.setFetchError(keyId, {
+    status: 410,
+    response: new Response("gone", {
+      status: 410,
+      statusText: "Gone",
+      headers: { "content-type": "text/plain" },
+    }),
+  });
+  const httpError = await cache.getFetchError(keyId);
+  assert(httpError != null && "status" in httpError);
+  if (httpError == null || !("status" in httpError)) {
+    throw new Error("Expected HTTP fetch error metadata.");
+  }
+  assertEquals(httpError.status, 410);
+  assertEquals(httpError.response.status, 410);
+  assertEquals(await httpError.response.text(), "gone");
+
+  await cache.setFetchError(keyId, {
+    error: Object.assign(new Error("boom"), { name: "TypeError" }),
+  });
+  const nonHttpError = await cache.getFetchError(keyId);
+  assert(nonHttpError != null && "error" in nonHttpError);
+  if (nonHttpError == null || !("error" in nonHttpError)) {
+    throw new Error("Expected non-HTTP fetch error metadata.");
+  }
+  assertEquals(nonHttpError.error.name, "TypeError");
+  assertEquals(nonHttpError.error.message, "boom");
+
+  await cache.setFetchError(keyId, null);
+  assertEquals(await cache.getFetchError(keyId), undefined);
 });
