@@ -4,6 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import { CryptographicKey, Multikey } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
   ed25519Multikey,
@@ -405,4 +406,54 @@ test("fetchKeyDetailed()", async () => {
   assertEquals(spans.length, 2);
   assertEquals(spans[0].attributes["activitypub.actor.key.cached"], true);
   assertEquals(spans[1].attributes["activitypub.actor.key.cached"], false);
+});
+
+test("fetchKeyDetailed() returns detailed fetch errors", async () => {
+  const goneKeyId = new URL("https://example.com/gone-key");
+  const goneResult = await fetchKeyDetailed(
+    goneKeyId,
+    CryptographicKey,
+    {
+      documentLoader(url) {
+        if (url === goneKeyId.href) {
+          throw new FetchError(
+            goneKeyId,
+            `HTTP 410: ${goneKeyId.href}`,
+            new Response(null, { status: 410 }),
+          );
+        }
+        return mockDocumentLoader(url);
+      },
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertEquals(goneResult.key, null);
+  assertEquals(goneResult.cached, false);
+  const goneError = goneResult.fetchError;
+  assertEquals(goneError != null && "status" in goneError, true);
+  if (goneError == null || !("status" in goneError)) {
+    throw new Error("Expected HTTP fetch error details.");
+  }
+  assertEquals(goneError.status, 410);
+  assertEquals(goneError.response.status, 410);
+
+  const failure = new TypeError("boom");
+  const errorResult = await fetchKeyDetailed(
+    "https://example.com/error-key",
+    CryptographicKey,
+    {
+      documentLoader() {
+        throw failure;
+      },
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertEquals(errorResult.key, null);
+  assertEquals(errorResult.cached, false);
+  const detailedError = errorResult.fetchError;
+  assertEquals(detailedError != null && "error" in detailedError, true);
+  if (detailedError == null || !("error" in detailedError)) {
+    throw new Error("Expected non-HTTP fetch error details.");
+  }
+  assertEquals(detailedError.error, failure);
 });
