@@ -1765,6 +1765,55 @@ test("Federation.setInboxListeners()", async (t) => {
       );
     });
 
+    await t.step(
+      "falls back to 401 and reports hook errors",
+      async () => {
+        const missingKeyId = new URL(
+          "https://missing.example/actors/alice#main-key",
+        );
+        const missingLoader = async (url: string) => {
+          if (url === missingKeyId.href) {
+            throw new FetchError(
+              missingKeyId,
+              `HTTP 404: ${missingKeyId.href}`,
+              new Response(null, { status: 404 }),
+            );
+          }
+          return await mockDocumentLoader(url);
+        };
+        const { federation, verified, inboxListeners } =
+          createFederationWithLoader(
+            missingLoader,
+          );
+        let receivedErrorMessage: string | null = null;
+        inboxListeners
+          .onUnverifiedActivity(() => {
+            throw new Error("Intended unverified hook failure");
+          })
+          .onError((_ctx, error) => {
+            receivedErrorMessage = error.message;
+          });
+
+        const response = await federation.fetch(
+          await createInboxRequest(
+            new vocab.Create({
+              id: new URL("https://missing.example/activities/error"),
+              actor: new URL("https://missing.example/actors/alice"),
+            }),
+            { privateKey: rsaPrivateKey3, keyId: missingKeyId },
+          ),
+          { contextData: undefined },
+        );
+
+        assertEquals(response.status, 401);
+        assertEquals(verified, []);
+        assertEquals(
+          receivedErrorMessage,
+          "Intended unverified hook failure",
+        );
+      },
+    );
+
     await t.step("receives invalidSignature reason", async () => {
       const { federation, verified, inboxListeners } =
         createFederationWithLoader(

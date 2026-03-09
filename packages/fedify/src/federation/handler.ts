@@ -759,11 +759,35 @@ async function handleInboxInternal<TContextData>(
           }
         }
         span.addEvent("activitypub.activity.received", eventAttributes);
-        const response = await unverifiedActivityHandler(
-          ctx,
-          activity,
-          reason,
-        );
+        let response: void | Response;
+        try {
+          response = await unverifiedActivityHandler(
+            ctx,
+            activity,
+            reason,
+          );
+        } catch (error) {
+          logger.error(
+            "An unexpected error occurred in unverified activity handler:\n" +
+              "{error}",
+            { error, activity: json, recipient },
+          );
+          try {
+            await inboxErrorHandler?.(ctx, error as Error);
+          } catch (error) {
+            logger.error(
+              "An unexpected error occurred in inbox error handler:\n{error}",
+              { error, activity: json, recipient },
+            );
+          }
+          return new Response(
+            "Failed to verify the request signature.",
+            {
+              status: 401,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            },
+          );
+        }
         if (response instanceof Response) return response;
         return new Response(
           "Failed to verify the request signature.",
