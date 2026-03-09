@@ -1567,19 +1567,23 @@ test("Federation.setInboxListeners()", async (t) => {
       federation.setActorDispatcher("/users/{identifier}", () => {
         return new vocab.Person({});
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      const inboxListeners = federation.setInboxListeners(
+        "/users/{identifier}/inbox",
+        "/inbox",
+      )
         .on(vocab.Create, (_ctx, activity) => {
           verified.push(activity);
         });
-      return { federation, verified };
+      return { federation, verified, inboxListeners };
     }
 
     await t.step("receives noSignature reason", async () => {
-      const { federation, verified } = createFederationWithLoader(
-        mockDocumentLoader,
-      );
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(
+          mockDocumentLoader,
+        );
       let receivedReason: unknown = null;
-      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+      inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
         return new Response(null, { status: 202 });
       });
@@ -1611,9 +1615,12 @@ test("Federation.setInboxListeners()", async (t) => {
         }
         return await mockDocumentLoader(url);
       };
-      const { federation, verified } = createFederationWithLoader(goneLoader);
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(
+          goneLoader,
+        );
       let receivedReason: unknown = null;
-      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+      inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
         return new Response(null, { status: 202 });
       });
@@ -1663,11 +1670,12 @@ test("Federation.setInboxListeners()", async (t) => {
         }
         return await mockDocumentLoader(url);
       };
-      const { federation, verified } = createFederationWithLoader(
-        missingLoader,
-      );
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(
+          missingLoader,
+        );
       let receivedReason: unknown = null;
-      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+      inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
       });
 
@@ -1699,11 +1707,12 @@ test("Federation.setInboxListeners()", async (t) => {
     });
 
     await t.step("receives invalidSignature reason", async () => {
-      const { federation, verified } = createFederationWithLoader(
-        mockDocumentLoader,
-      );
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(
+          mockDocumentLoader,
+        );
       let receivedReason: unknown = null;
-      federation.onUnverifiedActivity((_ctx, _activity, reason) => {
+      inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
         return new Response(null, { status: 202 });
       });
@@ -1733,11 +1742,12 @@ test("Federation.setInboxListeners()", async (t) => {
     });
 
     await t.step("does not run for verified activities", async () => {
-      const { federation, verified } = createFederationWithLoader(
-        mockDocumentLoader,
-      );
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(
+          mockDocumentLoader,
+        );
       let unverifiedCalls = 0;
-      federation.onUnverifiedActivity(() => {
+      inboxListeners.onUnverifiedActivity(() => {
         unverifiedCalls++;
         return new Response(null, { status: 202 });
       });

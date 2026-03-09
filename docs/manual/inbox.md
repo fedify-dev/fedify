@@ -54,10 +54,10 @@ include:
  -  custom logging, metrics, moderation, or quarantine flows for suspicious
     inbound traffic
 
-For these cases, you can register `~Federatable.onUnverifiedActivity()`.  The
-callback receives the `RequestContext`, the parsed activity, and a reason
-object whose `type` is one of `"noSignature"`, `"invalidSignature"`, or
-`"keyFetchError"`.
+For these cases, you can register
+`~InboxListenerSetters.onUnverifiedActivity()`.  The callback receives the
+`RequestContext`, the parsed activity, and a reason object whose `type` is one
+of `"noSignature"`, `"invalidSignature"`, or `"keyFetchError"`.
 
 If the callback returns a `Response`, Fedify uses it as-is.  If it returns
 nothing (`void`), Fedify falls back to the default `401 Unauthorized`
@@ -68,17 +68,19 @@ import { type Federation } from "@fedify/fedify";
 import { Delete } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-federation.onUnverifiedActivity((ctx, activity, reason) => {
-  if (
-    activity instanceof Delete &&
-    reason.type === "keyFetchError" &&
-    "status" in reason.result &&
-    reason.result.status === 410
-  ) {
-    // For example, stop redelivery of a Delete from a permanently gone actor.
-    return new Response(null, { status: 202 });
-  }
-});
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .onUnverifiedActivity((ctx, activity, reason) => {
+    if (
+      activity instanceof Delete &&
+      reason.type === "keyFetchError" &&
+      "status" in reason.result &&
+      reason.result.status === 410
+    ) {
+      // For example, stop redelivery of a Delete from a permanently gone actor.
+      return new Response(null, { status: 202 });
+    }
+  });
 ~~~~
 
 Returning a custom response does not pass the activity to the inbox listeners
@@ -428,8 +430,9 @@ duplicate retry mechanisms and leverages the backend's optimized retry features.
 
 > [!NOTE]
 > Activities with invalid signatures/proofs are not queued and are not passed
-> to inbox listeners.  If `~Federatable.onUnverifiedActivity()` is configured,
-> the hook runs before the default `401 Unauthorized` response is returned.
+> to inbox listeners.  If
+> `~InboxListenerSetters.onUnverifiedActivity()` is configured, the hook runs
+> before the default `401 Unauthorized` response is returned.
 
 > [!TIP]
 > If your inbox listeners are mostly I/O-bound, consider parallelizing
@@ -562,7 +565,7 @@ federation
 > [!NOTE]
 > Activities with invalid signatures/proofs are not passed to the error
 > handler.  If you need to inspect them, use
-> `~Federatable.onUnverifiedActivity()` instead.
+> `~InboxListenerSetters.onUnverifiedActivity()` instead.
 
 
 Forwarding activities to another server

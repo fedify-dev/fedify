@@ -10,12 +10,12 @@ To be released.
 
 ### @fedify/fedify
 
- -  Added `Federatable.onUnverifiedActivity()` so applications can inspect
-    inbound activities whose signatures could not be verified and optionally
-    return a custom response instead of the default `401 Unauthorized`.
-    This is useful for cases like `Delete` deliveries from actors whose
-    signing keys now return `404 Not Found` or `410 Gone`.  Added the
-    supporting public types `UnverifiedActivityHandler` and
+ -  Added `InboxListenerSetters.onUnverifiedActivity()` so applications can
+    inspect inbound activities whose signatures could not be verified and
+    optionally return a custom response instead of the default
+    `401 Unauthorized`.  This is useful for cases like `Delete` deliveries
+    from actors whose signing keys now return `404 Not Found` or `410 Gone`.
+    Added the supporting public types `UnverifiedActivityHandler` and
     `UnverifiedActivityReason`.  [[#472], [#611]]
 
  -  Added `verifyRequestDetailed()` plus the public types

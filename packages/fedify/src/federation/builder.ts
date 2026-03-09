@@ -1153,6 +1153,12 @@ export class FederationBuilderImpl<TContextData>
         this.inboxErrorHandler = handler;
         return setters;
       },
+      onUnverifiedActivity: (
+        handler: UnverifiedActivityHandler<TContextData>,
+      ): InboxListenerSetters<TContextData> => {
+        this.unverifiedActivityHandler = handler;
+        return setters;
+      },
       setSharedKeyDispatcher: (
         dispatcher: SharedInboxKeyDispatcher<TContextData>,
       ): InboxListenerSetters<TContextData> => {
@@ -1167,12 +1173,6 @@ export class FederationBuilderImpl<TContextData>
       },
     };
     return setters;
-  }
-
-  onUnverifiedActivity(
-    handler: UnverifiedActivityHandler<TContextData>,
-  ): void {
-    this.unverifiedActivityHandler = handler;
   }
 
   setCollectionDispatcher<

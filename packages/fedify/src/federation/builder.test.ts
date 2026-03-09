@@ -180,7 +180,9 @@ test("FederationBuilder", async (t) => {
         return;
       };
 
-      builder.onUnverifiedActivity(handler);
+      builder
+        .setInboxListeners("/users/{identifier}/inbox")
+        .onUnverifiedActivity(handler);
 
       const federation = await builder.build({ kv });
       const impl = federation as FederationImpl<void>;
