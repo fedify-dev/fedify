@@ -8,6 +8,14 @@ Version 2.0.4
 
 To be released.
 
+### @fedify/fastify
+
+ -  Fixed the default `onNotAcceptable` handler in `@fedify/fastify` to
+    create a fresh `Response` for each request instead of reusing a shared
+    singleton instance.  [[#612] by Lee Dogeon]
+
+[#612]: https://github.com/fedify-dev/fedify/pull/612
+
 
 Version 2.0.3
 -------------
