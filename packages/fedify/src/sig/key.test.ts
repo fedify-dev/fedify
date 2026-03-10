@@ -1,5 +1,10 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { CryptographicKey, Multikey } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
   ed25519Multikey,
@@ -11,6 +16,7 @@ import {
 import {
   exportJwk,
   fetchKey,
+  fetchKeyDetailed,
   type FetchKeyOptions,
   generateCryptoKeyPair,
   importJwk,
@@ -350,4 +356,104 @@ test("fetchKey()", async () => {
       cached: false,
     },
   );
+});
+
+test("fetchKeyDetailed()", async () => {
+  const cache: Record<string, CryptographicKey | Multikey | null> = {
+    "https://example.com/nothing": null,
+  };
+  let documentLoaderCalls = 0;
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const options: FetchKeyOptions = {
+    documentLoader(url) {
+      documentLoaderCalls++;
+      return mockDocumentLoader(url);
+    },
+    contextLoader: mockDocumentLoader,
+    tracerProvider,
+    keyCache: {
+      get(keyId) {
+        return Promise.resolve(cache[keyId.href]);
+      },
+      set(keyId, key) {
+        cache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    } satisfies KeyCache,
+  };
+
+  assertEquals(
+    await fetchKeyDetailed(
+      "https://example.com/nothing",
+      CryptographicKey,
+      options,
+    ),
+    { key: null, cached: true },
+  );
+  assertEquals(documentLoaderCalls, 0);
+
+  assertEquals(
+    await fetchKeyDetailed(
+      "https://example.com/key",
+      CryptographicKey,
+      options,
+    ),
+    { key: rsaPublicKey1, cached: false },
+  );
+  assertEquals(documentLoaderCalls, 1);
+
+  const spans = exporter.getSpans("activitypub.fetch_key");
+  assertEquals(spans.length, 2);
+  assertEquals(spans[0].attributes["activitypub.actor.key.cached"], true);
+  assertEquals(spans[1].attributes["activitypub.actor.key.cached"], false);
+});
+
+test("fetchKeyDetailed() returns detailed fetch errors", async () => {
+  const goneKeyId = new URL("https://example.com/gone-key");
+  const goneResult = await fetchKeyDetailed(
+    goneKeyId,
+    CryptographicKey,
+    {
+      documentLoader(url) {
+        if (url === goneKeyId.href) {
+          throw new FetchError(
+            goneKeyId,
+            `HTTP 410: ${goneKeyId.href}`,
+            new Response(null, { status: 410 }),
+          );
+        }
+        return mockDocumentLoader(url);
+      },
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertEquals(goneResult.key, null);
+  assertEquals(goneResult.cached, false);
+  const goneError = goneResult.fetchError;
+  assertEquals(goneError != null && "status" in goneError, true);
+  if (goneError == null || !("status" in goneError)) {
+    throw new Error("Expected HTTP fetch error details.");
+  }
+  assertEquals(goneError.status, 410);
+  assertEquals(goneError.response.status, 410);
+
+  const failure = new TypeError("boom");
+  const errorResult = await fetchKeyDetailed(
+    "https://example.com/error-key",
+    CryptographicKey,
+    {
+      documentLoader() {
+        throw failure;
+      },
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertEquals(errorResult.key, null);
+  assertEquals(errorResult.cached, false);
+  const detailedError = errorResult.fetchError;
+  assertEquals(detailedError != null && "error" in detailedError, true);
+  if (detailedError == null || !("error" in detailedError)) {
+    throw new Error("Expected non-HTTP fetch error details.");
+  }
+  assertEquals(detailedError.error, failure);
 });

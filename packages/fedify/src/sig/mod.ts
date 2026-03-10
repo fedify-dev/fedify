@@ -9,11 +9,17 @@ export {
   signRequest,
   type SignRequestOptions,
   verifyRequest,
+  verifyRequestDetailed,
+  type VerifyRequestDetailedResult,
+  type VerifyRequestFailureReason,
   type VerifyRequestOptions,
 } from "./http.ts";
 export {
   exportJwk,
   fetchKey,
+  fetchKeyDetailed,
+  type FetchKeyDetailedResult,
+  type FetchKeyErrorResult,
   type FetchKeyOptions,
   type FetchKeyResult,
   generateCryptoKeyPair,

@@ -30,6 +30,7 @@ import type {
   ObjectDispatcher,
   OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
+  UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
 import type { Context, RequestContext } from "./context.ts";
@@ -108,6 +109,7 @@ export class FederationBuilderImpl<TContextData>
   inboxListeners?: InboxListenerSet<TContextData>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
+  unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
   idempotencyStrategy?:
     | IdempotencyStrategy
@@ -188,6 +190,7 @@ export class FederationBuilderImpl<TContextData>
     f.inboxListeners = this.inboxListeners?.clone();
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.sharedInboxKeyDispatcher = this.sharedInboxKeyDispatcher;
+    f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
     f.idempotencyStrategy = this.idempotencyStrategy;
     return f;
@@ -1148,6 +1151,12 @@ export class FederationBuilderImpl<TContextData>
         handler: InboxErrorHandler<TContextData>,
       ): InboxListenerSetters<TContextData> => {
         this.inboxErrorHandler = handler;
+        return setters;
+      },
+      onUnverifiedActivity: (
+        handler: UnverifiedActivityHandler<TContextData>,
+      ): InboxListenerSetters<TContextData> => {
+        this.unverifiedActivityHandler = handler;
         return setters;
       },
       setSharedKeyDispatcher: (

@@ -10,14 +10,42 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `InboxListenerSetters.onUnverifiedActivity()` so applications can
+    inspect inbound activities whose signatures could not be verified and
+    optionally return a custom response instead of the default
+    `401 Unauthorized`.  This is useful for cases like `Delete` deliveries
+    from actors whose signing keys now return `404 Not Found` or `410 Gone`.
+    Added the supporting public types `UnverifiedActivityHandler` and
+    `UnverifiedActivityReason`.  [[#472], [#611]]
+
+ -  Added `verifyRequestDetailed()` plus the public types
+    `VerifyRequestDetailedResult`, `VerifyRequestFailureReason`, and
+    `FetchKeyErrorResult` so applications can distinguish unsigned requests,
+    invalid signatures, and key-fetch failures during HTTP signature
+    verification.  [[#611]]
+
+ -  OpenTelemetry spans/events and `FedifySpanExporter` signature details now
+    expose HTTP signature failure reasons and key-fetch failure details for
+    inbound activities.  [[#611]]
+
  -  Fixed `RequestContext.getSignedKeyOwner()` to return `null` instead of
     throwing an error when the remote server requires authorized fetch and
     returns `401 Unauthorized` for the key owner lookup.  Previously, this
     caused a `500 Internal Server Error` when interoperating with servers like
     GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
 
+[#472]: https://github.com/fedify-dev/fedify/issues/472
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
+[#611]: https://github.com/fedify-dev/fedify/pull/611
+
+### @fedify/vocab-runtime
+
+ -  Added optional `FetchError.response` so callers can inspect the original
+    failed HTTP response when remote document or key fetches return an HTTP
+    error (such as `404 Not Found` or `410 Gone`).  This enables higher-level
+    APIs to distinguish transport failures from specific HTTP fetch failures.
+    [[#611]]
 
 ### @fedify/cli
 

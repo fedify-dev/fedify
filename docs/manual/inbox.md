@@ -26,15 +26,70 @@ activities with various specifications, such as:
  -  [Linked Data Signatures]
  -  Object Integrity Proofs ([FEP-8b32])
 
-You don't need to worry about the signature verification at all—unsigned
-activities and invalid signatures are silently ignored.  If you want to see why
-some activities are ignored, you can turn on [logging](./log.md) for
+You don't need to worry about the signature verification at all.  By default,
+activities whose signatures/proofs cannot be verified are rejected with
+`401 Unauthorized` and are not passed to inbox listeners.  If you want to see
+why some activities are rejected, you can turn on [logging](./log.md) for
 `["fedify", "sig"]` category.
 
 [HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [FEP-8b32]: https://w3id.org/fep/8b32
+
+
+Handling unverified activities
+------------------------------
+
+*This API is available since Fedify 2.1.0.*
+
+Most applications can keep the default behavior and ignore unverified inbound
+activities.  However, some applications need finer control.  Typical examples
+include:
+
+ -  remote actor deletions where the `Delete` activity can still be parsed,
+    but the signing key now returns `410 Gone`
+ -  noisy redelivery loops from remote servers that keep retrying activities
+    you have decided not to process
+ -  custom logging, metrics, moderation, or quarantine flows for suspicious
+    inbound traffic
+
+For these cases, you can register
+`~InboxListenerSetters.onUnverifiedActivity()`.  The callback receives the
+`RequestContext`, the parsed activity, and a reason object whose `type` is one
+of `"noSignature"`, `"invalidSignature"`, or `"keyFetchError"`.
+
+If the callback returns a `Response`, Fedify uses it as-is.  If it returns
+nothing (`void`), Fedify falls back to the default `401 Unauthorized`
+response.
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Delete } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .onUnverifiedActivity((ctx, activity, reason) => {
+    if (
+      activity instanceof Delete &&
+      reason.type === "keyFetchError" &&
+      "status" in reason.result &&
+      reason.result.status === 410
+    ) {
+      // For example, stop redelivery of a Delete from a permanently gone actor.
+      return new Response(null, { status: 202 });
+    }
+  });
+~~~~
+
+Returning a custom response does not pass the activity to the inbox listeners
+registered through `~InboxListenerSetters.on()`.  Verified activities continue
+to flow to those listeners as usual; unverified activities remain opt-in.
+
+The request context includes the original `Request` object, so you can inspect
+details such as the `Host` header through `RequestContext.request` when making
+policy decisions.
 
 
 Registering an inbox listener
@@ -374,7 +429,10 @@ its own retry logic and rely on the backend to handle retries.  This avoids
 duplicate retry mechanisms and leverages the backend's optimized retry features.
 
 > [!NOTE]
-> Activities with invalid signatures/proofs are silently ignored and not queued.
+> Activities with invalid signatures/proofs are not queued and are not passed
+> to inbox listeners.  If
+> `~InboxListenerSetters.onUnverifiedActivity()` is configured, the hook runs
+> before the default `401 Unauthorized` response is returned.
 
 > [!TIP]
 > If your inbox listeners are mostly I/O-bound, consider parallelizing
@@ -505,8 +563,9 @@ federation
 ~~~~
 
 > [!NOTE]
-> Activities with invalid signatures/proofs are silently ignored and not passed
-> to the error handler.
+> Activities with invalid signatures/proofs are not passed to the error
+> handler.  If you need to inspect them, use
+> `~InboxListenerSetters.onUnverifiedActivity()` instead.
 
 
 Forwarding activities to another server

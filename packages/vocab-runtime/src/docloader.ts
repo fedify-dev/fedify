@@ -135,6 +135,7 @@ export async function getRemoteDocument(
     throw new FetchError(
       documentUrl,
       `HTTP ${response.status}: ${documentUrl}`,
+      response.clone(),
     );
   }
   const contentType = response.headers.get("Content-Type");

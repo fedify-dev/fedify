@@ -21,7 +21,12 @@ import {
   Item,
 } from "structured-field-values";
 import metadata from "../../deno.json" with { type: "json" };
-import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
+import {
+  fetchKeyDetailed,
+  type FetchKeyErrorResult,
+  type KeyCache,
+  validateCryptoKey,
+} from "./key.ts";
 
 /**
  * The standard to use for signing and verifying HTTP signatures.
@@ -547,6 +552,107 @@ export interface VerifyRequestOptions {
 }
 
 /**
+ * The reason why {@link verifyRequestDetailed} could not verify a request.
+ * @since 2.1.0
+ */
+export type VerifyRequestFailureReason =
+  | {
+    readonly type: "keyFetchError";
+    readonly keyId: URL;
+    readonly result: FetchKeyErrorResult;
+  }
+  | {
+    readonly type: "invalidSignature";
+    readonly keyId?: URL;
+  }
+  | {
+    readonly type: "noSignature";
+  };
+
+/**
+ * The detailed result of {@link verifyRequestDetailed}.
+ * @since 2.1.0
+ */
+export type VerifyRequestDetailedResult =
+  | {
+    readonly verified: true;
+    readonly key: CryptographicKey;
+  }
+  | {
+    readonly verified: false;
+    readonly reason: VerifyRequestFailureReason;
+  };
+
+function noSignatureResult(): VerifyRequestDetailedResult {
+  return {
+    verified: false,
+    reason: { type: "noSignature" },
+  };
+}
+
+function invalidSignatureResult(
+  keyId: URL | null,
+): VerifyRequestDetailedResult {
+  return keyId == null
+    ? {
+      verified: false,
+      reason: { type: "invalidSignature" },
+    }
+    : {
+      verified: false,
+      reason: { type: "invalidSignature", keyId },
+    };
+}
+
+function keyFetchErrorResult(
+  keyId: URL,
+  result: FetchKeyErrorResult,
+): VerifyRequestDetailedResult {
+  return {
+    verified: false,
+    reason: { type: "keyFetchError", keyId, result },
+  };
+}
+
+function parseKeyId(value: string | undefined): URL | null {
+  if (value == null) return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function getKeyFetchErrorName(error: Error): string {
+  return error.name || error.constructor.name || "Error";
+}
+
+function recordVerificationResult(
+  span: Span,
+  result: VerifyRequestDetailedResult,
+): void {
+  span.setAttribute("http_signatures.verified", result.verified);
+  if (result.verified === true) return;
+  const reason = result.reason;
+  span.setAttribute("http_signatures.failure_reason", reason.type);
+  if ("keyId" in reason && reason.keyId != null) {
+    span.setAttribute("http_signatures.key_id", reason.keyId.href);
+  }
+  if (reason.type !== "keyFetchError") return;
+  if ("status" in reason.result) {
+    span.setAttribute(
+      "http_signatures.key_fetch_status",
+      reason.result.status,
+    );
+  } else {
+    span.setAttribute(
+      "http_signatures.key_fetch_error",
+      getKeyFetchErrorName(reason.result.error),
+    );
+  }
+}
+
+/**
  * Verifies the signature of a request.
  *
  * Note that this function consumes the request body, so it should not be used
@@ -563,6 +669,23 @@ export async function verifyRequest(
   request: Request,
   options: VerifyRequestOptions = {},
 ): Promise<CryptographicKey | null> {
+  const result = await verifyRequestDetailed(request, options);
+  return result.verified ? result.key : null;
+}
+
+/**
+ * Verifies the signature of a request and returns a structured failure reason
+ * when verification does not succeed.
+ *
+ * @param request The request to verify.
+ * @param options Options for verifying the request.
+ * @returns The verified public key, or a structured verification failure.
+ * @since 2.1.0
+ */
+export async function verifyRequestDetailed(
+  request: Request,
+  options: VerifyRequestOptions = {},
+): Promise<VerifyRequestDetailedResult> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(
     metadata.name,
@@ -587,15 +710,18 @@ export async function verifyRequest(
             : "draft-cavage-http-signatures-12";
         }
 
-        let key: CryptographicKey | null;
+        let result: VerifyRequestDetailedResult;
         if (spec === "rfc9421") {
-          key = await verifyRequestRfc9421(request, span, options);
+          result = await verifyRequestRfc9421(request, span, options);
         } else {
-          key = await verifyRequestDraft(request, span, options);
+          result = await verifyRequestDraft(request, span, options);
         }
 
-        if (key == null) span.setStatus({ code: SpanStatusCode.ERROR });
-        return key;
+        recordVerificationResult(span, result);
+        if (!result.verified) {
+          span.setStatus({ code: SpanStatusCode.ERROR });
+        }
+        return result;
       } catch (error) {
         span.setStatus({
           code: SpanStatusCode.ERROR,
@@ -620,38 +746,46 @@ async function verifyRequestDraft(
     keyCache,
     tracerProvider,
   }: VerifyRequestOptions = {},
-): Promise<CryptographicKey | null> {
+): Promise<VerifyRequestDetailedResult> {
   const logger = getLogger(["fedify", "sig", "http"]);
   if (request.bodyUsed) {
     logger.error(
       "Failed to verify; the request body is already consumed.",
       { url: request.url },
     );
-    return null;
+    return noSignatureResult();
   } else if (request.body?.locked) {
     logger.error(
       "Failed to verify; the request body is locked.",
       { url: request.url },
     );
-    return null;
+    return noSignatureResult();
   }
   const originalRequest = request;
   request = request.clone() as Request;
-  const dateHeader = request.headers.get("Date");
-  if (dateHeader == null) {
-    logger.debug(
-      "Failed to verify; no Date header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
-    return null;
-  }
   const sigHeader = request.headers.get("Signature");
   if (sigHeader == null) {
     logger.debug(
       "Failed to verify; no Signature header found.",
       { headers: Object.fromEntries(request.headers.entries()) },
     );
-    return null;
+    return noSignatureResult();
+  }
+  const sigValues = Object.fromEntries(
+    sigHeader.split(",").map((pair) =>
+      pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/)
+    ).filter((m) => m != null).map((m) =>
+      [m![1], m![2] ?? m![3]] as [string, string]
+    ),
+  );
+  const parsedKeyId = parseKeyId(sigValues.keyId);
+  const dateHeader = request.headers.get("Date");
+  if (dateHeader == null) {
+    logger.debug(
+      "Failed to verify; no Date header found.",
+      { headers: Object.fromEntries(request.headers.entries()) },
+    );
+    return invalidSignatureResult(parsedKeyId);
   }
   const digestHeader = request.headers.get("Digest");
   if (
@@ -662,7 +796,7 @@ async function verifyRequestDraft(
       "Failed to verify; no Digest header found.",
       { headers: Object.fromEntries(request.headers.entries()) },
     );
-    return null;
+    return invalidSignatureResult(parsedKeyId);
   }
   let body: ArrayBuffer | null = null;
   if (digestHeader != null) {
@@ -682,7 +816,7 @@ async function verifyRequestDraft(
           digest: digestBase64,
           error,
         });
-        return null;
+        return invalidSignatureResult(parsedKeyId);
       }
       if (span.isRecording()) {
         span.setAttribute(`http_signatures.digest.${algo}`, encodeHex(digest));
@@ -701,7 +835,7 @@ async function verifyRequestDraft(
             expectedDigest: encodeBase64(expectedDigest),
           },
         );
-        return null;
+        return invalidSignatureResult(parsedKeyId);
       }
       matched = true;
     }
@@ -714,7 +848,7 @@ async function verifyRequestDraft(
           algorithms: digests.map(([algo]) => algo),
         },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     }
   }
   const date = Temporal.Instant.from(new Date(dateHeader).toISOString());
@@ -727,40 +861,33 @@ async function verifyRequestDraft(
         "Failed to verify; Date is too far in the future.",
         { date: date.toString(), now: now.toString() },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     } else if (Temporal.Instant.compare(date, now.subtract(tw)) < 0) {
       logger.debug(
         "Failed to verify; Date is too far in the past.",
         { date: date.toString(), now: now.toString() },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     }
   }
-  const sigValues = Object.fromEntries(
-    sigHeader.split(",").map((pair) =>
-      pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/)
-    ).filter((m) => m != null).map((m) =>
-      [m![1], m![2] ?? m![3]] as [string, string]
-    ),
-  );
   if (!("keyId" in sigValues)) {
     logger.debug(
       "Failed to verify; no keyId field found in the Signature header.",
       { signature: sigHeader },
     );
-    return null;
+    return invalidSignatureResult(null);
   } else if (!("headers" in sigValues)) {
     logger.debug(
       "Failed to verify; no headers field found in the Signature header.",
       { signature: sigHeader },
     );
-    return null;
+    return invalidSignatureResult(parsedKeyId);
   } else if (!("signature" in sigValues)) {
     logger.debug(
       "Failed to verify; no signature field found in the Signature header.",
       { signature: sigHeader },
     );
-    return null;
+    return invalidSignatureResult(parsedKeyId);
   }
   if ("expires" in sigValues) {
     const expiresSeconds = parseInt(sigValues.expires);
@@ -769,7 +896,7 @@ async function verifyRequestDraft(
         "Failed to verify; invalid expires field in the Signature header: {expires}.",
         { expires: sigValues.expires, signature: sigHeader },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     }
     const expires = Temporal.Instant.fromEpochMilliseconds(
       expiresSeconds * 1000,
@@ -783,7 +910,7 @@ async function verifyRequestDraft(
           signature: sigHeader,
         },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     }
   }
   if ("created" in sigValues) {
@@ -793,7 +920,7 @@ async function verifyRequestDraft(
         "Failed to verify; invalid created field in the Signature header: {created}.",
         { created: sigValues.created, signature: sigHeader },
       );
-      return null;
+      return invalidSignatureResult(parsedKeyId);
     }
     if (timeWindow !== false) {
       const created = Temporal.Instant.fromEpochMilliseconds(
@@ -805,28 +932,37 @@ async function verifyRequestDraft(
           "Failed to verify; created is too far in the future.",
           { created: created.toString(), now: now.toString() },
         );
-        return null;
+        return invalidSignatureResult(parsedKeyId);
       } else if (Temporal.Instant.compare(created, now.subtract(tw)) < 0) {
         logger.debug(
           "Failed to verify; created is too far in the past.",
           { created: created.toString(), now: now.toString() },
         );
-        return null;
+        return invalidSignatureResult(parsedKeyId);
       }
     }
   }
   const { keyId, headers, signature } = sigValues;
+  const keyIdUrl = parseKeyId(keyId);
+  if (keyIdUrl == null) return invalidSignatureResult(null);
   span?.setAttribute("http_signatures.key_id", keyId);
   if ("algorithm" in sigValues) {
     span?.setAttribute("http_signatures.algorithm", sigValues.algorithm);
   }
-  const { key, cached } = await fetchKey(new URL(keyId), CryptographicKey, {
-    documentLoader,
-    contextLoader,
-    keyCache,
-    tracerProvider,
-  });
-  if (key == null) return null;
+  const { key, cached, fetchError } = await fetchKeyDetailed(
+    keyIdUrl,
+    CryptographicKey,
+    {
+      documentLoader,
+      contextLoader,
+      keyCache,
+      tracerProvider,
+    },
+  );
+  if (fetchError != null) {
+    return keyFetchErrorResult(keyIdUrl, fetchError);
+  }
+  if (key == null) return invalidSignatureResult(keyIdUrl);
   const headerNames = headers.split(/\s+/g);
   if (
     !headerNames.includes("(request-target)") || !headerNames.includes("date")
@@ -836,7 +972,7 @@ async function verifyRequestDraft(
         "{headers}.",
       { headers },
     );
-    return null;
+    return invalidSignatureResult(keyIdUrl);
   }
   if (body != null && !headerNames.includes("digest")) {
     logger.debug(
@@ -844,7 +980,7 @@ async function verifyRequestDraft(
         "{headers}.",
       { headers },
     );
-    return null;
+    return invalidSignatureResult(keyIdUrl);
   }
   const message = headerNames.map((name) =>
     `${name}: ` +
@@ -874,7 +1010,7 @@ async function verifyRequestDraft(
           "is invalid.  Retrying with the freshly fetched key...",
         { keyId, signature, message },
       );
-      return await verifyRequest(
+      return await verifyRequestDetailed(
         originalRequest,
         {
           documentLoader,
@@ -894,9 +1030,9 @@ async function verifyRequestDraft(
         "is correct.  The message to sign is:\n{message}",
       { keyId, signature, message },
     );
-    return null;
+    return invalidSignatureResult(keyIdUrl);
   }
-  return key;
+  return { verified: true, key };
 }
 
 /**
@@ -977,20 +1113,20 @@ async function verifyRequestRfc9421(
     keyCache,
     tracerProvider,
   }: VerifyRequestOptions = {},
-): Promise<CryptographicKey | null> {
+): Promise<VerifyRequestDetailedResult> {
   const logger = getLogger(["fedify", "sig", "http"]);
   if (request.bodyUsed) {
     logger.error(
       "Failed to verify; the request body is already consumed.",
       { url: request.url },
     );
-    return null;
+    return noSignatureResult();
   } else if (request.body?.locked) {
     logger.error(
       "Failed to verify; the request body is locked.",
       { url: request.url },
     );
-    return null;
+    return noSignatureResult();
   }
 
   const originalRequest = request;
@@ -1003,7 +1139,7 @@ async function verifyRequestRfc9421(
       "Failed to verify; no Signature-Input header found.",
       { headers: Object.fromEntries(request.headers.entries()) },
     );
-    return null;
+    return noSignatureResult();
   }
 
   const signatureHeader = request.headers.get("Signature");
@@ -1012,7 +1148,7 @@ async function verifyRequestRfc9421(
       "Failed to verify; no Signature header found.",
       { headers: Object.fromEntries(request.headers.entries()) },
     );
-    return null;
+    return noSignatureResult();
   }
 
   // Parse the Signature-Input and Signature headers
@@ -1030,21 +1166,23 @@ async function verifyRequestRfc9421(
       "Failed to verify; no valid signatures found in Signature-Input header.",
       { header: signatureInputHeader },
     );
-    return null;
+    return invalidSignatureResult(null);
   }
 
-  // Verify the first signature we can find
-  // In practice, we could implement signature selection logic here
-  let validKey: CryptographicKey | null = null;
+  let failure: VerifyRequestDetailedResult = noSignatureResult();
 
   for (const sigName of signatureNames) {
     // Skip if we don't have the signature bytes
     if (!signatures[sigName]) {
+      failure = invalidSignatureResult(
+        parseKeyId(signatureInputs[sigName]?.keyId),
+      );
       continue;
     }
 
     const sigInput = signatureInputs[sigName];
     const sigBytes = signatures[sigName];
+    const keyId = parseKeyId(sigInput.keyId);
 
     // Validate signature input parameters
     if (!sigInput.keyId) {
@@ -1052,6 +1190,7 @@ async function verifyRequestRfc9421(
         "Failed to verify; missing keyId in signature {signatureName}.",
         { signatureName: sigName, signatureInput: signatureInputHeader },
       );
+      failure = invalidSignatureResult(null);
       continue;
     }
 
@@ -1060,6 +1199,7 @@ async function verifyRequestRfc9421(
         "Failed to verify; missing created timestamp in signature {signatureName}.",
         { signatureName: sigName, signatureInput: signatureInputHeader },
       );
+      failure = invalidSignatureResult(keyId);
       continue;
     }
 
@@ -1077,6 +1217,7 @@ async function verifyRequestRfc9421(
           "Failed to verify; signature created time is too far in the future.",
           { created: signatureCreated.toString(), now: now.toString() },
         );
+        failure = invalidSignatureResult(keyId);
         continue;
       } else if (
         Temporal.Instant.compare(signatureCreated, now.subtract(tw)) < 0
@@ -1085,6 +1226,7 @@ async function verifyRequestRfc9421(
           "Failed to verify; signature created time is too far in the past.",
           { created: signatureCreated.toString(), now: now.toString() },
         );
+        failure = invalidSignatureResult(keyId);
         continue;
       }
     }
@@ -1101,6 +1243,7 @@ async function verifyRequestRfc9421(
           "Failed to verify; Content-Digest header required but not found.",
           { components: sigInput.components },
         );
+        failure = invalidSignatureResult(keyId);
         continue;
       }
 
@@ -1115,6 +1258,7 @@ async function verifyRequestRfc9421(
           "Failed to verify; Content-Digest verification failed.",
           { contentDigest: contentDigestHeader },
         );
+        failure = invalidSignatureResult(keyId);
         continue;
       }
     }
@@ -1122,9 +1266,13 @@ async function verifyRequestRfc9421(
     // Fetch the public key
     span?.setAttribute("http_signatures.key_id", sigInput.keyId);
     span?.setAttribute("http_signatures.created", sigInput.created.toString());
+    if (keyId == null) {
+      failure = invalidSignatureResult(null);
+      continue;
+    }
 
-    const { key, cached } = await fetchKey(
-      new URL(sigInput.keyId),
+    const { key, cached, fetchError } = await fetchKeyDetailed(
+      keyId,
       CryptographicKey,
       {
         documentLoader,
@@ -1134,8 +1282,13 @@ async function verifyRequestRfc9421(
       },
     );
 
+    if (fetchError != null) {
+      failure = keyFetchErrorResult(keyId, fetchError);
+      continue;
+    }
     if (!key) {
       logger.debug("Failed to fetch key: {keyId}", { keyId: sigInput.keyId });
+      failure = invalidSignatureResult(keyId);
       continue;
     }
 
@@ -1169,6 +1322,7 @@ async function verifyRequestRfc9421(
           supported: Object.keys(rfc9421AlgorithmMap),
         },
       );
+      failure = invalidSignatureResult(keyId);
       continue;
     }
 
@@ -1185,6 +1339,7 @@ async function verifyRequestRfc9421(
         "Failed to create signature base for verification: {error}",
         { error, signatureInput: sigInput },
       );
+      failure = invalidSignatureResult(keyId);
       continue;
     }
     const signatureBaseBytes = new TextEncoder().encode(signatureBase);
@@ -1201,8 +1356,7 @@ async function verifyRequestRfc9421(
       );
 
       if (verified) {
-        validKey = key;
-        break;
+        return { verified: true, key };
       } else if (cached) {
         // If we used a cached key and verification failed, try fetching fresh key
         logger.debug(
@@ -1210,7 +1364,7 @@ async function verifyRequestRfc9421(
           { keyId: sigInput.keyId },
         );
 
-        return await verifyRequest(
+        return await verifyRequestDetailed(
           originalRequest,
           {
             documentLoader,
@@ -1229,16 +1383,18 @@ async function verifyRequestRfc9421(
           "Failed to verify signature with fetched key {keyId}; signature invalid.",
           { keyId: sigInput.keyId, signatureBase },
         );
+        failure = invalidSignatureResult(keyId);
       }
     } catch (error) {
       logger.debug(
         "Error during signature verification: {error}",
         { error, keyId: sigInput.keyId, algorithm: sigInput.alg },
       );
+      failure = invalidSignatureResult(keyId);
     }
   }
 
-  return validKey;
+  return failure;
 }
 
 /**

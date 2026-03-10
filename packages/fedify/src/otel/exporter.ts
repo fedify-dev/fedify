@@ -27,6 +27,21 @@ export interface SignatureVerificationDetails {
   readonly httpSignaturesKeyId?: string;
 
   /**
+   * The reason why HTTP signature verification failed, if available.
+   */
+  readonly httpSignaturesFailureReason?: string;
+
+  /**
+   * The HTTP status code from a failed key fetch, if available.
+   */
+  readonly httpSignaturesKeyFetchStatus?: number;
+
+  /**
+   * The error type from a non-HTTP key fetch failure, if available.
+   */
+  readonly httpSignaturesKeyFetchError?: string;
+
+  /**
    * Whether Linked Data Signatures were verified.
    */
   readonly ldSignaturesVerified: boolean;
@@ -332,12 +347,16 @@ export class FedifySpanExporter implements SpanExporter {
     // Extract signature verification details
     const httpSigVerified = attrs["http_signatures.verified"];
     const httpSigKeyId = attrs["http_signatures.key_id"];
+    const httpSigFailureReason = attrs["http_signatures.failure_reason"];
+    const httpSigKeyFetchStatus = attrs["http_signatures.key_fetch_status"];
+    const httpSigKeyFetchError = attrs["http_signatures.key_fetch_error"];
     const ldSigVerified = attrs["ld_signatures.verified"];
 
     let signatureDetails: SignatureVerificationDetails | undefined;
     if (
       typeof httpSigVerified === "boolean" ||
-      typeof ldSigVerified === "boolean"
+      typeof ldSigVerified === "boolean" ||
+      typeof httpSigFailureReason === "string"
     ) {
       signatureDetails = {
         httpSignaturesVerified: httpSigVerified === true,
@@ -345,6 +364,17 @@ export class FedifySpanExporter implements SpanExporter {
           typeof httpSigKeyId === "string" && httpSigKeyId !== ""
             ? httpSigKeyId
             : undefined,
+        httpSignaturesFailureReason: typeof httpSigFailureReason === "string" &&
+            httpSigFailureReason !== ""
+          ? httpSigFailureReason
+          : undefined,
+        httpSignaturesKeyFetchStatus: typeof httpSigKeyFetchStatus === "number"
+          ? httpSigKeyFetchStatus
+          : undefined,
+        httpSignaturesKeyFetchError: typeof httpSigKeyFetchError === "string" &&
+            httpSigKeyFetchError !== ""
+          ? httpSigKeyFetchError
+          : undefined,
         ldSignaturesVerified: ldSigVerified === true,
       };
     }

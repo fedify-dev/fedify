@@ -12,15 +12,22 @@ export class FetchError extends Error {
   url: URL;
 
   /**
+   * The HTTP response that failed, if available.
+   */
+  response?: Response;
+
+  /**
    * Constructs a new `FetchError`.
    *
    * @param url The URL that failed to fetch.
    * @param message Error message.
+   * @param response The failed HTTP response, if available.
    */
-  constructor(url: URL | string, message?: string) {
+  constructor(url: URL | string, message?: string, response?: Response) {
     super(message == null ? url.toString() : `${url}: ${message}`);
     this.name = "FetchError";
     this.url = typeof url === "string" ? new URL(url) : url;
+    this.response = response;
   }
 }
 
