@@ -2178,3 +2178,257 @@ test("signRequest() and verifyRequest() cancellation", {
 
   fetchMock.hardReset();
 });
+
+// ---------------------------------------------------------------------------
+// signRequest() with rfc9421 options
+// ---------------------------------------------------------------------------
+
+test("signRequest() with custom label", async () => {
+  const request = new Request("https://example.com/api", {
+    method: "POST",
+    body: "test",
+    headers: { "Content-Type": "text/plain" },
+  });
+  const signed = await signRequest(
+    request,
+    rsaPrivateKey2,
+    new URL("https://example.com/key2"),
+    {
+      spec: "rfc9421",
+      rfc9421: { label: "mysig" },
+    },
+  );
+  const sigInput = signed.headers.get("Signature-Input")!;
+  assertStringIncludes(sigInput, "mysig=");
+  const sig = signed.headers.get("Signature")!;
+  assertStringIncludes(sig, "mysig=");
+});
+
+test("signRequest() with custom components", async () => {
+  const request = new Request("https://example.com/api", {
+    method: "POST",
+    body: "test",
+    headers: {
+      "Content-Type": "text/plain",
+      "Host": "example.com",
+      "Date": "Tue, 05 Mar 2024 07:49:44 GMT",
+    },
+  });
+  const signed = await signRequest(
+    request,
+    rsaPrivateKey2,
+    new URL("https://example.com/key2"),
+    {
+      spec: "rfc9421",
+      rfc9421: {
+        components: ["@method", "@target-uri", "@authority"],
+      },
+    },
+  );
+  const sigInput = signed.headers.get("Signature-Input")!;
+  assertStringIncludes(sigInput, '"@method"');
+  assertStringIncludes(sigInput, '"@target-uri"');
+  assertStringIncludes(sigInput, '"@authority"');
+  // content-digest should be auto-added when body is present
+  assertStringIncludes(sigInput, '"content-digest"');
+});
+
+test("signRequest() with nonce and tag", async () => {
+  const request = new Request("https://example.com/api", {
+    method: "GET",
+    headers: {
+      "Host": "example.com",
+      "Date": "Tue, 05 Mar 2024 07:49:44 GMT",
+    },
+  });
+  const signed = await signRequest(
+    request,
+    rsaPrivateKey2,
+    new URL("https://example.com/key2"),
+    {
+      spec: "rfc9421",
+      rfc9421: { nonce: "test-nonce-123", tag: "app-v1" },
+    },
+  );
+  const sigInput = signed.headers.get("Signature-Input")!;
+  assertStringIncludes(sigInput, 'nonce="test-nonce-123"');
+  assertStringIncludes(sigInput, 'tag="app-v1"');
+});
+
+// ---------------------------------------------------------------------------
+// doubleKnock() with Accept-Signature challenge
+// ---------------------------------------------------------------------------
+
+test(
+  "doubleKnock(): Accept-Signature challenge retry succeeds",
+  async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post("https://example.com/inbox-challenge-ok", (cl) => {
+      const req = cl.request!;
+      requestCount++;
+      if (requestCount === 1) {
+        // First attempt fails with Accept-Signature challenge
+        return new Response("Not Authorized", {
+          status: 401,
+          headers: {
+            "Accept-Signature":
+              'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+              ';created;nonce="challenge-nonce-1"',
+          },
+        });
+      }
+      // Second attempt (challenge retry) succeeds
+      const sigInput = req.headers.get("Signature-Input") ?? "";
+      if (sigInput.includes("challenge-nonce-1")) {
+        return new Response("", { status: 202 });
+      }
+      return new Response("Bad", { status: 400 });
+    });
+
+    const request = new Request("https://example.com/inbox-challenge-ok", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): unfulfillable Accept-Signature falls to legacy fallback",
+  async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post("https://example.com/inbox-unfulfillable", (cl) => {
+      const req = cl.request!;
+      requestCount++;
+      if (requestCount === 1) {
+        // Challenge with incompatible algorithm
+        return new Response("Not Authorized", {
+          status: 401,
+          headers: {
+            "Accept-Signature": 'sig1=("@method");alg="ecdsa-p256-sha256"',
+          },
+        });
+      }
+      // Legacy fallback (draft-cavage) succeeds
+      if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+        return new Response("", { status: 202 });
+      }
+      return new Response("Bad", { status: 400 });
+    });
+
+    const request = new Request("https://example.com/inbox-unfulfillable", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): no Accept-Signature falls to legacy fallback",
+  async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post("https://example.com/inbox-no-challenge", (cl) => {
+      const req = cl.request!;
+      requestCount++;
+      if (requestCount === 1) {
+        return new Response("Not Authorized", { status: 401 });
+      }
+      if (req.headers.has("Signature")) {
+        return new Response("", { status: 202 });
+      }
+      return new Response("Bad", { status: 400 });
+    });
+
+    const request = new Request("https://example.com/inbox-no-challenge", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): challenge retry also fails → legacy fallback attempted",
+  async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post("https://example.com/inbox-challenge-fails", (cl) => {
+      const req = cl.request!;
+      requestCount++;
+      if (requestCount === 1) {
+        return new Response("Not Authorized", {
+          status: 401,
+          headers: {
+            "Accept-Signature": 'sig1=("@method" "@target-uri");created',
+          },
+        });
+      }
+      if (requestCount === 2) {
+        // Challenge retry also fails
+        return new Response("Still Not Authorized", { status: 401 });
+      }
+      // Legacy fallback (3rd attempt)
+      if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+        return new Response("", { status: 202 });
+      }
+      return new Response("Bad", { status: 400 });
+    });
+
+    const request = new Request(
+      "https://example.com/inbox-challenge-fails",
+      {
+        method: "POST",
+        body: "Test message",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 3);
+
+    fetchMock.hardReset();
+  },
+);

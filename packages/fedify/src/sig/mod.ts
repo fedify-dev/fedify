@@ -7,12 +7,15 @@ export {
   type AcceptSignatureMember,
   type AcceptSignatureParameters,
   formatAcceptSignature,
+  fulfillAcceptSignature,
+  type FulfillAcceptSignatureResult,
   parseAcceptSignature,
   validateAcceptSignatureForRequest,
 } from "./accept.ts";
 export {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
+  type Rfc9421SignRequestOptions,
   signRequest,
   type SignRequestOptions,
   verifyRequest,

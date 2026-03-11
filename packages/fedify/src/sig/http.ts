@@ -22,6 +22,11 @@ import {
 } from "structured-field-values";
 import metadata from "../../deno.json" with { type: "json" };
 import {
+  fulfillAcceptSignature,
+  parseAcceptSignature,
+  validateAcceptSignatureForRequest,
+} from "./accept.ts";
+import {
   fetchKeyDetailed,
   type FetchKeyErrorResult,
   type KeyCache,
@@ -74,6 +79,44 @@ export interface SignRequestOptions {
    * is used.
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * Options specific to the RFC 9421 signing path.  These options are
+   * ignored when `spec` is `"draft-cavage-http-signatures-12"`.
+   * @since 2.1.0
+   */
+  rfc9421?: Rfc9421SignRequestOptions;
+}
+
+/**
+ * Options for customizing the RFC 9421 signature label, covered components,
+ * and metadata parameters.  These are typically derived from an
+ * `Accept-Signature` challenge.
+ * @since 2.1.0
+ */
+export interface Rfc9421SignRequestOptions {
+  /**
+   * The label for the signature in `Signature-Input` and `Signature` headers.
+   * @default `"sig1"`
+   */
+  label?: string;
+
+  /**
+   * The covered component identifiers.  When omitted, the default set
+   * `["@method", "@target-uri", "@authority", "host", "date"]`
+   * (plus `"content-digest"` when a body is present) is used.
+   */
+  components?: string[];
+
+  /**
+   * A nonce value to include in the signature parameters.
+   */
+  nonce?: string;
+
+  /**
+   * A tag value to include in the signature parameters.
+   */
+  tag?: string;
 }
 
 /**
@@ -114,6 +157,7 @@ export async function signRequest(
             span,
             options.currentTime,
             options.body,
+            options.rfc9421,
           );
         } else {
           // Default to draft-cavage
@@ -217,12 +261,22 @@ export interface Rfc9421SignatureParameters {
   algorithm: string;
   keyId: URL;
   created: number;
+  nonce?: string;
+  tag?: string;
 }
 
 export function formatRfc9421SignatureParameters(
   params: Rfc9421SignatureParameters,
 ): string {
-  return `alg="${params.algorithm}";keyid="${params.keyId.href}";created=${params.created}`;
+  return Array.from(iterRfc9421(params)).join(";");
+}
+
+function* iterRfc9421(params: Rfc9421SignatureParameters): Iterable<string> {
+  yield `alg="${params.algorithm}"`;
+  yield `keyid="${params.keyId.href}"`;
+  yield `created=${params.created}`;
+  if (params.nonce != null) yield `nonce="${params.nonce}"`;
+  if (params.tag != null) yield `tag="${params.tag}"`;
 }
 
 /**
@@ -237,54 +291,47 @@ export function createRfc9421SignatureBase(
   components: string[],
   parameters: string,
 ): string {
-  const url = new URL(request.url);
-
   // Build the base string
-  const baseComponents: string[] = [];
-
-  for (const component of components) {
-    let value: string;
-
-    // Process special derived components
-    if (component === "@method") {
-      value = request.method.toUpperCase();
-    } else if (component === "@target-uri") {
-      value = request.url;
-    } else if (component === "@authority") {
-      value = url.host;
-    } else if (component === "@scheme") {
-      value = url.protocol.slice(0, -1); // Remove the trailing ':'
-    } else if (component === "@request-target") {
-      value = `${request.method.toLowerCase()} ${url.pathname}${url.search}`;
-    } else if (component === "@path") {
-      value = url.pathname;
-    } else if (component === "@query") {
-      value = url.search.startsWith("?") ? url.search.slice(1) : url.search;
-    } else if (component === "@query-param") {
-      throw new Error("@query-param requires a parameter name");
-    } else if (component === "@status") {
-      throw new Error("@status is only valid for responses");
-    } else if (component.startsWith("@")) {
+  return components.map((component) => {
+    const derived = derivedComponents[component]?.(request);
+    if (derived != null) return `"${component}": ${derived}`;
+    if (component.startsWith("@")) {
       throw new Error(`Unsupported derived component: ${component}`);
-    } else {
-      // Regular header
-      const header = request.headers.get(component);
-      if (header == null) throw new Error(`Missing header: ${component}`);
-      value = header;
     }
-
+    const header = request.headers.get(component);
+    if (header == null) {
+      throw new Error(`Missing header: ${component}`);
+    }
     // Format the component as per RFC 9421 Section 2.1
-    baseComponents.push(`"${component}": ${value}`);
-  }
-
-  // Add the signature parameters component at the end
-  const sigComponents = components.map((c) => `"${c}"`).join(" ");
-  baseComponents.push(
-    `"@signature-params": (${sigComponents});${parameters}`,
-  );
-
-  return baseComponents.join("\n");
+    return `"${component}": ${header}`;
+  }).concat([
+    `"@signature-params": (${
+      components.map((c) => `"${c}"`).join(" ")
+    });${parameters}`,
+  ]).join("\n");
 }
+
+const derivedComponents: Record<string, (request: Request) => string> = {
+  "@method": (request) => request.method.toUpperCase(),
+  "@target-uri": (request) => request.url,
+  "@authority": (request) => new URL(request.url).host,
+  "@scheme": (request) => new URL(request.url).protocol.slice(0, -1),
+  "@request-target": (request) => {
+    const url = new URL(request.url);
+    return `${request.method.toLowerCase()} ${url.pathname}${url.search}`;
+  },
+  "@path": (request) => new URL(request.url).pathname,
+  "@query": (request) => {
+    const search = new URL(request.url).search;
+    return search.startsWith("?") ? search.slice(1) : search;
+  },
+  "@query-param": () => {
+    throw new Error("@query-param requires a parameter name");
+  },
+  "@status": () => {
+    throw new Error("@status is only valid for responses");
+  },
+};
 
 /**
  * Formats a signature using rfc9421 format.
@@ -297,11 +344,12 @@ export function formatRfc9421Signature(
   signature: ArrayBuffer | Uint8Array,
   components: string[],
   parameters: string,
+  label = "sig1",
 ): [string, string] {
-  const signatureInputValue = `sig1=("${
+  const signatureInputValue = `${label}=("${
     components.join('" "')
   }");${parameters}`;
-  const signatureValue = `sig1=:${encodeBase64(signature)}:`;
+  const signatureValue = `${label}=:${encodeBase64(signature)}:`;
   return [signatureInputValue, signatureValue];
 }
 
@@ -318,6 +366,8 @@ export function parseRfc9421SignatureInput(
     keyId: string;
     alg?: string;
     created: number;
+    nonce?: string;
+    tag?: string;
     components: string[];
     parameters: string;
   }
@@ -338,6 +388,8 @@ export function parseRfc9421SignatureInput(
       keyId: string;
       alg?: string;
       created: number;
+      nonce?: string;
+      tag?: string;
       components: string[];
       parameters: string;
     }
@@ -356,6 +408,10 @@ export function parseRfc9421SignatureInput(
       keyId: item.params.keyid,
       alg: item.params.alg,
       created: item.params.created,
+      nonce: typeof item.params.nonce === "string"
+        ? item.params.nonce
+        : undefined,
+      tag: typeof item.params.tag === "string" ? item.params.tag : undefined,
       components,
       parameters: params.slice(params.indexOf(";") + 1),
     };
@@ -398,6 +454,7 @@ async function signRequestRfc9421(
   span: Span,
   currentTime?: Temporal.Instant,
   bodyBuffer?: ArrayBuffer | null,
+  rfc9421Options?: Rfc9421SignRequestOptions,
 ): Promise<Request> {
   if (privateKey.algorithm.name !== "RSASSA-PKCS1-v1_5") {
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
@@ -433,23 +490,25 @@ async function signRequestRfc9421(
   }
 
   // Define components to include in the signature
-  const components = [
-    "@method",
-    "@target-uri",
-    "@authority",
-    "host",
-    "date",
+  const label = rfc9421Options?.label ?? "sig1";
+  const components: string[] = [
+    ...(rfc9421Options?.components ?? [
+      "@method",
+      "@target-uri",
+      "@authority",
+      "host",
+      "date",
+    ]),
+    ...(body != null ? ["content-digest"] : []),
   ];
-
-  if (body != null) {
-    components.push("content-digest");
-  }
 
   // Generate the signature base using the headers
   const signatureParams = formatRfc9421SignatureParameters({
     algorithm: "rsa-v1_5-sha256",
     keyId,
     created,
+    nonce: rfc9421Options?.nonce,
+    tag: rfc9421Options?.tag,
   });
   let signatureBase: string;
   try {
@@ -480,6 +539,7 @@ async function signRequestRfc9421(
     signatureBytes,
     components,
     signatureParams,
+    label,
   );
 
   // Add the signature headers
@@ -1551,12 +1611,67 @@ export async function doubleKnock(
     // fixes their RFC 9421 implementation and affected servers are updated.
     response.status === 400 || response.status === 401 || response.status > 401
   ) {
-    // verification failed; retry with the other spec of HTTP Signatures
-    // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
+    const logger = getLogger(["fedify", "sig", "http"]);
+
+    // RFC 9421 §5: If the response includes an Accept-Signature header,
+    // attempt a challenge-driven retry before falling back to spec-swap.
+    const acceptSigHeader = response.headers.get("Accept-Signature");
+    if (acceptSigHeader != null) {
+      const entries = validateAcceptSignatureForRequest(
+        parseAcceptSignature(acceptSigHeader),
+      );
+      const localKeyId = identity.keyId.href;
+      const localAlg = "rsa-v1_5-sha256";
+      let fulfilled = false;
+      for (const entry of entries) {
+        const rfc9421 = fulfillAcceptSignature(entry, localKeyId, localAlg);
+        if (rfc9421 == null) continue;
+        logger.debug(
+          "Received Accept-Signature challenge; retrying with " +
+            "label {label} and components {components}.",
+          { label: rfc9421.label, components: rfc9421.components },
+        );
+        signedRequest = await signRequest(
+          request,
+          identity.privateKey,
+          identity.keyId,
+          { spec: "rfc9421", tracerProvider, body, rfc9421 },
+        );
+        log?.(signedRequest);
+        response = await fetch(signedRequest, {
+          redirect: "manual",
+          signal,
+        });
+        // Follow redirects manually:
+        if (
+          response.status >= 300 && response.status < 400 &&
+          response.headers.has("Location")
+        ) {
+          const location = response.headers.get("Location")!;
+          return doubleKnock(
+            createRedirectRequest(request, location, body),
+            identity,
+            { ...options, body },
+          );
+        }
+        fulfilled = true;
+        break;
+      }
+      // If the challenge retry succeeded, remember spec and return
+      if (
+        fulfilled && response.status !== 400 && response.status !== 401
+      ) {
+        await specDeterminer?.rememberSpec(origin, "rfc9421");
+        return response;
+      }
+      // Otherwise fall through to legacy spec-swap fallback
+    }
+
+    // Legacy double-knocking: swap between RFC 9421 and draft-cavage
     const spec = firstTrySpec === "draft-cavage-http-signatures-12"
       ? "rfc9421"
       : "draft-cavage-http-signatures-12";
-    getLogger(["fedify", "sig", "http"]).debug(
+    logger.debug(
       "Failed to verify with the spec {spec} ({status} {statusText}); retrying with spec {secondSpec}... (double-knocking)",
       {
         spec: firstTrySpec,
