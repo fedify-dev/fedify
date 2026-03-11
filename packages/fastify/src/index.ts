@@ -76,7 +76,7 @@ const fedifyPluginCore: FastifyPluginAsync<FedifyPluginOptions<unknown>> = (
 
     const response = await federation.fetch(webRequest, {
       contextData,
-      onNotAcceptable: () => defaultNotAcceptableResponse,
+      onNotAcceptable: createDefaultNotAcceptableResponse,
       onNotFound: () => dummyNotFoundResponse,
       ...errorHandlers,
     });
@@ -101,10 +101,11 @@ const fedifyPlugin: FastifyPluginAsync<FedifyPluginOptions<unknown>> = fp(
 );
 
 const dummyNotFoundResponse = new Response("", { status: 404 });
-const defaultNotAcceptableResponse = new Response("Not Acceptable", {
-  status: 406,
-  headers: { "Content-Type": "text/plain", Vary: "Accept" },
-});
+const createDefaultNotAcceptableResponse = () =>
+  new Response("Not Acceptable", {
+    status: 406,
+    headers: { "Content-Type": "text/plain", Vary: "Accept" },
+  });
 
 /**
  * Convert Fastify request to Web API Request.
