@@ -20,7 +20,12 @@ import type {
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
-import { verifyRequestDetailed } from "../sig/http.ts";
+import type { AcceptSignatureMember } from "../sig/accept.ts";
+import { formatAcceptSignature } from "../sig/accept.ts";
+import {
+  parseRfc9421SignatureInput,
+  verifyRequestDetailed,
+} from "../sig/http.ts";
 import { detachSignature, verifyJsonLd } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { verifyObject } from "../sig/proof.ts";
@@ -44,6 +49,7 @@ import type {
   ConstructorWithTypeId,
   IdempotencyKeyCallback,
   IdempotencyStrategy,
+  InboxChallengePolicy,
 } from "./federation.ts";
 import { type InboxListenerSet, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -461,6 +467,7 @@ export interface InboxHandlerParameters<TContextData> {
   kvPrefixes: {
     activityIdempotence: KvKey;
     publicKey: KvKey;
+    acceptSignatureNonce: KvKey;
   };
   queue?: MessageQueue;
   actorDispatcher?: ActorDispatcher<TContextData>;
@@ -470,6 +477,7 @@ export interface InboxHandlerParameters<TContextData> {
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
+  inboxChallengePolicy?: InboxChallengePolicy;
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
@@ -538,6 +546,7 @@ async function handleInboxInternal<TContextData>(
     onNotFound,
     signatureTimeWindow,
     skipSignatureVerification,
+    inboxChallengePolicy,
     tracerProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
@@ -701,12 +710,22 @@ async function handleInboxInternal<TContextData>(
           message: `Failed to verify the request's HTTP Signatures.`,
         });
         if (unverifiedActivityHandler == null) {
+          const headers: Record<string, string> = {
+            "Content-Type": "text/plain; charset=utf-8",
+          };
+          if (inboxChallengePolicy?.enabled) {
+            headers["Accept-Signature"] =
+              await buildAcceptSignatureHeader(
+                inboxChallengePolicy,
+                kv,
+                kvPrefixes.acceptSignatureNonce,
+              );
+            headers["Cache-Control"] = "no-store";
+            headers["Vary"] = "Accept, Signature";
+          }
           return new Response(
             "Failed to verify the request signature.",
-            {
-              status: 401,
-              headers: { "Content-Type": "text/plain; charset=utf-8" },
-            },
+            { status: 401, headers },
           );
         }
         try {
@@ -797,6 +816,37 @@ async function handleInboxInternal<TContextData>(
           },
         );
       } else {
+        // Optional nonce verification for Accept-Signature challenges
+        if (
+          inboxChallengePolicy?.enabled && inboxChallengePolicy.requestNonce
+        ) {
+          const nonceValid = await verifySignatureNonce(
+            request,
+            kv,
+            kvPrefixes.acceptSignatureNonce,
+          );
+          if (!nonceValid) {
+            logger.error(
+              "Signature nonce verification failed (missing, expired, " +
+                "or replayed).",
+              { recipient },
+            );
+            const headers: Record<string, string> = {
+              "Content-Type": "text/plain; charset=utf-8",
+            };
+            headers["Accept-Signature"] = await buildAcceptSignatureHeader(
+              inboxChallengePolicy,
+              kv,
+              kvPrefixes.acceptSignatureNonce,
+            );
+            headers["Cache-Control"] = "no-store";
+            headers["Vary"] = "Accept, Signature";
+            return new Response(
+              "Signature nonce verification failed.",
+              { status: 401, headers },
+            );
+          }
+        }
         logger.debug("HTTP Signatures are verified.", { recipient });
         activityVerified = true;
       }
@@ -1629,4 +1679,69 @@ export async function respondWithObjectIfAcceptable(
   const response = await respondWithObject(object, options);
   response.headers.set("Vary", "Accept");
   return response;
+}
+
+const DEFAULT_CHALLENGE_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+  "content-digest",
+];
+
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  // Base64url encoding without padding
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function verifySignatureNonce(
+  request: Request,
+  kv: KvStore,
+  noncePrefix: KvKey,
+): Promise<boolean> {
+  const signatureInput = request.headers.get("Signature-Input");
+  if (signatureInput == null) return false;
+  const parsed = parseRfc9421SignatureInput(signatureInput);
+  // Check each signature for a nonce
+  for (const sig of globalThis.Object.values(parsed)) {
+    const nonce = sig.nonce;
+    if (nonce == null) continue;
+    const key = [...noncePrefix, nonce] as unknown as KvKey;
+    const stored = await kv.get(key);
+    if (stored != null) {
+      // Consume the nonce (one-time use)
+      await kv.delete(key);
+      return true;
+    }
+  }
+  return false;
+}
+
+async function buildAcceptSignatureHeader(
+  policy: InboxChallengePolicy,
+  kv: KvStore,
+  noncePrefix: KvKey,
+): Promise<string> {
+  const params: AcceptSignatureMember["parameters"] = {};
+  if (policy.requestCreated !== false) {
+    params.created = true;
+  }
+  if (policy.requestNonce) {
+    const nonce = generateNonce();
+    const ttl = Temporal.Duration.from({
+      seconds: policy.nonceTtlSeconds ?? 300,
+    });
+    const key = [...noncePrefix, nonce] as unknown as KvKey;
+    await kv.set(key, true, { ttl });
+    params.nonce = nonce;
+  }
+  return formatAcceptSignature([{
+    label: "sig1",
+    components: policy.components ?? DEFAULT_CHALLENGE_COMPONENTS,
+    parameters: params,
+  }]);
 }

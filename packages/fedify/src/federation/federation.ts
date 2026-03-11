@@ -780,6 +780,49 @@ export interface FederationBuilder<TContextData>
  * @template TContextData The context data to pass to the {@link Context}.
  * @since 1.6.0
  */
+/**
+ * Policy for emitting `Accept-Signature` challenges on inbox `401`
+ * responses, as defined in
+ * [RFC 9421 §5](https://www.rfc-editor.org/rfc/rfc9421#section-5).
+ * @since 2.1.0
+ */
+export interface InboxChallengePolicy {
+  /**
+   * Whether to emit `Accept-Signature` headers on `401` responses
+   * caused by HTTP Signature verification failures.
+   */
+  enabled: boolean;
+
+  /**
+   * The covered component identifiers to request.  Only request-applicable
+   * identifiers should be used (`@status` is automatically excluded).
+   * @default `["@method", "@target-uri", "@authority", "content-digest"]`
+   */
+  components?: string[];
+
+  /**
+   * Whether to request the signer include a `created` timestamp.
+   * @default `true`
+   */
+  requestCreated?: boolean;
+
+  /**
+   * Whether to generate and require a one-time nonce for replay protection.
+   * When enabled, a cryptographically random nonce is included in each
+   * challenge and verified on subsequent requests.  Requires a
+   * {@link KvStore}.
+   * @default `false`
+   */
+  requestNonce?: boolean;
+
+  /**
+   * The time-to-live (in seconds) for stored nonces.  After this period,
+   * nonces expire and are no longer accepted.
+   * @default `300` (5 minutes)
+   */
+  nonceTtlSeconds?: number;
+}
+
 export interface FederationOptions<TContextData> {
   /**
    * The key–value store used for caching, outbox queues, and inbox idempotence.
@@ -930,6 +973,17 @@ export interface FederationOptions<TContextData> {
    * @since 1.7.0
    */
   firstKnock?: HttpMessageSignaturesSpec;
+
+  /**
+   * The policy for emitting `Accept-Signature` challenges on inbox `401`
+   * responses (RFC 9421 §5).  When enabled, failed HTTP Signature
+   * verification responses will include an `Accept-Signature` header
+   * telling the sender which components and parameters to include.
+   *
+   * Disabled by default (no `Accept-Signature` header is emitted).
+   * @since 2.1.0
+   */
+  inboxChallengePolicy?: InboxChallengePolicy;
 
   /**
    * The retry policy for sending activities to recipients' inboxes.
