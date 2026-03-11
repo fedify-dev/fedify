@@ -714,12 +714,11 @@ async function handleInboxInternal<TContextData>(
             "Content-Type": "text/plain; charset=utf-8",
           };
           if (inboxChallengePolicy?.enabled) {
-            headers["Accept-Signature"] =
-              await buildAcceptSignatureHeader(
-                inboxChallengePolicy,
-                kv,
-                kvPrefixes.acceptSignatureNonce,
-              );
+            headers["Accept-Signature"] = await buildAcceptSignatureHeader(
+              inboxChallengePolicy,
+              kv,
+              kvPrefixes.acceptSignatureNonce,
+            );
             headers["Cache-Control"] = "no-store";
             headers["Vary"] = "Accept, Signature";
           }
