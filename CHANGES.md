@@ -146,6 +146,17 @@ To be released.
 [#599]: https://github.com/fedify-dev/fedify/pull/599
 
 
+Version 2.0.5
+-------------
+
+Released on March 11, 2026.
+
+### @fedify/fedify
+
+ -  Added <https://w3id.org/security/data-integrity/v2> to preloaded JSON-LD
+    contexts.
+
+
 Version 2.0.4
 -------------
 
@@ -777,6 +788,17 @@ Released on February 22, 2026.
         `fedify init`.
 
 [#351]: https://github.com/fedify-dev/fedify/issues/351
+
+
+Version 1.10.4
+--------------
+
+Released on March 11, 2026.
+
+### @fedify/fedify
+
+ -  Added <https://w3id.org/security/data-integrity/v2> to preloaded JSON-LD
+    contexts.
 
 
 Version 1.10.3
