@@ -8,6 +8,11 @@ Version 1.10.4
 
 To be released.
 
+### @fedify/fedify
+
+ -  Added <https://w3id.org/security/data-integrity/v2> to preloaded JSON-LD
+    contexts.
+
 
 Version 1.10.3
 --------------
