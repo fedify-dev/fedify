@@ -322,7 +322,7 @@ jobs:
   build-cli:
     if: github.event_name == 'push'
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-16gb
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
