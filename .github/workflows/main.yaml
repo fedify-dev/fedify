@@ -265,7 +265,7 @@ jobs:
   build-cli-pr:
     if: github.event_name == 'pull_request'
     needs: [release-test]
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-16gb
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
