@@ -12,7 +12,7 @@ const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   origin: ORIGIN,
   allowPrivateAddress: true,
-  skipSignatureVerification: true,
+  skipSignatureVerification: !Deno.env.get("STRICT_MODE"),
 });
 
 federation
@@ -48,12 +48,15 @@ federation
     if (!ctx.recipient || !followerUri) return;
 
     // Build the recipient manually instead of calling getActor(), because
-    // Mastodon generates https:// actor URIs but only serves HTTP.
-    // Rewrite the scheme so sendActivity POSTs over plain HTTP.
-    const httpActorUri = followerUri.href.replace(/^https:\/\//, "http://");
+    // in non-strict mode Mastodon generates https:// actor URIs but only
+    // serves HTTP.  In strict mode the Caddy proxy handles TLS, so we
+    // keep the original https:// scheme.
+    const actorUri = Deno.env.get("STRICT_MODE")
+      ? followerUri.href
+      : followerUri.href.replace(/^https:\/\//, "http://");
     const recipient = {
       id: followerUri,
-      inboxId: new URL(`${httpActorUri}/inbox`),
+      inboxId: new URL(`${actorUri}/inbox`),
     };
 
     const accept = new Accept({

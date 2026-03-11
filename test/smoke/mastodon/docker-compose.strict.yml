@@ -1,0 +1,151 @@
+# Standalone Docker Compose for strict-mode smoke tests (HTTPS + signatures).
+# Usage: docker compose -f docker-compose.strict.yml ...
+#
+# This is a standalone file (NOT an override) because Docker Compose merges
+# network aliases additively and cannot remove a service's own DNS name from
+# a network.  Using an override would cause both the backend service and its
+# Caddy proxy to resolve to the same hostname, breaking TLS routing.
+#
+# Architecture:
+#   - Backend services are renamed (e.g. fedify-harness-backend) so they
+#     don't collide with the TLS hostnames on the network
+#   - Caddy proxies claim the canonical hostnames (fedify-harness, mastodon)
+#     via network aliases and terminate TLS
+#   - All services share a single network for simplicity; DNS resolution
+#     is unambiguous because backend names differ from Caddy aliases
+
+volumes:
+  harness-node-modules:
+
+networks:
+  smoke:
+    driver: bridge
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: mastodon
+      POSTGRES_USER: mastodon
+      POSTGRES_PASSWORD: mastodon
+    networks: [smoke]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mastodon"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    networks: [smoke]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  # Fedify test harness — renamed to avoid colliding with the Caddy alias.
+  fedify-harness-backend:
+    image: denoland/deno:2.7.1
+    working_dir: /workspace
+    volumes:
+      - ../../../:/workspace
+      - harness-node-modules:/workspace/node_modules
+      - ./.certs:/certs:ro
+    command:
+      - run
+      - --allow-net
+      - --allow-env
+      - --allow-read
+      - --allow-write
+      - --unstable-temporal
+      - test/smoke/harness/main.ts
+    environment:
+      HARNESS_ORIGIN: "https://fedify-harness"
+      STRICT_MODE: "1"
+      DENO_CERT: "/certs/ca.crt"
+    networks: [smoke]
+    ports: ["3001:3001"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "deno",
+          "eval",
+          "const r = await fetch('http://localhost:3001/_test/health'); if (!r.ok) Deno.exit(1);",
+        ]
+      interval: 5s
+      retries: 30
+
+  # Caddy TLS proxy for the Fedify harness.
+  # Owns the "fedify-harness" hostname so other containers reach TLS.
+  caddy-harness:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile.fedify-harness:/etc/caddy/Caddyfile:ro
+      - ./.certs:/certs:ro
+    networks:
+      smoke:
+        aliases: [fedify-harness]
+    depends_on:
+      fedify-harness-backend: { condition: service_healthy }
+
+  # Mastodon web — renamed to avoid colliding with the Caddy alias.
+  mastodon-web-backend:
+    image: ghcr.io/mastodon/mastodon:v4.3.9
+    command:
+      - bash
+      - -c
+      - |
+          cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
+          bundle exec rails s -p 3000 -b 0.0.0.0
+    env_file: mastodon-strict.env
+    environment:
+      SSL_CERT_FILE: /tmp/ca-bundle.crt
+    volumes:
+      - ./disable_force_ssl.rb:/opt/mastodon/config/initializers/zz_disable_force_ssl.rb:ro
+      - ./.certs:/certs:ro
+    networks: [smoke]
+    ports: ["3000:3000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:3000/health | grep -q OK",
+        ]
+      interval: 10s
+      retries: 18
+
+  # Caddy TLS proxy for Mastodon.
+  # Owns the "mastodon" hostname so other containers reach TLS.
+  caddy-mastodon:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile.mastodon:/etc/caddy/Caddyfile:ro
+      - ./.certs:/certs:ro
+    networks:
+      smoke:
+        aliases: [mastodon]
+    ports: ["4443:443"]
+    depends_on:
+      mastodon-web-backend: { condition: service_healthy }
+
+  mastodon-sidekiq:
+    image: ghcr.io/mastodon/mastodon:v4.3.9
+    command:
+      - bash
+      - -c
+      - |
+          cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
+          bundle exec sidekiq -q ingress -q default -q push
+    env_file: mastodon-strict.env
+    environment:
+      SSL_CERT_FILE: /tmp/ca-bundle.crt
+    volumes:
+      - ./disable_force_ssl.rb:/opt/mastodon/config/initializers/zz_disable_force_ssl.rb:ro
+      - ./.certs:/certs:ro
+    networks: [smoke]
+    depends_on:
+      mastodon-web-backend: { condition: service_healthy }
+      fedify-harness-backend: { condition: service_healthy }
