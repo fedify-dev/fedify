@@ -265,13 +265,15 @@ jobs:
   build-cli-pr:
     if: github.event_name == 'pull_request'
     needs: [release-test]
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-16gb
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
     - run: mise run codegen
     - run: deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
+      env:
+        CONCURRENCY: "3"
     - uses: actions/upload-artifact@v4
       with:
         name: cli-pr-${{ github.event.pull_request.number }}
@@ -322,7 +324,7 @@ jobs:
   build-cli:
     if: github.event_name == 'push'
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-16gb
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/setup-mise
@@ -330,6 +332,8 @@ jobs:
     - run: mise run codegen
     - run: deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
+      env:
+        CONCURRENCY: "3"
     - uses: actions/upload-artifact@v4
       with:
         name: cli
