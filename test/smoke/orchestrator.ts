@@ -263,11 +263,22 @@ async function testCreateNote(): Promise<void> {
 async function testReply(): Promise<void> {
   await harnessPost("/_test/reset");
 
+  // Find a note from the Fedify harness on the Mastodon timeline to reply to.
+  type Status = { id: string; content: string; account: { acct: string } };
+  const parent = await poll("find Fedify note to reply to", async () => {
+    const statuses = await serverGet(
+      "/api/v1/timelines/home?limit=20",
+    ) as Status[];
+    return statuses.find((s) => s.account.acct.includes(HARNESS_HOST)) ??
+      null;
+  });
+
   const handle = `@testuser@${HARNESS_HOST}`;
   const replyContent = `Reply smoke test ${Date.now()} ${handle}`;
 
   await serverPost("/api/v1/statuses", {
     status: replyContent,
+    in_reply_to_id: parent.id,
   });
 
   await pollHarnessInbox("Create");
