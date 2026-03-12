@@ -68,11 +68,13 @@ jobs:
         run: |
           echo "=== Harness health (from mastodon-web) ==="
           docker compose -f test/smoke/mastodon/docker-compose.yml exec -T mastodon-web \
-            curl -sf http://fedify-harness:3001/_test/health && echo " OK" || echo " FAIL"
+            curl -sf http://fedify-harness:3001/_test/health
+          echo " OK"
 
           echo "=== Harness health (from mastodon-sidekiq) ==="
           docker compose -f test/smoke/mastodon/docker-compose.yml exec -T mastodon-sidekiq \
-            curl -sf http://fedify-harness:3001/_test/health && echo " OK" || echo " FAIL"
+            curl -sf http://fedify-harness:3001/_test/health
+          echo " OK"
 
       - name: Run smoke tests
         run: |
