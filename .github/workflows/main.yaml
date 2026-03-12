@@ -272,6 +272,8 @@ jobs:
     - run: mise run codegen
     - run: deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
+      env:
+        CONCURRENCY: "3"
     - uses: actions/upload-artifact@v4
       with:
         name: cli-pr-${{ github.event.pull_request.number }}
@@ -330,6 +332,8 @@ jobs:
     - run: mise run codegen
     - run: deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
+      env:
+        CONCURRENCY: "3"
     - uses: actions/upload-artifact@v4
       with:
         name: cli
