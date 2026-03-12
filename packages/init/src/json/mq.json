@@ -49,6 +49,31 @@
       "POSTGRES_URL": "postgres://postgres@localhost:5432/postgres"
     }
   },
+  "mysql": {
+    "label": "MySQL/MariaDB",
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
+    "dependencies": {
+      "npm:mysql2": "^3.18.0"
+    },
+    "imports": {
+      "@fedify/mysql": {
+        "MysqlMessageQueue": "MysqlMessageQueue"
+      },
+      "mysql2/promise": {
+        "default": "mysql"
+      }
+    },
+    "object": "new MysqlMessageQueue(mysql.createPool(process.env.MYSQL_URL))",
+    "env": {
+      "MYSQL_URL": "mysql://root@localhost/fedify"
+    }
+  },
   "amqp": {
     "label": "AMQP (e.g., RabbitMQ)",
     "packageManagers": [

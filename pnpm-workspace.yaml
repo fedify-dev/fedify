@@ -15,6 +15,7 @@ packages:
 - packages/hono
 - packages/koa
 - packages/lint
+- packages/mysql
 - packages/nestjs
 - packages/next
 - packages/postgres
@@ -84,6 +85,7 @@ catalog:
   koa: ^2.16.0
   next: ^15.4.6
   pkijs: ^3.3.3
+  mysql2: ^3.18.0
   postgres: ^3.4.7
   tsdown: ^0.12.9
   typescript: ^5.9.3

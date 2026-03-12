@@ -8,6 +8,7 @@ import type {
   InboxListener,
   NodeInfoDispatcher,
   ObjectDispatcher,
+  UnverifiedActivityReason,
 } from "./callback.ts";
 import { MemoryKvStore } from "./kv.ts";
 import type { FederationImpl } from "./middleware.ts";
@@ -165,6 +166,29 @@ test("FederationBuilder", async (t) => {
     const implRfc = federationRfc as FederationImpl<void>;
     assertEquals(implRfc.firstKnock, "rfc9421");
   });
+
+  await t.step(
+    "should copy unverified activity handler into built federation",
+    async () => {
+      const builder = createFederationBuilder<void>();
+      const kv = new MemoryKvStore();
+      const handler = (
+        _ctx: unknown,
+        _activity: Activity,
+        _reason: UnverifiedActivityReason,
+      ) => {
+        return;
+      };
+
+      builder
+        .setInboxListeners("/users/{identifier}/inbox")
+        .onUnverifiedActivity(handler);
+
+      const federation = await builder.build({ kv });
+      const impl = federation as FederationImpl<void>;
+      assertEquals(impl.unverifiedActivityHandler, handler);
+    },
+  );
 
   await t.step(
     "should register multiple object dispatchers and verify them",

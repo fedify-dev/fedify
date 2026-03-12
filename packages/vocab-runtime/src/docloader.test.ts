@@ -11,10 +11,18 @@ test("new FetchError()", () => {
   deepStrictEqual(e.name, "FetchError");
   deepStrictEqual(e.url, new URL("https://example.com/"));
   deepStrictEqual(e.message, "https://example.com/: An error message.");
+  deepStrictEqual(e.response, undefined);
 
-  const e2 = new FetchError(new URL("https://example.org/"));
+  const response = new Response(null, { status: 410 });
+  const e2 = new FetchError(
+    new URL("https://example.org/"),
+    undefined,
+    response,
+  );
   deepStrictEqual(e2.url, new URL("https://example.org/"));
   deepStrictEqual(e2.message, "https://example.org/");
+  ok(e2.response != null);
+  deepStrictEqual(e2.response.status, 410);
 });
 
 test("getDocumentLoader()", async (t) => {

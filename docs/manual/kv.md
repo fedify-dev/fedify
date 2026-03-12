@@ -306,6 +306,65 @@ const federation = createFederation<void>({
 
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
 
+### [`MysqlKvStore`]
+
+*This API is available since Fedify 2.1.0.*
+
+To use the [`MysqlKvStore`], you need to install the *@fedify/mysql* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/mysql
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/mysql mysql2
+~~~~
+
+:::
+
+[`MysqlKvStore`] is a key-value store implementation that uses MySQL (or
+MariaDB) as the backend storage.  It provides scalability and high performance,
+making it suitable for production use in distributed systems.  It requires
+a MySQL or MariaDB server setup and maintenance.
+
+Best for
+:   Production use, a system that already uses MySQL or MariaDB.
+
+Pros
+:   Scalable, no additional setup required if already using MySQL/MariaDB.
+
+Cons
+:   Requires MySQL/MariaDB setup and maintenance.
+
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/fedify";
+import { MysqlKvStore } from "@fedify/mysql";
+import mysql from "mysql2/promise";
+
+const pool = mysql.createPool("mysql://user:pass@localhost/db");
+const federation = createFederation<void>({
+  kv: new MysqlKvStore(pool),
+  // ... other options
+});
+~~~~
+
+[`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
+
 ### `WorkersKvStore` (Cloudflare Workers only)
 
 *This API is available since Fedify 1.6.0.*

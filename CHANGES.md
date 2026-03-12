@@ -10,36 +10,74 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `InboxListenerSetters.onUnverifiedActivity()` so applications can
+    inspect inbound activities whose signatures could not be verified and
+    optionally return a custom response instead of the default
+    `401 Unauthorized`.  This is useful for cases like `Delete` deliveries
+    from actors whose signing keys now return `404 Not Found` or `410 Gone`.
+    Added the supporting public types `UnverifiedActivityHandler` and
+    `UnverifiedActivityReason`.  [[#472], [#611]]
+
+ -  Added `verifyRequestDetailed()` plus the public types
+    `VerifyRequestDetailedResult`, `VerifyRequestFailureReason`, and
+    `FetchKeyErrorResult` so applications can distinguish unsigned requests,
+    invalid signatures, and key-fetch failures during HTTP signature
+    verification.  [[#611]]
+
+ -  OpenTelemetry spans/events and `FedifySpanExporter` signature details now
+    expose HTTP signature failure reasons and key-fetch failure details for
+    inbound activities.  [[#611]]
+
  -  Fixed `RequestContext.getSignedKeyOwner()` to return `null` instead of
     throwing an error when the remote server requires authorized fetch and
     returns `401 Unauthorized` for the key owner lookup.  Previously, this
     caused a `500 Internal Server Error` when interoperating with servers like
     GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
 
+[#472]: https://github.com/fedify-dev/fedify/issues/472
 [#473]: https://github.com/fedify-dev/fedify/issues/473
 [#589]: https://github.com/fedify-dev/fedify/pull/589
+[#611]: https://github.com/fedify-dev/fedify/pull/611
 
-### @fedify/astro
+### @fedify/vocab-runtime
 
- -  Added `@fedify/astro` package for integrating Fedify with [Astro].
-    It provides `fedifyIntegration()` for Vite SSR configuration and
-    `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
+ -  Added optional `FetchError.response` so callers can inspect the original
+    failed HTTP response when remote document or key fetches return an HTTP
+    error (such as `404 Not Found` or `410 Gone`).  This enables higher-level
+    APIs to distinguish transport failures from specific HTTP fetch failures.
+    [[#611]]
 
-[Astro]: https://astro.build/
-[#50]: https://github.com/fedify-dev/fedify/issues/50
+### @fedify/cli
 
-### @fedify/init
+ -  Added `--reverse` option to `fedify lookup` to reverse presentation order
+    of emitted results.  It now works across default multi-input lookup,
+    `--traverse` collection traversal output, and `--recurse` object chains,
+    while preserving existing fetch/error semantics.  [[#607], [#609]]
 
- -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
-    field only when the installed Deno version is earlier than 2.7.0.
-    On Deno 2.7.0 or later, it is no longer added.
+ -  Fixed `fedify lookup` printing separators with extra quotes between
+    adjacent objects/items in some output paths (e.g., recurse/traverse
+    flows).  Separators are now printed as plain text consistently.
+    [[#608]]
 
- -  `fedify init` now omits the `"unstable"` field entirely when no unstable
-    feature is required for the generated Deno project.
+ -  Added `--recurse` and `--recurse-depth` options to `fedify lookup` for
+    recursively following object relationships (e.g., reply chains via
+    `replyTarget` / `inReplyTo`, and quote chains via `quoteUrl` and quote
+    IRIs).  `--traverse` and `--recurse` are now mutually exclusive,
+    `--recurse-depth` depends on `--recurse`, and `--suppress-errors` now
+    works in recurse mode as best-effort lookup.
+    [[#606], [#608]]
 
- -  Supported [Astro] as a web framework option in `fedify init`, with
-    runtime-specific templates for Deno, Bun, and Node.js environments.
-    [[#50] by ChanHaeng Lee]
+ -  Hardened `fedify lookup` by disallowing private/localhost document loads
+    by default.  For local-development workflows, `-p`/`--allow-private-address`
+    (or `lookup.allowPrivateAddress = true` in config) can re-enable private
+    address access for explicit lookup/traverse requests.  This option does
+    not apply to recursive fetches, which always disallow private addresses.
+    [[#608]]
+
+[#606]: https://github.com/fedify-dev/fedify/issues/606
+[#607]: https://github.com/fedify-dev/fedify/issues/607
+[#608]: https://github.com/fedify-dev/fedify/pull/608
+[#609]: https://github.com/fedify-dev/fedify/pull/609
 
 ### @fedify/vocab
 
@@ -72,6 +110,103 @@ To be released.
     the generated `toJsonLd()` method does not emit `@type` (or `type` in
     compact form) in the serialized JSON-LD.  This is useful for types
     that are not real vocabulary types but rather anonymous object structures.
+
+### @fedify/init
+
+ -  Changed `fedify init` to add `"temporal"` to `deno.json`'s `"unstable"`
+    field only when the installed Deno version is earlier than 2.7.0.
+    On Deno 2.7.0 or later, it is no longer added.
+
+ -  `fedify init` now omits the `"unstable"` field entirely when no unstable
+    feature is required for the generated Deno project.
+
+ -  Supported [Astro] as a web framework option in `fedify init`, with
+    runtime-specific templates for Deno, Bun, and Node.js environments.
+    [[#50] by ChanHaeng Lee]
+
+[Astro]: https://astro.build/
+[#50]: https://github.com/fedify-dev/fedify/issues/50
+
+### @fedify/astro
+
+ -  Added `@fedify/astro` package for integrating Fedify with [Astro].
+    It provides `fedifyIntegration()` for Vite SSR configuration and
+    `fedifyMiddleware()` for request handling.  [[#50] by Chanhaeng Lee]
+
+### @fedify/mysql
+
+ -  Added `MysqlMessageQueue` class to the `@fedify/mysql` package, a
+    MySQL/MariaDB-backed `MessageQueue` implementation.  It uses periodic
+    polling (`SELECT … FOR UPDATE SKIP LOCKED`) to deliver messages and
+    MySQL advisory locks (`GET_LOCK`/`RELEASE_LOCK`) for ordering-key
+    serialization.  Supports delayed delivery, ordering keys,
+    `enqueueMany()`, and concurrent workers.  Requires MySQL 8.0+ or
+    MariaDB 10.6+.  [[#586], [#599]]
+
+ -  Added `@fedify/mysql` package, a MySQL/MariaDB-backed `KvStore`
+    implementation.  It provides `MysqlKvStore`, which stores key–value
+    pairs in a MySQL table using the [`mysql2`] driver.  Supports TTL,
+    prefix listing, and compare-and-swap (`cas()`) operations.
+    [[#585], [#597]]
+
+[`mysql2`]: https://www.npmjs.com/package/mysql2
+[#585]: https://github.com/fedify-dev/fedify/issues/585
+[#586]: https://github.com/fedify-dev/fedify/issues/586
+[#597]: https://github.com/fedify-dev/fedify/pull/597
+[#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.5
+-------------
+
+Released on March 11, 2026.
+
+### @fedify/fedify
+
+ -  Added <https://w3id.org/security/data-integrity/v2> to preloaded JSON-LD
+    contexts.
+
+
+Version 2.0.4
+-------------
+
+Released on March 11, 2026.
+
+### @fedify/fastify
+
+ -  Fixed the default `onNotAcceptable` handler in `@fedify/fastify` to
+    create a fresh `Response` for each request instead of reusing a shared
+    singleton instance.  [[#612] by Lee Dogeon]
+
+[#612]: https://github.com/fedify-dev/fedify/pull/612
+
+
+Version 2.0.3
+-------------
+
+Released on March 3, 2026.
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue.listen()` crashing the process when a
+    malformed `NOTIFY` payload is received.  `Temporal.Duration.from()`
+    was called without error handling, so an invalid duration string
+    caused an unhandled `RangeError` that propagated through the postgres
+    driver.  The `NOTIFY` callback is now wrapped in a `try`–`catch` that
+    logs the error and falls back to an immediate poll.  [[#594]]
+
+ -  Fixed `PostgresMessageQueue.listen()` permanently stalling all message
+    processing when a message handler hangs indefinitely (e.g., due to an
+    unresponsive remote server).  The `serializedPoll` mechanism chains
+    every `poll()` invocation onto a single promise, so a single hung
+    handler blocked the entire queue permanently.  Handler invocations
+    are now wrapped with a configurable timeout (default: 60 seconds)
+    via the new `handlerTimeout` option in `PostgresMessageQueueOptions`.
+    When a handler exceeds the timeout, it is treated as an error and the
+    poll loop moves on, preventing permanent stalls.  [[#595]]
+
+[#594]: https://github.com/fedify-dev/fedify/issues/594
+[#595]: https://github.com/fedify-dev/fedify/issues/595
 
 
 Version 2.0.2
@@ -678,6 +813,17 @@ Released on February 22, 2026.
         `fedify init`.
 
 [#351]: https://github.com/fedify-dev/fedify/issues/351
+
+
+Version 1.10.4
+--------------
+
+Released on March 11, 2026.
+
+### @fedify/fedify
+
+ -  Added <https://w3id.org/security/data-integrity/v2> to preloaded JSON-LD
+    contexts.
 
 
 Version 1.10.3

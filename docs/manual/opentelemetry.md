@@ -222,6 +222,13 @@ Each span event includes attributes with detailed information:
  -  `http_signatures.verified`: Whether HTTP Signatures were verified
     (`true`/`false`)
  -  `http_signatures.key_id`: The key ID used for HTTP signature verification
+ -  `http_signatures.failure_reason` (optional): Why HTTP signature
+    verification failed (`noSignature`, `invalidSignature`, or
+    `keyFetchError`)
+ -  `http_signatures.key_fetch_status` (optional): The HTTP status code when
+    fetching the signing key failed with an HTTP response
+ -  `http_signatures.key_fetch_error` (optional): The error type when fetching
+    the signing key failed without an HTTP response
 
 **`activitypub.activity.sent` event attributes:**
 
@@ -279,6 +286,10 @@ for ActivityPub:
 | `http_signatures.signature`           | string   | The signature of the HTTP request in hexadecimal.                                                                        | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
 | `http_signatures.algorithm`           | string   | The algorithm of the HTTP request signature.                                                                             | `"rsa-sha256"`                                                       |
 | `http_signatures.key_id`              | string   | The public key ID of the HTTP request signature.                                                                         | `"https://example.com/actor/1#main-key"`                             |
+| `http_signatures.verified`            | boolean  | Whether the HTTP request signature was verified successfully.                                                            | `false`                                                              |
+| `http_signatures.failure_reason`      | string   | Why HTTP signature verification failed (`noSignature`, `invalidSignature`, or `keyFetchError`).                          | `"keyFetchError"`                                                    |
+| `http_signatures.key_fetch_status`    | int      | The HTTP status code from a failed signing-key fetch, when available.                                                    | `410`                                                                |
+| `http_signatures.key_fetch_error`     | string   | The error type from a non-HTTP signing-key fetch failure, when available.                                                | `"TypeError"`                                                        |
 | `http_signatures.digest.{algorithm}`  | string   | The digest of the HTTP request body in hexadecimal.  The `{algorithm}` is the digest algorithm (e.g., `sha`, `sha-256`). | `"d41d8cd98f00b204e9800998ecf8427e"`                                 |
 | `ld_signatures.key_id`                | string   | The public key ID of the Linked Data signature.                                                                          | `"https://example.com/actor/1#main-key"`                             |
 | `ld_signatures.signature`             | string   | The signature of the Linked Data in hexadecimal.                                                                         | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
@@ -534,6 +545,12 @@ Each `TraceActivityRecord` contains:
      -  `httpSignaturesVerified`: Whether HTTP Signatures were verified
      -  `httpSignaturesKeyId` (optional): The key ID used for HTTP signature
         verification, if available
+     -  `httpSignaturesFailureReason` (optional): Why HTTP signature
+        verification failed, if available
+     -  `httpSignaturesKeyFetchStatus` (optional): The HTTP status code from a
+        failed key fetch, if available
+     -  `httpSignaturesKeyFetchError` (optional): The error type from a
+        non-HTTP key fetch failure, if available
      -  `ldSignaturesVerified`: Whether Linked Data Signatures were verified
  -  `timestamp`: ISO 8601 timestamp
  -  `inboxUrl`: The target inbox URL (for outbound activities)

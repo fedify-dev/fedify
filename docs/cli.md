@@ -173,8 +173,10 @@ maxRedirection = 5
 [lookup]
 authorizedFetch = false
 firstKnock = "draft-cavage-http-signatures-12"  # or "rfc9421"
+allowPrivateAddress = false
 traverse = false
 suppressErrors = false
+reverse = false
 defaultFormat = "default"  # "default", "raw", "compact", or "expand"
 separator = "----"
 timeout = 30  # seconds
@@ -479,11 +481,6 @@ As you can see, the outputs are separated by `----` by default.  You can change
 the separator by using the [`-s`/`--separator`](#s-separator-output-separator)
 option.
 
-> [!NOTE]
-> The `fedify lookup` command cannot take multiple argument if
-> [`-t`/`--traverse`](#t-traverse-traverse-the-collection) option is turned
-> on.
-
 ### `-t`/`--traverse`: Traverse the collection
 
 *This option is available since Fedify 0.14.0.*
@@ -500,25 +497,81 @@ The difference between with and without the `-t`/`--traverse` option is that
 the former will output the objects in the collection, while the latter will
 output the collection object itself.
 
-This option only works with a single argument, and it has to be a collection.
+When this option is enabled, each argument has to resolve to a collection.
 
-### `-S`/`--suppress-errors`: Suppress partial errors during traversal
+### `--recurse`: Recurse through object relationships
+
+*This option is available since Fedify 2.1.0.*
+
+The `--recurse` option is used to recursively follow an object relationship.
+This is useful when you want to walk a reply chain through `replyTarget`, or
+follow quote relationships through `quoteUrl`.
+
+~~~~ sh
+fedify lookup --recurse=replyTarget https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+You can also provide the fully qualified property IRI:
+
+~~~~ sh
+fedify lookup --recurse=https://www.w3.org/ns/activitystreams#inReplyTo https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+For quote relationships, both the short form and the full IRI are accepted:
+
+~~~~ sh
+fedify lookup --recurse=quoteUrl https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+fedify lookup --recurse=https://www.w3.org/ns/activitystreams#quoteUrl https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+For short names, only Fedify property naming is accepted.  For example,
+`replyTarget` and `quoteUrl` are accepted, while `inReplyTo`, `_misskey_quote`,
+and `quoteUri` are not accepted as short forms.
+
+> [!NOTE]
+> `--recurse` and [`-t`/`--traverse`](#t-traverse-traverse-the-collection)
+> are mutually exclusive.
+>
+> Recursive fetches always disallow private/localhost addresses for safety.
+> `-p`/`--allow-private-address` only applies to explicit lookup/traverse
+> targets, not to recursive steps.
+
+### `--recurse-depth`: Set recursion depth limit
+
+*This option is available since Fedify 2.1.0.*
+
+The `--recurse-depth` option sets the maximum recursion depth when using
+[`--recurse`](#recurse-recurse-through-object-relationships).  By default, it
+is set to `20`.
+
+~~~~ sh
+fedify lookup --recurse=replyTarget --recurse-depth=10 https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+This option depends on the `--recurse` option.
+
+### `-S`/`--suppress-errors`: Suppress partial errors during traversal or recursion
 
 *This option is available since Fedify 0.14.0.*
 
 The `-S`/`--suppress-errors` option is used to suppress partial errors during
-traversal.  For example, the below command looks up a collection object with
-the `-t`/`--traverse` option:
+traversal or recursion.
+
+For traversal mode:
 
 ~~~~ sh
 fedify lookup --traverse --suppress-errors https://fosstodon.org/users/hongminhee/outbox
 ~~~~
 
-The difference between with and without the `-S`/`--suppress-errors` option is
-that the former will suppress the partial errors during traversal, while the
-latter will stop the traversal when an error occurs.
+For recursion mode:
 
-This option depends on the `-t`/`--traverse` option.
+~~~~ sh
+fedify lookup --recurse=replyTarget --suppress-errors https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf
+~~~~
+
+The difference between with and without the `-S`/`--suppress-errors` option is
+that the former will suppress the partial errors during traversal or recursion,
+while the latter will stop on the first such error.
 
 ### `-c`/`--compact`: Compact JSON-LD
 
@@ -936,6 +989,21 @@ below command:
 fedify lookup --user-agent MyApp/1.0 @fedify@hollo.social
 ~~~~
 
+### `-p`/`--allow-private-address`: Allow private IP addresses
+
+By default, `fedify lookup` does not fetch private or localhost addresses.
+The `-p`/`--allow-private-address` option allows explicit lookup/traverse
+requests to private addresses when needed for local development.
+
+~~~~ sh
+fedify lookup --allow-private-address http://localhost:8000/users/alice
+~~~~
+
+> [!NOTE]
+> Recursive fetches enabled by
+> [`--recurse`](#recurse-recurse-through-object-relationships) continue to
+> disallow private addresses.
+
 ### `-s`/`--separator`: Output separator
 
 *This option is available since Fedify 1.3.0.*
@@ -953,6 +1021,22 @@ It does not affect the output when looking up a single object.
 > [!TIP]
 > The separator is also used when looking up a collection object with the
 > [`-t`/`--traverse`](#t-traverse-traverse-the-collection) option.
+
+### `--reverse`: Reverse output order
+
+*This option is available since Fedify 2.1.0.*
+
+The `--reverse` option reverses the output order of fetched results.
+It affects output order only, and does not change lookup semantics.
+
+~~~~ sh
+fedify lookup @fedify@hollo.social @hongminhee@fosstodon.org --reverse
+fedify lookup --traverse https://fosstodon.org/users/hongminhee/outbox --reverse
+fedify lookup --recurse=replyTarget https://hollo.social/@fedify/019c8522-b247-79d3-b0e7-c6a2293bb1cf --reverse
+~~~~
+
+When using `--reverse`, `fedify lookup` buffers results before printing.
+This may increase memory usage for large traversals or long recursion chains.
 
 ### `-o`/`--output`: Output file path
 

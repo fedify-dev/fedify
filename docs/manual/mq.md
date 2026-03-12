@@ -221,9 +221,22 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+> [!WARNING]
+> When using `PostgresMessageQueue` together with
+> [`ParallelMessageQueue`](#parallel-message-processing)`(queue, N)`,
+> make sure the PostgreSQL connection pool is sized to at least `N` plus a few
+> extra connections.  This is because each parallel worker may hold a database
+> connection, and poll operations also require additional connections for
+> advisory lock management.  If the pool is shared with other parts of your
+> application (e.g., a KV store, HTTP request handlers), increase the pool size
+> accordingly—or use a dedicated pool for the queue.  Using the default pool
+> size of 10 with `ParallelMessageQueue(queue, 10)` can cause connection
+> starvation that makes the application appear hung.  [[#603]]
+
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/mq/~/PostgresMessageQueue
 [`LISTEN`]: https://www.postgresql.org/docs/current/sql-listen.html
 [`NOTIFY`]: https://www.postgresql.org/docs/current/sql-notify.html
+[#603]: https://github.com/fedify-dev/fedify/issues/603
 
 ### `AmqpMessageQueue`
 
@@ -292,6 +305,88 @@ const federation = createFederation({
 *[AMQP]: Advanced Message Queuing Protocol
 [`AmqpMessageQueue`]: https://jsr.io/@fedify/amqp/doc/mq/~/AmqpMessageQueue
 [RabbitMQ]: https://www.rabbitmq.com/
+
+### [`MysqlMessageQueue`]
+
+*This API is available since Fedify 2.1.0.*
+
+To use [`MysqlMessageQueue`], you need to install the *@fedify/mysql* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/mysql
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/mysql mysql2
+~~~~
+
+:::
+
+[`MysqlMessageQueue`] is a message queue implementation that uses a MySQL or
+MariaDB database as the backend.  Since MySQL and MariaDB do not provide a
+`LISTEN`/`NOTIFY` mechanism, it uses **polling** to discover new messages.
+The polling interval is configurable and defaults to 1 second to minimize
+latency; this is shorter than the default for PostgreSQL-backed queues.
+
+Concurrent workers are safely supported via `SELECT … FOR UPDATE SKIP LOCKED`
+and MySQL advisory locks (`GET_LOCK`/`RELEASE_LOCK`).
+
+> [!NOTE]
+> `MysqlMessageQueue` requires MySQL 8.0+ or MariaDB 10.6+ for
+> `SELECT … FOR UPDATE SKIP LOCKED` support.
+
+> [!NOTE]
+> Because `MysqlMessageQueue` uses polling rather than a push-based
+> notification system, there is an inherent latency between when a message
+> is enqueued and when it is delivered.  With the default 1-second poll
+> interval, messages may take up to 1 second to be picked up.  You can
+> lower the `pollInterval` option to reduce this latency at the cost of
+> additional database load.
+
+Best for
+:   Production use in systems that already use MySQL or MariaDB.
+
+Pros
+:   Persistent, supports multiple workers, minimal additional infrastructure
+    for MySQL/MariaDB users.
+
+Cons
+:   Polling-based delivery (up to `pollInterval` latency); requires
+    MySQL 8.0+ or MariaDB 10.6+.
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+import { MysqlMessageQueue } from "@fedify/mysql";
+import mysql from "mysql2/promise";
+
+const pool = mysql.createPool("mysql://user:pass@localhost/db");
+const federation = createFederation<void>({
+// ---cut-start---
+  kv: null as unknown as KvStore,
+// ---cut-end---
+  queue: new MysqlMessageQueue(pool),  // [!code highlight]
+  // ... other options
+});
+~~~~
+
+[`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 
 ### `SqliteMessageQueue`
 
@@ -646,6 +741,14 @@ const federation = createFederation<void>({
 > running multiple nodes of your application so that each node can process
 > messages in parallel with the shared message queue.
 
+> [!WARNING]
+> When using `ParallelMessageQueue(queue, N)` with [`PostgresMessageQueue`],
+> make sure the PostgreSQL connection pool is sized to at least `N` plus a few
+> extra connections.  If the pool is shared with other parts of your application
+> (e.g., a KV store, HTTP request handlers), increase the pool size
+> accordingly—or use a dedicated pool for the queue.  See the
+> [*`PostgresMessageQueue`* section](#postgresmessagequeue) for details.
+
 
 Separating message processing from the main process
 ---------------------------------------------------
@@ -767,6 +870,9 @@ The following implementations do not yet support native retry:
 [`PostgresMessageQueue`]
 :   Native retry support planned for future release.
 
+[`MysqlMessageQueue`]
+:   No native retry support (`~MessageQueue.nativeRetrial` is `false`).
+
 [`AmqpMessageQueue`]
 :   Native retry support planned for future release.
 
@@ -835,6 +941,7 @@ The following implementations support ordering keys:
 | [`DenoKvMessageQueue`]   | Yes                  |
 | [`RedisMessageQueue`]    | Yes                  |
 | [`PostgresMessageQueue`] | Yes                  |
+| [`MysqlMessageQueue`]    | Yes                  |
 | [`AmqpMessageQueue`]     | Yes[^1]              |
 | [`SqliteMessageQueue`]   | Yes                  |
 | `WorkersMessageQueue`    | Yes[^2]              |

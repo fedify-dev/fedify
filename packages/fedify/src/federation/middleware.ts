@@ -1481,6 +1481,7 @@ export class FederationImpl<TContextData>
           actorDispatcher: this.actorCallbacks?.dispatcher,
           inboxListeners: this.inboxListeners,
           inboxErrorHandler: this.inboxErrorHandler,
+          unverifiedActivityHandler: this.unverifiedActivityHandler,
           onNotFound,
           signatureTimeWindow: this.signatureTimeWindow,
           skipSignatureVerification: this.skipSignatureVerification,

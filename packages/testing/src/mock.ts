@@ -343,6 +343,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       onError(): any {
         return this;
       },
+      onUnverifiedActivity(): any {
+        return this;
+      },
       setSharedKeyDispatcher(): any {
         return this;
       },

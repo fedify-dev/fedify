@@ -129,6 +129,43 @@ test("Fedify should handle notAcceptable and return 406", async () => {
   await fastify.close();
 });
 
+test("Fedify should create a fresh 406 response for each request", async () => {
+  const fastify = Fastify({ logger: false });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx: RequestContext<void>, identifier: string) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+        preferredUsername: identifier,
+        name: `User ${identifier}`,
+      });
+    },
+  );
+
+  await fastify.register(fedifyPlugin, { federation });
+  await fastify.ready();
+
+  const firstResponse = await fastify.inject({
+    method: "GET",
+    url: "/users/alice",
+    headers: { "Accept": "text/html" },
+  });
+  const secondResponse = await fastify.inject({
+    method: "GET",
+    url: "/users/alice",
+    headers: { "Accept": "text/html" },
+  });
+
+  assert.equal(firstResponse.statusCode, 406);
+  assert.equal(firstResponse.body, "Not Acceptable");
+  assert.equal(secondResponse.statusCode, 406);
+  assert.equal(secondResponse.body, "Not Acceptable");
+
+  await fastify.close();
+});
+
 test("Fedify should handle notAcceptable with custom error handler", async () => {
   const fastify = Fastify({ logger: false });
   const federation = createFederation<void>({ kv: new MemoryKvStore() });

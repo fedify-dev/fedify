@@ -9,15 +9,35 @@ const documentLoaders: Record<string, DocumentLoader> = {};
 
 export interface DocumentLoaderOptions {
   userAgent?: string;
+  allowPrivateAddress?: boolean;
+}
+
+/**
+ * Returns a cache prefix that separates document-loader entries by user agent
+ * and private-address policy.
+ */
+export function getDocumentLoaderCachePrefix(
+  userAgent: string | undefined,
+  allowPrivateAddress: boolean,
+): readonly [string, ...string[]] {
+  return [
+    "_fedify",
+    "remoteDocument",
+    "cli",
+    userAgent ?? "",
+    allowPrivateAddress ? "allow-private" : "deny-private",
+  ];
 }
 
 export async function getDocumentLoader(
-  { userAgent }: DocumentLoaderOptions = {},
+  { userAgent, allowPrivateAddress = false }: DocumentLoaderOptions = {},
 ): Promise<DocumentLoader> {
-  if (documentLoaders[userAgent ?? ""]) return documentLoaders[userAgent ?? ""];
+  const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}`;
+  if (documentLoaders[cacheKey]) return documentLoaders[cacheKey];
   const kv = await getKvStore();
-  return documentLoaders[userAgent ?? ""] = kvCache({
+  return documentLoaders[cacheKey] = kvCache({
     kv,
+    prefix: getDocumentLoaderCachePrefix(userAgent, allowPrivateAddress),
     rules: [
       [
         new URLPattern({
@@ -54,7 +74,7 @@ export async function getDocumentLoader(
       ],
     ],
     loader: getDefaultDocumentLoader({
-      allowPrivateAddress: true,
+      allowPrivateAddress,
       userAgent,
     }),
   });

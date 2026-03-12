@@ -70,6 +70,9 @@ function createActivityReceivedEvent(options: {
   ldSigVerified?: boolean;
   httpSigVerified?: boolean;
   httpSigKeyId?: string;
+  httpSigFailureReason?: string;
+  httpSigKeyFetchStatus?: number;
+  httpSigKeyFetchError?: string;
 }): TimedEvent {
   return {
     name: "activitypub.activity.received",
@@ -80,6 +83,9 @@ function createActivityReceivedEvent(options: {
       "ld_signatures.verified": options.ldSigVerified ?? false,
       "http_signatures.verified": options.httpSigVerified ?? true,
       "http_signatures.key_id": options.httpSigKeyId ?? "",
+      "http_signatures.failure_reason": options.httpSigFailureReason ?? "",
+      "http_signatures.key_fetch_status": options.httpSigKeyFetchStatus,
+      "http_signatures.key_fetch_error": options.httpSigKeyFetchError ?? "",
     },
   };
 }
@@ -830,6 +836,59 @@ test("FedifySpanExporter", async (t) => {
         false,
       );
       assertEquals(activities[0].signatureDetails?.ldSignaturesVerified, true);
+    },
+  );
+
+  await t.step(
+    "extracts HTTP signature failure details for inbound activity",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const activityJson = JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Delete",
+        id: "https://example.com/activities/unverified",
+        actor: "https://example.com/users/alice",
+      });
+
+      const span = createMockSpan({
+        traceId: "sig-failure-trace",
+        spanId: "span1",
+        name: "activitypub.inbox",
+        events: [
+          createActivityReceivedEvent({
+            activityJson,
+            verified: false,
+            httpSigVerified: false,
+            httpSigKeyId: "https://example.com/users/alice#main-key",
+            httpSigFailureReason: "keyFetchError",
+            httpSigKeyFetchStatus: 410,
+            ldSigVerified: false,
+          }),
+        ],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([span], () => resolve());
+      });
+
+      const activities = await exporter.getActivitiesByTraceId(
+        "sig-failure-trace",
+      );
+      assertEquals(activities.length, 1);
+      assertEquals(
+        activities[0].signatureDetails?.httpSignaturesFailureReason,
+        "keyFetchError",
+      );
+      assertEquals(
+        activities[0].signatureDetails?.httpSignaturesKeyFetchStatus,
+        410,
+      );
+      assertEquals(
+        activities[0].signatureDetails?.httpSignaturesKeyFetchError,
+        undefined,
+      );
     },
   );
 

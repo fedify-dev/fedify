@@ -1,5 +1,6 @@
 import type { Activity, Actor, Object } from "@fedify/vocab";
 import type { Link } from "@fedify/webfinger";
+import type { VerifyRequestFailureReason } from "../sig/http.ts";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
@@ -179,6 +180,35 @@ export type InboxListener<TContextData, TActivity extends Activity> = (
   context: InboxContext<TContextData>,
   activity: TActivity,
 ) => void | Promise<void>;
+
+/**
+ * The reason why an incoming activity could not be verified.
+ *
+ * Unlike inbox listeners registered through {@link InboxListenerSetters.on},
+ * unverified activity handlers are called only when the activity payload could
+ * be parsed but its HTTP signatures could not be verified.
+ *
+ * @since 2.1.0
+ */
+export type UnverifiedActivityReason = VerifyRequestFailureReason;
+
+/**
+ * A callback that handles activities whose signatures could not be verified.
+ *
+ * Returning a {@link Response} overrides Fedify's default `401 Unauthorized`
+ * response.  Returning `void` keeps the default behavior.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The request context.
+ * @param activity The incoming activity that could be parsed.
+ * @param reason The reason why signature verification failed.
+ * @since 2.1.0
+ */
+export type UnverifiedActivityHandler<TContextData> = (
+  context: RequestContext<TContextData>,
+  activity: Activity,
+  reason: UnverifiedActivityReason,
+) => void | Response | Promise<void | Response>;
 
 /**
  * A callback that handles errors in an inbox.

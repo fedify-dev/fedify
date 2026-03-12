@@ -12,7 +12,7 @@ import {
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { bindConfig } from "@optique/config";
@@ -24,6 +24,7 @@ import {
   flag,
   float,
   type InferValue,
+  integer,
   map,
   merge,
   message,
@@ -36,7 +37,7 @@ import {
   string,
   withDefault,
 } from "@optique/core";
-import { path, print, printError } from "@optique/run";
+import { path, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
 import process from "node:process";
 import ora from "ora";
@@ -53,6 +54,44 @@ import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
+
+const IN_REPLY_TO_IRI = "https://www.w3.org/ns/activitystreams#inReplyTo";
+const QUOTE_URL_IRI = "https://www.w3.org/ns/activitystreams#quoteUrl";
+const MISSKEY_QUOTE_IRI = "https://misskey-hub.net/ns#_misskey_quote";
+const FEDIBIRD_QUOTE_IRI = "http://fedibird.com/ns#quoteUri";
+const recurseProperties = [
+  "replyTarget",
+  "quoteUrl",
+  IN_REPLY_TO_IRI,
+  QUOTE_URL_IRI,
+  MISSKEY_QUOTE_IRI,
+  FEDIBIRD_QUOTE_IRI,
+] as const;
+type RecurseProperty = typeof recurseProperties[number];
+
+const suppressErrorsOption = bindConfig(
+  flag("-S", "--suppress-errors", {
+    description:
+      message`Suppress partial errors during traversal or recursion.`,
+  }),
+  {
+    context: configContext,
+    key: (config) => config.lookup?.suppressErrors ?? false,
+    default: false,
+  },
+);
+
+const allowPrivateAddressOption = bindConfig(
+  flag("-p", "--allow-private-address", {
+    description:
+      message`Allow private IP addresses for explicit lookup/traverse requests.`,
+  }),
+  {
+    context: configContext,
+    key: (config) => config.lookup?.allowPrivateAddress ?? false,
+    default: false,
+  },
+);
 
 export const authorizedFetchOption = withDefault(
   object("Authorized fetch options", {
@@ -94,41 +133,79 @@ export const authorizedFetchOption = withDefault(
   } as const,
 );
 
-const traverseOption = object("Traverse options", {
-  traverse: bindConfig(
-    flag("-t", "--traverse", {
-      description:
-        message`Traverse the given collection(s) to fetch all items.`,
+const lookupModeOption = withDefault(
+  or(
+    object("Recurse options", {
+      traverse: constant(false as const),
+      recurse: bindConfig(
+        option(
+          "--recurse",
+          choice(recurseProperties, { metavar: "PROPERTY" }),
+          {
+            description: message`Recursively follow a relationship property.`,
+          },
+        ),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.recurse,
+        },
+      ),
+      recurseDepth: withDefault(
+        bindConfig(
+          option(
+            "--recurse-depth",
+            integer({ min: 1, metavar: "DEPTH" }),
+            {
+              description: message`Maximum recursion depth for ${
+                optionNames(["--recurse"])
+              }.`,
+            },
+          ),
+          {
+            context: configContext,
+            key: (config) => config.lookup?.recurseDepth,
+          },
+        ),
+        20,
+      ),
+      suppressErrors: suppressErrorsOption,
     }),
-    {
-      context: configContext,
-      key: (config) => config.lookup?.traverse ?? false,
-      default: false,
-    },
-  ),
-  suppressErrors: bindConfig(
-    flag("-S", "--suppress-errors", {
-      description:
-        message`Suppress partial errors while traversing the collection.`,
+    object("Traverse options", {
+      traverse: bindConfig(
+        flag("-t", "--traverse", {
+          description:
+            message`Traverse the given collection(s) to fetch all items.`,
+        }),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.traverse ?? false,
+          default: false,
+        },
+      ),
+      recurse: constant(undefined),
+      recurseDepth: constant(undefined),
+      suppressErrors: suppressErrorsOption,
     }),
-    {
-      context: configContext,
-      key: (config) => config.lookup?.suppressErrors ?? false,
-      default: false,
-    },
   ),
-});
+  {
+    traverse: false,
+    recurse: undefined,
+    recurseDepth: undefined,
+    suppressErrors: false,
+  } as const,
+);
 
 export const lookupCommand = command(
   "lookup",
   merge(
     object({ command: constant("lookup") }),
-    traverseOption,
+    lookupModeOption,
     authorizedFetchOption,
     merge(
       "Network options",
       userAgentOption,
       object({
+        allowPrivateAddress: allowPrivateAddressOption,
         timeout: optional(
           bindConfig(
             option(
@@ -157,6 +234,17 @@ export const lookupCommand = command(
       ),
     }),
     object("Output options", {
+      reverse: bindConfig(
+        flag("--reverse", {
+          description:
+            message`Reverse the output order of fetched objects or items.`,
+        }),
+        {
+          context: configContext,
+          key: (config) => config.lookup?.reverse ?? false,
+          default: false,
+        },
+      ),
       format: bindConfig(
         optional(
           or(
@@ -226,6 +314,61 @@ export class TimeoutError extends Error {
   }
 }
 
+/**
+ * Error thrown when a recursive lookup target cannot be fetched.
+ */
+export class RecursiveLookupError extends Error {
+  target: string;
+  constructor(target: string) {
+    super(`Failed to recursively fetch object: ${target}`);
+    this.name = "RecursiveLookupError";
+    this.target = target;
+  }
+}
+
+function writeToStream(
+  stream: NodeJS.WritableStream,
+  chunk: string | Uint8Array,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      stream.off("error", onError);
+      reject(error);
+    };
+    stream.once("error", onError);
+    try {
+      stream.write(chunk, (error) => {
+        stream.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    } catch (error) {
+      stream.off("error", onError);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
+function endWritableStream(stream: WriteStream): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      stream.off("error", onError);
+      reject(error);
+    };
+    stream.once("error", onError);
+    try {
+      stream.end((error?: Error | null) => {
+        stream.off("error", onError);
+        if (error != null) reject(error);
+        else resolve();
+      });
+    } catch (error) {
+      stream.off("error", onError);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
 async function findAllImages(obj: APObject): Promise<URL[]> {
   const result: URL[] = [];
   const icon = await obj.getIcon();
@@ -246,10 +389,13 @@ export async function writeObjectToStream(
   outputPath: string | undefined,
   format: string | undefined,
   contextLoader: DocumentLoader,
+  stream?: NodeJS.WritableStream,
 ): Promise<void> {
-  const stream: WriteStream | NodeJS.WritableStream = outputPath
-    ? createWriteStream(outputPath)
-    : process.stdout;
+  const localStream: WriteStream | NodeJS.WritableStream = stream ??
+    (outputPath ? createWriteStream(outputPath) : process.stdout);
+  const localFileStream = stream == null && outputPath != null
+    ? localStream as WriteStream
+    : undefined;
 
   let content;
   let json = true;
@@ -271,19 +417,57 @@ export async function writeObjectToStream(
     json = false;
   }
 
-  const enableColors = colorEnabled && outputPath === undefined;
+  const enableColors = colorEnabled && localStream === process.stdout;
   content = formatObject(content, enableColors, json);
 
   const encoder = new TextEncoder();
   const bytes = encoder.encode(content + "\n");
 
-  stream.write(bytes);
+  await writeToStream(localStream, bytes);
+
+  if (localFileStream != null) {
+    await endWritableStream(localFileStream);
+  }
 
   if (object instanceof APObject) {
     imageUrls = await findAllImages(object);
   }
-  if (!outputPath && imageUrls.length > 0) {
+  if (localStream === process.stdout && imageUrls.length > 0) {
     await renderImages(imageUrls);
+  }
+}
+
+async function closeWriteStream(stream?: WriteStream): Promise<void> {
+  if (stream == null) return;
+  await endWritableStream(stream);
+}
+
+export async function writeSeparator(
+  separator: string,
+  stream?: NodeJS.WritableStream,
+): Promise<void> {
+  await writeToStream(stream ?? process.stdout, `${separator}\n`);
+}
+
+export function toPresentationOrder<T>(
+  items: readonly T[],
+  reverse: boolean,
+): readonly T[] {
+  if (reverse) return [...items].reverse();
+  return items;
+}
+
+export async function collectAsyncItems<T>(
+  iterable: AsyncIterable<T>,
+): Promise<{ items: T[]; error?: unknown }> {
+  const items: T[] = [];
+  try {
+    for await (const item of iterable) {
+      items.push(item);
+    }
+    return { items };
+  } catch (error) {
+    return { items, error };
   }
 }
 
@@ -340,12 +524,177 @@ function handleTimeoutError(
   );
 }
 
+function isPrivateAddressError(error: unknown): boolean {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = errorMessage.toLowerCase();
+  if (error instanceof UrlError) {
+    return (
+      lowerMessage.includes("invalid or private address") ||
+      lowerMessage.includes("localhost is not allowed")
+    );
+  }
+  return (
+    lowerMessage.includes("private address") ||
+    lowerMessage.includes("private ip") ||
+    lowerMessage.includes("localhost") ||
+    lowerMessage.includes("loopback")
+  );
+}
+
+export function getLookupFailureHint(
+  error: unknown,
+  options: { recursive?: boolean } = {},
+): "private-address" | "recursive-private-address" | "authorized-fetch" {
+  if (isPrivateAddressError(error)) {
+    return options.recursive ? "recursive-private-address" : "private-address";
+  }
+  return "authorized-fetch";
+}
+
+export function shouldPrintLookupFailureHint(
+  authLoader: DocumentLoader | undefined,
+  hint: ReturnType<typeof getLookupFailureHint>,
+): boolean {
+  return hint !== "authorized-fetch" || authLoader == null;
+}
+
+export function shouldSuggestSuppressErrorsForLookupFailure(
+  authLoader: DocumentLoader | undefined,
+  hint: ReturnType<typeof getLookupFailureHint>,
+): boolean {
+  return authLoader != null && hint === "authorized-fetch";
+}
+
+function printLookupFailureHint(
+  authLoader: DocumentLoader | undefined,
+  error: unknown,
+  options: { recursive?: boolean } = {},
+): void {
+  const hint = getLookupFailureHint(error, options);
+  if (!shouldPrintLookupFailureHint(authLoader, hint)) return;
+  switch (hint) {
+    case "private-address":
+      printError(
+        message`The URL appears to be private or localhost.  Try with -p/--allow-private-address.`,
+      );
+      return;
+    case "recursive-private-address":
+      printError(
+        message`Recursive fetches do not allow private/localhost URLs.  Use -S/--suppress-errors to skip blocked steps, or fetch those targets explicitly without --recurse.`,
+      );
+      return;
+    case "authorized-fetch":
+      printError(
+        message`It may be a private object.  Try with -a/--authorized-fetch.`,
+      );
+      return;
+  }
+}
+
+/**
+ * Gets the next recursion target URL from an ActivityPub object.
+ */
+export function getRecursiveTargetId(
+  object: APObject,
+  recurseProperty: RecurseProperty,
+): URL | null {
+  switch (recurseProperty) {
+    case "replyTarget":
+    case IN_REPLY_TO_IRI:
+      return object.replyTargetId;
+    case "quoteUrl":
+    case QUOTE_URL_IRI:
+    case MISSKEY_QUOTE_IRI:
+    case FEDIBIRD_QUOTE_IRI: {
+      const quoteUrl = (object as { quoteUrl?: unknown }).quoteUrl;
+      return quoteUrl instanceof URL ? quoteUrl : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Collects recursively linked objects up to a depth limit.
+ */
+export async function collectRecursiveObjects(
+  initialObject: APObject,
+  recurseProperty: RecurseProperty,
+  recurseDepth: number,
+  lookup: (url: string) => Promise<APObject | null>,
+  options: { suppressErrors: boolean; visited?: Set<string> },
+): Promise<APObject[]> {
+  const visited = options.visited ?? new Set<string>();
+  const results: APObject[] = [];
+  let current = initialObject;
+  if (current.id != null) {
+    visited.add(current.id.href);
+  }
+
+  for (let depth = 0; depth < recurseDepth; depth++) {
+    const targetId = getRecursiveTargetId(current, recurseProperty);
+    if (targetId == null) break;
+    const target = targetId.href;
+    if (visited.has(target)) break;
+
+    let next: APObject | null;
+    try {
+      next = await lookup(target);
+    } catch (error) {
+      if (options.suppressErrors) {
+        logger.debug(
+          "Failed to recursively fetch object {target}, " +
+            "but suppressing error: {error}",
+          { target, error },
+        );
+        break;
+      }
+      throw error;
+    }
+    if (next == null) {
+      if (options.suppressErrors) {
+        logger.debug(
+          "Failed to recursively fetch object {target} " +
+            "(not found), but suppressing error.",
+          { target },
+        );
+        break;
+      }
+      throw new RecursiveLookupError(target);
+    }
+    results.push(next);
+    visited.add(target);
+    if (next.id != null) {
+      visited.add(next.id.href);
+    }
+    current = next;
+  }
+
+  return results;
+}
+
 export async function runLookup(
   command: InferValue<typeof lookupCommand> & GlobalOptions,
+  deps: Partial<{
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
+  }> = {},
 ) {
+  const effectiveDeps: {
+    lookupObject: typeof lookupObject;
+    traverseCollection: typeof traverseCollection;
+    exit: (code: number) => never;
+  } = {
+    lookupObject,
+    traverseCollection,
+    exit: (code: number) => process.exit(code),
+    ...deps,
+  };
+
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
-    process.exit(1);
+    effectiveDeps.exit(1);
   }
 
   // Enable Debug mode if requested
@@ -355,7 +704,9 @@ export async function runLookup(
 
   const spinner = ora({
     text: `Looking up the ${
-      command.traverse
+      command.recurse != null
+        ? "object chain"
+        : command.traverse
         ? "collection"
         : command.urls.length > 1
         ? "objects"
@@ -367,6 +718,7 @@ export async function runLookup(
   let server: TemporaryServer | undefined = undefined;
   const baseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
+    allowPrivateAddress: command.allowPrivateAddress,
   });
   const documentLoader = wrapDocumentLoaderWithTimeout(
     baseDocumentLoader,
@@ -374,6 +726,7 @@ export async function runLookup(
   );
   const baseContextLoader = await getContextLoader({
     userAgent: command.userAgent,
+    allowPrivateAddress: command.allowPrivateAddress,
   });
   const contextLoader = wrapDocumentLoaderWithTimeout(
     baseContextLoader,
@@ -381,6 +734,47 @@ export async function runLookup(
   );
 
   let authLoader: DocumentLoader | undefined = undefined;
+  let authIdentity:
+    | { keyId: URL; privateKey: CryptoKey }
+    | undefined = undefined;
+  let outputStream: WriteStream | undefined;
+  let outputStreamError: Error | undefined;
+  const getOutputStream = (): WriteStream | undefined => {
+    if (command.output == null) return undefined;
+    if (outputStream == null) {
+      outputStream = createWriteStream(command.output);
+      outputStream.once("error", (error) => {
+        outputStreamError = error;
+      });
+    }
+    if (outputStreamError != null) {
+      throw outputStreamError;
+    }
+    return outputStream;
+  };
+  const finalizeAndExit = async (code: number) => {
+    let cleanupFailed = false;
+    try {
+      await closeWriteStream(outputStream);
+    } catch (error) {
+      cleanupFailed = true;
+      logger.error("Failed to close output stream during shutdown: {error}", {
+        error,
+      });
+    }
+    try {
+      await server?.close();
+    } catch (error) {
+      cleanupFailed = true;
+      logger.error(
+        "Failed to close temporary server during shutdown: {error}",
+        {
+          error,
+        },
+      );
+    }
+    effectiveDeps.exit(cleanupFailed && code === 0 ? 1 : code);
+  };
 
   if (command.authorizedFetch) {
     spinner.text = "Generating a one-time key pair...";
@@ -420,12 +814,15 @@ export async function runLookup(
         { contextLoader },
       );
     }, { service: command.tunnelService });
+    authIdentity = {
+      keyId: new URL("#main-key", server.url),
+      privateKey: key.privateKey,
+    };
     const baseAuthLoader = getAuthenticatedDocumentLoader(
+      authIdentity,
       {
-        keyId: new URL("#main-key", server.url),
-        privateKey: key.privateKey,
-      },
-      {
+        allowPrivateAddress: command.allowPrivateAddress,
+        userAgent: command.userAgent,
         specDeterminer: {
           determineSpec() {
             return command.firstKnock;
@@ -442,12 +839,260 @@ export async function runLookup(
   }
 
   spinner.text = `Looking up the ${
-    command.traverse
+    command.recurse != null
+      ? "object chain"
+      : command.traverse
       ? "collection"
       : command.urls.length > 1
       ? "objects"
       : "object"
   }...`;
+
+  if (command.recurse != null) {
+    const recursiveBaseDocumentLoader = await getDocumentLoader({
+      userAgent: command.userAgent,
+      allowPrivateAddress: false,
+    });
+    const recursiveDocumentLoader = wrapDocumentLoaderWithTimeout(
+      recursiveBaseDocumentLoader,
+      command.timeout,
+    );
+    const recursiveBaseContextLoader = await getContextLoader({
+      userAgent: command.userAgent,
+      allowPrivateAddress: false,
+    });
+    const recursiveContextLoader = wrapDocumentLoaderWithTimeout(
+      recursiveBaseContextLoader,
+      command.timeout,
+    );
+    const recursiveAuthLoader = command.authorizedFetch &&
+        authIdentity != null
+      ? wrapDocumentLoaderWithTimeout(
+        getAuthenticatedDocumentLoader(
+          authIdentity,
+          {
+            allowPrivateAddress: false,
+            userAgent: command.userAgent,
+            specDeterminer: {
+              determineSpec() {
+                return command.firstKnock;
+              },
+              rememberSpec() {
+              },
+            },
+          },
+        ),
+        command.timeout,
+      )
+      : undefined;
+    const initialLookupDocumentLoader: DocumentLoader = authLoader ??
+      documentLoader;
+    const recursiveLookupDocumentLoader: DocumentLoader = recursiveAuthLoader ??
+      recursiveDocumentLoader;
+    let totalObjects = 0;
+    const recurseDepth = command.recurseDepth!;
+
+    for (let urlIndex = 0; urlIndex < command.urls.length; urlIndex++) {
+      const visited = new Set<string>();
+      const url = command.urls[urlIndex];
+      if (urlIndex > 0) {
+        spinner.text = `Looking up object chain ${
+          urlIndex + 1
+        }/${command.urls.length}...`;
+      }
+      let current: APObject | null = null;
+      try {
+        current = await effectiveDeps.lookupObject(url, {
+          documentLoader: initialLookupDocumentLoader,
+          contextLoader,
+          userAgent: command.userAgent,
+        });
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          handleTimeoutError(spinner, command.timeout, url);
+        } else {
+          spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
+          printLookupFailureHint(authLoader, error);
+        }
+        await finalizeAndExit(1);
+        return;
+      }
+      if (current == null) {
+        spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
+        if (authLoader == null) {
+          printError(
+            message`It may be a private object.  Try with -a/--authorized-fetch.`,
+          );
+        }
+        await finalizeAndExit(1);
+        return;
+      }
+
+      visited.add(url);
+      if (current.id != null) {
+        visited.add(current.id.href);
+      }
+
+      if (!command.reverse) {
+        try {
+          if (totalObjects > 0) {
+            await writeSeparator(command.separator, getOutputStream());
+          }
+          await writeObjectToStream(
+            current,
+            command.output,
+            command.format,
+            contextLoader,
+            getOutputStream(),
+          );
+          totalObjects++;
+        } catch (error) {
+          logger.error("Failed to write lookup output: {error}", { error });
+          spinner.fail("Failed to write output.");
+          await finalizeAndExit(1);
+          return;
+        }
+      }
+
+      let chain: APObject[] = [];
+      try {
+        chain = await collectRecursiveObjects(
+          current,
+          command.recurse,
+          recurseDepth,
+          (target) =>
+            effectiveDeps.lookupObject(target, {
+              documentLoader: recursiveLookupDocumentLoader,
+              contextLoader: recursiveContextLoader,
+              userAgent: command.userAgent,
+            }),
+          { suppressErrors: command.suppressErrors, visited },
+        );
+      } catch (error) {
+        if (command.reverse) {
+          try {
+            if (totalObjects > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              current,
+              command.output,
+              command.format,
+              contextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (writeError) {
+            logger.error("Failed to write lookup output: {error}", {
+              error: writeError,
+            });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
+        logger.error(
+          "Failed to recursively fetch an object in chain: {error}",
+          {
+            error,
+          },
+        );
+        if (error instanceof TimeoutError) {
+          handleTimeoutError(spinner, command.timeout);
+        } else if (error instanceof RecursiveLookupError) {
+          spinner.fail(
+            `Failed to recursively fetch object: ${colors.red(error.target)}.`,
+          );
+          if (authLoader == null) {
+            printError(
+              message`It may be a private object.  Try with -a/--authorized-fetch.`,
+            );
+          }
+        } else {
+          spinner.fail("Failed to recursively fetch object.");
+          const hint = getLookupFailureHint(error, { recursive: true });
+          if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
+            printError(
+              message`Use the -S/--suppress-errors option to suppress partial errors.`,
+            );
+          } else {
+            printLookupFailureHint(authLoader, error, { recursive: true });
+          }
+        }
+        await finalizeAndExit(1);
+        return;
+      }
+
+      if (command.reverse) {
+        const chainEntries = [
+          { object: current, objectContextLoader: contextLoader },
+          ...chain.map((next) => ({
+            object: next,
+            objectContextLoader: recursiveContextLoader,
+          })),
+        ];
+        for (
+          let chainIndex = chainEntries.length - 1;
+          chainIndex >= 0;
+          chainIndex--
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex < chainEntries.length - 1) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
+      } else {
+        const chainEntries = chain.map((next) => ({
+          object: next,
+          objectContextLoader: recursiveContextLoader,
+        }));
+        for (
+          let chainIndex = 0;
+          chainIndex < chainEntries.length;
+          chainIndex++
+        ) {
+          const entry = chainEntries[chainIndex];
+          try {
+            if (totalObjects > 0 || chainIndex > 0) {
+              await writeSeparator(command.separator, getOutputStream());
+            }
+            await writeObjectToStream(
+              entry.object,
+              command.output,
+              command.format,
+              entry.objectContextLoader,
+              getOutputStream(),
+            );
+            totalObjects++;
+          } catch (error) {
+            logger.error("Failed to write lookup output: {error}", { error });
+            spinner.fail("Failed to write output.");
+            await finalizeAndExit(1);
+            return;
+          }
+        }
+      }
+    }
+
+    spinner.succeed("Successfully fetched all reachable objects in the chain.");
+    await finalizeAndExit(0);
+    return;
+  }
 
   if (command.traverse) {
     let totalItems = 0;
@@ -461,9 +1106,9 @@ export async function runLookup(
         }/${command.urls.length}...`;
       }
 
-      let collection: APObject | null;
+      let collection: APObject | null = null;
       try {
-        collection = await lookupObject(url, {
+        collection = await effectiveDeps.lookupObject(url, {
           documentLoader: authLoader ?? documentLoader,
           contextLoader,
           userAgent: command.userAgent,
@@ -473,14 +1118,10 @@ export async function runLookup(
           handleTimeoutError(spinner, command.timeout, url);
         } else {
           spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          }
+          printLookupFailureHint(authLoader, error);
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       if (collection == null) {
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
@@ -489,39 +1130,88 @@ export async function runLookup(
             message`It may be a private object.  Try with -a/--authorized-fetch.`,
           );
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       if (!(collection instanceof Collection)) {
         spinner.fail(
           `Not a collection: ${colors.red(url)}.  ` +
             "The -t/--traverse option requires a collection.",
         );
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
       spinner.succeed(`Fetched collection: ${colors.green(url)}.`);
 
       try {
-        let collectionItems = 0;
-        for await (
-          const item of traverseCollection(collection, {
-            documentLoader: authLoader ?? documentLoader,
-            contextLoader,
-            suppressError: command.suppressErrors,
-          })
-        ) {
-          if (!command.output && (totalItems > 0 || collectionItems > 0)) {
-            print(message`${command.separator}`);
-          }
-          await writeObjectToStream(
-            item,
-            command.output,
-            command.format,
-            contextLoader,
+        if (command.reverse) {
+          const {
+            items: traversedItems,
+            error: traversalError,
+          } = await collectAsyncItems(
+            effectiveDeps.traverseCollection(collection, {
+              documentLoader: authLoader ?? documentLoader,
+              contextLoader,
+              suppressError: command.suppressErrors,
+            }),
           );
-          collectionItems++;
-          totalItems++;
+          for (let index = traversedItems.length - 1; index >= 0; index--) {
+            const item = traversedItems[index];
+            try {
+              if (totalItems > 0) {
+                await writeSeparator(command.separator, getOutputStream());
+              }
+              await writeObjectToStream(
+                item,
+                command.output,
+                command.format,
+                contextLoader,
+                getOutputStream(),
+              );
+            } catch (error) {
+              logger.error("Failed to write output for {url}: {error}", {
+                url,
+                error,
+              });
+              spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
+              await finalizeAndExit(1);
+              return;
+            }
+            totalItems++;
+          }
+          if (traversalError != null) {
+            throw traversalError;
+          }
+        } else {
+          for await (
+            const item of effectiveDeps.traverseCollection(collection, {
+              documentLoader: authLoader ?? documentLoader,
+              contextLoader,
+              suppressError: command.suppressErrors,
+            })
+          ) {
+            try {
+              if (totalItems > 0) {
+                await writeSeparator(command.separator, getOutputStream());
+              }
+              await writeObjectToStream(
+                item,
+                command.output,
+                command.format,
+                contextLoader,
+                getOutputStream(),
+              );
+            } catch (error) {
+              logger.error("Failed to write output for {url}: {error}", {
+                url,
+                error,
+              });
+              spinner.fail(`Failed to write output for: ${colors.red(url)}.`);
+              await finalizeAndExit(1);
+              return;
+            }
+            totalItems++;
+          }
         }
       } catch (error) {
         logger.error("Failed to complete the traversal for {url}: {error}", {
@@ -534,31 +1224,30 @@ export async function runLookup(
           spinner.fail(
             `Failed to complete the traversal for: ${colors.red(url)}.`,
           );
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          } else {
+          const hint = getLookupFailureHint(error);
+          if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
             );
+          } else {
+            printLookupFailureHint(authLoader, error);
           }
         }
-        await server?.close();
-        process.exit(1);
+        await finalizeAndExit(1);
+        return;
       }
     }
     spinner.succeed("Successfully fetched all items in the collection.");
 
-    await server?.close();
-    process.exit(0);
+    await finalizeAndExit(0);
+    return;
   }
 
   const promises: Promise<APObject | null>[] = [];
 
   for (const url of command.urls) {
     promises.push(
-      lookupObject(url, {
+      effectiveDeps.lookupObject(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
         userAgent: command.userAgent,
@@ -571,21 +1260,20 @@ export async function runLookup(
     );
   }
 
-  let objects: (APObject | null)[];
+  let objects: (APObject | null)[] = [];
   try {
     objects = await Promise.all(promises);
   } catch (_error) {
-    await server?.close();
-    process.exit(1);
+    await finalizeAndExit(1);
+    return;
   }
 
   spinner.stop();
   let success = true;
-  let i = 0;
-  for (const obj of objects) {
+  let printedCount = 0;
+  const successfulObjects: APObject[] = [];
+  for (const [i, obj] of objects.entries()) {
     const url = command.urls[i];
-    if (i > 0) print(message`${command.separator}`);
-    i++;
     if (obj == null) {
       spinner.fail(`Failed to fetch ${colors.red(url)}`);
       if (authLoader == null) {
@@ -596,16 +1284,28 @@ export async function runLookup(
       success = false;
     } else {
       spinner.succeed(`Fetched object: ${colors.green(url)}`);
+      successfulObjects.push(obj);
+    }
+  }
+  for (const obj of toPresentationOrder(successfulObjects, command.reverse)) {
+    try {
+      if (printedCount > 0) {
+        await writeSeparator(command.separator, getOutputStream());
+      }
       await writeObjectToStream(
         obj,
         command.output,
         command.format,
         contextLoader,
+        getOutputStream(),
       );
-      if (i < command.urls.length - 1) {
-        print(message`${command.separator}`);
-      }
+    } catch (error) {
+      logger.error("Failed to write lookup output: {error}", { error });
+      spinner.fail("Failed to write output.");
+      await finalizeAndExit(1);
+      return;
     }
+    printedCount++;
   }
   if (success) {
     spinner.succeed(
@@ -614,9 +1314,18 @@ export async function runLookup(
         : "Successfully fetched the object.",
     );
   }
-  await server?.close();
   if (!success) {
-    process.exit(1);
+    await finalizeAndExit(1);
+    return;
+  }
+  try {
+    await closeWriteStream(outputStream);
+    await server?.close();
+  } catch (error) {
+    logger.error("Failed to finalize lookup resources: {error}", { error });
+    spinner.fail("Failed to finalize output.");
+    await finalizeAndExit(1);
+    return;
   }
   if (success && command.output) {
     spinner.succeed(
