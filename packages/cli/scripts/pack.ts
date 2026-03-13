@@ -56,16 +56,28 @@ async function pack(os: OS, arch: Arch): Promise<void> {
 const osFilter = Deno.env.get("OS")?.toLowerCase();
 const archFilter = Deno.env.get("ARCH")?.toLowerCase();
 
-const promises: Promise<void>[] = [];
+const tasks: Array<() => Promise<void>> = [];
 for (const osKey in triplets) {
   const os = osKey as OS;
   if (osFilter != null && osFilter !== os) continue;
   for (const arch in triplets[os]) {
     if (archFilter != null && archFilter !== arch) continue;
-    const promise = pack(os, arch as Arch);
-    promises.push(promise);
+    tasks.push(() => pack(os, arch as Arch));
   }
 }
-await Promise.all(promises);
+const maxConcurrency = parseInt(
+  Deno.env.get("CONCURRENCY") ?? `${tasks.length}`,
+);
+const executing = new Set<Promise<void>>();
+for (const task of tasks) {
+  const p = task().then(() => {
+    executing.delete(p);
+  });
+  executing.add(p);
+  if (executing.size >= maxConcurrency) {
+    await Promise.race(executing);
+  }
+}
+await Promise.all(executing);
 
 // cSpell: ignore cfvz
