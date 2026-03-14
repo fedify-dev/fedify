@@ -31,7 +31,8 @@
       "dom.asynciterable",
       "dom.iterable",
       "deno.ns",
-      "deno.unstable"
+      "deno.unstable",
+      "deno.temporal"
     ],
     "jsx": "precompile",
     "jsxImportSource": "preact",
