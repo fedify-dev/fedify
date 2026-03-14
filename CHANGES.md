@@ -41,11 +41,22 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Updated the preloaded <https://gotosocial.org/ns> JSON-LD context to
+    match the current [GoToSocial] v0.21+ namespace, adding new type terms
+    (`LikeRequest`, `LikeAuthorization`, etc.) and property terms
+    (`automaticApproval`, `manualApproval`, `interactingObject`, etc.) while
+    retaining deprecated terms (`always`, `approvalRequired`) for backward
+    compatibility.  [[#453], [#622]]
+
  -  Added optional `FetchError.response` so callers can inspect the original
     failed HTTP response when remote document or key fetches return an HTTP
     error (such as `404 Not Found` or `410 Gone`).  This enables higher-level
     APIs to distinguish transport failures from specific HTTP fetch failures.
     [[#611]]
+
+[GoToSocial]: https://gotosocial.org/
+[#453]: https://github.com/fedify-dev/fedify/issues/453
+[#622]: https://github.com/fedify-dev/fedify/pull/622
 
 ### @fedify/cli
 
@@ -80,6 +91,20 @@ To be released.
 [#609]: https://github.com/fedify-dev/fedify/pull/609
 
 ### @fedify/vocab
+
+ -  Added [GoToSocial] interaction controls vocabulary for expressing who
+    can like, reply to, or announce posts and for approving interactions.
+    [[#453], [#622]]
+
+     -  Added `InteractionPolicy` and `InteractionRule` typeless value
+        classes.
+     -  Added `LikeRequest`, `ReplyRequest`, and `AnnounceRequest` activity
+        types for requesting interaction approval.
+     -  Added `LikeAuthorization`, `ReplyAuthorization`, and
+        `AnnounceAuthorization` types for proving approved interactions.
+     -  Added `Object.interactionPolicy`, `Object.approvedBy`,
+        `Object.likeAuthorization`, `Object.replyAuthorization`, and
+        `Object.announceAuthorization` properties.
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
     `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
