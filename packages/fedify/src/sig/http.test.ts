@@ -2432,3 +2432,71 @@ test(
     fetchMock.hardReset();
   },
 );
+
+test(
+  "doubleKnock(): challenge retry returns another challenge → not followed",
+  async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post(
+      "https://example.com/inbox-challenge-loop",
+      (cl) => {
+        const req = cl.request!;
+        requestCount++;
+        if (requestCount === 1) {
+          // First attempt: returns Accept-Signature challenge
+          return new Response("Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri");created;nonce="nonce-1"',
+            },
+          });
+        }
+        if (requestCount === 2) {
+          // Challenge retry: returns ANOTHER Accept-Signature challenge
+          // (should NOT be followed — loop prevention)
+          return new Response("Still Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri");created;nonce="nonce-2"',
+            },
+          });
+        }
+        // Legacy fallback (3rd attempt, spec-swap to draft-cavage)
+        if (
+          req.headers.has("Signature") &&
+          !req.headers.has("Signature-Input")
+        ) {
+          return new Response("", { status: 202 });
+        }
+        return new Response("Bad", { status: 400 });
+      },
+    );
+
+    const request = new Request(
+      "https://example.com/inbox-challenge-loop",
+      {
+        method: "POST",
+        body: "Test message",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    // Should have made exactly 3 requests:
+    // 1. Initial → 401 + Accept-Signature
+    // 2. Challenge retry → 401 + Accept-Signature (NOT followed again)
+    // 3. Legacy fallback (draft-cavage) → 202
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 3);
+
+    fetchMock.hardReset();
+  },
+);
