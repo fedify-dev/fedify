@@ -134,6 +134,7 @@ test("handleActor()", async () => {
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
@@ -236,6 +237,7 @@ test("handleActor()", async () => {
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
@@ -396,6 +398,7 @@ test("handleObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -494,6 +497,7 @@ test("handleObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -679,6 +683,7 @@ test("handleCollection()", async () => {
     "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",
@@ -704,6 +709,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -802,6 +808,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -871,6 +878,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -936,6 +944,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -1005,6 +1014,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -1254,6 +1264,7 @@ test("respondWithObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -1386,6 +1397,7 @@ test("respondWithObjectIfAcceptable", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -1565,6 +1577,7 @@ test("handleCustomCollection()", async () => {
     "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",
@@ -1589,6 +1602,7 @@ test("handleCustomCollection()", async () => {
   const CONTEXT = [
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",

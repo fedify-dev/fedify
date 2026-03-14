@@ -12,6 +12,7 @@ description: |
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
 - "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
 - fedibird: "http://fedibird.com/ns#"
   sensitive: "as:sensitive"
   emojiReactions:
@@ -402,3 +403,63 @@ properties:
     A cryptographic proof that can be used to verify the integrity of an object.
   range:
   - "https://w3id.org/security#DataIntegrityProof"
+
+- singularName: interactionPolicy
+  functional: true
+  compactName: interactionPolicy
+  uri: "https://gotosocial.org/ns#interactionPolicy"
+  untyped: true
+  description: |
+    The interaction policy for this object, specifying who can like, reply to,
+    or announce it.  Contains sub-policies (`canLike`, `canReply`,
+    `canAnnounce`) each defining `automaticApproval` and `manualApproval`
+    lists.
+
+    When absent, implementations should assume anyone can interact with
+    the object.  Setting this property signals that the server understands
+    and will enforce interaction controls.
+
+    See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
+    for details.
+  range:
+  - "https://gotosocial.org/ns#InteractionPolicy"
+
+- singularName: approvedBy
+  functional: true
+  compactName: approvedBy
+  uri: "https://gotosocial.org/ns#approvedBy"
+  description: |
+    A URI referencing an authorization object that proves this interaction
+    was approved by the target post's author.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: likeAuthorization
+  functional: true
+  compactName: likeAuthorization
+  uri: "https://gotosocial.org/ns#likeAuthorization"
+  description: |
+    A URI referencing a {@link LikeAuthorization} object that proves
+    this like interaction was approved by the target post's author.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: replyAuthorization
+  functional: true
+  compactName: replyAuthorization
+  uri: "https://gotosocial.org/ns#replyAuthorization"
+  description: |
+    A URI referencing a {@link ReplyAuthorization} object that proves
+    this reply was approved by the target post's author.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: announceAuthorization
+  functional: true
+  compactName: announceAuthorization
+  uri: "https://gotosocial.org/ns#announceAuthorization"
+  description: |
+    A URI referencing an {@link AnnounceAuthorization} object that proves
+    this announce (boost) was approved by the target post's author.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
