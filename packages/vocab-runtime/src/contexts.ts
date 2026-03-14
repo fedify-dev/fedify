@@ -4247,7 +4247,16 @@ const preloadedContexts: Record<string, unknown> = {
   },
   "https://gotosocial.org/ns": {
     "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
       "gts": "https://gotosocial.org/ns#",
+      "LikeRequest": "gts:LikeRequest",
+      "ReplyRequest": "gts:ReplyRequest",
+      "AnnounceRequest": "gts:AnnounceRequest",
+      "LikeAuthorization": "gts:LikeAuthorization",
+      "ReplyAuthorization": "gts:ReplyAuthorization",
+      "AnnounceAuthorization": "gts:AnnounceAuthorization",
+      "QuoteRequest": "gts:QuoteRequest",
+      "QuoteAuthorization": "gts:QuoteAuthorization",
       "interactionPolicy": {
         "@id": "gts:interactionPolicy",
         "@type": "@id",
@@ -4264,17 +4273,61 @@ const preloadedContexts: Record<string, unknown> = {
         "@id": "gts:canAnnounce",
         "@type": "@id",
       },
-      "always": {
-        "@id": "gts:always",
+      "canQuote": {
+        "@id": "gts:canQuote",
+        "@type": "@id",
+      },
+      "automaticApproval": {
+        "@id": "gts:automaticApproval",
+        "@type": "@id",
+      },
+      "manualApproval": {
+        "@id": "gts:manualApproval",
+        "@type": "@id",
+      },
+      "interactingObject": {
+        "@id": "gts:interactingObject",
+        "@type": "@id",
+      },
+      "interactionTarget": {
+        "@id": "gts:interactionTarget",
+        "@type": "@id",
+      },
+      "likeAuthorization": {
+        "@id": "gts:likeAuthorization",
+        "@type": "@id",
+      },
+      "replyAuthorization": {
+        "@id": "gts:replyAuthorization",
+        "@type": "@id",
+      },
+      "announceAuthorization": {
+        "@id": "gts:announceAuthorization",
+        "@type": "@id",
+      },
+      "quoteAuthorization": {
+        "@id": "gts:quoteAuthorization",
+        "@type": "@id",
+      },
+      "approvedBy": {
+        "@id": "gts:approvedBy",
         "@type": "@id",
       },
       "approvalRequired": {
         "@id": "gts:approvalRequired",
         "@type": "@id",
       },
-      "approvedBy": {
-        "@id": "gts:approvedBy",
+      "always": {
+        "@id": "gts:always",
         "@type": "@id",
+      },
+      "hidesToPublicFromUnauthedWeb": {
+        "@id": "gts:hidesToPublicFromUnauthedWeb",
+        "@type": "xsd:boolean",
+      },
+      "hidesCcPublicFromUnauthedWeb": {
+        "@id": "gts:hidesCcPublicFromUnauthedWeb",
+        "@type": "xsd:boolean",
       },
     },
   },
