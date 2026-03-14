@@ -14,6 +14,7 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { encodeHex } from "byte-encodings/hex";
+import { uniq } from "es-toolkit";
 import {
   decodeDict,
   type Dictionary,
@@ -491,7 +492,7 @@ async function signRequestRfc9421(
 
   // Define components to include in the signature
   const label = rfc9421Options?.label ?? "sig1";
-  const components: string[] = [
+  const components: string[] = uniq([
     ...(rfc9421Options?.components ?? [
       "@method",
       "@target-uri",
@@ -500,7 +501,7 @@ async function signRequestRfc9421(
       "date",
     ]),
     ...(body != null ? ["content-digest"] : []),
-  ];
+  ]);
 
   // Generate the signature base using the headers
   const signatureParams = formatRfc9421SignatureParameters({
@@ -1659,7 +1660,7 @@ export async function doubleKnock(
       }
       // If the challenge retry succeeded, remember spec and return
       if (
-        fulfilled && response.status !== 400 && response.status !== 401
+        fulfilled && response.status < 300
       ) {
         await specDeterminer?.rememberSpec(origin, "rfc9421");
         return response;
