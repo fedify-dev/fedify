@@ -776,11 +776,6 @@ export interface FederationBuilder<TContextData>
 }
 
 /**
- * Options for creating a {@link Federation} object.
- * @template TContextData The context data to pass to the {@link Context}.
- * @since 1.6.0
- */
-/**
  * Policy for emitting `Accept-Signature` challenges on inbox `401`
  * responses, as defined in
  * [RFC 9421 §5](https://www.rfc-editor.org/rfc/rfc9421#section-5).
@@ -823,6 +818,11 @@ export interface InboxChallengePolicy {
   nonceTtlSeconds?: number;
 }
 
+/**
+ * Options for creating a {@link Federation} object.
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @since 1.6.0
+ */
 export interface FederationOptions<TContextData> {
   /**
    * The key–value store used for caching, outbox queues, and inbox idempotence.
