@@ -149,10 +149,16 @@ export class Object {
       #_trust_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof: Set<number> = new Set();
     #_2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy: (InteractionPolicy)[] = [];
 #_23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy: (URL)[] = [];
-#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: (URL)[] = [];
-#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: (URL)[] = [];
-#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: (URL)[] = [];
 
+      #_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: (LikeAuthorization | URL)[] = [];
+      #_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: Set<number> = new Set();
+    
+      #_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: (ReplyAuthorization | URL)[] = [];
+      #_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: Set<number> = new Set();
+    
+      #_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: (AnnounceAuthorization | URL)[] = [];
+      #_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: Set<number> = new Set();
+    
   /**
    * Constructs a new instance of Object with the given values.
    * @param values The values to initialize the instance with.
@@ -178,7 +184,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -1086,40 +1092,40 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("likeAuthorization" in values &&             values.likeAuthorization != null) {
-          if (values.likeAuthorization instanceof URL) {
+          if (values.likeAuthorization instanceof LikeAuthorization || values.likeAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = [values.likeAuthorization];
-      
+      this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.add(0);
           } else {
             throw new TypeError(
               "The likeAuthorization must be of type " +
-              "URL" + ".",
+              "LikeAuthorization | URL" + ".",
             );
           }
         }
       
         if ("replyAuthorization" in values &&             values.replyAuthorization != null) {
-          if (values.replyAuthorization instanceof URL) {
+          if (values.replyAuthorization instanceof ReplyAuthorization || values.replyAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = [values.replyAuthorization];
-      
+      this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.add(0);
           } else {
             throw new TypeError(
               "The replyAuthorization must be of type " +
-              "URL" + ".",
+              "ReplyAuthorization | URL" + ".",
             );
           }
         }
       
         if ("announceAuthorization" in values &&             values.announceAuthorization != null) {
-          if (values.announceAuthorization instanceof URL) {
+          if (values.announceAuthorization instanceof AnnounceAuthorization || values.announceAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = [values.announceAuthorization];
-      
+      this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.add(0);
           } else {
             throw new TypeError(
               "The announceAuthorization must be of type " +
-              "URL" + ".",
+              "AnnounceAuthorization | URL" + ".",
             );
           }
         }
@@ -1151,7 +1157,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 
     = {},
     options: {
@@ -2071,42 +2077,42 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             );
           }
         }
-      clone.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization;
+      clone.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization;clone.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = new Set(this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization);
         if ("likeAuthorization" in values &&             values.likeAuthorization != null) {
-          if (values.likeAuthorization instanceof URL) {
+          if (values.likeAuthorization instanceof LikeAuthorization || values.likeAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             clone.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = [values.likeAuthorization];
-      
+      clone.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = new Set([0]);
           } else {
             throw new TypeError(
               "The likeAuthorization must be of type " +
-              "URL" + ".",
+              "LikeAuthorization | URL" + ".",
             );
           }
         }
-      clone.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization;
+      clone.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization;clone.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = new Set(this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization);
         if ("replyAuthorization" in values &&             values.replyAuthorization != null) {
-          if (values.replyAuthorization instanceof URL) {
+          if (values.replyAuthorization instanceof ReplyAuthorization || values.replyAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             clone.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = [values.replyAuthorization];
-      
+      clone.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = new Set([0]);
           } else {
             throw new TypeError(
               "The replyAuthorization must be of type " +
-              "URL" + ".",
+              "ReplyAuthorization | URL" + ".",
             );
           }
         }
-      clone.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization;
+      clone.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization;clone.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = new Set(this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization);
         if ("announceAuthorization" in values &&             values.announceAuthorization != null) {
-          if (values.announceAuthorization instanceof URL) {
+          if (values.announceAuthorization instanceof AnnounceAuthorization || values.announceAuthorization instanceof URL) {
             // @ts-ignore: type is checked above.
             clone.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = [values.announceAuthorization];
-      
+      clone.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = new Set([0]);
           } else {
             throw new TypeError(
               "The announceAuthorization must be of type " +
-              "URL" + ".",
+              "AnnounceAuthorization | URL" + ".",
             );
           }
         }
@@ -7984,11 +7990,134 @@ get urls(): ((URL | Link))[] {
         return this.#_23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy[0];
       }
       
-/** A URI referencing a {@link LikeAuthorization} object that proves
- * this like interaction was approved by the target post's author.
- * 
- */
- get likeAuthorization(): (URL | null) {
+    async #fetchLikeAuthorization(
+      url: URL,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        suppressError?: boolean,
+        tracerProvider?: TracerProvider,
+        crossOrigin?: "ignore" | "throw" | "trust";
+      } = {},
+    ): Promise<LikeAuthorization | null> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const tracer = tracerProvider.getTracer(
+        "@fedify/vocab-tools",
+        "0.0.0",
+      );
+      return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        let fetchResult: RemoteDocument;
+        try {
+          fetchResult = await documentLoader(url.href);
+        } catch (error) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          span.end();
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to fetch {url}: {error}",
+              { error, url: url.href }
+            );
+            return null;
+          }
+          throw error;
+        }
+        const { document, documentUrl } = fetchResult;
+        const baseUrl = new URL(documentUrl);
+        try {
+          const obj = await this.#likeAuthorization_fromJsonLd(
+            document,
+            { documentLoader, contextLoader, tracerProvider, baseUrl }
+          );
+          if (options.crossOrigin !== "trust" && obj?.id != null &&
+              obj.id.origin !== baseUrl.origin) {
+            if (options.crossOrigin === "throw") {
+              throw new Error(
+                "The object's @id (" + obj.id.href + ") has a different origin " +
+                "than the document URL (" + baseUrl.href + "); refusing to return " +
+                "the object.  If you want to bypass this check and are aware of" +
+                'the security implications, set the crossOrigin option to "trust".'
+              );
+            }
+            getLogger(["fedify", "vocab"]).warn(
+              "The object's @id ({objectId}) has a different origin than the document " +
+              "URL ({documentUrl}); refusing to return the object.  If you want to " +
+              "bypass this check and are aware of the security implications, " +
+              'set the crossOrigin option to "trust".',
+              { ...fetchResult, objectId: obj.id.href },
+            );
+            return null;
+          }
+          span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+          span.setAttribute(
+            "activitypub.object.type",
+            // @ts-ignore: obj.constructor always has a typeId.
+            obj.constructor.typeId.href
+          );
+          return obj;
+        } catch (e) {
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to parse {url}: {error}",
+              { error: e, url: url.href }
+            );
+            return null;
+          }
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(e),
+          });
+          throw e;
+        } finally {
+          span.end();
+        }
+      });
+    }
+
+    async #likeAuthorization_fromJsonLd(
+      jsonLd: unknown,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        tracerProvider?: TracerProvider,
+        baseUrl?: URL
+      }
+    ): Promise<LikeAuthorization> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const baseUrl = options.baseUrl;
+    
+        try {
+          return await LikeAuthorization.fromJsonLd(
+            jsonLd,
+            { documentLoader, contextLoader, tracerProvider, baseUrl },
+          );
+        } catch (e) {
+          if (!(e instanceof TypeError)) throw e;
+        }
+      
+      throw new TypeError("Expected an object of any type of: " +
+        ["https://gotosocial.org/ns#LikeApproval"].join(", "));
+    }
+
+    
+      /**
+       * Similar to
+       * {@link Object.getLikeAuthorization},
+       * but returns its \`@id\` URL instead of the object itself.
+       */
+       get likeAuthorizationId(): URL | null {
         if (this._warning != null) {
           getLogger(this._warning.category).warn(
             this._warning.message,
@@ -7996,14 +8125,215 @@ get urls(): ((URL | Link))[] {
           );
         }
         if (this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.length < 1) return null;
-        return this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization[0];
+        const v = this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization[0];
+        if (v instanceof URL) return v;
+        return v.id;
       }
       
-/** A URI referencing a {@link ReplyAuthorization} object that proves
- * this reply was approved by the target post's author.
+/** A {@link LikeAuthorization} object that proves this like interaction
+ * was approved by the target post's author.
  * 
  */
- get replyAuthorization(): (URL | null) {
+
+       async getLikeAuthorization(
+        options: {
+          documentLoader?: DocumentLoader,
+          contextLoader?: DocumentLoader,
+          suppressError?: boolean,
+          tracerProvider?: TracerProvider,
+          crossOrigin?: "ignore" | "throw" | "trust";
+        } = {}
+      ): Promise<LikeAuthorization | null> {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.length < 1) return null;
+        let v = this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization[0];
+        if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
+            v.id != null && v.id.origin !== this.id?.origin &&
+            !this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.has(0)) {
+          v = v.id;
+        }
+        if (v instanceof URL) {
+          const fetched =
+            await this.#fetchLikeAuthorization(v, options);
+          if (fetched == null) return null;
+          this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization[0] = fetched;
+          this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.add(0);
+          this._cachedJsonLd = undefined;
+          return fetched;
+        }
+      
+        if (
+          this._cachedJsonLd != null &&
+          typeof this._cachedJsonLd === "object" &&
+          "@context" in this._cachedJsonLd &&
+          "likeAuthorization" in this._cachedJsonLd
+        ) {
+          const prop = this._cachedJsonLd[
+            "likeAuthorization"];
+          const doc = Array.isArray(prop) ? prop[0] : prop;
+          if (doc != null && typeof doc === "object" && "@context" in doc) {
+            v = await this.#likeAuthorization_fromJsonLd(doc, options);
+          }
+        }
+        
+        if (options.crossOrigin !== "trust" && v?.id != null &&
+            this.id != null && v.id.origin !== this.id.origin &&
+            !this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.has(0)) {
+          if (options.crossOrigin === "throw") {
+            throw new Error(
+              "The property object's @id (" + v.id.href + ") has a different " +
+              "origin than the property owner's @id (" + this.id.href + "); " +
+              "refusing to return the object.  If you want to bypass this " +
+              "check and are aware of the security implications, set the " +
+              'crossOrigin option to "trust".'
+            );
+          }
+          getLogger(["fedify", "vocab"]).warn(
+            "The property object's @id ({objectId}) has a different origin " +
+            "than the property owner's @id ({parentObjectId}); refusing to " +
+            "return the object.  If you want to bypass this check and are " +
+            "aware of the security implications, set the crossOrigin option " +
+            'to "trust".',
+            { objectId: v.id.href, parentObjectId: this.id.href },
+          );
+          return null;
+        }
+        return v;
+      }
+      
+    async #fetchReplyAuthorization(
+      url: URL,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        suppressError?: boolean,
+        tracerProvider?: TracerProvider,
+        crossOrigin?: "ignore" | "throw" | "trust";
+      } = {},
+    ): Promise<ReplyAuthorization | null> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const tracer = tracerProvider.getTracer(
+        "@fedify/vocab-tools",
+        "0.0.0",
+      );
+      return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        let fetchResult: RemoteDocument;
+        try {
+          fetchResult = await documentLoader(url.href);
+        } catch (error) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          span.end();
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to fetch {url}: {error}",
+              { error, url: url.href }
+            );
+            return null;
+          }
+          throw error;
+        }
+        const { document, documentUrl } = fetchResult;
+        const baseUrl = new URL(documentUrl);
+        try {
+          const obj = await this.#replyAuthorization_fromJsonLd(
+            document,
+            { documentLoader, contextLoader, tracerProvider, baseUrl }
+          );
+          if (options.crossOrigin !== "trust" && obj?.id != null &&
+              obj.id.origin !== baseUrl.origin) {
+            if (options.crossOrigin === "throw") {
+              throw new Error(
+                "The object's @id (" + obj.id.href + ") has a different origin " +
+                "than the document URL (" + baseUrl.href + "); refusing to return " +
+                "the object.  If you want to bypass this check and are aware of" +
+                'the security implications, set the crossOrigin option to "trust".'
+              );
+            }
+            getLogger(["fedify", "vocab"]).warn(
+              "The object's @id ({objectId}) has a different origin than the document " +
+              "URL ({documentUrl}); refusing to return the object.  If you want to " +
+              "bypass this check and are aware of the security implications, " +
+              'set the crossOrigin option to "trust".',
+              { ...fetchResult, objectId: obj.id.href },
+            );
+            return null;
+          }
+          span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+          span.setAttribute(
+            "activitypub.object.type",
+            // @ts-ignore: obj.constructor always has a typeId.
+            obj.constructor.typeId.href
+          );
+          return obj;
+        } catch (e) {
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to parse {url}: {error}",
+              { error: e, url: url.href }
+            );
+            return null;
+          }
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(e),
+          });
+          throw e;
+        } finally {
+          span.end();
+        }
+      });
+    }
+
+    async #replyAuthorization_fromJsonLd(
+      jsonLd: unknown,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        tracerProvider?: TracerProvider,
+        baseUrl?: URL
+      }
+    ): Promise<ReplyAuthorization> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const baseUrl = options.baseUrl;
+    
+        try {
+          return await ReplyAuthorization.fromJsonLd(
+            jsonLd,
+            { documentLoader, contextLoader, tracerProvider, baseUrl },
+          );
+        } catch (e) {
+          if (!(e instanceof TypeError)) throw e;
+        }
+      
+      throw new TypeError("Expected an object of any type of: " +
+        ["https://gotosocial.org/ns#ReplyAuthorization"].join(", "));
+    }
+
+    
+      /**
+       * Similar to
+       * {@link Object.getReplyAuthorization},
+       * but returns its \`@id\` URL instead of the object itself.
+       */
+       get replyAuthorizationId(): URL | null {
         if (this._warning != null) {
           getLogger(this._warning.category).warn(
             this._warning.message,
@@ -8011,14 +8341,215 @@ get urls(): ((URL | Link))[] {
           );
         }
         if (this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.length < 1) return null;
-        return this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization[0];
+        const v = this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization[0];
+        if (v instanceof URL) return v;
+        return v.id;
       }
       
-/** A URI referencing an {@link AnnounceAuthorization} object that proves
- * this announce (boost) was approved by the target post's author.
+/** A {@link ReplyAuthorization} object that proves this reply was approved
+ * by the target post's author.
  * 
  */
- get announceAuthorization(): (URL | null) {
+
+       async getReplyAuthorization(
+        options: {
+          documentLoader?: DocumentLoader,
+          contextLoader?: DocumentLoader,
+          suppressError?: boolean,
+          tracerProvider?: TracerProvider,
+          crossOrigin?: "ignore" | "throw" | "trust";
+        } = {}
+      ): Promise<ReplyAuthorization | null> {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.length < 1) return null;
+        let v = this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization[0];
+        if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
+            v.id != null && v.id.origin !== this.id?.origin &&
+            !this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.has(0)) {
+          v = v.id;
+        }
+        if (v instanceof URL) {
+          const fetched =
+            await this.#fetchReplyAuthorization(v, options);
+          if (fetched == null) return null;
+          this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization[0] = fetched;
+          this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.add(0);
+          this._cachedJsonLd = undefined;
+          return fetched;
+        }
+      
+        if (
+          this._cachedJsonLd != null &&
+          typeof this._cachedJsonLd === "object" &&
+          "@context" in this._cachedJsonLd &&
+          "replyAuthorization" in this._cachedJsonLd
+        ) {
+          const prop = this._cachedJsonLd[
+            "replyAuthorization"];
+          const doc = Array.isArray(prop) ? prop[0] : prop;
+          if (doc != null && typeof doc === "object" && "@context" in doc) {
+            v = await this.#replyAuthorization_fromJsonLd(doc, options);
+          }
+        }
+        
+        if (options.crossOrigin !== "trust" && v?.id != null &&
+            this.id != null && v.id.origin !== this.id.origin &&
+            !this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.has(0)) {
+          if (options.crossOrigin === "throw") {
+            throw new Error(
+              "The property object's @id (" + v.id.href + ") has a different " +
+              "origin than the property owner's @id (" + this.id.href + "); " +
+              "refusing to return the object.  If you want to bypass this " +
+              "check and are aware of the security implications, set the " +
+              'crossOrigin option to "trust".'
+            );
+          }
+          getLogger(["fedify", "vocab"]).warn(
+            "The property object's @id ({objectId}) has a different origin " +
+            "than the property owner's @id ({parentObjectId}); refusing to " +
+            "return the object.  If you want to bypass this check and are " +
+            "aware of the security implications, set the crossOrigin option " +
+            'to "trust".',
+            { objectId: v.id.href, parentObjectId: this.id.href },
+          );
+          return null;
+        }
+        return v;
+      }
+      
+    async #fetchAnnounceAuthorization(
+      url: URL,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        suppressError?: boolean,
+        tracerProvider?: TracerProvider,
+        crossOrigin?: "ignore" | "throw" | "trust";
+      } = {},
+    ): Promise<AnnounceAuthorization | null> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const tracer = tracerProvider.getTracer(
+        "@fedify/vocab-tools",
+        "0.0.0",
+      );
+      return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        let fetchResult: RemoteDocument;
+        try {
+          fetchResult = await documentLoader(url.href);
+        } catch (error) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          span.end();
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to fetch {url}: {error}",
+              { error, url: url.href }
+            );
+            return null;
+          }
+          throw error;
+        }
+        const { document, documentUrl } = fetchResult;
+        const baseUrl = new URL(documentUrl);
+        try {
+          const obj = await this.#announceAuthorization_fromJsonLd(
+            document,
+            { documentLoader, contextLoader, tracerProvider, baseUrl }
+          );
+          if (options.crossOrigin !== "trust" && obj?.id != null &&
+              obj.id.origin !== baseUrl.origin) {
+            if (options.crossOrigin === "throw") {
+              throw new Error(
+                "The object's @id (" + obj.id.href + ") has a different origin " +
+                "than the document URL (" + baseUrl.href + "); refusing to return " +
+                "the object.  If you want to bypass this check and are aware of" +
+                'the security implications, set the crossOrigin option to "trust".'
+              );
+            }
+            getLogger(["fedify", "vocab"]).warn(
+              "The object's @id ({objectId}) has a different origin than the document " +
+              "URL ({documentUrl}); refusing to return the object.  If you want to " +
+              "bypass this check and are aware of the security implications, " +
+              'set the crossOrigin option to "trust".',
+              { ...fetchResult, objectId: obj.id.href },
+            );
+            return null;
+          }
+          span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+          span.setAttribute(
+            "activitypub.object.type",
+            // @ts-ignore: obj.constructor always has a typeId.
+            obj.constructor.typeId.href
+          );
+          return obj;
+        } catch (e) {
+          if (options.suppressError) {
+            getLogger(["fedify", "vocab"]).error(
+              "Failed to parse {url}: {error}",
+              { error: e, url: url.href }
+            );
+            return null;
+          }
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(e),
+          });
+          throw e;
+        } finally {
+          span.end();
+        }
+      });
+    }
+
+    async #announceAuthorization_fromJsonLd(
+      jsonLd: unknown,
+      options: {
+        documentLoader?: DocumentLoader,
+        contextLoader?: DocumentLoader,
+        tracerProvider?: TracerProvider,
+        baseUrl?: URL
+      }
+    ): Promise<AnnounceAuthorization> {
+      const documentLoader =
+        options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
+      const contextLoader =
+        options.contextLoader ?? this._contextLoader ?? getDocumentLoader();
+      const tracerProvider = options.tracerProvider ??
+        this._tracerProvider ?? trace.getTracerProvider();
+      const baseUrl = options.baseUrl;
+    
+        try {
+          return await AnnounceAuthorization.fromJsonLd(
+            jsonLd,
+            { documentLoader, contextLoader, tracerProvider, baseUrl },
+          );
+        } catch (e) {
+          if (!(e instanceof TypeError)) throw e;
+        }
+      
+      throw new TypeError("Expected an object of any type of: " +
+        ["https://gotosocial.org/ns#AnnounceAuthorization"].join(", "));
+    }
+
+    
+      /**
+       * Similar to
+       * {@link Object.getAnnounceAuthorization},
+       * but returns its \`@id\` URL instead of the object itself.
+       */
+       get announceAuthorizationId(): URL | null {
         if (this._warning != null) {
           getLogger(this._warning.category).warn(
             this._warning.message,
@@ -8026,7 +8557,85 @@ get urls(): ((URL | Link))[] {
           );
         }
         if (this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.length < 1) return null;
-        return this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization[0];
+        const v = this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization[0];
+        if (v instanceof URL) return v;
+        return v.id;
+      }
+      
+/** An {@link AnnounceAuthorization} object that proves this announce
+ * (boost) was approved by the target post's author.
+ * 
+ */
+
+       async getAnnounceAuthorization(
+        options: {
+          documentLoader?: DocumentLoader,
+          contextLoader?: DocumentLoader,
+          suppressError?: boolean,
+          tracerProvider?: TracerProvider,
+          crossOrigin?: "ignore" | "throw" | "trust";
+        } = {}
+      ): Promise<AnnounceAuthorization | null> {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.length < 1) return null;
+        let v = this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization[0];
+        if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
+            v.id != null && v.id.origin !== this.id?.origin &&
+            !this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.has(0)) {
+          v = v.id;
+        }
+        if (v instanceof URL) {
+          const fetched =
+            await this.#fetchAnnounceAuthorization(v, options);
+          if (fetched == null) return null;
+          this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization[0] = fetched;
+          this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.add(0);
+          this._cachedJsonLd = undefined;
+          return fetched;
+        }
+      
+        if (
+          this._cachedJsonLd != null &&
+          typeof this._cachedJsonLd === "object" &&
+          "@context" in this._cachedJsonLd &&
+          "announceAuthorization" in this._cachedJsonLd
+        ) {
+          const prop = this._cachedJsonLd[
+            "announceAuthorization"];
+          const doc = Array.isArray(prop) ? prop[0] : prop;
+          if (doc != null && typeof doc === "object" && "@context" in doc) {
+            v = await this.#announceAuthorization_fromJsonLd(doc, options);
+          }
+        }
+        
+        if (options.crossOrigin !== "trust" && v?.id != null &&
+            this.id != null && v.id.origin !== this.id.origin &&
+            !this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.has(0)) {
+          if (options.crossOrigin === "throw") {
+            throw new Error(
+              "The property object's @id (" + v.id.href + ") has a different " +
+              "origin than the property owner's @id (" + this.id.href + "); " +
+              "refusing to return the object.  If you want to bypass this " +
+              "check and are aware of the security implications, set the " +
+              'crossOrigin option to "trust".'
+            );
+          }
+          getLogger(["fedify", "vocab"]).warn(
+            "The property object's @id ({objectId}) has a different origin " +
+            "than the property owner's @id ({parentObjectId}); refusing to " +
+            "return the object.  If you want to bypass this check and are " +
+            "aware of the security implications, set the crossOrigin option " +
+            'to "trust".',
+            { objectId: v.id.href, parentObjectId: this.id.href },
+          );
+          return null;
+        }
+        return v;
       }
       
   /**
@@ -8759,7 +9368,11 @@ get urls(): ((URL | Link))[] {
       compactItems = [];
       for (const v of this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization) {
         const item = (
-      v.href
+      v instanceof URL ? v.href : await v.toJsonLd({
+           ...(options),
+           format: undefined,
+           context: undefined,
+         })
         );
         compactItems.push(item);
       }
@@ -8775,7 +9388,11 @@ get urls(): ((URL | Link))[] {
       compactItems = [];
       for (const v of this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization) {
         const item = (
-      v.href
+      v instanceof URL ? v.href : await v.toJsonLd({
+           ...(options),
+           format: undefined,
+           context: undefined,
+         })
         );
         compactItems.push(item);
       }
@@ -8791,7 +9408,11 @@ get urls(): ((URL | Link))[] {
       compactItems = [];
       for (const v of this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization) {
         const item = (
-      v.href
+      v instanceof URL ? v.href : await v.toJsonLd({
+           ...(options),
+           format: undefined,
+           context: undefined,
+         })
         );
         compactItems.push(item);
       }
@@ -9350,7 +9971,7 @@ get urls(): ((URL | Link))[] {
     array = [];
     for (const v of this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization) {
       const element = (
-    { "@id": v.href }
+    v instanceof URL ? { "@id": v.href } : await v.toJsonLd(options)
       );
     array.push(element);;
     }
@@ -9365,7 +9986,7 @@ get urls(): ((URL | Link))[] {
     array = [];
     for (const v of this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization) {
       const element = (
-    { "@id": v.href }
+    v instanceof URL ? { "@id": v.href } : await v.toJsonLd(options)
       );
     array.push(element);;
     }
@@ -9380,7 +10001,7 @@ get urls(): ((URL | Link))[] {
     array = [];
     for (const v of this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization) {
       const element = (
-    { "@id": v.href }
+    v instanceof URL ? { "@id": v.href } : await v.toJsonLd(options)
       );
     array.push(element);;
     }
@@ -10815,8 +11436,10 @@ get urls(): ((URL | Link))[] {
           : new URL(v["@id"], (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))))
     }
     instance.#_23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy = _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy;
-    const _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: (URL)[] = [];
-
+    
+      const _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: (LikeAuthorization | URL)[] = [];
+      const _trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization: Set<number> = new Set();
+    
     let _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization__array = values["https://gotosocial.org/ns#likeAuthorization"];
     
     for (
@@ -10827,26 +11450,26 @@ get urls(): ((URL | Link))[] {
         : _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization__array
     ) {
       if (v == null) continue;
-    _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(v["@id"].startsWith("at://")
-        ? new URL("at://" +
-          encodeURIComponent(
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(5, v["@id"].indexOf("/", 5))
-              : v["@id"].slice(5)
-          ) +
-          (
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(v["@id"].indexOf("/", 5))
-              : ""
-          )
-        )
-        : URL.canParse(v["@id"]) && (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))
-          ? new URL(v["@id"])
-          : new URL(v["@id"], (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))))
+    
+      if (typeof v === "object" && "@id" in v && !("@type" in v)
+          && globalThis.Object.keys(v).length === 1) {
+        _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(
+          !URL.canParse(v["@id"]) && v["@id"].startsWith("at://")
+            ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
+            : new URL(v["@id"])
+        );
+        continue;
+      }
+      _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(await LikeAuthorization.fromJsonLd(
+      v,
+      { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
+    ))
     }
     instance.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization;
-    const _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: (URL)[] = [];
-
+    
+      const _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: (ReplyAuthorization | URL)[] = [];
+      const _trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization: Set<number> = new Set();
+    
     let _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization__array = values["https://gotosocial.org/ns#replyAuthorization"];
     
     for (
@@ -10857,26 +11480,26 @@ get urls(): ((URL | Link))[] {
         : _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization__array
     ) {
       if (v == null) continue;
-    _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(v["@id"].startsWith("at://")
-        ? new URL("at://" +
-          encodeURIComponent(
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(5, v["@id"].indexOf("/", 5))
-              : v["@id"].slice(5)
-          ) +
-          (
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(v["@id"].indexOf("/", 5))
-              : ""
-          )
-        )
-        : URL.canParse(v["@id"]) && (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))
-          ? new URL(v["@id"])
-          : new URL(v["@id"], (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))))
+    
+      if (typeof v === "object" && "@id" in v && !("@type" in v)
+          && globalThis.Object.keys(v).length === 1) {
+        _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(
+          !URL.canParse(v["@id"]) && v["@id"].startsWith("at://")
+            ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
+            : new URL(v["@id"])
+        );
+        continue;
+      }
+      _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(await ReplyAuthorization.fromJsonLd(
+      v,
+      { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
+    ))
     }
     instance.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization;
-    const _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: (URL)[] = [];
-
+    
+      const _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: (AnnounceAuthorization | URL)[] = [];
+      const _trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization: Set<number> = new Set();
+    
     let _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization__array = values["https://gotosocial.org/ns#announceAuthorization"];
     
     for (
@@ -10887,22 +11510,20 @@ get urls(): ((URL | Link))[] {
         : _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization__array
     ) {
       if (v == null) continue;
-    _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(v["@id"].startsWith("at://")
-        ? new URL("at://" +
-          encodeURIComponent(
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(5, v["@id"].indexOf("/", 5))
-              : v["@id"].slice(5)
-          ) +
-          (
-            v["@id"].includes("/", 5)
-              ? v["@id"].slice(v["@id"].indexOf("/", 5))
-              : ""
-          )
-        )
-        : URL.canParse(v["@id"]) && (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))
-          ? new URL(v["@id"])
-          : new URL(v["@id"], (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))))
+    
+      if (typeof v === "object" && "@id" in v && !("@type" in v)
+          && globalThis.Object.keys(v).length === 1) {
+        _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(
+          !URL.canParse(v["@id"]) && v["@id"].startsWith("at://")
+            ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
+            : new URL(v["@id"])
+        );
+        continue;
+      }
+      _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(await AnnounceAuthorization.fromJsonLd(
+      v,
+      { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
+    ))
     }
     instance.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization;
     
@@ -11843,7 +12464,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -11879,7 +12500,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 
     = {},
     options: {
@@ -12186,7 +12807,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -12235,7 +12856,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 
     = {},
     options: {
@@ -12683,7 +13304,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -12965,7 +13586,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -16009,7 +16630,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -16051,7 +16672,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -16957,7 +17578,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -17019,7 +17640,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 
     = {},
     options: {
@@ -17958,7 +18579,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -18000,7 +18621,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -19650,7 +20271,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -19712,7 +20333,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 
     = {},
     options: {
@@ -20650,7 +21271,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -20692,7 +21313,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -20996,7 +21617,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -21058,7 +21679,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;interactingObject?: Object | URL | null;interactionTarget?: Object | URL | null;}
 
     = {},
     options: {
@@ -21996,7 +22617,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -22038,7 +22659,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -25887,7 +26508,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -25929,7 +26550,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -26227,7 +26848,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -26269,7 +26890,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -26562,7 +27183,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -26604,7 +27225,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -26942,7 +27563,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -27406,7 +28027,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -33487,7 +34108,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -33529,7 +34150,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -33834,7 +34455,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -33876,7 +34497,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -34167,7 +34788,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -34216,7 +34837,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 
     = {},
     options: {
@@ -34643,7 +35264,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -34705,7 +35326,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 
     = {},
     options: {
@@ -35216,7 +35837,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -35252,7 +35873,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 
     = {},
     options: {
@@ -35555,7 +36176,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -35597,7 +36218,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -35895,7 +36516,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -35937,7 +36558,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -36269,7 +36890,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -36480,7 +37101,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;}
 
     = {},
     options: {
@@ -40700,7 +41321,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -40775,7 +41396,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;items?: (Object | Link | URL)[];likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;}
 
     = {},
     options: {
@@ -42019,7 +42640,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -42061,7 +42682,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -42353,7 +42974,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -42395,7 +43016,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -42685,7 +43306,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -42727,7 +43348,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -44121,7 +44742,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -44157,7 +44778,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;}
 
     = {},
     options: {
@@ -44461,7 +45082,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -44503,7 +45124,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -44797,7 +45418,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -44839,7 +45460,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -45177,7 +45798,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -45641,7 +46262,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -53685,7 +54306,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -53721,7 +54342,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 
     = {},
     options: {
@@ -54025,7 +54646,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -54067,7 +54688,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -54363,7 +54984,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -54405,7 +55026,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -54697,7 +55318,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -54739,7 +55360,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55031,7 +55652,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55073,7 +55694,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55365,7 +55986,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55407,7 +56028,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55697,7 +56318,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -55739,7 +56360,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -56330,7 +56951,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -56372,7 +56993,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -56665,7 +57286,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -56714,7 +57335,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;quoteUrl?: URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;quoteUrl?: URL | null;}
 
     = {},
     options: {
@@ -57144,7 +57765,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;items?: (Object | Link | URL)[];}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;items?: (Object | Link | URL)[];}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -57199,7 +57820,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;items?: (Object | Link | URL)[];}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;items?: (Object | Link | URL)[];}
 
     = {},
     options: {
@@ -57855,7 +58476,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;items?: (Object | Link | URL)[];startIndex?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;items?: (Object | Link | URL)[];startIndex?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -57923,7 +58544,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;items?: (Object | Link | URL)[];startIndex?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;totalItems?: number | null;current?: CollectionPage | URL | null;first?: CollectionPage | URL | null;last?: CollectionPage | URL | null;likesOf?: Object | URL | null;sharesOf?: Object | URL | null;repliesOf?: Object | URL | null;inboxOf?: Object | URL | null;outboxOf?: Object | URL | null;followersOf?: Object | URL | null;followingOf?: Object | URL | null;likedOf?: Object | URL | null;partOf?: Collection | URL | null;next?: CollectionPage | URL | null;prev?: CollectionPage | URL | null;items?: (Object | Link | URL)[];startIndex?: number | null;}
 
     = {},
     options: {
@@ -58717,7 +59338,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -59181,7 +59802,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -65259,7 +65880,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -65295,7 +65916,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 
     = {},
     options: {
@@ -65644,7 +66265,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -66108,7 +66729,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -72195,7 +72816,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;accuracy?: number | null;altitude?: number | null;latitude?: number | null;longitude?: number | null;radius?: number | null;units?: "cm" | "feet" | "inches" | "km" | "m" | "miles" | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;accuracy?: number | null;altitude?: number | null;latitude?: number | null;longitude?: number | null;radius?: number | null;units?: "cm" | "feet" | "inches" | "km" | "m" | "miles" | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -72309,7 +72930,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;accuracy?: number | null;altitude?: number | null;latitude?: number | null;longitude?: number | null;radius?: number | null;units?: "cm" | "feet" | "inches" | "km" | "m" | "miles" | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;accuracy?: number | null;altitude?: number | null;latitude?: number | null;longitude?: number | null;radius?: number | null;units?: "cm" | "feet" | "inches" | "km" | "m" | "miles" | URL | null;}
 
     = {},
     options: {
@@ -73221,7 +73842,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;describes?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;describes?: Object | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -73270,7 +73891,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;describes?: Object | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;describes?: Object | URL | null;}
 
     = {},
     options: {
@@ -73902,7 +74523,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -74021,7 +74642,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -75200,7 +75821,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -75242,7 +75863,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -75534,7 +76155,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -75576,7 +76197,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -75886,7 +76507,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;subject?: Object | URL | null;object?: Object | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;subject?: Object | URL | null;object?: Object | URL | null;
 objects?: (Object | URL)[];relationship?: Object | URL | null;
 relationships?: (Object | URL)[];}
 ,
@@ -76017,7 +76638,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;subject?: Object | URL | null;object?: Object | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;subject?: Object | URL | null;object?: Object | URL | null;
 objects?: (Object | URL)[];relationship?: Object | URL | null;
 relationships?: (Object | URL)[];}
 
@@ -77526,7 +78147,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -77568,7 +78189,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -77906,7 +78527,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -78370,7 +78991,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;preferredUsername?: string | LanguageString | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
@@ -85091,7 +85712,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -85133,7 +85754,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -85425,7 +86046,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -85467,7 +86088,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -85761,7 +86382,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;deleted?: Temporal.Instant | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;deleted?: Temporal.Instant | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -85810,7 +86431,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;deleted?: Temporal.Instant | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;deleted?: Temporal.Instant | null;}
 
     = {},
     options: {
@@ -86216,7 +86837,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -86258,7 +86879,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -86555,7 +87176,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -86597,7 +87218,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -86892,7 +87513,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -86934,7 +87555,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -87224,7 +87845,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -87260,7 +87881,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
 
     = {},
     options: {
@@ -87562,7 +88183,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;
@@ -87604,7 +88225,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: URL | null;replyAuthorization?: URL | null;announceAuthorization?: URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;actor?: Application | Group | Organization | Person | Service | URL | null;
 actors?: (Application | Group | Organization | Person | Service | URL)[];object?: Object | URL | null;
 objects?: (Object | URL)[];target?: Object | URL | null;
 targets?: (Object | URL)[];result?: Object | URL | null;

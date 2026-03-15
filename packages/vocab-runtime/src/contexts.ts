@@ -4252,11 +4252,35 @@ const preloadedContexts: Record<string, unknown> = {
       "LikeRequest": "gts:LikeRequest",
       "ReplyRequest": "gts:ReplyRequest",
       "AnnounceRequest": "gts:AnnounceRequest",
-      "LikeAuthorization": "gts:LikeAuthorization",
+      "QuoteRequest": "gts:QuoteRequest",
+      "LikeAuthorization": "gts:LikeApproval",
       "ReplyAuthorization": "gts:ReplyAuthorization",
       "AnnounceAuthorization": "gts:AnnounceAuthorization",
-      "QuoteRequest": "gts:QuoteRequest",
       "QuoteAuthorization": "gts:QuoteAuthorization",
+      "likeAuthorization": {
+        "@id": "gts:likeAuthorization",
+        "@type": "@id",
+      },
+      "replyAuthorization": {
+        "@id": "gts:replyAuthorization",
+        "@type": "@id",
+      },
+      "announceAuthorization": {
+        "@id": "gts:announceAuthorization",
+        "@type": "@id",
+      },
+      "quoteAuthorization": {
+        "@id": "gts:quoteAuthorization",
+        "@type": "@id",
+      },
+      "interactingObject": {
+        "@id": "gts:interactingObject",
+        "@type": "@id",
+      },
+      "interactionTarget": {
+        "@id": "gts:interactionTarget",
+        "@type": "@id",
+      },
       "interactionPolicy": {
         "@id": "gts:interactionPolicy",
         "@type": "@id",
@@ -4285,42 +4309,6 @@ const preloadedContexts: Record<string, unknown> = {
         "@id": "gts:manualApproval",
         "@type": "@id",
       },
-      "interactingObject": {
-        "@id": "gts:interactingObject",
-        "@type": "@id",
-      },
-      "interactionTarget": {
-        "@id": "gts:interactionTarget",
-        "@type": "@id",
-      },
-      "likeAuthorization": {
-        "@id": "gts:likeAuthorization",
-        "@type": "@id",
-      },
-      "replyAuthorization": {
-        "@id": "gts:replyAuthorization",
-        "@type": "@id",
-      },
-      "announceAuthorization": {
-        "@id": "gts:announceAuthorization",
-        "@type": "@id",
-      },
-      "quoteAuthorization": {
-        "@id": "gts:quoteAuthorization",
-        "@type": "@id",
-      },
-      "approvedBy": {
-        "@id": "gts:approvedBy",
-        "@type": "@id",
-      },
-      "approvalRequired": {
-        "@id": "gts:approvalRequired",
-        "@type": "@id",
-      },
-      "always": {
-        "@id": "gts:always",
-        "@type": "@id",
-      },
       "hidesToPublicFromUnauthedWeb": {
         "@id": "gts:hidesToPublicFromUnauthedWeb",
         "@type": "xsd:boolean",
@@ -4328,6 +4316,18 @@ const preloadedContexts: Record<string, unknown> = {
       "hidesCcPublicFromUnauthedWeb": {
         "@id": "gts:hidesCcPublicFromUnauthedWeb",
         "@type": "xsd:boolean",
+      },
+      "always": {
+        "@id": "gts:always",
+        "@type": "@id",
+      },
+      "approvalRequired": {
+        "@id": "gts:approvalRequired",
+        "@type": "@id",
+      },
+      "approvedBy": {
+        "@id": "gts:approvedBy",
+        "@type": "@id",
       },
     },
   },

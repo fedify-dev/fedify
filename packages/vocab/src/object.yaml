@@ -439,27 +439,27 @@ properties:
   compactName: likeAuthorization
   uri: "https://gotosocial.org/ns#likeAuthorization"
   description: |
-    A URI referencing a {@link LikeAuthorization} object that proves
-    this like interaction was approved by the target post's author.
+    A {@link LikeAuthorization} object that proves this like interaction
+    was approved by the target post's author.
   range:
-  - "http://www.w3.org/2001/XMLSchema#anyURI"
+  - "https://gotosocial.org/ns#LikeApproval"
 
 - singularName: replyAuthorization
   functional: true
   compactName: replyAuthorization
   uri: "https://gotosocial.org/ns#replyAuthorization"
   description: |
-    A URI referencing a {@link ReplyAuthorization} object that proves
-    this reply was approved by the target post's author.
+    A {@link ReplyAuthorization} object that proves this reply was approved
+    by the target post's author.
   range:
-  - "http://www.w3.org/2001/XMLSchema#anyURI"
+  - "https://gotosocial.org/ns#ReplyAuthorization"
 
 - singularName: announceAuthorization
   functional: true
   compactName: announceAuthorization
   uri: "https://gotosocial.org/ns#announceAuthorization"
   description: |
-    A URI referencing an {@link AnnounceAuthorization} object that proves
-    this announce (boost) was approved by the target post's author.
+    An {@link AnnounceAuthorization} object that proves this announce
+    (boost) was approved by the target post's author.
   range:
-  - "http://www.w3.org/2001/XMLSchema#anyURI"
+  - "https://gotosocial.org/ns#AnnounceAuthorization"

@@ -103,8 +103,9 @@ To be released.
      -  Added `LikeAuthorization`, `ReplyAuthorization`, and
         `AnnounceAuthorization` types for proving approved interactions.
      -  Added `Object.interactionPolicy`, `Object.approvedBy`,
-        `Object.likeAuthorization`, `Object.replyAuthorization`, and
-        `Object.announceAuthorization` properties.
+        `Object.getLikeAuthorization()`/`Object.likeAuthorizationId`,
+        `Object.getReplyAuthorization()`/`Object.replyAuthorizationId`, and
+        `Object.getAnnounceAuthorization()`/`Object.announceAuthorizationId`.
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
     `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
