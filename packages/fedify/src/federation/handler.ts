@@ -823,6 +823,7 @@ async function handleInboxInternal<TContextData>(
             request,
             kv,
             kvPrefixes.acceptSignatureNonce,
+            verification.signatureLabel,
           );
           if (!nonceValid) {
             logger.error(
@@ -1701,11 +1702,28 @@ async function verifySignatureNonce(
   request: Request,
   kv: KvStore,
   noncePrefix: KvKey,
+  verifiedLabel?: string,
 ): Promise<boolean> {
   const signatureInput = request.headers.get("Signature-Input");
   if (signatureInput == null) return false;
   const parsed = parseRfc9421SignatureInput(signatureInput);
-  // Check each signature for a nonce
+  // Only check the nonce from the verified signature label to prevent bypass
+  // attacks where a bogus signature carries a valid nonce while a different
+  // signature (without a nonce) is the one that actually verified.
+  if (verifiedLabel != null) {
+    const sig = parsed[verifiedLabel];
+    if (sig == null) return false;
+    const nonce = sig.nonce;
+    if (nonce == null) return false;
+    const key = [...noncePrefix, nonce] as unknown as KvKey;
+    const stored = await kv.get(key);
+    if (stored != null) {
+      await kv.delete(key);
+      return true;
+    }
+    return false;
+  }
+  // Fallback: if no verified label is known (e.g., draft-cavage), scan all
   for (const sig of globalThis.Object.values(parsed)) {
     const nonce = sig.nonce;
     if (nonce == null) continue;

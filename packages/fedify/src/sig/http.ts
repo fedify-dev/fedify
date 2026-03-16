@@ -638,6 +638,7 @@ export type VerifyRequestDetailedResult =
   | {
     readonly verified: true;
     readonly key: CryptographicKey;
+    readonly signatureLabel?: string;
   }
   | {
     readonly verified: false;
@@ -1417,7 +1418,7 @@ async function verifyRequestRfc9421(
       );
 
       if (verified) {
-        return { verified: true, key };
+        return { verified: true, key, signatureLabel: sigName };
       } else if (cached) {
         // If we used a cached key and verification failed, try fetching fresh key
         logger.debug(
