@@ -1756,7 +1756,8 @@ async function buildAcceptSignatureHeader(
   }
   return formatAcceptSignature([{
     label: "sig1",
-    components: policy.components ?? DEFAULT_CHALLENGE_COMPONENTS,
+    components: (policy.components ?? DEFAULT_CHALLENGE_COMPONENTS)
+      .filter((c) => c !== "@status"),
     parameters: params,
   }]);
 }
