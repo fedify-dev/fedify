@@ -2500,3 +2500,164 @@ test(
     fetchMock.hardReset();
   },
 );
+
+test(
+  "doubleKnock(): Accept-Signature with unsupported component falls to legacy fallback",
+  async () => {
+    // Regression test for missing error guard in doubleKnock() challenge retry.
+    // When a server sends an Accept-Signature challenge containing a component
+    // that causes signRequest() to throw (e.g., a header not present on the
+    // request), the error should be caught so that doubleKnock() falls through
+    // to the legacy spec-swap fallback instead of propagating the TypeError.
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post(
+      "https://example.com/inbox-bad-challenge",
+      (cl) => {
+        const req = cl.request!;
+        requestCount++;
+        if (requestCount === 1) {
+          // Challenge with a header component ("x-custom-required") that is
+          // absent from the request — createRfc9421SignatureBase() will throw
+          // "Missing header: x-custom-required".
+          return new Response("Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri" "x-custom-required");created',
+            },
+          });
+        }
+        // Legacy fallback (draft-cavage) should still be reached
+        if (
+          req.headers.has("Signature") && !req.headers.has("Signature-Input")
+        ) {
+          return new Response("", { status: 202 });
+        }
+        return new Response("Bad", { status: 400 });
+      },
+    );
+
+    const request = new Request("https://example.com/inbox-bad-challenge", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    // The challenge retry should fail gracefully and fall through to legacy
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): Accept-Signature with unsupported derived component falls to legacy fallback",
+  async () => {
+    // Similar to the above test, but with an unsupported derived component
+    // (e.g., "@query-param") instead of a missing header.
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post(
+      "https://example.com/inbox-bad-derived",
+      (cl) => {
+        const req = cl.request!;
+        requestCount++;
+        if (requestCount === 1) {
+          // Challenge with "@query-param" — a derived component that throws
+          // in createRfc9421SignatureBase() because it requires special params.
+          return new Response("Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature": 'sig1=("@method" "@query-param");created',
+            },
+          });
+        }
+        // Legacy fallback should be reached
+        if (
+          req.headers.has("Signature") && !req.headers.has("Signature-Input")
+        ) {
+          return new Response("", { status: 202 });
+        }
+        return new Response("Bad", { status: 400 });
+      },
+    );
+
+    const request = new Request("https://example.com/inbox-bad-derived", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): Accept-Signature with multiple entries where first throws falls to next entry",
+  async () => {
+    // When Accept-Signature contains multiple entries, if the first entry
+    // causes signRequest() to throw, the loop should catch the error and
+    // try the next entry (or fall through to legacy fallback).
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post(
+      "https://example.com/inbox-multi-challenge",
+      (cl) => {
+        const req = cl.request!;
+        requestCount++;
+        if (requestCount === 1) {
+          // First entry has a missing header; second entry is valid
+          return new Response("Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature": 'sig1=("@method" "x-nonexistent");created,' +
+                'sig2=("@method" "@target-uri" "@authority");created',
+            },
+          });
+        }
+        // Challenge retry with valid sig2 should succeed
+        if (req.headers.has("Signature-Input")) {
+          return new Response("", { status: 202 });
+        }
+        return new Response("Bad", { status: 400 });
+      },
+    );
+
+    const request = new Request(
+      "https://example.com/inbox-multi-challenge",
+      {
+        method: "POST",
+        body: "Test message",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);

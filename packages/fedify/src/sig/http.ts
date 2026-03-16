@@ -1633,17 +1633,26 @@ export async function doubleKnock(
             "label {label} and components {components}.",
           { label: rfc9421.label, components: rfc9421.components },
         );
-        signedRequest = await signRequest(
-          request,
-          identity.privateKey,
-          identity.keyId,
-          { spec: "rfc9421", tracerProvider, body, rfc9421 },
-        );
-        log?.(signedRequest);
-        response = await fetch(signedRequest, {
-          redirect: "manual",
-          signal,
-        });
+        try {
+          signedRequest = await signRequest(
+            request,
+            identity.privateKey,
+            identity.keyId,
+            { spec: "rfc9421", tracerProvider, body, rfc9421 },
+          );
+          log?.(signedRequest);
+          response = await fetch(signedRequest, {
+            redirect: "manual",
+            signal,
+          });
+        } catch (error) {
+          logger.debug(
+            "Failed to fulfill Accept-Signature challenge entry " +
+              "{label}: {error}",
+            { label: entry.label, error },
+          );
+          continue;
+        }
         // Follow redirects manually:
         if (
           response.status >= 300 && response.status < 400 &&
