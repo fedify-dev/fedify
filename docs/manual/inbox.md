@@ -54,8 +54,6 @@ const federation = createFederation<void>({
     enabled: true,
     // Optional: customize covered components (defaults shown below)
     // components: ["@method", "@target-uri", "@authority", "content-digest"],
-    // Optional: require a created timestamp (default: true)
-    // requestCreated: true,
     // Optional: require a one-time nonce for replay protection
     // requestNonce: false,
     // Optional: nonce TTL in seconds (default: 300)

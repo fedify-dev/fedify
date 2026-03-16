@@ -796,12 +796,6 @@ export interface InboxChallengePolicy {
   components?: string[];
 
   /**
-   * Whether to request the signer include a `created` timestamp.
-   * @default `true`
-   */
-  requestCreated?: boolean;
-
-  /**
    * Whether to generate and require a one-time nonce for replay protection.
    * When enabled, a cryptographically random nonce is included in each
    * challenge and verified on subsequent requests.  Requires a

@@ -1744,9 +1744,7 @@ async function buildAcceptSignatureHeader(
   noncePrefix: KvKey,
 ): Promise<string> {
   const params: AcceptSignatureMember["parameters"] = {};
-  if (policy.requestCreated !== false) {
-    params.created = true;
-  }
+  params.created = true;
   if (policy.requestNonce) {
     const nonce = generateNonce();
     const ttl = Temporal.Duration.from({
