@@ -1,6 +1,6 @@
 import { createFederation, MemoryKvStore } from "@fedify/fedify/federation";
 import { generateCryptoKeyPair } from "@fedify/fedify/sig";
-import { Accept, Activity, Create, Follow, Person } from "@fedify/vocab";
+import { Accept, Activity, Create, Follow, Note, Person } from "@fedify/vocab";
 import { store } from "./store.ts";
 
 const ORIGIN = Deno.env.get("HARNESS_ORIGIN") ??
@@ -67,11 +67,16 @@ federation
       { immediate: true },
     );
   })
-  .on(Create, (_ctx, create) => {
+  .on(Create, async (_ctx, create) => {
+    const object = await create.getObject();
     store.push({
       id: create.id?.href ?? crypto.randomUUID(),
       type: "Create",
       receivedAt: new Date().toISOString(),
+      inReplyTo: object instanceof Note
+        ? object.replyTargetId?.href
+        : undefined,
+      content: object instanceof Note ? object.content?.toString() : undefined,
     });
   })
   .on(Activity, (_ctx, activity) => {
