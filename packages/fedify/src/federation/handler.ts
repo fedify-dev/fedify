@@ -686,6 +686,9 @@ async function handleInboxInternal<TContextData>(
     }
   }
   let httpSigKey: CryptographicKey | null = null;
+  // Nonce verification is deferred until after actor/key ownership is checked
+  // to avoid consuming nonces on requests that will be rejected anyway.
+  let pendingNonceLabel: string | undefined | null = null;
   if (activity == null) {
     if (!skipSignatureVerification) {
       const verification = await verifyRequestDetailed(request, {
@@ -815,37 +818,12 @@ async function handleInboxInternal<TContextData>(
           },
         );
       } else {
-        // Optional nonce verification for Accept-Signature challenges
         if (
           inboxChallengePolicy?.enabled && inboxChallengePolicy.requestNonce
         ) {
-          const nonceValid = await verifySignatureNonce(
-            request,
-            kv,
-            kvPrefixes.acceptSignatureNonce,
-            verification.signatureLabel,
-          );
-          if (!nonceValid) {
-            logger.error(
-              "Signature nonce verification failed (missing, expired, " +
-                "or replayed).",
-              { recipient },
-            );
-            const headers: Record<string, string> = {
-              "Content-Type": "text/plain; charset=utf-8",
-            };
-            headers["Accept-Signature"] = await buildAcceptSignatureHeader(
-              inboxChallengePolicy,
-              kv,
-              kvPrefixes.acceptSignatureNonce,
-            );
-            headers["Cache-Control"] = "no-store";
-            headers["Vary"] = "Accept, Signature";
-            return new Response(
-              "Signature nonce verification failed.",
-              { status: 401, headers },
-            );
-          }
+          // Defer nonce consumption until after actor/key ownership check to
+          // avoid burning nonces on requests that will be rejected anyway.
+          pendingNonceLabel = verification.signatureLabel;
         }
         logger.debug("HTTP Signatures are verified.", { recipient });
         activityVerified = true;
@@ -889,6 +867,35 @@ async function handleInboxInternal<TContextData>(
       status: 401,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
+  // Perform deferred nonce verification now that actor/key ownership is confirmed.
+  if (pendingNonceLabel !== null) {
+    const nonceValid = await verifySignatureNonce(
+      request,
+      kv,
+      kvPrefixes.acceptSignatureNonce,
+      pendingNonceLabel,
+    );
+    if (!nonceValid) {
+      logger.error(
+        "Signature nonce verification failed (missing, expired, or replayed).",
+        { recipient },
+      );
+      const headers: Record<string, string> = {
+        "Content-Type": "text/plain; charset=utf-8",
+      };
+      headers["Accept-Signature"] = await buildAcceptSignatureHeader(
+        inboxChallengePolicy!,
+        kv,
+        kvPrefixes.acceptSignatureNonce,
+      );
+      headers["Cache-Control"] = "no-store";
+      headers["Vary"] = "Accept, Signature";
+      return new Response(
+        "Signature nonce verification failed.",
+        { status: 401, headers },
+      );
+    }
   }
   const routeResult = await routeActivity({
     context: ctx,
@@ -1688,6 +1695,14 @@ const DEFAULT_CHALLENGE_COMPONENTS = [
   "content-digest",
 ];
 
+// Minimum set of components that must always appear in a challenge to ensure
+// basic request binding.  These are merged with any caller-supplied components.
+const MINIMUM_CHALLENGE_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+];
+
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -1710,30 +1725,19 @@ async function verifySignatureNonce(
   // Only check the nonce from the verified signature label to prevent bypass
   // attacks where a bogus signature carries a valid nonce while a different
   // signature (without a nonce) is the one that actually verified.
-  if (verifiedLabel != null) {
-    const sig = parsed[verifiedLabel];
-    if (sig == null) return false;
-    const nonce = sig.nonce;
-    if (nonce == null) return false;
-    const key = [...noncePrefix, nonce] as unknown as KvKey;
-    const stored = await kv.get(key);
-    if (stored != null) {
-      await kv.delete(key);
-      return true;
-    }
-    return false;
-  }
-  // Fallback: if no verified label is known (e.g., draft-cavage), scan all
-  for (const sig of globalThis.Object.values(parsed)) {
-    const nonce = sig.nonce;
-    if (nonce == null) continue;
-    const key = [...noncePrefix, nonce] as unknown as KvKey;
-    const stored = await kv.get(key);
-    if (stored != null) {
-      // Consume the nonce (one-time use)
-      await kv.delete(key);
-      return true;
-    }
+  // Nonces are only supported for RFC 9421 signatures.  If no verified label
+  // is available (e.g., draft-cavage), skip nonce verification entirely to
+  // prevent a decoupled-check bypass via a non-RFC-9421 path.
+  if (verifiedLabel == null) return false;
+  const sig = parsed[verifiedLabel];
+  if (sig == null) return false;
+  const nonce = sig.nonce;
+  if (nonce == null) return false;
+  const key = [...noncePrefix, nonce] as unknown as KvKey;
+  const stored = await kv.get(key);
+  if (stored != null) {
+    await kv.delete(key);
+    return true;
   }
   return false;
 }
@@ -1754,10 +1758,18 @@ async function buildAcceptSignatureHeader(
     await kv.set(key, true, { ttl });
     params.nonce = nonce;
   }
+  const baseComponents = policy.components ?? DEFAULT_CHALLENGE_COMPONENTS;
+  // Always include the minimum required components to ensure basic request
+  // binding, then deduplicate and exclude response-only @status.
+  const components = [
+    ...new globalThis.Set([
+      ...MINIMUM_CHALLENGE_COMPONENTS,
+      ...baseComponents,
+    ]),
+  ].filter((c) => c !== "@status");
   return formatAcceptSignature([{
     label: "sig1",
-    components: (policy.components ?? DEFAULT_CHALLENGE_COMPONENTS)
-      .filter((c) => c !== "@status"),
+    components,
     parameters: params,
   }]);
 }

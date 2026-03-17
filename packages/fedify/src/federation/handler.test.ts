@@ -2740,3 +2740,93 @@ test(
     );
   },
 );
+
+test(
+  "handleInbox() actor/key mismatch does not consume nonce",
+  async () => {
+    // A request that has a valid RFC 9421 signature with a nonce, but the
+    // signing key does not belong to the claimed actor.  The nonce must NOT be
+    // consumed so the legitimate sender can still use it.
+    const maliciousActivity = new Create({
+      id: new URL("https://attacker.example.com/activities/mismatch-nonce-1"),
+      actor: new URL("https://victim.example.com/users/alice"),
+      object: new Note({
+        id: new URL("https://attacker.example.com/notes/mismatch-nonce-1"),
+        attribution: new URL("https://victim.example.com/users/alice"),
+        content: "Forged message with nonce!",
+      }),
+    });
+    const kv = new MemoryKvStore();
+    const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+    const nonce = "mismatch-nonce-xyz";
+    await kv.set(
+      ["_fedify", "acceptSignatureNonce", nonce] as const,
+      true,
+      { ttl: Temporal.Duration.from({ seconds: 300 }) },
+    );
+    // Sign with rsaPrivateKey3 (associated with example.com/person2, not
+    // victim.example.com/users/alice), and include the stored nonce.
+    const maliciousRequest = await signRequest(
+      new Request("https://example.com/", {
+        method: "POST",
+        body: JSON.stringify(await maliciousActivity.toJsonLd()),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { spec: "rfc9421", rfc9421: { nonce } },
+    );
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: maliciousRequest,
+      url: new URL(maliciousRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const response = await handleInbox(maliciousRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: noncePrefix,
+      },
+      actorDispatcher,
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: {
+        enabled: true,
+        requestNonce: true,
+        nonceTtlSeconds: 300,
+      },
+    });
+    assertEquals(response.status, 401);
+    assertEquals(
+      await response.text(),
+      "The signer and the actor do not match.",
+    );
+    // The nonce must NOT have been consumed — the actor/key mismatch should
+    // reject before nonce consumption so the nonce remains usable.
+    const stored = await kv.get(
+      ["_fedify", "acceptSignatureNonce", nonce] as const,
+    );
+    assertEquals(
+      stored,
+      true,
+      "Nonce must not be consumed when actor/key ownership check fails",
+    );
+  },
+);
