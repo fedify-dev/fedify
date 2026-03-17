@@ -1,0 +1,24 @@
+$schema: ../../vocab-tools/schema.yaml
+name: AnnounceRequest
+compactName: AnnounceRequest
+uri: "https://gotosocial.org/ns#AnnounceRequest"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  A request to announce (boost) a post that requires approval from
+  the post author.
+
+  The `object` property references the post to be announced, and
+  the `instrument` property contains the {@link Announce} activity itself.
+
+  The post author responds with an {@link Accept} (with an
+  {@link AnnounceAuthorization} as `result`) or a {@link Reject}.
+
+  See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
+  for details.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+properties: []

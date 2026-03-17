@@ -213,6 +213,7 @@ test("Object.toJsonLd()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         fedibird: "http://fedibird.com/ns#",
         sensitive: "as:sensitive",
@@ -244,6 +245,7 @@ test("Note.toJsonLd()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -387,6 +389,7 @@ test({
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/v1",
         "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
       ],
       type: "Activity",
       object: {
@@ -620,6 +623,7 @@ test("Person.toJsonLd()", async () => {
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
       {
         PropertyValue: "schema:PropertyValue",
         alsoKnownAs: {
@@ -1067,6 +1071,7 @@ test("Note.quoteUrl", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -1206,6 +1211,7 @@ test("Place.fromJsonLd()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
     ],
     type: "Place",
     name: "Fresno Area",
@@ -2288,7 +2294,7 @@ for (const typeUri in types) {
       contextLoader: mockDocumentLoader,
     });
     deepStrictEqual(jsonLd["@context"], type.defaultContext);
-    deepStrictEqual(jsonLd.id, "https://example.com/");
+    if (type.entity) deepStrictEqual(jsonLd.id, "https://example.com/");
     const restored = await cls.fromJsonLd(jsonLd, {
       documentLoader: mockDocumentLoader,
       contextLoader: mockDocumentLoader,

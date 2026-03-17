@@ -11,6 +11,7 @@ defaultContext:
 - "https://w3id.org/security/data-integrity/v1"
 - "https://www.w3.org/ns/did/v1"
 - "https://w3id.org/security/multikey/v1"
+- "https://gotosocial.org/ns"
 - alsoKnownAs:
     "@id": "as:alsoKnownAs"
     "@type": "@id"

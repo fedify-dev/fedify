@@ -1,0 +1,39 @@
+$schema: ../../vocab-tools/schema.yaml
+name: LikeAuthorization
+compactName: LikeAuthorization
+uri: "https://gotosocial.org/ns#LikeApproval"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  Proves that a {@link Like} interaction has been approved by the post author.
+
+  This object is dereferenceable and is used by third parties to verify
+  that a like was authorized.  The `attributedTo` property identifies
+  the post author who granted the approval.
+
+  See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
+  for details.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+
+properties:
+- singularName: interactingObject
+  functional: true
+  compactName: interactingObject
+  uri: "https://gotosocial.org/ns#interactingObject"
+  description: |
+    The URI of the interaction (e.g., a {@link Like} activity) that
+    has been authorized.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: interactionTarget
+  functional: true
+  compactName: interactionTarget
+  uri: "https://gotosocial.org/ns#interactionTarget"
+  description: |
+    The URI of the post that is the target of the authorized interaction.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
