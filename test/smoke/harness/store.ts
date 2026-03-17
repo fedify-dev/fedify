@@ -2,6 +2,8 @@ export interface ReceivedActivity {
   id: string;
   type: string;
   receivedAt: string;
+  inReplyTo?: string;
+  content?: string;
 }
 
 const inbox: ReceivedActivity[] = [];

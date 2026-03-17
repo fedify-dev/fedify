@@ -52,13 +52,31 @@ async function poll<T>(
   throw new Error(`Timed out waiting for: ${label}${suffix}`);
 }
 
+type InboxItem = {
+  type: string;
+  id: string;
+  receivedAt: string;
+  inReplyTo?: string;
+  content?: string;
+};
+
+async function snapshotInboxIds(): Promise<Set<string>> {
+  const res = await fetch(`${HARNESS_URL}/_test/inbox`);
+  const items = await res.json() as InboxItem[];
+  return new Set(items.map((a) => a.id));
+}
+
 function pollHarnessInbox(
   activityType: string,
-): Promise<{ type: string; id: string }> {
+  filter?: (item: InboxItem) => boolean,
+): Promise<InboxItem> {
   return poll(`${activityType} in harness inbox`, async () => {
     const res = await fetch(`${HARNESS_URL}/_test/inbox`);
-    const items = await res.json() as { type: string; id: string }[];
-    return items.find((a) => a.type === activityType) ?? null;
+    const items = await res.json() as InboxItem[];
+    return items.find((a) =>
+      a.type === activityType &&
+      (!filter || filter(a))
+    ) ?? null;
   });
 }
 
@@ -195,9 +213,10 @@ async function testFollowMastodonToFedify(): Promise<void> {
   const accountId = await lookupFedifyAccount();
   await ensureNotFollowing(accountId, "following");
   await assertNotFollowing(accountId, "following");
+  const knownIds = await snapshotInboxIds();
   await serverPost(`/api/v1/accounts/${accountId}/follow`);
 
-  await pollHarnessInbox("Follow");
+  await pollHarnessInbox("Follow", (a) => !knownIds.has(a.id));
 
   await poll("follow accepted", async () => {
     const rels = await serverGet(
@@ -217,6 +236,7 @@ async function testFollowFedifyToMastodon(): Promise<void> {
   const accountId = await lookupFedifyAccount();
   await ensureNotFollowing(accountId, "followed_by");
   await assertNotFollowing(accountId, "followed_by");
+  const knownIds = await snapshotInboxIds();
 
   await harnessPost("/_test/follow", {
     target: `testuser@${SERVER_INTERNAL_HOST}`,
@@ -230,7 +250,7 @@ async function testFollowFedifyToMastodon(): Promise<void> {
     return rel?.followed_by ? rel : null;
   });
 
-  await pollHarnessInbox("Accept");
+  await pollHarnessInbox("Accept", (a) => !knownIds.has(a.id));
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +284,12 @@ async function testReply(): Promise<void> {
   await harnessPost("/_test/reset");
 
   // Find a note from the Fedify harness on the Mastodon timeline to reply to.
-  type Status = { id: string; content: string; account: { acct: string } };
+  type Status = {
+    id: string;
+    content: string;
+    uri: string;
+    account: { acct: string };
+  };
   const parent = await poll("find Fedify note to reply to", async () => {
     const statuses = await serverGet(
       "/api/v1/timelines/home?limit=20",
@@ -273,15 +298,34 @@ async function testReply(): Promise<void> {
       null;
   });
 
+  const token = `smoke-reply-${crypto.randomUUID()}`;
   const handle = `@testuser@${HARNESS_HOST}`;
-  const replyContent = `Reply smoke test ${Date.now()} ${handle}`;
+  const replyContent = `${token} ${handle}`;
+
+  const knownIds = await snapshotInboxIds();
 
   await serverPost("/api/v1/statuses", {
     status: replyContent,
     in_reply_to_id: parent.id,
   });
 
-  await pollHarnessInbox("Create");
+  const received = await pollHarnessInbox(
+    "Create",
+    (a) => !knownIds.has(a.id) && !!a.content?.includes(token),
+  );
+
+  if (!received.inReplyTo) {
+    throw new Error(
+      "Received Create activity has no inReplyTo — " +
+        "cannot distinguish reply from plain mention",
+    );
+  }
+  if (received.inReplyTo !== parent.uri) {
+    throw new Error(
+      `inReplyTo mismatch: expected ${parent.uri}, ` +
+        `got ${received.inReplyTo}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -290,11 +334,12 @@ async function testReply(): Promise<void> {
 
 async function testUnfollowMastodonFromFedify(): Promise<void> {
   await harnessPost("/_test/reset");
+  const knownIds = await snapshotInboxIds();
 
   const accountId = await lookupFedifyAccount();
   await serverPost(`/api/v1/accounts/${accountId}/unfollow`);
 
-  await pollHarnessInbox("Undo");
+  await pollHarnessInbox("Undo", (a) => !knownIds.has(a.id));
 
   await poll("unfollow confirmed", async () => {
     const rels = await serverGet(
