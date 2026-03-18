@@ -12,7 +12,7 @@ import type { WebFrameworks } from "./types.ts";
 import { replace } from "./utils.ts";
 
 const webFrameworks: WebFrameworks = {
-  bareBones: {
+  "bare-bones": {
     label: "Bare-bones",
     packageManagers: PACKAGE_MANAGER,
     defaultPort: 8000,
