@@ -47,7 +47,7 @@ export default [
     noExternal: (id: string, importer: string | undefined) => {
       if (id !== "@fedify/fixture") return false;
       const normalized = importer?.replaceAll(sep, "/");
-      return normalized?.includes("/testing/") ?? false;
+      return normalized?.includes("/src/testing/") ?? false;
     },
     inputOptions: {
       onwarn(warning, defaultHandler) {
