@@ -4314,6 +4314,44 @@ const preloadedContexts: Record<string, unknown> = {
       },
     },
   },
+
+  // Mastodon's "toot:" namespace.  The URL http://joinmastodon.org/ns has
+  // *never* served a real JSON-LD context document—Mastodon has always inlined
+  // these term definitions directly in every outgoing @context array.  However,
+  // some ActivityPub implementations (e.g., Bonfire) put the bare URL in their
+  // @context, which causes JSON-LD processors to try to dereference it and fail
+  // with a 404.  We ship a built-in copy here so that Fedify can parse such
+  // documents without a network round-trip to a URL that will never resolve.
+  // See: https://github.com/mastodon/joinmastodon/issues/148
+  //      https://github.com/fedify-dev/fedify/issues/630
+  "http://joinmastodon.org/ns": {
+    "@context": {
+      "toot": "http://joinmastodon.org/ns#",
+      "Emoji": "toot:Emoji",
+      "featured": {
+        "@id": "toot:featured",
+        "@type": "@id",
+      },
+      "featuredTags": {
+        "@id": "toot:featuredTags",
+        "@type": "@id",
+      },
+      "focalPoint": {
+        "@container": "@list",
+        "@id": "toot:focalPoint",
+      },
+      "blurhash": "toot:blurhash",
+      "discoverable": "toot:discoverable",
+      "indexable": "toot:indexable",
+      "memorial": "toot:memorial",
+      "votersCount": "toot:votersCount",
+      "suspended": "toot:suspended",
+      "attributionDomains": {
+        "@id": "toot:attributionDomains",
+        "@type": "@id",
+      },
+    },
+  },
 };
 
 export default preloadedContexts;
