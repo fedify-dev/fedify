@@ -19,7 +19,7 @@ import vscodeSettings from "../json/vscode-settings.json" with {
 };
 import type { InitCommandData } from "../types.ts";
 import { merge } from "../utils.ts";
-import { PACKAGES_PATH } from "./const.ts";
+import { getPackagesPath } from "./const.ts";
 import { getDependencies, getDevDependencies, joinDepsReg } from "./deps.ts";
 
 /**
@@ -66,7 +66,7 @@ const getLinks = <
     keys as (obj: object) => Iterable<string>,
     filter((dep) => dep.includes("@fedify/")),
     map((dep) => dep.replace("@fedify/", "")),
-    map((dep) => joinPath(PACKAGES_PATH, dep)),
+    map((dep) => joinPath(getPackagesPath(), dep)),
     map((absolutePath) => realpathSync(absolutePath)),
     map((realAbsolutePath) => relative(realpathSync(dir), realAbsolutePath)),
     toArray,

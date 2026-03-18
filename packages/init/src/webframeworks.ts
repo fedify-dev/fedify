@@ -15,7 +15,7 @@ const webFrameworks: WebFrameworks = {
   hono: {
     label: "Hono",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ projectName, packageManager: pm }) => ({
+    init: async ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
           ...defaultDenoDependencies,
@@ -46,16 +46,17 @@ const webFrameworks: WebFrameworks = {
       loggingFile: "src/logging.ts",
       files: {
         "src/app.tsx": pipe(
-          "hono/app.tsx",
-          readTemplate,
+          await readTemplate("hono/app.tsx"),
           replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
           replace(/\/\* logger \*\//, projectName),
         ),
-        "src/index.ts": readTemplate(
+        "src/index.ts": await readTemplate(
           `hono/index/${packageManagerToRuntime(pm)}.ts`,
         ),
         ...(pm !== "deno"
-          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          ? {
+            "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+          }
           : {}),
       },
       compilerOptions: pm === "deno" ? undefined : {
@@ -90,7 +91,7 @@ const webFrameworks: WebFrameworks = {
   elysia: {
     label: "ElysiaJS",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ projectName, packageManager: pm }) => ({
+    init: async ({ projectName, packageManager: pm }) => ({
       dependencies: pm === "deno"
         ? {
           ...defaultDenoDependencies,
@@ -124,11 +125,13 @@ const webFrameworks: WebFrameworks = {
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
-        "src/index.ts": readTemplate(
+        "src/index.ts": (await readTemplate(
           `elysia/index/${packageManagerToRuntime(pm)}.ts`,
-        ).replace(/\/\* logger \*\//, projectName),
+        )).replace(/\/\* logger \*\//, projectName),
         ...(pm !== "deno"
-          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          ? {
+            "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+          }
           : {}),
       },
       compilerOptions: pm === "deno" || pm === "bun" ? undefined : {
@@ -164,7 +167,7 @@ const webFrameworks: WebFrameworks = {
   express: {
     label: "Express",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ projectName, packageManager: pm }) => ({
+    init: async ({ projectName, packageManager: pm }) => ({
       dependencies: {
         "npm:express": "^4.19.2",
         "@fedify/express": PACKAGE_VERSION,
@@ -181,11 +184,13 @@ const webFrameworks: WebFrameworks = {
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
       files: {
-        "src/app.ts": readTemplate("express/app.ts")
+        "src/app.ts": (await readTemplate("express/app.ts"))
           .replace(/\/\* logger \*\//, projectName),
-        "src/index.ts": readTemplate("express/index.ts"),
+        "src/index.ts": await readTemplate("express/index.ts"),
         ...(pm !== "deno"
-          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          ? {
+            "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+          }
           : {}),
       },
       compilerOptions: pm === "deno" ? undefined : {
@@ -218,7 +223,7 @@ const webFrameworks: WebFrameworks = {
   nitro: {
     label: "Nitro",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ packageManager: pm, testMode }) => ({
+    init: async ({ packageManager: pm, testMode }) => ({
       command: getNitroInitCommand(pm),
       dependencies: {
         "@fedify/h3": PACKAGE_VERSION,
@@ -228,16 +233,18 @@ const webFrameworks: WebFrameworks = {
       federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
       files: {
-        "server/middleware/federation.ts": readTemplate(
+        "server/middleware/federation.ts": await readTemplate(
           "nitro/server/middleware/federation.ts",
         ),
-        "server/error.ts": readTemplate("nitro/server/error.ts"),
-        "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
+        "server/error.ts": await readTemplate("nitro/server/error.ts"),
+        "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
         ...(
-          testMode ? { ".env": readTemplate("nitro/.env.test") } : {}
+          testMode ? { ".env": await readTemplate("nitro/.env.test") } : {}
         ),
         ...(pm !== "deno"
-          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          ? {
+            "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+          }
           : {}),
       },
       tasks: {
@@ -250,7 +257,7 @@ const webFrameworks: WebFrameworks = {
   next: {
     label: "Next.js",
     packageManagers: PACKAGE_MANAGER,
-    init: ({ packageManager: pm }) => ({
+    init: async ({ packageManager: pm }) => ({
       label: "Next.js",
       command: getNextInitCommand(pm),
       dependencies: {
@@ -264,9 +271,11 @@ const webFrameworks: WebFrameworks = {
       federationFile: "federation/index.ts",
       loggingFile: "logging.ts",
       files: {
-        "middleware.ts": readTemplate("next/middleware.ts"),
+        "middleware.ts": await readTemplate("next/middleware.ts"),
         ...(pm !== "deno"
-          ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+          ? {
+            "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+          }
           : {}),
       },
       tasks: {
@@ -276,7 +285,7 @@ const webFrameworks: WebFrameworks = {
     }),
     defaultPort: 3000,
   },
-} as const;
+};
 export default webFrameworks;
 
 const defaultDevDependencies = {

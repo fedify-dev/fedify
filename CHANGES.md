@@ -8,6 +8,17 @@ Version 2.0.6
 
 To be released.
 
+### @fedify/init
+
+ -  Fixed `fedify init` crashing when `@fedify/cli` or `@fedify/init` is
+    executed through the JSR/Deno distribution.  `import.meta.dirname` is
+    `undefined` for remote JSR modules, so the template loading and
+    repository-relative path logic has been made safe for published JSR
+    execution.  [[#624], [#633]]
+
+[#624]: https://github.com/fedify-dev/fedify/issues/624
+[#633]: https://github.com/fedify-dev/fedify/pull/633
+
 ### @fedify/vocab-runtime
 
  -  Added `http://joinmastodon.org/ns` to preloaded JSON-LD contexts.
