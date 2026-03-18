@@ -244,19 +244,19 @@ project.  It will ask you a few questions to set up the project:
 Alternatively, you can specify the options in the command line to skip some of
 interactive prompts:
 
-[npm]: https://www.npmjs.com/
-[pnpm]: https://pnpm.io/
-[Yarn]: https://yarnpkg.com/
 [Hono]: https://hono.dev/
 [Elysia]: https://elysiajs.com/
 [Express]: https://expressjs.com/
 [Nitro]: https://nitro.unjs.io/
 [Next.js]: https://nextjs.org/
+[npm]: https://www.npmjs.com/
+[pnpm]: https://pnpm.io/
+[Yarn]: https://yarnpkg.com/
 [Redis]: https://redis.io/
 [PostgreSQL]: https://www.postgresql.org/
-[Deno KV]: https://deno.com/kv
 [AMQP]: https://www.amqp.org/
 [RabbitMQ]: https://www.rabbitmq.com/
+[Deno KV]: https://deno.com/kv
 [`@fedify/lint`]: /manual/lint
 [`@fedify/create`]: https://www.npmjs.com/package/@fedify/create
 
@@ -282,7 +282,7 @@ the `-w`/`--web-framework` option.  The available options are:
  -  `elysia`: [Elysia]
  -  `express`: [Express]
 
-### `-k`/`--kv-store`: Key–value store
+### `-k`/`--kv-store`: key–value store
 
 You can specify the key–value store to use by using the `-k`/`--kv-store`
 option.  The available options are:
