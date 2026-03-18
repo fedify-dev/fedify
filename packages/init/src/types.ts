@@ -50,7 +50,7 @@ export interface WebFrameworkDescription {
   defaultPort: number;
   init(
     data: InitCommandOptions & { projectName: string; testMode: boolean },
-  ): WebFrameworkInitializer;
+  ): WebFrameworkInitializer | Promise<WebFrameworkInitializer>;
 }
 
 export interface MessageQueueDescription {
