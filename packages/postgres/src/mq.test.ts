@@ -7,12 +7,7 @@ import process from "node:process";
 import { test as nodeTest } from "node:test";
 import postgres from "postgres";
 
-let Temporal: typeof temporal.Temporal;
-if ("Temporal" in globalThis) {
-  Temporal = globalThis.Temporal;
-} else {
-  Temporal = temporal.Temporal;
-}
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbUrl = process.env.POSTGRES_URL;
 
