@@ -25,10 +25,10 @@ Supported options
 
 The initializer supports the following project configurations:
 
- -  **Web frameworks**: [Hono], [Nitro], [Next.js], [Elysia], [Express]
+ -  **Web frameworks**: Bare-bones, [Hono], [Nitro], [Next.js], [Elysia], [Express]
  -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
- -  **Key-value stores**: Deno KV, Redis, PostgreSQL
- -  **Message queues**: Deno KV, Redis, PostgreSQL, AMQP
+ -  **Key-value stores**: In-Memory, Deno KV, Redis, PostgreSQL
+ -  **Message queues**: In-Process, Deno KV, Redis, PostgreSQL, AMQP
 
 [Hono]: https://hono.dev/
 [Nitro]: https://nitro.build/

@@ -22,16 +22,15 @@ Released on March 19, 2026.
     repository-relative path logic has been made safe for published JSR
     execution.  [[#624], [#633]]
 
-[#624]: https://github.com/fedify-dev/fedify/issues/624
-[#633]: https://github.com/fedify-dev/fedify/pull/633
-
  -  Revived removed `fedify init` options.
-    - `bare-bones` option for web framework.
-    - `in-memory` option for key-value store.
-    - `in-process` option for message queue.
-    execution.  [[#632] by ChanHaeng Lee]
+     -  `bare-bones` option for web framework.
+     -  `in-memory` option for key-value store.
+     -  `in-process` option for message queue.
+        execution.  [[#632] by ChanHaeng Lee]
 
+[#624]: https://github.com/fedify-dev/fedify/issues/624
 [#632]: https://github.com/fedify-dev/fedify/issues/632
+[#633]: https://github.com/fedify-dev/fedify/pull/633
 
 ### @fedify/vocab-runtime
 
