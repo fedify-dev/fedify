@@ -15,6 +15,6 @@ export default [
       .map((f) => f.replace(sep, "/")),
     format: ["esm", "cjs"],
     platform: "node",
-    external: [/^node:/],
+    external: [/^node:/, "@fedify/fixture"],
   }),
 ];

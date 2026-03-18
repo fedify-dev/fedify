@@ -40,7 +40,7 @@ export default [
       ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
         .map((f) => f.replace(sep, "/")),
     ],
-    external: [/^node:/],
+    external: [/^node:/, "@fedify/fixture"],
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (
