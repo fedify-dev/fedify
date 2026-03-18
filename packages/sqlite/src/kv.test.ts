@@ -5,12 +5,7 @@ import { delay } from "@std/async/delay";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-let Temporal: typeof temporal.Temporal;
-if ("Temporal" in globalThis) {
-  Temporal = globalThis.Temporal;
-} else {
-  Temporal = temporal.Temporal;
-}
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 function getStore(): {
   db: PlatformDatabase;
