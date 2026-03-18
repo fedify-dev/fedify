@@ -8,6 +8,17 @@ Version 2.0.6
 
 To be released.
 
+### @fedify/vocab-runtime
+
+ -  Added `http://joinmastodon.org/ns` to preloaded JSON-LD contexts.
+    This URL has never served a real JSON-LD context document (Mastodon
+    has always inlined the term definitions), but some ActivityPub
+    implementations put it as a bare URL in their `@context`, causing
+    JSON-LD processors to fail with a 404.  [[#630], [#631]]
+
+[#630]: https://github.com/fedify-dev/fedify/issues/630
+[#631]: https://github.com/fedify-dev/fedify/pull/631
+
 
 Version 2.0.5
 -------------
