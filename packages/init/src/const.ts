@@ -1,5 +1,6 @@
 export const PACKAGE_MANAGER = ["deno", "pnpm", "bun", "yarn", "npm"] as const;
 export const WEB_FRAMEWORK = [
+  "bareBones",
   "hono",
   "nitro",
   "next",
