@@ -869,7 +869,7 @@ async function handleInboxInternal<TContextData>(
     });
   }
   // Perform deferred nonce verification now that actor/key ownership is confirmed.
-  if (pendingNonceLabel !== null) {
+  if (pendingNonceLabel != null) {
     const nonceValid = await verifySignatureNonce(
       request,
       kv,
