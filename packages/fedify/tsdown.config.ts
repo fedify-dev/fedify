@@ -35,12 +35,8 @@ export default [
     },
   }),
   defineConfig({
-    entry: [
-      "./src/testing/mod.ts",
-      ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
-        .map((f) => f.replace(sep, "/")),
-    ],
-    external: [/^node:/, "@fedify/fixture"],
+    entry: ["./src/testing/mod.ts"],
+    external: [/^node:/],
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (
@@ -53,6 +49,18 @@ export default [
         defaultHandler(warning);
       },
     },
+    outputOptions: {
+      intro: `
+      import { Temporal } from "@js-temporal/polyfill";
+      import { URLPattern } from "urlpattern-polyfill";
+      globalThis.addEventListener = () => {};
+    `,
+    },
+  }),
+  defineConfig({
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
+      .map((f) => f.replace(sep, "/")),
+    external: [/^node:/, "@fedify/fixture"],
     outputOptions: {
       intro: `
       import { Temporal } from "@js-temporal/polyfill";
