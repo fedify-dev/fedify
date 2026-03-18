@@ -106,7 +106,7 @@ export interface WebFrameworkDescription {
    */
   init(
     data: InitCommandOptions & { projectName: string; testMode: boolean },
-  ): WebFrameworkInitializer;
+  ): WebFrameworkInitializer | Promise<WebFrameworkInitializer>;
 }
 
 /**

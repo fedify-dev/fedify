@@ -8,7 +8,7 @@ const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
-  init: ({ packageManager: pm }) => ({
+  init: async ({ packageManager: pm }) => ({
     command: Array.from(getAstroInitCommand(pm)),
     dependencies: pm === "deno"
       ? {
@@ -29,12 +29,14 @@ const astroDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      [`astro.config.ts`]: readTemplate(
+      [`astro.config.ts`]: await readTemplate(
         `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
       ),
-      "src/middleware.ts": readTemplate("astro/src/middleware.ts"),
+      "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: undefined,

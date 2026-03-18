@@ -10,7 +10,7 @@ const honoDescription: WebFrameworkDescription = {
   label: "Hono",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
-  init: ({ projectName, packageManager: pm }) => ({
+  init: async ({ projectName, packageManager: pm }) => ({
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
@@ -41,16 +41,17 @@ const honoDescription: WebFrameworkDescription = {
     loggingFile: "src/logging.ts",
     files: {
       "src/app.tsx": pipe(
-        "hono/app.tsx",
-        readTemplate,
+        await readTemplate("hono/app.tsx"),
         replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
         replace(/\/\* logger \*\//, projectName),
       ),
-      "src/index.ts": readTemplate(
+      "src/index.ts": await readTemplate(
         `hono/index/${packageManagerToRuntime(pm)}.ts`,
       ),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {

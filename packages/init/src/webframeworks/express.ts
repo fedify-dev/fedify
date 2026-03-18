@@ -8,7 +8,7 @@ const expressDescription: WebFrameworkDescription = {
   label: "Express",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
-  init: ({ projectName, packageManager: pm }) => ({
+  init: async ({ projectName, packageManager: pm }) => ({
     dependencies: {
       "npm:express": "^4.19.2",
       "@fedify/express": PACKAGE_VERSION,
@@ -25,11 +25,13 @@ const expressDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/app.ts": readTemplate("express/app.ts")
+      "src/app.ts": (await readTemplate("express/app.ts"))
         .replace(/\/\* logger \*\//, projectName),
-      "src/index.ts": readTemplate("express/index.ts"),
+      "src/index.ts": await readTemplate("express/index.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {

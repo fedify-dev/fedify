@@ -8,7 +8,7 @@ const elysiaDescription: WebFrameworkDescription = {
   label: "ElysiaJS",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ projectName, packageManager: pm }) => ({
+  init: async ({ projectName, packageManager: pm }) => ({
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
@@ -42,11 +42,13 @@ const elysiaDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/index.ts": readTemplate(
+      "src/index.ts": (await readTemplate(
         `elysia/index/${packageManagerToRuntime(pm)}.ts`,
-      ).replace(/\/\* logger \*\//, projectName),
+      )).replace(/\/\* logger \*\//, projectName),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" || pm === "bun" ? undefined : {

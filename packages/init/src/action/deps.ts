@@ -11,7 +11,7 @@ import { join as joinPath } from "node:path";
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { merge, replace } from "../utils.ts";
-import { PACKAGES_PATH } from "./const.ts";
+import { getPackagesPath } from "./const.ts";
 import { isDeno } from "./utils.ts";
 
 type Deps = Record<string, string>;
@@ -71,7 +71,7 @@ const convertFedifyToLocal = (name: string): string =>
   pipe(
     name,
     replace("@fedify/", ""),
-    (pkg) => joinPath(PACKAGES_PATH, pkg),
+    (pkg) => joinPath(getPackagesPath(), pkg),
   );
 
 /** Gathers all devDependencies required for the project based on the

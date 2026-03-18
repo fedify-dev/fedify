@@ -115,17 +115,26 @@ export async function isPackageManagerAvailable(
  *   (e.g., `"defaults/federation.ts"`)
  * @returns The template file content as a string
  */
-export const readTemplate: (templatePath: string) => string = (
-  templatePath,
-) =>
-  readFileSync(
-    joinPath(
-      import.meta.dirname!,
-      "templates",
-      ...(templatePath + ".tpl").split("/"),
-    ),
-    "utf8",
+export const readTemplate = async (
+  templatePath: string,
+): Promise<string> => {
+  const segments = (templatePath + ".tpl").split("/");
+  if (import.meta.dirname) {
+    return readFileSync(
+      joinPath(import.meta.dirname, "templates", ...segments),
+      "utf8",
+    );
+  }
+  const url = new URL(
+    ["templates", ...segments].join("/"),
+    import.meta.url,
   );
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch template: ${url}`);
+  }
+  return resp.text();
+};
 
 /**
  * Returns the shell command string to start the dev server for the given

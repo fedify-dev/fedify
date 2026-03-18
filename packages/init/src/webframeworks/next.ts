@@ -8,7 +8,7 @@ const nextDescription: WebFrameworkDescription = {
   label: "Next.js",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ packageManager: pm }) => ({
+  init: async ({ packageManager: pm }) => ({
     command: getNextInitCommand(pm),
     dependencies: {
       "@fedify/next": PACKAGE_VERSION,
@@ -21,9 +21,11 @@ const nextDescription: WebFrameworkDescription = {
     federationFile: "federation/index.ts",
     loggingFile: "logging.ts",
     files: {
-      "middleware.ts": readTemplate("next/middleware.ts"),
+      "middleware.ts": await readTemplate("next/middleware.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     tasks: {

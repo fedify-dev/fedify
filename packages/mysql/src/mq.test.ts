@@ -6,13 +6,7 @@ import process from "node:process";
 import { test } from "node:test";
 import mysql from "mysql2/promise";
 
-let Temporal: typeof temporal.Temporal;
-if ("Temporal" in globalThis) {
-  Temporal = (globalThis as unknown as { Temporal: typeof temporal.Temporal })
-    .Temporal;
-} else {
-  Temporal = temporal.Temporal;
-}
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbUrl = process.env.MYSQL_URL;
 

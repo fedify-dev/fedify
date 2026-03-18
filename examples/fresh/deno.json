@@ -32,7 +32,7 @@
       "dom.iterable",
       "deno.ns",
       "deno.unstable",
-      "deno.temporal"
+      "esnext.temporal"
     ],
     "jsx": "precompile",
     "jsxImportSource": "preact",

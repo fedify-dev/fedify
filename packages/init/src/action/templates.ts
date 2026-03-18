@@ -11,7 +11,7 @@ import type { InitCommandData, PackageManager } from "../types.ts";
  * @param param0 - Configuration object containing imports, project name, KV store, message queue, and package manager
  * @returns The complete federation configuration file content as a string
  */
-export const loadFederation = (
+export const loadFederation = async (
   {
     imports,
     projectName,
@@ -21,8 +21,7 @@ export const loadFederation = (
   }: InitCommandData & { imports: string },
 ) =>
   pipe(
-    "defaults/federation.ts",
-    readTemplate,
+    await readTemplate("defaults/federation.ts"),
     replace(/\/\* imports \*\//, imports),
     replace(/\/\* logger \*\//, JSON.stringify(projectName)),
     replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager)),
@@ -36,10 +35,9 @@ export const loadFederation = (
  * @param param0 - Destructured object containing the project name
  * @returns The complete logging configuration file content as a string
  */
-export const loadLogging = ({ projectName }: InitCommandData) =>
+export const loadLogging = async ({ projectName }: InitCommandData) =>
   pipe(
-    "defaults/logging.ts",
-    readTemplate,
+    await readTemplate("defaults/logging.ts"),
     replace(/\/\* project name \*\//, JSON.stringify(projectName)),
   );
 

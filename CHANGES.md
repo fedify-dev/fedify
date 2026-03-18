@@ -172,6 +172,34 @@ To be released.
 [#599]: https://github.com/fedify-dev/fedify/pull/599
 
 
+Version 2.0.6
+-------------
+
+Released on March 19, 2026.
+
+### @fedify/init
+
+ -  Fixed `fedify init` crashing when `@fedify/cli` or `@fedify/init` is
+    executed through the JSR/Deno distribution.  `import.meta.dirname` is
+    `undefined` for remote JSR modules, so the template loading and
+    repository-relative path logic has been made safe for published JSR
+    execution.  [[#624], [#633]]
+
+[#624]: https://github.com/fedify-dev/fedify/issues/624
+[#633]: https://github.com/fedify-dev/fedify/pull/633
+
+### @fedify/vocab-runtime
+
+ -  Added <http://joinmastodon.org/ns> to preloaded JSON-LD contexts.
+    This URL has never served a real JSON-LD context document (Mastodon
+    has always inlined the term definitions), but some ActivityPub
+    implementations put it as a bare URL in their `@context`, causing
+    JSON-LD processors to fail with a 404.  [[#630], [#631]]
+
+[#630]: https://github.com/fedify-dev/fedify/issues/630
+[#631]: https://github.com/fedify-dev/fedify/pull/631
+
+
 Version 2.0.5
 -------------
 
