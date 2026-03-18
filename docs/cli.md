@@ -222,11 +222,11 @@ fedify init my-fedify-project
 The above command will start the interactive prompt to initialize a new Fedify
 project.  It will ask you a few questions to set up the project:
 
- -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
  -  Web framework: [Hono], [Elysia], [Express], [Nitro], or [Next.js]
- -  key–value store: In-memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
- -  Message queue: In-memory, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
+ -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
+ -  Message queue: [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
+ -  Key–value store: [Redis], [PostgreSQL], or [Deno KV] (if Deno)
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
@@ -260,43 +260,29 @@ interactive prompts:
 [`@fedify/lint`]: /manual/lint
 [`@fedify/create`]: https://www.npmjs.com/package/@fedify/create
 
-### `-r`/`--runtime`: JavaScript runtime
+### `-p`/`--package-manager`: Package manager
 
-You can specify the JavaScript runtime by using the `-r`/`--runtime` option.
-The available options are:
+You can specify the package manager by using the `-p`/`--package-manager`
+option.  The available options are:
 
  -  `deno`: [Deno]
- -  `bun`: [Bun]
- -  `node`: [Node.js]
-
-### `-p`/`--package-manager`: Node.js package manager
-
-If you choose Node.js as the JavaScript runtime, you can specify the package
-manager by using the `-p`/`--package-manager` option.  The available options
-are:
-
- -  `npm`: [npm]
  -  `pnpm`: [pnpm]
+ -  `bun`: [Bun]
  -  `yarn`: [Yarn]
-
-It's ignored if you choose Deno or Bun as the JavaScript runtime.
+ -  `npm`: [npm]
 
 ### `-w`/`--web-framework`: Web framework
 
 You can specify the web framework to integrate with Fedify by using
 the `-w`/`--web-framework` option.  The available options are:
 
- -  `fresh`: [Fresh] (if Deno)
  -  `hono`: [Hono]
- -  `express`: [Express] (unless Deno)
- -  `nitro`: [Nitro] (unless Deno)
+ -  `nitro`: [Nitro]
+ -  `next`: [Next.js]
  -  `elysia`: [Elysia]
+ -  `express`: [Express]
 
-If it's omitted, no web framework will be integrated.
-
-[Fresh]: https://fresh.deno.dev/
-
-### `-k`/`--kv-store`: key–value store
+### `-k`/`--kv-store`: Key–value store
 
 You can specify the key–value store to use by using the `-k`/`--kv-store`
 option.  The available options are:
@@ -305,21 +291,15 @@ option.  The available options are:
  -  `postgres`: [PostgreSQL]
  -  `denokv`: [Deno KV] (if Deno)
 
-If it's omitted, the in-memory key–value store (which is for development
-purpose) will be used.
+### `-m`/`--message-queue`: Message queue
 
-### `-q`/`--message-queue`: Message queue
-
-You can specify the message queue to use by using the `-q`/`--message-queue`
+You can specify the message queue to use by using the `-m`/`--message-queue`
 option.  The available options are:
 
  -  `redis`: [Redis]
  -  `postgres`: [PostgreSQL]
  -  `amqp`: [AMQP] (e.g., [RabbitMQ])
  -  `denokv`: [Deno KV] (if Deno)
-
-If it's omitted, the in-process message queue (which is for development purpose)
-will be used.
 
 ### `--dry-run`: Preview without creating files
 
