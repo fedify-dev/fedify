@@ -25,6 +25,14 @@ Released on March 19, 2026.
 [#624]: https://github.com/fedify-dev/fedify/issues/624
 [#633]: https://github.com/fedify-dev/fedify/pull/633
 
+ -  Revived removed `fedify init` options.
+    - `bare-bones` option for web framework.
+    - `in-memory` option for key-value store.
+    - `in-process` option for message queue.
+    execution.  [[#632] by ChanHaeng Lee]
+
+[#632]: https://github.com/fedify-dev/fedify/issues/632
+
 ### @fedify/vocab-runtime
 
  -  Added <http://joinmastodon.org/ns> to preloaded JSON-LD contexts.
