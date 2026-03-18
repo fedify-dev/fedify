@@ -1007,7 +1007,7 @@ Safety constraints prevent abuse:
 
 If the challenge cannot be fulfilled (e.g., incompatible algorithm),
 Fedify falls through to the existing double-knocking spec-swap fallback.
-At most three total requests are made per delivery attempt:
+At most three signed request attempts are made to the final URL per delivery attempt (redirects may add extra HTTP requests):
 
 1.  Initial signed request
 2.  Challenge-driven retry (if `Accept-Signature` is present)
