@@ -2108,7 +2108,7 @@ test("handleInbox() challenge policy enabled + unsigned request", async () => {
   assert(parsed.length > 0, "Accept-Signature must have at least one entry");
   assertEquals(parsed[0].label, "sig1");
   assert(
-    parsed[0].components.includes("@method"),
+    parsed[0].components.some((c) => c.value === "@method"),
     "Must include @method component",
   );
   assertEquals(
