@@ -5,7 +5,6 @@
  * @module
  */
 import { getLogger, type Logger } from "@logtape/logtape";
-import { uniqBy } from "es-toolkit";
 import {
   decodeDict,
   type Dictionary,
@@ -284,16 +283,6 @@ export interface FulfillAcceptSignatureResult {
 }
 
 /**
- * The minimum set of covered component identifiers that Fedify always
- * includes in RFC 9421 signatures for security.
- */
-const MINIMUM_COMPONENTS: AcceptSignatureComponent[] = [
-  { value: "@method", params: {} },
-  { value: "@target-uri", params: {} },
-  { value: "@authority", params: {} },
-];
-
-/**
  * Attempts to translate an {@link AcceptSignatureMember} challenge into
  * RFC 9421 signing options that the local signer can fulfill.
  *
@@ -303,9 +292,8 @@ const MINIMUM_COMPONENTS: AcceptSignatureComponent[] = [
  * Safety constraints:
  * - `alg`: only honored if it matches `localAlg`.
  * - `keyid`: only honored if it matches `localKeyId`.
- * - `components`: merged with the minimum required set
- *   (`@method`, `@target-uri`, `@authority`).
- * - `nonce` and `tag` are passed through directly.
+ * - `components`: passed through exactly as requested, per RFC 9421 §5.2.
+ * - `nonce`, `tag`, and `expires` are passed through directly.
  *
  * @param entry The challenge entry from the `Accept-Signature` header.
  * @param localKeyId The local key identifier (e.g., the actor key URL).
@@ -331,20 +319,11 @@ export function fulfillAcceptSignature(
   }
   return {
     label: entry.label,
-    components: concatMinimumComponents(entry.components),
+    components: entry.components,
     nonce: entry.parameters.nonce,
     tag: entry.parameters.tag,
     expires: entry.parameters.expires,
   };
 }
-
-/**
- * Merge components: minimum required set + challenge components not already
- * covered
- */
-const concatMinimumComponents = (
-  components: AcceptSignatureComponent[],
-): AcceptSignatureComponent[] =>
-  uniqBy(MINIMUM_COMPONENTS.concat(components), (c) => c.value);
 
 // cspell: ignore keyid

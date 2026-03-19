@@ -282,12 +282,12 @@ test("fulfillAcceptSignature(): compatible alg and keyid", () => {
     "rsa-v1_5-sha256",
   );
 
+  // Components must be exactly what the challenger requested — no additions.
   deepStrictEqual(result, {
     label: "sig1",
     components: [
       { value: "@method", params: {} },
       { value: "@target-uri", params: {} },
-      { value: "@authority", params: {} },
       { value: "content-digest", params: {} },
     ],
     nonce: "abc",
@@ -326,7 +326,7 @@ test("fulfillAcceptSignature(): incompatible keyid", () => {
   strictEqual(result, null);
 });
 
-test("fulfillAcceptSignature(): minimum component set preserved", () => {
+test("fulfillAcceptSignature(): components returned exactly as requested", () => {
   const entry: AcceptSignatureMember = {
     label: "sig1",
     components: [{ value: "content-digest", params: {} }],
@@ -338,13 +338,9 @@ test("fulfillAcceptSignature(): minimum component set preserved", () => {
     "rsa-v1_5-sha256",
   );
 
-  // Minimum set should be merged in
-  const values = result!.components.map((c) => c.value).sort();
-  deepStrictEqual(values, [
-    "@authority",
-    "@method",
-    "@target-uri",
-    "content-digest",
+  // Challenger only requested content-digest; no minimum-set components added.
+  deepStrictEqual(result!.components, [
+    { value: "content-digest", params: {} },
   ]);
 });
 
