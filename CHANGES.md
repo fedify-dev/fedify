@@ -41,7 +41,7 @@ To be released.
     On the inbound side, a new `InboxChallengePolicy` option in
     `FederationOptions` enables emitting `Accept-Signature` headers on
     inbox `401` responses, with optional one-time nonce support for replay
-    protection.  [[#583], [#584] by ChanHaeng Lee]
+    protection.  [[#583], [#584], [#626] by ChanHaeng Lee]
 
 [#472]: https://github.com/fedify-dev/fedify/issues/472
 [#473]: https://github.com/fedify-dev/fedify/issues/473
@@ -49,6 +49,7 @@ To be released.
 [#584]: https://github.com/fedify-dev/fedify/issues/584
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 [#611]: https://github.com/fedify-dev/fedify/pull/611
+[#626]: https://github.com/fedify-dev/fedify/pull/626
 
 ### @fedify/vocab-runtime
 
