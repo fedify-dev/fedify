@@ -2255,6 +2255,53 @@ test("signRequest() with nonce and tag", async () => {
   assertStringIncludes(sigInput, 'tag="app-v1"');
 });
 
+test(
+  "signRequest() [rfc9421] accumulates multiple signatures when called sequentially",
+  async () => {
+    // RFC 9421 §5 requires all labeled signatures from an Accept-Signature
+    // challenge to be present in the target message.  The implementation
+    // satisfies this by calling signRequest() once per entry, passing the
+    // result of each call into the next so that Signature-Input and Signature
+    // headers accumulate Dictionary members rather than being overwritten.
+    const request = new Request("https://example.com/inbox", {
+      method: "POST",
+      body: "Hello",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    // First signature
+    const onceSigned = await signRequest(
+      request,
+      rsaPrivateKey2,
+      new URL("https://example.com/key2"),
+      {
+        spec: "rfc9421",
+        rfc9421: { label: "sig1", components: ["@method", "@target-uri"] },
+      },
+    );
+
+    // Second signature appended onto the already-signed request
+    const twiceSigned = await signRequest(
+      onceSigned,
+      rsaPrivateKey2,
+      new URL("https://example.com/key2"),
+      {
+        spec: "rfc9421",
+        rfc9421: { label: "sig2", components: ["@authority"] },
+      },
+    );
+
+    const sigInput = twiceSigned.headers.get("Signature-Input") ?? "";
+    const sig = twiceSigned.headers.get("Signature") ?? "";
+
+    // Both labels must appear in both Dictionary headers
+    assertStringIncludes(sigInput, "sig1=");
+    assertStringIncludes(sigInput, "sig2=");
+    assertStringIncludes(sig, "sig1=");
+    assertStringIncludes(sig, "sig2=");
+  },
+);
+
 // ---------------------------------------------------------------------------
 // doubleKnock() with Accept-Signature challenge
 // ---------------------------------------------------------------------------
@@ -2649,6 +2696,63 @@ test(
         headers: { "Content-Type": "text/plain" },
       },
     );
+
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
+
+    assertEquals(response.status, 202);
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock(): Accept-Signature with multiple compatible entries fulfills all (RFC 9421 §5 MUST)",
+  async () => {
+    // RFC 9421 §5: "The target message of an Accept-Signature field MUST
+    // include all labeled signatures indicated in the Accept-Signature field."
+    // When both entries are compatible with the local key, the retry request
+    // must carry signatures for sig1 AND sig2 — not just the first one.
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+
+    fetchMock.post(
+      "https://example.com/inbox-multi-compat",
+      (cl) => {
+        const req = cl.request!;
+        requestCount++;
+        if (requestCount === 1) {
+          // Both entries are compatible (no alg/keyid constraint)
+          return new Response("Not Authorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri");created,' +
+                'sig2=("@authority");created;nonce="nonce-for-sig2"',
+            },
+          });
+        }
+        // The retry request must include signatures for both labels
+        const sigInput = req.headers.get("Signature-Input") ?? "";
+        const sig = req.headers.get("Signature") ?? "";
+        if (
+          sigInput.includes("sig1=") && sigInput.includes("sig2=") &&
+          sig.includes("sig1=") && sig.includes("sig2=")
+        ) {
+          return new Response("", { status: 202 });
+        }
+        return new Response("Missing signatures", { status: 400 });
+      },
+    );
+
+    const request = new Request("https://example.com/inbox-multi-compat", {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    });
 
     const response = await doubleKnock(request, {
       keyId: rsaPublicKey2.id!,

@@ -556,9 +556,25 @@ async function signRequestRfc9421(
     label,
   );
 
-  // Add the signature headers
-  headers.set("Signature-Input", signatureInput);
-  headers.set("Signature", signature);
+  // Add (or append to) the signature headers.
+  // Both Signature-Input and Signature are RFC 8941 Dictionary Structured
+  // Fields, so multiple labeled members are comma-separated.  Appending
+  // instead of overwriting lets callers accumulate signatures for different
+  // labels by calling signRequest() sequentially on the same request.
+  const existingInput = headers.get("Signature-Input");
+  headers.set(
+    "Signature-Input",
+    existingInput != null
+      ? `${existingInput}, ${signatureInput}`
+      : signatureInput,
+  );
+  const existingSignature = headers.get("Signature");
+  headers.set(
+    "Signature",
+    existingSignature != null
+      ? `${existingSignature}, ${signature}`
+      : signature,
+  );
 
   if (span.isRecording()) {
     span.setAttribute("http_signatures.algorithm", "rsa-v1_5-sha256");
@@ -1637,18 +1653,26 @@ export async function doubleKnock(
       );
       const localKeyId = identity.keyId.href;
       const localAlg = "rsa-v1_5-sha256";
+      // RFC 9421 §5: "The target message of an Accept-Signature field MUST
+      // include all labeled signatures indicated in the Accept-Signature
+      // field."  We therefore accumulate every compatible entry's signature
+      // into challengeRequest before sending a single retry, rather than
+      // stopping at the first success.
       let fulfilled = false;
+      let challengeRequest: Request | undefined;
       for (const entry of entries) {
         const rfc9421 = fulfillAcceptSignature(entry, localKeyId, localAlg);
         if (rfc9421 == null) continue;
         logger.debug(
-          "Received Accept-Signature challenge; retrying with " +
+          "Received Accept-Signature challenge; accumulating " +
             "label {label} and components {components}.",
           { label: rfc9421.label, components: rfc9421.components },
         );
         try {
-          signedRequest = await signRequest(
-            request,
+          // Pass the previously-signed request so that Signature-Input /
+          // Signature headers are appended to rather than overwritten.
+          challengeRequest = await signRequest(
+            challengeRequest ?? request,
             identity.privateKey,
             identity.keyId,
             {
@@ -1661,19 +1685,19 @@ export async function doubleKnock(
               },
             },
           );
-          log?.(signedRequest);
-          response = await fetch(signedRequest, {
-            redirect: "manual",
-            signal,
-          });
+          fulfilled = true;
         } catch (error) {
           logger.debug(
             "Failed to fulfill Accept-Signature challenge entry " +
               "{label}: {error}",
             { label: entry.label, error },
           );
-          continue;
         }
+      }
+      if (fulfilled && challengeRequest != null) {
+        signedRequest = challengeRequest;
+        log?.(signedRequest);
+        response = await fetch(signedRequest, { redirect: "manual", signal });
         // Follow redirects manually:
         if (
           response.status >= 300 && response.status < 400 &&
@@ -1686,8 +1710,6 @@ export async function doubleKnock(
             { ...options, body },
           );
         }
-        fulfilled = true;
-        break;
       }
       // If the challenge retry succeeded, remember spec and return
       if (fulfilled && response.status < 300) {
