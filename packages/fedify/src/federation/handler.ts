@@ -688,7 +688,7 @@ async function handleInboxInternal<TContextData>(
   let httpSigKey: CryptographicKey | null = null;
   // Nonce verification is deferred until after actor/key ownership is checked
   // to avoid consuming nonces on requests that will be rejected anyway.
-  let pendingNonceLabel: string | undefined | null = null;
+  let pendingNonceLabel: string | undefined;
   if (activity == null) {
     if (!skipSignatureVerification) {
       const verification = await verifyRequestDetailed(request, {
