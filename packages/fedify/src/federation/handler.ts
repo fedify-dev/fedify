@@ -1734,6 +1734,9 @@ async function verifySignatureNonce(
   const nonce = sig.nonce;
   if (nonce == null) return false;
   const key = [...noncePrefix, nonce] as unknown as KvKey;
+  if (kv.cas != null) {
+    return await kv.cas(key, true, undefined);
+  }
   const stored = await kv.get(key);
   if (stored != null) {
     await kv.delete(key);
