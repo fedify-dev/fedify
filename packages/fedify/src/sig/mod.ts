@@ -10,7 +10,7 @@ export {
   fulfillAcceptSignature,
   type FulfillAcceptSignatureResult,
   parseAcceptSignature,
-  validateAcceptSignatureForRequest,
+  validateAcceptSignature,
 } from "./accept.ts";
 export {
   type HttpMessageSignaturesSpec,

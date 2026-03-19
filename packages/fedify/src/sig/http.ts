@@ -25,7 +25,7 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   fulfillAcceptSignature,
   parseAcceptSignature,
-  validateAcceptSignatureForRequest,
+  validateAcceptSignature,
 } from "./accept.ts";
 import {
   fetchKeyDetailed,
@@ -1619,7 +1619,7 @@ export async function doubleKnock(
     // attempt a challenge-driven retry before falling back to spec-swap.
     const acceptSigHeader = response.headers.get("Accept-Signature");
     if (acceptSigHeader != null) {
-      const entries = validateAcceptSignatureForRequest(
+      const entries = validateAcceptSignature(
         parseAcceptSignature(acceptSigHeader),
       );
       const localKeyId = identity.keyId.href;

@@ -1,3 +1,4 @@
+import { AcceptSignatureParameters } from "@fedify/fedify/sig";
 import type { Recipient } from "@fedify/vocab";
 import {
   Activity,
@@ -19,8 +20,12 @@ import type {
   TracerProvider,
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { uniq, uniqBy } from "es-toolkit";
 import metadata from "../../deno.json" with { type: "json" };
-import type { AcceptSignatureMember } from "../sig/accept.ts";
+import type {
+  AcceptSignatureComponent,
+  AcceptSignatureMember,
+} from "../sig/accept.ts";
 import { formatAcceptSignature } from "../sig/accept.ts";
 import {
   parseRfc9421SignatureInput,
@@ -1688,21 +1693,6 @@ export async function respondWithObjectIfAcceptable(
   return response;
 }
 
-const DEFAULT_CHALLENGE_COMPONENTS = [
-  "@method",
-  "@target-uri",
-  "@authority",
-  "content-digest",
-];
-
-// Minimum set of components that must always appear in a challenge to ensure
-// basic request binding.  These are merged with any caller-supplied components.
-const MINIMUM_CHALLENGE_COMPONENTS = [
-  "@method",
-  "@target-uri",
-  "@authority",
-];
-
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -1750,29 +1740,39 @@ async function buildAcceptSignatureHeader(
   kv: KvStore,
   noncePrefix: KvKey,
 ): Promise<string> {
-  const params: AcceptSignatureMember["parameters"] = {};
-  params.created = true;
+  const parameters: AcceptSignatureParameters = { created: true };
   if (policy.requestNonce) {
     const nonce = generateNonce();
-    const ttl = Temporal.Duration.from({
-      seconds: policy.nonceTtlSeconds ?? 300,
-    });
-    const key = [...noncePrefix, nonce] as unknown as KvKey;
-    await kv.set(key, true, { ttl });
-    params.nonce = nonce;
+    const key: KvKey = [...noncePrefix, nonce];
+    await setKey(kv, key, policy);
+    parameters.nonce = nonce;
   }
-  const baseComponents = policy.components ?? DEFAULT_CHALLENGE_COMPONENTS;
+  const baseComponents = policy.components ?? DEF_COMPONENTS;
   // Always include the minimum required components to ensure basic request
   // binding, then deduplicate and exclude response-only @status.
-  const components = [
-    ...new globalThis.Set([
-      ...MINIMUM_CHALLENGE_COMPONENTS,
-      ...baseComponents,
-    ]),
-  ].filter((c) => c !== "@status");
-  return formatAcceptSignature([{
-    label: "sig1",
-    components,
-    parameters: params,
-  }]);
+  const components = uniq(MIN_COMPONENTS.concat(baseComponents))
+    .filter((c) => c !== "@status")
+    .map((v) => ({ value: v, params: {} }));
+  return formatAcceptSignature([{ label: "sig1", components, parameters }]);
 }
+
+async function setKey(kv: KvStore, key: KvKey, policy: InboxChallengePolicy) {
+  const seconds = policy.nonceTtlSeconds ?? 300;
+  const ttl = Temporal.Duration.from({ seconds });
+  await kv.set(key, true, { ttl });
+}
+
+const DEF_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+  "content-digest",
+];
+
+// Minimum set of components that must always appear in a challenge to ensure
+// basic request binding.  These are merged with any caller-supplied components.
+const MIN_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+];

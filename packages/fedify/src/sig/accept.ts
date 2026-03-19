@@ -4,21 +4,8 @@
  *
  * @module
  */
-import {
-  compactObject,
-  concat,
-  entries,
-  evolve,
-  filter,
-  fromEntries,
-  isArray,
-  map,
-  pick,
-  pipe,
-  toArray,
-  uniq,
-} from "@fxts/core";
 import { getLogger, type Logger } from "@logtape/logtape";
+import { uniqBy } from "es-toolkit";
 import {
   decodeDict,
   type Dictionary,
@@ -74,6 +61,41 @@ export interface AcceptSignatureParameters {
 }
 
 /**
+ * A single covered component identifier from an `Accept-Signature` inner list,
+ * as defined in [RFC 9421 §2.1](https://www.rfc-editor.org/rfc/rfc9421#section-2.1)
+ * and [§5.1](https://www.rfc-editor.org/rfc/rfc9421#section-5.1).
+ *
+ * RFC 9421 §5.1 requires that the list of component identifiers includes
+ * *all applicable component parameters*.  Parameters such as `;sf`, `;bs`,
+ * `;req`, `;tr`, `;name`, and `;key` narrow the meaning of a component
+ * identifier and MUST be preserved exactly as received so that the signer
+ * can cover the same components the verifier requested.
+ *
+ * Examples:
+ * - `{ value: "@method", params: {} }`
+ * - `{ value: "content-type", params: { sf: true } }`
+ * - `{ value: "@query-param", params: { name: "foo" } }`
+ *
+ * @since 2.1.0
+ */
+
+export interface AcceptSignatureComponent {
+  /**
+   * The component identifier name (e.g., `"@method"`, `"content-digest"`,
+   * `"@query-param"`).
+   */
+  value: string;
+
+  /**
+   * Component parameters attached to this identifier (e.g., `{ sf: true }`,
+   * `{ name: "foo" }`).  An empty object means no parameters were present.
+   * Parameters MUST NOT be dropped; doing so would cause the signer to cover
+   * a different component than the verifier requested.
+   */
+  params: Record<string, unknown>;
+}
+
+/**
  * Represents a single member of the `Accept-Signature` Dictionary
  * Structured Field, as defined in
  * [RFC 9421 §5.1](https://www.rfc-editor.org/rfc/rfc9421#section-5.1).
@@ -88,11 +110,16 @@ export interface AcceptSignatureMember {
   label: string;
 
   /**
-   * The set of covered component identifiers for the target message
-   * (e.g., `["@method", "@target-uri", "@authority",
-   * "content-digest"]`).
+   * The exact list of covered component identifiers requested for the target
+   * signature, including all applicable component parameters, as required by
+   * [RFC 9421 §5.1](https://www.rfc-editor.org/rfc/rfc9421#section-5.1).
+   *
+   * Each element is an {@link AcceptSignatureComponent} that preserves
+   * both the identifier name and any parameters (e.g., `;sf`, `;name="foo"`).
+   * The signer MUST cover exactly these components—with their parameters—when
+   * fulfilling the challenge.
    */
-  components: string[];
+  components: AcceptSignatureComponent[];
 
   /**
    * Optional signature metadata parameters requested by the verifier.
@@ -119,51 +146,48 @@ export function parseAcceptSignature(
   header: string,
 ): AcceptSignatureMember[] {
   try {
-    return pipe(
-      header,
-      decodeDict,
-      parseEachSignature,
-      toArray,
-    ) as AcceptSignatureMember[];
+    return parseEachSignature(decodeDict(header));
   } catch {
+    getLogger(["fedify", "sig", "http"]).warn(
+      "Failed to parse Accept-Signature header: {header}",
+      { header },
+    );
     return [];
   }
 }
 
-const parseEachSignature = (
-  dict: Dictionary,
-): IterableIterator<AcceptSignatureMember> =>
-  pipe(
-    dict,
-    entries,
-    filter(([_, item]) => isArray(item.value)),
-    map(([label, item]) =>
-      ({
-        label,
-        components: item.value
-          .map((subitem: Item) => subitem.value)
-          .filter((v: unknown): v is string => typeof v === "string"),
-        parameters: extractParams(item),
-      }) as AcceptSignatureMember
-    ),
-  ) as IterableIterator<AcceptSignatureMember>;
+const compactObject = <T extends object>(obj: T): T =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([_, v]) => v !== undefined),
+  ) as T;
 
-const extractParams = (
+const parseEachSignature = (dict: Dictionary): AcceptSignatureMember[] =>
+  Object.entries(dict)
+    .filter(([_, item]) => Array.isArray(item.value))
+    .map(([label, item]) => ({
+      label,
+      components: (item.value as Item[])
+        .filter((subitem) => typeof subitem.value === "string")
+        .map((subitem) => ({
+          value: subitem.value as string,
+          params: subitem.params ?? {},
+        })),
+      parameters: compactParams(item),
+    }));
+
+const compactParams = (
   item: { params: AcceptSignatureParameters },
-): AcceptSignatureParameters =>
-  pipe(
-    item.params ?? {},
-    pick(["keyid", "alg", "created", "expires", "nonce", "tag"]),
-    evolve({
-      keyid: stringOrUndefined,
-      alg: stringOrUndefined,
-      created: trueOrUndefined,
-      expires: trueOrUndefined,
-      nonce: stringOrUndefined,
-      tag: stringOrUndefined,
-    }),
-    compactObject,
-  ) as AcceptSignatureParameters;
+): AcceptSignatureParameters => {
+  const { keyid, alg, created, expires, nonce, tag } = item.params ?? {};
+  return compactObject({
+    keyid: stringOrUndefined(keyid),
+    alg: stringOrUndefined(alg),
+    created: trueOrUndefined(created),
+    expires: trueOrUndefined(expires),
+    nonce: stringOrUndefined(nonce),
+    tag: stringOrUndefined(tag),
+  });
+};
 
 const stringOrUndefined = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
@@ -184,32 +208,26 @@ const trueOrUndefined = (
 export function formatAcceptSignature(
   members: AcceptSignatureMember[],
 ): string {
-  return pipe(
-    members,
-    map((member) =>
-      [
-        member.label,
-        new Item(
-          extractComponents(member),
-          extractParameters(member),
-        ),
-      ] as const
-    ),
-    fromEntries,
-    encodeDict,
+  const items = members.map((member) =>
+    [
+      member.label,
+      new Item(
+        compToItems(member),
+        compactParameters(member),
+      ),
+    ] as const
   );
+  return encodeDict(Object.fromEntries(items));
 }
 
-const extractComponents = (member: AcceptSignatureMember): Item[] =>
-  member.components.map((c) => new Item(c, {}));
-const extractParameters = (
+const compToItems = (member: AcceptSignatureMember): Item[] =>
+  member.components.map((c) => new Item(c.value, c.params));
+const compactParameters = (
   member: AcceptSignatureMember,
-): AcceptSignatureParameters =>
-  pipe(
-    member.parameters,
-    pick(["keyid", "alg", "created", "expires", "nonce", "tag"]),
-    compactObject,
-  );
+): AcceptSignatureParameters => {
+  const { keyid, alg, created, expires, nonce, tag } = member.parameters;
+  return compactObject({ keyid, alg, created, expires, nonce, tag });
+};
 
 /**
  * Filters out {@link AcceptSignatureMember} entries whose covered
@@ -223,15 +241,15 @@ const extractParameters = (
  * @returns Only entries that are valid for request-target messages.
  * @since 2.1.0
  */
-export function validateAcceptSignatureForRequest(
+export function validateAcceptSignature(
   members: AcceptSignatureMember[],
 ): AcceptSignatureMember[] {
   const logger = getLogger(["fedify", "sig", "http"]);
-  return members.filter((member) =>
-    !member.components.includes("@status")
-      ? true
-      : logLabel(logger, member.label) || false
-  );
+  return members.filter((member) => {
+    if (member.components.every((c) => c.value !== "@status")) return true;
+    logLabel(logger, member.label);
+    return false;
+  });
 }
 
 const logLabel = (logger: Logger, label: string): undefined =>
@@ -249,8 +267,11 @@ const logLabel = (logger: Logger, label: string): undefined =>
 export interface FulfillAcceptSignatureResult {
   /** The label for the signature. */
   label: string;
-  /** The merged set of covered component identifiers. */
-  components: string[];
+  /**
+   * The merged set of covered component identifiers, including all component
+   * parameters, ready to be passed to the signer.
+   */
+  components: AcceptSignatureComponent[];
   /** The nonce requested by the challenge, if any. */
   nonce?: string;
   /** The tag requested by the challenge, if any. */
@@ -261,7 +282,11 @@ export interface FulfillAcceptSignatureResult {
  * The minimum set of covered component identifiers that Fedify always
  * includes in RFC 9421 signatures for security.
  */
-const MINIMUM_COMPONENTS = ["@method", "@target-uri", "@authority"];
+const MINIMUM_COMPONENTS: AcceptSignatureComponent[] = [
+  { value: "@method", params: {} },
+  { value: "@target-uri", params: {} },
+  { value: "@authority", params: {} },
+];
 
 /**
  * Attempts to translate an {@link AcceptSignatureMember} challenge into
@@ -307,8 +332,13 @@ export function fulfillAcceptSignature(
   };
 }
 
-/** Merge components: challenge components + minimum required set */
-const concatMinimumComponents = (components: string[]): string[] =>
-  pipe(MINIMUM_COMPONENTS, concat(components), uniq, toArray);
+/**
+ * Merge components: minimum required set + challenge components not already
+ * covered
+ */
+const concatMinimumComponents = (
+  components: AcceptSignatureComponent[],
+): AcceptSignatureComponent[] =>
+  uniqBy(MINIMUM_COMPONENTS.concat(components), (c) => c.value);
 
 // cspell: ignore keyid
