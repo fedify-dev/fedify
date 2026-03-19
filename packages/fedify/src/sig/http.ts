@@ -301,9 +301,10 @@ export function createRfc9421SignatureBase(
   components: string[],
   parameters: string,
 ): string {
+  const url = new URL(request.url);
   // Build the base string
   return components.map((component) => {
-    const derived = derivedComponents[component]?.(request);
+    const derived = derivedComponents[component]?.(request, url);
     if (derived != null) return `"${component}": ${derived}`;
     if (component.startsWith("@")) {
       throw new Error(`Unsupported derived component: ${component}`);
@@ -321,20 +322,19 @@ export function createRfc9421SignatureBase(
   ]).join("\n");
 }
 
-const derivedComponents: Record<string, (request: Request) => string> = {
+const derivedComponents: Record<
+  string,
+  (request: Request, url: URL) => string
+> = {
   "@method": (request) => request.method.toUpperCase(),
-  "@target-uri": (request) => request.url,
-  "@authority": (request) => new URL(request.url).host,
-  "@scheme": (request) => new URL(request.url).protocol.slice(0, -1),
-  "@request-target": (request) => {
-    const url = new URL(request.url);
-    return `${request.method.toLowerCase()} ${url.pathname}${url.search}`;
-  },
-  "@path": (request) => new URL(request.url).pathname,
-  "@query": (request) => {
-    const search = new URL(request.url).search;
-    return search.startsWith("?") ? search.slice(1) : search;
-  },
+  "@target-uri": (_, url) => url.href,
+  "@authority": (_, url) => url.host,
+  "@scheme": (_, url) => url.protocol.slice(0, -1),
+  "@request-target": (request, url) =>
+    `${request.method.toLowerCase()} ${url.pathname}${url.search}`,
+  "@path": (_, url) => url.pathname,
+  "@query": (_, { search }) =>
+    search.startsWith("?") ? search.slice(1) : search,
   "@query-param": () => {
     throw new Error("@query-param requires a parameter name");
   },
