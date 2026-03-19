@@ -1651,7 +1651,15 @@ export async function doubleKnock(
             request,
             identity.privateKey,
             identity.keyId,
-            { spec: "rfc9421", tracerProvider, body, rfc9421 },
+            {
+              spec: "rfc9421",
+              tracerProvider,
+              body,
+              rfc9421: {
+                ...rfc9421,
+                components: rfc9421.components.map((c) => c.value),
+              },
+            },
           );
           log?.(signedRequest);
           response = await fetch(signedRequest, {
