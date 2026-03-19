@@ -292,6 +292,7 @@ test("fulfillAcceptSignature(): compatible alg and keyid", () => {
     ],
     nonce: "abc",
     tag: "t1",
+    expires: undefined,
   });
 });
 
@@ -372,7 +373,28 @@ test("fulfillAcceptSignature(): no alg/keyid constraints", () => {
     ],
     nonce: undefined,
     tag: undefined,
+    expires: undefined,
   });
+});
+
+test("fulfillAcceptSignature(): passes through expires when requested", () => {
+  const entry: AcceptSignatureMember = {
+    label: "sig1",
+    components: [
+      { value: "@method", params: {} },
+      { value: "@target-uri", params: {} },
+      { value: "@authority", params: {} },
+    ],
+    parameters: { expires: true },
+  };
+  const result = fulfillAcceptSignature(
+    entry,
+    "https://example.com/key",
+    "rsa-v1_5-sha256",
+  );
+
+  strictEqual(result != null, true);
+  strictEqual(result!.expires, true);
 });
 
 test(

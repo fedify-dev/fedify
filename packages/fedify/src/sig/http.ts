@@ -118,6 +118,13 @@ export interface Rfc9421SignRequestOptions {
    * A tag value to include in the signature parameters.
    */
   tag?: string;
+
+  /**
+   * If `true`, an expiration timestamp is generated and included in the
+   * signature parameters.  The expiration time defaults to one hour after
+   * the signature creation time.
+   */
+  expires?: true;
 }
 
 /**
@@ -262,6 +269,7 @@ export interface Rfc9421SignatureParameters {
   algorithm: string;
   keyId: URL;
   created: number;
+  expires?: number;
   nonce?: string;
   tag?: string;
 }
@@ -276,6 +284,7 @@ function* iterRfc9421(params: Rfc9421SignatureParameters): Iterable<string> {
   yield `alg="${params.algorithm}"`;
   yield `keyid="${params.keyId.href}"`;
   yield `created=${params.created}`;
+  if (params.expires != null) yield `expires=${params.expires}`;
   if (params.nonce != null) yield `nonce="${params.nonce}"`;
   if (params.tag != null) yield `tag="${params.tag}"`;
 }
@@ -504,10 +513,14 @@ async function signRequestRfc9421(
   ]);
 
   // Generate the signature base using the headers
+  const expires = rfc9421Options?.expires === true
+    ? ((currentTime.epochMilliseconds / 1000) | 0) + 3600
+    : undefined;
   const signatureParams = formatRfc9421SignatureParameters({
     algorithm: "rsa-v1_5-sha256",
     keyId,
     created,
+    expires,
     nonce: rfc9421Options?.nonce,
     tag: rfc9421Options?.tag,
   });

@@ -276,6 +276,11 @@ export interface FulfillAcceptSignatureResult {
   nonce?: string;
   /** The tag requested by the challenge, if any. */
   tag?: string;
+  /**
+   * If `true`, the challenger requested that the signer generate and include
+   * an expiration timestamp in the signature parameters.
+   */
+  expires?: true;
 }
 
 /**
@@ -329,6 +334,7 @@ export function fulfillAcceptSignature(
     components: concatMinimumComponents(entry.components),
     nonce: entry.parameters.nonce,
     tag: entry.parameters.tag,
+    expires: entry.parameters.expires,
   };
 }
 
