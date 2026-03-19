@@ -19,7 +19,17 @@ import webFrameworks from "../webframeworks/mod.ts";
 const HANDLE = "john";
 const STARTUP_TIMEOUT = 30000; // 30 seconds
 const CWD = process.cwd();
-const BANNED_WFS: WebFramework[] = ["next"];
+type LookupCase = [WebFramework, PackageManager, KvStore, MessageQueue];
+type LookupCasePattern = [
+  WebFramework | "*",
+  PackageManager | "*",
+  KvStore | "*",
+  MessageQueue | "*",
+];
+const BANNED_LOOKUP_CASES: LookupCasePattern[] = [
+  ["next", "*", "*", "*"],
+  ["solidstart", "deno", "*", "*"],
+];
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -34,7 +44,7 @@ export default async function runServerAndLookupUser(
     printErrorMessage`\nNo directories to lookup test.`;
     return;
   }
-  const filtered = filterWebFrameworks(valid);
+  const filtered = filterLookupDirs(valid);
 
   printMessage`\nLookup Test start for ${String(filtered.length)} app(s)!`;
 
@@ -49,22 +59,42 @@ export default async function runServerAndLookupUser(
   Failed: ${String(failCount)}\n\n`;
 }
 
-function filterWebFrameworks(
+export function parseLookupCase(dir: string): LookupCase {
+  return dir.split(sep).slice(-4) as LookupCase;
+}
+
+export function matchesLookupCasePattern(
+  pattern: LookupCasePattern,
+  target: LookupCase,
+): boolean {
+  return pattern.every((value, index) =>
+    value === "*" || value === target[index]
+  );
+}
+
+export function getBannedLookupFrameworks(): WebFramework[] {
+  return BANNED_LOOKUP_CASES
+    .filter(([, pm, kv, mq]) => pm === "*" && kv === "*" && mq === "*")
+    .map(([wf]) => wf as WebFramework);
+}
+
+export function filterLookupDirs(
   dirs: string[],
 ): string[] {
   const wfs = new Set<WebFramework>(
-    dirs.map((dir) => dir.split(sep).slice(-4, -3)[0] as WebFramework),
+    dirs.map((dir) => parseLookupCase(dir)[0]),
   );
-  const hasBanned = BANNED_WFS.filter((wf) => wfs.has(wf));
-  if (isEmpty(hasBanned)) {
-    return dirs;
+  const hasBanned = getBannedLookupFrameworks().filter((wf) => wfs.has(wf));
+  if (!isEmpty(hasBanned)) {
+    const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
+    printErrorMessage`\n${
+      values(bannedLabels)
+    } is not supported in lookup test yet.`;
   }
-  const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
-  printErrorMessage`\n${
-    values(bannedLabels)
-  } is not supported in lookup test yet.`;
   return dirs.filter((dir) =>
-    !BANNED_WFS.includes(dir.split(sep).slice(-4, -3)[0] as WebFramework)
+    !BANNED_LOOKUP_CASES.some((pattern) =>
+      matchesLookupCasePattern(pattern, parseLookupCase(dir))
+    )
   );
 }
 
@@ -72,8 +102,7 @@ function filterWebFrameworks(
  * Run the dev server and test with lookup command.
  */
 async function testApp(dir: string): Promise<boolean> {
-  const [wf, pm, kv, mq] = dir.split(sep).slice(-4) as //
-  [WebFramework, PackageManager, KvStore, MessageQueue];
+  const [wf, pm, kv, mq] = parseLookupCase(dir);
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
 
@@ -88,7 +117,7 @@ async function testApp(dir: string): Promise<boolean> {
   }!`;
   if (!result) {
     printMessage`    Check out these files for more details:
-      ${join(dir, "out.txt")} and 
+      ${join(dir, "out.txt")} and
       ${join(dir, "err.txt")}\n`;
   }
   printMessage`\n`;

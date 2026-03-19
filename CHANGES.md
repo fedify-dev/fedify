@@ -171,6 +171,15 @@ To be released.
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
 
+### @fedify/solidstart
+
+ -  Added `@fedify/solidstart` package for integrating Fedify with
+    [SolidStart].  It provides `fedifyMiddleware()` for request handling
+    with SolidStart's middleware system.  [[#476]]
+
+[SolidStart]: https://start.solidjs.com/
+[#476]: https://github.com/fedify-dev/fedify/issues/476
+
 
 Version 2.0.6
 -------------
