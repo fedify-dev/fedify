@@ -1690,10 +1690,13 @@ export async function doubleKnock(
         break;
       }
       // If the challenge retry succeeded, remember spec and return
-      if (
-        fulfilled && response.status < 300
-      ) {
+      if (fulfilled && response.status < 300) {
         await specDeterminer?.rememberSpec(origin, "rfc9421");
+        return response;
+      }
+      if (
+        fulfilled && response.status !== 400 && response.status !== 401
+      ) {
         return response;
       }
       // Otherwise fall through to legacy spec-swap fallback
