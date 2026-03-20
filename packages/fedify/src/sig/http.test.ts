@@ -2729,8 +2729,7 @@ test(
           return new Response("Not Authorized", {
             status: 401,
             headers: {
-              "Accept-Signature":
-                'sig1=("@method" "@target-uri");created,' +
+              "Accept-Signature": 'sig1=("@method" "@target-uri");created,' +
                 'sig2=("@authority");created;nonce="nonce-for-sig2"',
             },
           });

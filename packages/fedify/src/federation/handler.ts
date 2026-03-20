@@ -1,4 +1,4 @@
-import { AcceptSignatureParameters } from "@fedify/fedify/sig";
+import type { AcceptSignatureParameters } from "@fedify/fedify/sig";
 import type { Recipient } from "@fedify/vocab";
 import {
   Activity,
@@ -20,12 +20,8 @@ import type {
   TracerProvider,
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
-import { uniq, uniqBy } from "es-toolkit";
+import { uniq } from "es-toolkit";
 import metadata from "../../deno.json" with { type: "json" };
-import type {
-  AcceptSignatureComponent,
-  AcceptSignatureMember,
-} from "../sig/accept.ts";
 import { formatAcceptSignature } from "../sig/accept.ts";
 import {
   parseRfc9421SignatureInput,
