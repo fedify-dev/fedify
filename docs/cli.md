@@ -229,7 +229,7 @@ project.  It will ask you a few questions to set up the project:
  -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
  -  Message queue: In-Process, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
- -  Key-value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
+ -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
