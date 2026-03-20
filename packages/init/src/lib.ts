@@ -39,11 +39,15 @@ const addFedifyDeps = <T extends object>(json: T): T =>
       key,
       toMerged(value, {
         dependencies: {
-          [`@fedify/${key}`]: PACKAGE_VERSION,
+          ...(NO_INTEGRATIONS.includes(key) ? {} : {
+            [`@fedify/${key}`]: PACKAGE_VERSION,
+          }),
         },
       }),
     ]),
   ) as T;
+const NO_INTEGRATIONS = ["in-memory", "in-process", "bare-bones"];
+
 export const kvStores = addFedifyDeps(kv as KvStores);
 export const messageQueues = addFedifyDeps(mq as MessageQueues);
 const toRegExp = (str: string): RegExp => new RegExp(str);
