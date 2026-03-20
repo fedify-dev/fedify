@@ -8,6 +8,16 @@ Version 2.0.7
 
 To be released.
 
+### @fedify/init
+
+ -  Revived removed `fedify init` options.  [[#632], [#638] by ChanHaeng Lee]
+     -  `bare-bones` option for web framework.
+     -  `in-memory` option for key-value store.
+     -  `in-process` option for message queue.
+
+[#632]: https://github.com/fedify-dev/fedify/issues/632
+[#638]: https://github.com/fedify-dev/fedify/pull/638
+
 
 Version 2.0.6
 -------------
@@ -22,15 +32,8 @@ Released on March 19, 2026.
     repository-relative path logic has been made safe for published JSR
     execution.  [[#624], [#633]]
 
- -  Revived removed `fedify init` options.  [[#632], [#638] by ChanHaeng Lee]
-     -  `bare-bones` option for web framework.
-     -  `in-memory` option for key-value store.
-     -  `in-process` option for message queue.
-
 [#624]: https://github.com/fedify-dev/fedify/issues/624
-[#632]: https://github.com/fedify-dev/fedify/issues/632
 [#633]: https://github.com/fedify-dev/fedify/pull/633
-[#638]: https://github.com/fedify-dev/fedify/pull/638
 
 ### @fedify/vocab-runtime
 
