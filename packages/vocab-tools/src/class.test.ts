@@ -1,4 +1,4 @@
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual, match } from "node:assert";
 import { basename, dirname, extname, join } from "node:path";
 import { test } from "node:test";
 import metadata from "../deno.json" with { type: "json" };
@@ -62,6 +62,11 @@ test("sortTopologically()", () => {
       "https://example.com/baz",
     ],
   );
+});
+
+test("generateClasses() imports the browser-safe jsonld entrypoint", async () => {
+  const entireCode = await getEntireCode();
+  match(entireCode, /import jsonld from "jsonld\/dist\/jsonld\.esm\.js";/);
 });
 
 if ("Deno" in globalThis) {

@@ -119,7 +119,7 @@ export async function* generateClasses(
 ): AsyncIterable<string> {
   yield "// deno-lint-ignore-file ban-unused-ignore prefer-const\n";
   yield "// @ts-ignore TS7016\n";
-  yield 'import jsonld from "jsonld";\n';
+  yield 'import jsonld from "jsonld/dist/jsonld.esm.js";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;

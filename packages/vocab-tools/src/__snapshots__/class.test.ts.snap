@@ -3,7 +3,7 @@
 exports[`generateClasses() 1`] = `
 "// deno-lint-ignore-file ban-unused-ignore prefer-const
 // @ts-ignore TS7016
-import jsonld from "jsonld";
+import jsonld from "jsonld/dist/jsonld.esm.js";
 import { getLogger } from "@logtape/logtape";
 import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";
