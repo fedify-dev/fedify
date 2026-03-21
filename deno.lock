@@ -6129,11 +6129,13 @@
           "npm:asn1js@^3.0.6",
           "npm:byte-encodings@^1.0.11",
           "npm:fetch-mock@^12.5.4",
+          "npm:jsonld@9",
           "npm:pkijs@^3.2.5"
         ],
         "packageJson": {
           "dependencies": [
-            "npm:@types/node@^24.2.1"
+            "npm:@types/node@^24.2.1",
+            "npm:jsonld@9"
           ]
         }
       },

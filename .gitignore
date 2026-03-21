@@ -3,6 +3,7 @@
 .pnpm-store/
 .vocab-codegen.lock/
 dist/
+dist-tests/
 node_modules/
 package-lock.json
 repomix-output.xml

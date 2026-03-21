@@ -1513,6 +1513,9 @@ importers:
       byte-encodings:
         specifier: 'catalog:'
         version: 1.0.11
+      jsonld:
+        specifier: ^9.0.0
+        version: 9.0.0
       pkijs:
         specifier: 'catalog:'
         version: 3.3.3

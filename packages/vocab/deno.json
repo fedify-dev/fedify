@@ -18,6 +18,7 @@
   },
   "exclude": [
     "dist/",
+    "dist-tests/",
     "node_modules/",
     "src/*.yaml",
     "!src/vocab.ts"

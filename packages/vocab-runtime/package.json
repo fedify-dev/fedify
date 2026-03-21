@@ -35,6 +35,16 @@
       "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
     },
+    "./jsonld": {
+      "types": {
+        "import": "./dist/jsonld.d.ts",
+        "require": "./dist/jsonld.d.cts",
+        "default": "./dist/jsonld.d.ts"
+      },
+      "import": "./dist/jsonld.js",
+      "require": "./dist/jsonld.cjs",
+      "default": "./dist/jsonld.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -68,6 +78,7 @@
     "@opentelemetry/api": "catalog:",
     "asn1js": "catalog:",
     "byte-encodings": "catalog:",
+    "jsonld": "^9.0.0",
     "pkijs": "catalog:"
   }
 }

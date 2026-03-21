@@ -66,7 +66,7 @@ test("sortTopologically()", () => {
 
 test("generateClasses() imports the browser-safe jsonld entrypoint", async () => {
   const entireCode = await getEntireCode();
-  match(entireCode, /import jsonld from "jsonld\/dist\/jsonld\.esm\.js";/);
+  match(entireCode, /import jsonld from "@fedify\/vocab-runtime\/jsonld";/);
 });
 
 if ("Deno" in globalThis) {
