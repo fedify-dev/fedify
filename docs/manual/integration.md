@@ -796,31 +796,6 @@ deno add jsr:@fedify/fresh
 > The `@fedify/fresh` package only supports Fresh 2.x.
 
 > [!WARNING]
-> Due to `@fedify/fedify`'s `multicodec` dependency CJS issue, you should
-> externalize `@fedify/fedify` in `vite.config.ts`.
->
-> ~~~~ typescript
-> import { fresh } from "@fresh/plugin-vite";
-> import { defineConfig } from "vite";
->
-> export default defineConfig({
->   plugins: [fresh()],
->   ssr: {
->     external: [
->       "@fedify/fedify",
->     ],
->   },
->   build: {
->     rollupOptions: {
->       external: [
->         "@fedify/fedify",
->       ],
->     },
->   },
-> });
-> ~~~~
-
-> [!WARNING]
 > Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable`
 > to `compilerOptions.libs` field of `deno.json`.
 >

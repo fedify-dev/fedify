@@ -68,7 +68,6 @@
     "@opentelemetry/api": "catalog:",
     "asn1js": "catalog:",
     "byte-encodings": "catalog:",
-    "multicodec": "^3.2.1",
     "pkijs": "catalog:"
   }
 }

@@ -8,6 +8,16 @@ Version 2.0.7
 
 To be released.
 
+### @fedify/vocab-runtime
+
+ -  Fixed multibase public key handling to stop relying on the deprecated
+    CommonJS-only `multicodec` package.  This removes the Vite SSR crash that
+    prevented Fresh 2 applications from importing `@fedify/fedify` with
+    `TypeError: varint.encode is not a function`.  Fresh 2 no longer needs a
+    Vite externalization workaround for Fedify.  [[#621]]
+
+[#621]: https://github.com/fedify-dev/fedify/issues/621
+
 ### @fedify/init
 
  -  Revived removed `fedify init` options.  [[#632], [#638] by ChanHaeng Lee]
