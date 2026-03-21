@@ -23,7 +23,9 @@ To be released.
  -  Switched Fedify's JSR-facing JSON-LD imports to jsonld's ESM entrypoint
     so source-based runtimes such as Deno, Cloudflare Workers, and Fresh 2's
     Vite SSR pipeline do not have to evaluate the package through CommonJS
-    interop when loading Linked Data signature support.  [[#621]]
+    interop when loading Linked Data signature support.  Fresh 2 development
+    mode has been verified on Deno 2.7.7 after an upstream Deno 2.7.6 dev
+    server regression was fixed.  [[#621]]
 
 ### @fedify/init
 

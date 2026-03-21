@@ -795,6 +795,11 @@ deno add jsr:@fedify/fresh
 > [!NOTE]
 > The `@fedify/fresh` package only supports Fresh 2.x.
 
+> [!NOTE]
+> Fresh 2 development mode has been verified with Deno 2.7.7.  Deno 2.7.6 had
+> an upstream Vite/esbuild regression that caused
+> `Callback called multiple times` before Fedify code could run.
+
 > [!WARNING]
 > Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable`
 > to `compilerOptions.libs` field of `deno.json`.
