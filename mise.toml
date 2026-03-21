@@ -226,6 +226,10 @@ run = "deno task -f @fedify/fedify bench"
 description = "Run the Fedify CLI tool"
 run = "deno task cli"
 
+[tasks.update-init-deps]
+description = "Update third-party dependency versions in fedify init templates"
+run = "deno task -f @fedify/init update-init-deps"
+
 [tasks."hooks:install"]
 description = "Install Git hooks for pre-commit checks"
 run = "mise generate git-pre-commit --write --task=check"

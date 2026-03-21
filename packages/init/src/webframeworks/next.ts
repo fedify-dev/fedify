@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -15,7 +16,7 @@ const nextDescription: WebFrameworkDescription = {
       ...(pm === "deno" ? defaultDenoDependencies : {}),
     },
     devDependencies: {
-      "@types/node": "^20.11.2",
+      "@types/node": deps["npm:@types/node@20"],
       ...defaultDevDependencies,
     },
     federationFile: "federation/index.ts",

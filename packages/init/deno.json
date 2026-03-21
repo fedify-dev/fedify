@@ -19,7 +19,8 @@
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/**/*.ts",
     "run": "deno run --allow-all src/mod.ts",
-    "test-init": "FEDIFY_TEST_MODE=true deno run --allow-all src/test/mod.ts test-init"
+    "test-init": "FEDIFY_TEST_MODE=true deno run --allow-all src/test/mod.ts test-init",
+    "update-init-deps": "deno run --allow-read --allow-write --allow-net scripts/update_init_deps.ts"
   },
   "fmt": {
     "exclude": [
