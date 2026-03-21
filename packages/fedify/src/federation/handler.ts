@@ -714,21 +714,10 @@ async function handleInboxInternal<TContextData>(
           message: `Failed to verify the request's HTTP Signatures.`,
         });
         if (unverifiedActivityHandler == null) {
-          const headers: Record<string, string> = {
-            "Content-Type": "text/plain; charset=utf-8",
-          };
-          if (inboxChallengePolicy?.enabled) {
-            headers["Accept-Signature"] = await buildAcceptSignatureHeader(
-              inboxChallengePolicy,
-              kv,
-              kvPrefixes.acceptSignatureNonce,
-            );
-            headers["Cache-Control"] = "no-store";
-            headers["Vary"] = "Accept, Signature";
-          }
-          return new Response(
-            "Failed to verify the request signature.",
-            { status: 401, headers },
+          return await getFailedSignatureResponse(
+            inboxChallengePolicy,
+            kv,
+            kvPrefixes,
           );
         }
         try {
@@ -802,21 +791,17 @@ async function handleInboxInternal<TContextData>(
               { error, activity: json, recipient },
             );
           }
-          return new Response(
-            "Failed to verify the request signature.",
-            {
-              status: 401,
-              headers: { "Content-Type": "text/plain; charset=utf-8" },
-            },
+          return await getFailedSignatureResponse(
+            inboxChallengePolicy,
+            kv,
+            kvPrefixes,
           );
         }
         if (response instanceof Response) return response;
-        return new Response(
-          "Failed to verify the request signature.",
-          {
-            status: 401,
-            headers: { "Content-Type": "text/plain; charset=utf-8" },
-          },
+        return await getFailedSignatureResponse(
+          inboxChallengePolicy,
+          kv,
+          kvPrefixes,
         );
       } else {
         if (
@@ -882,19 +867,10 @@ async function handleInboxInternal<TContextData>(
         "Signature nonce verification failed (missing, expired, or replayed).",
         { recipient },
       );
-      const headers: Record<string, string> = {
-        "Content-Type": "text/plain; charset=utf-8",
-      };
-      headers["Accept-Signature"] = await buildAcceptSignatureHeader(
-        inboxChallengePolicy!,
+      return await getFailedSignatureResponse(
+        inboxChallengePolicy,
         kv,
-        kvPrefixes.acceptSignatureNonce,
-      );
-      headers["Cache-Control"] = "no-store";
-      headers["Vary"] = "Accept, Signature";
-      return new Response(
-        "Signature nonce verification failed.",
-        { status: 401, headers },
+        kvPrefixes,
       );
     }
   }
@@ -1730,6 +1706,39 @@ async function verifySignatureNonce(
   }
   return false;
 }
+
+const getFailedSignatureResponse = async (
+  policy: InboxChallengePolicy | undefined,
+  kv: KvStore,
+  kvPrefixes: { acceptSignatureNonce: KvKey },
+): Promise<Response> => {
+  const headers = await getFailedSignatureHeaders(
+    policy,
+    kv,
+    kvPrefixes,
+  );
+  return new Response(
+    "Failed to verify the request signature.",
+    { status: 401, headers },
+  );
+};
+
+const getFailedSignatureHeaders = async (
+  policy: InboxChallengePolicy | undefined,
+  kv: KvStore,
+  kvPrefixes: { acceptSignatureNonce: KvKey },
+) => ({
+  "Content-Type": "text/plain; charset=utf-8",
+  ...(policy?.enabled && {
+    "Accept-Signature": await buildAcceptSignatureHeader(
+      policy,
+      kv,
+      kvPrefixes.acceptSignatureNonce,
+    ),
+    "Cache-Control": "no-store",
+    "Vary": "Accept, Signature",
+  }),
+});
 
 async function buildAcceptSignatureHeader(
   policy: InboxChallengePolicy,

@@ -2830,3 +2830,194 @@ test(
     );
   },
 );
+
+test(
+  "handleInbox() challenge policy enabled + unverifiedActivityHandler " +
+    "returns undefined",
+  async () => {
+    const activity = new Create({
+      id: new URL("https://example.com/activities/challenge-unverified"),
+      actor: new URL("https://example.com/person2"),
+      object: new Note({
+        id: new URL("https://example.com/notes/challenge-unverified"),
+        attribution: new URL("https://example.com/person2"),
+        content: "Hello!",
+      }),
+    });
+    // Sign with a key, then tamper with the body to invalidate the signature
+    const originalRequest = new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    });
+    const signedRequest = await signRequest(
+      originalRequest,
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    );
+    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const tamperedBody = JSON.stringify({
+      ...jsonLd,
+      "https://example.com/tampered": true,
+    });
+    const tamperedRequest = new Request(signedRequest.url, {
+      method: signedRequest.method,
+      headers: signedRequest.headers,
+      body: tamperedBody,
+    });
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: tamperedRequest,
+      url: new URL(tamperedRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const kv = new MemoryKvStore();
+    const response = await handleInbox(tamperedRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher,
+      // unverifiedActivityHandler returns undefined (void), not a Response
+      unverifiedActivityHandler() {},
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: { enabled: true },
+    });
+    assertEquals(response.status, 401);
+    const acceptSig = response.headers.get("Accept-Signature");
+    assert(
+      acceptSig != null,
+      "Accept-Signature header must be present when unverifiedActivityHandler " +
+        "returns undefined and challenge policy is enabled",
+    );
+    const parsed = parseAcceptSignature(acceptSig);
+    assert(
+      parsed.length > 0,
+      "Accept-Signature must have at least one entry",
+    );
+    assertEquals(
+      response.headers.get("Cache-Control"),
+      "no-store",
+      "Cache-Control: no-store must be set for challenge-response",
+    );
+    assertEquals(
+      response.headers.get("Vary"),
+      "Accept, Signature",
+      "Vary header must include Accept and Signature",
+    );
+  },
+);
+
+test(
+  "handleInbox() challenge policy enabled + unverifiedActivityHandler " +
+    "throws error",
+  async () => {
+    const activity = new Create({
+      id: new URL("https://example.com/activities/challenge-throw"),
+      actor: new URL("https://example.com/person2"),
+      object: new Note({
+        id: new URL("https://example.com/notes/challenge-throw"),
+        attribution: new URL("https://example.com/person2"),
+        content: "Hello!",
+      }),
+    });
+    const originalRequest = new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    });
+    const signedRequest = await signRequest(
+      originalRequest,
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    );
+    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const tamperedBody = JSON.stringify({
+      ...jsonLd,
+      "https://example.com/tampered": true,
+    });
+    const tamperedRequest = new Request(signedRequest.url, {
+      method: signedRequest.method,
+      headers: signedRequest.headers,
+      body: tamperedBody,
+    });
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: tamperedRequest,
+      url: new URL(tamperedRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const kv = new MemoryKvStore();
+    const response = await handleInbox(tamperedRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher,
+      // unverifiedActivityHandler throws an error
+      unverifiedActivityHandler() {
+        throw new Error("handler error");
+      },
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: { enabled: true },
+    });
+    assertEquals(response.status, 401);
+    const acceptSig = response.headers.get("Accept-Signature");
+    assert(
+      acceptSig != null,
+      "Accept-Signature header must be present when unverifiedActivityHandler " +
+        "throws and challenge policy is enabled",
+    );
+    const parsed = parseAcceptSignature(acceptSig);
+    assert(
+      parsed.length > 0,
+      "Accept-Signature must have at least one entry",
+    );
+    assertEquals(
+      response.headers.get("Cache-Control"),
+      "no-store",
+      "Cache-Control: no-store must be set for challenge-response",
+    );
+    assertEquals(
+      response.headers.get("Vary"),
+      "Accept, Signature",
+      "Vary header must include Accept and Signature",
+    );
+  },
+);
