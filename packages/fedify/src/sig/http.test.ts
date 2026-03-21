@@ -499,7 +499,7 @@ test("signRequest() and verifyRequest() [rfc9421] implementation", async () => {
   );
   for (const component of expectedComponents) {
     assert(
-      parsedInput.sig1.components.includes(component),
+      parsedInput.sig1.components.some((c) => c.value === component),
       `Components should include ${component}`,
     );
   }
@@ -562,7 +562,12 @@ test("createRfc9421SignatureBase()", () => {
     },
   });
 
-  const components = ["@method", "@target-uri", "host", "date"];
+  const components = [
+    { value: "@method", params: {} },
+    { value: "@target-uri", params: {} },
+    { value: "host", params: {} },
+    { value: "date", params: {} },
+  ];
   const created = 1709626184; // 2024-03-05T08:09:44Z
 
   const signatureBase = createRfc9421SignatureBase(
@@ -591,7 +596,11 @@ test("formatRfc9421Signature()", () => {
   const signature = new Uint8Array([1, 2, 3, 4]);
   const keyId = new URL("https://example.com/key");
   const algorithm = "rsa-v1_5-sha256";
-  const components = ["@method", "@target-uri", "host"];
+  const components = [
+    { "value": "@method", params: {} },
+    { "value": "@target-uri", params: {} },
+    { "value": "host", params: {} },
+  ];
   const created = 1709626184;
 
   const [signatureInput, signatureHeader] = formatRfc9421Signature(
@@ -619,10 +628,10 @@ test("parseRfc9421SignatureInput()", () => {
   assertEquals(parsed.sig1.alg, "rsa-v1_5-sha256");
   assertEquals(parsed.sig1.created, 1709626184);
   assertEquals(parsed.sig1.components, [
-    "@method",
-    "@target-uri",
-    "host",
-    "date",
+    { value: "@method", params: {} },
+    { value: "@target-uri", params: {} },
+    { value: "host", params: {} },
+    { value: "date", params: {} },
   ]);
   assertEquals(
     parsed.sig1.parameters,
@@ -1107,10 +1116,10 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
   assertEquals(parsedInput.sig1.alg, "rsa-v1_5-sha256");
   assertEquals(parsedInput.sig1.created, 1709626184);
   assertEquals(parsedInput.sig1.components, [
-    "@method",
-    "@target-uri",
-    "host",
-    "date",
+    { value: "@method", params: {} },
+    { value: "@target-uri", params: {} },
+    { value: "host", params: {} },
+    { value: "date", params: {} },
   ]);
 
   // Parse and verify signature structure
@@ -1139,10 +1148,10 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
   );
   assertEquals(complexParsedInput.sig1.alg, "rsa-v1_5-sha256");
   assertEquals(complexParsedInput.sig1.created, 1709626184);
-  assert(complexParsedInput.sig1.components.includes("content-type"));
+  assert(complexParsedInput.sig1.components.some((c) => c.value === "content-type"));
   assert(
-    complexParsedInput.sig1.components.includes(
-      'value with "quotes" and spaces',
+    complexParsedInput.sig1.components.some(
+      (c) => c.value === 'value with "quotes" and spaces',
     ),
   );
 
@@ -1962,7 +1971,7 @@ test("signRequest() [rfc9421] error handling for invalid signature base creation
     () => {
       createRfc9421SignatureBase(
         request,
-        ["@unsupported"], // This will trigger the "Unsupported derived component" error
+        [{ value: "@unsupported", params: {} }], // This will trigger the "Unsupported derived component" error
         'alg="rsa-pss-sha256";keyid="https://example.com/key2";created=1234567890',
       );
     },
@@ -2221,7 +2230,11 @@ test("signRequest() with custom components", async () => {
     {
       spec: "rfc9421",
       rfc9421: {
-        components: ["@method", "@target-uri", "@authority"],
+        components: [
+          { value: "@method", params: {} },
+          { value: "@target-uri", params: {} },
+          { value: "@authority", params: {} },
+        ],
       },
     },
   );
@@ -2276,7 +2289,13 @@ test(
       new URL("https://example.com/key2"),
       {
         spec: "rfc9421",
-        rfc9421: { label: "sig1", components: ["@method", "@target-uri"] },
+        rfc9421: {
+          label: "sig1",
+          components: [
+            { value: "@method", params: {} },
+            { value: "@target-uri", params: {} },
+          ],
+        },
       },
     );
 
@@ -2287,7 +2306,12 @@ test(
       new URL("https://example.com/key2"),
       {
         spec: "rfc9421",
-        rfc9421: { label: "sig2", components: ["@authority"] },
+        rfc9421: {
+          label: "sig2",
+          components: [
+            { value: "@authority", params: {} },
+          ],
+        },
       },
     );
 

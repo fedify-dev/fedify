@@ -14,7 +14,6 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { encodeHex } from "byte-encodings/hex";
-import { uniq } from "es-toolkit";
 import {
   decodeDict,
   type Dictionary,
@@ -23,6 +22,7 @@ import {
 } from "structured-field-values";
 import metadata from "../../deno.json" with { type: "json" };
 import {
+  type AcceptSignatureComponent,
   fulfillAcceptSignature,
   parseAcceptSignature,
   validateAcceptSignature,
@@ -107,7 +107,7 @@ export interface Rfc9421SignRequestOptions {
    * `["@method", "@target-uri", "@authority", "host", "date"]`
    * (plus `"content-digest"` when a body is present) is used.
    */
-  components?: string[];
+  components?: AcceptSignatureComponent[];
 
   /**
    * A nonce value to include in the signature parameters.
@@ -289,6 +289,10 @@ function* iterRfc9421(params: Rfc9421SignatureParameters): Iterable<string> {
   if (params.tag != null) yield `tag="${params.tag}"`;
 }
 
+function formatComponentId(component: AcceptSignatureComponent): string {
+  return encodeItem(new Item(component.value, component.params));
+}
+
 /**
  * Creates a signature base for a request according to RFC 9421.
  * @param request The request to create a signature base for.
@@ -298,26 +302,27 @@ function* iterRfc9421(params: Rfc9421SignatureParameters): Iterable<string> {
  */
 export function createRfc9421SignatureBase(
   request: Request,
-  components: string[],
+  components: AcceptSignatureComponent[],
   parameters: string,
 ): string {
   const url = new URL(request.url);
   // Build the base string
   return components.map((component) => {
-    const derived = derivedComponents[component]?.(request, url);
-    if (derived != null) return `"${component}": ${derived}`;
-    if (component.startsWith("@")) {
-      throw new Error(`Unsupported derived component: ${component}`);
+    const id = formatComponentId(component);
+    const derived = derivedComponents[component.value]?.(request, url);
+    if (derived != null) return `${id}: ${derived}`;
+    if (component.value.startsWith("@")) {
+      throw new Error(`Unsupported derived component: ${component.value}`);
     }
-    const header = request.headers.get(component);
+    const header = request.headers.get(component.value);
     if (header == null) {
-      throw new Error(`Missing header: ${component}`);
+      throw new Error(`Missing header: ${component.value}`);
     }
     // Format the component as per RFC 9421 Section 2.1
-    return `"${component}": ${header}`;
+    return `${id}: ${header}`;
   }).concat([
     `"@signature-params": (${
-      components.map((c) => `"${c}"`).join(" ")
+      components.map((c) => formatComponentId(c)).join(" ")
     });${parameters}`,
   ]).join("\n");
 }
@@ -352,13 +357,13 @@ const derivedComponents: Record<
  */
 export function formatRfc9421Signature(
   signature: ArrayBuffer | Uint8Array,
-  components: string[],
+  components: AcceptSignatureComponent[],
   parameters: string,
   label = "sig1",
 ): [string, string] {
-  const signatureInputValue = `${label}=("${
-    components.join('" "')
-  }");${parameters}`;
+  const signatureInputValue = `${label}=(${
+    components.map((c) => formatComponentId(c)).join(" ")
+  });${parameters}`;
   const signatureValue = `${label}=:${encodeBase64(signature)}:`;
   return [signatureInputValue, signatureValue];
 }
@@ -378,7 +383,7 @@ export function parseRfc9421SignatureInput(
     created: number;
     nonce?: string;
     tag?: string;
-    components: string[];
+    components: AcceptSignatureComponent[];
     parameters: string;
   }
 > {
@@ -400,7 +405,7 @@ export function parseRfc9421SignatureInput(
       created: number;
       nonce?: string;
       tag?: string;
-      components: string[];
+      components: AcceptSignatureComponent[];
       parameters: string;
     }
   > = {};
@@ -410,9 +415,12 @@ export function parseRfc9421SignatureInput(
       typeof item.params.keyid !== "string" ||
       typeof item.params.created !== "number"
     ) continue;
-    const components = item.value
-      .map((subitem: Item) => subitem.value)
-      .filter((v) => typeof v === "string");
+    const components: AcceptSignatureComponent[] = item.value
+      .filter((subitem: Item) => typeof subitem.value === "string")
+      .map((subitem: Item) => ({
+        value: subitem.value as string,
+        params: subitem.params ?? {},
+      }));
     const params = encodeItem(new Item(0, item.params));
     result[label] = {
       keyId: item.params.keyid,
@@ -501,16 +509,16 @@ async function signRequestRfc9421(
 
   // Define components to include in the signature
   const label = rfc9421Options?.label ?? "sig1";
-  const components: string[] = uniq([
+  const components: AcceptSignatureComponent[] = [
     ...(rfc9421Options?.components ?? [
-      "@method",
-      "@target-uri",
-      "@authority",
-      "host",
-      "date",
+      { value: "@method", params: {} },
+      { value: "@target-uri", params: {} },
+      { value: "@authority", params: {} },
+      { value: "host", params: {} },
+      { value: "date", params: {} },
     ]),
-    ...(body != null ? ["content-digest"] : []),
-  ]);
+    ...(body != null ? [{ value: "content-digest", params: {} }] : []),
+  ];
 
   // Generate the signature base using the headers
   const expires = rfc9421Options?.expires === true
@@ -1326,7 +1334,7 @@ async function verifyRequestRfc9421(
     if (
       request.method !== "GET" &&
       request.method !== "HEAD" &&
-      sigInput.components.includes("content-digest")
+      sigInput.components.some((c) => c.value === "content-digest")
     ) {
       const contentDigestHeader = request.headers.get("Content-Digest");
       if (!contentDigestHeader) {
@@ -1679,10 +1687,7 @@ export async function doubleKnock(
               spec: "rfc9421",
               tracerProvider,
               body,
-              rfc9421: {
-                ...rfc9421,
-                components: rfc9421.components.map((c) => c.value),
-              },
+              rfc9421,
             },
           );
           fulfilled = true;
