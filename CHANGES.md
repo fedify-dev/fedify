@@ -8,16 +8,6 @@ Version 2.0.7
 
 To be released.
 
-### @fedify/vocab-runtime
-
- -  Fixed multibase public key handling to stop relying on the deprecated
-    CommonJS-only `multicodec` package.  This removes the Vite SSR crash that
-    prevented Fresh 2 applications from importing `@fedify/fedify` with
-    `TypeError: varint.encode is not a function`.  Fresh 2 no longer needs a
-    Vite externalization workaround for Fedify.  [[#621]]
-
-[#621]: https://github.com/fedify-dev/fedify/issues/621
-
 ### @fedify/fedify
 
  -  Switched Fedify's JSR-facing JSON-LD imports to jsonld's ESM entrypoint
@@ -25,7 +15,18 @@ To be released.
     Vite SSR pipeline do not have to evaluate the package through CommonJS
     interop when loading Linked Data signature support.  Fresh 2 development
     mode has been verified on Deno 2.7.7 after an upstream Deno 2.7.6 dev
-    server regression was fixed.  [[#621]]
+    server regression was fixed.  [[#621], [#639]]
+
+[#621]: https://github.com/fedify-dev/fedify/issues/621
+[#639]: https://github.com/fedify-dev/fedify/pull/639
+
+### @fedify/vocab-runtime
+
+ -  Fixed multibase public key handling to stop relying on the deprecated
+    CommonJS-only `multicodec` package.  This removes the Vite SSR crash that
+    prevented Fresh 2 applications from importing `@fedify/fedify` with
+    `TypeError: varint.encode is not a function`.  Fresh 2 no longer needs a
+    Vite externalization workaround for Fedify.  [[#621], [#639]]
 
 ### @fedify/init
 
