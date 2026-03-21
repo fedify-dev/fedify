@@ -40,7 +40,7 @@ const addFedifyDeps = <T extends object>(json: T): T =>
       key,
       toMerged(value, {
         dependencies: {
-          ...(NO_INTEGRATIONS.includes(key) ? {} : {
+          ...(!NO_INTEGRATIONS.includes(key) && {
             [`@fedify/${key}`]: PACKAGE_VERSION,
           }),
         },
