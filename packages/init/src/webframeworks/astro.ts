@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -13,17 +14,22 @@ const astroDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
+        "@deno/astro-adapter": `npm:@deno/astro-adapter@${
+          deps["npm:@deno/astro-adapter"]
+        }`,
         "@fedify/astro": PACKAGE_VERSION,
       }
       : {
-        "@astrojs/node": "^9.5.4",
+        "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
       },
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm !== "deno"
-        ? { typescript: "^5.9.3", "@types/node": "^22.17.0" }
+        ? {
+          typescript: deps["npm:typescript"],
+          "@types/node": deps["npm:@types/node@22"],
+        }
         : {}),
     },
     federationFile: "src/federation.ts",
