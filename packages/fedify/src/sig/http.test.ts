@@ -1148,7 +1148,9 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
   );
   assertEquals(complexParsedInput.sig1.alg, "rsa-v1_5-sha256");
   assertEquals(complexParsedInput.sig1.created, 1709626184);
-  assert(complexParsedInput.sig1.components.some((c) => c.value === "content-type"));
+  assert(
+    complexParsedInput.sig1.components.some((c) => c.value === "content-type"),
+  );
   assert(
     complexParsedInput.sig1.components.some(
       (c) => c.value === 'value with "quotes" and spaces',
@@ -2266,6 +2268,45 @@ test("signRequest() with nonce and tag", async () => {
   const sigInput = signed.headers.get("Signature-Input")!;
   assertStringIncludes(sigInput, 'nonce="test-nonce-123"');
   assertStringIncludes(sigInput, 'tag="app-v1"');
+});
+
+test("formatRfc9421SignatureParameters() escapes nonce and tag", () => {
+  const commonParams = {
+    algorithm: "rsa-v1_5-sha256",
+    keyId: new URL("https://example.com/key"),
+    created: 1709626184,
+  };
+  const slashNonce = formatRfc9421SignatureParameters({
+    ...commonParams,
+    nonce: "x\\y",
+  });
+  assertStringIncludes(slashNonce, 'nonce="x\\\\y"');
+
+  const quoteNonce = formatRfc9421SignatureParameters({
+    ...commonParams,
+    nonce: 'a"b',
+  });
+  assertStringIncludes(quoteNonce, 'nonce="a\\"b"');
+
+  const slashTag = formatRfc9421SignatureParameters({
+    ...commonParams,
+    tag: "x\\y",
+  });
+  assertStringIncludes(slashTag, 'tag="x\\\\y"');
+
+  const quoteTag = formatRfc9421SignatureParameters({
+    ...commonParams,
+    tag: 'a"b',
+  });
+  assertStringIncludes(quoteTag, 'tag="a\\"b"');
+
+  const mixed = formatRfc9421SignatureParameters({
+    ...commonParams,
+    nonce: 'n"o\\nce',
+    tag: 't"ag\\value',
+  });
+  assertStringIncludes(mixed, 'nonce="n\\"o\\\\nce"');
+  assertStringIncludes(mixed, 'tag="t\\"ag\\\\value"');
 });
 
 test(

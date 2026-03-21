@@ -285,9 +285,12 @@ function* iterRfc9421(params: Rfc9421SignatureParameters): Iterable<string> {
   yield `keyid="${params.keyId.href}"`;
   yield `created=${params.created}`;
   if (params.expires != null) yield `expires=${params.expires}`;
-  if (params.nonce != null) yield `nonce="${params.nonce}"`;
-  if (params.tag != null) yield `tag="${params.tag}"`;
+  if (params.nonce != null) yield `nonce="${escapeSfString(params.nonce)}"`;
+  if (params.tag != null) yield `tag="${escapeSfString(params.tag)}"`;
 }
+
+const escapeSfString = (value: string): string =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
 function formatComponentId(component: AcceptSignatureComponent): string {
   return encodeItem(new Item(component.value, component.params));
