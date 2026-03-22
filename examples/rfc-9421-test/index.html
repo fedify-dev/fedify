@@ -198,8 +198,14 @@
         border-radius: 3px;
         font-weight: 600;
       }
-      .log-sig.rfc9421 { background: #d4edda; color: #155724; }
-      .log-sig.draft-cavage { background: #fff3cd; color: #856404; }
+      .log-sig.rfc9421 {
+        background: #d4edda;
+        color: #155724;
+      }
+      .log-sig.draft-cavage {
+        background: #fff3cd;
+        color: #856404;
+      }
     </style>
   </head>
   <body>
@@ -433,7 +439,9 @@
             if (entry.sigSpec) {
               const sig = document.createElement("span");
               sig.className = `log-sig ${entry.sigSpec}`;
-              sig.textContent = entry.sigSpec === "rfc9421" ? "RFC 9421" : "draft-cavage";
+              sig.textContent = entry.sigSpec === "rfc9421"
+                ? "RFC 9421"
+                : "draft-cavage";
               li.append(" ", sig);
             }
             ul.appendChild(li);

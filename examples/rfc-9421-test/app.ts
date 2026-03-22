@@ -42,11 +42,13 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
   // Detect signature spec on incoming inbox POSTs before federation handles them.
   app.use("*", async (c, next) => {
     if (c.req.method === "POST") {
-      setInboundSigSpec(c.req.header("signature-input") != null
-        ? "rfc9421"
-        : c.req.header("signature") != null
+      setInboundSigSpec(
+        c.req.header("signature-input") != null
+          ? "rfc9421"
+          : c.req.header("signature") != null
           ? "draft-cavage"
-          : null);
+          : null,
+      );
     }
     await next();
   });
