@@ -44,12 +44,24 @@ export function emitChange(event: string): void {
   for (const cb of changeListeners) cb(event);
 }
 
+/**
+ * Set by Hono middleware before federation handles the request, so that
+ * `logActivity` can record which signature spec was used.
+ */
+let lastInboundSigSpec: "rfc9421" | "draft-cavage" | null = null;
+export function setInboundSigSpec(
+  spec: "rfc9421" | "draft-cavage" | null,
+): void {
+  lastInboundSigSpec = spec;
+}
+
 /** Log of received activities for inspection. */
 export const activityLog: {
   timestamp: string;
   type: string;
   actorId: string | null;
   id: string | null;
+  sigSpec: "rfc9421" | "draft-cavage" | null;
   raw: Record<string, unknown>;
 }[] = [];
 
@@ -186,7 +198,9 @@ function logActivity(type: string, activity: Activity) {
     type,
     actorId: activity.actorId?.href ?? null,
     id: activity.id?.href ?? null,
+    sigSpec: lastInboundSigSpec,
     raw: {},
   });
+  lastInboundSigSpec = null;
   emitChange("log");
 }

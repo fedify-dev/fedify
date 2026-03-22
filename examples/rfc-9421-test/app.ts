@@ -19,6 +19,7 @@ import {
   followingStore,
   onStateChange,
 } from "./federation.ts";
+import { setInboundSigSpec } from "./federation.ts";
 
 const indexHtml = await Deno.readTextFile(
   new URL("index.html", import.meta.url),
@@ -37,6 +38,19 @@ interface AppConfig {
 
 export default function createApp(fedi: Fedi, config: AppConfig) {
   const app = new Hono();
+
+  // Detect signature spec on incoming inbox POSTs before federation handles them.
+  app.use("*", async (c, next) => {
+    if (c.req.method === "POST") {
+      setInboundSigSpec(c.req.header("signature-input") != null
+        ? "rfc9421"
+        : c.req.header("signature") != null
+          ? "draft-cavage"
+          : null);
+    }
+    await next();
+  });
+
   app.use(federation(fedi, () => undefined));
 
   app.get("/", (c) => c.html(indexHtml));

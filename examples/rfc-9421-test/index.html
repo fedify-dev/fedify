@@ -191,6 +191,15 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .log-sig {
+        flex-shrink: 0;
+        font-size: 0.7rem;
+        padding: 0.05rem 0.35rem;
+        border-radius: 3px;
+        font-weight: 600;
+      }
+      .log-sig.rfc9421 { background: #d4edda; color: #155724; }
+      .log-sig.draft-cavage { background: #fff3cd; color: #856404; }
     </style>
   </head>
   <body>
@@ -421,6 +430,12 @@
               actor.textContent = entry.actorId || "";
             }
             li.append(time, " ", type, " ", actor);
+            if (entry.sigSpec) {
+              const sig = document.createElement("span");
+              sig.className = `log-sig ${entry.sigSpec}`;
+              sig.textContent = entry.sigSpec === "rfc9421" ? "RFC 9421" : "draft-cavage";
+              li.append(" ", sig);
+            }
             ul.appendChild(li);
           }
           $log.replaceChildren(ul);
