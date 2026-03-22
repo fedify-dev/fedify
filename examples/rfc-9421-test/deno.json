@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "hono": "jsr:@hono/hono@^4.7.1"
+  },
+  "tasks": {
+    "start": "deno run -A main.ts",
+    "dev": "deno run -A dev.ts"
+  }
+}

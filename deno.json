@@ -29,7 +29,8 @@
     "./packages/webfinger",
     "./examples/astro",
     "./examples/fresh",
-    "./examples/hono-sample"
+    "./examples/hono-sample",
+    "./examples/rfc-9421-test"
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
