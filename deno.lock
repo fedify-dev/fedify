@@ -7511,6 +7511,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@david/dax@~0.43.2",
+      "jsr:@hongminhee/localtunnel@0.3",
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@2",
       "jsr:@logtape/logtape@2",
@@ -7575,7 +7576,6 @@
       },
       "examples/rfc-9421-test": {
         "dependencies": [
-          "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.7.1"
         ]
       },

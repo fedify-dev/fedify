@@ -1,6 +1,5 @@
 {
   "imports": {
-    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "hono": "jsr:@hono/hono@^4.7.1"
   },
   "tasks": {
