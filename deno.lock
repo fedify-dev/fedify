@@ -7575,6 +7575,7 @@
       },
       "examples/rfc-9421-test": {
         "dependencies": [
+          "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.7.1"
         ]
       },

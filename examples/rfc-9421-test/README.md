@@ -1,8 +1,9 @@
-RFC 9421 Interoperability Field Test
-=====================================
+RFC 9421 interoperability field test
+====================================
 
 A Fedify-based server for testing RFC 9421 HTTP Message Signatures
 interoperability with Bonfire, Mastodon, and other fediverse implementations.
+
 
 Prerequisites
 -------------
@@ -11,13 +12,15 @@ Prerequisites
  -  Run `mise run install` (or `pnpm install`) from the repo root
  -  A public tunnel for testing (e.g., `fedify tunnel`)
 
+[Deno]: https://deno.com/
+
 
 Quick start
 -----------
 
-### 1. Start the server
+### 1. start the server
 
-~~~~sh
+~~~~ sh
 # Default (RFC 9421 first knock + Accept-Signature challenge):
 deno run -A main.ts
 
@@ -28,22 +31,22 @@ CHALLENGE_NONCE=1 deno run -A main.ts
 CHALLENGE_ENABLED=0 deno run -A main.ts
 ~~~~
 
-### 2. Expose publicly with `fedify tunnel`
+### 2. expose publicly with `fedify tunnel`
 
 In a separate terminal, from the repo root:
 
-~~~~sh
+~~~~ sh
 deno task cli tunnel 8000
 ~~~~
 
 Note the public URL (e.g., `https://xxxxx.tunnel.example`).
 
-### 3. Send test activities
+### 3. send test activities
 
 Open your browser or use curl.  Both GET (query params) and POST (JSON body)
 are supported:
 
-~~~~sh
+~~~~ sh
 # Follow a remote actor (GET):
 curl 'https://xxxxx.tunnel.example/send/follow?handle=@user@bonfire.example'
 
@@ -65,13 +68,13 @@ Configuration
 
 All configuration is via environment variables:
 
-| Variable            | Default     | Description                               |
-|---------------------|-------------|-------------------------------------------|
-| `PORT`              | `8000`      | Server listen port                        |
-| `FIRST_KNOCK`       | `rfc9421`   | Initial signature spec (`rfc9421` or `draft-cavage-http-signatures-12`) |
-| `CHALLENGE_ENABLED` | (enabled)   | Set to `0` to disable `Accept-Signature` on `401` |
-| `CHALLENGE_NONCE`   | (disabled)  | Set to `1` to include one-time nonce      |
-| `NONCE_TTL`         | `300`       | Nonce time-to-live in seconds             |
+| Variable            | Default    | Description                                                             |
+| ------------------- | ---------- | ----------------------------------------------------------------------- |
+| `PORT`              | `8000`     | Server listen port                                                      |
+| `FIRST_KNOCK`       | `rfc9421`  | Initial signature spec (`rfc9421` or `draft-cavage-http-signatures-12`) |
+| `CHALLENGE_ENABLED` | (enabled)  | Set to `0` to disable `Accept-Signature` on `401`                       |
+| `CHALLENGE_NONCE`   | (disabled) | Set to `1` to include one-time nonce                                    |
+| `NONCE_TTL`         | `300`      | Nonce time-to-live in seconds                                           |
 
 
 Endpoints
@@ -99,7 +102,7 @@ All send endpoints accept GET (query params) or POST (JSON body).
 Test scenarios
 --------------
 
-### Scenario A: Fedify -> Bonfire (outbound)
+### Scenario A: Fedify -> bonfire (outbound)
 
 1.  Start the server and expose via tunnel.
 2.  Use `/send/follow` and `/send/note` to send activities to a Bonfire actor.
@@ -124,5 +127,3 @@ Test scenarios
 1.  Start the server (optionally with challenge enabled).
 2.  From a Mastodon account, follow `@test@<your-domain>`.
 3.  Check the `/log` endpoint and server logs.
-
-[Deno]: https://deno.com/
