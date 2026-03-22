@@ -132,7 +132,7 @@ export async function* generateClasses(
     "parseDecimal",
     "type RemoteDocument",
   ];
-  yield "// deno-lint-ignore-file ban-unused-ignore prefer-const\n";
+  yield "// deno-lint-ignore-file ban-unused-ignore no-unused-vars prefer-const verbatim-module-syntax\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
