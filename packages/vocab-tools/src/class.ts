@@ -118,6 +118,7 @@ export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
   const runtimeImports = [
+    "canParseDecimal",
     "decodeMultibase",
     "type Decimal",
     "type DocumentLoader",

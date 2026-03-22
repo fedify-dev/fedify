@@ -54,11 +54,13 @@ To be released.
 ### @fedify/vocab-runtime
 
  -  Added `Decimal`, a branded string type for exact `xsd:decimal` values,
-    along with `isDecimal()` and `parseDecimal()` for checking and validating
-    XML Schema decimal lexical forms without introducing a decimal arithmetic
-    dependency.  This lays the runtime groundwork for precision-safe
-    marketplace and measurement values such as those needed by [FEP-0837].
-    [[#617], [#640]]
+    along with `isDecimal()`, `canParseDecimal()`, and `parseDecimal()` for
+    checking and validating XML Schema decimal lexical forms without
+    introducing a decimal arithmetic dependency.  `isDecimal()` performs a
+    strict lexical-form check, while `canParseDecimal()` and `parseDecimal()`
+    apply XML Schema whitespace normalization first.  This lays the runtime
+    groundwork for precision-safe marketplace and measurement values such as
+    those needed by [FEP-0837].  [[#617], [#640]]
 
  -  Updated the preloaded <https://gotosocial.org/ns> JSON-LD context to
     match the current [GoToSocial] v0.21+ namespace, adding new type terms
@@ -146,7 +148,8 @@ To be released.
 
  -  Added `xsd:decimal` support to the vocabulary code generator.  Properties
     with that range are now generated as `Decimal` in TypeScript, serialized
-    as `xsd:decimal` JSON-LD literals, and validated through
+    as `xsd:decimal` JSON-LD literals, validated through
+    `canParseDecimal()` when checking input data, and normalized through
     `parseDecimal()` when decoded.  [[#617], [#640]]
 
  -  Added `typeless` field to the type YAML schema.  When set to `true`,

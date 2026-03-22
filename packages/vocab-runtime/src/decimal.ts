@@ -1,4 +1,9 @@
 const DECIMAL_PATTERN = /^(\+|-)?([0-9]+(\.[0-9]*)?|\.[0-9]+)$/;
+const XML_SCHEMA_WHITESPACE_PATTERN = /[\t\n\r ]+/g;
+
+function collapseXmlSchemaWhitespace(value: string): string {
+  return value.replace(XML_SCHEMA_WHITESPACE_PATTERN, " ").trim();
+}
 
 /**
  * A branded string representing an `xsd:decimal` value.
@@ -18,8 +23,10 @@ const DECIMAL_PATTERN = /^(\+|-)?([0-9]+(\.[0-9]*)?|\.[0-9]+)$/;
  *
  * Supported lexical forms include signed and unsigned integers and decimal
  * fractions such as `"-1.23"`, `"+100000.00"`, `"210"`, `".5"`, and `"5."`.
- * Scientific notation such as `"1e3"`, special values like `"NaN"`, and
- * strings with surrounding whitespace are rejected.
+ * Scientific notation such as `"1e3"` and special values like `"NaN"` are
+ * rejected.  Strings with surrounding XML Schema whitespace can be normalized
+ * by {@link parseDecimal}, but values of this type are always stored in their
+ * normalized lexical form.
  *
  * This representation is designed to be forward-compatible with a future
  * native decimal type if JavaScript eventually gains one, while keeping the
@@ -32,10 +39,9 @@ export type Decimal = string & { readonly __brand: "Decimal" };
 /**
  * Checks whether a string is a valid `xsd:decimal` lexical form.
  *
- * This predicate performs the same validation as {@link parseDecimal}
- * without throwing an exception.  It is useful for generated guards and other
- * boolean validation paths where callers need to branch instead of handling an
- * exception.
+ * This predicate checks the lexical form strictly, without applying XML Schema
+ * whitespace normalization first.  It is useful as a type guard for values
+ * that are already expected to be normalized decimal strings.
  *
  * @param value A candidate `xsd:decimal` lexical form.
  * @returns `true` if the string matches the XML Schema `xsd:decimal` lexical
@@ -47,21 +53,43 @@ export function isDecimal(value: string): value is Decimal {
 }
 
 /**
+ * Checks whether a string can be parsed as an `xsd:decimal` lexical form.
+ *
+ * Unlike {@link isDecimal}, this predicate first applies the XML Schema
+ * `whiteSpace="collapse"` normalization step and then validates the
+ * normalized string.  This means values like `" 12.50 "` are parseable even
+ * though they are not already normalized decimal literals.
+ *
+ * @param value A candidate `xsd:decimal` lexical form.
+ * @returns `true` if the normalized string matches the XML Schema
+ *          `xsd:decimal` lexical form, or `false` otherwise.
+ * @since 2.1.0
+ */
+export function canParseDecimal(value: string): boolean {
+  return isDecimal(collapseXmlSchemaWhitespace(value));
+}
+
+/**
  * Parses a string as an `xsd:decimal` lexical form and returns it as a
  * branded {@link Decimal}.
  *
  * This function validates the input against the XML Schema `xsd:decimal`
- * lexical space and returns the original string unchanged when it is valid.
- * It does not trim whitespace, collapse spaces, or canonicalize the decimal
- * representation.
+ * lexical space after applying the XML Schema `whiteSpace="collapse"`
+ * normalization step.  It returns the normalized string without any further
+ * canonicalization.
  *
  * @param value A candidate `xsd:decimal` lexical form.
- * @returns The original string branded as {@link Decimal}.
+ * @returns The normalized string branded as {@link Decimal}.
  * @throws {TypeError} Thrown when the value is not a valid `xsd:decimal`
  *                     lexical form.
  * @example
  * ```typescript
  * const price = parseDecimal("12.50");
+ * ```
+ * @example
+ * ```typescript
+ * const price = parseDecimal(" 12.50 ");
+ * console.assert(price === "12.50");
  * ```
  * @example
  * ```typescript
@@ -74,10 +102,11 @@ export function isDecimal(value: string): value is Decimal {
  * @since 2.1.0
  */
 export function parseDecimal(value: string): Decimal {
-  if (!isDecimal(value)) {
+  const normalized = collapseXmlSchemaWhitespace(value);
+  if (!isDecimal(normalized)) {
     throw new TypeError(
       `${JSON.stringify(value)} is not a valid xsd:decimal lexical form.`,
     );
   }
-  return value as Decimal;
+  return normalized as Decimal;
 }

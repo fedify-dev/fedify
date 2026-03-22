@@ -5,6 +5,7 @@ import { getLogger } from \\"@logtape/logtape\\";
 import { type Span, SpanStatusCode, type TracerProvider, trace }
     from \\"@opentelemetry/api\\";
 import {
+    canParseDecimal,
     decodeMultibase,
     type Decimal,
     type DocumentLoader,

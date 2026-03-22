@@ -126,7 +126,7 @@ const scalarTypes: Record<string, ScalarType> = {
       return `typeof ${v} === "object" && "@type" in ${v}
         && ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#decimal"
         && "@value" in ${v} && typeof ${v}["@value"] === "string"
-        && isDecimal(${v}["@value"])`;
+        && canParseDecimal(${v}["@value"])`;
     },
     decoder(v) {
       return `parseDecimal(${v}["@value"])`;

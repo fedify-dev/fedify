@@ -523,19 +523,33 @@ corresponding TypeScript types:
 | Units                    | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles" \| URL`                                                 |
 
 `Decimal` values come from `@fedify/vocab-runtime` as a branded string type.
-Use `parseDecimal()` to validate a string against the `xsd:decimal` lexical
-form before passing it to generated vocabulary APIs:
+Use `isDecimal()` when you need to check whether a string is already in the
+normalized `xsd:decimal` lexical form, and use `canParseDecimal()` or
+`parseDecimal()` when you need XML Schema whitespace normalization before
+validation:
 
 ~~~~ typescript twoslash
 import type { Decimal } from "@fedify/vocab-runtime";
-import { parseDecimal } from "@fedify/vocab-runtime";
+import {
+  canParseDecimal,
+  isDecimal,
+  parseDecimal,
+} from "@fedify/vocab-runtime";
 
-const price: Decimal = parseDecimal("12.50");
+const raw = " 12.50 ";
+
+isDecimal(raw); // false
+canParseDecimal(raw); // true
+
+const price: Decimal = parseDecimal(raw);
+price; // "12.50"
 ~~~~
 
 `Decimal` keeps the original string at runtime instead of converting it to
 JavaScript `number`, which avoids floating-point precision loss for exact
-decimal values such as prices and measurements.
+decimal values such as prices and measurements.  `parseDecimal()` normalizes
+XML Schema whitespace before returning the branded value, so the runtime
+representation always uses the normalized lexical form.
 
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration
