@@ -5,6 +5,8 @@ description: >-
   features of the fedify command.
 ---
 
+<!-- deno-fmt-ignore-file -->
+
 `fedify`: CLI toolchain
 =======================
 
@@ -227,11 +229,12 @@ fedify init my-fedify-project
 The above command will start the interactive prompt to initialize a new Fedify
 project.  It will ask you a few questions to set up the project:
 
- -  Web framework: [Hono], [Elysia], [Express], [Nitro], [Next.js], or [Astro]
+ -  Web framework: Bare-bones, [Hono], [Elysia], [Express], [Nitro], [Next.js],
+    or [Astro]
  -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
- -  Message queue: [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
+ -  Message queue: In-Process, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
- -  Key–value store: [Redis], [PostgreSQL], or [Deno KV] (if Deno)
+ -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
@@ -282,6 +285,8 @@ option.  The available options are:
 You can specify the web framework to integrate with Fedify by using
 the `-w`/`--web-framework` option.  The available options are:
 
+ -  `bare-bones`: A minimal setup without any web framework integration, but in
+    Node.js, [Hono] is used for a simple adapter for a lightweight experience.
  -  `hono`: [Hono]
  -  `nitro`: [Nitro]
  -  `next`: [Next.js]
@@ -294,6 +299,8 @@ the `-w`/`--web-framework` option.  The available options are:
 You can specify the key–value store to use by using the `-k`/`--kv-store`
 option.  The available options are:
 
+ -  `in-memory`: An in-memory key–value store that does not persist data across
+    restarts.  This is useful for testing and development purposes.
  -  `redis`: [Redis]
  -  `postgres`: [PostgreSQL]
  -  `denokv`: [Deno KV] (if Deno)
@@ -303,6 +310,8 @@ option.  The available options are:
 You can specify the message queue to use by using the `-m`/`--message-queue`
 option.  The available options are:
 
+ -  `in-process`: An in-process message queue that does not persist messages
+    across restarts.  This is useful for testing and development purposes.
  -  `redis`: [Redis]
  -  `postgres`: [PostgreSQL]
  -  `amqp`: [AMQP] (e.g., [RabbitMQ])

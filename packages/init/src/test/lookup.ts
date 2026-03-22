@@ -80,6 +80,7 @@ async function testApp(dir: string): Promise<boolean> {
   const result = await serverClosure(
     dir,
     getDevCommand(pm),
+    webFrameworks[wf].defaultPort,
     sendLookup,
   ).catch(() => false);
 
@@ -154,6 +155,7 @@ async function waitForServer(url: string, timeout: number): Promise<boolean> {
 async function serverClosure<T>(
   dir: string,
   cmd: string,
+  defaultPort: number,
   callback: (port: number) => Promise<T>,
 ): Promise<Awaited<T>> {
   // Start the dev server using Node.js spawn
@@ -172,7 +174,11 @@ async function serverClosure<T>(
   serverProcess.stderr?.pipe(stderr);
 
   try {
-    const port = await determinePort(serverProcess);
+    const port = await determinePort(serverProcess).catch((err) => {
+      printErrorMessage`Failed to determine server port: ${err.message}`;
+      printErrorMessage`Use default port ${String(defaultPort)} for lookup.`;
+      return defaultPort;
+    });
     return await callback(port);
   } finally {
     try {

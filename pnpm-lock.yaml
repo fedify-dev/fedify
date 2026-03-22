@@ -1087,9 +1087,6 @@ importers:
       jsonld:
         specifier: ^9.0.0
         version: 9.0.0
-      multicodec:
-        specifier: ^3.2.1
-        version: 3.2.1
       structured-field-values:
         specifier: ^2.0.4
         version: 2.0.4
@@ -1556,9 +1553,6 @@ importers:
       jsonld:
         specifier: ^9.0.0
         version: 9.0.0
-      multicodec:
-        specifier: ^3.2.1
-        version: 3.2.1
       pkijs:
         specifier: 'catalog:'
         version: 3.3.3
@@ -1599,9 +1593,9 @@ importers:
       byte-encodings:
         specifier: 'catalog:'
         version: 1.0.11
-      multicodec:
-        specifier: ^3.2.1
-        version: 3.2.1
+      jsonld:
+        specifier: ^9.0.0
+        version: 9.0.0
       pkijs:
         specifier: 'catalog:'
         version: 3.3.3
@@ -7853,13 +7847,6 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  multicodec@3.2.1:
-    resolution: {integrity: sha512-+expTPftro8VAW8kfvcuNNNBgb9gPeNYV9dn+z1kJRWF2vih+/S79f2RVeIwmrJBUJ6NT9IUPWnZDQvegEh5pw==}
-    deprecated: This module has been superseded by the multiformats module
-
-  multiformats@9.9.0:
-    resolution: {integrity: sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==}
-
   mustache@4.2.0:
     resolution: {integrity: sha512-71ippSywq5Yb7/tVYyGbkBggbU8H3u5Rz56fH60jGFgr8uHwxs+aSKeqmluIVzM0m0kB7xQjKS6qPfd0b2ZoqQ==}
     hasBin: true
@@ -9472,9 +9459,6 @@ packages:
     resolution: {integrity: sha512-ZPtzy0hu4cZjv3z5NW9gfKnNLjoz4y6uv4HlelAjDK7sY/xOkKZv9xK/WQpcsBB3jEybChz9DPC2U/+cusjJVQ==}
     engines: {node: '>=18'}
 
-  uint8arrays@3.1.1:
-    resolution: {integrity: sha512-+QJa8QRnbdXVpHYjLoTpJIdCTiw9Ir62nocClWuXIq2JIh4Uta0cQsTSpFL678p2CN8B+XSApwcU+pQEqVpKWg==}
-
   ultrahtml@1.6.0:
     resolution: {integrity: sha512-R9fBn90VTJrqqLDwyMph+HGne8eqY1iPfYhPzZrvKpIfwkWZbcYlfpsb8B9dTvBfpy1/hqAD7Wi8EKfP9e8zdw==}
 
@@ -9654,9 +9638,6 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
-
-  varint@6.0.0:
-    resolution: {integrity: sha512-cXEIW6cfr15lFv563k4GuVuW/fiwjknytD37jIOLSdSWuOI6WnO/oKwmP2FQTU2l01LP8/M5TSAJpzUaGe3uWg==}
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -17329,13 +17310,6 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  multicodec@3.2.1:
-    dependencies:
-      uint8arrays: 3.1.1
-      varint: 6.0.0
-
-  multiformats@9.9.0: {}
-
   mustache@4.2.0: {}
 
   mute-stream@1.0.0: {}
@@ -19116,10 +19090,6 @@ snapshots:
 
   uint8array-extras@1.4.0: {}
 
-  uint8arrays@3.1.1:
-    dependencies:
-      multiformats: 9.9.0
-
   ultrahtml@1.6.0: {}
 
   unbox-primitive@1.1.0:
@@ -19297,8 +19267,6 @@ snapshots:
   valibot@1.2.0(typescript@5.9.3):
     optionalDependencies:
       typescript: 5.9.3
-
-  varint@6.0.0: {}
 
   vary@1.1.2: {}
 

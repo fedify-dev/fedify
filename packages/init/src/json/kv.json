@@ -1,4 +1,12 @@
 {
+  "in-memory": {
+    "label": "In-Memory",
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "imports": {
+      "@fedify/fedify": { "MemoryKvStore": "MemoryKvStore" }
+    },
+    "object": "new MemoryKvStore()"
+  },
   "redis": {
     "label": "Redis",
     "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],

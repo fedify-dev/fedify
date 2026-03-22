@@ -49,7 +49,7 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "cd dist/ && node --test"
+    "test": "cd dist-tests && node --test"
   },
   "private": true
 }

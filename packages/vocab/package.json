@@ -48,7 +48,6 @@
     "es-toolkit": "catalog:",
     "@fedify/vocab-runtime": "workspace:*",
     "jsonld": "^9.0.0",
-    "multicodec": "^3.2.1",
     "pkijs": "catalog:"
   },
   "devDependencies": {
@@ -65,9 +64,9 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "cd dist/ && node --test",
+    "test": "cd dist-tests && node --test",
     "pretest:bun": "pnpm build",
-    "test:bun": "cd dist/ && bun test --timeout 60000"
+    "test:bun": "cd dist-tests && bun test --timeout 60000"
   },
   "keywords": [
     "Fedify",

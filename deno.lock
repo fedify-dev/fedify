@@ -143,7 +143,6 @@
     "npm:jsonld@9": "9.0.0",
     "npm:koa@2": "2.16.3",
     "npm:miniflare@^4.20250523.0": "4.20250906.0",
-    "npm:multicodec@^3.2.1": "3.2.1",
     "npm:mysql2@^3.18.0": "3.18.2_@types+node@24.10.12",
     "npm:ora@^8.2.0": "8.2.0",
     "npm:pkijs@^3.2.5": "3.3.3",
@@ -5582,17 +5581,6 @@
     "ms@2.1.3": {
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
     },
-    "multicodec@3.2.1": {
-      "integrity": "sha512-+expTPftro8VAW8kfvcuNNNBgb9gPeNYV9dn+z1kJRWF2vih+/S79f2RVeIwmrJBUJ6NT9IUPWnZDQvegEh5pw==",
-      "dependencies": [
-        "uint8arrays",
-        "varint"
-      ],
-      "deprecated": true
-    },
-    "multiformats@9.9.0": {
-      "integrity": "sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg=="
-    },
     "mute-stream@1.0.0": {
       "integrity": "sha512-avsJQhyd+680gKXyG/sQc0nXaC6rBkPOfyHYcFb9+hdkqQkR9bdnkJ0AMZhke0oesPqIO+mFFJ+IdBc7mst4IA=="
     },
@@ -6974,12 +6962,6 @@
     "uint8array-extras@1.5.0": {
       "integrity": "sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A=="
     },
-    "uint8arrays@3.1.1": {
-      "integrity": "sha512-+QJa8QRnbdXVpHYjLoTpJIdCTiw9Ir62nocClWuXIq2JIh4Uta0cQsTSpFL678p2CN8B+XSApwcU+pQEqVpKWg==",
-      "dependencies": [
-        "multiformats"
-      ]
-    },
     "ultrahtml@1.6.0": {
       "integrity": "sha512-R9fBn90VTJrqqLDwyMph+HGne8eqY1iPfYhPzZrvKpIfwkWZbcYlfpsb8B9dTvBfpy1/hqAD7Wi8EKfP9e8zdw=="
     },
@@ -7161,9 +7143,6 @@
     },
     "valibot@1.2.0": {
       "integrity": "sha512-mm1rxUsmOxzrwnX5arGS+U4T25RdvpPjPN4yR0u9pUBov9+zGVtO84tif1eY4r6zWxVxu3KzIyknJy3rxfRZZg=="
-    },
-    "varint@6.0.0": {
-      "integrity": "sha512-cXEIW6cfr15lFv563k4GuVuW/fiwjknytD37jIOLSdSWuOI6WnO/oKwmP2FQTU2l01LP8/M5TSAJpzUaGe3uWg=="
     },
     "vary@1.1.2": {
       "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="
@@ -7671,7 +7650,6 @@
           "npm:fetch-mock@^12.5.2",
           "npm:json-canon@^1.0.1",
           "npm:jsonld@9",
-          "npm:multicodec@^3.2.1",
           "npm:pkijs@^3.3.3",
           "npm:structured-field-values@^2.0.4",
           "npm:uri-template-router@1",
@@ -7685,7 +7663,6 @@
             "npm:json-canon@^1.0.1",
             "npm:jsonld@9",
             "npm:miniflare@^4.20250523.0",
-            "npm:multicodec@^3.2.1",
             "npm:structured-field-values@^2.0.4",
             "npm:tsx@^4.19.4",
             "npm:uri-template-router@1",
@@ -7762,8 +7739,7 @@
         ],
         "packageJson": {
           "dependencies": [
-            "npm:jsonld@9",
-            "npm:multicodec@^3.2.1"
+            "npm:jsonld@9"
           ]
         }
       },
@@ -7773,13 +7749,13 @@
           "npm:asn1js@^3.0.6",
           "npm:byte-encodings@^1.0.11",
           "npm:fetch-mock@^12.5.4",
-          "npm:multicodec@^3.2.1",
+          "npm:jsonld@9",
           "npm:pkijs@^3.2.5"
         ],
         "packageJson": {
           "dependencies": [
             "npm:@types/node@^24.2.1",
-            "npm:multicodec@^3.2.1"
+            "npm:jsonld@9"
           ]
         }
       },

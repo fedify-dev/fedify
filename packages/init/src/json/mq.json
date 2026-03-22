@@ -1,4 +1,20 @@
 {
+  "in-process": {
+    "label": "In-Process",
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
+    "imports": {
+      "@fedify/fedify": {
+        "InProcessMessageQueue": "InProcessMessageQueue"
+      }
+    },
+    "object": "new InProcessMessageQueue()"
+  },
   "redis": {
     "label": "Redis",
     "packageManagers": [

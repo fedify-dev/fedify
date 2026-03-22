@@ -4,6 +4,10 @@ Fedify–Fresh integration example
 This is a simple example of how to integrate Fedify into an [Fresh]
 application.
 
+Use Deno 2.7.7 or later.  Deno 2.7.6 had an upstream Fresh/Vite dev-server
+regression that caused `Callback called multiple times` errors before Fedify
+code could run.
+
 [Fresh]: https://fresh.deno.dev/
 
 
@@ -26,7 +30,7 @@ Running the example
 3.  Move to example folder
 
     ~~~~ sh
-    cd ../../examples/fresh
+    cd examples/fresh
     ~~~~
 
 4.  Start the server:

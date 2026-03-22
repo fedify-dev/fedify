@@ -143,7 +143,6 @@
     "es-toolkit": "catalog:",
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
-    "multicodec": "^3.2.1",
     "structured-field-values": "^2.0.4",
     "uri-template-router": "^1.0.0",
     "url-template": "^3.1.1",
