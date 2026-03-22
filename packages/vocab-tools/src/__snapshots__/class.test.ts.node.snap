@@ -6,6 +6,7 @@ import { type Span, SpanStatusCode, type TracerProvider, trace }
     from \\"@opentelemetry/api\\";
 import {
     decodeMultibase,
+    type Decimal,
     type DocumentLoader,
     encodeMultibase,
     exportMultibaseKey,
@@ -13,8 +14,10 @@ import {
     getDocumentLoader,
     importMultibaseKey,
     importPem,
+    isDecimal,
     LanguageString,
-    type RemoteDocument,
+    parseDecimal,
+    type RemoteDocument
 } from \\"@fedify/vocab-runtime\\";
 
 

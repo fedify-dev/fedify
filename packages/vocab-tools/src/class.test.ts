@@ -3,7 +3,7 @@ import { basename, dirname, extname, join } from "node:path";
 import { test } from "node:test";
 import metadata from "../deno.json" with { type: "json" };
 import { generateClasses, sortTopologically } from "./class.ts";
-import { loadSchemaFiles } from "./schema.ts";
+import { loadSchemaFiles, type TypeSchema } from "./schema.ts";
 
 test("sortTopologically()", () => {
   const sorted = sortTopologically({
@@ -69,6 +69,16 @@ test("generateClasses() imports the browser-safe jsonld entrypoint", async () =>
   match(entireCode, /import jsonld from "@fedify\/vocab-runtime\/jsonld";/);
 });
 
+test("generateClasses() imports Decimal helpers for xsd:decimal", async () => {
+  const entireCode = await getDecimalFixtureCode();
+  match(entireCode, /isDecimal,/);
+  match(entireCode, /type Decimal,/);
+  match(entireCode, /parseDecimal/);
+  match(entireCode, /amount\?: Decimal \| null;/);
+  match(entireCode, /isDecimal\(values\.amount\)/);
+  match(entireCode, /parseDecimal\(v\["@value"\]\)/);
+});
+
 if ("Deno" in globalThis) {
   const { assertSnapshot } = await import("@std/testing/snapshot");
   Deno.test("generateClasses()", async (t) => {
@@ -99,6 +109,31 @@ async function getEntireCode() {
     .join("")
     .replaceAll(JSON.stringify(metadata.version), '"0.0.0"');
   return entireCode;
+}
+
+async function getDecimalFixtureCode() {
+  const types: Record<string, TypeSchema> = {
+    "https://example.com/measure": {
+      name: "Measure",
+      uri: "https://example.com/measure",
+      compactName: "Measure",
+      entity: false,
+      description: "A measure.",
+      properties: [
+        {
+          singularName: "amount",
+          functional: true,
+          compactName: "amount",
+          uri: "https://example.com/amount",
+          description: "An exact decimal amount.",
+          range: ["http://www.w3.org/2001/XMLSchema#decimal"],
+        },
+      ],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+  };
+  return (await Array.fromAsync(generateClasses(types))).join("");
 }
 
 async function changeNodeSnapshotPath() {

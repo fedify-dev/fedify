@@ -508,6 +508,7 @@ corresponding TypeScript types:
 | `xsd:integer`            | `number`                                                                                                      |
 | `xsd:nonNegativeInteger` | `number`                                                                                                      |
 | `xsd:float`              | `number`                                                                                                      |
+| `xsd:decimal`            | `Decimal`                                                                                                     |
 | `xsd:string`             | `string`                                                                                                      |
 | `xsd:anyURI`             | [`URL`]                                                                                                       |
 | `xsd:dateTime`           | [`Temporal.Instant`]                                                                                          |
@@ -520,6 +521,21 @@ corresponding TypeScript types:
 | Public key Multibase     | [`CryptoKey`]                                                                                                 |
 | Proof purpose            | `"assertionMethod" \| "authentication" \| "capabilityInvocation" \| "capabilityDelegation" \| "keyAgreement"` |
 | Units                    | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles" \| URL`                                                 |
+
+`Decimal` values come from `@fedify/vocab-runtime` as a branded string type.
+Use `parseDecimal()` to validate a string against the `xsd:decimal` lexical
+form before passing it to generated vocabulary APIs:
+
+~~~~ typescript twoslash
+import type { Decimal } from "@fedify/vocab-runtime";
+import { parseDecimal } from "@fedify/vocab-runtime";
+
+const price: Decimal = parseDecimal("12.50");
+~~~~
+
+`Decimal` keeps the original string at runtime instead of converting it to
+JavaScript `number`, which avoids floating-point precision loss for exact
+decimal values such as prices and measurements.
 
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration

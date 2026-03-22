@@ -24,6 +24,7 @@ export {
   importPkcs1,
   importSpki,
 } from "./key.ts";
+export { type Decimal, isDecimal, parseDecimal } from "./decimal.ts";
 export { LanguageString } from "./langstr.ts";
 export {
   decodeMultibase,

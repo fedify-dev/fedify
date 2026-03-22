@@ -117,23 +117,29 @@ async function* generateClass(
 export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
+  const runtimeImports = [
+    "decodeMultibase",
+    "type Decimal",
+    "type DocumentLoader",
+    "encodeMultibase",
+    "exportMultibaseKey",
+    "exportSpki",
+    "getDocumentLoader",
+    "importMultibaseKey",
+    "importPem",
+    "isDecimal",
+    "LanguageString",
+    "parseDecimal",
+    "type RemoteDocument",
+  ];
   yield "// deno-lint-ignore-file ban-unused-ignore prefer-const\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
-  yield `import {
-    decodeMultibase,
-    type DocumentLoader,
-    encodeMultibase,
-    exportMultibaseKey,
-    exportSpki,
-    getDocumentLoader,
-    importMultibaseKey,
-    importPem,
-    LanguageString,
-    type RemoteDocument,
-} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${
+    runtimeImports.join(",\n    ")
+  }\n} from "@fedify/vocab-runtime";\n`;
   yield "\n\n";
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
