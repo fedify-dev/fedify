@@ -12,7 +12,17 @@ import type { Context as HonoContext } from "hono";
 import { Hono } from "hono";
 import { ACTOR_ID } from "./const.ts";
 import type createFedify from "./federation.ts";
-import { activityLog, followersStore } from "./federation.ts";
+import {
+  activityLog,
+  emitChange,
+  followersStore,
+  followingStore,
+  onStateChange,
+} from "./federation.ts";
+
+const indexHtml = await Deno.readTextFile(
+  new URL("index.html", import.meta.url),
+);
 
 const logger = getLogger(["fedify", "examples", "rfc-9421-test", "send"]);
 
@@ -29,7 +39,8 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
   const app = new Hono();
   app.use(federation(fedi, () => undefined));
 
-  app.get("/", root(config));
+  app.get("/", (c) => c.html(indexHtml));
+  app.get("/api/info", apiInfo(config));
   app.get("/send/follow", sendFollow(fedi));
   app.post("/send/follow", sendFollow(fedi));
   app.get("/send/note", sendNote(fedi));
@@ -38,29 +49,52 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
   app.post("/send/unfollow", sendUnfollow(fedi));
 
   app.get("/log", (c) => c.json(activityLog.slice().reverse()));
+  app.delete("/log", (c) => {
+    activityLog.length = 0;
+    emitChange("log");
+    return c.json({ ok: true });
+  });
   app.get("/followers", (c) => c.json(Array.from(followersStore.entries())));
+  app.get("/following", (c) =>
+    c.json(
+      Array.from(followingStore.entries()).map(([k, v]) => ({
+        id: k,
+        handle: v.handle,
+      })),
+    ));
+
+  // SSE: push state changes to the browser
+  app.get("/events", (c) => {
+    const body = new ReadableStream({
+      start(ctrl) {
+        const encoder = new TextEncoder();
+        const send = (event: string) => {
+          try {
+            ctrl.enqueue(encoder.encode(`data: ${event}\n\n`));
+          } catch { /* client disconnected */ }
+        };
+        const unsubscribe = onStateChange(send);
+        c.req.raw.signal.addEventListener("abort", () => unsubscribe());
+      },
+    });
+    return new Response(body, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      },
+    });
+  });
 
   return app;
 }
 
-function root(config: AppConfig) {
+function apiInfo(config: AppConfig) {
   return (c: HonoContext) =>
     c.json({
-      name: "RFC 9421 Field Test Server",
-      actor: `${new URL(c.req.url).origin}/users/${ACTOR_ID}`,
-      webfinger: `${
-        new URL(c.req.url).origin
-      }/.well-known/webfinger?resource=acct:${ACTOR_ID}@${
-        new URL(c.req.url).hostname
-      }`,
+      handle: `@${ACTOR_ID}@${new URL(c.req.url).hostname}`,
+      actorUri: `${new URL(c.req.url).origin}/users/${ACTOR_ID}`,
       config,
-      endpoints: {
-        activityLog: "/log",
-        followers: "/followers",
-        sendFollow: "/send/follow?handle=@user@example.com",
-        sendNote: "/send/note?handle=@user@example.com&content=Hello",
-        sendUnfollow: "/send/unfollow?handle=@user@example.com",
-      },
     });
 }
 
@@ -78,6 +112,7 @@ function sendFollow(fedi: Fedi) {
       object: actor.id,
     });
 
+    const handle = (await getParam(c, "handle"))!;
     logger.info("Sending Follow to {target}", { target: actor.id?.href });
     try {
       await ctx.sendActivity({ identifier: ACTOR_ID }, actor, follow);
@@ -85,6 +120,8 @@ function sendFollow(fedi: Fedi) {
       logger.error("Failed: {error}", { error: e });
       return c.json({ ok: false, error: String(e) }, 502);
     }
+    followingStore.set(actor.id!.href, { id: actor.id!, handle });
+    emitChange("following");
     return c.json({
       ok: true,
       activityId: followId.href,
@@ -165,6 +202,8 @@ function sendUnfollow(fedi: Fedi) {
       logger.error("Failed: {error}", { error: e });
       return c.json({ ok: false, error: String(e) }, 502);
     }
+    followingStore.delete(actor.id!.href);
+    emitChange("following");
     return c.json({ ok: true, target: actor.id?.href });
   };
 }

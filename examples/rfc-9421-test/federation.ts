@@ -28,6 +28,22 @@ export const followersStore = new Map<
   { id: URL; inboxId: URL | null }
 >();
 
+export const followingStore = new Map<
+  string,
+  { id: URL; handle: string }
+>();
+
+/** Simple event bus for SSE push to the frontend. */
+type ChangeListener = (event: string) => void;
+const changeListeners = new Set<ChangeListener>();
+export function onStateChange(cb: ChangeListener): () => void {
+  changeListeners.add(cb);
+  return () => changeListeners.delete(cb);
+}
+export function emitChange(event: string): void {
+  for (const cb of changeListeners) cb(event);
+}
+
 /** Log of received activities for inspection. */
 export const activityLog: {
   timestamp: string;
@@ -109,6 +125,7 @@ export default function createFedify(
         id: follower.id,
         inboxId: follower.inboxId,
       });
+      emitChange("followers");
       logger.info("Accepted follow from {actor}", {
         actor: follower.id.href,
       });
@@ -122,6 +139,7 @@ export default function createFedify(
       const activity = await undo.getObject(ctx);
       if (activity instanceof Follow && undo.actorId) {
         followersStore.delete(undo.actorId.href);
+        emitChange("followers");
         logger.info("Removed follower {actor}", { actor: undo.actorId.href });
       }
     })
@@ -170,4 +188,5 @@ function logActivity(type: string, activity: Activity) {
     id: activity.id?.href ?? null,
     raw: {},
   });
+  emitChange("log");
 }

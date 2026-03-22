@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RFC 9421 Field Test</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  header { margin-bottom: 1.5rem; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  #handle {
+    font-size: 1.1rem;
+    font-family: monospace;
+    color: #555;
+    user-select: all;
+  }
+  header p { color: #666; font-size: 0.9rem; margin-top: 0.25rem; }
+
+  /* Follow form */
+  .follow-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .follow-form input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: monospace;
+  }
+  .follow-form input:focus { outline: 2px solid #4a90d9; border-color: transparent; }
+  .follow-form button {
+    padding: 0.5rem 1.25rem;
+    background: #4a90d9;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .follow-form button:hover { background: #3a7bc8; }
+  .follow-form button:disabled { background: #999; cursor: wait; }
+  #follow-status {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    min-height: 1.3em;
+  }
+  #follow-status.error { color: #c33; }
+  #follow-status.ok { color: #2a2; }
+
+  /* Lists grid */
+  .lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 540px) { .lists { grid-template-columns: 1fr; } }
+
+  .panel {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: #f0f0f0;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .panel-head button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    color: #555;
+  }
+  .panel-head button:hover { color: #000; }
+  .panel-body { min-height: 3rem; }
+  .panel-body ul { list-style: none; }
+  .panel-body li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid #eee;
+    font-size: 0.9rem;
+    font-family: monospace;
+    word-break: break-all;
+  }
+  .panel-body li button {
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+    background: none;
+    border: 1px solid #c33;
+    color: #c33;
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .panel-body li button:hover { background: #c33; color: #fff; }
+  .panel-body li button:disabled { opacity: 0.5; cursor: wait; }
+  .empty { padding: 0.75rem; color: #999; font-size: 0.85rem; text-align: center; }
+
+  /* Activity log */
+  .log-panel { margin-bottom: 1.5rem; }
+  .log-panel .panel-body { max-height: 300px; overflow-y: auto; }
+  .log-panel li {
+    font-family: monospace;
+    font-size: 0.82rem;
+    gap: 0.5rem;
+  }
+  .log-time { color: #888; flex-shrink: 0; }
+  .log-type { font-weight: 600; flex-shrink: 0; }
+  .log-actor { color: #555; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RFC 9421 Field Test</h1>
+  <div style="display:flex;align-items:center;gap:0.4rem">
+    <span id="handle">loading&hellip;</span>
+    <button type="button" id="copy-handle" title="Copy handle" style="background:none;border:1px solid #ccc;border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.8rem">Copy</button>
+  </div>
+  <p>Test RFC 9421 HTTP Message Signatures interoperability with fediverse servers.</p>
+</header>
+
+<form class="follow-form" id="follow-form">
+  <input type="text" id="follow-input" placeholder="@user@server.example" required>
+  <button type="submit" id="follow-btn">Follow</button>
+</form>
+<div id="follow-status"></div>
+
+<div class="lists">
+  <div class="panel">
+    <div class="panel-head">
+      <span>Followers</span>
+      <button type="button" onclick="loadFollowers()" title="Reload">&#x21bb;</button>
+    </div>
+    <div class="panel-body" id="followers-list"><div class="empty">none</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head">
+      <span>Following</span>
+      <button type="button" onclick="loadFollowing()" title="Reload">&#x21bb;</button>
+    </div>
+    <div class="panel-body" id="following-list"><div class="empty">none</div></div>
+  </div>
+</div>
+
+<div class="panel log-panel">
+  <div class="panel-head">
+    <span>Activity Log</span>
+    <span>
+      <button type="button" onclick="clearLog()" title="Clear log">Clear</button>
+      <button type="button" onclick="loadLog()" title="Reload">&#x21bb;</button>
+    </span>
+  </div>
+  <div class="panel-body" id="log-list"><div class="empty">no activity yet</div></div>
+</div>
+
+<script>
+const $handle = document.getElementById("handle");
+const $followForm = document.getElementById("follow-form");
+const $followInput = document.getElementById("follow-input");
+const $followBtn = document.getElementById("follow-btn");
+const $followStatus = document.getElementById("follow-status");
+const $followers = document.getElementById("followers-list");
+const $following = document.getElementById("following-list");
+const $log = document.getElementById("log-list");
+
+// ── Info ──────────────────────────────────────────
+fetch("/api/info").then(r => r.json()).then(d => {
+  $handle.textContent = d.handle;
+  document.title = `${d.handle} — RFC 9421 Field Test`;
+});
+
+document.getElementById("copy-handle").onclick = () => {
+  navigator.clipboard.writeText($handle.textContent).then(() => {
+    const btn = document.getElementById("copy-handle");
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = "Copy", 1500);
+  });
+};
+
+// ── Follow ────────────────────────────────────────
+$followForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const handle = $followInput.value.trim();
+  if (!handle) return;
+  $followBtn.disabled = true;
+  $followStatus.textContent = `Following ${handle}…`;
+  $followStatus.className = "";
+  try {
+    const r = await fetch(`/send/follow?handle=${encodeURIComponent(handle)}`);
+    const d = await r.json();
+    if (d.ok) {
+      $followStatus.textContent = `Followed ${handle}`;
+      $followStatus.className = "ok";
+      $followInput.value = "";
+    } else {
+      $followStatus.textContent = d.error || "Failed";
+      $followStatus.className = "error";
+    }
+  } catch (err) {
+    $followStatus.textContent = String(err);
+    $followStatus.className = "error";
+  } finally {
+    $followBtn.disabled = false;
+  }
+});
+
+// ── Clear log ─────────────────────────────────────
+async function clearLog() {
+  await fetch("/log", { method: "DELETE" });
+  $log.innerHTML = '<div class="empty">no activity yet</div>';
+}
+
+// ── Unfollow ──────────────────────────────────────
+async function doUnfollow(handle, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/send/unfollow?handle=${encodeURIComponent(handle)}`);
+    const d = await r.json();
+    if (!d.ok) alert(d.error || "Unfollow failed");
+  } catch (err) {
+    alert(String(err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Loaders ───────────────────────────────────────
+async function loadFollowers() {
+  try {
+    const r = await fetch("/followers");
+    const data = await r.json();
+    if (data.length === 0) {
+      $followers.innerHTML = '<div class="empty">none</div>';
+      return;
+    }
+    const ul = document.createElement("ul");
+    for (const [, info] of data) {
+      const li = document.createElement("li");
+      // Extract a readable name from the actor URI
+      try {
+        const u = new URL(info.id);
+        li.textContent = `${u.pathname.split("/").pop()}@${u.hostname}`;
+      } catch {
+        li.textContent = info.id;
+      }
+      ul.appendChild(li);
+    }
+    $followers.replaceChildren(ul);
+  } catch { /* ignore */ }
+}
+
+async function loadFollowing() {
+  try {
+    const r = await fetch("/following");
+    const data = await r.json();
+    if (data.length === 0) {
+      $following.innerHTML = '<div class="empty">none</div>';
+      return;
+    }
+    const ul = document.createElement("ul");
+    for (const entry of data) {
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      span.textContent = entry.handle;
+      li.appendChild(span);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Unfollow";
+      btn.onclick = () => doUnfollow(entry.handle, btn);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    }
+    $following.replaceChildren(ul);
+  } catch { /* ignore */ }
+}
+
+async function loadLog() {
+  try {
+    const r = await fetch("/log");
+    const data = await r.json();
+    if (data.length === 0) {
+      $log.innerHTML = '<div class="empty">no activity yet</div>';
+      return;
+    }
+    const ul = document.createElement("ul");
+    for (const entry of data) {
+      const li = document.createElement("li");
+      const time = document.createElement("span");
+      time.className = "log-time";
+      time.textContent = entry.timestamp.slice(11, 19);
+      const type = document.createElement("span");
+      type.className = "log-type";
+      type.textContent = entry.type;
+      const actor = document.createElement("span");
+      actor.className = "log-actor";
+      try {
+        const u = new URL(entry.actorId);
+        actor.textContent = `${u.pathname.split("/").pop()}@${u.hostname}`;
+      } catch {
+        actor.textContent = entry.actorId || "";
+      }
+      li.append(time, " ", type, " ", actor);
+      ul.appendChild(li);
+    }
+    $log.replaceChildren(ul);
+  } catch { /* ignore */ }
+}
+
+// ── SSE: server-push updates ──────────────────────
+loadFollowers();
+loadFollowing();
+loadLog();
+
+const es = new EventSource("/events");
+es.onmessage = (e) => {
+  if (e.data === "followers") loadFollowers();
+  else if (e.data === "following") loadFollowing();
+  else if (e.data === "log") loadLog();
+};
+</script>
+
+</body>
+</html>
