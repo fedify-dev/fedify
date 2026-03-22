@@ -1,4 +1,7 @@
 {
+  "compilerOptions": {
+    "moduleResolution": "nodenext"
+  },
   "imports": {
     "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2"
   },

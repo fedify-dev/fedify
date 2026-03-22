@@ -34,10 +34,22 @@ To be released.
     caused a `500 Internal Server Error` when interoperating with servers like
     GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
 
+ -  Added RFC 9421 §5 `Accept-Signature` negotiation for both outbound and
+    inbound paths.  On the outbound side, `doubleKnock()` now parses
+    `Accept-Signature` challenges from `401` responses and retries with a
+    compatible RFC 9421 signature before falling back to legacy spec-swap.
+    On the inbound side, a new `InboxChallengePolicy` option in
+    `FederationOptions` enables emitting `Accept-Signature` headers on
+    inbox `401` responses, with optional one-time nonce support for replay
+    protection.  [[#583], [#584], [#626] by ChanHaeng Lee]
+
 [#472]: https://github.com/fedify-dev/fedify/issues/472
 [#473]: https://github.com/fedify-dev/fedify/issues/473
+[#583]: https://github.com/fedify-dev/fedify/issues/583
+[#584]: https://github.com/fedify-dev/fedify/issues/584
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 [#611]: https://github.com/fedify-dev/fedify/pull/611
+[#626]: https://github.com/fedify-dev/fedify/pull/626
 
 ### @fedify/vocab-runtime
 

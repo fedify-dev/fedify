@@ -1,3 +1,4 @@
+import type { AcceptSignatureParameters } from "@fedify/fedify/sig";
 import type { Recipient } from "@fedify/vocab";
 import {
   Activity,
@@ -19,8 +20,13 @@ import type {
   TracerProvider,
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { uniq } from "es-toolkit";
 import metadata from "../../deno.json" with { type: "json" };
-import { verifyRequestDetailed } from "../sig/http.ts";
+import { formatAcceptSignature } from "../sig/accept.ts";
+import {
+  parseRfc9421SignatureInput,
+  verifyRequestDetailed,
+} from "../sig/http.ts";
 import { detachSignature, verifyJsonLd } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { verifyObject } from "../sig/proof.ts";
@@ -44,6 +50,7 @@ import type {
   ConstructorWithTypeId,
   IdempotencyKeyCallback,
   IdempotencyStrategy,
+  InboxChallengePolicy,
 } from "./federation.ts";
 import { type InboxListenerSet, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -461,6 +468,7 @@ export interface InboxHandlerParameters<TContextData> {
   kvPrefixes: {
     activityIdempotence: KvKey;
     publicKey: KvKey;
+    acceptSignatureNonce: KvKey;
   };
   queue?: MessageQueue;
   actorDispatcher?: ActorDispatcher<TContextData>;
@@ -470,6 +478,7 @@ export interface InboxHandlerParameters<TContextData> {
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
   skipSignatureVerification: boolean;
+  inboxChallengePolicy?: InboxChallengePolicy;
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
@@ -538,6 +547,7 @@ async function handleInboxInternal<TContextData>(
     onNotFound,
     signatureTimeWindow,
     skipSignatureVerification,
+    inboxChallengePolicy,
     tracerProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
@@ -677,6 +687,9 @@ async function handleInboxInternal<TContextData>(
     }
   }
   let httpSigKey: CryptographicKey | null = null;
+  // Nonce verification is deferred until after actor/key ownership is checked
+  // to avoid consuming nonces on requests that will be rejected anyway.
+  let pendingNonceLabel: string | undefined;
   if (activity == null) {
     if (!skipSignatureVerification) {
       const verification = await verifyRequestDetailed(request, {
@@ -701,12 +714,10 @@ async function handleInboxInternal<TContextData>(
           message: `Failed to verify the request's HTTP Signatures.`,
         });
         if (unverifiedActivityHandler == null) {
-          return new Response(
-            "Failed to verify the request signature.",
-            {
-              status: 401,
-              headers: { "Content-Type": "text/plain; charset=utf-8" },
-            },
+          return await getFailedSignatureResponse(
+            inboxChallengePolicy,
+            kv,
+            kvPrefixes,
           );
         }
         try {
@@ -780,23 +791,26 @@ async function handleInboxInternal<TContextData>(
               { error, activity: json, recipient },
             );
           }
-          return new Response(
-            "Failed to verify the request signature.",
-            {
-              status: 401,
-              headers: { "Content-Type": "text/plain; charset=utf-8" },
-            },
+          return await getFailedSignatureResponse(
+            inboxChallengePolicy,
+            kv,
+            kvPrefixes,
           );
         }
         if (response instanceof Response) return response;
-        return new Response(
-          "Failed to verify the request signature.",
-          {
-            status: 401,
-            headers: { "Content-Type": "text/plain; charset=utf-8" },
-          },
+        return await getFailedSignatureResponse(
+          inboxChallengePolicy,
+          kv,
+          kvPrefixes,
         );
       } else {
+        if (
+          inboxChallengePolicy?.enabled && inboxChallengePolicy.requestNonce
+        ) {
+          // Defer nonce consumption until after actor/key ownership check to
+          // avoid burning nonces on requests that will be rejected anyway.
+          pendingNonceLabel = verification.signatureLabel;
+        }
         logger.debug("HTTP Signatures are verified.", { recipient });
         activityVerified = true;
       }
@@ -839,6 +853,26 @@ async function handleInboxInternal<TContextData>(
       status: 401,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
+  // Perform deferred nonce verification now that actor/key ownership is confirmed.
+  if (pendingNonceLabel != null) {
+    const nonceValid = await verifySignatureNonce(
+      request,
+      kv,
+      kvPrefixes.acceptSignatureNonce,
+      pendingNonceLabel,
+    );
+    if (!nonceValid) {
+      logger.error(
+        "Signature nonce verification failed (missing, expired, or replayed).",
+        { recipient },
+      );
+      return await getFailedSignatureResponse(
+        inboxChallengePolicy,
+        kv,
+        kvPrefixes,
+      );
+    }
   }
   const routeResult = await routeActivity({
     context: ctx,
@@ -1630,3 +1664,120 @@ export async function respondWithObjectIfAcceptable(
   response.headers.set("Vary", "Accept");
   return response;
 }
+
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  // Base64url encoding without padding
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function verifySignatureNonce(
+  request: Request,
+  kv: KvStore,
+  noncePrefix: KvKey,
+  verifiedLabel?: string,
+): Promise<boolean> {
+  const signatureInput = request.headers.get("Signature-Input");
+  if (signatureInput == null) return false;
+  const parsed = parseRfc9421SignatureInput(signatureInput);
+  // Only check the nonce from the verified signature label to prevent bypass
+  // attacks where a bogus signature carries a valid nonce while a different
+  // signature (without a nonce) is the one that actually verified.
+  // Nonces are only supported for RFC 9421 signatures.  If no verified label
+  // is available (e.g., draft-cavage), skip nonce verification entirely to
+  // prevent a decoupled-check bypass via a non-RFC-9421 path.
+  if (verifiedLabel == null) return false;
+  const sig = parsed[verifiedLabel];
+  if (sig == null) return false;
+  const nonce = sig.nonce;
+  if (nonce == null) return false;
+  const key = [...noncePrefix, nonce] as unknown as KvKey;
+  if (kv.cas != null) {
+    return await kv.cas(key, true, undefined);
+  }
+  const stored = await kv.get(key);
+  if (stored != null) {
+    await kv.delete(key);
+    return true;
+  }
+  return false;
+}
+
+const getFailedSignatureResponse = async (
+  policy: InboxChallengePolicy | undefined,
+  kv: KvStore,
+  kvPrefixes: { acceptSignatureNonce: KvKey },
+): Promise<Response> => {
+  const headers = await getFailedSignatureHeaders(
+    policy,
+    kv,
+    kvPrefixes,
+  );
+  return new Response(
+    "Failed to verify the request signature.",
+    { status: 401, headers },
+  );
+};
+
+const getFailedSignatureHeaders = async (
+  policy: InboxChallengePolicy | undefined,
+  kv: KvStore,
+  kvPrefixes: { acceptSignatureNonce: KvKey },
+) => ({
+  "Content-Type": "text/plain; charset=utf-8",
+  ...(policy?.enabled && {
+    "Accept-Signature": await buildAcceptSignatureHeader(
+      policy,
+      kv,
+      kvPrefixes.acceptSignatureNonce,
+    ),
+    "Cache-Control": "no-store",
+    "Vary": "Accept, Signature",
+  }),
+});
+
+async function buildAcceptSignatureHeader(
+  policy: InboxChallengePolicy,
+  kv: KvStore,
+  noncePrefix: KvKey,
+): Promise<string> {
+  const parameters: AcceptSignatureParameters = { created: true };
+  if (policy.requestNonce) {
+    const nonce = generateNonce();
+    const key: KvKey = [...noncePrefix, nonce];
+    await setKey(kv, key, policy);
+    parameters.nonce = nonce;
+  }
+  const baseComponents = policy.components ?? DEF_COMPONENTS;
+  // Always include the minimum required components to ensure basic request
+  // binding, then deduplicate and exclude response-only @status.
+  const components = uniq(MIN_COMPONENTS.concat(baseComponents))
+    .filter((c) => c !== "@status")
+    .map((v) => ({ value: v, params: {} }));
+  return formatAcceptSignature([{ label: "sig1", components, parameters }]);
+}
+
+async function setKey(kv: KvStore, key: KvKey, policy: InboxChallengePolicy) {
+  const seconds = policy.nonceTtlSeconds ?? 300;
+  const ttl = Temporal.Duration.from({ seconds });
+  await kv.set(key, true, { ttl });
+}
+
+const DEF_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+  "content-digest",
+];
+
+// Minimum set of components that must always appear in a challenge to ensure
+// basic request binding.  These are merged with any caller-supplied components.
+const MIN_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "@authority",
+];

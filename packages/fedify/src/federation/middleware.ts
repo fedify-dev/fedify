@@ -83,6 +83,7 @@ import type {
   FederationFetchOptions,
   FederationOptions,
   FederationStartQueueOptions,
+  InboxChallengePolicy,
 } from "./federation.ts";
 import {
   handleActor,
@@ -172,6 +173,14 @@ export interface FederationKvPrefixes {
    * @since 1.6.0
    */
   readonly httpMessageSignaturesSpec: KvKey;
+
+  /**
+   * The key prefix used for storing `Accept-Signature` challenge nonces.
+   * Only used when {@link InboxChallengePolicy.requestNonce} is `true`.
+   * @default `["_fedify", "acceptSignatureNonce"]`
+   * @since 2.1.0
+   */
+  readonly acceptSignatureNonce: KvKey;
 }
 
 /**
@@ -233,6 +242,7 @@ export class FederationImpl<TContextData>
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
+  inboxChallengePolicy?: InboxChallengePolicy;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
@@ -243,6 +253,7 @@ export class FederationImpl<TContextData>
         remoteDocument: ["_fedify", "remoteDocument"],
         publicKey: ["_fedify", "publicKey"],
         httpMessageSignaturesSpec: ["_fedify", "httpMessageSignaturesSpec"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
@@ -369,6 +380,7 @@ export class FederationImpl<TContextData>
       [404, 410];
     this.signatureTimeWindow = options.signatureTimeWindow ?? { hours: 1 };
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
+    this.inboxChallengePolicy = options.inboxChallengePolicy;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
       createExponentialBackoffPolicy();
     this.inboxRetryPolicy = options.inboxRetryPolicy ??
@@ -1485,6 +1497,7 @@ export class FederationImpl<TContextData>
           onNotFound,
           signatureTimeWindow: this.signatureTimeWindow,
           skipSignatureVerification: this.skipSignatureVerification,
+          inboxChallengePolicy: this.inboxChallengePolicy,
           tracerProvider: this.tracerProvider,
           idempotencyStrategy: this.idempotencyStrategy,
         });
