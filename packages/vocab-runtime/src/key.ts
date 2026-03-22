@@ -1,10 +1,13 @@
 import { Integer, Sequence } from "asn1js";
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { decodeBase64Url } from "byte-encodings/base64url";
-import { decodeHex } from "byte-encodings/hex";
-import { addPrefix, getCodeFromData, rmPrefix } from "multicodec";
 import { createPublicKey } from "node:crypto";
 import { PublicKeyInfo } from "pkijs";
+import {
+  addMulticodecPrefix,
+  getMulticodecPrefix,
+  removeMulticodecPrefix,
+} from "./internal/multicodec.ts";
 import { validateCryptoKey } from "./jwk.ts";
 import { decodeMultibase, encodeMultibase } from "./multibase/mod.ts";
 
@@ -101,8 +104,8 @@ export function importPem(pem: string): Promise<CryptoKey> {
  */
 export async function importMultibaseKey(key: string): Promise<CryptoKey> {
   const decoded = decodeMultibase(key);
-  const code: number = getCodeFromData(decoded);
-  const content = rmPrefix(decoded);
+  const { code } = getMulticodecPrefix(decoded);
+  const content = removeMulticodecPrefix(decoded);
   if (code === 0x1205) { // rsa-pub
     const keyObject = createPublicKey({
       // deno-lint-ignore no-explicit-any
@@ -177,11 +180,9 @@ export async function exportMultibaseKey(key: CryptoKey): Promise<string> {
       "Unsupported key type: " + JSON.stringify(key.algorithm),
     );
   }
-  const codeHex = code.toString(16);
-  const codeBytes = decodeHex(codeHex.length % 2 < 1 ? codeHex : "0" + codeHex);
-  const prefixed = addPrefix(codeBytes, new Uint8Array(content));
+  const prefixed = addMulticodecPrefix(code, new Uint8Array(content));
   const encoded = encodeMultibase("base58btc", prefixed);
   return new TextDecoder().decode(encoded);
 }
 
-// cSpell: ignore multicodec pkijs
+// cSpell: ignore pkijs

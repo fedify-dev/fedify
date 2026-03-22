@@ -8,6 +8,32 @@ Version 2.0.7
 
 To be released.
 
+### @fedify/fedify
+
+ -  Switched Fedify's source-based JSON-LD loading to the new
+    `@fedify/vocab-runtime/jsonld` subpath so generated vocabulary code and
+    Linked Data signature support no longer have to evaluate `jsonld` through
+    a CommonJS-sensitive package root in Fresh 2, Deno, and other ESM-first
+    runtimes.  Fresh 2 development mode has been verified on Deno 2.7.7
+    after an upstream Deno 2.7.6 dev server regression was fixed.
+    [[#621], [#639]]
+
+[#621]: https://github.com/fedify-dev/fedify/issues/621
+[#639]: https://github.com/fedify-dev/fedify/pull/639
+
+### @fedify/vocab-runtime
+
+ -  Fixed multibase public key handling to stop relying on the deprecated
+    CommonJS-only `multicodec` package.  This removes the Vite SSR crash that
+    prevented Fresh 2 applications from importing `@fedify/fedify` with
+    `TypeError: varint.encode is not a function`.  Fresh 2 no longer needs a
+    Vite externalization workaround for Fedify.  [[#621], [#639]]
+
+ -  Added the new `@fedify/vocab-runtime/jsonld` subpath export so generated
+    vocabulary code and other Fedify runtime code can share a JSR-safe wrapper
+    around `jsonld`'s ESM entrypoint instead of depending on fragile relative
+    shims or the package-root import path.  [[#621], [#639]]
+
 ### @fedify/init
 
  -  Revived removed `fedify init` options.  [[#632], [#638] by ChanHaeng Lee]

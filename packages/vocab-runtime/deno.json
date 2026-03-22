@@ -3,7 +3,8 @@
   "version": "2.0.7",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./jsonld": "./src/jsonld.ts"
   },
   "description": "Runtime library for @fedify/vocab",
   "author": {
@@ -16,7 +17,7 @@
     "asn1js": "npm:asn1js@^3.0.6",
     "byte-encodings": "npm:byte-encodings@^1.0.11",
     "fetch-mock": "npm:fetch-mock@^12.5.4",
-    "multicodec": "npm:multicodec@^3.2.1",
+    "jsonld": "npm:jsonld@^9.0.0",
     "pkijs": "npm:pkijs@^3.2.5"
   },
   "exclude": [

@@ -1,4 +1,4 @@
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual, rejects } from "node:assert";
 import { test } from "node:test";
 import { exportJwk, importJwk } from "./jwk.ts";
 import {
@@ -9,6 +9,7 @@ import {
   importPkcs1,
   importSpki,
 } from "./key.ts";
+import { encodeMultibase } from "./multibase/mod.ts";
 
 // cSpell: disable
 const rsaSpki = "-----BEGIN PUBLIC KEY-----\n" +
@@ -120,6 +121,26 @@ test("importMultibase()", async () => {
 
   const ed25519Key = await importMultibaseKey(ed25519Multibase);
   deepStrictEqual(await exportJwk(ed25519Key), ed25519Jwk);
+});
+
+test("importMultibase() rejects malformed multicodec prefixes", async () => {
+  const decoder = new TextDecoder();
+  await rejects(
+    () =>
+      importMultibaseKey(
+        decoder.decode(encodeMultibase("base58btc", new Uint8Array([]))),
+      ),
+    new TypeError("Invalid multicodec prefix."),
+  );
+  await rejects(
+    () =>
+      importMultibaseKey(
+        decoder.decode(
+          encodeMultibase("base58btc", Uint8Array.from([0x80])),
+        ),
+      ),
+    new TypeError("Invalid multicodec prefix."),
+  );
 });
 
 test("exportMultibaseKey()", async () => {
