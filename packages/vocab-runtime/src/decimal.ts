@@ -65,7 +65,11 @@ export function isDecimal(value: string): value is Decimal {
  * ```
  * @example
  * ```typescript
- * parseDecimal("1e3"); // throws TypeError
+ * try {
+ *   parseDecimal("1e3");
+ * } catch (error) {
+ *   console.assert(error instanceof TypeError);
+ * }
  * ```
  * @since 2.1.0
  */
