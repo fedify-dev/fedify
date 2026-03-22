@@ -69,19 +69,18 @@ if (import.meta.main) {
   const origin = Deno.env.get("ORIGIN");
   if (origin) {
     logger.info("Public URL (external tunnel): {url}", { url: origin });
-    logger.info("Actor: @{id}@{host}", {
-      id: ACTOR_ID,
-      host: new URL(origin).hostname,
+    logger.info("Actor: {actor}", {
+      actor: `@${ACTOR_ID}@${new URL(origin).hostname}`,
     });
   } else {
-    const tunnel = await startTunnel(port, 30_000);
+    const tunnel = await startTunnel(port);
     if (tunnel) {
-      logger.info("Public URL: {url}", { url: tunnel.url });
+      logger.info("Public URL: {url}", { url: tunnel.url.href });
       logger.info("Actor: {actor}", {
-        actor: `@${ACTOR_ID}@${new URL(tunnel.url).hostname}`,
+        actor: `@${ACTOR_ID}@${tunnel.url.hostname}`,
       });
-      Deno.addSignalListener("SIGINT", () => {
-        tunnel.child.kill("SIGTERM");
+      Deno.addSignalListener("SIGINT", async () => {
+        await tunnel.close();
         Deno.exit(0);
       });
     } else {
