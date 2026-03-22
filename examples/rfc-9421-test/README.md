@@ -4,10 +4,6 @@ RFC 9421 Interoperability Field Test
 A Fedify-based server for testing RFC 9421 HTTP Message Signatures
 interoperability with Bonfire, Mastodon, and other fediverse implementations.
 
-See [../../plans/field-test.md](../../plans/field-test.md) for the full test
-plan.
-
-
 Prerequisites
 -------------
 
