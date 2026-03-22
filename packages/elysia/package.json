@@ -1,6 +1,6 @@
 {
   "name": "@fedify/elysia",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Integrate Fedify with Elysia",
   "keywords": [
     "Fedify",
