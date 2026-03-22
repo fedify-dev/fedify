@@ -150,7 +150,9 @@ To be released.
     with that range are now generated as `Decimal` in TypeScript, serialized
     as `xsd:decimal` JSON-LD literals, validated through
     `canParseDecimal()` when checking input data, and normalized through
-    `parseDecimal()` when decoded.  [[#617], [#640]]
+    `parseDecimal()` when decoded.  Code generation now also rejects property
+    ranges that mix `xsd:string` and `xsd:decimal`, since both map to runtime
+    strings and would make serialization ambiguous.  [[#617], [#640]]
 
  -  Added `typeless` field to the type YAML schema.  When set to `true`,
     the generated `toJsonLd()` method does not emit `@type` (or `type` in

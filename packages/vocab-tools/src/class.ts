@@ -3,7 +3,7 @@ import { generateCloner, generateConstructor } from "./constructor.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
-import type { TypeSchema } from "./schema.ts";
+import { type TypeSchema, validateTypeSchemas } from "./schema.ts";
 import { emitOverride } from "./type.ts";
 
 /**
@@ -117,6 +117,7 @@ async function* generateClass(
 export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
+  validateTypeSchemas(types);
   const runtimeImports = [
     "canParseDecimal",
     "decodeMultibase",

@@ -240,6 +240,38 @@ export function hasSingularAccessor(property: PropertySchema): boolean {
     property.singularAccessor === true;
 }
 
+const XSD_STRING_URI = "http://www.w3.org/2001/XMLSchema#string";
+const XSD_DECIMAL_URI = "http://www.w3.org/2001/XMLSchema#decimal";
+
+/**
+ * Validates schema combinations that cannot be represented safely by the
+ * generated code.
+ *
+ * In particular, `xsd:string` and `xsd:decimal` cannot coexist in the same
+ * property range because both are represented as runtime strings, which makes
+ * JSON-LD serialization ambiguous and order-dependent.
+ *
+ * @param types The loaded type schemas to validate.
+ * @throws {TypeError} Thrown when an unsupported range combination is found.
+ */
+export function validateTypeSchemas(
+  types: Record<string, TypeSchema>,
+): void {
+  for (const type of Object.values(types)) {
+    for (const property of type.properties) {
+      const hasString = property.range.includes(XSD_STRING_URI);
+      const hasDecimal = property.range.includes(XSD_DECIMAL_URI);
+      if (hasString && hasDecimal) {
+        throw new TypeError(
+          `The property ${type.name}.${property.singularName} cannot have ` +
+            `both xsd:string and xsd:decimal in its range because the ` +
+            `generated encoder cannot disambiguate them at runtime.`,
+        );
+      }
+    }
+  }
+}
+
 /**
  * An error that occurred while loading a schema file.
  */

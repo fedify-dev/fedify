@@ -1,8 +1,9 @@
-import { deepStrictEqual, match } from "node:assert";
+import { deepStrictEqual, match, rejects } from "node:assert";
 import { basename, dirname, extname, join } from "node:path";
 import { test } from "node:test";
 import metadata from "../deno.json" with { type: "json" };
 import { generateClasses, sortTopologically } from "./class.ts";
+import { getDataCheck } from "./type.ts";
 import { loadSchemaFiles, type TypeSchema } from "./schema.ts";
 
 test("sortTopologically()", () => {
@@ -80,9 +81,43 @@ test("generateClasses() imports Decimal helpers for xsd:decimal", async () => {
   match(entireCode, /parseDecimal\(v\["@value"\]\)/);
 });
 
-test("generateClasses() uses canParseDecimal() in xsd:decimal data checks", async () => {
-  const entireCode = await getDecimalUnionFixtureCode();
-  match(entireCode, /canParseDecimal\(v\["@value"\]\)/);
+test("getDataCheck() uses canParseDecimal() for xsd:decimal", () => {
+  const check = getDataCheck(
+    "http://www.w3.org/2001/XMLSchema#decimal",
+    {},
+    "v",
+  );
+  match(check, /canParseDecimal\(v\["@value"\]\)/);
+});
+
+test("generateClasses() rejects xsd:string and xsd:decimal unions", async () => {
+  await rejects(
+    Array.fromAsync(generateClasses({
+      "https://example.com/measure": {
+        name: "Measure",
+        uri: "https://example.com/measure",
+        compactName: "Measure",
+        entity: false,
+        description: "A measure.",
+        properties: [
+          {
+            singularName: "amount",
+            functional: true,
+            compactName: "amount",
+            uri: "https://example.com/amount",
+            description: "An exact decimal amount.",
+            range: [
+              "http://www.w3.org/2001/XMLSchema#decimal",
+              "http://www.w3.org/2001/XMLSchema#string",
+            ],
+          },
+        ],
+        defaultContext:
+          "https://example.com/context" as TypeSchema["defaultContext"],
+      },
+    })),
+    /cannot have both xsd:string and xsd:decimal in its range/,
+  );
 });
 
 if ("Deno" in globalThis) {
@@ -133,34 +168,6 @@ async function getDecimalFixtureCode() {
           uri: "https://example.com/amount",
           description: "An exact decimal amount.",
           range: ["http://www.w3.org/2001/XMLSchema#decimal"],
-        },
-      ],
-      defaultContext:
-        "https://example.com/context" as TypeSchema["defaultContext"],
-    },
-  };
-  return (await Array.fromAsync(generateClasses(types))).join("");
-}
-
-async function getDecimalUnionFixtureCode() {
-  const types: Record<string, TypeSchema> = {
-    "https://example.com/measure": {
-      name: "Measure",
-      uri: "https://example.com/measure",
-      compactName: "Measure",
-      entity: false,
-      description: "A measure.",
-      properties: [
-        {
-          singularName: "amount",
-          functional: true,
-          compactName: "amount",
-          uri: "https://example.com/amount",
-          description: "An exact decimal amount.",
-          range: [
-            "http://www.w3.org/2001/XMLSchema#decimal",
-            "http://www.w3.org/2001/XMLSchema#string",
-          ],
         },
       ],
       defaultContext:

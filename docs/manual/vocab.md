@@ -551,6 +551,11 @@ decimal values such as prices and measurements.  `parseDecimal()` normalizes
 XML Schema whitespace before returning the branded value, so the runtime
 representation always uses the normalized lexical form.
 
+A property range must not combine `xsd:string` and `xsd:decimal`.  Both map to
+runtime strings, so the generated encoder cannot distinguish them reliably
+during JSON-LD serialization and Fedify rejects such schema definitions at code
+generation time.
+
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
