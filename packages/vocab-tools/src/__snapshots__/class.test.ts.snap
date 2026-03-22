@@ -1,13 +1,15 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`generateClasses() 1`] = `
-"// deno-lint-ignore-file ban-unused-ignore prefer-const
+"// deno-lint-ignore-file ban-unused-ignore no-unused-vars prefer-const verbatim-module-syntax
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";
 import {
+    canParseDecimal,
     decodeMultibase,
+    type Decimal,
     type DocumentLoader,
     encodeMultibase,
     exportMultibaseKey,
@@ -15,8 +17,10 @@ import {
     getDocumentLoader,
     importMultibaseKey,
     importPem,
+    isDecimal,
     LanguageString,
-    type RemoteDocument,
+    parseDecimal,
+    type RemoteDocument
 } from "@fedify/vocab-runtime";
 
 

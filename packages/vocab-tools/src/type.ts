@@ -108,6 +108,30 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}["@value"]`;
     },
   },
+  "http://www.w3.org/2001/XMLSchema#decimal": {
+    name: "Decimal",
+    typeGuard(v) {
+      return `typeof ${v} === "string" && isDecimal(${v})`;
+    },
+    encoder(v) {
+      return `{
+        "@type": "http://www.w3.org/2001/XMLSchema#decimal",
+        "@value": ${v},
+      }`;
+    },
+    compactEncoder(v) {
+      return v;
+    },
+    dataCheck(v) {
+      return `typeof ${v} === "object" && "@type" in ${v}
+        && ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#decimal"
+        && "@value" in ${v} && typeof ${v}["@value"] === "string"
+        && canParseDecimal(${v}["@value"])`;
+    },
+    decoder(v) {
+      return `parseDecimal(${v}["@value"])`;
+    },
+  },
   "http://www.w3.org/2001/XMLSchema#string": {
     name: "string",
     typeGuard(v) {

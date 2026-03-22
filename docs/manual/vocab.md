@@ -508,6 +508,7 @@ corresponding TypeScript types:
 | `xsd:integer`            | `number`                                                                                                      |
 | `xsd:nonNegativeInteger` | `number`                                                                                                      |
 | `xsd:float`              | `number`                                                                                                      |
+| `xsd:decimal`            | `Decimal`                                                                                                     |
 | `xsd:string`             | `string`                                                                                                      |
 | `xsd:anyURI`             | [`URL`]                                                                                                       |
 | `xsd:dateTime`           | [`Temporal.Instant`]                                                                                          |
@@ -520,6 +521,40 @@ corresponding TypeScript types:
 | Public key Multibase     | [`CryptoKey`]                                                                                                 |
 | Proof purpose            | `"assertionMethod" \| "authentication" \| "capabilityInvocation" \| "capabilityDelegation" \| "keyAgreement"` |
 | Units                    | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles" \| URL`                                                 |
+
+`Decimal` values come from `@fedify/vocab-runtime` as a branded string type.
+Use `isDecimal()` when you need to check whether a string is already in the
+normalized `xsd:decimal` lexical form, and use `canParseDecimal()` or
+`parseDecimal()` when you need XML Schema whitespace normalization before
+validation:
+
+~~~~ typescript twoslash
+import type { Decimal } from "@fedify/vocab-runtime";
+import {
+  canParseDecimal,
+  isDecimal,
+  parseDecimal,
+} from "@fedify/vocab-runtime";
+
+const raw = " 12.50 ";
+
+isDecimal(raw); // false
+canParseDecimal(raw); // true
+
+const price: Decimal = parseDecimal(raw);
+price; // "12.50"
+~~~~
+
+`Decimal` keeps the original string at runtime instead of converting it to
+JavaScript `number`, which avoids floating-point precision loss for exact
+decimal values such as prices and measurements.  `parseDecimal()` normalizes
+XML Schema whitespace before returning the branded value, so the runtime
+representation always uses the normalized lexical form.
+
+A property range must not combine `xsd:string` and `xsd:decimal`.  Both map to
+runtime strings, so the generated encoder cannot distinguish them reliably
+during JSON-LD serialization and Fedify rejects such schema definitions at code
+generation time.
 
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration

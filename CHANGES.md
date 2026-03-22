@@ -53,6 +53,15 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Added `Decimal`, a branded string type for exact `xsd:decimal` values,
+    along with `isDecimal()`, `canParseDecimal()`, and `parseDecimal()` for
+    checking and validating XML Schema decimal lexical forms without
+    introducing a decimal arithmetic dependency.  `isDecimal()` performs a
+    strict lexical-form check, while `canParseDecimal()` and `parseDecimal()`
+    apply XML Schema whitespace normalization first.  This lays the runtime
+    groundwork for precision-safe marketplace and measurement values such as
+    those needed by [FEP-0837].  [[#617], [#640]]
+
  -  Updated the preloaded <https://gotosocial.org/ns> JSON-LD context to
     match the current [GoToSocial] v0.21+ namespace, adding new type terms
     (`LikeRequest`, `LikeAuthorization`, etc.) and property terms
@@ -66,9 +75,12 @@ To be released.
     APIs to distinguish transport failures from specific HTTP fetch failures.
     [[#611]]
 
+[FEP-0837]: https://w3id.org/fep/0837
 [GoToSocial]: https://gotosocial.org/
 [#453]: https://github.com/fedify-dev/fedify/issues/453
+[#617]: https://github.com/fedify-dev/fedify/issues/617
 [#622]: https://github.com/fedify-dev/fedify/pull/622
+[#640]: https://github.com/fedify-dev/fedify/pull/640
 
 ### @fedify/cli
 
@@ -133,6 +145,14 @@ To be released.
 [#576]: https://github.com/fedify-dev/fedify/issues/576
 
 ### @fedify/vocab-tools
+
+ -  Added `xsd:decimal` support to the vocabulary code generator.  Properties
+    with that range are now generated as `Decimal` in TypeScript, serialized
+    as `xsd:decimal` JSON-LD literals, validated through
+    `canParseDecimal()` when checking input data, and normalized through
+    `parseDecimal()` when decoded.  Code generation now also rejects property
+    ranges that mix `xsd:string` and `xsd:decimal`, since both map to runtime
+    strings and would make serialization ambiguous.  [[#617], [#640]]
 
  -  Added `typeless` field to the type YAML schema.  When set to `true`,
     the generated `toJsonLd()` method does not emit `@type` (or `type` in
