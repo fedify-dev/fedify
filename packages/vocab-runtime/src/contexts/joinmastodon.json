@@ -1,0 +1,28 @@
+{
+  "@context": {
+    "toot": "http://joinmastodon.org/ns#",
+    "Emoji": "toot:Emoji",
+    "featured": {
+      "@id": "toot:featured",
+      "@type": "@id"
+    },
+    "featuredTags": {
+      "@id": "toot:featuredTags",
+      "@type": "@id"
+    },
+    "focalPoint": {
+      "@container": "@list",
+      "@id": "toot:focalPoint"
+    },
+    "blurhash": "toot:blurhash",
+    "discoverable": "toot:discoverable",
+    "indexable": "toot:indexable",
+    "memorial": "toot:memorial",
+    "votersCount": "toot:votersCount",
+    "suspended": "toot:suspended",
+    "attributionDomains": {
+      "@id": "toot:attributionDomains",
+      "@type": "@id"
+    }
+  }
+}
