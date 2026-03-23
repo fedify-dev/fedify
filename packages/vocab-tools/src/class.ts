@@ -3,7 +3,7 @@ import { generateCloner, generateConstructor } from "./constructor.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
-import type { TypeSchema } from "./schema.ts";
+import { type TypeSchema, validateTypeSchemas } from "./schema.ts";
 import { emitOverride } from "./type.ts";
 
 /**
@@ -117,23 +117,31 @@ async function* generateClass(
 export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
-  yield "// deno-lint-ignore-file ban-unused-ignore prefer-const\n";
+  validateTypeSchemas(types);
+  const runtimeImports = [
+    "canParseDecimal",
+    "decodeMultibase",
+    "type Decimal",
+    "type DocumentLoader",
+    "encodeMultibase",
+    "exportMultibaseKey",
+    "exportSpki",
+    "getDocumentLoader",
+    "importMultibaseKey",
+    "importPem",
+    "isDecimal",
+    "LanguageString",
+    "parseDecimal",
+    "type RemoteDocument",
+  ];
+  yield "// deno-lint-ignore-file ban-unused-ignore no-unused-vars prefer-const verbatim-module-syntax\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
-  yield `import {
-    decodeMultibase,
-    type DocumentLoader,
-    encodeMultibase,
-    exportMultibaseKey,
-    exportSpki,
-    getDocumentLoader,
-    importMultibaseKey,
-    importPem,
-    LanguageString,
-    type RemoteDocument,
-} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${
+    runtimeImports.join(",\n    ")
+  }\n} from "@fedify/vocab-runtime";\n`;
   yield "\n\n";
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
