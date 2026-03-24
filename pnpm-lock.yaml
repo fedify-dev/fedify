@@ -16,11 +16,11 @@ catalogs:
       specifier: ^0.5.1
       version: 0.5.1
     '@logtape/file':
-      specifier: ^2.0.0
-      version: 2.0.0
+      specifier: ^2.0.5
+      version: 2.0.5
     '@logtape/logtape':
-      specifier: ^2.0.0
-      version: 2.0.0
+      specifier: ^2.0.5
+      version: 2.0.5
     '@multiformats/base-x':
       specifier: ^4.0.1
       version: 4.0.1
@@ -243,10 +243,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.0.0(@logtape/logtape@2.0.0)
+        version: 2.0.5(@logtape/logtape@2.0.5)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.4(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -428,7 +428,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       express:
         specifier: 'catalog:'
         version: 4.21.2
@@ -481,7 +481,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       koa:
         specifier: 'catalog:'
         version: 2.16.2
@@ -561,7 +561,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       next:
         specifier: ^14.0.0
         version: 14.2.30(@opentelemetry/api@1.9.0)(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
@@ -843,10 +843,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.0.0(@logtape/logtape@2.0.0)
+        version: 2.0.5(@logtape/logtape@2.0.5)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@optique/config':
         specifier: 'catalog:'
         version: 0.10.7(@standard-schema/spec@1.0.0)
@@ -959,7 +959,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -1062,7 +1062,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -1141,7 +1141,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@opentelemetry/core':
         specifier: 'catalog:'
         version: 2.5.0(@opentelemetry/api@1.9.0)
@@ -1204,7 +1204,7 @@ importers:
         version: 7.10.1(@types/node@22.19.1)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@optique/core':
         specifier: 'catalog:'
         version: 0.10.7
@@ -1294,7 +1294,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       es-toolkit:
         specifier: 'catalog:'
         version: 1.43.0
@@ -1366,7 +1366,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -1397,7 +1397,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       ioredis:
         specifier: 'catalog:'
         version: 5.8.2
@@ -1434,7 +1434,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
     devDependencies:
       '@fedify/vocab-runtime':
         specifier: workspace:^
@@ -1459,7 +1459,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       es-toolkit:
         specifier: ^1.31.0
         version: 1.39.5
@@ -1537,7 +1537,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1580,7 +1580,7 @@ importers:
     dependencies:
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1645,7 +1645,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.0
+        version: 2.0.5
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -3323,16 +3323,16 @@ packages:
   '@jsr/std__path@1.1.0':
     resolution: {integrity: sha512-rnxGg/nJGfDbJO+xIJ9YEzLD7dCzjr3NHShf4dbnlt44WEYNwMjg+TcDO6F2NPHBnn/6iUFwbnNzysrZvyD1Og==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.0.tgz}
 
-  '@logtape/file@2.0.0':
-    resolution: {integrity: sha512-pdJ66AhFOZ09dKqUHM8C9Wj12CRZQ+sJUbU4awAK8Hgix6cESO7/nnF+AVE4y/U20onilTePfp+odrNBnczAdQ==}
+  '@logtape/file@2.0.5':
+    resolution: {integrity: sha512-SJ2UZ00IJptilqDMFwPIGmZLMTYNZbP7k4+7aBfP5DoLVifSmQoaxP2HtXMdExXhGP4/JrFepLE86ryPBUKB/Q==}
     peerDependencies:
-      '@logtape/logtape': ^2.0.0
+      '@logtape/logtape': ^2.0.5
 
   '@logtape/logtape@1.3.5':
     resolution: {integrity: sha512-G+MxWB7Tbv/2764519+Cp6rKXUdRbe/GiRwTvlm/Wv/sNsiquRnx9Hzr9eXaIpAYLT4PrBlkthjJ4gmqdSPrFg==}
 
-  '@logtape/logtape@2.0.0':
-    resolution: {integrity: sha512-z9Hp44mIRXAzgxSyQfFQiRuJ78EMnZa6g43UCxyGOO3RgHjn/7q+5OhdbhypkeHjiJRPxv6RmRsyF0S+OOYWnA==}
+  '@logtape/logtape@2.0.5':
+    resolution: {integrity: sha512-UizDkh20ZPJVOddRxG1F77WhHdlNl/sbQgoO8T534R7XvUBMAJ9En9f35u+meW2tRsNLvjz6R87Zanwf53tspQ==}
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -11550,13 +11550,13 @@ snapshots:
 
   '@jsr/std__path@1.1.0': {}
 
-  '@logtape/file@2.0.0(@logtape/logtape@2.0.0)':
+  '@logtape/file@2.0.5(@logtape/logtape@2.0.5)':
     dependencies:
-      '@logtape/logtape': 2.0.0
+      '@logtape/logtape': 2.0.5
 
   '@logtape/logtape@1.3.5': {}
 
-  '@logtape/logtape@2.0.0': {}
+  '@logtape/logtape@2.0.5': {}
 
   '@lukeed/csprng@1.1.0': {}
 

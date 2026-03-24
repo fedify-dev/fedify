@@ -34,7 +34,7 @@ export const getDependencies = (
     {
       "@fedify/fedify": PACKAGE_VERSION,
       "@fedify/vocab": PACKAGE_VERSION,
-      "@logtape/logtape": "^2.0.0",
+      "@logtape/logtape": "^2.0.5",
     },
     merge(initializer.dependencies),
     merge(kv.dependencies),

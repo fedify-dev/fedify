@@ -44,8 +44,8 @@ catalog:
   "@cloudflare/workers-types": ^4.20250906.0
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
-  "@logtape/file": ^2.0.0
-  "@logtape/logtape": ^2.0.0
+  "@logtape/file": ^2.0.5
+  "@logtape/logtape": ^2.0.5
   "@multiformats/base-x": ^4.0.1
   "@opentelemetry/api": ^1.9.0
   "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
