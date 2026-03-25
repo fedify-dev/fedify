@@ -1,3 +1,4 @@
+import $ from "@david/dax";
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
 import { values } from "@optique/core";
 import { appendFile, mkdir } from "node:fs/promises";
@@ -17,7 +18,6 @@ import {
   printErrorMessage,
   printMessage,
   product,
-  runSubCommand,
 } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
 import type { InitTestData, MultipleOption } from "./types.ts";
@@ -31,13 +31,12 @@ async (
   const testDir = join(testDirPrefix, ...options);
   const vals = values(testDir.split(sep).slice(-4));
   try {
-    const result = await runSubCommand(
-      toArray(genInitCommand(testDir, dry, options)),
-      {
-        cwd: join(import.meta.dirname!, "../.."),
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
+    const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
+      .cwd(join(import.meta.dirname!, "..", ".."))
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .spawn();
 
     await saveOutputs(testDir, result);
     printMessage`  Pass: ${vals}`;
@@ -55,9 +54,9 @@ async (
       await saveOutputs(testDir, { stdout: "", stderr: errorMessage });
     }
     printMessage`  Fail: ${vals}`;
-    printMessage`    Check out these files for more details:
-      ${join(testDir, "out.txt")} and 
-      ${join(testDir, "err.txt")}\n`;
+    printMessage`    Check out these files for more details: \
+${join(testDir, "out.txt")} and \
+${join(testDir, "err.txt")}\n`;
     return "";
   }
 };

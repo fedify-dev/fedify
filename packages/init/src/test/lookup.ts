@@ -1,3 +1,4 @@
+import $ from "@david/dax";
 import { isEmpty } from "@fxts/core/index.js";
 import { values } from "@optique/core";
 import type { ChildProcessByStdio } from "node:child_process";
@@ -115,10 +116,13 @@ ${String(STARTUP_TIMEOUT)}ms`;
 
   // Run lookup command from original directory
   try {
-    await runSubCommand(
-      ["deno", "task", "cli", "lookup", lookupTarget],
-      { cwd: CWD },
-    );
+    const res = await $`deno task cli lookup ${lookupTarget} -p`
+      .cwd(CWD)
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow()
+      .spawn();
 
     return true;
   } catch (error) {
