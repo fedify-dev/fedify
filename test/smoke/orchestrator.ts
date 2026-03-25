@@ -135,6 +135,7 @@ type Relationship = {
   id: string;
   following: boolean;
   followed_by: boolean;
+  requested: boolean;
 };
 
 // Resolved once by the first follow scenario and reused by later scenarios.
@@ -218,12 +219,15 @@ async function testFollowMastodonToFedify(): Promise<void> {
 
   await pollHarnessInbox("Follow", (a) => !knownIds.has(a.id));
 
+  // Wait until Mastodon has processed the Accept from the harness.
+  // Check both following=true AND requested=false: the latter only
+  // flips once the Accept activity has actually been received.
   await poll("follow accepted", async () => {
     const rels = await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
     ) as Relationship[];
     const rel = rels.find((r) => r.id === accountId);
-    return rel?.following ? rel : null;
+    return rel?.following && !rel?.requested ? rel : null;
   });
 }
 
