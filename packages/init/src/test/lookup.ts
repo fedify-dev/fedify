@@ -1,12 +1,8 @@
 import $ from "@david/dax";
 import { isEmpty } from "@fxts/core/index.js";
 import { values } from "@optique/core";
-import type { ChildProcessByStdio } from "node:child_process";
-import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, type WriteStream } from "node:fs";
 import { join, sep } from "node:path";
-import process from "node:process";
-import type Stream from "node:stream";
 import { getDevCommand } from "../lib.ts";
 import type {
   KvStore,
@@ -14,13 +10,20 @@ import type {
   PackageManager,
   WebFramework,
 } from "../types.ts";
-import { printErrorMessage, printMessage, runSubCommand } from "../utils.ts";
+import { printErrorMessage, printMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
+import {
+  ensurePortReleased,
+  findFreePort,
+  killProcessOnPort,
+  replacePortInApp,
+} from "./port.ts";
 
 const HANDLE = "john";
 const STARTUP_TIMEOUT = 30000; // 30 seconds
-const CWD = process.cwd();
+const CWD = join(import.meta.dirname!, "..");
 const BANNED_WFS: WebFramework[] = ["next"];
+const BASE_PORT = 10000;
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -29,11 +32,11 @@ const BANNED_WFS: WebFramework[] = ["next"];
  */
 export default async function runServerAndLookupUser(
   dirs: string[],
-): Promise<void> {
+): Promise<string[]> {
   const valid = dirs.filter(Boolean);
   if (valid.length === 0) {
     printErrorMessage`\nNo directories to lookup test.`;
-    return;
+    return dirs;
   }
   const filtered = filterWebFrameworks(valid);
 
@@ -48,6 +51,8 @@ export default async function runServerAndLookupUser(
   Total: ${String(results.length)}
   Passed: ${String(successCount)}
   Failed: ${String(failCount)}\n\n`;
+
+  return dirs;
 }
 
 function filterWebFrameworks(
@@ -72,16 +77,21 @@ function filterWebFrameworks(
 /**
  * Run the dev server and test with lookup command.
  */
-async function testApp(dir: string): Promise<boolean> {
+async function testApp(dir: string, index: number): Promise<boolean> {
   const [wf, pm, kv, mq] = dir.split(sep).slice(-4) as //
   [WebFramework, PackageManager, KvStore, MessageQueue];
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
 
+  const defaultPort = webFrameworks[wf].defaultPort;
+  const assignedPort = await findFreePort(BASE_PORT + index);
+  await replacePortInApp(dir, wf, defaultPort, assignedPort);
+  printMessage`    Using port ${String(assignedPort)}`;
+
   const result = await serverClosure(
     dir,
     getDevCommand(pm),
-    webFrameworks[wf].defaultPort,
+    assignedPort,
     sendLookup,
   ).catch(() => false);
 
@@ -89,9 +99,9 @@ async function testApp(dir: string): Promise<boolean> {
     values([wf, pm, kv, mq])
   }!`;
   if (!result) {
-    printMessage`    Check out these files for more details:
-      ${join(dir, "out.txt")} and 
-      ${join(dir, "err.txt")}\n`;
+    printMessage`    Check out these files for more details: \
+${join(dir, "out.txt")} and \
+${join(dir, "err.txt")}\n`;
   }
   printMessage`\n`;
 
@@ -124,7 +134,7 @@ ${String(STARTUP_TIMEOUT)}ms`;
       .noThrow()
       .spawn();
 
-    return true;
+    return res.stdout.includes(`id: URL '${lookupTarget}',`);
   } catch (error) {
     if (error instanceof Error) {
       printErrorMessage`${error.message}`;
@@ -142,7 +152,9 @@ async function waitForServer(url: string, timeout: number): Promise<boolean> {
   while (Date.now() - startTime < timeout) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
-      if (response.ok) {
+      const ok = response.ok;
+      await response.body?.cancel();
+      if (ok) {
         return true;
       }
     } catch {
@@ -162,23 +174,38 @@ async function serverClosure<T>(
   defaultPort: number,
   callback: (port: number) => Promise<T>,
 ): Promise<Awaited<T>> {
-  // Start the dev server using Node.js spawn
   const devCommand = cmd.split(" ");
-  const serverProcess = spawn(devCommand[0], devCommand.slice(1), {
-    cwd: dir,
-    stdio: ["ignore", "pipe", "pipe"],
-    detached: true, // Create a new process group
-  });
+  const serverProcess = $`${devCommand}`
+    .cwd(dir)
+    .env("PORT", String(defaultPort))
+    .stdin("null")
+    .stdout("piped")
+    .stderr("piped")
+    .noThrow()
+    .spawn();
+
+  // Prevent unhandled rejection when the process is killed
+  serverProcess.catch(() => {});
+
+  const [stdoutForFile, stdoutForPort] = serverProcess.stdout().tee();
+  const [stderrForFile, stderrForPort] = serverProcess.stderr().tee();
+
+  // Shared signal to cancel all background stream readers on cleanup
+  const cleanup = new AbortController();
 
   // Append stdout and stderr to files
-  const stdout = createWriteStream(join(dir, "out.txt"), { flags: "a" });
-  const stderr = createWriteStream(join(dir, "err.txt"), { flags: "a" });
+  const outFile = createWriteStream(join(dir, "out.txt"), { flags: "a" });
+  const errFile = createWriteStream(join(dir, "err.txt"), { flags: "a" });
+  const pipeOutDone = pipeStream(stdoutForFile, outFile, cleanup.signal);
+  const pipeErrDone = pipeStream(stderrForFile, errFile, cleanup.signal);
 
-  serverProcess.stdout?.pipe(stdout);
-  serverProcess.stderr?.pipe(stderr);
-
+  let port = defaultPort;
   try {
-    const port = await determinePort(serverProcess).catch((err) => {
+    port = await determinePort(
+      stdoutForPort,
+      stderrForPort,
+      cleanup.signal,
+    ).catch((err) => {
       printErrorMessage`Failed to determine server port: ${err.message}`;
       printErrorMessage`Use default port ${String(defaultPort)} for lookup.`;
       return defaultPort;
@@ -186,19 +213,31 @@ async function serverClosure<T>(
     return await callback(port);
   } finally {
     try {
-      process.kill(-serverProcess.pid!, "SIGKILL");
-    } catch {
       serverProcess.kill("SIGKILL");
-
-      // Close file streams
-      stdout.end();
-      stderr.end();
+    } catch {
+      // Process already exited
     }
+
+    // Cancel all background stream readers
+    cleanup.abort();
+    await Promise.all([pipeOutDone, pipeErrDone]).catch(() => {});
+
+    // Kill any remaining child processes still listening on the port
+    await killProcessOnPort(port);
+
+    // Close file streams
+    outFile.end();
+    errFile.end();
+
+    // Ensure port is released before next test
+    await ensurePortReleased(port);
   }
 }
 
 function determinePort(
-  server: ChildProcessByStdio<null, Stream.Readable, Stream.Readable>,
+  stdout: ReadableStream<Uint8Array>,
+  stderr: ReadableStream<Uint8Array>,
+  signal?: AbortSignal,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -209,6 +248,7 @@ function determinePort(
 
     let stdoutData = "";
     let stderrData = "";
+    let streamsEnded = 0;
 
     // Common patterns for port detection
     const portPatterns = [
@@ -235,30 +275,71 @@ function determinePort(
       return null;
     };
 
-    server.stdout.on("data", (chunk) => {
-      stdoutData += chunk.toString();
+    const onStreamEnd = () => {
+      streamsEnded++;
+      if (streamsEnded === 2) {
+        clearTimeout(timeout);
+        reject(
+          new Error("Server exited before port could be determined"),
+        );
+      }
+    };
+
+    const readStream = async (
+      stream: ReadableStream<Uint8Array>,
+      onData: (chunk: string) => void,
+    ) => {
+      const reader = stream.getReader();
+      const onAbort = () => void reader.cancel().catch(() => {});
+      signal?.addEventListener("abort", onAbort, { once: true });
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          onData(decoder.decode(value, { stream: true }));
+        }
+      } catch {
+        // Stream may be cancelled when process is killed
+      } finally {
+        signal?.removeEventListener("abort", onAbort);
+        reader.releaseLock();
+        onStreamEnd();
+      }
+    };
+
+    void readStream(stdout, (chunk) => {
+      stdoutData += chunk;
       const port = checkForPort(stdoutData);
       if (port) resolve(port);
     });
 
-    server.stderr.on("data", (chunk) => {
-      stderrData += chunk.toString();
+    void readStream(stderr, (chunk) => {
+      stderrData += chunk;
       const port = checkForPort(stderrData);
       if (port) resolve(port);
     });
-
-    server.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-
-    server.on("exit", (code) => {
-      clearTimeout(timeout);
-      reject(
-        new Error(
-          `Server exited with code ${code} before port could be determined`,
-        ),
-      );
-    });
   });
+}
+
+async function pipeStream(
+  readable: ReadableStream<Uint8Array>,
+  writable: WriteStream,
+  signal?: AbortSignal,
+): Promise<void> {
+  const reader = readable.getReader();
+  const onAbort = () => void reader.cancel().catch(() => {});
+  signal?.addEventListener("abort", onAbort, { once: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      writable.write(value);
+    }
+  } catch {
+    // Stream may be cancelled when process is killed
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    reader.releaseLock();
+  }
 }
