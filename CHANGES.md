@@ -16,6 +16,9 @@ To be released.
  -  Stopped the remote document loaders and signed HTTP fetches from
     revisiting the same URL within a redirect chain, preventing
     self-referential redirect loops.  [[GHSA-gm9m-gwc4-hwgp]]
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[GHSA-gm9m-gwc4-hwgp]]
 
 [GHSA-gm9m-gwc4-hwgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
 
