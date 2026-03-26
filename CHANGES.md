@@ -8,6 +8,14 @@ Version 1.9.6
 
 To be released.
 
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[GHSA-gm9m-gwc4-hwgp]]
+
+[GHSA-gm9m-gwc4-hwgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
+
 
 Version 1.9.5
 -------------

@@ -1650,6 +1650,40 @@ test("doubleKnock() complex redirect chain test", async () => {
   fetchMock.hardReset();
 });
 
+test("doubleKnock() throws on too many redirects", async () => {
+  fetchMock.spyGlobal();
+
+  let requestCount = 0;
+  fetchMock.post("https://example.com/redirect-loop", () => {
+    requestCount++;
+    return Response.redirect("https://example.com/redirect-loop", 302);
+  });
+
+  const request = new Request("https://example.com/redirect-loop", {
+    method: "POST",
+    body: "Redirect loop",
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+
+  await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+      ),
+    Error,
+    "Too many redirections",
+  );
+  assertEquals(requestCount, 21);
+
+  fetchMock.hardReset();
+});
+
 test("doubleKnock() async specDeterminer test", async () => {
   // Install mock fetch handler
   fetchMock.spyGlobal();

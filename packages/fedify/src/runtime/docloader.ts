@@ -7,6 +7,7 @@ import { HttpHeaderLink } from "./link.ts";
 import { UrlError, validatePublicUrl } from "./url.ts";
 
 const logger = getLogger(["fedify", "runtime", "docloader"]);
+const DEFAULT_MAX_REDIRECTION = 20;
 
 /**
  * A remote JSON-LD document and its context fetched by
@@ -352,6 +353,7 @@ export function getDocumentLoader(
   async function load(
     url: string,
     options?: DocumentLoaderOptions,
+    redirected = 0,
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
     if (!skipPreloadedContexts && url in preloadedContexts) {
@@ -386,7 +388,17 @@ export function getDocumentLoader(
       response.status >= 300 && response.status < 400 &&
       response.headers.has("Location")
     ) {
-      return load(response.headers.get("Location")!, options);
+      if (redirected >= DEFAULT_MAX_REDIRECTION) {
+        logger.error(
+          "Too many redirections ({redirections}) while fetching document.",
+          { redirections: redirected + 1, url },
+        );
+        throw new FetchError(
+          url,
+          `Too many redirections (${redirected + 1})`,
+        );
+      }
+      return load(response.headers.get("Location")!, options, redirected + 1);
     }
     return getRemoteDocument(url, response, load);
   }

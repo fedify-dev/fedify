@@ -365,6 +365,25 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
+  let redirectAttempts = 0;
+  fetchMock.get("https://example.com/too-many-redirects", () => {
+    redirectAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "https://example.com/too-many-redirects" },
+    };
+  });
+
+  await t.step("too many redirects", async () => {
+    redirectAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/too-many-redirects"),
+      FetchError,
+      "Too many redirections",
+    );
+    assertEquals(redirectAttempts, 21);
+  });
+
   // Regression test for ReDoS vulnerability (CVE-2025-68475)
   // Malicious HTML payload: <a a="b" a="b" ... (unclosed tag)
   // With the vulnerable regex, this causes catastrophic backtracking
