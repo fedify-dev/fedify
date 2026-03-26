@@ -12,6 +12,7 @@ import {
 import { UrlError, validatePublicUrl } from "./url.ts";
 
 const logger = getLogger(["fedify", "runtime", "docloader"]);
+const DEFAULT_MAX_REDIRECTION = 20;
 
 /**
  * A remote JSON-LD document and its context fetched by
@@ -293,38 +294,45 @@ export function getDocumentLoader(
   async function load(
     url: string,
     options?: DocumentLoaderOptions,
+    redirected = 0,
+    visited = new Set<string>(),
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
-    if (!skipPreloadedContexts && url in preloadedContexts) {
-      logger.debug("Using preloaded context: {url}.", { url });
+    const currentUrl = new URL(url).href;
+    if (!skipPreloadedContexts && currentUrl in preloadedContexts) {
+      logger.debug("Using preloaded context: {url}.", { url: currentUrl });
       return {
         contextUrl: null,
-        document: preloadedContexts[url],
-        documentUrl: url,
+        document: preloadedContexts[currentUrl],
+        documentUrl: currentUrl,
       };
     }
     if (!allowPrivateAddress) {
       try {
-        await validatePublicUrl(url);
+        await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", { url, error });
+          logger.error("Disallowed private URL: {url}", {
+            url: currentUrl,
+            error,
+          });
         }
         throw error;
       }
     }
+    visited.add(currentUrl);
 
     return await tracer.startActiveSpan(
       "activitypub.fetch_document",
       {
         kind: SpanKind.CLIENT,
         attributes: {
-          "url.full": url,
+          "url.full": currentUrl,
         },
       },
       async (span) => {
         try {
-          const request = createActivityPubRequest(url, { userAgent });
+          const request = createActivityPubRequest(currentUrl, { userAgent });
           logRequest(logger, request);
           const response = await fetch(request, {
             // Since Bun has a bug that ignores the `Request.redirect` option,
@@ -340,12 +348,36 @@ export function getDocumentLoader(
             response.status >= 300 && response.status < 400 &&
             response.headers.has("Location")
           ) {
-            const redirectUrl = response.headers.get("Location")!;
+            if (redirected >= DEFAULT_MAX_REDIRECTION) {
+              logger.error(
+                "Too many redirections ({redirections}) while fetching document.",
+                { redirections: redirected + 1, url: currentUrl },
+              );
+              throw new FetchError(
+                currentUrl,
+                `Too many redirections (${redirected + 1})`,
+              );
+            }
+            const redirectUrl = new URL(
+              response.headers.get("Location")!,
+              response.url === "" ? currentUrl : response.url,
+            ).href;
             span.setAttribute("http.redirect.url", redirectUrl);
-            return await load(redirectUrl, options);
+            if (visited.has(redirectUrl)) {
+              logger.error(
+                "Detected a redirect loop while fetching document: {url} -> " +
+                  "{redirectUrl}",
+                { url: currentUrl, redirectUrl },
+              );
+              throw new FetchError(
+                currentUrl,
+                `Redirect loop detected: ${redirectUrl}`,
+              );
+            }
+            return await load(redirectUrl, options, redirected + 1, visited);
           }
 
-          const result = await getRemoteDocument(url, response, load);
+          const result = await getRemoteDocument(currentUrl, response, load);
           span.setAttribute("docloader.document_url", result.documentUrl);
           if (result.contextUrl != null) {
             span.setAttribute("docloader.context_url", result.contextUrl);

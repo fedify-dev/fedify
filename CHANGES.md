@@ -8,6 +8,22 @@ Version 2.1.1
 
 To be released.
 
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+[CVE-2026-34148]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
+
 
 Version 2.1.0
 -------------
@@ -208,6 +224,26 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.8
+-------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
 
 
 Version 2.0.7
@@ -924,6 +960,26 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.5
+--------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+
 Version 1.10.4
 --------------
 
@@ -1075,6 +1131,26 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.6
+-------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
 
 
 Version 1.9.5
