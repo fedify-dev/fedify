@@ -1654,12 +1654,16 @@ test("doubleKnock() throws on too many redirects", async () => {
   fetchMock.spyGlobal();
 
   let requestCount = 0;
-  fetchMock.post("https://example.com/redirect-loop", () => {
+  fetchMock.post("begin:https://example.com/too-many-redirects/", (cl) => {
     requestCount++;
-    return Response.redirect("https://example.com/redirect-loop", 302);
+    const index = Number(cl.url.split("/").at(-1));
+    return Response.redirect(
+      `https://example.com/too-many-redirects/${index + 1}`,
+      302,
+    );
   });
 
-  const request = new Request("https://example.com/redirect-loop", {
+  const request = new Request("https://example.com/too-many-redirects/0", {
     method: "POST",
     body: "Redirect loop",
     headers: {
@@ -1680,6 +1684,44 @@ test("doubleKnock() throws on too many redirects", async () => {
     "Too many redirections",
   );
   assertEquals(requestCount, 21);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock() detects redirect loops", async () => {
+  fetchMock.spyGlobal();
+
+  let requestCount = 0;
+  fetchMock.post("https://example.com/redirect-loop-a", () => {
+    requestCount++;
+    return Response.redirect("https://example.com/redirect-loop-b", 302);
+  });
+  fetchMock.post("https://example.com/redirect-loop-b", () => {
+    requestCount++;
+    return Response.redirect("https://example.com/redirect-loop-a", 302);
+  });
+
+  const request = new Request("https://example.com/redirect-loop-a", {
+    method: "POST",
+    body: "Redirect loop",
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+
+  await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+      ),
+    Error,
+    "Redirect loop detected",
+  );
+  assertEquals(requestCount, 2);
 
   fetchMock.hardReset();
 });

@@ -354,6 +354,7 @@ export function getDocumentLoader(
     url: string,
     options?: DocumentLoaderOptions,
     redirected = 0,
+    visited = new Set<string>(),
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
     if (!skipPreloadedContexts && url in preloadedContexts) {
@@ -374,6 +375,7 @@ export function getDocumentLoader(
         throw error;
       }
     }
+    visited.add(url);
     const request = createRequest(url, { userAgent });
     logRequest(request);
     const response = await fetch(request, {
@@ -398,7 +400,19 @@ export function getDocumentLoader(
           `Too many redirections (${redirected + 1})`,
         );
       }
-      return load(response.headers.get("Location")!, options, redirected + 1);
+      const redirectUrl = response.headers.get("Location")!;
+      if (visited.has(redirectUrl)) {
+        logger.error(
+          "Detected a redirect loop while fetching document: {url} -> " +
+            "{redirectUrl}",
+          { url, redirectUrl },
+        );
+        throw new FetchError(
+          url,
+          `Redirect loop detected: ${redirectUrl}`,
+        );
+      }
+      return load(redirectUrl, options, redirected + 1, visited);
     }
     return getRemoteDocument(url, response, load);
   }

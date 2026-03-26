@@ -366,22 +366,51 @@ test("getDocumentLoader()", async (t) => {
   });
 
   let redirectAttempts = 0;
-  fetchMock.get("https://example.com/too-many-redirects", () => {
+  fetchMock.get("begin:https://example.com/too-many-redirects/", (cl) => {
     redirectAttempts++;
+    const index = Number(cl.url.split("/").at(-1));
     return {
       status: 302,
-      headers: { Location: "https://example.com/too-many-redirects" },
+      headers: {
+        Location: `https://example.com/too-many-redirects/${index + 1}`,
+      },
     };
   });
 
   await t.step("too many redirects", async () => {
     redirectAttempts = 0;
     await assertRejects(
-      () => fetchDocumentLoader("https://example.com/too-many-redirects"),
+      () => fetchDocumentLoader("https://example.com/too-many-redirects/0"),
       FetchError,
       "Too many redirections",
     );
     assertEquals(redirectAttempts, 21);
+  });
+
+  let loopAttempts = 0;
+  fetchMock.get("https://example.com/redirect-loop-a", () => {
+    loopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "https://example.com/redirect-loop-b" },
+    };
+  });
+  fetchMock.get("https://example.com/redirect-loop-b", () => {
+    loopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "https://example.com/redirect-loop-a" },
+    };
+  });
+
+  await t.step("redirect loop", async () => {
+    loopAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/redirect-loop-a"),
+      FetchError,
+      "Redirect loop detected",
+    );
+    assertEquals(loopAttempts, 2);
   });
 
   // Regression test for ReDoS vulnerability (CVE-2025-68475)

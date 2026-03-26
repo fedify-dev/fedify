@@ -1358,8 +1358,10 @@ async function doubleKnockInternal(
   identity: { keyId: URL; privateKey: CryptoKey },
   options: DoubleKnockOptions,
   redirected = 0,
+  visited = new Set<string>(),
 ): Promise<Response> {
   const { specDeterminer, log, tracerProvider, signal } = options;
+  visited.add(request.url);
   const origin = new URL(request.url).origin;
   const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
     ? "rfc9421"
@@ -1398,11 +1400,19 @@ async function doubleKnockInternal(
       );
     }
     const location = response.headers.get("Location")!;
+    const redirectRequest = createRedirectRequest(request, location, body);
+    if (visited.has(redirectRequest.url)) {
+      throw new FetchError(
+        request.url,
+        `Redirect loop detected: ${redirectRequest.url}`,
+      );
+    }
     return doubleKnockInternal(
-      createRedirectRequest(request, location, body),
+      redirectRequest,
       identity,
       { ...options, body },
       redirected + 1,
+      visited,
     );
   } else if (
     // FIXME: Temporary hotfix for Mastodon RFC 9421 implementation bug (as of 2025-06-19).
@@ -1453,11 +1463,19 @@ async function doubleKnockInternal(
         );
       }
       const location = response.headers.get("Location")!;
+      const redirectRequest = createRedirectRequest(request, location, body);
+      if (visited.has(redirectRequest.url)) {
+        throw new FetchError(
+          request.url,
+          `Redirect loop detected: ${redirectRequest.url}`,
+        );
+      }
       return doubleKnockInternal(
-        createRedirectRequest(request, location, body),
+        redirectRequest,
         identity,
         { ...options, body },
         redirected + 1,
+        visited,
       );
     } else if (response.status !== 400 && response.status !== 401) {
       await specDeterminer?.rememberSpec(origin, spec);

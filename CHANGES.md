@@ -13,6 +13,9 @@ To be released.
  -  Limited the number of HTTP redirects followed by the remote document
     loaders and signed HTTP fetches to mitigate resource exhaustion during
     remote key and document resolution.  [[GHSA-gm9m-gwc4-hwgp]]
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[GHSA-gm9m-gwc4-hwgp]]
 
 [GHSA-gm9m-gwc4-hwgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
 
