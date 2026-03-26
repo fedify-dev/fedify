@@ -1,5 +1,5 @@
 import { CryptographicKey } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -33,6 +33,8 @@ import {
   type KeyCache,
   validateCryptoKey,
 } from "./key.ts";
+
+const DEFAULT_MAX_REDIRECTION = 20;
 
 /**
  * The standard to use for signing and verifying HTTP signatures.
@@ -1606,7 +1608,18 @@ export async function doubleKnock(
   identity: { keyId: URL; privateKey: CryptoKey },
   options: DoubleKnockOptions = {},
 ): Promise<Response> {
+  return await doubleKnockInternal(request, identity, options);
+}
+
+async function doubleKnockInternal(
+  request: Request,
+  identity: { keyId: URL; privateKey: CryptoKey },
+  options: DoubleKnockOptions,
+  redirected = 0,
+  visited = new Set<string>(),
+): Promise<Response> {
   const { specDeterminer, log, tracerProvider, signal } = options;
+  visited.add(request.url);
   const origin = new URL(request.url).origin;
   const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
     ? "rfc9421"
@@ -1638,11 +1651,26 @@ export async function doubleKnock(
     response.status >= 300 && response.status < 400 &&
     response.headers.has("Location")
   ) {
+    if (redirected >= DEFAULT_MAX_REDIRECTION) {
+      throw new FetchError(
+        request.url,
+        `Too many redirections (${redirected + 1})`,
+      );
+    }
     const location = response.headers.get("Location")!;
-    return doubleKnock(
-      createRedirectRequest(request, location, body),
+    const redirectRequest = createRedirectRequest(request, location, body);
+    if (visited.has(redirectRequest.url)) {
+      throw new FetchError(
+        request.url,
+        `Redirect loop detected: ${redirectRequest.url}`,
+      );
+    }
+    return doubleKnockInternal(
+      redirectRequest,
       identity,
       { ...options, body },
+      redirected + 1,
+      visited,
     );
   } else if (
     // FIXME: Temporary hotfix for Mastodon RFC 9421 implementation bug (as of 2025-06-19).
@@ -1764,11 +1792,26 @@ export async function doubleKnock(
       response.status >= 300 && response.status < 400 &&
       response.headers.has("Location")
     ) {
+      if (redirected >= DEFAULT_MAX_REDIRECTION) {
+        throw new FetchError(
+          request.url,
+          `Too many redirections (${redirected + 1})`,
+        );
+      }
       const location = response.headers.get("Location")!;
-      return doubleKnock(
-        createRedirectRequest(request, location, body),
+      const redirectRequest = createRedirectRequest(request, location, body);
+      if (visited.has(redirectRequest.url)) {
+        throw new FetchError(
+          request.url,
+          `Redirect loop detected: ${redirectRequest.url}`,
+        );
+      }
+      return doubleKnockInternal(
+        redirectRequest,
         identity,
         { ...options, body },
+        redirected + 1,
+        visited,
       );
     } else if (response.status !== 400 && response.status !== 401) {
       await specDeterminer?.rememberSpec(origin, spec);
