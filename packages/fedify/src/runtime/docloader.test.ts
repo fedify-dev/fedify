@@ -366,6 +366,73 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
+  let redirectAttempts = 0;
+  fetchMock.get("begin:https://example.com/too-many-redirects/", (cl) => {
+    redirectAttempts++;
+    const index = Number(cl.url.split("/").at(-1));
+    return {
+      status: 302,
+      headers: {
+        Location: `https://example.com/too-many-redirects/${index + 1}`,
+      },
+    };
+  });
+
+  await t.step("too many redirects", async () => {
+    redirectAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/too-many-redirects/0"),
+      FetchError,
+      "Too many redirections",
+    );
+    assertEquals(redirectAttempts, 21);
+  });
+
+  let loopAttempts = 0;
+  fetchMock.get("https://example.com/redirect-loop-a", () => {
+    loopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "https://example.com/redirect-loop-b" },
+    };
+  });
+  fetchMock.get("https://example.com/redirect-loop-b", () => {
+    loopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "https://example.com/redirect-loop-a" },
+    };
+  });
+
+  await t.step("redirect loop", async () => {
+    loopAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/redirect-loop-a"),
+      FetchError,
+      "Redirect loop detected",
+    );
+    assertEquals(loopAttempts, 2);
+  });
+
+  let relativeLoopAttempts = 0;
+  fetchMock.get("https://example.com/redirect-loop-relative", () => {
+    relativeLoopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "/redirect-loop-relative" },
+    };
+  });
+
+  await t.step("redirect loop with relative location", async () => {
+    relativeLoopAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/redirect-loop-relative"),
+      FetchError,
+      "Redirect loop detected",
+    );
+    assertEquals(relativeLoopAttempts, 1);
+  });
+
   // Regression test for ReDoS vulnerability (CVE-2025-68475)
   // Malicious HTML payload: <a a="b" a="b" ... (unclosed tag)
   // With the vulnerable regex, this causes catastrophic backtracking
