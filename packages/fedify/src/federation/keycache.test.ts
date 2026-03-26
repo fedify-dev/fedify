@@ -38,6 +38,10 @@ test("KvKeyCache.set()", async () => {
 
   await cache.set(new URL("https://example.com/null"), null);
   assert(cache.nullKeys.has("https://example.com/null"));
+  assertEquals(
+    await kv.get(["pk", "https://example.com/null"]),
+    { _fedify: "key-unavailable" },
+  );
 });
 
 test("KvKeyCache.get()", async () => {
@@ -64,4 +68,11 @@ test("KvKeyCache.get()", async () => {
 
   cache.nullKeys.add("https://example.com/null");
   assertEquals(await cache.get(new URL("https://example.com/null")), null);
+
+  await kv.set(
+    ["pk", "https://example.com/null2"],
+    { _fedify: "key-unavailable" },
+  );
+  const cache2 = new KvKeyCache(kv, ["pk"]);
+  assertEquals(await cache2.get(new URL("https://example.com/null2")), null);
 });
