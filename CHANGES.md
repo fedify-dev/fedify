@@ -12,15 +12,17 @@ To be released.
 
  -  Limited the number of HTTP redirects followed by the remote document
     loaders and signed HTTP fetches to mitigate resource exhaustion during
-    remote key and document resolution.  [[GHSA-gm9m-gwc4-hwgp]]
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
  -  Stopped the remote document loaders and signed HTTP fetches from
     revisiting the same URL within a redirect chain, preventing
-    self-referential redirect loops.  [[GHSA-gm9m-gwc4-hwgp]]
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
  -  Persisted negative public key cache entries for failed remote key
     fetches, reducing repeated retries against the same unavailable key
-    across requests.  [[GHSA-gm9m-gwc4-hwgp]]
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
 
-[GHSA-gm9m-gwc4-hwgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
+[CVE-2026-34148]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
 
 
 Version 1.9.5
