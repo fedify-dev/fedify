@@ -413,6 +413,25 @@ test("getDocumentLoader()", async (t) => {
     assertEquals(loopAttempts, 2);
   });
 
+  let relativeLoopAttempts = 0;
+  fetchMock.get("https://example.com/redirect-loop-relative", () => {
+    relativeLoopAttempts++;
+    return {
+      status: 302,
+      headers: { Location: "/redirect-loop-relative" },
+    };
+  });
+
+  await t.step("redirect loop with relative location", async () => {
+    relativeLoopAttempts = 0;
+    await assertRejects(
+      () => fetchDocumentLoader("https://example.com/redirect-loop-relative"),
+      FetchError,
+      "Redirect loop detected",
+    );
+    assertEquals(relativeLoopAttempts, 1);
+  });
+
   // Regression test for ReDoS vulnerability (CVE-2025-68475)
   // Malicious HTML payload: <a a="b" a="b" ... (unclosed tag)
   // With the vulnerable regex, this causes catastrophic backtracking

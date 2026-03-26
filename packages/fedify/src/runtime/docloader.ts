@@ -357,26 +357,30 @@ export function getDocumentLoader(
     visited = new Set<string>(),
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
-    if (!skipPreloadedContexts && url in preloadedContexts) {
-      logger.debug("Using preloaded context: {url}.", { url });
+    const currentUrl = new URL(url).href;
+    if (!skipPreloadedContexts && currentUrl in preloadedContexts) {
+      logger.debug("Using preloaded context: {url}.", { url: currentUrl });
       return {
         contextUrl: null,
-        document: preloadedContexts[url],
-        documentUrl: url,
+        document: preloadedContexts[currentUrl],
+        documentUrl: currentUrl,
       };
     }
     if (!allowPrivateAddress) {
       try {
-        await validatePublicUrl(url);
+        await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", { url, error });
+          logger.error("Disallowed private URL: {url}", {
+            url: currentUrl,
+            error,
+          });
         }
         throw error;
       }
     }
-    visited.add(url);
-    const request = createRequest(url, { userAgent });
+    visited.add(currentUrl);
+    const request = createRequest(currentUrl, { userAgent });
     logRequest(request);
     const response = await fetch(request, {
       // Since Bun has a bug that ignores the `Request.redirect` option,
@@ -393,28 +397,31 @@ export function getDocumentLoader(
       if (redirected >= DEFAULT_MAX_REDIRECTION) {
         logger.error(
           "Too many redirections ({redirections}) while fetching document.",
-          { redirections: redirected + 1, url },
+          { redirections: redirected + 1, url: currentUrl },
         );
         throw new FetchError(
-          url,
+          currentUrl,
           `Too many redirections (${redirected + 1})`,
         );
       }
-      const redirectUrl = response.headers.get("Location")!;
+      const redirectUrl = new URL(
+        response.headers.get("Location")!,
+        response.url === "" ? currentUrl : response.url,
+      ).href;
       if (visited.has(redirectUrl)) {
         logger.error(
           "Detected a redirect loop while fetching document: {url} -> " +
             "{redirectUrl}",
-          { url, redirectUrl },
+          { url: currentUrl, redirectUrl },
         );
         throw new FetchError(
-          url,
+          currentUrl,
           `Redirect loop detected: ${redirectUrl}`,
         );
       }
       return load(redirectUrl, options, redirected + 1, visited);
     }
-    return getRemoteDocument(url, response, load);
+    return getRemoteDocument(currentUrl, response, load);
   }
   return load;
 }
