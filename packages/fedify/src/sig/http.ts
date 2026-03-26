@@ -1562,6 +1562,13 @@ export interface DoubleKnockOptions {
    * @since 1.8.0
    */
   signal?: AbortSignal;
+
+  /**
+   * The maximum number of redirections to follow.
+   * @default `20`
+   * @since 2.2.0
+   */
+  maxRedirection?: number;
 }
 
 /**
@@ -1619,6 +1626,7 @@ async function doubleKnockInternal(
   visited = new Set<string>(),
 ): Promise<Response> {
   const { specDeterminer, log, tracerProvider, signal } = options;
+  const maximumRedirection = options.maxRedirection ?? DEFAULT_MAX_REDIRECTION;
   visited.add(request.url);
   const origin = new URL(request.url).origin;
   const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
@@ -1651,7 +1659,7 @@ async function doubleKnockInternal(
     response.status >= 300 && response.status < 400 &&
     response.headers.has("Location")
   ) {
-    if (redirected >= DEFAULT_MAX_REDIRECTION) {
+    if (redirected >= maximumRedirection) {
       throw new FetchError(
         request.url,
         `Too many redirections (${redirected + 1})`,
@@ -1792,7 +1800,7 @@ async function doubleKnockInternal(
       response.status >= 300 && response.status < 400 &&
       response.headers.has("Location")
     ) {
-      if (redirected >= DEFAULT_MAX_REDIRECTION) {
+      if (redirected >= maximumRedirection) {
         throw new FetchError(
           request.url,
           `Too many redirections (${redirected + 1})`,

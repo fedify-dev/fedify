@@ -8,6 +8,18 @@ Version 2.2.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Added `DoubleKnockOptions.maxRedirection` to configure the maximum number
+    of redirects followed by `doubleKnock()`.
+    `getAuthenticatedDocumentLoader()` now also respects
+    `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
+
+### @fedify/vocab-runtime
+
+ -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
+    maximum number of redirects followed by `getDocumentLoader()`.
+
 
 Version 2.1.1
 -------------

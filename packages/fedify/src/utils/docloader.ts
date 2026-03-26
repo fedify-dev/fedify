@@ -57,8 +57,13 @@ export interface GetAuthenticatedDocumentLoaderOptions
  */
 export function getAuthenticatedDocumentLoader(
   identity: { keyId: URL; privateKey: CryptoKey },
-  { allowPrivateAddress, userAgent, specDeterminer, tracerProvider }:
-    GetAuthenticatedDocumentLoaderOptions = {},
+  {
+    allowPrivateAddress,
+    maxRedirection,
+    userAgent,
+    specDeterminer,
+    tracerProvider,
+  }: GetAuthenticatedDocumentLoaderOptions = {},
 ): DocumentLoader {
   validateCryptoKey(identity.privateKey);
   async function load(
@@ -80,6 +85,7 @@ export function getAuthenticatedDocumentLoader(
       originalRequest,
       identity,
       {
+        maxRedirection,
         specDeterminer,
         log: curry(logRequest)(logger),
         tracerProvider,

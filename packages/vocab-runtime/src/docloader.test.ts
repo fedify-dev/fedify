@@ -391,6 +391,17 @@ test("getDocumentLoader()", async (t) => {
     deepStrictEqual(redirectAttempts, 21);
   });
 
+  await t.test("custom max redirection", async () => {
+    redirectAttempts = 0;
+    const loader = getDocumentLoader({ maxRedirection: 1 });
+    await rejects(
+      () => loader("https://example.com/too-many-redirects/0"),
+      FetchError,
+      "Too many redirections",
+    );
+    deepStrictEqual(redirectAttempts, 2);
+  });
+
   let loopAttempts = 0;
   fetchMock.get("https://example.com/redirect-loop-a", () => {
     loopAttempts++;

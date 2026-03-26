@@ -55,6 +55,38 @@ test("getAuthenticatedDocumentLoader()", async (t) => {
     });
     assertRejects(() => loader("http://localhost"), UrlError);
   });
+
+  await t.step("custom max redirection", async () => {
+    fetchMock.spyGlobal();
+    let requestCount = 0;
+    fetchMock.get(
+      "begin:https://example.com/custom-too-many-redirects/",
+      (cl) => {
+        requestCount++;
+        const index = Number(cl.url.split("/").at(-1));
+        return Response.redirect(
+          `https://example.com/custom-too-many-redirects/${index + 1}`,
+          302,
+        );
+      },
+    );
+
+    const loader = getAuthenticatedDocumentLoader(
+      {
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      },
+      { maxRedirection: 1 },
+    );
+    await assertRejects(
+      () => loader("https://example.com/custom-too-many-redirects/0"),
+      Error,
+      "Too many redirections",
+    );
+    assertEquals(requestCount, 2);
+
+    fetchMock.hardReset();
+  });
 });
 
 test("getAuthenticatedDocumentLoader() cancellation", {

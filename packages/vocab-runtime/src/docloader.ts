@@ -88,6 +88,13 @@ export interface DocumentLoaderFactoryOptions {
    * If an object is given, it is passed to {@link getUserAgent} function.
    */
   userAgent?: GetUserAgentOptions | string;
+
+  /**
+   * The maximum number of redirections to follow.
+   * @default `20`
+   * @since 2.2.0
+   */
+  maxRedirection?: number;
 }
 
 /**
@@ -285,11 +292,12 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * @since 1.3.0
  */
 export function getDocumentLoader(
-  { allowPrivateAddress, skipPreloadedContexts, userAgent }:
+  { allowPrivateAddress, maxRedirection, skipPreloadedContexts, userAgent }:
     GetDocumentLoaderOptions = {},
 ): DocumentLoader {
   const tracerProvider = trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+  const maximumRedirection = maxRedirection ?? DEFAULT_MAX_REDIRECTION;
 
   async function load(
     url: string,
@@ -348,7 +356,7 @@ export function getDocumentLoader(
             response.status >= 300 && response.status < 400 &&
             response.headers.has("Location")
           ) {
-            if (redirected >= DEFAULT_MAX_REDIRECTION) {
+            if (redirected >= maximumRedirection) {
               logger.error(
                 "Too many redirections ({redirections}) while fetching document.",
                 { redirections: redirected + 1, url: currentUrl },

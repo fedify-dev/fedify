@@ -1813,6 +1813,51 @@ test("doubleKnock() throws on too many redirects", async () => {
   fetchMock.hardReset();
 });
 
+test("doubleKnock() respects maxRedirection option", async () => {
+  fetchMock.spyGlobal();
+
+  let requestCount = 0;
+  fetchMock.post(
+    "begin:https://example.com/custom-too-many-redirects/",
+    (cl) => {
+      requestCount++;
+      const index = Number(cl.url.split("/").at(-1));
+      return Response.redirect(
+        `https://example.com/custom-too-many-redirects/${index + 1}`,
+        302,
+      );
+    },
+  );
+
+  const request = new Request(
+    "https://example.com/custom-too-many-redirects/0",
+    {
+      method: "POST",
+      body: "Redirect loop",
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    },
+  );
+
+  await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+        { maxRedirection: 1 },
+      ),
+    Error,
+    "Too many redirections",
+  );
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
 test("doubleKnock() detects redirect loops", async () => {
   fetchMock.spyGlobal();
 
