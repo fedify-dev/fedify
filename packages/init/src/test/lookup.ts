@@ -1,9 +1,14 @@
 import $ from "@david/dax";
-import { isEmpty } from "@fxts/core/index.js";
+import { join } from "@fxts/core";
 import { values } from "@optique/core";
 import { createWriteStream, type WriteStream } from "node:fs";
-import { join, sep } from "node:path";
-import { getDevCommand } from "../lib.ts";
+import { join as joinPath, sep } from "node:path";
+import {
+  getDevCommand,
+  kvStores,
+  messageQueues,
+  packageManagers,
+} from "../lib.ts";
 import type {
   KvStore,
   MessageQueue,
@@ -30,10 +35,15 @@ type LookupCasePattern = [
   KvStore | "*",
   MessageQueue | "*",
 ];
-const BANNED_LOOKUP_CASES: LookupCasePattern[] = [
-  ["next", "*", "*", "*"],
-  ["solidstart", "deno", "*", "*"],
-];
+const BANNED_LOOKUP_REASONS: Record<string, string> = {
+  "next,*,*,*": "Next.js doesn't support remote packages",
+  "solidstart,deno,*,*": "SolidStart on Deno is not supported for now",
+  "astro,deno,*,*": "Astro doesn't support remote packages in Deno",
+};
+const BANNED_LOOKUP_CASES: LookupCasePattern[] = Object.keys(
+  BANNED_LOOKUP_REASONS,
+)
+  .map((key) => key.split(",") as LookupCasePattern);
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -42,17 +52,18 @@ const BANNED_LOOKUP_CASES: LookupCasePattern[] = [
  */
 export default async function runServerAndLookupUser(
   dirs: string[],
-): Promise<string[]> {
-  const valid = dirs.filter(Boolean);
+): Promise<void> {
+  const valid = dirs.filter(Boolean).filter(isTestable);
+  printSkippedCases(dirs);
+
   if (valid.length === 0) {
     printErrorMessage`\nNo directories to lookup test.`;
-    return dirs;
   }
-  const filtered = filterLookupDirs(valid);
 
-  printMessage`\nLookup Test start for ${String(filtered.length)} app(s)!`;
+  printMessage``;
+  printMessage`Lookup Test start for ${String(valid.length)} app(s)!`;
 
-  const results = await Array.fromAsync(filtered, testApp);
+  const results = await Array.fromAsync(valid, testApp);
 
   const successCount = results.filter(Boolean).length;
   const failCount = results.length - successCount;
@@ -62,52 +73,61 @@ export default async function runServerAndLookupUser(
   Passed: ${String(successCount)}
   Failed: ${String(failCount)}\n\n`;
 
-  return dirs;
+  printFailedCases(valid, results);
 }
 
-export function parseLookupCase(dir: string): LookupCase {
-  return dir.split(sep).slice(-4) as LookupCase;
-}
+export const parseLookupCase = (dir: string): LookupCase =>
+  dir.split(sep).slice(-4) as LookupCase;
 
-export function matchesLookupCasePattern(
-  pattern: LookupCasePattern,
-  target: LookupCase,
-): boolean {
-  return pattern.every((value, index) =>
-    value === "*" || value === target[index]
+export const matchesLookupCasePattern =
+  (target: LookupCase) => (pattern: LookupCasePattern): boolean =>
+    pattern.every((value, index) => value === "*" || value === target[index]);
+
+export const isTestable = (dir: string): boolean =>
+  !BANNED_LOOKUP_CASES.some(matchesLookupCasePattern(parseLookupCase(dir)));
+
+function printSkippedCases(dirs: string[]): void {
+  const matchedPatterns = new Set<string>(
+    dirs.filter(Boolean).flatMap((dir) =>
+      BANNED_LOOKUP_CASES
+        .filter(matchesLookupCasePattern(parseLookupCase(dir)))
+        .map(join(","))
+    ),
   );
-}
-
-export function getBannedLookupFrameworks(): WebFramework[] {
-  return BANNED_LOOKUP_CASES
-    .filter(([, pm, kv, mq]) => pm === "*" && kv === "*" && mq === "*")
-    .map(([wf]) => wf as WebFramework);
-}
-
-export function filterLookupDirs(
-  dirs: string[],
-): string[] {
-  const wfs = new Set<WebFramework>(
-    dirs.map((dir) => parseLookupCase(dir)[0]),
-  );
-  const hasBanned = getBannedLookupFrameworks().filter((wf) => wfs.has(wf));
-  if (!isEmpty(hasBanned)) {
-    const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
-    printErrorMessage`\n${
-      values(bannedLabels)
-    } is not supported in lookup test yet.`;
+  if (matchedPatterns.size > 0) {
+    printMessage``;
+    printMessage`Skipped the following lookup cases due to known issues:`;
   }
-  return dirs.filter((dir) =>
-    !BANNED_LOOKUP_CASES.some((pattern) =>
-      matchesLookupCasePattern(pattern, parseLookupCase(dir))
-    )
-  );
+  for (const key of matchedPatterns) {
+    const reason = BANNED_LOOKUP_REASONS[key] ?? "unknown reason";
+    const labels = Array.from(getLabels(key.split(",") as LookupCasePattern));
+    printMessage`  - ${values(labels)}: ${reason}`;
+  }
+}
+
+function* getLabels([wf, pm, kv, mq]: LookupCasePattern): Generator<string> {
+  if (wf !== "*") yield webFrameworks[wf].label;
+  if (pm !== "*") yield packageManagers[pm].label;
+  if (kv !== "*") yield kvStores[kv].label;
+  if (mq !== "*") yield messageQueues[mq].label;
+}
+
+function printFailedCases(valid: string[], results: boolean[]): void {
+  if (results.every(Boolean)) return;
+  printMessage`Failed cases:`;
+  for (let i = 0; i < results.length; i++) {
+    if (!results[i]) {
+      const dir = valid[i];
+      const label = values(parseLookupCase(dir));
+      printMessage`  - ${label}: ${dir}`;
+    }
+  }
 }
 
 /**
  * Run the dev server and test with lookup command.
  */
-async function testApp(dir: string): Promise<boolean> {
+async function testApp(dir: string, index: number): Promise<boolean> {
   const [wf, pm, kv, mq] = parseLookupCase(dir);
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
@@ -128,9 +148,9 @@ async function testApp(dir: string): Promise<boolean> {
     values([wf, pm, kv, mq])
   }!`;
   if (!result) {
-    printMessage`    Check out these files for more details:
-      ${join(dir, "out.txt")} and
-      ${join(dir, "err.txt")}\n`;
+    printMessage`    Check out these files for more details: \
+${joinPath(dir, "out.txt")} and \
+${joinPath(dir, "err.txt")}\n`;
   }
   printMessage`\n`;
 
@@ -223,8 +243,8 @@ async function serverClosure<T>(
   const cleanup = new AbortController();
 
   // Append stdout and stderr to files
-  const outFile = createWriteStream(join(dir, "out.txt"), { flags: "a" });
-  const errFile = createWriteStream(join(dir, "err.txt"), { flags: "a" });
+  const outFile = createWriteStream(joinPath(dir, "out.txt"), { flags: "a" });
+  const errFile = createWriteStream(joinPath(dir, "err.txt"), { flags: "a" });
   const pipeOutDone = pipeStream(stdoutForFile, outFile, cleanup.signal);
   const pipeErrDone = pipeStream(stderrForFile, errFile, cleanup.signal);
 
