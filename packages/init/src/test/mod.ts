@@ -4,7 +4,6 @@ import { testInitCommand } from "../command.ts";
 import runTestInit from "./action.ts";
 
 async function main() {
-  console.log("Running test-init command...");
   const result = run(testInitCommand, {
     programName: "fedify-test-init",
     help: "both",

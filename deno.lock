@@ -32,7 +32,7 @@
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@valibot/valibot@^1.2.0": "1.3.1",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
-    "npm:@astrojs/node@^9.5.4": "9.5.5_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@5.9.3__yaml@2.8.3_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@5.9.3_yaml@2.8.3",
+    "npm:@astrojs/node@^10.0.3": "10.0.4_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@5.9.3__yaml@2.8.3_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@5.9.3_yaml@2.8.3",
     "npm:@cfworker/json-schema@^4.1.1": "4.1.1",
     "npm:@cloudflare/vitest-pool-workers@~0.8.31": "0.8.71_@vitest+runner@3.2.4_@vitest+snapshot@3.2.4_vitest@3.2.4__@types+node@24.12.0__tsx@4.21.0__yaml@2.8.3_@cloudflare+workers-types@4.20260317.1_@types+node@24.12.0_tsx@4.21.0_yaml@2.8.3",
     "npm:@cloudflare/workers-types@^4.20250529.0": "4.20260317.1",
@@ -73,6 +73,7 @@
     "npm:chalk@^5.6.2": "5.6.2",
     "npm:cli-highlight@^2.1.11": "2.1.11",
     "npm:cli-table3@~0.6.5": "0.6.5",
+    "npm:dax@0.45": "0.45.0",
     "npm:enquirer@^2.4.1": "2.4.1",
     "npm:es-toolkit@^1.30.0": "1.45.1",
     "npm:es-toolkit@^1.31.0": "1.45.1",
@@ -257,10 +258,16 @@
     "@astrojs/internal-helpers@0.7.6": {
       "integrity": "sha512-GOle7smBWKfMSP8osUIGOlB5kaHdQLV3foCsf+5Q9Wsuu+C6Fs3Ez/ttXmhjZ1HkSgsogcM1RXSjjOVieHq16Q=="
     },
+    "@astrojs/internal-helpers@0.8.0": {
+      "integrity": "sha512-J56GrhEiV+4dmrGLPNOl2pZjpHXAndWVyiVDYGDuw6MWKpBSEMLdFxHzeM/6sqaknw9M+HFfHZAcvi3OfT3D/w==",
+      "dependencies": [
+        "picomatch@4.0.4"
+      ]
+    },
     "@astrojs/markdown-remark@6.3.11": {
       "integrity": "sha512-hcaxX/5aC6lQgHeGh1i+aauvSwIT6cfyFjKWvExYSxUhZZBBdvCliOtu06gbQyhbe0pGJNoNmqNlQZ5zYUuIyQ==",
       "dependencies": [
-        "@astrojs/internal-helpers",
+        "@astrojs/internal-helpers@0.7.6",
         "@astrojs/prism",
         "github-slugger",
         "hast-util-from-html",
@@ -283,10 +290,10 @@
         "vfile"
       ]
     },
-    "@astrojs/node@9.5.5_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@5.9.3__yaml@2.8.3_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@5.9.3_yaml@2.8.3": {
-      "integrity": "sha512-rtU2BGU5u3SfGURpANfMxVzCIoR86MkaN05ncza9rbtuMKJ/XnRJt/BbyVknDbOJ71hoci0SIsJwKcJR8vvi/A==",
+    "@astrojs/node@10.0.4_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@5.9.3__yaml@2.8.3_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@5.9.3_yaml@2.8.3": {
+      "integrity": "sha512-7pVgiVSscQHRC2WqjlXcnbbcKMYp2GXrYpmuvdGg5zgA8J1lFm2vmwVhHZFuZK3Ik5PzoxiDROaEgoDGLbfhLw==",
       "dependencies": [
-        "@astrojs/internal-helpers",
+        "@astrojs/internal-helpers@0.8.0",
         "astro",
         "send@1.2.1",
         "server-destroy"
@@ -3321,7 +3328,7 @@
       "integrity": "sha512-m4VWilWZ+Xt6NPoYzC4CgGZim/zQUO7WFL0RHCH0AiEavF1153iC3+me2atDvXpf/yX4PyGUeD8wZLq1cirT3g==",
       "dependencies": [
         "@astrojs/compiler",
-        "@astrojs/internal-helpers",
+        "@astrojs/internal-helpers@0.7.6",
         "@astrojs/markdown-remark",
         "@astrojs/telemetry",
         "@capsizecss/unpack",
@@ -4013,6 +4020,13 @@
         "undici-types@5.28.4"
       ],
       "deprecated": true
+    },
+    "dax@0.45.0": {
+      "integrity": "sha512-y/47GKisPkHCtkDQVr3yfJEtVTuXqMVXhU4Au8Xrzu4s+s9eQUBGuCFHBwrfUrsry0Or6NyusHl0DSi6qj7/4w==",
+      "dependencies": [
+        "@deno/shim-deno",
+        "undici-types@5.28.4"
+      ]
     },
     "db0@0.3.4_mysql2@3.20.0__@types+node@24.12.0_@types+node@24.12.0": {
       "integrity": "sha512-RiXXi4WaNzPTHEOu8UPQKMooIbqOEyqA1t7Z6MsdxSCeb8iUC9ko3LcmsLmeUt2SM5bctfArZKkRQggKZz7JNw==",
@@ -8813,7 +8827,7 @@
         ],
         "packageJson": {
           "dependencies": [
-            "npm:@astrojs/node@^9.5.4",
+            "npm:@astrojs/node@^10.0.3",
             "npm:@deno/astro-adapter@~0.3.2"
           ]
         }
@@ -8968,6 +8982,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@inquirer/prompts@^7.8.4",
+            "npm:dax@0.45",
             "npm:inquirer-toggle@^1.0.1"
           ]
         }

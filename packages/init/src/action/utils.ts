@@ -86,11 +86,11 @@ export const installDependencies = ({ packageManager, dir }: InitCommandData) =>
  */
 export const runPrecommand = async (
   { initializer: { command }, dir }: InitCommandData,
-) => {
-  for (const cmd of splitOnOperator(command!)) {
-    await $`${cmd}`.cwd(dir).spawn();
-  }
-};
+) =>
+  await Array.fromAsync(
+    splitOnOperator(command!),
+    (cmd) => $`${cmd}`.cwd(dir).spawn(),
+  );
 
 function* splitOnOperator(command: string[]): Generator<string[]> {
   let current: string[] = [];
