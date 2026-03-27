@@ -30,35 +30,23 @@ async (
 ): Promise<string> => {
   const testDir = join(testDirPrefix, ...options);
   const vals = values(testDir.split(sep).slice(-4));
-  try {
-    const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
-      .cwd(join(import.meta.dirname!, "..", ".."))
-      .stdin("null")
-      .stdout("piped")
-      .stderr("piped")
-      .spawn();
-
-    await saveOutputs(testDir, result);
+  const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
+    .cwd(join(import.meta.dirname!, "..", ".."))
+    .stdin("null")
+    .stdout("piped")
+    .stderr("piped")
+    .noThrow()
+    .spawn();
+  await saveOutputs(testDir, result);
+  if (result.code === 0) {
     printMessage`  Pass: ${vals}`;
     return testDir;
-  } catch (error) {
-    if (error instanceof CommandError) {
-      await saveOutputs(testDir, {
-        stdout: error.stdout,
-        stderr: error.stderr,
-      });
-    } else {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
-      await saveOutputs(testDir, { stdout: "", stderr: errorMessage });
-    }
-    printMessage`  Fail: ${vals}`;
-    printMessage`    Check out these files for more details: \
+  }
+  printMessage`  Fail: ${vals}`;
+  printMessage`    Check out these files for more details: \
 ${join(testDir, "out.txt")} and \
 ${join(testDir, "err.txt")}\n`;
-    return "";
-  }
+  return "";
 };
 
 export default createTestApp;

@@ -88,6 +88,7 @@ function* getAstroInitCommand(
   yield "--no-git";
   yield "--skip-houston";
   yield "-y";
+  if (pm !== "deno") yield "--no-install";
   yield "&&";
   yield "rm";
   yield "astro.config.mjs";
