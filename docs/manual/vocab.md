@@ -675,7 +675,7 @@ unconditionally if any of the following conditions are met:
  -  The type or property is already adopted and used by widely-used
     implementations in the fediverse such as Mastodon, Pleroma, etc.
  -  The type or property has been sufficiently discussed in the Fedify
-    community ([Discord], [Matrix], [GitHub Discussions], etc.)
+    community ([Matrix], [GitHub Discussions], etc.)
 
 If you want to contribute to Fedify's vocabulary API, the process is
 straightforward.  The _\*.yaml_ files located in the *packages/vocab/src/*
@@ -689,6 +689,5 @@ refer to the [*Contributing guide*](../contribute.md) and the existing YAML
 files in the *packages/vocab/src/* directory for examples.
 
 [FEP]: https://w3id.org/fep/
-[Discord]: https://discord.gg/bhtwpzURwd
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions

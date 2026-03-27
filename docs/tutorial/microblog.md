@@ -19,7 +19,7 @@ an ActivityPub server framework. This tutorial will focus more on how to
 use Fedify rather than understanding its underlying operating principles.
 
 If you have any questions, suggestions, or feedback, please feel free to join
-our [Matrix chat space] or [Discord server] or [GitHub Discussions].
+our [Matrix chat space] or [GitHub Discussions].
 
 [한국어]: https://hackers.pub/@hongminhee/2025/fedify-tutorial-ko
 [日本語]: https://zenn.dev/hongminhee/books/4a38b6358a027b
@@ -28,7 +28,6 @@ our [Matrix chat space] or [Discord server] or [GitHub Discussions].
 [Misskey]: https://misskey-hub.net/
 [Fedify]: https://fedify.dev/
 [Matrix chat space]: https://matrix.to/#/#fedify:matrix.org
-[Discord server]: https://discord.gg/bhtwpzURwd
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions
 
 
