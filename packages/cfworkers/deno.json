@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cfworkers",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "license": "MIT",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.13",
