@@ -8,7 +8,10 @@ export default defineConfig({
   ],
   platform: "node",
   unbundle: true,
-  external: [/^node:/],
+  outExtensions() {
+    return { js: ".js" };
+  },
+  deps: { neverBundle: [/^node:/] },
   inputOptions: {
     onwarn(warning, defaultHandler) {
       if (

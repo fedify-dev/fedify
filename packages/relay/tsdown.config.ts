@@ -8,6 +8,12 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "node",
+    outExtensions({ format }) {
+      return {
+        js: format === "cjs" ? ".cjs" : ".js",
+        dts: format === "cjs" ? ".d.cts" : ".d.ts",
+      };
+    },
     outputOptions(outputOptions, format) {
       if (format === "cjs") {
         outputOptions.intro = `
@@ -24,7 +30,13 @@ export default [
   defineConfig({
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
       .map((f) => f.replace(sep, "/")),
-    external: [/^node:/],
+    outExtensions({ format }) {
+      return {
+        js: format === "cjs" ? ".cjs" : ".js",
+        dts: format === "cjs" ? ".d.cts" : ".d.ts",
+      };
+    },
+    deps: { neverBundle: [/^node:/] },
     outputOptions: {
       intro: `
       import { Temporal } from "@js-temporal/polyfill";

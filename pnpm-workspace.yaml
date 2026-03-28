@@ -87,6 +87,6 @@ catalog:
   pkijs: ^3.3.3
   mysql2: ^3.18.0
   postgres: ^3.4.7
-  tsdown: ^0.12.9
-  typescript: ^5.9.3
+  tsdown: ^0.21.6
+  typescript: ^5.9.2
   urlpattern-polyfill: "^10.1.0"
