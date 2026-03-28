@@ -8,11 +8,7 @@
  * @module
  * @since 1.9.0
  */
-import type {
-  KVNamespace,
-  MessageSendRequest,
-  Queue,
-} from "@cloudflare/workers-types/experimental";
+/// <reference types="@cloudflare/workers-types/experimental" />
 import type {
   KvKey,
   KvStore,
@@ -50,13 +46,18 @@ export class WorkersKvStore implements KvStore {
 
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     const encodedKey = this.#encodeKey(key);
-    const { value, metadata } = await this.#namespace.getWithMetadata(
+    const { value, metadata } = await this.#namespace.getWithMetadata<
+      T,
+      KvMetadata
+    >(
       encodedKey,
       "json",
     );
-    return metadata == null || metadata.expires < Date.now()
-      ? undefined
-      : value as T;
+    if (value == null) return undefined;
+    if (metadata?.expires != null && metadata.expires < Date.now()) {
+      return undefined;
+    }
+    return value;
   }
 
   async set(

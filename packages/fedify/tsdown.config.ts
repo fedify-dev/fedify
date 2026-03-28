@@ -20,7 +20,9 @@ export default [
     dts: true,
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: {
+      neverBundle: [/^node:/],
+    },
     outputOptions(outputOptions, format) {
       if (format === "cjs") {
         outputOptions.intro = `
@@ -47,7 +49,9 @@ export default [
         .map((f) => f.replace(sep, "/")),
     ],
     dts: true,
-    external: [/^node:/],
+    deps: {
+      neverBundle: [/^node:/],
+    },
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (
