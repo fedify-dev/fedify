@@ -78,7 +78,7 @@ services:
   # Caddy TLS proxy for the Fedify harness.
   # Owns the "fedify-harness" hostname so other containers reach TLS.
   caddy-harness:
-    image: caddy:2-alpine
+    image: caddy:2.11.2-alpine
     volumes:
       - ./Caddyfile.fedify-harness:/etc/caddy/Caddyfile:ro
       - ./.certs:/certs:ro
@@ -87,6 +87,10 @@ services:
         aliases: [fedify-harness]
     depends_on:
       fedify-harness-backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 5s
+      retries: 5
 
   # Mastodon web — renamed to avoid colliding with the Caddy alias.
   mastodon-web-backend:
@@ -120,7 +124,7 @@ services:
   # Caddy TLS proxy for Mastodon.
   # Owns the "mastodon" hostname so other containers reach TLS.
   caddy-mastodon:
-    image: caddy:2-alpine
+    image: caddy:2.11.2-alpine
     volumes:
       - ./Caddyfile.mastodon:/etc/caddy/Caddyfile:ro
       - ./.certs:/certs:ro
@@ -130,6 +134,10 @@ services:
     ports: ["4443:443"]
     depends_on:
       mastodon-web-backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 5s
+      retries: 5
 
   mastodon-sidekiq:
     image: ghcr.io/mastodon/mastodon:v4.3.9
@@ -148,4 +156,4 @@ services:
     networks: [smoke]
     depends_on:
       mastodon-web-backend: { condition: service_healthy }
-      fedify-harness-backend: { condition: service_healthy }
+      caddy-harness: { condition: service_healthy }
