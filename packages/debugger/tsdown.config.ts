@@ -5,16 +5,24 @@ export default defineConfig({
   dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   format: ["esm", "cjs"],
   platform: "node",
-  external: [
-    "@fedify/fedify",
-    "@fedify/fedify/federation",
-    "@fedify/fedify/otel",
-    "@logtape/logtape",
-    /^@logtape\//,
-    /^@opentelemetry\//,
-    "hono",
-    /^hono\//,
-  ],
+  outExtensions({ format }) {
+    return {
+      js: format === "cjs" ? ".cjs" : ".js",
+      dts: format === "cjs" ? ".d.cts" : ".d.ts",
+    };
+  },
+  deps: {
+    neverBundle: [
+      "@fedify/fedify",
+      "@fedify/fedify/federation",
+      "@fedify/fedify/otel",
+      "@logtape/logtape",
+      /^@logtape\//,
+      /^@opentelemetry\//,
+      "hono",
+      /^hono\//,
+    ],
+  },
   outputOptions(outputOptions, format) {
     if (format === "cjs") {
       outputOptions.intro = `

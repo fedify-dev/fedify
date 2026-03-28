@@ -5,15 +5,20 @@ export default defineConfig({
   dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   format: ["esm", "cjs"],
   platform: "node",
-  external: [
-    "@fedify/fedify",
-    "@fedify/fedify/federation",
-    "@fedify/fedify/nodeinfo",
-    "@fedify/fedify/utils",
-    "@fedify/vocab",
-    "@fedify/fedify/webfinger",
-    "@fedify/fixture",
-  ],
+  outExtensions({ format }) {
+    return {
+      js: format === "cjs" ? ".cjs" : ".js",
+      dts: format === "cjs" ? ".d.cts" : ".d.ts",
+    };
+  },
+  deps: {
+    neverBundle: [
+      "@fedify/fedify",
+      "@fedify/fedify/federation",
+      "@fedify/vocab",
+      "@fedify/vocab-runtime",
+    ],
+  },
   outputOptions(outputOptions, format) {
     if (format === "cjs") {
       outputOptions.intro = `

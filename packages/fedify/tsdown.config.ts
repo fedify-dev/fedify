@@ -18,7 +18,7 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: { neverBundle: [/^node:/] },
     outputOptions(outputOptions, format) {
       if (format === "cjs") {
         outputOptions.intro = `
