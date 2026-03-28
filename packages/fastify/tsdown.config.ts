@@ -5,6 +5,12 @@ export default defineConfig({
   dts: true,
   platform: "node",
   format: ["esm", "cjs"],
+  outExtensions({ format }) {
+    return {
+      js: format === "cjs" ? ".cjs" : ".js",
+      dts: format === "cjs" ? ".d.cts" : ".d.ts",
+    };
+  },
   outputOptions: {
     exports: "named",
   },

@@ -38,7 +38,7 @@
     "json-preserve-indent": "npm:json-preserve-indent@^1.1.3",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
-    "tsdown": "npm:tsdown@^0.12.9"
+    "tsdown": "npm:tsdown@^0.21.6"
   },
   "unstable": [
     "fs",
