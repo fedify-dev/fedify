@@ -1,6 +1,6 @@
 {
   "name": "@fedify/sqlite",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "description": "SQLite drivers for Fedify",
   "keywords": [
     "fedify",
