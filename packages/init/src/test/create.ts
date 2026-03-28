@@ -13,7 +13,6 @@ import type {
   WebFramework,
 } from "../types.ts";
 import {
-  CommandError,
   type GeneratedType,
   printErrorMessage,
   printMessage,
