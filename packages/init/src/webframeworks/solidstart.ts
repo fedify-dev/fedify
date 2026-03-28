@@ -1,9 +1,11 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
 import { getInstruction } from "./utils.ts";
 
+const NPM_SOLIDSTART = `npm:@solidjs/start@${deps["npm:@solidjs/start"]}`;
 const solidstartDescription: WebFrameworkDescription = {
   label: "SolidStart",
   packageManagers: PACKAGE_MANAGER,
@@ -12,29 +14,28 @@ const solidstartDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@solidjs/router": "npm:@solidjs/router@^0.15.4",
-        "@solidjs/start": "npm:@solidjs/start@^1.3.2",
-        "@solidjs/start/client": "npm:@solidjs/start@^1.3.2/client",
-        "@solidjs/start/config": "npm:@solidjs/start@^1.3.2/config",
-        "@solidjs/start/middleware": "npm:@solidjs/start@^1.3.2/middleware",
-        "@solidjs/start/router": "npm:@solidjs/start@^1.3.2/router",
-        "@solidjs/start/server": "npm:@solidjs/start@^1.3.2/server",
-        "solid-js": "npm:solid-js@^1.9.11",
-        vinxi: "npm:vinxi@^0.5.11",
+        "@solidjs/router": `npm:@solidjs/router@${deps["npm:@solidjs/router"]}`,
+        "@solidjs/start": `${NPM_SOLIDSTART}`,
+        "@solidjs/start/client": `${NPM_SOLIDSTART}/client`,
+        "@solidjs/start/config": `${NPM_SOLIDSTART}/config`,
+        "@solidjs/start/middleware": `${NPM_SOLIDSTART}/middleware`,
+        "@solidjs/start/router": `${NPM_SOLIDSTART}/router`,
+        "@solidjs/start/server": `${NPM_SOLIDSTART}/server`,
+        "solid-js": `npm:solid-js@${deps["npm:solid-js"]}`,
+        vinxi: `npm:vinxi@${deps["npm:vinxi"]}`,
         "@fedify/solidstart": PACKAGE_VERSION,
       }
       : {
-        "@solidjs/router": "^0.15.4",
-        "@solidjs/start": "^1.3.2",
-        "solid-js": "^1.9.11",
-        vinxi: "^0.5.11",
+        "@solidjs/router": deps["npm:@solidjs/router"],
+        "@solidjs/start": deps["npm:@solidjs/start"],
+        "solid-js": deps["npm:solid-js"],
+        vinxi: deps["npm:vinxi"],
         "@fedify/solidstart": PACKAGE_VERSION,
       },
     devDependencies: {
       ...defaultDevDependencies,
-      ...(pm !== "deno"
-        ? { typescript: "^5.9.3", "@types/node": "^22.17.0" }
-        : {}),
+      typescript: deps["npm:typescript"],
+      "@types/node": deps["npm:@types/node@22"],
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
