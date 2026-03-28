@@ -8,7 +8,7 @@ const solidstartDescription: WebFrameworkDescription = {
   label: "SolidStart",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ packageManager: pm }) => ({
+  init: async ({ packageManager: pm }) => ({
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
@@ -39,16 +39,24 @@ const solidstartDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "app.config.ts": readTemplate("solidstart/app.config.ts"),
-      "src/app.tsx": readTemplate("solidstart/src/app.tsx"),
-      "src/entry-client.tsx": readTemplate("solidstart/src/entry-client.tsx"),
-      "src/entry-server.tsx": readTemplate("solidstart/src/entry-server.tsx"),
-      "src/routes/index.tsx": readTemplate("solidstart/src/routes/index.tsx"),
-      "src/middleware/index.ts": readTemplate(
+      "app.config.ts": await readTemplate("solidstart/app.config.ts"),
+      "src/app.tsx": await readTemplate("solidstart/src/app.tsx"),
+      "src/entry-client.tsx": await readTemplate(
+        "solidstart/src/entry-client.tsx",
+      ),
+      "src/entry-server.tsx": await readTemplate(
+        "solidstart/src/entry-server.tsx",
+      ),
+      "src/routes/index.tsx": await readTemplate(
+        "solidstart/src/routes/index.tsx",
+      ),
+      "src/middleware/index.ts": await readTemplate(
         "solidstart/src/middleware/index.ts",
       ),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {
