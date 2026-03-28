@@ -8,6 +8,16 @@ Version 2.1.2
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+[#651]: https://github.com/fedify-dev/fedify/issues/651
+
 
 Version 2.1.1
 -------------
@@ -230,6 +240,20 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.9
+-------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
 
 
 Version 2.0.8
@@ -966,6 +990,20 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.6
+--------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+
 Version 1.10.5
 --------------
 
@@ -1137,6 +1175,20 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.7
+-------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
 
 
 Version 1.9.6

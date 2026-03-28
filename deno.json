@@ -70,7 +70,7 @@
     "mysql2/promise": "npm:mysql2@^3.18.0/promise",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
-    "tsdown": "npm:tsdown@^0.18.4"
+    "tsdown": "npm:tsdown@^0.21.6"
   },
   "unstable": [
     "fs",
@@ -114,7 +114,7 @@
       ]
     },
     "install": {
-      "command": "deno install && pnpm install",
+      "command": "deno run --allow-read --allow-env --allow-run scripts/install.ts && pnpm install",
       "dependencies": [
         "codegen"
       ]
