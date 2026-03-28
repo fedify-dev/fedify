@@ -39,7 +39,11 @@ const solidstartDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "app.config.ts": await readTemplate("solidstart/app.config.ts"),
+      "app.config.ts": (await readTemplate("solidstart/app.config.ts"))
+        .replace(
+          /\/\* preset \*\//,
+          pm === "deno" ? "deno-server" : "node-server",
+        ),
       "src/app.tsx": await readTemplate("solidstart/src/app.tsx"),
       "src/entry-client.tsx": await readTemplate(
         "solidstart/src/entry-client.tsx",
