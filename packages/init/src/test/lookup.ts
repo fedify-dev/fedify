@@ -20,7 +20,6 @@ import { findFreePort, replacePortInApp } from "./port.ts";
 import { serverClosure, STARTUP_TIMEOUT, waitForServer } from "./server.ts";
 
 const HANDLE = "john";
-const CWD = join(import.meta.dirname!, "..");
 const BASE_PORT = 10000;
 type LookupCase = [WebFramework, PackageManager, KvStore, MessageQueue];
 type LookupCasePattern = [
@@ -169,7 +168,6 @@ async function sendLookup(port: number): Promise<boolean> {
   // Run lookup command from original directory
   try {
     const res = await $`deno task cli lookup ${lookupTarget} -p`
-      .cwd(CWD)
       .stdin("null")
       .stdout("piped")
       .stderr("piped")
