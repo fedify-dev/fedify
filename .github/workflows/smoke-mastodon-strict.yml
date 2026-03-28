@@ -78,9 +78,15 @@ jobs:
 
       - name: Verify connectivity
         run: |
+          echo "=== Harness health (from mastodon-web-backend, via Caddy TLS) ==="
+          $COMPOSE exec -T mastodon-web-backend \
+            curl -sf https://fedify-harness/_test/health
+          echo " OK"
+
           echo "=== Harness health (from mastodon-sidekiq, via Caddy TLS) ==="
           $COMPOSE exec -T mastodon-sidekiq \
-            curl -sf https://fedify-harness/_test/health && echo " OK" || echo " FAIL"
+            curl -sf https://fedify-harness/_test/health
+          echo " OK"
 
       - name: Run smoke tests
         run: |
