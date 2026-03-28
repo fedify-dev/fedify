@@ -8,7 +8,11 @@
  * @module
  * @since 1.9.0
  */
-/// <reference types="@cloudflare/workers-types/experimental" />
+import type {
+  KVNamespace,
+  MessageSendRequest,
+  Queue,
+} from "@cloudflare/workers-types/experimental";
 import type {
   KvKey,
   KvStore,

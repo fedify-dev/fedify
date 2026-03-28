@@ -12,7 +12,6 @@
  * @module
  * @since 1.6.0
  */
-/// <reference types="@cloudflare/workers-types/experimental" />
 import { getLogger } from "@logtape/logtape";
 import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 import type {
@@ -20,6 +19,49 @@ import type {
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "../federation/mq.ts";
+
+type WorkersQueueContentType = "bytes" | "json" | "text" | "v8";
+
+interface WorkersKvGetWithMetadataResult<Value, Metadata> {
+  value: Value | null;
+  metadata: Metadata | null;
+}
+
+interface WorkersKvPutOptions {
+  expirationTtl?: number;
+  metadata?: unknown;
+}
+
+interface WorkersKvNamespace<Key extends string = string> {
+  getWithMetadata<ExpectedValue = unknown, Metadata = unknown>(
+    key: Key,
+    type: "json",
+  ): Promise<WorkersKvGetWithMetadataResult<ExpectedValue, Metadata>>;
+  put(key: Key, value: string, options?: WorkersKvPutOptions): Promise<void>;
+  delete(key: Key): Promise<void>;
+}
+
+interface WorkersQueueSendOptions {
+  contentType?: WorkersQueueContentType;
+  delaySeconds?: number;
+}
+
+interface WorkersQueueSendBatchOptions {
+  delaySeconds?: number;
+}
+
+interface WorkersMessageSendRequest<Body = unknown> {
+  body: Body;
+  contentType?: WorkersQueueContentType;
+}
+
+interface WorkersQueue<Body = unknown> {
+  send(body: Body, options?: WorkersQueueSendOptions): Promise<void>;
+  sendBatch(
+    requests: WorkersMessageSendRequest<Body>[],
+    options?: WorkersQueueSendBatchOptions,
+  ): Promise<void>;
+}
 
 interface KvMetadata {
   expires?: number;
@@ -41,9 +83,9 @@ interface KvMetadata {
  * @since 1.6.0
  */
 export class WorkersKvStore implements KvStore {
-  #namespace: KVNamespace<string>;
+  #namespace: WorkersKvNamespace<string>;
 
-  constructor(namespace: KVNamespace<string>) {
+  constructor(namespace: WorkersKvNamespace<string>) {
     const logger = getLogger(["fedify", "cfworkers"]);
     logger.warn(
       "The `@fedify/fedify/x/cfworkers` module is deprecated; use " +
@@ -115,7 +157,7 @@ export class WorkersKvStore implements KvStore {
  * @since 1.6.0
  */
 export class WorkersMessageQueue implements MessageQueue {
-  #queue: Queue;
+  #queue: WorkersQueue;
 
   /**
    * Cloudflare Queues provide automatic retry with exponential backoff
@@ -124,7 +166,7 @@ export class WorkersMessageQueue implements MessageQueue {
    */
   readonly nativeRetrial = true;
 
-  constructor(queue: Queue) {
+  constructor(queue: WorkersQueue) {
     const logger = getLogger(["fedify", "cfworkers"]);
     logger.warn(
       "The `@fedify/fedify/x/cfworkers` module is deprecated; use " +
@@ -146,7 +188,7 @@ export class WorkersMessageQueue implements MessageQueue {
     messages: any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const requests: MessageSendRequest[] = messages.map((msg) => ({
+    const requests: WorkersMessageSendRequest[] = messages.map((msg) => ({
       body: msg,
       contentType: "json",
     }));
