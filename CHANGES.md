@@ -32,6 +32,7 @@ To be released.
 [#601]: https://github.com/fedify-dev/fedify/pull/601
 [#652]: https://github.com/fedify-dev/fedify/pull/652
 
+
 Version 2.1.2
 -------------
 
