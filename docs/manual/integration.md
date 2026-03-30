@@ -119,7 +119,19 @@ app.set("trust proxy", true);
 app.use(integrateFederation(federation, (req) => "context data goes here"));  // [!code highlight]
 ~~~~
 
+> [!NOTE]
+> If your application uses Express 4.x behind a reverse proxy with
+> a non-standard port (e.g., `Host: example.com:8080`), the reconstructed
+> request URL may lose the port number.  This is because Express 4.x's
+> [`req.host`][trust proxy] (which respects `trust proxy`) strips the port
+> from the `Host` header.
+>
+> This does not occur with Express 5.x, where `req.host` retains the port.
+> If you rely on `trust proxy` and your origin includes a non-standard port,
+> we recommend upgrading to Express 5.
+
 [Express]: https://expressjs.com/
+[trust proxy]: https://expressjs.com/en/guide/behind-proxies.html
 
 
 Fastify
