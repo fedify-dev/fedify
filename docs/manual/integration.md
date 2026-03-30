@@ -872,10 +872,10 @@ instead of `astro`:
 ~~~~
 
 
-Solidstart
+SolidStart
 ----------
 
-*This API is available since Fedify 2.1.0.*
+*This API is available since Fedify 2.2.0.*
 
 [SolidStart] is a JavaScript framework built on top of [Solid] for building
 full-stack web applications.  The *@fedify/solidstart* package provides

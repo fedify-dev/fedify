@@ -7,7 +7,7 @@
  * [SolidStart]: https://start.solidjs.com/
  *
  * @module
- * @since 2.1.0
+ * @since 2.2.0
  */
 
 import type { Federation } from "@fedify/fedify/federation";
@@ -21,7 +21,7 @@ import type { FetchEvent } from "@solidjs/start/server";
  * @template TContextData The type of the context data.
  * @param event The SolidStart {@link FetchEvent} for the current request.
  * @returns The context data, or a promise resolving to the context data.
- * @since 2.1.0
+ * @since 2.2.0
  */
 export type ContextDataFactory<TContextData> = (
   event: FetchEvent,
@@ -49,7 +49,7 @@ const notAcceptableResponses: WeakMap<Request, Response> = new WeakMap();
  * @param createContextData A function to create context data for the
  *                          {@link Federation} object.
  * @returns A SolidStart middleware object.
- * @since 2.1.0
+ * @since 2.2.0
  */
 export function fedifyMiddleware<TContextData>(
   federation: Federation<TContextData>,
