@@ -8,7 +8,9 @@ node_modules/
 package-lock.json
 repomix-output.xml
 test/smoke/.env.test
+test/smoke/mastodon/.certs/
 test/smoke/mastodon/mastodon.env
+test/smoke/mastodon/mastodon-strict.env
 smoke.log
 t.ts
 t2.ts

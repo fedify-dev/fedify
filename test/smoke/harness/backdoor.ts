@@ -9,14 +9,15 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-// Build recipient manually — Mastodon's WebFinger requires HTTPS but our
-// harness only has HTTP.  Parse the handle (user@domain) to construct the
-// actor URI and inbox URL directly.
+// Build recipient manually — in non-strict mode Mastodon's WebFinger requires
+// HTTPS but our harness only has HTTP, so we use http:// for the inbox URL.
+// In strict mode, Caddy terminates TLS, so we use https:// everywhere.
 function parseRecipient(
   handle: string,
 ): { inboxId: URL; actorId: URL } {
   const [user, domain] = handle.split("@");
-  const inboxId = new URL(`http://${domain}/users/${user}/inbox`);
+  const scheme = Deno.env.get("STRICT_MODE") ? "https" : "http";
+  const inboxId = new URL(`${scheme}://${domain}/users/${user}/inbox`);
   // Mastodon generates https:// actor URIs; use that as the canonical id
   const actorId = new URL(`https://${domain}/users/${user}`);
   return { inboxId, actorId };

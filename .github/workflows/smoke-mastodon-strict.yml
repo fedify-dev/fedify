@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# Strict-mode interoperability smoke tests (HTTPS + HTTP signature verification).
+# Uses a standalone Docker Compose file with Caddy TLS proxies to verify that
+# Fedify correctly signs and verifies requests over HTTPS.
+# See: https://github.com/fedify-dev/fedify/issues/481
+name: smoke-mastodon-strict
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      COMPOSE: >-
+        docker compose
+        -f test/smoke/mastodon/docker-compose.strict.yml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-mise
+
+      - name: Generate TLS certificates
+        run: bash test/smoke/mastodon/generate-certs.sh test/smoke/mastodon/.certs
+
+      - name: Verify certificates
+        run: |
+          openssl verify -CAfile test/smoke/mastodon/.certs/ca.crt \
+            test/smoke/mastodon/.certs/fedify-harness.crt
+          openssl verify -CAfile test/smoke/mastodon/.certs/ca.crt \
+            test/smoke/mastodon/.certs/mastodon.crt
+
+      - name: Generate Mastodon secrets
+        run: |
+          IMAGE=ghcr.io/mastodon/mastodon:v4.3.9
+          docker pull "$IMAGE"
+
+          SECRET1=$(docker run --rm "$IMAGE" bundle exec rails secret)
+          SECRET2=$(docker run --rm "$IMAGE" bundle exec rails secret)
+
+          {
+            echo "SECRET_KEY_BASE=$SECRET1"
+            echo "OTP_SECRET=$SECRET2"
+            docker run --rm "$IMAGE" bundle exec rails mastodon:webpush:generate_vapid_key \
+              | grep -E '^[A-Z_]+=.+'
+            docker run --rm "$IMAGE" bundle exec rails db:encryption:init \
+              | grep -E '^[A-Z_]+=.+'
+          } >> test/smoke/mastodon/mastodon-strict.env
+
+      - name: Start database and redis
+        run: |
+          $COMPOSE up -d db redis
+          $COMPOSE exec -T db \
+            sh -c 'until pg_isready -U mastodon; do sleep 1; done'
+
+      - name: Run DB setup and migrations
+        run: |
+          $COMPOSE run --rm -T \
+            mastodon-web-backend bundle exec rails db:setup
+        timeout-minutes: 5
+
+      - name: Start Mastodon stack
+        run: $COMPOSE up --wait
+        timeout-minutes: 12
+
+      - name: Provision Mastodon
+        run: bash test/smoke/mastodon/provision-strict.sh
+
+      - name: Verify connectivity
+        run: |
+          echo "=== Harness health (from mastodon-web-backend, via Caddy TLS) ==="
+          $COMPOSE exec -T mastodon-web-backend \
+            curl -sf https://fedify-harness/_test/health
+          echo " OK"
+
+          echo "=== Harness health (from mastodon-sidekiq, via Caddy TLS) ==="
+          $COMPOSE exec -T mastodon-sidekiq \
+            curl -sf https://fedify-harness/_test/health
+          echo " OK"
+
+      - name: Run smoke tests
+        run: |
+          set -a && source test/smoke/.env.test && set +a
+          deno run --allow-net --allow-env --unstable-temporal \
+            test/smoke/orchestrator.ts
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose logs ==="
+          $COMPOSE logs --tail=500
+
+      - name: Teardown
+        if: always()
+        run: $COMPOSE down -v

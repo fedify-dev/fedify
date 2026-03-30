@@ -1,0 +1,8 @@
+{
+	auto_https off
+}
+
+:443 {
+	tls /certs/mastodon.crt /certs/mastodon.key
+	reverse_proxy mastodon-web-backend:3000
+}
