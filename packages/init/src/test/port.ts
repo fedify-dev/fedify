@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
-import { createConnection } from "node:net";
+import { createConnection, createServer } from "node:net";
 import { join } from "node:path";
 import process from "node:process";
 import type { WebFramework } from "../types.ts";
@@ -68,14 +68,29 @@ export async function killProcessOnPort(port: number): Promise<void> {
 }
 
 /**
- * Starting from `startPort`, find the first port that is not in use.
+ * Reserve a free port by binding to port 0 and letting the OS assign one.
+ * The socket is held until the returned `release` function is called,
+ * eliminating the race window between discovery and actual use.
  */
-export async function findFreePort(startPort: number): Promise<number> {
-  let port = startPort;
-  while (await isPortInUse(port)) {
-    port++;
-  }
-  return port;
+export function reservePort(): Promise<
+  { port: number; release: () => Promise<void> }
+> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.listen(0, () => {
+      const addr = server.address();
+      if (addr == null || typeof addr === "string") {
+        server.close();
+        reject(new Error("Failed to get port from server"));
+        return;
+      }
+      resolve({
+        port: addr.port,
+        release: () => new Promise<void>((r) => server.close(() => r())),
+      });
+    });
+    server.on("error", reject);
+  });
 }
 
 const ENTRY_FILES: Partial<Record<WebFramework, string>> = {
@@ -145,3 +160,5 @@ export async function ensurePortReleased(port: number): Promise<void> {
     await waitForPortRelease(port, 3000);
   }
 }
+
+// cspell: ignore pids
