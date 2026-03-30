@@ -16,11 +16,10 @@ import type {
 } from "../types.ts";
 import { printErrorMessage, printMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
-import { findFreePort, replacePortInApp } from "./port.ts";
+import { replacePortInApp, reservePort } from "./port.ts";
 import { serverClosure, STARTUP_TIMEOUT, waitForServer } from "./server.ts";
 
 const HANDLE = "john";
-const BASE_PORT = 10000;
 type LookupCase = [WebFramework, PackageManager, KvStore, MessageQueue];
 type LookupCasePattern = [
   WebFramework | "*",
@@ -120,21 +119,22 @@ function printFailedCases(valid: string[], results: boolean[]): void {
 /**
  * Run the dev server and test with lookup command.
  */
-async function testApp(dir: string, index: number): Promise<boolean> {
+async function testApp(dir: string): Promise<boolean> {
   const [wf, pm, kv, mq] = parseLookupCase(dir);
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
 
   const defaultPort = webFrameworks[wf].defaultPort;
-  const assignedPort = await findFreePort(BASE_PORT + index);
-  await replacePortInApp(dir, wf, defaultPort, assignedPort);
-  printMessage`    Using port ${String(assignedPort)}`;
+  const { port, release } = await reservePort();
+  await replacePortInApp(dir, wf, defaultPort, port);
+  printMessage`    Using port ${String(port)}`;
 
   const result = await serverClosure(
     dir,
     getDevCommand(pm),
-    assignedPort,
+    port,
     sendLookup,
+    release,
   ).catch(() => false);
 
   printMessage`    Lookup ${result ? "successful" : "failed"} for ${

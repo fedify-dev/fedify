@@ -39,7 +39,11 @@ export async function serverClosure<T>(
   cmd: string,
   defaultPort: number,
   callback: (port: number) => Promise<T>,
+  releasePort?: () => Promise<void>,
 ): Promise<Awaited<T>> {
+  // Release the reserved socket right before spawning so the child can bind
+  await releasePort?.();
+
   const devCommand = cmd.split(" ");
   const serverProcess = $`${devCommand}`
     .cwd(dir)
