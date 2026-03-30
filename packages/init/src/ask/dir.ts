@@ -1,10 +1,11 @@
+import $ from "@david/dax";
 import { identity, pipe, when } from "@fxts/core";
 import { input } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { printError } from "@optique/run";
 import toggle from "inquirer-toggle";
-import { getCwd, getOsType, runSubCommand } from "../utils.ts";
 import { isDirectoryEmpty, logger } from "../lib.ts";
+import { getCwd, getOsType } from "../utils.ts";
 
 /**
  * Fills in the project directory by prompting the user if not provided.
@@ -57,7 +58,7 @@ const moveToTrash = (dir: string) => () =>
     getOsType(),
     getTrashCommand,
     (fn) => fn(dir),
-    (cmd) => runSubCommand(cmd, { stdio: "ignore" }),
+    (cmd) => $`${cmd}`.spawn(),
     () => true,
   ).catch((e) => {
     logger.error(e);

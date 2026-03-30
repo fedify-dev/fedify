@@ -591,6 +591,8 @@ an exceptional developer experience.  Powered by Bun, it delivers high
 performance and modern tooling.  The *@fedify/elysia* package provides
 a seamless plugin for integrating Fedify with Elysia:
 
+::: code-group
+
 ~~~~ sh [Bun]
 bun add @fedify/elysia
 ~~~~
@@ -610,6 +612,8 @@ pnpm add @fedify/elysia
 ~~~~ sh [Yarn]
 yarn add @fedify/elysia
 ~~~~
+
+:::
 
 ~~~~ typescript
 import { fedify } from "@fedify/elysia";
@@ -866,6 +870,65 @@ instead of `astro`:
   }
 }
 ~~~~
+
+
+SolidStart
+----------
+
+*This API is available since Fedify 2.2.0.*
+
+[SolidStart] is a JavaScript framework built on top of [Solid] for building
+full-stack web applications.  The *@fedify/solidstart* package provides
+a middleware to integrate Fedify with SolidStart:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/solidstart
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/solidstart
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/solidstart
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/solidstart
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/solidstart
+~~~~
+
+:::
+
+First, set up the middleware entry point in your *app.config.ts*:
+
+~~~~ typescript
+import { defineConfig } from "@solidjs/start/config";
+
+export default defineConfig({
+  middleware: "src/middleware/index.ts",  // [!code highlight]
+});
+~~~~
+
+Then, create your middleware in *src/middleware/index.ts*:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { fedifyMiddleware } from "@fedify/solidstart";
+
+const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+
+export default fedifyMiddleware(federation, (event) => undefined);  // [!code highlight]
+~~~~
+
+[Solid]: https://www.solidjs.com/
 
 
 Fresh

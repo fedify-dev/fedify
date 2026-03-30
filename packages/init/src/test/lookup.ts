@@ -1,25 +1,41 @@
-import { isEmpty } from "@fxts/core/index.js";
+import $ from "@david/dax";
+import { join } from "@fxts/core";
 import { values } from "@optique/core";
-import type { ChildProcessByStdio } from "node:child_process";
-import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { join, sep } from "node:path";
-import process from "node:process";
-import type Stream from "node:stream";
-import { getDevCommand } from "../lib.ts";
+import { join as joinPath, sep } from "node:path";
+import {
+  getDevCommand,
+  kvStores,
+  messageQueues,
+  packageManagers,
+} from "../lib.ts";
 import type {
   KvStore,
   MessageQueue,
   PackageManager,
   WebFramework,
 } from "../types.ts";
-import { printErrorMessage, printMessage, runSubCommand } from "../utils.ts";
+import { printErrorMessage, printMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
+import { replacePortInApp, reservePort } from "./port.ts";
+import { serverClosure, STARTUP_TIMEOUT, waitForServer } from "./server.ts";
 
 const HANDLE = "john";
-const STARTUP_TIMEOUT = 30000; // 30 seconds
-const CWD = process.cwd();
-const BANNED_WFS: WebFramework[] = ["next"];
+type LookupCase = [WebFramework, PackageManager, KvStore, MessageQueue];
+type LookupCasePattern = [
+  WebFramework | "*",
+  PackageManager | "*",
+  KvStore | "*",
+  MessageQueue | "*",
+];
+const BANNED_LOOKUP_REASONS: Record<string, string> = {
+  "next,*,*,*": "Next.js doesn't support remote packages",
+  "solidstart,deno,*,*": "Error occurred while loading submodules in Deno",
+  "astro,deno,*,*": "Astro doesn't support remote packages in Deno",
+};
+const BANNED_LOOKUP_CASES: LookupCasePattern[] = Object.keys(
+  BANNED_LOOKUP_REASONS,
+)
+  .map((key) => key.split(",") as LookupCasePattern);
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -29,16 +45,17 @@ const BANNED_WFS: WebFramework[] = ["next"];
 export default async function runServerAndLookupUser(
   dirs: string[],
 ): Promise<void> {
-  const valid = dirs.filter(Boolean);
+  const valid = dirs.filter(Boolean).filter(isTestable);
+  printSkippedCases(dirs);
+
   if (valid.length === 0) {
     printErrorMessage`\nNo directories to lookup test.`;
-    return;
   }
-  const filtered = filterWebFrameworks(valid);
 
-  printMessage`\nLookup Test start for ${String(filtered.length)} app(s)!`;
+  printMessage``;
+  printMessage`Lookup Test start for ${String(valid.length)} app(s)!`;
 
-  const results = await Array.fromAsync(filtered, testApp);
+  const results = await Array.fromAsync(valid, testApp);
 
   const successCount = results.filter(Boolean).length;
   const failCount = results.length - successCount;
@@ -47,67 +64,102 @@ export default async function runServerAndLookupUser(
   Total: ${String(results.length)}
   Passed: ${String(successCount)}
   Failed: ${String(failCount)}\n\n`;
+
+  printFailedCases(valid, results);
 }
 
-function filterWebFrameworks(
-  dirs: string[],
-): string[] {
-  const wfs = new Set<WebFramework>(
-    dirs.map((dir) => dir.split(sep).slice(-4, -3)[0] as WebFramework),
+export const parseLookupCase = (dir: string): LookupCase =>
+  dir.split(sep).slice(-4) as LookupCase;
+
+export const matchesLookupCasePattern =
+  (target: LookupCase) => (pattern: LookupCasePattern): boolean =>
+    pattern.every((value, index) => value === "*" || value === target[index]);
+
+export const isTestable = (dir: string): boolean =>
+  !BANNED_LOOKUP_CASES.some(matchesLookupCasePattern(parseLookupCase(dir)));
+
+function printSkippedCases(dirs: string[]): void {
+  const matchedPatterns = new Set<string>(
+    dirs.filter(Boolean).flatMap((dir) =>
+      BANNED_LOOKUP_CASES
+        .filter(matchesLookupCasePattern(parseLookupCase(dir)))
+        .map(join(","))
+    ),
   );
-  const hasBanned = BANNED_WFS.filter((wf) => wfs.has(wf));
-  if (isEmpty(hasBanned)) {
-    return dirs;
+  if (matchedPatterns.size > 0) {
+    printMessage``;
+    printMessage`Skipped the following lookup cases due to known issues:`;
   }
-  const bannedLabels = hasBanned.map((wf) => webFrameworks[wf]["label"]);
-  printErrorMessage`\n${
-    values(bannedLabels)
-  } is not supported in lookup test yet.`;
-  return dirs.filter((dir) =>
-    !BANNED_WFS.includes(dir.split(sep).slice(-4, -3)[0] as WebFramework)
-  );
+  for (const key of matchedPatterns) {
+    const reason = BANNED_LOOKUP_REASONS[key] ?? "unknown reason";
+    const labels = Array.from(getLabels(key.split(",") as LookupCasePattern));
+    printMessage`  - ${values(labels)}: ${reason}`;
+  }
+}
+
+function* getLabels([wf, pm, kv, mq]: LookupCasePattern): Generator<string> {
+  if (wf !== "*") yield webFrameworks[wf].label;
+  if (pm !== "*") yield packageManagers[pm].label;
+  if (kv !== "*") yield kvStores[kv].label;
+  if (mq !== "*") yield messageQueues[mq].label;
+}
+
+function printFailedCases(valid: string[], results: boolean[]): void {
+  if (results.every(Boolean)) return;
+  printMessage`Failed cases:`;
+  for (let i = 0; i < results.length; i++) {
+    if (!results[i]) {
+      const dir = valid[i];
+      const label = values(parseLookupCase(dir));
+      printMessage`  - ${label}: ${dir}`;
+    }
+  }
 }
 
 /**
  * Run the dev server and test with lookup command.
  */
 async function testApp(dir: string): Promise<boolean> {
-  const [wf, pm, kv, mq] = dir.split(sep).slice(-4) as //
-  [WebFramework, PackageManager, KvStore, MessageQueue];
+  const [wf, pm, kv, mq] = parseLookupCase(dir);
 
   printMessage`  Testing ${values([wf, pm, kv, mq])}...`;
+
+  const defaultPort = webFrameworks[wf].defaultPort;
+  const { port, release } = await reservePort();
+  await replacePortInApp(dir, wf, defaultPort, port);
+  printMessage`    Using port ${String(port)}`;
 
   const result = await serverClosure(
     dir,
     getDevCommand(pm),
-    webFrameworks[wf].defaultPort,
+    port,
     sendLookup,
+    release,
   ).catch(() => false);
 
   printMessage`    Lookup ${result ? "successful" : "failed"} for ${
     values([wf, pm, kv, mq])
   }!`;
   if (!result) {
-    printMessage`    Check out these files for more details:
-      ${join(dir, "out.txt")} and 
-      ${join(dir, "err.txt")}\n`;
+    printMessage`    Check out these files for more details: \
+${joinPath(dir, "out.txt")} and \
+${joinPath(dir, "err.txt")}\n`;
   }
   printMessage`\n`;
 
   return result;
 }
 
-const sendLookup = async (port: number) => {
+async function sendLookup(port: number): Promise<boolean> {
   const serverUrl = `http://localhost:${port}`;
   const lookupTarget = `${serverUrl}/users/${HANDLE}`;
   // Wait for server to be ready
   printMessage`    Waiting for server to start at ${serverUrl}...`;
 
-  const isReady = await waitForServer(serverUrl, STARTUP_TIMEOUT);
+  const isReady = await waitForServer(serverUrl);
 
   if (!isReady) {
-    printErrorMessage`Server did not start within \
-${String(STARTUP_TIMEOUT)}ms`;
+    printErrorMessage`Server did not start within ${String(STARTUP_TIMEOUT)}ms`;
     return false;
   }
 
@@ -115,146 +167,18 @@ ${String(STARTUP_TIMEOUT)}ms`;
 
   // Run lookup command from original directory
   try {
-    await runSubCommand(
-      ["deno", "task", "cli", "lookup", lookupTarget],
-      { cwd: CWD },
-    );
+    const res = await $`deno task cli lookup ${lookupTarget} -p`
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow()
+      .spawn();
 
-    return true;
+    return res.stdout.includes(`id: URL '${lookupTarget}',`);
   } catch (error) {
     if (error instanceof Error) {
       printErrorMessage`${error.message}`;
     }
   }
   return false;
-};
-
-/**
- * Wait for the server to be ready by checking if it responds to requests.
- */
-async function waitForServer(url: string, timeout: number): Promise<boolean> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
-      if (response.ok) {
-        return true;
-      }
-    } catch {
-      // Server not ready yet, continue waiting
-    }
-
-    // Wait 500ms before next attempt
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  return false;
-}
-
-async function serverClosure<T>(
-  dir: string,
-  cmd: string,
-  defaultPort: number,
-  callback: (port: number) => Promise<T>,
-): Promise<Awaited<T>> {
-  // Start the dev server using Node.js spawn
-  const devCommand = cmd.split(" ");
-  const serverProcess = spawn(devCommand[0], devCommand.slice(1), {
-    cwd: dir,
-    stdio: ["ignore", "pipe", "pipe"],
-    detached: true, // Create a new process group
-  });
-
-  // Append stdout and stderr to files
-  const stdout = createWriteStream(join(dir, "out.txt"), { flags: "a" });
-  const stderr = createWriteStream(join(dir, "err.txt"), { flags: "a" });
-
-  serverProcess.stdout?.pipe(stdout);
-  serverProcess.stderr?.pipe(stderr);
-
-  try {
-    const port = await determinePort(serverProcess).catch((err) => {
-      printErrorMessage`Failed to determine server port: ${err.message}`;
-      printErrorMessage`Use default port ${String(defaultPort)} for lookup.`;
-      return defaultPort;
-    });
-    return await callback(port);
-  } finally {
-    try {
-      process.kill(-serverProcess.pid!, "SIGKILL");
-    } catch {
-      serverProcess.kill("SIGKILL");
-
-      // Close file streams
-      stdout.end();
-      stderr.end();
-    }
-  }
-}
-
-function determinePort(
-  server: ChildProcessByStdio<null, Stream.Readable, Stream.Readable>,
-): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(
-        new Error("Timeout: Could not determine port from server output"),
-      );
-    }, STARTUP_TIMEOUT);
-
-    let stdoutData = "";
-    let stderrData = "";
-
-    // Common patterns for port detection
-    const portPatterns = [
-      /listening on.*:(\d+)/i,
-      /server.*:(\d+)/i,
-      /port\s*:?\s*(\d+)/i,
-      /https?:\/\/localhost:(\d+)/i,
-      /https?:\/\/0\.0\.0\.0:(\d+)/i,
-      /https?:\/\/127\.0\.0\.1:(\d+)/i,
-      /https?:\/\/[^:]+:(\d+)/i,
-    ];
-
-    const checkForPort = (data: string) => {
-      for (const pattern of portPatterns) {
-        const match = data.match(pattern);
-        if (match && match[1]) {
-          const port = Number.parseInt(match[1], 10);
-          if (port > 0 && port < 65536) {
-            clearTimeout(timeout);
-            return port;
-          }
-        }
-      }
-      return null;
-    };
-
-    server.stdout.on("data", (chunk) => {
-      stdoutData += chunk.toString();
-      const port = checkForPort(stdoutData);
-      if (port) resolve(port);
-    });
-
-    server.stderr.on("data", (chunk) => {
-      stderrData += chunk.toString();
-      const port = checkForPort(stderrData);
-      if (port) resolve(port);
-    });
-
-    server.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-
-    server.on("exit", (code) => {
-      clearTimeout(timeout);
-      reject(
-        new Error(
-          `Server exited with code ${code} before port could be determined`,
-        ),
-      );
-    });
-  });
 }

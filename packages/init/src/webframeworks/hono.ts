@@ -1,5 +1,6 @@
 import { pipe } from "@fxts/core";
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { replace } from "../utils.ts";
@@ -14,28 +15,28 @@ const honoDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@std/dotenv": "^0.225.2",
-        "@hono/hono": "^4.5.0",
-        "@hongminhee/x-forwarded-fetch": "^0.2.0",
+        "@std/dotenv": deps["@std/dotenv"],
+        "@hono/hono": deps["@hono/hono"],
+        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
         "@fedify/hono": PACKAGE_VERSION,
       }
       : pm === "bun"
       ? {
-        hono: "^4.5.0",
-        "x-forwarded-fetch": "^0.2.0",
+        hono: deps["npm:hono"],
+        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
         "@fedify/hono": PACKAGE_VERSION,
       }
       : {
-        "@dotenvx/dotenvx": "^1.14.1",
-        hono: "^4.5.0",
-        "@hono/node-server": "^1.12.0",
-        tsx: "^4.17.0",
-        "x-forwarded-fetch": "^0.2.0",
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        hono: deps["npm:hono"],
+        "@hono/node-server": deps["npm:@hono/node-server"],
+        tsx: deps["npm:tsx"],
+        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
         "@fedify/hono": PACKAGE_VERSION,
       },
     devDependencies: {
       ...defaultDevDependencies,
-      ...(pm === "bun" ? { "@types/bun": "^1.1.6" } : {}),
+      ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {}),
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",

@@ -21,6 +21,7 @@ packages:
 - packages/postgres
 - packages/redis
 - packages/relay
+- packages/solidstart
 - packages/sqlite
 - packages/sveltekit
 - packages/testing
@@ -38,6 +39,7 @@ packages:
 - examples/fastify
 - examples/next14-app-router
 - examples/next15-app-router
+- examples/solidstart
 - examples/sveltekit-sample
 
 catalog:
