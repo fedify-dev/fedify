@@ -67,6 +67,8 @@
     "build": "pnpm --filter @fedify/init... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "node --test --experimental-transform-types 'src/**/*.test.ts'",
     "test-init": "deno task test-init"
   }
 }
