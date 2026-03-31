@@ -33,6 +33,10 @@ async function runCommand(
   });
 }
 
+function getNodeCommand(): string {
+  return "Deno" in globalThis ? "node" : process.execPath;
+}
+
 test("package.json entrypoints match built create CLI", async () => {
   const packageJson = JSON.parse(
     await readFile(resolve(packageDir, "package.json"), "utf8"),
@@ -42,7 +46,7 @@ test("package.json entrypoints match built create CLI", async () => {
   await access(resolve(packageDir, binTarget));
   await access(resolve(packageDir, exportTarget));
 
-  const result = await runCommand(process.execPath, [
+  const result = await runCommand(getNodeCommand(), [
     resolve(packageDir, binTarget),
     "--help",
   ]);
