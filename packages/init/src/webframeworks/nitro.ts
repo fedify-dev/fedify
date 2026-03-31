@@ -17,15 +17,13 @@ const nitroDescription: WebFrameworkDescription = {
     devDependencies: defaultDevDependencies,
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
+    env: testMode ? { HOST: "127.0.0.1" } : {},
     files: {
       "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
       ),
       "server/error.ts": await readTemplate("nitro/server/error.ts"),
       "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
-      ...(
-        testMode ? { ".env": await readTemplate("nitro/.env.test") } : {}
-      ),
       ...(pm !== "deno"
         ? {
           "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),

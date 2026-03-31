@@ -22,15 +22,14 @@ const elysiaDescription: WebFrameworkDescription = {
         "@fedify/elysia": PACKAGE_VERSION,
       }
       : {
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
         elysia: deps["npm:elysia"],
         "@elysiajs/node": deps["npm:@elysiajs/node"],
         "@fedify/elysia": PACKAGE_VERSION,
-        ...(pm === "pnpm"
-          ? {
-            "@sinclair/typebox": deps["npm:@sinclair/typebox"],
-            "openapi-types": deps["npm:openapi-types"],
-          }
-          : {}),
+        ...(pm === "pnpm" && {
+          "@sinclair/typebox": deps["npm:@sinclair/typebox"],
+          "openapi-types": deps["npm:openapi-types"],
+        }),
       },
     devDependencies: {
       ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {

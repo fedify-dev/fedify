@@ -22,6 +22,8 @@ const astroDescription: WebFrameworkDescription = {
       : {
         "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
+        ...(pm !== "bun" &&
+          { "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"] }),
       },
     devDependencies: {
       ...defaultDevDependencies,

@@ -79,8 +79,16 @@ export interface WebFrameworkInitializer {
   federationFile: string;
   /** Relative path where the logging configuration file will be created. */
   loggingFile: string;
-  /** Additional files to create, keyed by relative path to file content. */
-  files?: Record<string, string>;
+  /**
+   * Additional files to create, keyed by relative path to file content.
+   * Do not use `".env"` as a key — use the {@link env} property instead so
+   * that environment variables are properly merged with KV/MQ env vars.
+   */
+  files?: Record<string, string> & { ".env"?: never };
+  /** Environment variables required by this framework, keyed by name to
+   *  default value.  Merged together with KV store and message queue env vars
+   *  into the generated `.env` file. */
+  env?: object;
   /** TypeScript compiler options to include in `tsconfig.json`. */
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   /** Task scripts keyed by task name (e.g., `"dev"`, `"prod"`, `"lint"`). */
