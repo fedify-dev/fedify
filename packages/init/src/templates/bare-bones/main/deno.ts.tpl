@@ -1,4 +1,3 @@
-import "@std/dotenv/load";
 import { behindProxy } from "@hongminhee/x-forwarded-fetch";
 import federation from "./federation.ts";
 import "./logging.ts";

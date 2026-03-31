@@ -15,7 +15,6 @@ const honoDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@std/dotenv": deps["@std/dotenv"],
         "@hono/hono": deps["@hono/hono"],
         "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
         "@fedify/hono": PACKAGE_VERSION,

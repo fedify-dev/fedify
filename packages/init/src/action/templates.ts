@@ -1,8 +1,8 @@
 import { entries, join, map, pipe } from "@fxts/core";
 import { toMerged } from "es-toolkit";
-import { replace } from "../utils.ts";
 import { readTemplate } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
+import { replace } from "../utils.ts";
 
 /**
  * Loads the federation configuration file content from template.
@@ -48,7 +48,7 @@ export const loadLogging = async ({ projectName }: InitCommandData) =>
  * @param param0 - Destructured object containing kv and mq configurations
  * @returns A multi-line string containing all necessary import statements
  */
-export const getImports = ({ kv, mq }: InitCommandData) =>
+export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
   pipe(
     toMerged(kv.imports, mq.imports),
     entries,
@@ -62,6 +62,10 @@ export const getImports = ({ kv, mq }: InitCommandData) =>
       } from ${JSON.stringify(module)};`
     ),
     join("\n"),
+    (imports) =>
+      packageManager === "deno" && Object.keys(env).length > 0
+        ? `import "@std/dotenv/load";\n${imports}`
+        : imports,
   );
 
 /**
