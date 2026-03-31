@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.0.10
 --------------
 
-To be released.
+Released on March 31, 2026.
 
 ### @fedify/lint
 
