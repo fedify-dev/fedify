@@ -34,7 +34,9 @@ async function runCommand(
 }
 
 function getNodeCommand(): string {
-  return "Deno" in globalThis ? "node" : process.execPath;
+  return "Deno" in globalThis || "Bun" in globalThis
+    ? "node"
+    : process.execPath;
 }
 
 test("package.json entrypoints match built create CLI", async () => {

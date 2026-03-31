@@ -32,8 +32,14 @@ async function runCommand(
   });
 }
 
+function getNodeCommand(): string {
+  return "Deno" in globalThis || "Bun" in globalThis
+    ? "node"
+    : process.execPath;
+}
+
 test("CLI starts successfully with --help", async () => {
-  const result = await runCommand(process.execPath, [
+  const result = await runCommand(getNodeCommand(), [
     resolve(packageDir, "dist/mod.js"),
     "--help",
   ]);
