@@ -1,6 +1,6 @@
 {
   "name": "@fedify/nestjs",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Integrate Fedify with Nest.js",
   "keywords": [
     "Fedify",
