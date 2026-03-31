@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction } from "./utils.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
 
 const astroDescription: WebFrameworkDescription = {
   label: "Astro",
@@ -41,33 +41,11 @@ const astroDescription: WebFrameworkDescription = {
         `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
       ),
       "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
-    compilerOptions: undefined,
-    tasks: {
-      ...(pm === "deno"
-        ? {
-          dev: "deno run -A npm:astro dev",
-          build: "deno run -A npm:astro build",
-          preview: "deno run -A npm:astro preview",
-        }
-        : pm === "bun"
-        ? {
-          dev: "bunx astro dev",
-          build: "bunx astro build",
-          preview: "bunx astro preview",
-        }
-        : {
-          dev: "astro dev",
-          build: "astro build",
-          preview: "astro preview",
-        }),
-      ...(pm !== "deno" ? { lint: "eslint ." } : {}),
-    },
+    tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 4321),
   }),
 };
@@ -99,3 +77,23 @@ function* getAstroInitCommand(
 
 const createAstroAppCommand = (pm: PackageManager): string[] =>
   pm === "deno" ? ["deno", "init", "-y", "--npm"] : [pm, "create"];
+
+const TASKS = {
+  "deno": {
+    dev: "deno run -A npm:astro dev",
+    build: "deno run -A npm:astro build",
+    preview: "deno run -A npm:astro preview",
+  },
+  "bun": {
+    dev: "bunx astro dev",
+    build: "bunx astro build",
+    preview: "bunx astro preview",
+    lint: "eslint .",
+  },
+  "node": {
+    dev: "dotenvx run -- astro dev",
+    build: "dotenvx run -- astro build",
+    preview: "dotenvx run -- astro preview",
+    lint: "eslint .",
+  },
+};

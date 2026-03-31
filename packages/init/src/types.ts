@@ -40,7 +40,7 @@ export type Runtimes = Record<PackageManager, RuntimeDescription>;
  * whether it is installed.
  */
 export interface RuntimeDescription {
-  /** Human-readable name of the runtime (e.g., `"Deno"`, `"Node.js"`). */
+  /** Human-readable name of the runtime (e.g., `"Deno"`, `"Node.js", "Bun"`). */
   label: string;
   /** Shell command to run for checking availability (e.g., `["deno", "--version"]`). */
   checkCommand: [string, ...string[]];
@@ -92,7 +92,7 @@ export interface WebFrameworkInitializer {
   /** TypeScript compiler options to include in `tsconfig.json`. */
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   /** Task scripts keyed by task name (e.g., `"dev"`, `"prod"`, `"lint"`). */
-  tasks?: Record<string, string>;
+  tasks?: object;
   /** Instructions shown to the user after project initialization is complete. */
   instruction: Message;
 }

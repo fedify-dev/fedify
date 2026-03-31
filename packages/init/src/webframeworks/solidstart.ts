@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction } from "./utils.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
 
 const NPM_SOLIDSTART = `npm:@solidjs/start@${deps["npm:@solidjs/start"]}`;
 const solidstartDescription: WebFrameworkDescription = {
@@ -76,26 +76,29 @@ const solidstartDescription: WebFrameworkDescription = {
       noEmit: true,
       skipLibCheck: true,
     },
-    tasks: {
-      dev: pm === "deno"
-        ? "deno run -A npm:vinxi dev"
-        : pm === "bun"
-        ? "bunx vinxi dev"
-        : "vinxi dev",
-      build: pm === "deno"
-        ? "deno run -A npm:vinxi build"
-        : pm === "bun"
-        ? "bunx vinxi build"
-        : "vinxi build",
-      start: pm === "deno"
-        ? "deno run -A npm:vinxi start"
-        : pm === "bun"
-        ? "bunx vinxi start"
-        : "vinxi start",
-      ...(pm !== "deno" ? { lint: "eslint ." } : {}),
-    },
+    tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 3000),
   }),
 };
 
 export default solidstartDescription;
+
+const TASKS = {
+  deno: {
+    dev: "deno run -A npm:vinxi dev",
+    build: "deno run -A npm:vinxi build",
+    start: "deno run -A npm:vinxi start",
+  },
+  bun: {
+    dev: "bunx vinxi dev",
+    build: "bunx vinxi build",
+    start: "bunx vinxi start",
+    lint: "eslint .",
+  },
+  node: {
+    dev: "vinxi dev",
+    build: "vinxi build",
+    start: "vinxi start",
+    lint: "eslint .",
+  },
+};

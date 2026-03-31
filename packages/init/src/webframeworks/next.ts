@@ -29,9 +29,7 @@ const nextDescription: WebFrameworkDescription = {
         }
         : {}),
     },
-    tasks: {
-      ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
-    },
+    tasks: pm !== "deno" ? { "lint": "eslint ." } : {},
     instruction: getInstruction(pm, 3000),
   }),
 };
