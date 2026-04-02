@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -12,22 +13,22 @@ const bareBonesDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@std/dotenv": "^0.225.2",
-        "@hongminhee/x-forwarded-fetch": "^0.2.0",
+        "@std/dotenv": deps["@std/dotenv"],
+        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
       }
       : pm === "bun"
-      ? { "npm:x-forwarded-fetch": "^0.2.0" }
+      ? { "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"] }
       : {
-        "npm:@dotenvx/dotenvx": "^1.14.1",
-        "npm:@hono/node-server": "^1.12.0",
-        "npm:tsx": "^4.17.0",
-        "npm:x-forwarded-fetch": "^0.2.0",
+        "npm:@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        "npm:@hono/node-server": deps["npm:@hono/node-server"],
+        "npm:tsx": deps["npm:tsx"],
+        "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
       },
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm === "bun"
-        ? { "@types/bun": "^1.1.6" }
-        : { "@types/node": "^18.0.0" }),
+        ? { "@types/bun": deps["npm:@types/bun"] }
+        : { "@types/node": deps["npm:@types/node@25"] }),
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",

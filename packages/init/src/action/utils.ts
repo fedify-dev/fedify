@@ -1,3 +1,4 @@
+import $ from "@david/dax";
 import { join as joinPath } from "node:path";
 import type { InitCommandData } from "../types.ts";
 
@@ -68,4 +69,38 @@ export function stringifyEnvs(object: Record<string, string>): string {
     lines.push(line);
   }
   return lines.join("\n");
+}
+
+/**
+ * Runs `<packageManager> install` in the project directory to install all
+ * dependencies. Logs an error message if the installation fails.
+ */
+export const installDependencies = ({ packageManager, dir }: InitCommandData) =>
+  $`${packageManager} install`.cwd(dir).spawn();
+
+/**
+ * Runs the precommand specified in the initializer to set up the project.
+ *
+ * @param data - The initialization command data containing the initializer command and directory
+ * @returns A promise that resolves when the precommand has been executed
+ */
+export const runPrecommand = async (
+  { initializer: { command }, dir }: InitCommandData,
+) =>
+  await Array.fromAsync(
+    splitOnOperator(command!),
+    (cmd) => $`${cmd}`.cwd(dir).spawn(),
+  );
+
+function* splitOnOperator(command: string[]): Generator<string[]> {
+  let current: string[] = [];
+  for (const arg of command) {
+    if (arg === "&&") {
+      if (current.length > 0) yield current;
+      current = [];
+    } else {
+      current.push(arg);
+    }
+  }
+  if (current.length > 0) yield current;
 }

@@ -6,7 +6,6 @@ import type { InitCommandData } from "../types.ts";
 import { set } from "../utils.ts";
 import { makeDirIfHyd } from "./dir.ts";
 import recommendConfigEnv from "./env.ts";
-import installDependencies from "./install.ts";
 import {
   drawDinosaur,
   noticeHowToRun,
@@ -14,10 +13,14 @@ import {
   noticePrecommand,
 } from "./notice.ts";
 import { patchFiles, recommendPatchFiles } from "./patch.ts";
-import runPrecommand from "./precommand.ts";
 import recommendDependencies from "./recommend.ts";
 import setData from "./set.ts";
-import { hasCommand, isDry } from "./utils.ts";
+import {
+  hasCommand,
+  installDependencies,
+  isDry,
+  runPrecommand,
+} from "./utils.ts";
 
 /**
  * Execution flow of the `runInit` function:

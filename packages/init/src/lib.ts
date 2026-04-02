@@ -1,3 +1,4 @@
+import $ from "@david/dax";
 import {
   entries,
   evolve,
@@ -26,7 +27,7 @@ import type {
   PackageManagers,
   Runtimes,
 } from "./types.ts";
-import { isNotFoundError, runSubCommand } from "./utils.ts";
+import { isNotFoundError } from "./utils.ts";
 
 /** The current `@fedify/init` package version, read from *deno.json*. */
 export const PACKAGE_VERSION = metadata.version;
@@ -40,7 +41,7 @@ const addFedifyDeps = <T extends object>(json: T): T =>
       key,
       toMerged(value, {
         dependencies: {
-          ...(NO_INTEGRATIONS.includes(key) ? {} : {
+          ...(!NO_INTEGRATIONS.includes(key) && {
             [`@fedify/${key}`]: PACKAGE_VERSION,
           }),
         },
@@ -155,9 +156,7 @@ async function isCommandAvailable(
   },
 ): Promise<boolean> {
   try {
-    const { stdout } = await runSubCommand(checkCommand, {
-      stdio: [null, "pipe", null],
-    });
+    const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
     logger.debug(
       "The stdout of the command {command} is: {stdout}",
       { command: checkCommand, stdout },

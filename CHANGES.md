@@ -20,6 +20,18 @@ To be released.
  -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
     maximum number of redirects followed by `getDocumentLoader()`.
 
+### @fedify/solidstart
+
+ -  Added `@fedify/solidstart` package for integrating Fedify with
+    [SolidStart].  It provides `fedifyMiddleware()` for request handling
+    with SolidStart's middleware system.
+    [[#476], [#601] by Hyeonseo Kim and [#652] by ChanHaeng Lee]
+
+[SolidStart]: https://start.solidjs.com/
+[#476]: https://github.com/fedify-dev/fedify/issues/476
+[#601]: https://github.com/fedify-dev/fedify/pull/601
+[#652]: https://github.com/fedify-dev/fedify/pull/652
+
 
 Version 2.1.3
 -------------
