@@ -1,0 +1,138 @@
+# Docker Compose for Sharkey smoke tests
+# Usage: docker compose -f docker-compose.yml ...
+#
+# This is a standalone file (NOT an override) because Docker Compose merges
+# network aliases additively and cannot remove a service's own DNS name from
+# a network.  Using an override would cause both the backend service and its
+# Caddy proxy to resolve to the same hostname, breaking TLS routing.
+#
+# Architecture:
+#   - Backend services are renamed (e.g. fedify-harness-backend) so they
+#     don't collide with the TLS hostnames on the network
+#   - Caddy proxies claim the canonical hostnames (fedify-harness, sharkey)
+#     via network aliases and terminate TLS
+#   - All services share a single network for simplicity; DNS resolution
+#     is unambiguous because backend names differ from Caddy aliases
+
+volumes:
+  harness-node-modules:
+
+networks:
+  smoke:
+    driver: bridge
+
+services:
+  db:
+    image: postgres:15-alpine
+    env_file: docker.env
+    networks: [smoke]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sharkey"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    networks: [smoke]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  # Fedify test harness — renamed to avoid colliding with the Caddy alias.
+  fedify-harness-backend:
+    image: denoland/deno:2.7.1
+    working_dir: /workspace
+    restart: on-failure
+    volumes:
+      - ../../../:/workspace
+      - harness-node-modules:/workspace/node_modules
+      - ./.certs:/certs:ro
+    command:
+      - run
+      - --allow-net
+      - --allow-env
+      - --allow-read
+      - --allow-write
+      - --unstable-temporal
+      - test/smoke/harness/main.ts
+    environment:
+      HARNESS_ORIGIN: "https://fedify-harness"
+      STRICT_MODE: "1"
+      DENO_CERT: "/certs/ca.crt"
+    networks: [smoke]
+    ports: ["3001:3001"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "deno",
+          "eval",
+          "const r = await fetch('http://localhost:3001/_test/health'); if (!r.ok) Deno.exit(1);",
+        ]
+      interval: 5s
+      retries: 30
+
+  # Caddy TLS proxy for the Fedify harness.
+  # Owns the "fedify-harness" hostname so other containers reach TLS.
+  caddy-harness:
+    image: caddy:2.11.2-alpine
+    volumes:
+      - ./Caddyfile.fedify-harness:/etc/caddy/Caddyfile:ro
+      - ./.certs:/certs:ro
+    networks:
+      smoke:
+        aliases: [fedify-harness]
+    depends_on:
+      fedify-harness-backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 5s
+      retries: 5
+
+  # Sharkey web
+  sharkey-web-backend:
+    image: registry.activitypub.software/transfem-org/sharkey:2025.4.6
+    command:
+      - sh
+      - -c
+      - |
+          cat /etc/ssl/certs/ca-certificates.crt /certs/ca.crt > /tmp/ca-bundle.crt
+          pnpm run migrateandstart
+    volumes:
+      - ./default.yml:/sharkey/.config/default.yml:ro
+      - ./.certs:/certs:ro
+    environment:
+      NODE_EXTRA_CA_CERTS: /tmp/ca-bundle.crt
+    networks: [smoke]
+    ports: ["3000:3000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- --post-data='{}' --header='Content-Type: application/json' http://127.0.0.1:3000/api/ping || exit 1",
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 300s
+
+  # Caddy TLS proxy for Sharkey.
+  # Owns the "sharkey" hostname so other containers reach TLS.
+  caddy-sharkey:
+    image: caddy:2.11.2-alpine
+    volumes:
+      - ./Caddyfile.sharkey:/etc/caddy/Caddyfile:ro
+      - ./.certs:/certs:ro
+    networks:
+      smoke:
+        aliases: [sharkey]
+    ports: ["4443:443"]
+    depends_on:
+      sharkey-web-backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 5s
+      retries: 5

@@ -1,0 +1,8 @@
+{
+	auto_https off
+}
+
+:443 {
+	tls /certs/sharkey.crt /certs/sharkey.key
+	reverse_proxy sharkey-web-backend:3000
+}

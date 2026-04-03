@@ -62,6 +62,10 @@ type InboxItem = {
 
 async function snapshotInboxIds(): Promise<Set<string>> {
   const res = await fetch(`${HARNESS_URL}/_test/inbox`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Harness inbox fetch failed → ${res.status}: ${body}`);
+  }
   const items = await res.json() as InboxItem[];
   return new Set(items.map((a) => a.id));
 }
@@ -72,6 +76,11 @@ function pollHarnessInbox(
 ): Promise<InboxItem> {
   return poll(`${activityType} in harness inbox`, async () => {
     const res = await fetch(`${HARNESS_URL}/_test/inbox`);
+    if (!res.ok) {
+      throw new Error(
+        `Harness inbox poll failed → ${res.status}: ${await res.text()}`,
+      );
+    }
     const items = await res.json() as InboxItem[];
     return items.find((a) =>
       a.type === activityType &&
@@ -147,15 +156,53 @@ async function lookupFedifyAccount(): Promise<string> {
   const handle = `testuser@${HARNESS_HOST}`;
 
   const searchResult = await poll("Fedify user resolvable", async () => {
-    const results = await serverGet(
-      `/api/v1/accounts/search?q=${
-        encodeURIComponent(`@${handle}`)
-      }&resolve=false&limit=5`,
-    ) as RemoteAccount[];
-    const match = results?.find((a) =>
-      a.acct === handle || a.acct === `@${handle}`
-    );
-    return match ?? null;
+    // Try /api/v1/accounts/search (Mastodon standard).
+    // Fall back to /api/v1/accounts/lookup (exact match, supported by Sharkey)
+    // if search returns 404.
+    try {
+      const results = await serverGet(
+        `/api/v1/accounts/search?q=${
+          encodeURIComponent(`@${handle}`)
+        }&resolve=true&limit=5`,
+      ) as RemoteAccount[];
+      const match = results?.find((a) =>
+        a.acct === handle || a.acct === `@${handle}`
+      );
+      if (match) return match;
+    } catch {
+      // Search endpoint may return 404 on some servers (e.g. Sharkey);
+      // fall through to the lookup endpoint.
+    }
+
+    try {
+      const account = await serverGet(
+        `/api/v1/accounts/lookup?acct=${encodeURIComponent(handle)}`,
+      ) as RemoteAccount;
+      if (account?.id) return account;
+    } catch {
+      // lookup also failed
+    }
+
+    // Misskey-native fallback: POST /api/users/show with username + host.
+    // Sharkey's Mastodon-compat search/lookup endpoints have bugs with
+    // remote users, but the native API works reliably.  The returned id
+    // is the same internal ID used by the Mastodon-compat layer.
+    try {
+      const [user, host] = handle.split("@");
+      const res = await fetch(`${SERVER_URL}/api/users/show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user, host }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { id?: string };
+        if (data?.id) return { id: data.id, acct: handle };
+      }
+    } catch {
+      // Not a Misskey-family server
+    }
+
+    return null;
   });
 
   fedifyAccountId = searchResult.id;
@@ -343,8 +390,7 @@ async function testUnfollowMastodonFromFedify(): Promise<void> {
   const accountId = await lookupFedifyAccount();
   await serverPost(`/api/v1/accounts/${accountId}/unfollow`);
 
-  await pollHarnessInbox("Undo", (a) => !knownIds.has(a.id));
-
+  // Primary assertion: the server-side relationship must show following=false.
   await poll("unfollow confirmed", async () => {
     const rels = await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
@@ -352,6 +398,9 @@ async function testUnfollowMastodonFromFedify(): Promise<void> {
     const rel = rels.find((r) => r.id === accountId);
     return rel && !rel.following ? rel : null;
   });
+
+  // The harness should receive an Undo Follow activity.
+  await pollHarnessInbox("Undo", (a) => !knownIds.has(a.id));
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,8 @@
+{
+	auto_https off
+}
+
+:443 {
+	tls /certs/fedify-harness.crt /certs/fedify-harness.key
+	reverse_proxy fedify-harness-backend:3001
+}
