@@ -352,10 +352,10 @@ See *CONTRIBUTING.md* for complete Markdown conventions.
 Issues and PR descriptions
 --------------------------
 
- -  Unlike other Markdown files in this repository, do not wrap lines at
-    80 columns
- -  Follow the documentation standards and Markdown conventions sections above
-    for all other formatting
+Follow the documentation standards and Markdown conventions sections above
+for all other formatting except:
+
+ -  Do not wrap lines at 80 columns
  -  Use `#123` shorthand for issue and PR references instead of permalink URLs
  -  Include rationales in descriptions: explain the background and motivation
     behind the change, not just what was changed
