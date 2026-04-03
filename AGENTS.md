@@ -350,7 +350,7 @@ See *CONTRIBUTING.md* for complete Markdown conventions.
 
 
 Issues and PR descriptions
---------------------
+--------------------------
 
  -  Unlike other Markdown files in this repository, do not wrap lines at
     80 columns
