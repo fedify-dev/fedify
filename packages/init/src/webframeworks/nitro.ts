@@ -8,7 +8,7 @@ const nitroDescription: WebFrameworkDescription = {
   label: "Nitro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ packageManager: pm, testMode }) => ({
+  init: async ({ packageManager: pm, testMode }) => ({
     command: getNitroInitCommand(pm),
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
@@ -18,16 +18,18 @@ const nitroDescription: WebFrameworkDescription = {
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
     files: {
-      "server/middleware/federation.ts": readTemplate(
+      "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
       ),
-      "server/error.ts": readTemplate("nitro/server/error.ts"),
-      "nitro.config.ts": readTemplate("nitro/nitro.config.ts"),
+      "server/error.ts": await readTemplate("nitro/server/error.ts"),
+      "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
       ...(
-        testMode ? { ".env": readTemplate("nitro/.env.test") } : {}
+        testMode ? { ".env": await readTemplate("nitro/.env.test") } : {}
       ),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     tasks: pm !== "deno" ? { "lint": "eslint ." } : {} as { lint?: string },

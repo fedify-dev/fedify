@@ -1,0 +1,50 @@
+$schema: ../../vocab-tools/schema.yaml
+name: InteractionRule
+compactName: InteractionRule
+uri: "https://gotosocial.org/ns#InteractionRule"
+entity: false
+typeless: true
+description: |
+  Represents a sub-policy within an {@link InteractionPolicy}, defining which
+  actors receive automatic or manual approval for a specific interaction type
+  (like, reply, or announce).
+
+  Valid values in the approval lists include:
+
+   -  The ActivityStreams public collection
+      (`https://www.w3.org/ns/activitystreams#Public`) for anyone
+   -  The post author's `followers` or `following` collection URIs
+   -  Individual actor URIs
+
+  When an actor appears in both `automaticApproval` and `manualApproval`,
+  the more specific value takes precedence (individual URI overrides
+  collection membership), and `automaticApproval` takes precedence over
+  `manualApproval` for identical URIs.
+
+  See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
+  for details.
+defaultContext: "https://gotosocial.org/ns"
+
+properties:
+- pluralName: automaticApprovals
+  singularName: automaticApproval
+  singularAccessor: true
+  compactName: automaticApproval
+  uri: "https://gotosocial.org/ns#automaticApproval"
+  description: |
+    URIs of actors or collections whose interactions are automatically
+    approved without requiring manual review by the post author.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- pluralName: manualApprovals
+  singularName: manualApproval
+  singularAccessor: true
+  compactName: manualApproval
+  uri: "https://gotosocial.org/ns#manualApproval"
+  description: |
+    URIs of actors or collections whose interactions require manual approval
+    by the post author.  The post author can accept or reject these
+    interactions at their discretion.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"

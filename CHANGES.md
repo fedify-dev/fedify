@@ -3,10 +3,101 @@
 Fedify changelog
 ================
 
-Version 2.1.0
+Version 2.2.0
 -------------
 
 To be released.
+
+### @fedify/fedify
+
+ -  Added `DoubleKnockOptions.maxRedirection` to configure the maximum number
+    of redirects followed by `doubleKnock()`.
+    `getAuthenticatedDocumentLoader()` now also respects
+    `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
+
+### @fedify/vocab-runtime
+
+ -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
+    maximum number of redirects followed by `getDocumentLoader()`.
+
+### @fedify/solidstart
+
+ -  Added `@fedify/solidstart` package for integrating Fedify with
+    [SolidStart].  It provides `fedifyMiddleware()` for request handling
+    with SolidStart's middleware system.
+    [[#476], [#601] by Hyeonseo Kim and [#652] by ChanHaeng Lee]
+
+[SolidStart]: https://start.solidjs.com/
+[#476]: https://github.com/fedify-dev/fedify/issues/476
+[#601]: https://github.com/fedify-dev/fedify/pull/601
+[#652]: https://github.com/fedify-dev/fedify/pull/652
+
+
+Version 2.1.3
+-------------
+
+Released on March 31, 2026.
+
+### @fedify/init
+
+ -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
+    upgrade started publishing `dist/*.mjs` files while the package metadata
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
+    [[#655]]
+
+[#655]: https://github.com/fedify-dev/fedify/issues/655
+
+### @fedify/create
+
+ -  Restored the npm CLI entrypoint for `@fedify/create` so the published
+    `bin` and `exports` paths once again point to generated `dist/mod.js`
+    output instead of missing `dist/mod.js` files.  This prevents the same
+    packaging regression from breaking `npm init @fedify`.  [[#655]]
+
+
+Version 2.1.2
+-------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+[#651]: https://github.com/fedify-dev/fedify/issues/651
+
+
+Version 2.1.1
+-------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+[CVE-2026-34148]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-gm9m-gwc4-hwgp
+
+
+Version 2.1.0
+-------------
+
+Released on March 24, 2026.
 
 ### @fedify/fedify
 
@@ -34,18 +125,53 @@ To be released.
     caused a `500 Internal Server Error` when interoperating with servers like
     GoToSocial that have authorized fetch enabled.  [[#473], [#589]]
 
+ -  Added RFC 9421 §5 `Accept-Signature` negotiation for both outbound and
+    inbound paths.  On the outbound side, `doubleKnock()` now parses
+    `Accept-Signature` challenges from `401` responses and retries with a
+    compatible RFC 9421 signature before falling back to legacy spec-swap.
+    On the inbound side, a new `InboxChallengePolicy` option in
+    `FederationOptions` enables emitting `Accept-Signature` headers on
+    inbox `401` responses, with optional one-time nonce support for replay
+    protection.  [[#583], [#584], [#626] by ChanHaeng Lee]
+
 [#472]: https://github.com/fedify-dev/fedify/issues/472
 [#473]: https://github.com/fedify-dev/fedify/issues/473
+[#583]: https://github.com/fedify-dev/fedify/issues/583
+[#584]: https://github.com/fedify-dev/fedify/issues/584
 [#589]: https://github.com/fedify-dev/fedify/pull/589
 [#611]: https://github.com/fedify-dev/fedify/pull/611
+[#626]: https://github.com/fedify-dev/fedify/pull/626
 
 ### @fedify/vocab-runtime
+
+ -  Added `Decimal`, a branded string type for exact `xsd:decimal` values,
+    along with `isDecimal()`, `canParseDecimal()`, and `parseDecimal()` for
+    checking and validating XML Schema decimal lexical forms without
+    introducing a decimal arithmetic dependency.  `isDecimal()` performs a
+    strict lexical-form check, while `canParseDecimal()` and `parseDecimal()`
+    apply XML Schema whitespace normalization first.  This lays the runtime
+    groundwork for precision-safe marketplace and measurement values such as
+    those needed by [FEP-0837].  [[#617], [#640]]
+
+ -  Updated the preloaded <https://gotosocial.org/ns> JSON-LD context to
+    match the current [GoToSocial] v0.21+ namespace, adding new type terms
+    (`LikeRequest`, `LikeAuthorization`, etc.) and property terms
+    (`automaticApproval`, `manualApproval`, `interactingObject`, etc.) while
+    retaining deprecated terms (`always`, `approvalRequired`) for backward
+    compatibility.  [[#453], [#622]]
 
  -  Added optional `FetchError.response` so callers can inspect the original
     failed HTTP response when remote document or key fetches return an HTTP
     error (such as `404 Not Found` or `410 Gone`).  This enables higher-level
     APIs to distinguish transport failures from specific HTTP fetch failures.
     [[#611]]
+
+[FEP-0837]: https://w3id.org/fep/0837
+[GoToSocial]: https://gotosocial.org/
+[#453]: https://github.com/fedify-dev/fedify/issues/453
+[#617]: https://github.com/fedify-dev/fedify/issues/617
+[#622]: https://github.com/fedify-dev/fedify/pull/622
+[#640]: https://github.com/fedify-dev/fedify/pull/640
 
 ### @fedify/cli
 
@@ -82,13 +208,29 @@ To be released.
 ### @fedify/vocab
 
  -  Added vocabulary types for economic resource coordination
-    in federated networks.  [[#578] by scammo]
- -  Added `Proposal` class for publishing offers or requests.
- -  Added `Intent` class for describing economic transactions within
-    a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
-    `availableQuantity`, and `minimumQuantity` properties.
- -  Added `Measure` class for representing quantities with units of
-    measure, with `hasUnit` and `hasNumericalValue` properties.
+    in federated networks.  [[#578] by Samuel Brinkmann]
+
+     -  Added `Proposal` class for publishing offers or requests.
+     -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+     -  Added `Measure` class for representing quantities with units of
+        measure, with `hasUnit` and `hasNumericalValue` properties.
+
+ -  Added [GoToSocial] interaction controls vocabulary for expressing who
+    can like, reply to, or announce posts and for approving interactions.
+    [[#453], [#622]]
+
+     -  Added `InteractionPolicy` and `InteractionRule` typeless value
+        classes.
+     -  Added `LikeRequest`, `ReplyRequest`, and `AnnounceRequest` activity
+        types for requesting interaction approval.
+     -  Added `LikeAuthorization`, `ReplyAuthorization`, and
+        `AnnounceAuthorization` types for proving approved interactions.
+     -  Added `Object.interactionPolicy`, `Object.approvedBy`,
+        `Object.getLikeAuthorization()`/`Object.likeAuthorizationId`,
+        `Object.getReplyAuthorization()`/`Object.replyAuthorizationId`, and
+        `Object.getAnnounceAuthorization()`/`Object.announceAuthorizationId`.
 
  -  Fixed `Endpoints.toJsonLd()` to no longer emit invalid
     `"type": "as:Endpoints"` in the serialized JSON-LD.  The `as:Endpoints`
@@ -100,11 +242,19 @@ To be released.
     `"type": "as:Source"` in the serialized JSON-LD.  The `as:Source` type
     does not exist in the ActivityStreams vocabulary either.
 
-[#578]: https://github.com/fedify-dev/fedify/issues/578
 [browser.pub]: https://browser.pub/
 [#576]: https://github.com/fedify-dev/fedify/issues/576
+[#578]: https://github.com/fedify-dev/fedify/issues/578
 
 ### @fedify/vocab-tools
+
+ -  Added `xsd:decimal` support to the vocabulary code generator.  Properties
+    with that range are now generated as `Decimal` in TypeScript, serialized
+    as `xsd:decimal` JSON-LD literals, validated through
+    `canParseDecimal()` when checking input data, and normalized through
+    `parseDecimal()` when decoded.  Code generation now also rejects property
+    ranges that mix `xsd:string` and `xsd:decimal`, since both map to runtime
+    strings and would make serialization ambiguous.  [[#617], [#640]]
 
  -  Added `typeless` field to the type YAML schema.  When set to `true`,
     the generated `toJsonLd()` method does not emit `@type` (or `type` in
@@ -154,6 +304,139 @@ To be released.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.10
+--------------
+
+Released on March 31, 2026.
+
+### @fedify/lint
+
+ -  Fixed the published ESM output paths for `@fedify/lint` so the package
+    exports and type declarations point to the actual files generated by
+    `tsdown`.  This restores imports such as
+    `import fedifyLint from "@fedify/lint"` in documentation examples and other
+    TypeScript consumers.
+
+### @fedify/init
+
+ -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
+    upgrade started publishing `dist/*.mjs` files while the package metadata
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
+    [[#655]]
+
+### @fedify/create
+
+ -  Restored the npm CLI entrypoint for `@fedify/create` so the published
+    `bin` and `exports` paths once again point to generated `dist/mod.js`
+    output instead of missing `dist/mod.js` files.  This prevents the same
+    packaging regression from breaking `npm init @fedify`.  [[#655]]
+
+
+Version 2.0.9
+-------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+
+Version 2.0.8
+-------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+
+Version 2.0.7
+-------------
+
+Released on March 22, 2026.
+
+### @fedify/fedify
+
+ -  Switched Fedify's source-based JSON-LD loading to the new
+    `@fedify/vocab-runtime/jsonld` subpath so generated vocabulary code and
+    Linked Data signature support no longer have to evaluate `jsonld` through
+    a CommonJS-sensitive package root in Fresh 2, Deno, and other ESM-first
+    runtimes.  Fresh 2 development mode has been verified on Deno 2.7.7
+    after an upstream Deno 2.7.6 dev server regression was fixed.
+    [[#621], [#639]]
+
+[#621]: https://github.com/fedify-dev/fedify/issues/621
+[#639]: https://github.com/fedify-dev/fedify/pull/639
+
+### @fedify/vocab-runtime
+
+ -  Fixed multibase public key handling to stop relying on the deprecated
+    CommonJS-only `multicodec` package.  This removes the Vite SSR crash that
+    prevented Fresh 2 applications from importing `@fedify/fedify` with
+    `TypeError: varint.encode is not a function`.  Fresh 2 no longer needs a
+    Vite externalization workaround for Fedify.  [[#621], [#639]]
+
+ -  Added the new `@fedify/vocab-runtime/jsonld` subpath export so generated
+    vocabulary code and other Fedify runtime code can share a JSR-safe wrapper
+    around `jsonld`'s ESM entrypoint instead of depending on fragile relative
+    shims or the package-root import path.  [[#621], [#639]]
+
+### @fedify/init
+
+ -  Revived removed `fedify init` options.  [[#632], [#638] by ChanHaeng Lee]
+     -  `bare-bones` option for web framework.
+     -  `in-memory` option for key-value store.
+     -  `in-process` option for message queue.
+
+[#632]: https://github.com/fedify-dev/fedify/issues/632
+[#638]: https://github.com/fedify-dev/fedify/pull/638
+
+
+Version 2.0.6
+-------------
+
+Released on March 19, 2026.
+
+### @fedify/init
+
+ -  Fixed `fedify init` crashing when `@fedify/cli` or `@fedify/init` is
+    executed through the JSR/Deno distribution.  `import.meta.dirname` is
+    `undefined` for remote JSR modules, so the template loading and
+    repository-relative path logic has been made safe for published JSR
+    execution.  [[#624], [#633]]
+
+[#624]: https://github.com/fedify-dev/fedify/issues/624
+[#633]: https://github.com/fedify-dev/fedify/pull/633
+
+### @fedify/vocab-runtime
+
+ -  Added <http://joinmastodon.org/ns> to preloaded JSON-LD contexts.
+    This URL has never served a real JSON-LD context document (Mastodon
+    has always inlined the term definitions), but some ActivityPub
+    implementations put it as a bare URL in their `@context`, causing
+    JSON-LD processors to fail with a 404.  [[#630], [#631]]
+
+[#630]: https://github.com/fedify-dev/fedify/issues/630
+[#631]: https://github.com/fedify-dev/fedify/pull/631
 
 
 Version 2.0.5
@@ -620,21 +903,6 @@ Released on February 22, 2026.
      -  This package is primarily used by generated vocabulary classes and
         provides the runtime infrastructure for ActivityPub object processing.
 
-### @fedify/vocab
-
- -  Added vocabulary types for economic resource coordination
-    in federated networks.  [[#578]]
-
-     -  Added `Proposal` class for publishing offers or requests.
-     -  Added `Intent` class for describing economic transactions within
-        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
-        `availableQuantity`, and `minimumQuantity` properties.
-     -  Added `Measure` class for representing quantities with units of
-        measure, with `hasUnit` and `hasNumericalValue` properties.
-
-[#578]: https://github.com/fedify-dev/fedify/issues/578
-[ValueFlows]: https://www.valueflo.ws/
-
 ### @fedify/elysia
 
  -  Added *deno.json* configuration file to enable proper Deno tooling support
@@ -815,6 +1083,40 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.6
+--------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+
+Version 1.10.5
+--------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+
 Version 1.10.4
 --------------
 
@@ -966,6 +1268,40 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.7
+-------------
+
+Released on March 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed CommonJS builds of `@fedify/fedify/vocab` missing the `Object`
+    export from the entry point.  Older `tsdown` output generated an invalid
+    CommonJS re-export, causing `require("@fedify/fedify/vocab").Object` to be
+    `undefined`.  Updated the bundler toolchain and added a regression test for
+    the built CommonJs entry point.  [[#651]]
+
+
+Version 1.9.6
+-------------
+
+Released on March 27, 2026.
+
+### @fedify/fedify
+
+ -  Limited the number of HTTP redirects followed by the remote document
+    loaders and signed HTTP fetches to mitigate resource exhaustion during
+    remote key and document resolution.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Stopped the remote document loaders and signed HTTP fetches from
+    revisiting the same URL within a redirect chain, preventing
+    self-referential redirect loops.  [[CVE-2026-34148] by Abhinav Jaswal]
+
+ -  Persisted negative public key cache entries for failed remote key
+    fetches, reducing repeated retries against the same unavailable key
+    across requests.  [[CVE-2026-34148] by Abhinav Jaswal]
 
 
 Version 1.9.5

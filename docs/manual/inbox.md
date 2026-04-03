@@ -37,6 +37,48 @@ why some activities are rejected, you can turn on [logging](./log.md) for
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [FEP-8b32]: https://w3id.org/fep/8b32
 
+### `Accept-Signature` challenges
+
+*This API is available since Fedify 2.1.0.*
+
+You can optionally enable [`Accept-Signature`] challenge emission on inbox
+`401` responses by setting the `inboxChallengePolicy` option when creating
+a `Federation`:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  // ... other options ...
+  inboxChallengePolicy: {
+    enabled: true,
+    // Optional: customize covered components (defaults shown below)
+    // components: ["@method", "@target-uri", "@authority", "content-digest"],
+    // Optional: require a one-time nonce for replay protection
+    // requestNonce: false,
+    // Optional: nonce TTL in seconds (default: 300)
+    // nonceTtlSeconds: 300,
+  },
+});
+~~~~
+
+When enabled, if HTTP Signature verification fails, the `401` response will
+include an `Accept-Signature` header telling the sender which components and
+parameters to include in a new signature.  Senders that support [RFC 9421 §5]
+(including Fedify 2.1.0+) will automatically retry with the requested
+parameters.
+
+Note that actor/key mismatch `401` responses are *not* challenged, since
+re-signing with different parameters does not resolve an impersonation issue.
+
+When `requestNonce` is enabled, a cryptographically random nonce is included
+in each challenge and must be echoed back in the retry signature.  The nonce
+is stored in the key-value store and consumed on use, providing replay
+protection.  Nonces expire after `nonceTtlSeconds` (default: 5 minutes).
+
+[`Accept-Signature`]: https://www.rfc-editor.org/rfc/rfc9421#section-5.1
+[RFC 9421 §5]: https://www.rfc-editor.org/rfc/rfc9421#section-5
+
 
 Handling unverified activities
 ------------------------------

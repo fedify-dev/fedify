@@ -8,10 +8,11 @@ import {
   when,
 } from "@fxts/core";
 import { join as joinPath } from "node:path";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { merge, replace } from "../utils.ts";
-import { PACKAGES_PATH } from "./const.ts";
+import { getPackagesPath } from "./const.ts";
 import { isDeno } from "./utils.ts";
 
 type Deps = Record<string, string>;
@@ -34,7 +35,7 @@ export const getDependencies = (
     {
       "@fedify/fedify": PACKAGE_VERSION,
       "@fedify/vocab": PACKAGE_VERSION,
-      "@logtape/logtape": "^2.0.0",
+      "@logtape/logtape": deps["@logtape/logtape"],
     },
     merge(initializer.dependencies),
     merge(kv.dependencies),
@@ -60,9 +61,7 @@ const addLocalFedifyDeps = (deps: Deps): Deps =>
     entries,
     map(when(
       ([name]) => name.includes("@fedify/"),
-      (
-        [name, _version],
-      ): [string, string] => [name, convertFedifyToLocal(name)],
+      ([name, _version]) => [name, convertFedifyToLocal(name)] as const,
     )),
     fromEntries,
   );
@@ -71,7 +70,7 @@ const convertFedifyToLocal = (name: string): string =>
   pipe(
     name,
     replace("@fedify/", ""),
-    (pkg) => joinPath(PACKAGES_PATH, pkg),
+    (pkg) => joinPath(getPackagesPath(), pkg),
   );
 
 /** Gathers all devDependencies required for the project based on the
@@ -89,10 +88,7 @@ export const getDevDependencies = (
   >,
 ): Deps =>
   pipe(
-    {
-      "@biomejs/biome": "^2.2.4",
-    },
-    merge(initializer.devDependencies),
+    initializer.devDependencies,
     merge(kv.devDependencies),
     merge(mq.devDependencies),
     when(
@@ -153,10 +149,7 @@ const normalizePackageNames = (pm: PackageManager) => (deps: Deps): Deps =>
   pipe(
     deps,
     entries,
-    map(([name, version]): [string, string] => [
-      getPackageName(pm, name),
-      version,
-    ]),
+    map(([name, version]) => [getPackageName(pm, name), version] as const),
     fromEntries,
   );
 

@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -8,22 +9,24 @@ const nextDescription: WebFrameworkDescription = {
   label: "Next.js",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ packageManager: pm }) => ({
+  init: async ({ packageManager: pm }) => ({
     command: getNextInitCommand(pm),
     dependencies: {
       "@fedify/next": PACKAGE_VERSION,
       ...(pm === "deno" ? defaultDenoDependencies : {}),
     },
     devDependencies: {
-      "@types/node": "^20.11.2",
+      "@types/node": deps["npm:@types/node@20"],
       ...defaultDevDependencies,
     },
     federationFile: "federation/index.ts",
     loggingFile: "logging.ts",
     files: {
-      "middleware.ts": readTemplate("next/middleware.ts"),
+      "middleware.ts": await readTemplate("next/middleware.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     tasks: {

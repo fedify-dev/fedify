@@ -1,6 +1,6 @@
 [tools]
 bun = "1.2.22"
-deno = "2.7.1"
+deno = "2.7.7"
 node = "22"
 pnpm = "10.28.0"
 
@@ -225,6 +225,10 @@ run = "deno task -f @fedify/fedify bench"
 [tasks.cli]
 description = "Run the Fedify CLI tool"
 run = "deno task cli"
+
+[tasks.update-init-deps]
+description = "Update third-party dependency versions in fedify init templates"
+run = "deno task -f @fedify/init update-init-deps"
 
 [tasks."hooks:install"]
 description = "Install Git hooks for pre-commit checks"

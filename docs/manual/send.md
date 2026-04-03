@@ -984,6 +984,39 @@ to the draft cavage version and remembers it for the next time.
 
 [double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
 
+### `Accept-Signature` negotiation
+
+*This API is available since Fedify 2.1.0.*
+
+In addition to double-knocking, Fedify supports the [`Accept-Signature`]
+challenge-response negotiation defined in [RFC 9421 §5].  When a recipient
+server responds with a `401` status and includes an `Accept-Signature` header,
+Fedify automatically parses the challenge, validates it, and retries the
+request with the requested signature parameters (e.g., specific covered
+components, a nonce, or a tag).
+
+Safety constraints prevent abuse:
+
+ -  The requested algorithm (`alg`) must match the local private key's
+    algorithm; otherwise the challenge entry is skipped.
+ -  The requested key identifier (`keyid`) must match the local key; otherwise
+    the challenge entry is skipped.
+ -  Fedify's minimum covered component set (`@method`, `@target-uri`,
+    `@authority`) is always included, even if the challenge does not request
+    them.
+
+If the challenge cannot be fulfilled (e.g., incompatible algorithm),
+Fedify falls through to the existing double-knocking spec-swap fallback.
+At most three signed request attempts are made to the final URL per delivery
+attempt (redirects may add extra HTTP requests):
+
+1.  Initial signed request
+2.  Challenge-driven retry (if `Accept-Signature` is present)
+3.  Legacy spec-swap retry (if the challenge retry also fails)
+
+[`Accept-Signature`]: https://www.rfc-editor.org/rfc/rfc9421#section-5.1
+[RFC 9421 §5]: https://www.rfc-editor.org/rfc/rfc9421#section-5
+
 
 Linked Data Signatures
 ----------------------

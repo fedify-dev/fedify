@@ -263,6 +263,32 @@ name (e.g., `import { Hono } from "hono"`).
 Forgetting to add a dependency to *package.json* will cause Node.js and Bun
 tests to fail with `ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
 
+#### Updating `fedify init` template dependencies
+
+The `fedify init` command generates projects with third-party dependencies
+whose versions are defined in *packages/init/src/json/*.  Most web-framework
+and common tool versions live in *deps.json*, while KV store and message queue
+versions are in *kv.json* and *mq.json* respectively.
+
+To update all of these to the latest releases automatically, run:
+
+~~~~ bash
+mise run update-init-deps
+~~~~
+
+The script queries the npm and JSR registries for the latest version of each
+package, respecting the current major version (caret range).  After running
+it, verify the init package still works:
+
+~~~~ bash
+mise run test:init
+~~~~
+
+When adding a new third-party dependency to a web-framework template, add it to
+*deps.json* and reference it from the TypeScript file via the `deps` import.
+Dependencies that are specific to KV stores or message queues should be added
+directly to *kv.json* or *mq.json* instead.
+
 ### Commit messages
 
  -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).

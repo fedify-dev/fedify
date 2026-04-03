@@ -26,7 +26,10 @@ properties:
   compactName: hasNumericalValue
   uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue"
   description: |
-    The amount of the resource.  If not specified, arbitrary amounts can be
-    used when responding to the proposal.
+    The amount of the resource, represented as a decimal string.  If not
+    specified, arbitrary amounts can be used when responding to the proposal.
+
+    NOTE: This property uses `xsd:string` as a temporary measure until
+    `xsd:decimal` is supported.  See #617.
   range:
   - "http://www.w3.org/2001/XMLSchema#string"

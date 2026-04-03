@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fedify",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
@@ -22,7 +22,6 @@
     "fetch-mock": "npm:fetch-mock@^12.5.2",
     "json-canon": "npm:json-canon@^1.0.1",
     "jsonld": "npm:jsonld@^9.0.0",
-    "multicodec": "npm:multicodec@^3.2.1",
     "pkijs": "npm:pkijs@^3.3.3",
     "structured-field-values": "npm:structured-field-values@^2.0.4",
     "uri-template-router": "npm:uri-template-router@^1.0.0",

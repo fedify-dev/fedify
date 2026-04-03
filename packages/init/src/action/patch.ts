@@ -52,14 +52,14 @@ export const recommendPatchFiles = (data: InitCommandData) =>
  * @param data - The initialization command data
  * @returns A record of file paths to their string content
  */
-const getFiles = <
+const getFiles = async <
   T extends InitCommandData,
 >(data: T) => ({
-  [data.initializer.federationFile]: loadFederation({
+  [data.initializer.federationFile]: await loadFederation({
     imports: getImports(data),
     ...data,
   }),
-  [data.initializer.loggingFile]: loadLogging(data),
+  [data.initializer.loggingFile]: await loadLogging(data),
   ".env": stringifyEnvs(data.env),
   ...data.initializer.files,
 });

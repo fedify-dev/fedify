@@ -10,6 +10,18 @@ description: |
   Proposals contain a primary {@link Intent} (via `publishes`) describing
   what is being offered or requested, and optionally a reciprocal
   {@link Intent} describing what is expected or offered in return.
+
+  Note: This type extends ActivityStreams `Object` for practical
+  interoperability within ActivityPub federation, even though FEP-0837
+  defines `Proposal` as a pure ValueFlows type.  Extending `Object`
+  provides useful inherited properties such as `name`, `content`,
+  `attributedTo`, `published`, `to`, and `location` without needing to
+  redefine them.
+# NOTE: The context includes mappings for Intent and Measure properties
+# (action, resourceConformsTo, hasUnit, etc.) because the code generator
+# does not automatically merge contexts from referenced types.  Proposal
+# must declare all mappings needed for correct JSON-LD serialization of
+# its embedded Intent and Measure objects.
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
 - "https://w3id.org/security/data-integrity/v1"

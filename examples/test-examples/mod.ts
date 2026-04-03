@@ -22,6 +22,7 @@
  */
 
 import $, { type CommandChild } from "@david/dax";
+import { openTunnel, type Tunnel } from "@hongminhee/localtunnel";
 import { configure, getConsoleSink, getLogger } from "@logtape/logtape";
 import { fromFileUrl, join } from "@std/path";
 
@@ -283,6 +284,11 @@ const SKIPPED_EXAMPLES: SkippedExample[] = [
     reason:
       "No actor dispatcher configured; federation lookup cannot be verified",
   },
+  {
+    name: "rfc-9421-test",
+    reason:
+      "Requires live interaction with external fediverse servers (Bonfire, Mastodon)",
+  },
 ];
 
 // ─── ANSI Colors ──────────────────────────────────────────────────────────────
@@ -395,70 +401,22 @@ function forceKillChild(child: CommandChild): void {
 // ─── Tunnel ───────────────────────────────────────────────────────────────────
 
 /**
- * Starts `fedify tunnel -s pinggy.io <port>` and waits up to `timeoutMs`
- * for the tunnel URL to appear in its output.  The tunnel process is kept
- * alive and returned to the caller; it must be killed when no longer needed.
- *
- * Returns `null` if the URL was not found before the timeout.
+ * Opens a tunnel via `@hongminhee/localtunnel` (pinggy.io) to expose
+ * a local port.  Returns the {@link Tunnel} object or `null` on failure.
  */
-async function startTunnel(
-  port: number,
-  timeoutMs: number,
-): Promise<{ child: CommandChild; url: string } | null> {
+async function startTunnel(port: number): Promise<Tunnel | null> {
   const tunnelLogger = getLogger(["fedify", "examples", "tunnel"]);
-  tunnelLogger.info("Opening localhost.run tunnel on port {port}", { port });
-
-  const child = $`deno task cli tunnel -s pinggy.io ${String(port)}`
-    .cwd(REPO_ROOT)
-    .stdout("piped")
-    .stderr("piped")
-    .noThrow()
-    .spawn();
-
-  // Accumulate text from both streams while logging each chunk at DEBUG.
-  const textChunks: string[] = [];
-  const decoder = new TextDecoder();
-
-  const readStream = (stream: ReadableStream<Uint8Array>) => {
-    (async () => {
-      const reader = stream.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const text = decoder.decode(value, { stream: true });
-          textChunks.push(text);
-          const trimmed = text.trim();
-          if (trimmed) tunnelLogger.debug("{output}", { output: trimmed });
-        }
-      } catch {
-        // Stream may error when the process is killed.
-      }
-    })();
-  };
-
-  readStream(child.stdout());
-  readStream(child.stderr());
-
-  // Poll until we find an https URL in the accumulated output.
-  // The `message` template tag from @optique/run may wrap the URL in double
-  // quotes in non-TTY output, so we stop matching at whitespace or quotes.
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const match = textChunks.join("").match(/https:\/\/[^\s"']+/);
-    if (match) {
-      tunnelLogger.info("Tunnel established at {url}", { url: match[0] });
-      return { child, url: match[0] };
-    }
-    await new Promise((r) => setTimeout(r, 200));
+  tunnelLogger.info("Opening tunnel on port {port}", { port });
+  try {
+    const tunnel = await openTunnel({ port, service: "pinggy.io" });
+    tunnelLogger.info("Tunnel established at {url}", {
+      url: tunnel.url.href,
+    });
+    return tunnel;
+  } catch (error) {
+    tunnelLogger.error("Failed to open tunnel: {error}", { error });
+    return null;
   }
-
-  tunnelLogger.error(
-    "Tunnel did not produce a URL within {timeout} ms",
-    { timeout: timeoutMs },
-  );
-  forceKillChild(child);
-  return null;
 }
 
 // ─── Test Runners ─────────────────────────────────────────────────────────────
@@ -549,7 +507,7 @@ async function testServerExample(
   const collectServerOutput = () =>
     stdoutChunks.join("") + stderrChunks.join("");
 
-  let tunnelChild: CommandChild | null = null;
+  let activeTunnel: Tunnel | null = null;
 
   try {
     console.log(
@@ -572,18 +530,18 @@ async function testServerExample(
     });
     console.log(c.dim(`  server ready — opening tunnel on port ${port}…`));
 
-    const tunnel = await startTunnel(port, 30_000);
+    const tunnel = await startTunnel(port);
     if (tunnel == null) {
-      const error = "fedify tunnel did not produce a URL within 30s";
+      const error = "Failed to open tunnel";
       serverLogger.error("{error}", { error });
       return { name, status: "fail", error, output: collectServerOutput() };
     }
 
-    tunnelChild = tunnel.child;
-    const tunnelHostname = new URL(tunnel.url).hostname;
+    activeTunnel = tunnel;
+    const tunnelHostname = tunnel.url.hostname;
     const handle = `@${actor}@${tunnelHostname}`;
 
-    console.log(c.dim(`  tunnel URL : ${tunnel.url}`));
+    console.log(c.dim(`  tunnel URL : ${tunnel.url.href}`));
     console.log(c.dim(`  running    : fedify lookup ${handle} -d`));
     serverLogger.info("Running fedify lookup {handle}", { handle });
 
@@ -606,10 +564,10 @@ async function testServerExample(
     serverLogger.error("{error}", { error });
     return { name, status: "fail", error, output: lookupOutput };
   } finally {
-    // Force-kill tunnel first (it holds a connection to the server).
-    if (tunnelChild != null) {
-      serverLogger.debug("Force-killing tunnel process");
-      forceKillChild(tunnelChild);
+    // Close tunnel first (it holds a connection to the server).
+    if (activeTunnel != null) {
+      serverLogger.debug("Closing tunnel");
+      await activeTunnel.close();
     }
     serverLogger.debug("Force-killing server process");
     forceKillChild(serverChild);

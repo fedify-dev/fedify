@@ -1,13 +1,39 @@
 {
+  "in-memory": {
+    "label": "In-Memory",
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
+    "imports": {
+      "@fedify/fedify": {
+        "MemoryKvStore": "MemoryKvStore"
+      }
+    },
+    "object": "new MemoryKvStore()"
+  },
   "redis": {
     "label": "Redis",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
-      "npm:ioredis": "^5.4.1"
+      "npm:ioredis": "^5.10.1"
     },
     "imports": {
-      "@fedify/redis": { "RedisKvStore": "RedisKvStore" },
-      "ioredis": { "Redis": "Redis" }
+      "@fedify/redis": {
+        "RedisKvStore": "RedisKvStore"
+      },
+      "ioredis": {
+        "Redis": "Redis"
+      }
     },
     "object": "new RedisKvStore(new Redis(process.env.REDIS_URL))",
     "env": {
@@ -16,13 +42,23 @@
   },
   "postgres": {
     "label": "PostgreSQL",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
-      "npm:postgres": "^3.4.5"
+      "npm:postgres": "^3.4.8"
     },
     "imports": {
-      "@fedify/postgres": { "PostgresKvStore": "PostgresKvStore" },
-      "postgres": { "default": "postgres" }
+      "@fedify/postgres": {
+        "PostgresKvStore": "PostgresKvStore"
+      },
+      "postgres": {
+        "default": "postgres"
+      }
     },
     "object": "new PostgresKvStore(postgres(process.env.POSTGRES_URL))",
     "env": {
@@ -31,13 +67,23 @@
   },
   "mysql": {
     "label": "MySQL/MariaDB",
-    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
     "dependencies": {
-      "npm:mysql2": "^3.18.0"
+      "npm:mysql2": "^3.20.0"
     },
     "imports": {
-      "@fedify/mysql": { "MysqlKvStore": "MysqlKvStore" },
-      "mysql2/promise": { "default": "mysql" }
+      "@fedify/mysql": {
+        "MysqlKvStore": "MysqlKvStore"
+      },
+      "mysql2/promise": {
+        "default": "mysql"
+      }
     },
     "object": "new MysqlKvStore(mysql.createPool(process.env.MYSQL_URL))",
     "env": {
@@ -46,9 +92,17 @@
   },
   "denokv": {
     "label": "Deno KV",
-    "packageManagers": ["deno"],
-    "imports": { "@fedify/denokv": { "DenoKvStore": "DenoKvStore" } },
+    "packageManagers": [
+      "deno"
+    ],
+    "imports": {
+      "@fedify/denokv": {
+        "DenoKvStore": "DenoKvStore"
+      }
+    },
     "object": "new DenoKvStore(await Deno.openKv())",
-    "denoUnstable": ["kv"]
+    "denoUnstable": [
+      "kv"
+    ]
   }
 }

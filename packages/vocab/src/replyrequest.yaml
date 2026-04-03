@@ -1,0 +1,23 @@
+$schema: ../../vocab-tools/schema.yaml
+name: ReplyRequest
+compactName: ReplyRequest
+uri: "https://gotosocial.org/ns#ReplyRequest"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  A request to reply to a post that requires approval from the post author.
+
+  The `object` property references the post to be replied to, and
+  the `instrument` property contains the reply itself (e.g., a {@link Note}).
+
+  The post author responds with an {@link Accept} (with a
+  {@link ReplyAuthorization} as `result`) or a {@link Reject}.
+
+  See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
+  for details.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+properties: []

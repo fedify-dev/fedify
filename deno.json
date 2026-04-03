@@ -20,6 +20,7 @@
     "./packages/postgres",
     "./packages/redis",
     "./packages/relay",
+    "./packages/solidstart",
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",
@@ -29,24 +30,27 @@
     "./packages/webfinger",
     "./examples/astro",
     "./examples/fresh",
-    "./examples/hono-sample"
+    "./examples/hono-sample",
+    "./examples/rfc-9421-test",
+    "./test/smoke/harness"
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
     "@david/dax": "jsr:@david/dax@^0.43.2",
     "@fxts/core": "npm:@fxts/core@^1.21.1",
+    "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "@js-temporal/polyfill": "npm:@js-temporal/polyfill@^0.5.1",
-    "@logtape/file": "jsr:@logtape/file@^2.0.0",
-    "@logtape/logtape": "jsr:@logtape/logtape@^2.0.0",
+    "@logtape/file": "jsr:@logtape/file@^2.0.5",
+    "@logtape/logtape": "jsr:@logtape/logtape@^2.0.5",
     "@nestjs/common": "npm:@nestjs/common@^11.0.1",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.5.0",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.5.0",
     "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.5.0",
     "@opentelemetry/semantic-conventions": "npm:@opentelemetry/semantic-conventions@^1.39.0",
-    "@optique/config": "jsr:@optique/config@^0.10.6",
-    "@optique/core": "jsr:@optique/core@^0.10.6",
-    "@optique/run": "jsr:@optique/run@^0.10.6",
+    "@optique/config": "jsr:@optique/config@^0.10.7",
+    "@optique/core": "jsr:@optique/core@^0.10.7",
+    "@optique/run": "jsr:@optique/run@^0.10.7",
     "@std/assert": "jsr:@std/assert@^1.0.13",
     "@std/async": "jsr:@std/async@^1.0.13",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
@@ -56,6 +60,8 @@
     "@std/yaml": "jsr:@std/yaml@^1.0.8",
     "@types/node": "npm:@types/node@^22.16.0",
     "amqplib": "npm:amqplib@^0.10.9",
+    "@solidjs/start/middleware": "npm:@solidjs/start@^1.3.0/middleware",
+    "@solidjs/start/server": "npm:@solidjs/start@^1.3.0/server",
     "astro": "npm:astro@^5.17.3",
     "byte-encodings": "npm:byte-encodings@^1.0.11",
     "chalk": "npm:chalk@^5.6.2",
@@ -68,7 +74,7 @@
     "mysql2/promise": "npm:mysql2@^3.18.0/promise",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
-    "tsdown": "npm:tsdown@^0.18.4"
+    "tsdown": "npm:tsdown@^0.21.6"
   },
   "unstable": [
     "fs",
@@ -112,7 +118,7 @@
       ]
     },
     "install": {
-      "command": "deno install && pnpm install",
+      "command": "deno run --allow-read --allow-env --allow-run scripts/install.ts && pnpm install",
       "dependencies": [
         "codegen"
       ]

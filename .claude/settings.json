@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mise exec:*)",
+      "Bash(UPDATE_SNAPSHOTS=1 mise exec -- deno test --no-lock --allow-all src/vocab.test.ts)"
+    ]
+  }
+}

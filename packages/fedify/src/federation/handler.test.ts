@@ -12,6 +12,7 @@ import {
 } from "@fedify/vocab";
 import { FetchError } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
+import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import {
   createInboxContext,
@@ -134,6 +135,7 @@ test("handleActor()", async () => {
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
@@ -236,6 +238,7 @@ test("handleActor()", async () => {
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
@@ -396,6 +399,7 @@ test("handleObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -494,6 +498,7 @@ test("handleObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -679,6 +684,7 @@ test("handleCollection()", async () => {
     "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",
@@ -704,6 +710,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -802,6 +809,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -871,6 +879,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -936,6 +945,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -1005,6 +1015,7 @@ test("handleCollection()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         toot: "http://joinmastodon.org/ns#",
         misskey: "https://misskey-hub.net/ns#",
@@ -1072,6 +1083,7 @@ test("handleInbox()", async () => {
     kvPrefixes: {
       activityIdempotence: ["_fedify", "activityIdempotence"],
       publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
     },
     actorDispatcher,
     onNotFound,
@@ -1254,6 +1266,7 @@ test("respondWithObject()", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -1339,6 +1352,7 @@ test("handleInbox() - authentication bypass vulnerability", async () => {
     kvPrefixes: {
       activityIdempotence: ["_fedify", "activityIdempotence"],
       publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
     },
     actorDispatcher,
     inboxListeners,
@@ -1386,6 +1400,7 @@ test("respondWithObjectIfAcceptable", async () => {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
       {
         Emoji: "toot:Emoji",
         Hashtag: "as:Hashtag",
@@ -1565,6 +1580,7 @@ test("handleCustomCollection()", async () => {
     "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",
@@ -1589,6 +1605,7 @@ test("handleCustomCollection()", async () => {
   const CONTEXT = [
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
+    "https://gotosocial.org/ns",
     {
       toot: "http://joinmastodon.org/ns#",
       misskey: "https://misskey-hub.net/ns#",
@@ -1880,6 +1897,7 @@ test("handleInbox() records OpenTelemetry span events", async () => {
     kvPrefixes: {
       activityIdempotence: ["activityIdempotence"],
       publicKey: ["publicKey"],
+      acceptSignatureNonce: ["acceptSignatureNonce"],
     },
     actorDispatcher,
     inboxListeners: listeners,
@@ -1994,6 +2012,7 @@ test("handleInbox() records unverified HTTP signature details", async () => {
     kvPrefixes: {
       activityIdempotence: ["activityIdempotence"],
       publicKey: ["publicKey"],
+      acceptSignatureNonce: ["acceptSignatureNonce"],
     },
     actorDispatcher,
     inboxListeners: new InboxListenerSet<void>(),
@@ -2033,3 +2052,972 @@ test("handleInbox() records unverified HTTP signature details", async () => {
   );
   assertEquals(event.attributes["http_signatures.key_fetch_status"], 410);
 });
+
+test("handleInbox() challenge policy enabled + unsigned request", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/challenge-1"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/challenge-1"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const unsignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: unsignedRequest,
+    url: new URL(unsignedRequest.url),
+    data: undefined,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(unsignedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: { enabled: true },
+  });
+  assertEquals(response.status, 401);
+  const acceptSig = response.headers.get("Accept-Signature");
+  assert(acceptSig != null, "Accept-Signature header must be present");
+  const parsed = parseAcceptSignature(acceptSig);
+  assert(parsed.length > 0, "Accept-Signature must have at least one entry");
+  assertEquals(parsed[0].label, "sig1");
+  assert(
+    parsed[0].components.some((c) => c.value === "@method"),
+    "Must include @method component",
+  );
+  assertEquals(
+    response.headers.get("Cache-Control"),
+    "no-store",
+  );
+  assertEquals(
+    response.headers.get("Vary"),
+    "Accept, Signature",
+  );
+});
+
+test("handleInbox() challenge policy enabled + invalid signature", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/challenge-2"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/challenge-2"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  // Sign with a key, then tamper with the body to invalidate the signature
+  const originalRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const signedRequest = await signRequest(
+    originalRequest,
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  // Reconstruct with a different body but same signature headers
+  const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+  const tamperedBody = JSON.stringify({
+    ...jsonLd,
+    "https://example.com/tampered": true,
+  });
+  const tamperedRequest = new Request(signedRequest.url, {
+    method: signedRequest.method,
+    headers: signedRequest.headers,
+    body: tamperedBody,
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: tamperedRequest,
+    url: new URL(tamperedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(tamperedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: { enabled: true },
+  });
+  assertEquals(response.status, 401);
+  const acceptSig = response.headers.get("Accept-Signature");
+  assert(acceptSig != null, "Accept-Signature header must be present");
+  assertEquals(response.headers.get("Cache-Control"), "no-store");
+});
+
+test("handleInbox() challenge policy enabled + valid signature", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/challenge-3"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/challenge-3"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const signedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const context = createRequestContext({
+    federation,
+    request: signedRequest,
+    url: new URL(signedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(signedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: { enabled: true },
+  });
+  assertEquals(response.status, 202);
+  assertEquals(
+    response.headers.get("Accept-Signature"),
+    null,
+    "No Accept-Signature header on successful request",
+  );
+});
+
+test("handleInbox() challenge policy disabled + unsigned request", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/challenge-4"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/challenge-4"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const unsignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: unsignedRequest,
+    url: new URL(unsignedRequest.url),
+    data: undefined,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(unsignedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    // No inboxChallengePolicy — disabled by default
+  });
+  assertEquals(response.status, 401);
+  assertEquals(
+    response.headers.get("Accept-Signature"),
+    null,
+    "No Accept-Signature header when challenge policy is disabled",
+  );
+});
+
+test("handleInbox() actor/key mismatch → plain 401 (no challenge)", async () => {
+  // Sign with attacker's key but claim to be a different actor
+  const maliciousActivity = new Create({
+    id: new URL("https://attacker.example.com/activities/challenge-5"),
+    actor: new URL("https://victim.example.com/users/alice"),
+    object: new Note({
+      id: new URL("https://attacker.example.com/notes/challenge-5"),
+      attribution: new URL("https://victim.example.com/users/alice"),
+      content: "Forged message!",
+    }),
+  });
+  const maliciousRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await maliciousActivity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: maliciousRequest,
+    url: new URL(maliciousRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(maliciousRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: { enabled: true },
+  });
+  assertEquals(response.status, 401);
+  assertEquals(
+    response.headers.get("Accept-Signature"),
+    null,
+    "Actor/key mismatch should not emit Accept-Signature challenge",
+  );
+  assertEquals(
+    await response.text(),
+    "The signer and the actor do not match.",
+  );
+});
+
+test("handleInbox() nonce issuance in challenge", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/nonce-1"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/nonce-1"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const unsignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: unsignedRequest,
+    url: new URL(unsignedRequest.url),
+    data: undefined,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const kv = new MemoryKvStore();
+  const response = await handleInbox(unsignedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: {
+      enabled: true,
+      requestNonce: true,
+      nonceTtlSeconds: 300,
+    },
+  });
+  assertEquals(response.status, 401);
+  const acceptSig = response.headers.get("Accept-Signature");
+  assert(acceptSig != null, "Accept-Signature header must be present");
+  const parsed = parseAcceptSignature(acceptSig);
+  assert(parsed.length > 0);
+  assert(
+    parsed[0].parameters.nonce != null,
+    "Nonce must be present in Accept-Signature parameters",
+  );
+  assertEquals(response.headers.get("Cache-Control"), "no-store");
+  // Verify the nonce was stored in KV
+  const nonceKey = [
+    "_fedify",
+    "acceptSignatureNonce",
+    parsed[0].parameters.nonce!,
+  ] as const;
+  const stored = await kv.get(nonceKey);
+  assertEquals(stored, true, "Nonce must be stored in KV store");
+});
+
+test("handleInbox() nonce consumption on valid signed request", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/nonce-2"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/nonce-2"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const kv = new MemoryKvStore();
+  const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+  // Pre-store a nonce in KV
+  const nonce = "test-nonce-abc123";
+  await kv.set(
+    ["_fedify", "acceptSignatureNonce", nonce] as const,
+    true,
+    { ttl: Temporal.Duration.from({ seconds: 300 }) },
+  );
+  // Sign request with the nonce included via rfc9421
+  const signedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { spec: "rfc9421", rfc9421: { nonce } },
+  );
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: signedRequest,
+    url: new URL(signedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const response = await handleInbox(signedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: noncePrefix,
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: {
+      enabled: true,
+      requestNonce: true,
+      nonceTtlSeconds: 300,
+    },
+  });
+  assertEquals(response.status, 202);
+  // Nonce must have been consumed (deleted from KV)
+  const stored = await kv.get(
+    ["_fedify", "acceptSignatureNonce", nonce] as const,
+  );
+  assertEquals(stored, undefined, "Nonce must be consumed after use");
+});
+
+test("handleInbox() nonce replay prevention", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/nonce-3"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/nonce-3"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
+  const kv = new MemoryKvStore();
+  const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+  const nonce = "replay-nonce-xyz";
+  // Do NOT store the nonce — simulate it was already consumed or never issued
+  const signedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { spec: "rfc9421", rfc9421: { nonce } },
+  );
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: signedRequest,
+    url: new URL(signedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const response = await handleInbox(signedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: noncePrefix,
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: {
+      enabled: true,
+      requestNonce: true,
+      nonceTtlSeconds: 300,
+    },
+  });
+  assertEquals(response.status, 401);
+  // Should return a fresh challenge with a new nonce
+  const acceptSig = response.headers.get("Accept-Signature");
+  assert(acceptSig != null, "Must emit fresh Accept-Signature challenge");
+  const parsed = parseAcceptSignature(acceptSig);
+  assert(parsed.length > 0);
+  assert(
+    parsed[0].parameters.nonce != null,
+    "Fresh challenge must include a new nonce",
+  );
+  assert(
+    parsed[0].parameters.nonce !== nonce,
+    "Fresh nonce must differ from the replayed one",
+  );
+  assertEquals(
+    response.headers.get("Cache-Control"),
+    "no-store",
+    "Challenge response must have Cache-Control: no-store",
+  );
+});
+
+test(
+  "handleInbox() nonce bypass: valid sig without nonce + invalid sig with nonce",
+  async () => {
+    // This test demonstrates a vulnerability where verifySignatureNonce() scans
+    // ALL Signature-Input entries for a nonce, but verifyRequestDetailed() does
+    // not report which signature label was verified.  An attacker can bypass
+    // nonce enforcement by submitting:
+    //   1. A valid signature (sig1) WITHOUT a nonce
+    //   2. A bogus signature (sig2) that carries a stored nonce
+    // verifyRequestDetailed() succeeds on sig1, then verifySignatureNonce()
+    // finds and consumes the nonce from sig2, so the request is accepted even
+    // though the *verified* signature never carried a nonce.
+
+    const activity = new Create({
+      id: new URL("https://example.com/activities/nonce-bypass-1"),
+      actor: new URL("https://example.com/person2"),
+      object: new Note({
+        id: new URL("https://example.com/notes/nonce-bypass-1"),
+        attribution: new URL("https://example.com/person2"),
+        content: "Hello!",
+      }),
+    });
+
+    const kv = new MemoryKvStore();
+    const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+
+    // Pre-store a nonce that the attacker knows (e.g., from a prior challenge)
+    const storedNonce = "bypass-nonce-abc123";
+    await kv.set(
+      ["_fedify", "acceptSignatureNonce", storedNonce] as const,
+      true,
+      { ttl: Temporal.Duration.from({ seconds: 300 }) },
+    );
+
+    // Step 1: Create a legitimately signed request (sig1) WITHOUT a nonce
+    const signedRequest = await signRequest(
+      new Request("https://example.com/", {
+        method: "POST",
+        body: JSON.stringify(await activity.toJsonLd()),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { spec: "rfc9421" }, // no nonce
+    );
+
+    // Step 2: Manually inject a second bogus signature entry (sig2) that carries
+    // the stored nonce.  The signature bytes are garbage — it will never verify —
+    // but verifySignatureNonce() doesn't check validity, only presence.
+    const existingSignatureInput = signedRequest.headers.get(
+      "Signature-Input",
+    )!;
+    const existingSignature = signedRequest.headers.get("Signature")!;
+    const bogusSigInput = `sig2=("@method" "@target-uri");` +
+      `alg="rsa-v1_5-sha256";keyid="${rsaPublicKey3.id!.href}";` +
+      `created=${Math.floor(Date.now() / 1000)};` +
+      `nonce="${storedNonce}"`;
+    const bogusSigValue = `sig2=:AAAA:`; // garbage base64
+
+    const tamperedHeaders = new Headers(signedRequest.headers);
+    tamperedHeaders.set(
+      "Signature-Input",
+      `${existingSignatureInput}, ${bogusSigInput}`,
+    );
+    tamperedHeaders.set(
+      "Signature",
+      `${existingSignature}, ${bogusSigValue}`,
+    );
+
+    const tamperedRequest = new Request(signedRequest.url, {
+      method: signedRequest.method,
+      headers: tamperedHeaders,
+      body: await signedRequest.clone().arrayBuffer(),
+    });
+
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: tamperedRequest,
+      url: new URL(tamperedRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+
+    const response = await handleInbox(tamperedRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: noncePrefix,
+      },
+      actorDispatcher,
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: {
+        enabled: true,
+        requestNonce: true,
+        nonceTtlSeconds: 300,
+      },
+    });
+
+    // The verified signature (sig1) has no nonce.  The nonce was only in the
+    // bogus sig2.  A correct implementation MUST reject this request because
+    // the *verified* signature did not carry a valid nonce.
+    assertEquals(
+      response.status,
+      401,
+      "Request with nonce only in a non-verified signature must be rejected " +
+        "(nonce verification must be bound to the verified signature label)",
+    );
+
+    // The stored nonce should NOT have been consumed by a bogus signature
+    const stored = await kv.get(
+      ["_fedify", "acceptSignatureNonce", storedNonce] as const,
+    );
+    assertEquals(
+      stored,
+      true,
+      "Nonce must not be consumed when it comes from a non-verified signature",
+    );
+  },
+);
+
+test(
+  "handleInbox() actor/key mismatch does not consume nonce",
+  async () => {
+    // A request that has a valid RFC 9421 signature with a nonce, but the
+    // signing key does not belong to the claimed actor.  The nonce must NOT be
+    // consumed so the legitimate sender can still use it.
+    const maliciousActivity = new Create({
+      id: new URL("https://attacker.example.com/activities/mismatch-nonce-1"),
+      actor: new URL("https://victim.example.com/users/alice"),
+      object: new Note({
+        id: new URL("https://attacker.example.com/notes/mismatch-nonce-1"),
+        attribution: new URL("https://victim.example.com/users/alice"),
+        content: "Forged message with nonce!",
+      }),
+    });
+    const kv = new MemoryKvStore();
+    const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+    const nonce = "mismatch-nonce-xyz";
+    await kv.set(
+      ["_fedify", "acceptSignatureNonce", nonce] as const,
+      true,
+      { ttl: Temporal.Duration.from({ seconds: 300 }) },
+    );
+    // Sign with rsaPrivateKey3 (associated with example.com/person2, not
+    // victim.example.com/users/alice), and include the stored nonce.
+    const maliciousRequest = await signRequest(
+      new Request("https://example.com/", {
+        method: "POST",
+        body: JSON.stringify(await maliciousActivity.toJsonLd()),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { spec: "rfc9421", rfc9421: { nonce } },
+    );
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: maliciousRequest,
+      url: new URL(maliciousRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const response = await handleInbox(maliciousRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: noncePrefix,
+      },
+      actorDispatcher,
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: {
+        enabled: true,
+        requestNonce: true,
+        nonceTtlSeconds: 300,
+      },
+    });
+    assertEquals(response.status, 401);
+    assertEquals(
+      await response.text(),
+      "The signer and the actor do not match.",
+    );
+    // The nonce must NOT have been consumed — the actor/key mismatch should
+    // reject before nonce consumption so the nonce remains usable.
+    const stored = await kv.get(
+      ["_fedify", "acceptSignatureNonce", nonce] as const,
+    );
+    assertEquals(
+      stored,
+      true,
+      "Nonce must not be consumed when actor/key ownership check fails",
+    );
+  },
+);
+
+test(
+  "handleInbox() challenge policy enabled + unverifiedActivityHandler " +
+    "returns undefined",
+  async () => {
+    const activity = new Create({
+      id: new URL("https://example.com/activities/challenge-unverified"),
+      actor: new URL("https://example.com/person2"),
+      object: new Note({
+        id: new URL("https://example.com/notes/challenge-unverified"),
+        attribution: new URL("https://example.com/person2"),
+        content: "Hello!",
+      }),
+    });
+    // Sign with a key, then tamper with the body to invalidate the signature
+    const originalRequest = new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    });
+    const signedRequest = await signRequest(
+      originalRequest,
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    );
+    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const tamperedBody = JSON.stringify({
+      ...jsonLd,
+      "https://example.com/tampered": true,
+    });
+    const tamperedRequest = new Request(signedRequest.url, {
+      method: signedRequest.method,
+      headers: signedRequest.headers,
+      body: tamperedBody,
+    });
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: tamperedRequest,
+      url: new URL(tamperedRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const kv = new MemoryKvStore();
+    const response = await handleInbox(tamperedRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher,
+      // unverifiedActivityHandler returns undefined (void), not a Response
+      unverifiedActivityHandler() {},
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: { enabled: true },
+    });
+    assertEquals(response.status, 401);
+    const acceptSig = response.headers.get("Accept-Signature");
+    assert(
+      acceptSig != null,
+      "Accept-Signature header must be present when unverifiedActivityHandler " +
+        "returns undefined and challenge policy is enabled",
+    );
+    const parsed = parseAcceptSignature(acceptSig);
+    assert(
+      parsed.length > 0,
+      "Accept-Signature must have at least one entry",
+    );
+    assertEquals(
+      response.headers.get("Cache-Control"),
+      "no-store",
+      "Cache-Control: no-store must be set for challenge-response",
+    );
+    assertEquals(
+      response.headers.get("Vary"),
+      "Accept, Signature",
+      "Vary header must include Accept and Signature",
+    );
+  },
+);
+
+test(
+  "handleInbox() challenge policy enabled + unverifiedActivityHandler " +
+    "throws error",
+  async () => {
+    const activity = new Create({
+      id: new URL("https://example.com/activities/challenge-throw"),
+      actor: new URL("https://example.com/person2"),
+      object: new Note({
+        id: new URL("https://example.com/notes/challenge-throw"),
+        attribution: new URL("https://example.com/person2"),
+        content: "Hello!",
+      }),
+    });
+    const originalRequest = new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    });
+    const signedRequest = await signRequest(
+      originalRequest,
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    );
+    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const tamperedBody = JSON.stringify({
+      ...jsonLd,
+      "https://example.com/tampered": true,
+    });
+    const tamperedRequest = new Request(signedRequest.url, {
+      method: signedRequest.method,
+      headers: signedRequest.headers,
+      body: tamperedBody,
+    });
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const context = createRequestContext({
+      federation,
+      request: tamperedRequest,
+      url: new URL(tamperedRequest.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+    });
+    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+      if (identifier !== "someone") return null;
+      return new Person({ name: "Someone" });
+    };
+    const kv = new MemoryKvStore();
+    const response = await handleInbox(tamperedRequest, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient: "someone",
+        });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher,
+      // unverifiedActivityHandler throws an error
+      unverifiedActivityHandler() {
+        throw new Error("handler error");
+      },
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+      inboxChallengePolicy: { enabled: true },
+    });
+    assertEquals(response.status, 401);
+    const acceptSig = response.headers.get("Accept-Signature");
+    assert(
+      acceptSig != null,
+      "Accept-Signature header must be present when unverifiedActivityHandler " +
+        "throws and challenge policy is enabled",
+    );
+    const parsed = parseAcceptSignature(acceptSig);
+    assert(
+      parsed.length > 0,
+      "Accept-Signature must have at least one entry",
+    );
+    assertEquals(
+      response.headers.get("Cache-Control"),
+      "no-store",
+      "Cache-Control: no-store must be set for challenge-response",
+    );
+    assertEquals(
+      response.headers.get("Vary"),
+      "Accept, Signature",
+      "Vary header must include Accept and Signature",
+    );
+  },
+);

@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -8,45 +9,47 @@ const elysiaDescription: WebFrameworkDescription = {
   label: "ElysiaJS",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: ({ projectName, packageManager: pm }) => ({
+  init: async ({ projectName, packageManager: pm }) => ({
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        elysia: "npm:elysia@^1.3.6",
+        elysia: `npm:elysia@${deps["npm:elysia"]}`,
         "@fedify/elysia": PACKAGE_VERSION,
       }
       : pm === "bun"
       ? {
-        elysia: "^1.3.6",
+        elysia: deps["npm:elysia"],
         "@fedify/elysia": PACKAGE_VERSION,
       }
       : {
-        elysia: "^1.3.6",
-        "@elysiajs/node": "^1.4.2",
+        elysia: deps["npm:elysia"],
+        "@elysiajs/node": deps["npm:@elysiajs/node"],
         "@fedify/elysia": PACKAGE_VERSION,
         ...(pm === "pnpm"
           ? {
-            "@sinclair/typebox": "^0.34.41",
-            "openapi-types": "^12.1.3",
+            "@sinclair/typebox": deps["npm:@sinclair/typebox"],
+            "openapi-types": deps["npm:openapi-types"],
           }
           : {}),
       },
     devDependencies: {
-      ...(pm === "bun" ? { "@types/bun": "^1.2.19" } : {
-        tsx: "^4.21.0",
-        "@types/node": "^25.0.3",
-        typescript: "^5.9.3",
+      ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {
+        tsx: deps["npm:tsx"],
+        "@types/node": deps["npm:@types/node@25"],
+        typescript: deps["npm:typescript"],
       }),
       ...defaultDevDependencies,
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/index.ts": readTemplate(
+      "src/index.ts": (await readTemplate(
         `elysia/index/${packageManagerToRuntime(pm)}.ts`,
-      ).replace(/\/\* logger \*\//, projectName),
+      )).replace(/\/\* logger \*\//, projectName),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" || pm === "bun" ? undefined : {

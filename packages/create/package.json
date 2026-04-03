@@ -1,6 +1,6 @@
 {
   "name": "@fedify/create",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Create a new Fedify application",
   "keywords": [
     "fedify",
@@ -57,6 +57,8 @@
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/create... run build:self",
     "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "node --test --experimental-transform-types 'src/**/*.test.ts'"
   }
 }

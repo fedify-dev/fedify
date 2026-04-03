@@ -1,3 +1,4 @@
+import $ from "@david/dax";
 import {
   entries,
   evolve,
@@ -26,7 +27,7 @@ import type {
   PackageManagers,
   Runtimes,
 } from "./types.ts";
-import { isNotFoundError, runSubCommand } from "./utils.ts";
+import { isNotFoundError } from "./utils.ts";
 
 /** The current `@fedify/init` package version, read from *deno.json*. */
 export const PACKAGE_VERSION = metadata.version;
@@ -40,11 +41,16 @@ const addFedifyDeps = <T extends object>(json: T): T =>
       key,
       toMerged(value, {
         dependencies: {
-          [`@fedify/${key}`]: PACKAGE_VERSION,
+          ...(!NO_INTEGRATIONS.includes(key) && {
+            [`@fedify/${key}`]: PACKAGE_VERSION,
+          }),
         },
       }),
     ]),
   ) as T;
+
+const NO_INTEGRATIONS = ["in-memory", "in-process", "bare-bones"];
+
 /**
  * KV store descriptions loaded from *json/kv.json*, enriched with the
  * appropriate `@fedify/*` dependency at the current package version.
@@ -115,17 +121,26 @@ export async function isPackageManagerAvailable(
  *   (e.g., `"defaults/federation.ts"`)
  * @returns The template file content as a string
  */
-export const readTemplate: (templatePath: string) => string = (
-  templatePath,
-) =>
-  readFileSync(
-    joinPath(
-      import.meta.dirname!,
-      "templates",
-      ...(templatePath + ".tpl").split("/"),
-    ),
-    "utf8",
+export const readTemplate = async (
+  templatePath: string,
+): Promise<string> => {
+  const segments = (templatePath + ".tpl").split("/");
+  if (import.meta.dirname) {
+    return readFileSync(
+      joinPath(import.meta.dirname, "templates", ...segments),
+      "utf8",
+    );
+  }
+  const url = new URL(
+    ["templates", ...segments].join("/"),
+    import.meta.url,
   );
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch template: ${url}`);
+  }
+  return resp.text();
+};
 
 /**
  * Returns the shell command string to start the dev server for the given
@@ -141,9 +156,7 @@ async function isCommandAvailable(
   },
 ): Promise<boolean> {
   try {
-    const { stdout } = await runSubCommand(checkCommand, {
-      stdio: [null, "pipe", null],
-    });
+    const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
     logger.debug(
       "The stdout of the command {command} is: {stdout}",
       { command: checkCommand, stdout },

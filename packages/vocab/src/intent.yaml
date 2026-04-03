@@ -2,7 +2,7 @@ $schema: ../../vocab-tools/schema.yaml
 name: Intent
 compactName: Intent
 uri: "https://w3id.org/valueflows/ont/vf#Intent"
-entity: true
+entity: false
 description: |
   A proposed economic transaction describing what is being offered or requested
   in a {@link Proposal}.

@@ -7,7 +7,6 @@
 [![npm][npm badge]][npm]
 [![GitHub Actions][GitHub Actions badge]][GitHub Actions]
 [![Matrix][Matrix badge]][Matrix]
-[![Discord][Discord badge]][Discord]
 [![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 > [!NOTE]
@@ -44,8 +43,8 @@ resources:
  -  [Examples]
 
 If you have any questions, suggestions, or feedback, please feel free to
-join our [Matrix chat space][Matrix] or [Discord server][Discord] or
-[GitHub Discussions].  Or tag [#Fedify] in the fediverse!
+join our [Matrix chat space][Matrix] or [GitHub Discussions].  Or tag [#Fedify]
+in the fediverse!
 
 [^1]: You may already know some of the networks in the fediverse, such as
       [Mastodon], [Lemmy], [Pixelfed], [PeerTube], and so on.
@@ -58,8 +57,6 @@ join our [Matrix chat space][Matrix] or [Discord server][Discord] or
 [GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[Discord badge]: https://img.shields.io/discord/1295652627505217647?logo=discord&cacheSeconds=60
-[Discord]: https://discord.gg/bhtwpzURwd
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify Demo]: https://dash.deno.com/playground/fedify-demo
@@ -119,6 +116,7 @@ Here is the list of packages:
 | [@fedify/postgres](/packages/postgres/)           | [JSR][jsr:@fedify/postgres]      | [npm][npm:@fedify/postgres]      | PostgreSQL driver                        |
 | [@fedify/redis](/packages/redis/)                 | [JSR][jsr:@fedify/redis]         | [npm][npm:@fedify/redis]         | Redis driver                             |
 | [@fedify/relay](/packages/relay/)                 | [JSR][jsr:@fedify/relay]         | [npm][npm:@fedify/relay]         | ActivityPub relay support                |
+| [@fedify/solidstart](/packages/solidstart/)       | [JSR][jsr:@fedify/solidstart]    | [npm][npm:@fedify/solidstart]    | SolidStart integration                   |
 | [@fedify/sqlite](/packages/sqlite/)               | [JSR][jsr:@fedify/sqlite]        | [npm][npm:@fedify/sqlite]        | SQLite driver                            |
 | [@fedify/sveltekit](/packages/sveltekit/)         | [JSR][jsr:@fedify/sveltekit]     | [npm][npm:@fedify/sveltekit]     | SvelteKit integration                    |
 | [@fedify/testing](/packages/testing/)             | [JSR][jsr:@fedify/testing]       | [npm][npm:@fedify/testing]       | Testing utilities                        |
@@ -165,6 +163,8 @@ Here is the list of packages:
 [npm:@fedify/redis]: https://www.npmjs.com/package/@fedify/redis
 [jsr:@fedify/relay]: https://jsr.io/@fedify/relay
 [npm:@fedify/relay]: https://www.npmjs.com/package/@fedify/relay
+[jsr:@fedify/solidstart]: https://jsr.io/@fedify/solidstart
+[npm:@fedify/solidstart]: https://www.npmjs.com/package/@fedify/solidstart
 [jsr:@fedify/sqlite]: https://jsr.io/@fedify/sqlite
 [npm:@fedify/sqlite]: https://www.npmjs.com/package/@fedify/sqlite
 [jsr:@fedify/sveltekit]: https://jsr.io/@fedify/sveltekit

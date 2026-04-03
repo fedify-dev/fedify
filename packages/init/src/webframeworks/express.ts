@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -8,28 +9,33 @@ const expressDescription: WebFrameworkDescription = {
   label: "Express",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
-  init: ({ projectName, packageManager: pm }) => ({
+  init: async ({ projectName, packageManager: pm }) => ({
     dependencies: {
-      "npm:express": "^4.19.2",
+      "npm:express": deps["npm:express"],
       "@fedify/express": PACKAGE_VERSION,
       ...(pm !== "deno" && pm !== "bun"
-        ? { "@dotenvx/dotenvx": "^1.14.1", tsx: "^4.17.0" }
+        ? {
+          "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+          tsx: deps["npm:tsx"],
+        }
         : {}),
       ...(pm === "deno" ? defaultDenoDependencies : {}),
     },
     devDependencies: {
-      "@types/express": "^4.17.21",
-      ...(pm === "bun" ? { "@types/bun": "^1.1.6" } : {}),
+      "@types/express": deps["npm:@types/express"],
+      ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {}),
       ...defaultDevDependencies,
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/app.ts": readTemplate("express/app.ts")
+      "src/app.ts": (await readTemplate("express/app.ts"))
         .replace(/\/\* logger \*\//, projectName),
-      "src/index.ts": readTemplate("express/index.ts"),
+      "src/index.ts": await readTemplate("express/index.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {

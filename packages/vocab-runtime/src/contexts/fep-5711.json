@@ -1,0 +1,36 @@
+{
+  "@context": {
+    "likesOf": {
+      "@id": "https://w3id.org/fep/5711#likesOf",
+      "@type": "@id"
+    },
+    "sharesOf": {
+      "@id": "https://w3id.org/fep/5711#sharesOf",
+      "@type": "@id"
+    },
+    "repliesOf": {
+      "@id": "https://w3id.org/fep/5711#repliesOf",
+      "@type": "@id"
+    },
+    "inboxOf": {
+      "@id": "https://w3id.org/fep/5711#inboxOf",
+      "@type": "@id"
+    },
+    "outboxOf": {
+      "@id": "https://w3id.org/fep/5711#outboxOf",
+      "@type": "@id"
+    },
+    "followersOf": {
+      "@id": "https://w3id.org/fep/5711#followersOf",
+      "@type": "@id"
+    },
+    "followingOf": {
+      "@id": "https://w3id.org/fep/5711#followingOf",
+      "@type": "@id"
+    },
+    "likedOf": {
+      "@id": "https://w3id.org/fep/5711#likedOf",
+      "@type": "@id"
+    }
+  }
+}

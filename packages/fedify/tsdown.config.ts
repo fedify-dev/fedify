@@ -18,7 +18,7 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: { neverBundle: [/^node:/] },
     outputOptions(outputOptions, format) {
       if (format === "cjs") {
         outputOptions.intro = `
@@ -40,7 +40,15 @@ export default [
       ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
         .map((f) => f.replace(sep, "/")),
     ],
-    external: [/^node:/],
+    external: [/^node:/, "@fedify/fixture"],
+    // Bundle @fedify/fixture back in for src/testing/ files (needed for
+    // cfworkers), while keeping it external for test files so that
+    // pnpm pack --recursive does not try to resolve the private package:
+    noExternal: (id: string, importer: string | undefined) => {
+      if (id !== "@fedify/fixture") return false;
+      const normalized = importer?.replaceAll(sep, "/");
+      return normalized?.includes("/src/testing/") ?? false;
+    },
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (

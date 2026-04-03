@@ -13,7 +13,7 @@ export default defineConfig({
       await cp(
         join("src", "schema.yaml"),
         join(ctx.options.outDir, "schema.yaml"),
-        { force: true },
+        { force: false, errorOnExist: false },
       );
     },
   },

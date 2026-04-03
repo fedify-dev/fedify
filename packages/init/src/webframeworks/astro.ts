@@ -1,4 +1,5 @@
 import { PACKAGE_MANAGER } from "../const.ts";
+import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
@@ -8,33 +9,40 @@ const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
-  init: ({ packageManager: pm }) => ({
+  init: async ({ packageManager: pm }) => ({
     command: Array.from(getAstroInitCommand(pm)),
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
+        "@deno/astro-adapter": `npm:@deno/astro-adapter@${
+          deps["npm:@deno/astro-adapter"]
+        }`,
         "@fedify/astro": PACKAGE_VERSION,
       }
       : {
-        "@astrojs/node": "^9.5.4",
+        "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
       },
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm !== "deno"
-        ? { typescript: "^5.9.3", "@types/node": "^22.17.0" }
+        ? {
+          typescript: deps["npm:typescript"],
+          "@types/node": deps["npm:@types/node@22"],
+        }
         : {}),
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      [`astro.config.ts`]: readTemplate(
+      [`astro.config.ts`]: await readTemplate(
         `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
       ),
-      "src/middleware.ts": readTemplate("astro/src/middleware.ts"),
+      "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
       ...(pm !== "deno"
-        ? { "eslint.config.ts": readTemplate("defaults/eslint.config.ts") }
+        ? {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }
         : {}),
     },
     compilerOptions: undefined,
@@ -80,6 +88,7 @@ function* getAstroInitCommand(
   yield "--no-git";
   yield "--skip-houston";
   yield "-y";
+  if (pm !== "deno") yield "--no-install";
   yield "&&";
   yield "rm";
   yield "astro.config.mjs";

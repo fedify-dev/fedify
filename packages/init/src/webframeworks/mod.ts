@@ -1,10 +1,12 @@
 import type { WebFrameworks } from "../types.ts";
 import astro from "./astro.ts";
+import bareBones from "./bare-bones.ts";
 import elysia from "./elysia.ts";
 import express from "./express.ts";
 import hono from "./hono.ts";
 import next from "./next.ts";
 import nitro from "./nitro.ts";
+import solidstart from "./solidstart.ts";
 
 /**
  * Registry of all supported web framework configurations.
@@ -14,12 +16,14 @@ import nitro from "./nitro.ts";
  * and instructions tailored to the selected package manager.
  */
 const webFrameworks: WebFrameworks = {
+  "bare-bones": bareBones,
   astro,
   elysia,
   express,
   hono,
   next,
   nitro,
+  solidstart,
 } as const;
 
 export default webFrameworks;

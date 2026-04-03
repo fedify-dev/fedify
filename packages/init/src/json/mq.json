@@ -1,4 +1,20 @@
 {
+  "in-process": {
+    "label": "In-Process",
+    "packageManagers": [
+      "deno",
+      "bun",
+      "npm",
+      "yarn",
+      "pnpm"
+    ],
+    "imports": {
+      "@fedify/fedify": {
+        "InProcessMessageQueue": "InProcessMessageQueue"
+      }
+    },
+    "object": "new InProcessMessageQueue()"
+  },
   "redis": {
     "label": "Redis",
     "packageManagers": [
@@ -9,7 +25,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:ioredis": "^5.4.1"
+      "npm:ioredis": "^5.10.1"
     },
     "imports": {
       "@fedify/redis": {
@@ -34,7 +50,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:postgres": "^3.4.5"
+      "npm:postgres": "^3.4.8"
     },
     "imports": {
       "@fedify/postgres": {
@@ -59,7 +75,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:mysql2": "^3.18.0"
+      "npm:mysql2": "^3.20.0"
     },
     "imports": {
       "@fedify/mysql": {
@@ -84,10 +100,10 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:amqplib": "^0.10.4"
+      "npm:amqplib": "^0.10.9"
     },
     "devDependencies": {
-      "npm:@types/amqplib": "^0.10.5"
+      "npm:@types/amqplib": "^0.10.8"
     },
     "imports": {
       "@fedify/amqp": {

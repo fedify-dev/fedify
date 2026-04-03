@@ -1362,12 +1362,10 @@ a federated server, and you can explore them by reading
 the [manual](../manual/federation.md) and the [API reference].
 
 If you have any questions or feedback, feel free to ask in
-the [Fedify community] on Matrix or the [Discord server] or
-the [GitHub Discussions].
+the [Fedify community] on Matrix or the [GitHub Discussions].
 
 [API reference]: https://jsr.io/@fedify/fedify
 [Fedify community]: https://matrix.to/#/#fedify:matrix.org
-[Discord server]: https://discord.gg/bhtwpzURwd
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions
 
 

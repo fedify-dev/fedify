@@ -21,6 +21,7 @@ packages:
 - packages/postgres
 - packages/redis
 - packages/relay
+- packages/solidstart
 - packages/sqlite
 - packages/sveltekit
 - packages/testing
@@ -38,14 +39,15 @@ packages:
 - examples/fastify
 - examples/next14-app-router
 - examples/next15-app-router
+- examples/solidstart
 - examples/sveltekit-sample
 
 catalog:
   "@cloudflare/workers-types": ^4.20250906.0
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
-  "@logtape/file": ^2.0.0
-  "@logtape/logtape": ^2.0.0
+  "@logtape/file": ^2.0.5
+  "@logtape/logtape": ^2.0.5
   "@multiformats/base-x": ^4.0.1
   "@opentelemetry/api": ^1.9.0
   "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
@@ -54,9 +56,9 @@ catalog:
   "@opentelemetry/sdk-node": ^0.211.0
   "@opentelemetry/sdk-trace-base": ^2.5.0
   "@opentelemetry/semantic-conventions": ^1.39.0
-  "@optique/config": ^0.10.6
-  "@optique/core": ^0.10.6
-  "@optique/run": ^0.10.6
+  "@optique/config": ^0.10.7
+  "@optique/core": ^0.10.7
+  "@optique/run": ^0.10.7
   "@std/assert": "jsr:^1.0.13"
   "@std/async": "jsr:^1.0.13"
   "@std/path": "jsr:^1.0.6"
@@ -74,7 +76,7 @@ catalog:
   chalk: ^5.6.2
   elysia: ^1.3.8
   es-toolkit: 1.43.0
-  express: ^4.0.0
+  express: ">=4.0.0"
   fast-check: ^3.22.0
   fastify-plugin: ^5.0.1
   fastify: ^5.2.0
@@ -87,6 +89,6 @@ catalog:
   pkijs: ^3.3.3
   mysql2: ^3.18.0
   postgres: ^3.4.7
-  tsdown: ^0.12.9
-  typescript: ^5.9.3
+  tsdown: ^0.21.6
+  typescript: ^5.9.2
   urlpattern-polyfill: "^10.1.0"
