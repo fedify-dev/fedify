@@ -10178,10 +10178,6 @@ get urls(): ((URL | Link))[] {
       return await ChatMessage.fromJsonLd(json, options);
     }
     
-<<<<<<< HEAD
-    if (values["@type"].includes("https://w3id.org/valueflows/ont/vf#Proposal")) {
-      return await Proposal.fromJsonLd(json, options);
-=======
     if (values["@type"].includes("https://gotosocial.org/ns#AnnounceAuthorization")) {
       return await AnnounceAuthorization.fromJsonLd(json, options);
     }
@@ -10192,7 +10188,6 @@ get urls(): ((URL | Link))[] {
     
     if (values["@type"].includes("https://gotosocial.org/ns#ReplyAuthorization")) {
       return await ReplyAuthorization.fromJsonLd(json, options);
->>>>>>> upstream/main
     }
     
     if (values["@type"].includes("https://www.w3.org/ns/activitystreams#Activity")) {
@@ -10451,11 +10446,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -10609,11 +10600,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -10699,11 +10686,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -10806,11 +10789,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -10853,11 +10832,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -10905,11 +10880,7 @@ get urls(): ((URL | Link))[] {
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
     ) : typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -11129,11 +11100,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -17563,11 +17530,6 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     const proxy = this._getCustomInspectProxy();
     return "PropertyValue " + inspect(proxy, options);
   };
-<<<<<<< HEAD
-  /** A quantity with a unit of measure.
- */
-export class Measure {
-=======
   /** Proves that an {@link Announce} interaction has been approved by
  * the post author.
  * 
@@ -18925,7 +18887,6 @@ instruments?: (Object | URL)[];}
  * 
  */
 export class InteractionPolicy {
->>>>>>> upstream/main
 
     readonly #documentLoader?: DocumentLoader;
     readonly #contextLoader?: DocumentLoader;
@@ -18967,18 +18928,6 @@ export class InteractionPolicy {
     }
     
     /**
-<<<<<<< HEAD
-     * The type URI of {@link Measure}: \`http://www.ontology-of-units-of-measure.org/resource/om-2/Measure\`.
-     */
-    static  get typeId(): URL {
-      return new URL("http://www.ontology-of-units-of-measure.org/resource/om-2/Measure");
-    }
-  #_27fgyFbosTtMAhuepJH8K3ZGURT6: (string)[] = [];
-#_1GQx8o2RgxRs4x9G5uT39XYBv7D: (string)[] = [];
-
-  /**
-   * Constructs a new instance of Measure with the given values.
-=======
      * The type URI of {@link InteractionPolicy}: \`https://gotosocial.org/ns#InteractionPolicy\`.
      */
     static  get typeId(): URL {
@@ -18990,7 +18939,6 @@ export class InteractionPolicy {
 
   /**
    * Constructs a new instance of InteractionPolicy with the given values.
->>>>>>> upstream/main
    * @param values The values to initialize the instance with.
    * @param options The options to use for initialization.
    */
@@ -18998,11 +18946,7 @@ export class InteractionPolicy {
     values:
   {
 id?: URL | null;
-<<<<<<< HEAD
-hasUnit?: string | null;hasNumericalValue?: string | null;}
-=======
 canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?: InteractionRule | null;}
->>>>>>> upstream/main
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -19027,17 +18971,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
       throw new TypeError("The id must be a URL.");
     }
     
-<<<<<<< HEAD
-        if ("hasUnit" in values &&             values.hasUnit != null) {
-          if (typeof values.hasUnit === "string") {
-            // @ts-ignore: type is checked above.
-            this.#_27fgyFbosTtMAhuepJH8K3ZGURT6 = [values.hasUnit];
-      
-          } else {
-            throw new TypeError(
-              "The hasUnit must be of type " +
-              "string" + ".",
-=======
         if ("canLike" in values &&             values.canLike != null) {
           if (values.canLike instanceof InteractionRule) {
             // @ts-ignore: type is checked above.
@@ -19047,22 +18980,10 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
             throw new TypeError(
               "The canLike must be of type " +
               "InteractionRule" + ".",
->>>>>>> upstream/main
             );
           }
         }
       
-<<<<<<< HEAD
-        if ("hasNumericalValue" in values &&             values.hasNumericalValue != null) {
-          if (typeof values.hasNumericalValue === "string") {
-            // @ts-ignore: type is checked above.
-            this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D = [values.hasNumericalValue];
-      
-          } else {
-            throw new TypeError(
-              "The hasNumericalValue must be of type " +
-              "string" + ".",
-=======
         if ("canReply" in values &&             values.canReply != null) {
           if (values.canReply instanceof InteractionRule) {
             // @ts-ignore: type is checked above.
@@ -19085,7 +19006,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
             throw new TypeError(
               "The canAnnounce must be of type " +
               "InteractionRule" + ".",
->>>>>>> upstream/main
             );
           }
         }
@@ -19101,22 +19021,14 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     values:
   {
 id?: URL | null;
-<<<<<<< HEAD
-hasUnit?: string | null;hasNumericalValue?: string | null;}
-=======
 canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?: InteractionRule | null;}
->>>>>>> upstream/main
 
     = {},
     options: {
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
     } = {}
-<<<<<<< HEAD
-  ): Measure {
-=======
   ): InteractionPolicy {
->>>>>>> upstream/main
     if (this._warning != null) {
       getLogger(this._warning.category).warn(
         this._warning.message,
@@ -19127,35 +19039,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     }
   
     // @ts-ignore: this.constructor is not recognized as a constructor, but it is.
-<<<<<<< HEAD
-    const clone: Measure = new this.constructor(
-      { id: values.id ?? this.id },
-      options
-    );
-    clone.#_27fgyFbosTtMAhuepJH8K3ZGURT6 = this.#_27fgyFbosTtMAhuepJH8K3ZGURT6;
-        if ("hasUnit" in values &&             values.hasUnit != null) {
-          if (typeof values.hasUnit === "string") {
-            // @ts-ignore: type is checked above.
-            clone.#_27fgyFbosTtMAhuepJH8K3ZGURT6 = [values.hasUnit];
-      
-          } else {
-            throw new TypeError(
-              "The hasUnit must be of type " +
-              "string" + ".",
-            );
-          }
-        }
-      clone.#_1GQx8o2RgxRs4x9G5uT39XYBv7D = this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D;
-        if ("hasNumericalValue" in values &&             values.hasNumericalValue != null) {
-          if (typeof values.hasNumericalValue === "string") {
-            // @ts-ignore: type is checked above.
-            clone.#_1GQx8o2RgxRs4x9G5uT39XYBv7D = [values.hasNumericalValue];
-      
-          } else {
-            throw new TypeError(
-              "The hasNumericalValue must be of type " +
-              "string" + ".",
-=======
     const clone: InteractionPolicy = new this.constructor(
       { id: values.id ?? this.id },
       options
@@ -19196,7 +19079,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
             throw new TypeError(
               "The canAnnounce must be of type " +
               "InteractionRule" + ".",
->>>>>>> upstream/main
             );
           }
         }
@@ -19204,13 +19086,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     return clone;
   }
   
-<<<<<<< HEAD
-/** The name of the unit, according to the Ontology of units of Measure
- * classification.  The recommended unit for countable items is \`"one"\`.
- * 
- */
- get hasUnit(): (string | null) {
-=======
 /** The sub-policy specifying who can like the post.
  * 
  * When absent, implementations should assume that anyone can like the post
@@ -19218,24 +19093,12 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
  * 
  */
  get canLike(): (InteractionRule | null) {
->>>>>>> upstream/main
         if (this._warning != null) {
           getLogger(this._warning.category).warn(
             this._warning.message,
             this._warning.values
           );
         }
-<<<<<<< HEAD
-        if (this.#_27fgyFbosTtMAhuepJH8K3ZGURT6.length < 1) return null;
-        return this.#_27fgyFbosTtMAhuepJH8K3ZGURT6[0];
-      }
-      
-/** The amount of the resource.  If not specified, arbitrary amounts can be
- * used when responding to the proposal.
- * 
- */
- get hasNumericalValue(): (string | null) {
-=======
         if (this.#_3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike.length < 1) return null;
         return this.#_3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike[0];
       }
@@ -19247,17 +19110,12 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
  * 
  */
  get canReply(): (InteractionRule | null) {
->>>>>>> upstream/main
         if (this._warning != null) {
           getLogger(this._warning.category).warn(
             this._warning.message,
             this._warning.values
           );
         }
-<<<<<<< HEAD
-        if (this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D.length < 1) return null;
-        return this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D[0];
-=======
         if (this.#_2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply.length < 1) return null;
         return this.#_2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply[0];
       }
@@ -19277,7 +19135,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         }
         if (this.#_fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce.length < 1) return null;
         return this.#_fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce[0];
->>>>>>> upstream/main
       }
       
   /**
@@ -19309,65 +19166,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
       contextLoader: options.contextLoader ?? getDocumentLoader(),
     };
   
-<<<<<<< HEAD
-    if (options.format == null && this.isCompactable()) {
-    const result: Record<string, unknown> = {};
-      // deno-lint-ignore no-unused-vars
-      let compactItems: unknown[];
-    
-      compactItems = [];
-      for (const v of this.#_27fgyFbosTtMAhuepJH8K3ZGURT6) {
-        const item = (
-      v
-        );
-        compactItems.push(item);
-      }
-      if (compactItems.length > 0) {
-      
-        result["hasUnit"]
-          = compactItems.length > 1
-          ? compactItems
-          : compactItems[0];
-        
-      }
-      
-      compactItems = [];
-      for (const v of this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D) {
-        const item = (
-      v
-        );
-        compactItems.push(item);
-      }
-      if (compactItems.length > 0) {
-      
-        result["hasNumericalValue"]
-          = compactItems.length > 1
-          ? compactItems
-          : compactItems[0];
-        
-      }
-      
-      result["type"] = "om2:Measure";
-      if (this.id != null) result["id"] = this.id.href;
-      result["@context"] = ["https://www.w3.org/ns/activitystreams",{"om2":"http://www.ontology-of-units-of-measure.org/resource/om-2/","hasUnit":"om2:hasUnit","hasNumericalValue":"om2:hasNumericalValue"}];
-      return result;
-    }
-    
-=======
->>>>>>> upstream/main
     // deno-lint-ignore no-unused-vars prefer-const
     let array: unknown[];
   const values: Record<string, unknown[] | string> = {};
     array = [];
-<<<<<<< HEAD
-    for (const v of this.#_27fgyFbosTtMAhuepJH8K3ZGURT6) {
-      const element = (
-    { "@value": v }
-=======
     for (const v of this.#_3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike) {
       const element = (
     await v.toJsonLd(options)
->>>>>>> upstream/main
       );
     array.push(element);;
     }
@@ -19375,24 +19180,14 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
       const propValue = (
     array
       );
-<<<<<<< HEAD
-      values["http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"] = propValue;
-=======
       values["https://gotosocial.org/ns#canLike"] = propValue;
->>>>>>> upstream/main
     
     }
     
     array = [];
-<<<<<<< HEAD
-    for (const v of this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D) {
-      const element = (
-    { "@value": v }
-=======
     for (const v of this.#_2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply) {
       const element = (
     await v.toJsonLd(options)
->>>>>>> upstream/main
       );
     array.push(element);;
     }
@@ -19400,13 +19195,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
       const propValue = (
     array
       );
-<<<<<<< HEAD
-      values["http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue"] = propValue;
-    
-    }
-    
-    values["@type"] = ["http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"];
-=======
       values["https://gotosocial.org/ns#canReply"] = propValue;
     
     }
@@ -19427,7 +19215,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     }
     
     
->>>>>>> upstream/main
     if (this.id != null) values["@id"] = this.id.href;
     if (options.format === "expand") {
       return await jsonld.expand(
@@ -19436,9 +19223,6 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
       );
     }
     const docContext = options.context ??
-<<<<<<< HEAD
-      ["https://www.w3.org/ns/activitystreams",{"om2":"http://www.ontology-of-units-of-measure.org/resource/om-2/","hasUnit":"om2:hasUnit","hasNumericalValue":"om2:hasNumericalValue"}];
-=======
       "https://gotosocial.org/ns";
     const compacted = await jsonld.compact(
       values,
@@ -20153,7 +19937,6 @@ get manualApprovals(): (URL)[] {
     }
     const docContext = options.context ??
       "https://gotosocial.org/ns";
->>>>>>> upstream/main
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -20190,11 +19973,7 @@ get manualApprovals(): (URL)[] {
       tracerProvider?: TracerProvider,
       baseUrl?: URL,
     } = {},
-<<<<<<< HEAD
-  ): Promise<Measure> {
-=======
   ): Promise<InteractionRule> {
->>>>>>> upstream/main
     const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
     const tracer = tracerProvider.getTracer(
       "@fedify/vocab-tools",
@@ -20204,11 +19983,7 @@ get manualApprovals(): (URL)[] {
       "activitypub.parse_object",
       async (span) => {
         try {
-<<<<<<< HEAD
-          const object = await this.__fromJsonLd__Measure__(
-=======
           const object = await this.__fromJsonLd__InteractionRule__(
->>>>>>> upstream/main
             json, span, options);
           if (object.id != null) {
             span.setAttribute("activitypub.object.id", object.id.href);
@@ -20227,11 +20002,7 @@ get manualApprovals(): (URL)[] {
     );
   }
 
-<<<<<<< HEAD
-  protected static async __fromJsonLd__Measure__(
-=======
   protected static async __fromJsonLd__InteractionRule__(
->>>>>>> upstream/main
     json: unknown,
     span: Span,
     options: {
@@ -20240,11 +20011,7 @@ get manualApprovals(): (URL)[] {
       tracerProvider?: TracerProvider,
       baseUrl?: URL,
     } = {},
-<<<<<<< HEAD
-  ): Promise<Measure> {
-=======
   ): Promise<InteractionRule> {
->>>>>>> upstream/main
     if (typeof json === "undefined") {
       throw new TypeError("Invalid JSON-LD: undefined.");
     }
@@ -20278,11 +20045,7 @@ get manualApprovals(): (URL)[] {
   if ("@type" in values &&
       !values["@type"].every(t => t.startsWith("_:"))) {
   
-<<<<<<< HEAD
-    if (!values["@type"].includes("http://www.ontology-of-units-of-measure.org/resource/om-2/Measure")) {
-=======
     if (!values["@type"].includes("https://gotosocial.org/ns#InteractionRule")) {
->>>>>>> upstream/main
       throw new TypeError("Invalid type: " + values["@type"]);
     }
   }
@@ -20291,38 +20054,6 @@ get manualApprovals(): (URL)[] {
       { id: "@id" in values ? new URL(values["@id"] as string) : undefined },
       options,
     );
-<<<<<<< HEAD
-    const _27fgyFbosTtMAhuepJH8K3ZGURT6: (string)[] = [];
-
-    let _27fgyFbosTtMAhuepJH8K3ZGURT6__array = values["http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"];
-    
-    for (
-      const v of _27fgyFbosTtMAhuepJH8K3ZGURT6__array == null
-        ? []
-        : _27fgyFbosTtMAhuepJH8K3ZGURT6__array.length === 1 && "@list" in _27fgyFbosTtMAhuepJH8K3ZGURT6__array[0]
-        ? _27fgyFbosTtMAhuepJH8K3ZGURT6__array[0]["@list"]
-        : _27fgyFbosTtMAhuepJH8K3ZGURT6__array
-    ) {
-      if (v == null) continue;
-    _27fgyFbosTtMAhuepJH8K3ZGURT6.push(v["@value"])
-    }
-    instance.#_27fgyFbosTtMAhuepJH8K3ZGURT6 = _27fgyFbosTtMAhuepJH8K3ZGURT6;
-    const _1GQx8o2RgxRs4x9G5uT39XYBv7D: (string)[] = [];
-
-    let _1GQx8o2RgxRs4x9G5uT39XYBv7D__array = values["http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue"];
-    
-    for (
-      const v of _1GQx8o2RgxRs4x9G5uT39XYBv7D__array == null
-        ? []
-        : _1GQx8o2RgxRs4x9G5uT39XYBv7D__array.length === 1 && "@list" in _1GQx8o2RgxRs4x9G5uT39XYBv7D__array[0]
-        ? _1GQx8o2RgxRs4x9G5uT39XYBv7D__array[0]["@list"]
-        : _1GQx8o2RgxRs4x9G5uT39XYBv7D__array
-    ) {
-      if (v == null) continue;
-    _1GQx8o2RgxRs4x9G5uT39XYBv7D.push(v["@value"])
-    }
-    instance.#_1GQx8o2RgxRs4x9G5uT39XYBv7D = _1GQx8o2RgxRs4x9G5uT39XYBv7D;
-=======
     const _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval: (URL)[] = [];
 
     let _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval__array = values["https://gotosocial.org/ns#automaticApproval"];
@@ -20383,7 +20114,6 @@ get manualApprovals(): (URL)[] {
           : new URL(v["@id"], (values["@id"] == null ? options.baseUrl : new URL(values["@id"]))))
     }
     instance.#_sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval = _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval;
->>>>>>> upstream/main
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
@@ -20415,11 +20145,7 @@ get manualApprovals(): (URL)[] {
       };
     }
     
-<<<<<<< HEAD
-      const _27fgyFbosTtMAhuepJH8K3ZGURT6 = this.#_27fgyFbosTtMAhuepJH8K3ZGURT6
-=======
       const _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval = this.#_2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval
->>>>>>> upstream/main
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL
           ? {
@@ -20435,13 +20161,6 @@ get manualApprovals(): (URL)[] {
             }
           : v);
     
-<<<<<<< HEAD
-      if (_27fgyFbosTtMAhuepJH8K3ZGURT6.length == 1) {
-        proxy.hasUnit = _27fgyFbosTtMAhuepJH8K3ZGURT6[0];
-      }
-      
-      const _1GQx8o2RgxRs4x9G5uT39XYBv7D = this.#_1GQx8o2RgxRs4x9G5uT39XYBv7D
-=======
       if (_2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval.length == 1) {
         proxy.automaticApproval = _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval[0];
       }
@@ -20453,7 +20172,6 @@ get manualApprovals(): (URL)[] {
       }
       
       const _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval = this.#_sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval
->>>>>>> upstream/main
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL
           ? {
@@ -20469,10 +20187,6 @@ get manualApprovals(): (URL)[] {
             }
           : v);
     
-<<<<<<< HEAD
-      if (_1GQx8o2RgxRs4x9G5uT39XYBv7D.length == 1) {
-        proxy.hasNumericalValue = _1GQx8o2RgxRs4x9G5uT39XYBv7D[0];
-=======
       if (_sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval.length == 1) {
         proxy.manualApproval = _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval[0];
       }
@@ -20481,7 +20195,6 @@ get manualApprovals(): (URL)[] {
           || !("manualApproval" in proxy)
           && _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval.length > 0) {
         proxy.manualApprovals = _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval;
->>>>>>> upstream/main
       }
       
     return proxy;
@@ -20490,28 +20203,13 @@ get manualApprovals(): (URL)[] {
 
 
 // deno-lint-ignore no-explicit-any
-<<<<<<< HEAD
-(Measure.prototype as any)[Symbol.for("Deno.customInspect")] =
-  function (
-    this: Measure,
-=======
 (InteractionRule.prototype as any)[Symbol.for("Deno.customInspect")] =
   function (
     this: InteractionRule,
->>>>>>> upstream/main
     inspect: typeof Deno.inspect,
     options: Deno.InspectOptions,
   ): string {
     const proxy = this._getCustomInspectProxy();
-<<<<<<< HEAD
-    return "Measure " + inspect(proxy, options);
-  };
-
-// deno-lint-ignore no-explicit-any
-(Measure.prototype as any)[Symbol.for("nodejs.util.inspect.custom")] =
-  function (
-    this: Measure,
-=======
     return "InteractionRule " + inspect(proxy, options);
   };
 
@@ -20519,15 +20217,11 @@ get manualApprovals(): (URL)[] {
 (InteractionRule.prototype as any)[Symbol.for("nodejs.util.inspect.custom")] =
   function (
     this: InteractionRule,
->>>>>>> upstream/main
     _depth: number,
     options: unknown,
     inspect: (value: unknown, options: unknown) => string,
   ): string {
     const proxy = this._getCustomInspectProxy();
-<<<<<<< HEAD
-    return "Measure " + inspect(proxy, options);
-=======
     return "InteractionRule " + inspect(proxy, options);
   };
   /** Proves that a {@link Like} interaction has been approved by the post author.
@@ -23221,7 +22915,6 @@ instruments?: (Object | URL)[];}
   ): string {
     const proxy = this._getCustomInspectProxy();
     return "ReplyRequest " + inspect(proxy, options);
->>>>>>> upstream/main
   };
   /** Means of communicating or interacting with the DID subject or associated
  * entities via one or more service endpoints. Examples include discovery
@@ -43162,11 +42855,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -56180,11 +55869,7 @@ get names(): ((string | LanguageString))[] {
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
     ) : typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -60810,11 +60495,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }
@@ -61600,11 +61281,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded =
       typeof v === "object" && "@type" in v
-<<<<<<< HEAD
-      && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://w3id.org/valueflows/ont/vf#Proposal","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
-=======
       && Array.isArray(v["@type"])&& ["https://www.w3.org/ns/activitystreams#Object","http://joinmastodon.org/ns#Emoji","http://litepub.social/ns#ChatMessage","https://gotosocial.org/ns#AnnounceAuthorization","https://gotosocial.org/ns#LikeApproval","https://gotosocial.org/ns#ReplyAuthorization","https://www.w3.org/ns/activitystreams#Activity","http://litepub.social/ns#EmojiReact","https://gotosocial.org/ns#AnnounceRequest","https://gotosocial.org/ns#LikeRequest","https://gotosocial.org/ns#ReplyRequest","https://www.w3.org/ns/activitystreams#Accept","https://www.w3.org/ns/activitystreams#TentativeAccept","https://www.w3.org/ns/activitystreams#Add","https://www.w3.org/ns/activitystreams#Announce","https://www.w3.org/ns/activitystreams#Create","https://www.w3.org/ns/activitystreams#Delete","https://www.w3.org/ns/activitystreams#Dislike","https://www.w3.org/ns/activitystreams#Flag","https://www.w3.org/ns/activitystreams#Follow","https://www.w3.org/ns/activitystreams#Ignore","https://www.w3.org/ns/activitystreams#Block","https://www.w3.org/ns/activitystreams#IntransitiveActivity","https://www.w3.org/ns/activitystreams#Arrive","https://www.w3.org/ns/activitystreams#Question","https://www.w3.org/ns/activitystreams#Travel","https://www.w3.org/ns/activitystreams#Join","https://www.w3.org/ns/activitystreams#Leave","https://www.w3.org/ns/activitystreams#Like","https://www.w3.org/ns/activitystreams#Listen","https://www.w3.org/ns/activitystreams#Move","https://www.w3.org/ns/activitystreams#Offer","https://www.w3.org/ns/activitystreams#Invite","https://www.w3.org/ns/activitystreams#Read","https://www.w3.org/ns/activitystreams#Reject","https://www.w3.org/ns/activitystreams#TentativeReject","https://www.w3.org/ns/activitystreams#Remove","https://www.w3.org/ns/activitystreams#Undo","https://www.w3.org/ns/activitystreams#Update","https://www.w3.org/ns/activitystreams#View","https://www.w3.org/ns/activitystreams#Application","https://www.w3.org/ns/activitystreams#Article","https://www.w3.org/ns/activitystreams#Collection","https://www.w3.org/ns/activitystreams#CollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollectionPage","https://www.w3.org/ns/activitystreams#OrderedCollection","https://www.w3.org/ns/activitystreams#Document","https://www.w3.org/ns/activitystreams#Audio","https://www.w3.org/ns/activitystreams#Image","https://www.w3.org/ns/activitystreams#Page","https://www.w3.org/ns/activitystreams#Video","https://www.w3.org/ns/activitystreams#Event","https://www.w3.org/ns/activitystreams#Group","https://www.w3.org/ns/activitystreams#Note","https://www.w3.org/ns/activitystreams#Organization","https://www.w3.org/ns/activitystreams#Person","https://www.w3.org/ns/activitystreams#Place","https://www.w3.org/ns/activitystreams#Profile","https://www.w3.org/ns/activitystreams#Relationship","https://www.w3.org/ns/activitystreams#Service","https://www.w3.org/ns/activitystreams#Tombstone"].some(
->>>>>>> upstream/main
             t => v["@type"].includes(t)) ? await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values["@id"] == null ? options.baseUrl : new URL(values["@id"])) }

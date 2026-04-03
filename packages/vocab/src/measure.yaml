@@ -11,7 +11,7 @@ defaultContext:
   hasNumericalValue: "om2:hasNumericalValue"
 
 properties:
-- singularName: hasUnit
+- singularName: unit
   functional: true
   compactName: hasUnit
   uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"
@@ -21,15 +21,12 @@ properties:
   range:
   - "http://www.w3.org/2001/XMLSchema#string"
 
-- singularName: hasNumericalValue
+- singularName: numericalValue
   functional: true
   compactName: hasNumericalValue
   uri: "http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue"
   description: |
-    The amount of the resource, represented as a decimal string.  If not
-    specified, arbitrary amounts can be used when responding to the proposal.
-
-    NOTE: This property uses `xsd:string` as a temporary measure until
-    `xsd:decimal` is supported.  See #617.
+    The amount of the resource.  If not specified, arbitrary amounts can be
+    used when responding to the proposal.
   range:
-  - "http://www.w3.org/2001/XMLSchema#string"
+  - "http://www.w3.org/2001/XMLSchema#decimal"

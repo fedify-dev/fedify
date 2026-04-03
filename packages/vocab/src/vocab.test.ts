@@ -1,5 +1,9 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { decodeMultibase, LanguageString } from "@fedify/vocab-runtime";
+import {
+  decodeMultibase,
+  LanguageString,
+  parseDecimal,
+} from "@fedify/vocab-runtime";
 import {
   areAllScalarTypes,
   loadSchemaFiles,
@@ -1915,6 +1919,7 @@ const sampleValues: Record<string, any> = {
   "http://www.w3.org/2001/XMLSchema#integer": -123,
   "http://www.w3.org/2001/XMLSchema#nonNegativeInteger": 123,
   "http://www.w3.org/2001/XMLSchema#float": 12.34,
+  "http://www.w3.org/2001/XMLSchema#decimal": parseDecimal("12.34"),
   "http://www.w3.org/2001/XMLSchema#string": "hello",
   "http://www.w3.org/2001/XMLSchema#anyURI": new URL("https://example.com/"),
   "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString": new LanguageString(

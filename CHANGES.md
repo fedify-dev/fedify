@@ -30,7 +30,7 @@ To be released.
         a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
         `availableQuantity`, and `minimumQuantity` properties.
      -  Added `Measure` class for representing quantities with units of
-        measure, with `hasUnit` and `hasNumericalValue` properties.
+        measure, with `unit` and `numericalValue` properties.
 
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 

@@ -417,24 +417,24 @@ snapshot[`Deno.inspect(PropertyValue) [auto] 3`] = `'PropertyValue { id: URL "ht
 snapshot[`Deno.inspect(Measure) [auto] 1`] = `
 'Measure {
   id: URL "https://example.com/",
-  hasUnit: "hello",
-  hasNumericalValue: "hello"
+  unit: "hello",
+  numericalValue: "12.34"
 }'
 `;
 
 snapshot[`Deno.inspect(Measure) [auto] 2`] = `
 'Measure {
   id: URL "https://example.com/",
-  hasUnit: "hello",
-  hasNumericalValue: "hello"
+  unit: "hello",
+  numericalValue: "12.34"
 }'
 `;
 
 snapshot[`Deno.inspect(Measure) [auto] 3`] = `
 'Measure {
   id: URL "https://example.com/",
-  hasUnit: "hello",
-  hasNumericalValue: "hello"
+  unit: "hello",
+  numericalValue: "12.34"
 }'
 `;
 

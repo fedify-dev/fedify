@@ -158,6 +158,8 @@ property.
 > | [`alsoKnownAs`]              | `Application.getAliases()`/`Group.getAliases()`/`Organization.getAliases()`/`Person.getAliases()`/`Service.getAliases()`                |
 > | [`anyOf`]                    | `Question.getInclusiveOptions()`                                                                                                        |
 > | [`attributedTo`]             | `Object.getAttributions()`                                                                                                              |
+> | [`hasNumericalValue`]        | `Measure.numericalValue`                                                                                                                |
+> | [`hasUnit`]                  | `Measure.unit`                                                                                                                          |
 > | [`hreflang`]                 | `Link.language`                                                                                                                         |
 > | [`inReplyTo`]                | `Object.getReplyTargets()`                                                                                                              |
 > | [`isCat`]                    | `Application.cat`/`Group.cat`/`Organization.cat`/`Person.cat`/`Service.cat`                                                             |
@@ -174,6 +176,8 @@ property.
 [`alsoKnownAs`]: https://www.w3.org/TR/did-core/#dfn-alsoknownas
 [`anyOf`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-anyof
 [`attributedTo`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-attributedto
+[`hasNumericalValue`]: http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue
+[`hasUnit`]: http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit
 [`hreflang`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-hreflang
 [`inReplyTo`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-inreplyto
 [`isCat`]: https://misskey-hub.net/ns#iscat

@@ -25,8 +25,14 @@ description: |
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
 - "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
 - vf: "https://w3id.org/valueflows/ont/vf#"
   om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  fedibird: "http://fedibird.com/ns#"
+  sensitive: "as:sensitive"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
   Proposal: "vf:Proposal"
   Intent: "vf:Intent"
   purpose: "vf:purpose"
