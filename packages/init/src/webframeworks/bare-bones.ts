@@ -72,9 +72,11 @@ const TASKS = {
   bun: {
     dev: "bun run --hot ./src/main.ts",
     prod: "bun run ./src/main.ts",
+    lint: "eslint .",
   },
   node: {
     dev: "dotenvx run -- tsx watch ./src/main.ts",
     prod: "dotenvx run -- node --import tsx ./src/main.ts",
+    lint: "eslint .",
   },
 };
