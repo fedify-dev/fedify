@@ -347,3 +347,15 @@ Most formatting is automated by [Hongdown]. Key conventions to follow:
 See *CONTRIBUTING.md* for complete Markdown conventions.
 
 [Hongdown]: https://github.com/dahlia/hongdown
+
+
+Issues and PR descriptions
+--------------------------
+
+Follow the documentation standards and Markdown conventions sections above
+for all other formatting except:
+
+ -  Do not wrap lines at 80 columns
+ -  Use `#123` shorthand for issue and PR references instead of permalink URLs
+ -  Include rationales in descriptions: explain the background and motivation
+    behind the change, not just what was changed
