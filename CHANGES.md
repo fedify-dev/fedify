@@ -20,6 +20,20 @@ To be released.
  -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
     maximum number of redirects followed by `getDocumentLoader()`.
 
+### @fedify/vocab
+
+ -  Added vocabulary types for economic resource coordination
+    in federated networks.  [[#578] by Samuel Brinkmann]
+
+     -  Added `Proposal` class for publishing offers or requests.
+     -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+     -  Added `Measure` class for representing quantities with units of
+        measure, with `hasUnit` and `hasNumericalValue` properties.
+
+[#578]: https://github.com/fedify-dev/fedify/issues/578
+
 ### @fedify/solidstart
 
  -  Added `@fedify/solidstart` package for integrating Fedify with
@@ -207,16 +221,6 @@ Released on March 24, 2026.
 
 ### @fedify/vocab
 
- -  Added vocabulary types for economic resource coordination
-    in federated networks.  [[#578] by Samuel Brinkmann]
-
-     -  Added `Proposal` class for publishing offers or requests.
-     -  Added `Intent` class for describing economic transactions within
-        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
-        `availableQuantity`, and `minimumQuantity` properties.
-     -  Added `Measure` class for representing quantities with units of
-        measure, with `hasUnit` and `hasNumericalValue` properties.
-
  -  Added [GoToSocial] interaction controls vocabulary for expressing who
     can like, reply to, or announce posts and for approving interactions.
     [[#453], [#622]]
@@ -244,7 +248,6 @@ Released on March 24, 2026.
 
 [browser.pub]: https://browser.pub/
 [#576]: https://github.com/fedify-dev/fedify/issues/576
-[#578]: https://github.com/fedify-dev/fedify/issues/578
 
 ### @fedify/vocab-tools
 
