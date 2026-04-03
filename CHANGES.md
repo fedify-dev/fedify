@@ -20,6 +20,21 @@ To be released.
  -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
     maximum number of redirects followed by `getDocumentLoader()`.
 
+### @fedify/vocab
+
+ -  Added vocabulary types for [FEP-0837], economic resource coordination
+    in federated networks.  [[#578] by Samuel Brinkmann]
+
+     -  Added `Proposal` class for publishing offers or requests.
+     -  Added `Intent` class for describing economic transactions within
+        a proposal, with `action`, `resourceConformsTo`, `resourceQuantity`,
+        `availableQuantity`, and `minimumQuantity` properties.
+     -  Added `Measure` class for representing quantities with units of
+        measure, with `unit` and `numericalValue` properties.
+
+[FEP-0837]: https://w3id.org/fep/0837
+[#578]: https://github.com/fedify-dev/fedify/issues/578
+
 ### @fedify/solidstart
 
  -  Added `@fedify/solidstart` package for integrating Fedify with
@@ -166,7 +181,6 @@ Released on March 24, 2026.
     APIs to distinguish transport failures from specific HTTP fetch failures.
     [[#611]]
 
-[FEP-0837]: https://w3id.org/fep/0837
 [GoToSocial]: https://gotosocial.org/
 [#453]: https://github.com/fedify-dev/fedify/issues/453
 [#617]: https://github.com/fedify-dev/fedify/issues/617
