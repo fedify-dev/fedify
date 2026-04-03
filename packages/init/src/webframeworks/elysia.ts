@@ -80,7 +80,7 @@ const TASKS = {
   node: {
     dev: "dotenvx run -- tsx watch src/index.ts",
     build: "tsc src/index.ts --outDir dist",
-    start: "NODE_ENV=production node dist/index.js",
+    start: "NODE_ENV=production dotenvx run -- node dist/index.js",
     lint: "eslint .",
   },
 };
