@@ -64,7 +64,7 @@ export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
     ),
     when(
       () => needsDenoDotenv({ packageManager, env }),
-      concat('import "@std/dotenv/load";'),
+      concat(['import "@std/dotenv/load";']),
     ),
     join("\n"),
   );
