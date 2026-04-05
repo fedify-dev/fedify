@@ -14,6 +14,14 @@ export const isDeno = (
 ) => packageManager === "deno";
 
 /**
+ * Returns `true` when the `@std/dotenv` dependency should be included:
+ * the project uses Deno and has at least one environment variable to load.
+ */
+export const needsDenoDotenv = (
+  { packageManager, env }: Pick<InitCommandData, "packageManager" | "env">,
+) => packageManager === "deno" && Object.keys(env).length > 0;
+
+/**
  * Returns a function that prepends the project directory to a
  * `[filename, content]` tuple, resolving the filename into an absolute path.
  */

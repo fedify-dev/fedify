@@ -1,8 +1,9 @@
-import { entries, join, map, pipe } from "@fxts/core";
+import { concat, entries, join, map, pipe, when } from "@fxts/core";
 import { toMerged } from "es-toolkit";
 import { readTemplate } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { replace } from "../utils.ts";
+import { needsDenoDotenv } from "./utils.ts";
 
 /**
  * Loads the federation configuration file content from template.
@@ -61,11 +62,11 @@ export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
           .join(", ")
       } from ${JSON.stringify(module)};`
     ),
+    when(
+      () => needsDenoDotenv({ packageManager, env }),
+      concat('import "@std/dotenv/load";'),
+    ),
     join("\n"),
-    (imports) =>
-      packageManager === "deno" && Object.keys(env).length > 0
-        ? `import "@std/dotenv/load";\n${imports}`
-        : imports,
   );
 
 /**

@@ -13,7 +13,6 @@ const bareBonesDescription: WebFrameworkDescription = {
     dependencies: pm === "deno"
       ? {
         ...defaultDenoDependencies,
-        "@std/dotenv": deps["@std/dotenv"],
         "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
       }
       : pm === "bun"

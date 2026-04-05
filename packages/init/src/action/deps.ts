@@ -13,7 +13,7 @@ import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { merge, replace } from "../utils.ts";
 import { getPackagesPath } from "./const.ts";
-import { isDeno } from "./utils.ts";
+import { isDeno, needsDenoDotenv } from "./utils.ts";
 
 type Deps = Record<string, string>;
 
@@ -36,7 +36,7 @@ export const getDependencies = (
       "@fedify/fedify": PACKAGE_VERSION,
       "@fedify/vocab": PACKAGE_VERSION,
       "@logtape/logtape": deps["@logtape/logtape"],
-      ...(packageManager === "deno" && Object.keys(env).length > 0 &&
+      ...(needsDenoDotenv({ packageManager, env }) &&
         { "@std/dotenv": deps["@std/dotenv"] }),
     },
     merge(initializer.dependencies),
