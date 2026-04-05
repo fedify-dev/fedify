@@ -26,6 +26,7 @@ const solidstartDescription: WebFrameworkDescription = {
         "@fedify/solidstart": PACKAGE_VERSION,
       }
       : {
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
         "@solidjs/router": deps["npm:@solidjs/router"],
         "@solidjs/start": deps["npm:@solidjs/start"],
         "solid-js": deps["npm:solid-js"],
@@ -98,7 +99,7 @@ const TASKS = {
   node: {
     dev: "vinxi dev",
     build: "vinxi build",
-    start: "vinxi start",
+    start: "dotenvx run -- vinxi start",
     lint: "eslint .",
   },
 };
