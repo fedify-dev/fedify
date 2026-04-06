@@ -126,6 +126,25 @@ type TestResult =
   | { name: string; status: "skip"; reason: string };
 
 // ─── Example Registry ─────────────────────────────────────────────────────────
+//
+// Every example directory under examples/ must be registered in exactly one of
+// the arrays below.  The test runner scans the examples/ directory and reports
+// any unregistered directories as warnings.
+//
+//  - SERVER_EXAMPLES   – Long-running HTTP servers.  The runner starts the
+//                        server, opens a tunnel, and verifies federation via
+//                        `fedify lookup`.  Most integration framework examples
+//                        belong here.
+//  - SCRIPT_EXAMPLES   – Standalone scripts (no server).  The runner executes
+//                        the command and checks the exit code.
+//  - MULTI_HANDLE_EXAMPLES – Scripts that accept an ActivityPub handle as
+//                        their last argument.  Multiple handles are tried in
+//                        order; the test passes if any exits with code 0.
+//  - SKIPPED_EXAMPLES  – Examples that cannot be tested automatically.
+//                        Provide a reason string explaining why.
+//
+// See the interface definitions above for the full set of fields each entry
+// accepts.
 
 const SERVER_EXAMPLES: ServerExample[] = [
   {
