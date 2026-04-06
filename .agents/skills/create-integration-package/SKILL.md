@@ -22,6 +22,7 @@ Follow these steps in order to implement the integration package.
 4.  Add to `@fedify/init`
 5.  Test with `mise test:init`
 6.  Add an example
+7.  Lint, format, and final checks
 
 
 Research the web framework
@@ -306,3 +307,11 @@ is broken:
 ~~~~ bash
 mise test:examples
 ~~~~
+
+
+Lint, format, and final checks
+------------------------------
+
+After implementation, run `mise run fmt && mise check`.
+If there are lint or format errors, fix them and run the command again until
+there are no errors.
