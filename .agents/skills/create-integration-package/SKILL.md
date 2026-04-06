@@ -280,10 +280,6 @@ Fedify middleware in `src/app.ts`.  Import `src/logging.ts` in the entry
 file to initialize `@logtape/logtape`.  When logging is needed, use the
 `getLogger` function from `@logtape/logtape` to create a logger.
 
-If there are any build files or paths other than those already added to the
-root `.gitignore`, define a separate `.gitignore` file within the example path
-to prevent git tracking them.
-
 ### Test the example with `mise test:examples`
 
 Register the new example in `examples/test-examples/mod.ts`.  Read the
