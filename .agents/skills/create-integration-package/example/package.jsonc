@@ -1,0 +1,29 @@
+{
+  // Fill 프레임워크 with the name of the framework you want to integrate with
+  "name": "프레임워크-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Fedify app with 프레임워크 integration",
+  "scripts": {
+    // `dev` script STRONGLY RECOMMENDED for `mise test:example`.
+    // Other scripts can be added as needed.
+    // Follow the convention of the framework you are integrating with.
+    "dev": ""
+  },
+  "dependencies": {
+    // Add packages required for the 프레임워크 integration here
+    // If packages are already added in the workspace,
+    // you can reference them with "catalog:".
+    // Check `pnpm-workspace.yaml` for more packages in the workspace.
+    "@fedify/fedify": "workspace:^",
+    "@fedify/프레임워크": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@logtape/logtape": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@types/node": "catalog:"
+    // Add dev dependencies required for the 프레임워크 integration here
+  }
+}

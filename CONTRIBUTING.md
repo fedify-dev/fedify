@@ -208,6 +208,15 @@ When adding a new package to the monorepo, the following files must be updated:
  -  If using pnpm catalog for dependency management: Add to `catalog` in
     *pnpm-workspace.yaml*.
 
+### Adding a web framework integration
+
+A step-by-step guide for implementing a web framework integration package is
+available in *.agents/skills/create-integration-package/SKILL.md*.  Although
+the file is primarily designed for AI coding agents, the instructions are
+written so that human contributors can also read and follow them.  The guide
+covers the entire workflow from researching the framework through creating
+the package, adding it to `fedify init`, testing, and writing an example.
+
 ### Dependency management
 
 Fedify uses two package managers:

@@ -1,0 +1,66 @@
+{
+  "name": "@fedify/프레임워크", // Fill 프레임워크 with the framework name in lowercase
+  "version": "*.*.*", // Sync with packages/fedify/package.json 
+  "description": "Integration Package for Fedify with 프레임워크", // Fill 프레임워크 with the framework name
+  "keywords": [
+    "Fedify",
+    "Federation",
+    // Add relevant keywords for the framework
+  ],
+  "author": { // Fill in author information
+    "name": "",
+    "email": "",
+    "url": "",
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/프레임워크" // Fill 프레임워크 with the framework name
+  },
+  "homepage": "https://fedify.dev/",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "main": "./dist/mod.js",
+  "module": "./dist/mod.mjs",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@nestjs/common": "catalog:",
+    // Add other relevant peer dependencies for the framework
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    // Add other relevant peer dependencies for the framework
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/프레임워크... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "imports": {
+    // Add imports required for the framework you are integrating with.
+    // If packages are already added in the workspace,
+    // you don't need to add import maps for here.
+  },
+  "tasks": {
+    // `dev` task STRONGLY RECOMMENDED for `mise test:example`.
+    // Other tasks can be added as needed.
+    // Follow the convention of the framework you are integrating with.
+    "dev": "deno run --watch -A src/main.ts"
+  }
+}
