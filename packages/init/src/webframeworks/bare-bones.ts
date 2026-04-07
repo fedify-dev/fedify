@@ -10,19 +10,7 @@ const bareBonesDescription: WebFrameworkDescription = {
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
   init: async ({ packageManager: pm }) => ({
-    dependencies: pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
-      }
-      : pm === "bun"
-      ? { "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"] }
-      : {
-        "npm:@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        "npm:@hono/node-server": deps["npm:@hono/node-server"],
-        "npm:tsx": deps["npm:tsx"],
-        "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-      },
+    dependencies: getDependencies(pm),
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm === "bun"
@@ -32,14 +20,10 @@ const bareBonesDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/main.ts": await readTemplate(
-        `bare-bones/main/${pmToRt(pm)}.ts`,
-      ),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      "src/main.ts": await readTemplate(`bare-bones/main/${pmToRt(pm)}.ts`),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
     compilerOptions: (pm === "deno"
       ? {
@@ -62,6 +46,21 @@ const bareBonesDescription: WebFrameworkDescription = {
 };
 
 export default bareBonesDescription;
+
+const getDependencies = (pm: string): Record<string, string> =>
+  pm === "deno"
+    ? {
+      ...defaultDenoDependencies,
+      "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
+    }
+    : pm === "bun"
+    ? { "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"] }
+    : {
+      "npm:@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+      "npm:@hono/node-server": deps["npm:@hono/node-server"],
+      "npm:tsx": deps["npm:tsx"],
+      "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+    };
 
 const TASKS = {
   deno: {

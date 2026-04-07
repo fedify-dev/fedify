@@ -37,7 +37,7 @@ const astroDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      [`astro.config.ts`]: await readTemplate(
+      "astro.config.ts": await readTemplate(
         `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
       ),
       "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),

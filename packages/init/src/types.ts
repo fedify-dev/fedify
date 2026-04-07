@@ -71,9 +71,9 @@ export interface WebFrameworkInitializer {
   /** Optional shell command to run before scaffolding (e.g., `create-next-app`). */
   command?: string[];
   /** Runtime dependencies to install (package name to version). */
-  dependencies?: object;
+  dependencies?: Record<string, string>;
   /** Development-only dependencies to install (package name to version). */
-  devDependencies?: object;
+  devDependencies?: Record<string, string>;
   /** Relative path where the federation configuration file will be created. */
   federationFile: string;
   /** Relative path where the logging configuration file will be created. */
@@ -87,11 +87,11 @@ export interface WebFrameworkInitializer {
   /** Environment variables required by this framework, keyed by name to
    *  default value.  Merged together with KV store and message queue env vars
    *  into the generated `.env` file. */
-  env?: object;
+  env?: Record<string, string>;
   /** TypeScript compiler options to include in `tsconfig.json`. */
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   /** Task scripts keyed by task name (e.g., `"dev"`, `"prod"`, `"lint"`). */
-  tasks?: object;
+  tasks?: Record<string, string>;
   /** Instructions shown to the user after project initialization is complete. */
   instruction: Message;
 }

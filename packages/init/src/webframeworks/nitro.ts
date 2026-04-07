@@ -17,7 +17,7 @@ const nitroDescription: WebFrameworkDescription = {
     devDependencies: defaultDevDependencies,
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
-    env: testMode ? { HOST: "127.0.0.1" } : {},
+    env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
@@ -28,7 +28,9 @@ const nitroDescription: WebFrameworkDescription = {
         "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
       }),
     },
-    tasks: pm !== "deno" ? { "lint": "eslint ." } : {} as { lint?: string },
+    tasks: pm !== "deno"
+      ? { "lint": "eslint ." }
+      : {} as Record<string, string>,
     instruction: getInstruction(pm, 3000),
   }),
 };

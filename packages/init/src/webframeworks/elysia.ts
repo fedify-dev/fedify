@@ -84,3 +84,5 @@ const TASKS = {
     lint: "eslint .",
   },
 };
+
+// cspell: ignore typebox

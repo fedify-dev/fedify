@@ -12,27 +12,7 @@ const honoDescription: WebFrameworkDescription = {
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
   init: async ({ projectName, packageManager: pm }) => ({
-    dependencies: pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        "@hono/hono": deps["@hono/hono"],
-        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      }
-      : pm === "bun"
-      ? {
-        hono: deps["npm:hono"],
-        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      }
-      : {
-        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        hono: deps["npm:hono"],
-        "@hono/node-server": deps["npm:@hono/node-server"],
-        tsx: deps["npm:tsx"],
-        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      },
+    dependencies: getDependencies(pm),
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {}),
@@ -72,6 +52,29 @@ const honoDescription: WebFrameworkDescription = {
 };
 
 export default honoDescription;
+
+const getDependencies = (pm: string): Record<string, string> =>
+  pm === "deno"
+    ? {
+      ...defaultDenoDependencies,
+      "@hono/hono": deps["@hono/hono"],
+      "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    }
+    : pm === "bun"
+    ? {
+      hono: deps["npm:hono"],
+      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    }
+    : {
+      "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+      hono: deps["npm:hono"],
+      "@hono/node-server": deps["npm:@hono/node-server"],
+      tsx: deps["npm:tsx"],
+      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    };
 
 const TASKS = {
   deno: {

@@ -13,13 +13,11 @@ const expressDescription: WebFrameworkDescription = {
     dependencies: {
       "npm:express": deps["npm:express"],
       "@fedify/express": PACKAGE_VERSION,
-      ...(pm !== "deno" && pm !== "bun"
-        ? {
-          "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-          tsx: deps["npm:tsx"],
-        }
-        : {}),
-      ...(pm === "deno" ? defaultDenoDependencies : {}),
+      ...(pmToRt(pm) === "node" && {
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        tsx: deps["npm:tsx"],
+      }),
+      ...(pm === "deno" && defaultDenoDependencies),
     },
     devDependencies: {
       "@types/express": deps["npm:@types/express"],
