@@ -31,7 +31,5 @@ Then, try to look up an actor from your server:
  * @param pm - The package manager (deno, bun, npm, yarn, pnpm)
  * @returns The runtime name (deno, bun, or node)
  */
-export const packageManagerToRuntime = (
-  pm: PackageManager,
-): "deno" | "bun" | "node" =>
-  pm === "deno" ? "deno" : pm === "bun" ? "bun" : "node";
+export const pmToRt = (pm: PackageManager): "deno" | "bun" | "node" =>
+  (pm !== "deno" && pm !== "bun") ? "node" : pm;

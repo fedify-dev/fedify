@@ -5,35 +5,14 @@ import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { replace } from "../utils.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, packageManagerToRuntime } from "./utils.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
 
 const honoDescription: WebFrameworkDescription = {
   label: "Hono",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
   init: async ({ projectName, packageManager: pm }) => ({
-    dependencies: pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        "@std/dotenv": deps["@std/dotenv"],
-        "@hono/hono": deps["@hono/hono"],
-        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      }
-      : pm === "bun"
-      ? {
-        hono: deps["npm:hono"],
-        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      }
-      : {
-        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        hono: deps["npm:hono"],
-        "@hono/node-server": deps["npm:@hono/node-server"],
-        tsx: deps["npm:tsx"],
-        "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-        "@fedify/hono": PACKAGE_VERSION,
-      },
+    dependencies: getDependencies(pm),
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {}),
@@ -47,7 +26,7 @@ const honoDescription: WebFrameworkDescription = {
         replace(/\/\* logger \*\//, projectName),
       ),
       "src/index.ts": await readTemplate(
-        `hono/index/${packageManagerToRuntime(pm)}.ts`,
+        `hono/index/${pmToRt(pm)}.ts`,
       ),
       ...(pm !== "deno"
         ? {
@@ -67,21 +46,49 @@ const honoDescription: WebFrameworkDescription = {
       "jsx": "react-jsx",
       "jsxImportSource": "hono/jsx",
     },
-    tasks: {
-      "dev": pm === "deno"
-        ? "deno run -A --watch ./src/index.ts"
-        : pm === "bun"
-        ? "bun run --hot ./src/index.ts"
-        : "dotenvx run -- tsx watch ./src/index.ts",
-      "prod": pm === "deno"
-        ? "deno run -A ./src/index.ts"
-        : pm === "bun"
-        ? "bun run ./src/index.ts"
-        : "dotenvx run -- node --import tsx ./src/index.ts",
-      ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
-    },
+    tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 8000),
   }),
 };
 
 export default honoDescription;
+
+const getDependencies = (pm: string): Record<string, string> =>
+  pm === "deno"
+    ? {
+      ...defaultDenoDependencies,
+      "@hono/hono": deps["@hono/hono"],
+      "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    }
+    : pm === "bun"
+    ? {
+      hono: deps["npm:hono"],
+      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    }
+    : {
+      "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+      hono: deps["npm:hono"],
+      "@hono/node-server": deps["npm:@hono/node-server"],
+      tsx: deps["npm:tsx"],
+      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+      "@fedify/hono": PACKAGE_VERSION,
+    };
+
+const TASKS = {
+  deno: {
+    dev: "deno run -A --watch ./src/index.ts",
+    prod: "deno run -A ./src/index.ts",
+  },
+  bun: {
+    dev: "bun run --hot ./src/index.ts",
+    prod: "bun run ./src/index.ts",
+    lint: "eslint .",
+  },
+  node: {
+    dev: "dotenvx run -- tsx watch ./src/index.ts",
+    prod: "dotenvx run -- node --import tsx ./src/index.ts",
+    lint: "eslint .",
+  },
+};

@@ -12,6 +12,7 @@ import type {
   MessageQueue,
   MessageQueueDescription,
   WebFrameworkDescription,
+  WebFrameworkInitializer,
 } from "../types.ts";
 import webFrameworks from "../webframeworks/mod.ts";
 
@@ -58,6 +59,11 @@ const setMq = set(
 const setEnv = set(
   "env",
   <
-    T extends { kv: KvStoreDescription; mq: MessageQueueDescription },
-  >({ kv, mq }: T) => merge(kv.env)(mq.env),
+    T extends {
+      initializer: WebFrameworkInitializer;
+      kv: KvStoreDescription;
+      mq: MessageQueueDescription;
+    },
+  >({ initializer, kv, mq }: T) =>
+    merge(initializer.env)(merge(kv.env)(mq.env)),
 );

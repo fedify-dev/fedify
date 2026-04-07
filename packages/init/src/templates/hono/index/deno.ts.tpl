@@ -1,5 +1,4 @@
 import { behindProxy } from "@hongminhee/x-forwarded-fetch";
-import "@std/dotenv/load";
 import app from "./app.tsx";
 import "./logging.ts";
 

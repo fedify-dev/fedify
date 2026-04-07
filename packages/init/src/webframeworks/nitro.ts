@@ -12,27 +12,25 @@ const nitroDescription: WebFrameworkDescription = {
     command: getNitroInitCommand(pm),
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
-      ...(pm === "deno" ? defaultDenoDependencies : {}),
+      ...(pm === "deno" && defaultDenoDependencies),
     },
     devDependencies: defaultDevDependencies,
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
+    env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
       ),
       "server/error.ts": await readTemplate("nitro/server/error.ts"),
       "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
-      ...(
-        testMode ? { ".env": await readTemplate("nitro/.env.test") } : {}
-      ),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
-    tasks: pm !== "deno" ? { "lint": "eslint ." } : {} as { lint?: string },
+    tasks: pm !== "deno"
+      ? { "lint": "eslint ." }
+      : {} as Record<string, string>,
     instruction: getInstruction(pm, 3000),
   }),
 };

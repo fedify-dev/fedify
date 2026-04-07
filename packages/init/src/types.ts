@@ -40,7 +40,6 @@ export type Runtimes = Record<PackageManager, RuntimeDescription>;
  * whether it is installed.
  */
 export interface RuntimeDescription {
-  /** Human-readable name of the runtime (e.g., `"Deno"`, `"Node.js"`). */
   label: string;
   /** Shell command to run for checking availability (e.g., `["deno", "--version"]`). */
   checkCommand: [string, ...string[]];
@@ -72,15 +71,23 @@ export interface WebFrameworkInitializer {
   /** Optional shell command to run before scaffolding (e.g., `create-next-app`). */
   command?: string[];
   /** Runtime dependencies to install (package name to version). */
-  dependencies?: object;
+  dependencies?: Record<string, string>;
   /** Development-only dependencies to install (package name to version). */
-  devDependencies?: object;
+  devDependencies?: Record<string, string>;
   /** Relative path where the federation configuration file will be created. */
   federationFile: string;
   /** Relative path where the logging configuration file will be created. */
   loggingFile: string;
-  /** Additional files to create, keyed by relative path to file content. */
-  files?: Record<string, string>;
+  /**
+   * Additional files to create, keyed by relative path to file content.
+   * Do not use `".env"` as a key — use the {@link env} property instead so
+   * that environment variables are properly merged with KV/MQ env vars.
+   */
+  files?: Record<string, string> & { ".env"?: never };
+  /** Environment variables required by this framework, keyed by name to
+   *  default value.  Merged together with KV store and message queue env vars
+   *  into the generated `.env` file. */
+  env?: Record<string, string>;
   /** TypeScript compiler options to include in `tsconfig.json`. */
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   /** Task scripts keyed by task name (e.g., `"dev"`, `"prod"`, `"lint"`). */

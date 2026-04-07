@@ -23,15 +23,13 @@ const nextDescription: WebFrameworkDescription = {
     loggingFile: "logging.ts",
     files: {
       "middleware.ts": await readTemplate("next/middleware.ts"),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
-    tasks: {
-      ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
-    },
+    tasks: pm !== "deno"
+      ? { "lint": "eslint ." }
+      : {} as Record<string, string>,
     instruction: getInstruction(pm, 3000),
   }),
 };

@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, packageManagerToRuntime } from "./utils.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
 
 const elysiaDescription: WebFrameworkDescription = {
   label: "ElysiaJS",
@@ -22,15 +22,14 @@ const elysiaDescription: WebFrameworkDescription = {
         "@fedify/elysia": PACKAGE_VERSION,
       }
       : {
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
         elysia: deps["npm:elysia"],
         "@elysiajs/node": deps["npm:@elysiajs/node"],
         "@fedify/elysia": PACKAGE_VERSION,
-        ...(pm === "pnpm"
-          ? {
-            "@sinclair/typebox": deps["npm:@sinclair/typebox"],
-            "openapi-types": deps["npm:openapi-types"],
-          }
-          : {}),
+        ...(pm === "pnpm" && {
+          "@sinclair/typebox": deps["npm:@sinclair/typebox"],
+          "openapi-types": deps["npm:openapi-types"],
+        }),
       },
     devDependencies: {
       ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {
@@ -44,13 +43,11 @@ const elysiaDescription: WebFrameworkDescription = {
     loggingFile: "src/logging.ts",
     files: {
       "src/index.ts": (await readTemplate(
-        `elysia/index/${packageManagerToRuntime(pm)}.ts`,
+        `elysia/index/${pmToRt(pm)}.ts`,
       )).replace(/\/\* logger \*\//, projectName),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
     compilerOptions: pm === "deno" || pm === "bun" ? undefined : {
       "lib": ["ESNext", "DOM"],
@@ -62,24 +59,30 @@ const elysiaDescription: WebFrameworkDescription = {
       "noEmit": true,
       "strict": true,
     },
-    tasks: {
-      "dev": pm === "deno"
-        ? "deno serve --allow-env --allow-net --watch ./src/index.ts"
-        : pm === "bun"
-        ? "bun run --hot ./src/index.ts"
-        : "tsx watch src/index.ts",
-      ...(pm === "deno"
-        ? { "prod": "deno serve --allow-env --allow-net ./src/index.ts" }
-        : pm === "bun"
-        ? { "prod": "bun run ./src/index.ts" }
-        : {
-          "build": "tsc src/index.ts --outDir dist",
-          "start": "NODE_ENV=production node dist/index.js",
-        }),
-      ...(pm !== "deno" ? { "lint": "eslint ." } : {}),
-    },
+    tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 3000),
   }),
 };
 
 export default elysiaDescription;
+
+const TASKS = {
+  deno: {
+    dev:
+      "deno serve --allow-read --allow-env --allow-net --watch ./src/index.ts",
+    prod: "deno serve --allow-read --allow-env --allow-net ./src/index.ts",
+  },
+  bun: {
+    dev: "bun run --hot ./src/index.ts",
+    prod: "bun run ./src/index.ts",
+    lint: "eslint .",
+  },
+  node: {
+    dev: "dotenvx run -- tsx watch src/index.ts",
+    build: "tsc src/index.ts --outDir dist",
+    start: "NODE_ENV=production dotenvx run -- node dist/index.js",
+    lint: "eslint .",
+  },
+};
+
+// cspell: ignore typebox

@@ -3,27 +3,14 @@ import deps from "../json/deps.json" with { type: "json" };
 import { readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, packageManagerToRuntime } from "./utils.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
 
 const bareBonesDescription: WebFrameworkDescription = {
   label: "Bare-bones",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 8000,
   init: async ({ packageManager: pm }) => ({
-    dependencies: pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        "@std/dotenv": deps["@std/dotenv"],
-        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
-      }
-      : pm === "bun"
-      ? { "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"] }
-      : {
-        "npm:@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        "npm:@hono/node-server": deps["npm:@hono/node-server"],
-        "npm:tsx": deps["npm:tsx"],
-        "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-      },
+    dependencies: getDependencies(pm),
     devDependencies: {
       ...defaultDevDependencies,
       ...(pm === "bun"
@@ -33,14 +20,10 @@ const bareBonesDescription: WebFrameworkDescription = {
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     files: {
-      "src/main.ts": await readTemplate(
-        `bare-bones/main/${packageManagerToRuntime(pm)}.ts`,
-      ),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
+      "src/main.ts": await readTemplate(`bare-bones/main/${pmToRt(pm)}.ts`),
+      ...(pm !== "deno" && {
+        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      }),
     },
     compilerOptions: (pm === "deno"
       ? {
@@ -57,20 +40,41 @@ const bareBonesDescription: WebFrameworkDescription = {
         "noEmit": true,
         "strict": true,
       }) as Record<string, string | boolean | number | string[] | null>,
-    tasks: {
-      "dev": pm === "deno"
-        ? "deno run -A --watch ./src/main.ts"
-        : pm === "bun"
-        ? "bun run --hot ./src/main.ts"
-        : "dotenvx run -- tsx watch ./src/main.ts",
-      "prod": pm === "deno"
-        ? "deno run -A ./src/main.ts"
-        : pm === "bun"
-        ? "bun run ./src/main.ts"
-        : "dotenvx run -- node --import tsx ./src/main.ts",
-    },
+    tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 8000),
   }),
 };
 
 export default bareBonesDescription;
+
+const getDependencies = (pm: string): Record<string, string> =>
+  pm === "deno"
+    ? {
+      ...defaultDenoDependencies,
+      "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
+    }
+    : pm === "bun"
+    ? { "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"] }
+    : {
+      "npm:@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+      "npm:@hono/node-server": deps["npm:@hono/node-server"],
+      "npm:tsx": deps["npm:tsx"],
+      "npm:x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+    };
+
+const TASKS = {
+  deno: {
+    dev: "deno run -A --watch ./src/main.ts",
+    prod: "deno run -A ./src/main.ts",
+  },
+  bun: {
+    dev: "bun run --hot ./src/main.ts",
+    prod: "bun run ./src/main.ts",
+    lint: "eslint .",
+  },
+  node: {
+    dev: "dotenvx run -- tsx watch ./src/main.ts",
+    prod: "dotenvx run -- node --import tsx ./src/main.ts",
+    lint: "eslint .",
+  },
+};

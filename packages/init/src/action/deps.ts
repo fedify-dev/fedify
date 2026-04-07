@@ -13,7 +13,7 @@ import { PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData, PackageManager } from "../types.ts";
 import { merge, replace } from "../utils.ts";
 import { getPackagesPath } from "./const.ts";
-import { isDeno } from "./utils.ts";
+import { isDeno, needsDenoDotenv } from "./utils.ts";
 
 type Deps = Record<string, string>;
 
@@ -26,9 +26,9 @@ type Deps = Record<string, string>;
  * @returns A record of dependencies with their versions
  */
 export const getDependencies = (
-  { initializer, kv, mq, testMode, packageManager }: Pick<
+  { initializer, kv, mq, env, testMode, packageManager }: Pick<
     InitCommandData,
-    "initializer" | "kv" | "mq" | "packageManager" | "testMode"
+    "initializer" | "kv" | "mq" | "env" | "packageManager" | "testMode"
   >,
 ): Deps =>
   pipe(
@@ -36,6 +36,8 @@ export const getDependencies = (
       "@fedify/fedify": PACKAGE_VERSION,
       "@fedify/vocab": PACKAGE_VERSION,
       "@logtape/logtape": deps["@logtape/logtape"],
+      ...(needsDenoDotenv({ packageManager, env }) &&
+        { "@std/dotenv": deps["@std/dotenv"] }),
     },
     merge(initializer.dependencies),
     merge(kv.dependencies),
