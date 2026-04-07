@@ -12,7 +12,7 @@ import type {
   KVNamespace,
   MessageSendRequest,
   Queue,
-} from "@cloudflare/workers-types/experimental";
+} from "@cloudflare/workers-types";
 import type {
   KvKey,
   KvStore,
