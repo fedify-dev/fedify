@@ -16,7 +16,7 @@ ADMIN_RAW=$(curl -sf -X POST "$SHARKEY_URL/api/admin/accounts/create" \
     \"password\": \"adminpassword123\",
     \"setupPassword\": \"$SETUP_PASSWORD\"
   }" 2>&1) || true
-echo "  admin creation response: ${ADMIN_RAW:0:200}"
+echo "  admin creation: $(echo "$ADMIN_RAW" | jq -r 'if .token then "ok" elif .error then .error.message // .error else "unknown" end' 2>/dev/null || echo "non-JSON response")"
 
 ADMIN_TOKEN=$(echo "$ADMIN_RAW" | jq -r '.token // empty' 2>/dev/null || true)
 if [ -z "$ADMIN_TOKEN" ]; then
@@ -41,7 +41,7 @@ TEST_RAW=$(curl -sf -X POST "$SHARKEY_URL/api/admin/accounts/create" \
     \"username\": \"testuser\",
     \"password\": \"testpassword123\"
   }" 2>&1) || true
-echo "  testuser creation response: ${TEST_RAW:0:200}"
+echo "  testuser creation: $(echo "$TEST_RAW" | jq -r 'if .token then "ok" elif .error then .error.message // .error else "unknown" end' 2>/dev/null || echo "non-JSON response")"
 
 # Try to extract token directly from the creation response
 TEST_TOKEN=$(echo "$TEST_RAW" | jq -r '.token // empty' 2>/dev/null || true)
@@ -52,7 +52,7 @@ if [ -z "$TEST_TOKEN" ]; then
   SIGN_IN_RAW=$(curl -sf -X POST "$SHARKEY_URL/api/signin" \
     -H "Content-Type: application/json" \
     -d '{"username": "testuser", "password": "testpassword123"}' 2>&1) || true
-  echo "  signin response: ${SIGN_IN_RAW:0:200}"
+  echo "  signin: $([ -n "$(echo "$SIGN_IN_RAW" | jq -r '.i // empty' 2>/dev/null)" ] && echo "ok" || echo "failed")"
   TEST_TOKEN=$(echo "$SIGN_IN_RAW" | jq -r '.i // empty' 2>/dev/null || true)
 fi
 
@@ -67,13 +67,13 @@ if [ -z "$TEST_TOKEN" ]; then
     RESET_RAW=$(curl -sf -X POST "$SHARKEY_URL/api/admin/reset-password" \
       -H "Content-Type: application/json" \
       -d "{\"i\": \"$ADMIN_TOKEN\", \"userId\": \"$TESTUSER_ID\"}" 2>&1) || true
-    echo "  reset-password response: ${RESET_RAW:0:200}"
+    echo "  reset-password: $([ -n "$(echo "$RESET_RAW" | jq -r '.password // empty' 2>/dev/null)" ] && echo "ok" || echo "failed")"
     NEW_PASS=$(echo "$RESET_RAW" | jq -r '.password // empty' 2>/dev/null || true)
     if [ -n "$NEW_PASS" ]; then
       SIGN_IN_RAW=$(curl -sf -X POST "$SHARKEY_URL/api/signin" \
         -H "Content-Type: application/json" \
         -d "{\"username\": \"testuser\", \"password\": \"$NEW_PASS\"}" 2>&1) || true
-      echo "  signin after reset response: ${SIGN_IN_RAW:0:200}"
+      echo "  signin after reset: $([ -n "$(echo "$SIGN_IN_RAW" | jq -r '.i // empty' 2>/dev/null)" ] && echo "ok" || echo "failed")"
       TEST_TOKEN=$(echo "$SIGN_IN_RAW" | jq -r '.i // empty' 2>/dev/null || true)
     fi
   fi
@@ -123,13 +123,13 @@ echo "  Fedify user resolved: $FEDIFY_USER_ID"
 
 echo "→ Creating follow relationship (testuser follows Fedify account)..."
 echo "  Fedify user ID in Sharkey: $FEDIFY_USER_ID"
-FOLLOW_RAW=$(curl -s -X POST "$SHARKEY_URL/api/following/create" \
+curl -sSf -X POST "$SHARKEY_URL/api/following/create" \
   -H "Content-Type: application/json" \
   -d "{
     \"i\": \"$TEST_TOKEN\",
     \"userId\": \"$FEDIFY_USER_ID\"
-  }" 2>&1) || true
-echo "  follow response: ${FOLLOW_RAW:0:200}"
+  }" >/dev/null
+echo "  follow request succeeded"
 
 echo "→ Writing test env..."
 cat > test/smoke/.env.test <<EOF
