@@ -2602,6 +2602,88 @@ test("ContextImpl.sendActivity()", async (t) => {
     ]);
   });
 
+  await t.step(
+    "fanout: fanoutQueue.enqueue() is awaited before sendActivity() returns",
+    async () => {
+      // Regression test for <https://github.com/fedify-dev/fedify/issues/661>.
+      // The fanout branch of sendActivityInternal() must await
+      // fanoutQueue.enqueue() so that the message is guaranteed to be
+      // enqueued before sendActivity() returns.  On runtimes like Cloudflare
+      // Workers that may terminate an isolate as soon as the response is sent,
+      // a floating (non-awaited) enqueue() promise can be silently dropped,
+      // causing fanout messages to be lost.
+      //
+      // This test uses a queue whose enqueue() resolves only after a
+      // macro-task delay (setTimeout 0).  If enqueue() is not awaited,
+      // sendActivity() will return before the message is recorded, and the
+      // assertion below will fail.
+      const asyncEnqueued: Message[] = [];
+      const asyncQueue: MessageQueue = {
+        enqueue(message: Message): Promise<void> {
+          return new Promise<void>((resolve) => {
+            setTimeout(() => {
+              asyncEnqueued.push(message);
+              resolve();
+            }, 0);
+          });
+        },
+        async listen(): Promise<void> {},
+      };
+      const fed = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue: asyncQueue,
+        manuallyStartQueue: true,
+      });
+      fed
+        .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+          if (identifier !== "john") return null;
+          const keys = await ctx.getActorKeyPairs(identifier);
+          return new vocab.Person({
+            id: ctx.getActorUri(identifier),
+            preferredUsername: "john",
+            publicKey: keys[0].cryptographicKey,
+            assertionMethods: keys.map((k) => k.multikey),
+          });
+        })
+        .setKeyPairsDispatcher((_ctx, identifier) => {
+          if (identifier !== "john") return [];
+          return [
+            { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+            {
+              privateKey: ed25519PrivateKey,
+              publicKey: ed25519PublicKey.publicKey!,
+            },
+          ];
+        });
+      const ctx3 = new ContextImpl({
+        data: undefined,
+        federation: fed,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/1"),
+        actor: new URL("https://example.com/person"),
+      });
+      await ctx3.sendActivity(
+        { username: "john" },
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        activity,
+        { fanout: "force" },
+      );
+      assertEquals(
+        asyncEnqueued.length,
+        1,
+        "fanoutQueue.enqueue() must be awaited before sendActivity() returns",
+      );
+    },
+  );
+
   collectionSyncHeader = null;
 
   await t.step("followers collection without syncCollection", async () => {

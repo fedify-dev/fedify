@@ -8,6 +8,15 @@ Version 2.0.11
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `sendActivity()` not awaiting `fanoutQueue.enqueue()` in the fanout
+    path, which could cause fanout messages to be silently dropped on runtimes
+    like Cloudflare Workers that may terminate an isolate as soon as the
+    response is sent.  [[#661]]
+
+[#661]: https://github.com/fedify-dev/fedify/issues/661
+
 ### @fedify/cfworkers
 
  -  Fixed a TypeScript type mismatch that occurred when passing
@@ -807,6 +816,19 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.7
+--------------
+
+Released on April 7, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `sendActivity()` not awaiting `fanoutQueue.enqueue()` in the fanout
+    path, which could cause fanout messages to be silently dropped on runtimes
+    like Cloudflare Workers that may terminate an isolate as soon as the
+    response is sent.  [[#661]]
+
+
 Version 1.10.6
 --------------
 
@@ -992,6 +1014,19 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.8
+-------------
+
+Released on April 7, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `sendActivity()` not awaiting `fanoutQueue.enqueue()` in the fanout
+    path, which could cause fanout messages to be silently dropped on runtimes
+    like Cloudflare Workers that may terminate an isolate as soon as the
+    response is sent.  [[#661]]
 
 
 Version 1.9.7
