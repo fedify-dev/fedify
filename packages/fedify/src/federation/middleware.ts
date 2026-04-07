@@ -2336,7 +2336,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (!this.federation.manuallyStartQueue) {
       this.federation._startQueueInternal(this.data);
     }
-    this.federation.fanoutQueue.enqueue(message);
+    await this.federation.fanoutQueue.enqueue(message);
   }
 
   async *getFollowers(identifier: string): AsyncIterable<Recipient> {

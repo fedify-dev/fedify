@@ -8,6 +8,15 @@ Version 1.9.8
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `sendActivity()` not awaiting `fanoutQueue.enqueue()` in the fanout
+    path, which could cause fanout messages to be silently dropped on runtimes
+    like Cloudflare Workers that may terminate an isolate as soon as the
+    response is sent.  [[#661]]
+
+[#661]: https://github.com/fedify-dev/fedify/issues/661
+
 
 Version 1.9.7
 -------------
