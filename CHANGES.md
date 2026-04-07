@@ -47,6 +47,17 @@ To be released.
 [#601]: https://github.com/fedify-dev/fedify/pull/601
 [#652]: https://github.com/fedify-dev/fedify/pull/652
 
+### @fedify/init
+
+ -  Fixed errors when using `fedify init` with certain web framework
+    integration packages (Astro, ElysiaJS, Nitro) alongside `@fedify/mysql`.
+    Environment variables are now properly loaded at runtime, resolving the
+    `TypeError: Cannot read properties of undefined` from `mysql2`.
+    [[#649], [#656] by ChanHaeng Lee]
+
+[#649]: https://github.com/fedify-dev/fedify/issues/649
+[#656]: https://github.com/fedify-dev/fedify/pull/656
+
 
 Version 2.1.4
 -------------
