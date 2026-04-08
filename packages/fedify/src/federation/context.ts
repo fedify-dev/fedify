@@ -876,7 +876,10 @@ export interface GetSignedKeyOptions {
  */
 export interface ActorKeyPair extends CryptoKeyPair {
   /**
-   * The URI of the public key, which is used for verifying HTTP Signatures.
+   * The URI of the public key for {@link CryptographicKey}, which is used for
+   * verifying HTTP Signatures and Linked Data Signatures.  Note that this is
+   * the ID of the {@link cryptographicKey}, not of the {@link multikey};
+   * the {@link Multikey} instance has a distinct ID of its own.
    */
   readonly keyId: URL;
 
