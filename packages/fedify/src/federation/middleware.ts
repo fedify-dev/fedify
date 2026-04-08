@@ -1021,14 +1021,23 @@ export class FederationImpl<TContextData>
       validateCryptoKey(privateKey, "private");
       if (rsaKey == null && privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
         rsaKey = { keyId, privateKey };
-        continue;
       }
-      if (privateKey.algorithm.name === "Ed25519") {
-        activity = await signObject(activity, privateKey, keyId, {
-          contextLoader,
-          tracerProvider: this.tracerProvider,
-        });
-        proofCreated = true;
+    }
+    // If Object Integrity Proofs were already created before fanout (e.g., in
+    // sendActivityInternal()), skip signing to avoid duplicates.
+    for await (const _ of activity.getProofs({ contextLoader })) {
+      proofCreated = true;
+      break;
+    }
+    if (!proofCreated) {
+      for (const { keyId, privateKey } of keys) {
+        if (privateKey.algorithm.name === "Ed25519") {
+          activity = await signObject(activity, privateKey, keyId, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+          proofCreated = true;
+        }
       }
     }
     let jsonLd = await activity.toJsonLd({
@@ -1920,6 +1929,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     const owner = this.getActorUri(identifier);
     const result = [];
+    let i = 1;
     for (const keyPair of keyPairs) {
       const newPair: ActorKeyPair = {
         ...keyPair,
@@ -1929,12 +1939,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           publicKey: keyPair.publicKey,
         }),
         multikey: new Multikey({
-          id: keyPair.keyId,
+          id: new URL(`#multikey-${i}`, owner),
           controller: owner,
           publicKey: keyPair.publicKey,
         }),
       };
       result.push(newPair);
+      i++;
     }
     return result;
   }
@@ -2192,6 +2203,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
+    let actorKeyPairs: ActorKeyPair[] | null = null;
     if ("identifier" in sender || "username" in sender || "handle" in sender) {
       if ("identifier" in sender) {
         identifier = sender.identifier;
@@ -2225,12 +2237,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         }
       }
       span.setAttribute("fedify.actor.identifier", identifier);
-      keys = await this.getKeyPairsFromIdentifier(identifier);
-      if (keys.length < 1) {
+      if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
+        throw new Error("No actor key pairs dispatcher registered.");
+      }
+      actorKeyPairs = await this.getActorKeyPairs(identifier);
+      if (actorKeyPairs.length < 1) {
         throw new Error(
           `No key pair found for actor ${JSON.stringify(identifier)}.`,
         );
       }
+      keys = actorKeyPairs.map((kp) => ({
+        keyId: kp.keyId,
+        privateKey: kp.privateKey,
+      }));
     } else if (Array.isArray(sender)) {
       if (sender.length < 1) {
         throw new Error("The sender's key pairs are empty.");
@@ -2287,6 +2306,22 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       throw new TypeError(
         "The activity to send must have at least one actor property.",
       );
+    }
+    // Pre-sign with Object Integrity Proofs before fanout so that all
+    // recipients receive the same signed activity.  Uses Multikey IDs so that
+    // verifiers can look up the correct key type in the actor document.
+    if (actorKeyPairs != null) {
+      const contextLoader = this.contextLoader;
+      for (const kp of actorKeyPairs) {
+        if (
+          kp.privateKey.algorithm.name !== "Ed25519" ||
+          kp.multikey.id == null
+        ) continue;
+        activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
+          contextLoader,
+          tracerProvider: this.tracerProvider,
+        });
+      }
     }
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
@@ -2840,12 +2875,16 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
           identifier = mapped;
         }
       }
-      keys = await this.getKeyPairsFromIdentifier(identifier);
-      if (keys.length < 1) {
+      const actorKeyPairs = await this.getActorKeyPairs(identifier);
+      if (actorKeyPairs.length < 1) {
         throw new Error(
           `No key pair found for actor ${JSON.stringify(identifier)}.`,
         );
       }
+      keys = actorKeyPairs.map((kp) => ({
+        keyId: kp.keyId,
+        privateKey: kp.privateKey,
+      }));
     } else if (Array.isArray(forwarder)) {
       if (forwarder.length < 1) {
         throw new Error("The forwarder's key pairs are empty.");
