@@ -8,6 +8,18 @@ Version 2.0.12
 
 To be released.
 
+### @fedify/cfworkers
+
+ -  Fixed a remaining TypeScript type mismatch for Cloudflare Workers users who
+    pass `wrangler types` or `@cloudflare/vite-plugin` generated KV bindings to
+    `WorkersKvStore`.  The package now accepts a minimal structural KV binding
+    interface for `WorkersKvStore` and `WorkersMessageQueue`'s `orderingKv`
+    option instead of requiring the nominal `KVNamespace` type imported from
+    `@cloudflare/workers-types`, so generated local declarations compile
+    without casts or `@ts-expect-error`.  [[#665]]
+
+[#665]: https://github.com/fedify-dev/fedify/issues/665
+
 
 Version 2.0.11
 --------------
