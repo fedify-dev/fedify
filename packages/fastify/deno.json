@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fastify",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
