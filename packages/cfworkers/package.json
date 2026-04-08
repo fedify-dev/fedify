@@ -66,6 +66,7 @@
     "build": "pnpm --filter @fedify/cfworkers... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test": "vitest run"
+    "pretest": "pnpm build",
+    "test": "tsc -p test/typecheck/tsconfig.json --noEmit && vitest run"
   }
 }

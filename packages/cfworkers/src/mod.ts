@@ -8,11 +8,7 @@
  * @module
  * @since 1.9.0
  */
-import type {
-  KVNamespace,
-  MessageSendRequest,
-  Queue,
-} from "@cloudflare/workers-types";
+import type { MessageSendRequest, Queue } from "@cloudflare/workers-types";
 import type {
   KvKey,
   KvStore,
@@ -25,6 +21,67 @@ import type {
 
 interface KvMetadata {
   expires?: number;
+}
+
+interface WorkersKvNamespaceGetWithMetadataResult<Value, Metadata> {
+  readonly value: Value | null;
+  readonly metadata: Metadata | null;
+}
+
+interface WorkersKvNamespaceListKey<Metadata, Key extends string = string> {
+  readonly name: Key;
+  readonly expiration?: number;
+  readonly metadata?: Metadata;
+}
+
+interface WorkersKvNamespaceListResult<Metadata, Key extends string = string> {
+  readonly list_complete: boolean;
+  readonly keys: readonly WorkersKvNamespaceListKey<Metadata, Key>[];
+  readonly cursor?: string;
+}
+
+interface WorkersKvNamespaceListOptions {
+  readonly limit?: number;
+  readonly prefix?: string | null;
+  readonly cursor?: string | null;
+}
+
+interface WorkersKvNamespacePutOptions {
+  readonly expiration?: number;
+  readonly expirationTtl?: number;
+  readonly metadata?: unknown;
+}
+
+/**
+ * Minimal Cloudflare Workers KV binding shape used by this package.
+ * Compatible with both `@cloudflare/workers-types` and `wrangler types`
+ * generated declarations.
+ * @since 2.0.12
+ */
+export interface WorkersKvNamespaceLike<Key extends string = string> {
+  get(key: Key): Promise<string | null>;
+  get<ExpectedValue = unknown>(
+    key: Key,
+    type: "json",
+  ): Promise<ExpectedValue | null>;
+  getWithMetadata<Metadata = unknown>(
+    key: Key,
+  ): Promise<WorkersKvNamespaceGetWithMetadataResult<string, Metadata>>;
+  getWithMetadata<ExpectedValue = unknown, Metadata = unknown>(
+    key: Key,
+    type: "json",
+  ): Promise<
+    WorkersKvNamespaceGetWithMetadataResult<ExpectedValue, Metadata>
+  >;
+  put(
+    key: Key,
+    value: string,
+    options?: WorkersKvNamespacePutOptions,
+  ): Promise<void>;
+  delete(key: Key): Promise<void>;
+  list<Metadata = unknown>(
+    options?: WorkersKvNamespaceListOptions,
+  ): Promise<WorkersKvNamespaceListResult<Metadata, Key>>;
 }
 
 /**
@@ -74,9 +131,9 @@ export interface ProcessMessageResult {
  * @since 1.9.0
  */
 export class WorkersKvStore implements KvStore {
-  #namespace: KVNamespace<string>;
+  #namespace: WorkersKvNamespaceLike<string>;
 
-  constructor(namespace: KVNamespace<string>) {
+  constructor(namespace: WorkersKvNamespaceLike<string>) {
     this.#namespace = namespace;
   }
 
@@ -202,7 +259,7 @@ export interface WorkersMessageQueueOptions {
    * guarantees are best-effort.  For strict ordering requirements, consider
    * using Durable Objects.
    */
-  readonly orderingKv?: KVNamespace<string>;
+  readonly orderingKv?: WorkersKvNamespaceLike<string>;
 
   /**
    * The prefix for ordering key lock keys.  Defaults to `"__fedify_ordering_"`.
@@ -233,7 +290,7 @@ export interface WorkersMessageQueueOptions {
  */
 export class WorkersMessageQueue implements MessageQueue {
   #queue: Queue;
-  #orderingKv?: KVNamespace<string>;
+  #orderingKv?: WorkersKvNamespaceLike<string>;
   #orderingKeyPrefix: string;
   #orderingLockTtl: number;
 
