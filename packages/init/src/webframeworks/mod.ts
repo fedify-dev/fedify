@@ -7,6 +7,7 @@ import express from "./express.ts";
 import hono from "./hono.ts";
 import next from "./next.ts";
 import nitro from "./nitro.ts";
+import nuxt from "./nuxt.ts";
 import solidstart from "./solidstart.ts";
 
 /**
@@ -25,6 +26,7 @@ const webFrameworks: WebFrameworks = {
   hono,
   next,
   nitro,
+  nuxt,
   solidstart,
 } as const;
 

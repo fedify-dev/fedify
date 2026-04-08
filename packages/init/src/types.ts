@@ -11,7 +11,7 @@ import type { RequiredNotNull } from "./utils.ts";
 /** Supported package manager identifiers: `"deno"`, `"pnpm"`, `"bun"`, `"yarn"`, `"npm"`. */
 export type PackageManager = typeof PACKAGE_MANAGER[number];
 
-/** Supported web framework identifiers: `"hono"`, `"nitro"`, `"next"`, `"elysia"`, `"astro"`, `"express"`. */
+/** Supported web framework identifiers: `"hono"`, `"nitro"`, `"next"`, `"elysia"`, `"astro"`, `"express"`, `"solidstart"`, `"nuxt"`. */
 export type WebFramework = typeof WEB_FRAMEWORK[number];
 
 /** Supported message queue identifiers: `"denokv"`, `"redis"`, `"postgres"`, `"amqp"`. */

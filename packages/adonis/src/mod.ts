@@ -163,7 +163,7 @@ function fromAdonisRequest(ctx: AdonisHttpContext): Request {
   });
 }
 
-async function writeResponse(
+function writeResponse(
   ctx: AdonisHttpContext,
   response: Response,
 ): Promise<void> {
@@ -172,7 +172,7 @@ async function writeResponse(
   response.headers.forEach((value, key) => nodeRes.setHeader(key, value));
   if (response.body == null) {
     nodeRes.end();
-    return;
+    return Promise.resolve();
   }
   const body = response.body;
   const reader = body.getReader();

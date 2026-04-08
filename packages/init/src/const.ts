@@ -14,6 +14,7 @@ export const WEB_FRAMEWORK = [
   "astro",
   "express",
   "solidstart",
+  "nuxt",
   "adonis",
 ] as const;
 /** All supported message queue backend identifiers. */

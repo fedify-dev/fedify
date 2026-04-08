@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/adonis: Integrate Fedify with AdonisJS
-===============================================
+@fedify/adonis: Integrate Fedify with adonisjs
+==============================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -55,7 +55,7 @@ const federation = createFederation({
 export default federation;
 ~~~~
 
-Then, create a middleware file, e.g., *app/middleware/fedify_middleware.ts*:
+Then, create a middleware file, e.g., *app/middleware/fedify\_middleware.ts*:
 
 ~~~~ typescript
 import { fedifyMiddleware } from "@fedify/adonis";

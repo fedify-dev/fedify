@@ -22,6 +22,7 @@
     "./packages/redis",
     "./packages/relay",
     "./packages/solidstart",
+    "./packages/nuxt",
     "./packages/sqlite",
     "./packages/sveltekit",
     "./packages/testing",

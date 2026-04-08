@@ -20,6 +20,7 @@ added in the future.[^1]
  -  [Fedify–Next.js integration example using `@fedify/next`](./next-integration/)
  -  [Fedify–Next.js 14 integration example](./next14-app-router/)
  -  [Fedify–Next.js 15 integration example](./next15-app-router/)
+ -  [Fedify–Nuxt integration example](./nuxt/)
  -  [Fedify–SolidStart integration example](./solidstart/)
  -  [Fedify on Cloudflare Workers example](./cloudflare-workers/)
 

@@ -1,0 +1,22 @@
+{
+  "name": "nuxt-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@fedify/nuxt": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "nuxt": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

@@ -324,7 +324,7 @@ The monorepo uses different build processes for different packages:
 
 3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
      -  *packages/amqp/*, *packages/astro/*, *packages/elysia*,
-        *packages/express/*, *packages/h3/*,
+        *packages/express/*, *packages/h3/*, *packages/nuxt/*,
         *packages/mysql/*, *packages/sqlite/*, *packages/postgres/*,
         *packages/redis/*, *packages/nestjs/*
      -  Built to support Node.js and Bun environments

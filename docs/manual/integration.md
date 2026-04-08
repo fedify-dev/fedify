@@ -4,12 +4,17 @@ description: >-
   explains how to integrate Fedify with web frameworks.
 ---
 
-# Integration
+<!-- deno-fmt-ignore-file -->
+
+Integration
+===========
 
 Fedify is designed to be used together with web frameworks. This document
 explains how to integrate Fedify with web frameworks.
 
-## How it works
+
+How it works
+------------
 
 Usually, Fedify behaves as a middleware that wraps around the web framework's
 request handler. The middleware intercepts the incoming HTTP requests and
@@ -28,7 +33,7 @@ request to the appropriate actor dispatcher.
 
 Here is a diagram that illustrates the architecture:
 
-```mermaid
+~~~~ mermaid
 sequenceDiagram
   participant Client
   participant Fedify
@@ -47,7 +52,7 @@ sequenceDiagram
   Fedify ->> WF: GET /users/alice
   WF -->> Fedify: 200 OK
   Fedify -->> Client: 200 OK
-```
+~~~~
 
 > [!NOTE]
 >
@@ -65,7 +70,9 @@ sequenceDiagram
 [`Accept`]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
 [content negotiation]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
-## AdonisJS
+
+Adonisjs
+--------
 
 [AdonisJS] is a batteries-included TypeScript framework for building full-stack
 web applications on Node.js. The _@fedify/adonis_ package provides a middleware
@@ -73,27 +80,27 @@ to integrate Fedify with AdonisJS:
 
 ::: code-group
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/adonis
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/adonis
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/adonis
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/adonis
-```
+~~~~
 
 :::
 
 Create a middleware file and register it as a server middleware:
 
-```typescript
+~~~~ typescript
 // app/middleware/fedify_middleware.ts
 import { fedifyMiddleware } from "@fedify/adonis";
 import { createFederation } from "@fedify/fedify";
@@ -103,9 +110,9 @@ export const federation = createFederation<void>({
 });
 
 export default fedifyMiddleware(federation);
-```
+~~~~
 
-```typescript
+~~~~ typescript
 // start/kernel.ts
 import server from "@adonisjs/core/services/server";
 
@@ -113,7 +120,7 @@ server.use([
   () => import("#middleware/fedify_middleware"),
   // ... other middleware
 ]);
-```
+~~~~
 
 > [!TIP]
 > Register the Fedify middleware before the body parser middleware so that
@@ -121,7 +128,9 @@ server.use([
 
 [AdonisJS]: https://adonisjs.com/
 
-## Express
+
+Express
+-------
 
 [Express] is a fast, unopinionated, minimalist web framework for Node.js. The
 _@fedify/express_ package provides a middleware to integrate Fedify with
@@ -129,29 +138,29 @@ Express:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/express
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/express
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/express
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/express
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/express
-```
+~~~~
 
 :::
 
-```typescript twoslash
+~~~~ typescript twoslash
 // @noErrors: 2345
 import express from "express";
 import { integrateFederation } from "@fedify/express";
@@ -166,7 +175,7 @@ export const app = express();
 app.set("trust proxy", true);
 
 app.use(integrateFederation(federation, (req) => "context data goes here")); // [!code highlight]
-```
+~~~~
 
 > [!NOTE]
 > If your application uses Express 4.x behind a reverse proxy with a
@@ -182,7 +191,9 @@ app.use(integrateFederation(federation, (req) => "context data goes here")); // 
 [Express]: https://expressjs.com/
 [trust proxy]: https://expressjs.com/en/guide/behind-proxies.html
 
-## Fastify
+
+Fastify
+-------
 
 _This API is available since Fedify 1.9.0._
 
@@ -192,25 +203,25 @@ provides a plugin to integrate Fedify with Fastify:
 
 ::: code-group
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/fastify
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/fastify
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/fastify
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/fastify
-```
+~~~~
 
 :::
 
-```typescript twoslash
+~~~~ typescript twoslash
 // @noErrors: 2345
 import Fastify from "fastify";
 import { fedifyPlugin } from "@fedify/fastify";
@@ -229,11 +240,13 @@ await fastify.register(fedifyPlugin, { // [!code highlight]
 }); // [!code highlight]
 
 fastify.listen({ port: 3000 });
-```
+~~~~
 
 [Fastify]: https://fastify.dev/
 
-## Koa
+
+Koa
+---
 
 _This API is available since Fedify 1.9.0._
 
@@ -244,29 +257,29 @@ to integrate Fedify with Koa:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/koa
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/koa
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/koa
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/koa
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/koa
-```
+~~~~
 
 :::
 
-```typescript twoslash
+~~~~ typescript twoslash
 // @noErrors: 2345
 import Koa from "koa";
 import { createMiddleware } from "@fedify/koa";
@@ -281,14 +294,16 @@ export const app = new Koa();
 app.proxy = true; // trust proxy headers
 
 app.use(createMiddleware(federation, (ctx) => "context data goes here")); // [!code highlight]
-```
+~~~~
 
 > [!NOTE]
 > The `@fedify/koa` package supports both Koa v2.x and v3.x.
 
 [Koa]: https://koajs.com/
 
-## Hono
+
+Hono
+----
 
 _This API is available since Fedify 1.9.0._
 
@@ -298,29 +313,29 @@ with Hono:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/hono
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/hono
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/hono
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/hono
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/hono
-```
+~~~~
 
 :::
 
-```typescript
+~~~~ typescript
 import { createFederation } from "@fedify/fedify";
 import { federation } from "@fedify/hono";
 import { Hono } from "hono";
@@ -331,11 +346,13 @@ const fedi = createFederation<string>({
 
 const app = new Hono();
 app.use(federation(fedi, (ctx) => "context data")); // [!code highlight]
-```
+~~~~
 
 [Hono]: https://hono.dev/
 
-## h3
+
+h3
+--
 
 [h3] is an HTTP server framework behind [Nitro], [Analog], [Vinxi],
 [SolidStart], [TanStack Start], and other many web frameworks. The _@fedify/h3_
@@ -343,29 +360,29 @@ package provides a middleware to integrate Fedify with h3:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/h3
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/h3
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/h3
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/h3
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/h3
-```
+~~~~
 
 :::
 
-```typescript {9-15} twoslash
+~~~~ typescript {9-15} twoslash
 // @noErrors: 2345
 import { createApp, createRouter } from "h3";
 import { createFederation } from "@fedify/fedify";
@@ -385,7 +402,7 @@ app.use(
 
 const router = createRouter();
 app.use(router);
-```
+~~~~
 
 > [!NOTE]
 > Your app has to configure `onError` to let Fedify negotiate content types. If
@@ -399,7 +416,9 @@ app.use(router);
 [SolidStart]: https://start.solidjs.com/
 [TanStack Start]: https://tanstack.com/start
 
-## SvelteKit
+
+SvelteKit
+---------
 
 _This API is available since Fedify 1.3.0._
 
@@ -409,29 +428,29 @@ SvelteKit:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/sveltekit
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/sveltekit
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/sveltekit
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/sveltekit
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/sveltekit
-```
+~~~~
 
 :::
 
-```typescript
+~~~~ typescript
 import { createFederation } from "@fedify/fedify";
 import { fedifyHook } from "@fedify/sveltekit";
 
@@ -441,12 +460,14 @@ const federation = createFederation<string>({
 
 // This is the entry point to the Fedify hook from the SvelteKit framework:
 export const handle = fedifyHook(federation, (req) => "context data");
-```
+~~~~
 
 [SvelteKit]: https://kit.svelte.dev/
 [Svelte]: https://svelte.dev/
 
-## NestJS
+
+NestJS
+------
 
 _This API is available since Fedify 1.8.0._
 
@@ -456,25 +477,25 @@ _@fedify/nestjs_ package provides a middleware to integrate Fedify with NestJS:
 
 ::: code-group
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/nestjs
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/nestjs
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/nestjs
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/nestjs
-```
+~~~~
 
 :::
 
-```typescript [modules/federation/federation.service.ts] twoslash
+~~~~ typescript [modules/federation/federation.service.ts] twoslash
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { FEDIFY_FEDERATION } from "@fedify/nestjs";
 import { Federation } from "@fedify/fedify";
@@ -516,9 +537,9 @@ export class FederationService implements OnModuleInit {
     });
   }
 }
-```
+~~~~
 
-```typescript [modules/federation/federation.module.ts] twoslash
+~~~~ typescript [modules/federation/federation.module.ts] twoslash
 // @noErrors: 2395 2307
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { FEDIFY_FEDERATION } from "@fedify/nestjs";
@@ -551,9 +572,9 @@ import { FederationService } from "./federation.service";
   exports: [FederationService],
 })
 export class FederationModule {}
-```
+~~~~
 
-```typescript [app.module.ts] twoslash
+~~~~ typescript [app.module.ts] twoslash
 // @noErrors: 2307
 // ---cut-before---
 import {
@@ -623,11 +644,13 @@ export class AppModule implements NestModule {
     ).forRoutes({ path: "*", method: RequestMethod.ALL });
   }
 }
-```
+~~~~
 
 [NestJS]: https://nestjs.com/
 
-## Elysia
+
+Elysia
+------
 
 _This API is available since Fedify 1.8.0._
 
@@ -639,29 +662,29 @@ integrating Fedify with Elysia:
 
 ::: code-group
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/elysia
-```
+~~~~
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add npm:@fedify/elysia
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/elysia
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/elysia
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/elysia
-```
+~~~~
 
 :::
 
-```typescript
+~~~~ typescript
 import { fedify } from "@fedify/elysia";
 import { federation } from "./federation.ts"; // Your `Federation` instance
 import { Elysia } from "elysia";
@@ -673,11 +696,13 @@ app
   .listen(3000);
 
 console.log("Elysia App Start!");
-```
+~~~~
 
 [Elysia]: https://elysiajs.com/
 
-## Next.js
+
+Next.js
+-------
 
 _This API is available since Fedify 1.9.0._
 
@@ -688,25 +713,25 @@ _This API is available since Fedify 1.9.0._
 >
 > ::: code-group
 >
-> ```sh [npm]
+> ~~~~ sh [npm]
 > npx create-next-app -e https://github.com/fedify-dev/fedify \
 >   --example-path examples/next-integration
-> ```
+> ~~~~
 >
-> ```sh [pnpm]
+> ~~~~ sh [pnpm]
 > pnpm create next-app -e https://github.com/fedify-dev/fedify \
 >   --example-path examples/next-integration
-> ```
+> ~~~~
 >
-> ```sh [Yarn]
+> ~~~~ sh [Yarn]
 > yarn create next-app -e https://github.com/fedify-dev/fedify \
 >   --example-path examples/next-integration
-> ```
+> ~~~~
 >
-> ```sh [Bun]
+> ~~~~ sh [Bun]
 > bun create next-app -e https://github.com/fedify-dev/fedify \
 >   --example-path examples/next-integration
-> ```
+> ~~~~
 >
 > :::
 
@@ -716,35 +741,35 @@ middleware to integrate Fedify with Next.js:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/next
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/next
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/next
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/next
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/next
-```
+~~~~
 
 :::
 
 Or create an app with the following command using the Fedify CLI:
 
-```sh
+~~~~ sh
 fedify init my-next-app
-```
+~~~~
 
-```
+~~~~
 ? Choose the JavaScript runtime to use › Node.js
 ? Choose the package manager to use › npm
 ? Choose the web framework to integrate Fedify with › Next.js
@@ -752,7 +777,7 @@ fedify init my-next-app
 ? Choose the message queue to use for background jobs › In-process
 ✔ Would you like your code inside a `src/` directory? … No
 ✔ Would you like to customize the import alias (`@/*` by default)? … No
-```
+~~~~
 
 Then you can see the Next.js boilerplate code in the `my-next-app` directory. If
 you have created a Next.js app with `create-next-app` before, you'll see some
@@ -761,7 +786,7 @@ directory, which is the entry point to the Fedify middleware from the Next.js
 framework. Or, if you just install _@fedify/next_ manually, put the following
 code in your `middleware.ts` file:
 
-```typescript
+~~~~ typescript
 import { fedifyWith } from "@fedify/next";
 import federation from "./federation"; // Your `Federation` instance
 
@@ -805,7 +830,7 @@ export const config = {
     { source: "/.well-known/x-nodeinfo2" },
   ],
 };
-```
+~~~~
 
 As you can see in the comment, you can handle other requests besides federation
 requests in the middleware. If you handle only federation requests in the
@@ -820,7 +845,83 @@ documentation [`config` in `middleware.js`].
 [Next.js]: https://nextjs.org/
 [`config` in `middleware.js`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 
-## Astro
+
+Nuxt
+----
+
+_This API is available since Fedify 2.2.0._
+
+[Nuxt] is a full-stack framework built on top of Vue, Nitro, and h3. The
+_@fedify/nuxt_ package provides a server handler for `server/middleware` and an
+error handler for Nitro so that Nuxt pages and Fedify endpoints can share the
+same routes with content negotiation:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/nuxt
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/nuxt
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/nuxt
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/nuxt
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/nuxt
+~~~~
+
+:::
+
+First, configure Nitro's error handler in _nuxt.config.ts_:
+
+~~~~ typescript
+export default defineNuxtConfig({
+  nitro: {
+    errorHandler: "./server/error", // [!code highlight]
+  },
+});
+~~~~
+
+Then, create _server/error.ts_:
+
+~~~~ typescript
+import { fedifyErrorHandler } from "@fedify/nuxt";
+
+export default fedifyErrorHandler; // [!code highlight]
+~~~~
+
+Finally, add the Fedify middleware in _server/middleware/federation.ts_:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { fedifyHandler } from "@fedify/nuxt";
+
+const federation = createFederation<void>({
+  // Omitted for brevity; see the related section for details.
+});
+
+export default fedifyHandler( // [!code highlight]
+  federation, // [!code highlight]
+  (event, request) => void 0, // [!code highlight]
+); // [!code highlight]
+~~~~
+
+If you create a Nuxt project through `fedify init`, the initializer writes all
+three files for you and configures Nitro's error handler automatically.
+
+[Nuxt]: https://nuxt.com/
+
+
+Astro
+-----
 
 _This API is available since Fedify 2.1.0._
 
@@ -829,31 +930,31 @@ package provides an integration and middleware to integrate Fedify with Astro:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/astro
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/astro
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/astro
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/astro
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/astro
-```
+~~~~
 
 :::
 
 First, add the Fedify integration to your _astro.config.ts_:
 
-```typescript
+~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
 
@@ -861,11 +962,11 @@ export default defineConfig({
   integrations: [fedifyIntegration()], // [!code highlight]
   output: "server",
 });
-```
+~~~~
 
 Then, create your middleware in _src/middleware.ts_:
 
-```typescript
+~~~~ typescript
 import { createFederation } from "@fedify/fedify";
 import { fedifyMiddleware } from "@fedify/astro";
 
@@ -877,7 +978,7 @@ export const onRequest = fedifyMiddleware( // [!code highlight]
   federation, // [!code highlight]
   (context) => void 0, // [!code highlight]
 ); // [!code highlight]
-```
+~~~~
 
 [Astro]: https://astro.build/
 
@@ -886,7 +987,7 @@ export const onRequest = fedifyMiddleware( // [!code highlight]
 If you are using Deno, you should import `@deno/vite-adapter` in
 _astro.config.ts_ and use it as the adapter:
 
-```typescript
+~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
 import deno from "@deno/astro-adapter";
@@ -896,12 +997,12 @@ export default defineConfig({
   output: "server",
   adapter: deno(),
 });
-```
+~~~~
 
 And the tasks in _deno.json_ should be updated to use `deno run npm:astro`
 instead of `astro`:
 
-```json
+~~~~ json
 {
   "tasks": {
     "dev": "deno run -A npm:astro dev",
@@ -909,9 +1010,11 @@ instead of `astro`:
     "preview": "deno run -A npm:astro preview"
   }
 }
-```
+~~~~
 
-## SolidStart
+
+SolidStart
+----------
 
 _This API is available since Fedify 2.2.0._
 
@@ -921,41 +1024,41 @@ middleware to integrate Fedify with SolidStart:
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/solidstart
-```
+~~~~
 
-```sh [npm]
+~~~~ sh [npm]
 npm add @fedify/solidstart
-```
+~~~~
 
-```sh [pnpm]
+~~~~ sh [pnpm]
 pnpm add @fedify/solidstart
-```
+~~~~
 
-```sh [Yarn]
+~~~~ sh [Yarn]
 yarn add @fedify/solidstart
-```
+~~~~
 
-```sh [Bun]
+~~~~ sh [Bun]
 bun add @fedify/solidstart
-```
+~~~~
 
 :::
 
 First, set up the middleware entry point in your _app.config.ts_:
 
-```typescript
+~~~~ typescript
 import { defineConfig } from "@solidjs/start/config";
 
 export default defineConfig({
   middleware: "src/middleware/index.ts", // [!code highlight]
 });
-```
+~~~~
 
 Then, create your middleware in _src/middleware/index.ts_:
 
-```typescript
+~~~~ typescript
 import { createFederation } from "@fedify/fedify";
 import { fedifyMiddleware } from "@fedify/solidstart";
 
@@ -964,11 +1067,13 @@ const federation = createFederation<void>({
 });
 
 export default fedifyMiddleware(federation, (event) => undefined); // [!code highlight]
-```
+~~~~
 
 [Solid]: https://www.solidjs.com/
 
-## Fresh
+
+Fresh
+-----
 
 _This API is available since Fedify 2.0.0._
 
@@ -978,9 +1083,9 @@ Fresh.
 
 ::: code-group
 
-```sh [Deno]
+~~~~ sh [Deno]
 deno add jsr:@fedify/fresh
-```
+~~~~
 
 :::
 
@@ -996,7 +1101,7 @@ deno add jsr:@fedify/fresh
 > Due to `@fedify/fedify` use `Temporal` inside, you should add `deno.unstable`
 > to `compilerOptions.libs` field of `deno.json`.
 >
-> ```json
+> ~~~~ json
 >  "compilerOptions": {
 >    "lib": [
 >      "dom",
@@ -1006,11 +1111,11 @@ deno add jsr:@fedify/fresh
 >      "deno.unstable"
 >    ],
 > ...
-> ```
+> ~~~~
 
 Put the following code in your _routes/\_middleware.ts_ file:
 
-```typescript [_middelware.ts]
+~~~~ typescript [_middelware.ts]
 import { createFederation } from "@fedify/fedify";
 import { integrateHandler } from "@fedify/fresh";
 import { define } from "../utils.ts";
@@ -1023,12 +1128,12 @@ const federation = createFederation<void>({
 export default define.middleware(
   integrateHandler(federation, () => undefined),
 );
-```
+~~~~
 
 Or you can use `app.use()` in your `main.ts` to register the middleware
 globally:
 
-```typescript [main.ts]
+~~~~ typescript [main.ts]
 import { App } from "fresh";
 import { createFederation } from "@fedify/fedify";
 import { integrateHandler } from "@fedify/fresh";
@@ -1042,11 +1147,13 @@ const fedifyMiddleware = define.middleware(
   integrateHandler(federation, () => undefined),
 );
 app.use(fedifyMiddleware);
-```
+~~~~
 
 [Fresh]: https://fresh.deno.dev/
 
-## Custom middleware
+
+Custom middleware
+-----------------
 
 Even if you are using a web framework that is not officially supported by
 Fedify, you can still integrate Fedify with the framework by creating a custom
@@ -1065,7 +1172,7 @@ Fedify to the client. At this point, you can use `onNotFound` and
 The following is an example of a custom middleware for a hypothetical web
 framework:
 
-```typescript
+~~~~ typescript
 import { Federation } from "@fedify/fedify";
 
 export type Middleware = (
@@ -1108,7 +1215,7 @@ export function createFedifyMiddleware<TContextData>(
     });
   };
 }
-```
+~~~~
 
 In some cases, your web framework may not represent requests and responses as
 [`Request`] and [`Response`] objects. In that case, you need to convert the

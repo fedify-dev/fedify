@@ -21,10 +21,15 @@ export const loadFederation = async (
     kv,
     mq,
     packageManager,
+    webFramework,
   }: InitCommandData & { imports: string },
 ) =>
   pipe(
-    await readTemplate("defaults/federation.ts"),
+    await readTemplate(
+      webFramework === "nuxt" && hasTopLevelAwait(kv.object, mq.object)
+        ? "nuxt/server/federation.ts"
+        : "defaults/federation.ts",
+    ),
     replace(/\/\* imports \*\//, imports),
     replace(/\/\* logger \*\//, JSON.stringify(projectName)),
     replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager)),
@@ -111,3 +116,6 @@ export const convertEnv = (obj: string, pm: PackageManager) =>
   pm === "deno" && ENV_REG_EXP.test(obj)
     ? obj.replaceAll(ENV_REG_EXP, (_, g1) => `Deno.env.get("${g1}")`)
     : obj;
+
+const hasTopLevelAwait = (...values: string[]) =>
+  values.some((value) => /\bawait\b/.test(value));

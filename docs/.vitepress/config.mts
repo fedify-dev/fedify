@@ -62,7 +62,10 @@ function getReferenceItems(): { text: string; link: string }[] {
   const names = new Set<string>();
   for (const workspaceEntry of rootDenoConfig.workspace ?? []) {
     if (!workspaceEntry.startsWith("./packages/")) continue;
-    const packageDenoJsonUrl = new URL(`${workspaceEntry}/deno.json`, repoRootUrl);
+    const packageDenoJsonUrl = new URL(
+      `${workspaceEntry}/deno.json`,
+      repoRootUrl,
+    );
     const packageDenoConfig = JSON.parse(
       readFileSync(packageDenoJsonUrl, "utf-8"),
     ) as PackageDenoConfig;

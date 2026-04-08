@@ -32,7 +32,7 @@ function createHttpContext(
 
 export const server = createServer(async (req, res) => {
   const ctx = createHttpContext(req, res);
-  await middleware.handle(ctx, async () => {
+  await middleware.handle(ctx, () => {
     const host = req.headers.host ?? "localhost";
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end(`\

@@ -258,6 +258,18 @@ const SERVER_EXAMPLES: ServerExample[] = [
     readyTimeout: 30_000,
   },
   {
+    // Nuxt app using @fedify/nuxt server middleware and Nitro error handler.
+    // Requires a build step before starting.
+    name: "nuxt",
+    dir: "nuxt",
+    buildCmd: ["pnpm", "build"],
+    startCmd: ["pnpm", "preview"],
+    port: 3000,
+    actor: "demo",
+    readyUrl: "http://localhost:3000/",
+    readyTimeout: 30_000,
+  },
+  {
     // SvelteKit sample using @fedify/sveltekit; actor path is /users/{identifier}.
     // Built with vite; served with vite preview on port 4173.
     name: "sveltekit-sample",
