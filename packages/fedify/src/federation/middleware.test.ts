@@ -330,7 +330,7 @@ test({
               owner: new URL("https://example.com/users/handle"),
             }),
             multikey: new Multikey({
-              id: new URL("https://example.com/users/handle#main-key"),
+              id: new URL("https://example.com/users/handle#multikey-1"),
               controller: new URL("https://example.com/users/handle"),
               publicKey: rsaPublicKey2.publicKey!,
             }),
@@ -344,7 +344,7 @@ test({
               owner: new URL("https://example.com/users/handle"),
             }),
             multikey: new Multikey({
-              id: new URL("https://example.com/users/handle#key-2"),
+              id: new URL("https://example.com/users/handle#multikey-2"),
               controller: new URL("https://example.com/users/handle"),
               publicKey: ed25519PublicKey.publicKey!,
             }),
@@ -1691,9 +1691,10 @@ test("ContextImpl.sendActivity()", async (t) => {
           const keys = await ctx.getActorKeyPairs("1");
           for (const key of keys) {
             if (key.keyId.href === keyId.href) {
-              if (key.publicKey.algorithm.name === "Ed25519") {
-                return key.multikey;
-              } else return key.cryptographicKey;
+              return key.cryptographicKey;
+            }
+            if (key.multikey.id?.href === keyId.href) {
+              return key.multikey;
             }
           }
           return undefined;
@@ -1927,30 +1928,44 @@ test("ContextImpl.sendActivity()", async (t) => {
       activity,
       { fanout: "force" },
     );
-    assertEquals(queue.messages, [
-      {
-        id: queue.messages[0].id,
-        type: "fanout",
-        activity: await activity.toJsonLd({
-          format: "compact",
-          contextLoader: fetchDocumentLoader,
-        }),
-        activityId: "https://example.com/activity/1",
-        activityType: "https://www.w3.org/ns/activitystreams#Create",
-        baseUrl: "https://example.com",
-        collectionSync: undefined,
-        inboxes: {
-          "https://example.com/inbox": {
-            actorIds: [
-              "https://example.com/recipient",
-            ],
-            sharedInbox: false,
-          },
-        },
-        keys: queue.messages[0].type === "fanout" ? queue.messages[0].keys : [],
-        traceContext: {},
+    assertEquals(queue.messages.length, 1);
+    assert(queue.messages[0].type === "fanout");
+    const fanoutMsg = queue.messages[0];
+    assertEquals(fanoutMsg.activityId, "https://example.com/activity/1");
+    assertEquals(
+      fanoutMsg.activityType,
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+    assertEquals(fanoutMsg.baseUrl, "https://example.com");
+    assertEquals(fanoutMsg.collectionSync, undefined);
+    assertEquals(fanoutMsg.inboxes, {
+      "https://example.com/inbox": {
+        actorIds: ["https://example.com/recipient"],
+        sharedInbox: false,
       },
-    ]);
+    });
+    // Regression test for <https://github.com/fedify-dev/fedify/issues/663>:
+    // The activity in the fanout message should be pre-signed with OIP before
+    // fanout, and the proof must reference the Multikey ID (#multikey-N),
+    // not the CryptographicKey ID (#main-key or #key-N):
+    const signedActivity = await Create.fromJsonLd(fanoutMsg.activity, {
+      contextLoader: fetchDocumentLoader,
+      documentLoader: fetchDocumentLoader,
+    });
+    assertEquals(signedActivity.id?.href, "https://example.com/activity/1");
+    let proofCount = 0;
+    for await (
+      const proof of signedActivity.getProofs({
+        contextLoader: fetchDocumentLoader,
+      })
+    ) {
+      assertEquals(
+        proof.verificationMethodId?.href,
+        "https://example.com/john#multikey-2",
+      );
+      proofCount++;
+    }
+    assertEquals(proofCount, 1);
   });
 
   queue.clear();

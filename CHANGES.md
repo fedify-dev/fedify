@@ -8,6 +8,23 @@ Version 1.10.8
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `Context.getActorKeyPairs()` assigning the same key ID to both
+    the `CryptographicKey` (used for HTTP Signatures and Linked Data
+    Signatures) and the `Multikey` (used for Object Integrity Proofs) within
+    an `ActorKeyPair`.  The `Multikey` now receives a distinct ID
+    (`#multikey-1`, `#multikey-2`, …) so that the actor document no longer
+    contains two objects sharing the same `id`, which was invalid JSON-LD.
+    Object Integrity Proof signatures now reference the correct `Multikey` ID
+    instead of the `CryptographicKey` ID.  [[#663]]
+
+ -  Object Integrity Proofs signing now takes place before activity fanout,
+    so all recipients receive the same pre-signed activity.  Previously, OIP
+    signing was deferred until after fanout, meaning each fanout worker would
+    re-sign independently with potentially different timestamps and the fanout
+    message itself contained an unsigned activity.
+
 
 Version 1.10.7
 --------------
@@ -207,6 +224,31 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.9
+-------------
+
+Released on April 8, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.getActorKeyPairs()` assigning the same key ID to both
+    the `CryptographicKey` (used for HTTP Signatures and Linked Data
+    Signatures) and the `Multikey` (used for Object Integrity Proofs) within
+    an `ActorKeyPair`.  The `Multikey` now receives a distinct ID
+    (`#multikey-1`, `#multikey-2`, …) so that the actor document no longer
+    contains two objects sharing the same `id`, which was invalid JSON-LD.
+    Object Integrity Proof signatures now reference the correct `Multikey` ID
+    instead of the `CryptographicKey` ID.  [[#663]]
+
+ -  Object Integrity Proofs signing now takes place before activity fanout,
+    so all recipients receive the same pre-signed activity.  Previously, OIP
+    signing was deferred until after fanout, meaning each fanout worker would
+    re-sign independently with potentially different timestamps and the fanout
+    message itself contained an unsigned activity.
+
+[#663]: https://github.com/fedify-dev/fedify/issues/663
 
 
 Version 1.9.8
