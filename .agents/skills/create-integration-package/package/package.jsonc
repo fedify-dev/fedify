@@ -26,8 +26,9 @@
     "https://opencollective.com/fedify",
     "https://github.com/sponsors/dahlia"
   ],
-  "main": "./dist/mod.js",
-  "module": "./dist/mod.mjs",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
