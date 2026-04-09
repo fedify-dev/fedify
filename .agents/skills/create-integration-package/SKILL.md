@@ -287,6 +287,11 @@ comments above the example registry arrays in that file to determine
 which array is appropriate and what fields are required.  Follow the
 patterns of existing entries.
 
+Before running the tests, ensure that the tunneling service is usable.  
+The tests use the tunneling service `pinggy.io` to make the example app
+accessible to the test suite.  If the tunneling service is not usable,
+the tests may not finish forever or may fail due to a connection error.
+
 While developing the example, run only the new example to iterate
 quickly:
 
@@ -307,6 +312,10 @@ mise test:examples
 
 Lint, format, and final checks
 ------------------------------
+
+Add keywords related to the framework in `.hongdown.toml` and `cspell.json` in
+root path. Especially, the package name `@fedify/framework` should be added to
+the `.hongdown.toml`.
 
 After implementation, run `mise run fmt && mise check`.
 If there are lint or format errors, fix them and run the command again until
