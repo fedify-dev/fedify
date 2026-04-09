@@ -133,8 +133,15 @@ perform the required updates.  Record the package addition in *CHANGES.md*.
 
 ### Tests
 
-Unit tests aren't mandatory since you can test using `mise test:init`, which
-will be explained later. Therefore, testing by packages is not necessary.
+You can test the integration using `mise test:init`, which will be explained
+later, but write unit tests as well if possible.  Import the `test` function
+from `@fedify/fixture` to write runtime-agnostic tests that work across
+Deno, Node.js, and Bun.  Name test files with the `*.test.ts` convention
+(e.g., `src/mod.test.ts`).
+
+> **Warning**: `@fedify/fixture` is a **private** workspace package and
+> must never be imported from published (non-test) source files.  Only
+> import it in `*.test.ts` files.
 
 ### Implementation checklist
 
