@@ -38,8 +38,11 @@ To be released.
 ### @fedify/adonis
 
  -  Added `@fedify/adonis` package for integrating Fedify with [AdonisJS].
+    [[#139], [#671] by ChanHaeng Lee]
 
 [AdonisJS]: https://adonisjs.com/
+[#139]: https://github.com/fedify-dev/fedify/issues/139
+[#671]: https://github.com/fedify-dev/fedify/pull/671
 
 ### @fedify/solidstart
 
@@ -59,8 +62,10 @@ To be released.
     `server/middleware` and Nitro's `errorHandler`, so Nuxt routes and
     ActivityPub endpoints can share the same paths with proper content
     negotiation.
+    [[#149], [#671] by ChanHaeng Lee]
 
 [Nuxt]: https://nuxt.com/
+[#149]: https://github.com/fedify-dev/fedify/issues/149
 
 ### @fedify/init
 
@@ -69,11 +74,13 @@ To be released.
     Environment variables are now properly loaded at runtime, resolving the
     `TypeError: Cannot read properties of undefined` from `mysql2`.
     [[#649], [#656] by ChanHaeng Lee]
+ -  Added AdonisJS to `fedify init`, including middleware registration
+    templates for newly scaffolded projects.
+    [[#139], [#653], [#671] by ChanHaeng Lee]
  -  Added Nuxt to `fedify init`, including middleware and Nitro error handler
     templates for newly scaffolded projects.
-    [[#149], [#653] by ChanHaeng Lee]
+    [[#149], [#653], [#671] by ChanHaeng Lee]
 
-[#149]: https://github.com/fedify-dev/fedify/issues/149
 [#649]: https://github.com/fedify-dev/fedify/issues/649
 [#653]: https://github.com/fedify-dev/fedify/issues/653
 [#656]: https://github.com/fedify-dev/fedify/pull/656
