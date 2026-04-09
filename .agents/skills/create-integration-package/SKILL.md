@@ -48,6 +48,9 @@ Implement the package
 the package integrates smoothly with the framework so users do not
 experience friction when connecting it.
 
+Unless there are significant hurdles, please set up the package to publish
+on both JSR and NPM.
+
 Create the package directory inside the `packages/` directory. For example, if
 the framework is named “framework”, create the directory `packages/framework/`.
 
