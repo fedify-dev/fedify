@@ -49,8 +49,7 @@
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "@nestjs/common": "catalog:",
-    // Add other relevant peer dependencies for the framework
+    // Add relevant peer dependencies for the framework
   },
   "devDependencies": {
     "@types/node": "catalog:",
