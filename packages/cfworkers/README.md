@@ -104,6 +104,14 @@ management.
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
 
+> [!NOTE]
+> If you use `orderingKey` when enqueueing messages, construct
+> `WorkersMessageQueue` with an `orderingKv` namespace and pass each raw queue
+> message through `WorkersMessageQueue.processMessage()` before calling
+> `Federation.processQueuedTask()`.  This acquires and releases the best-effort
+> ordering lock for that key.  You can also customize the lock behavior with
+> the `orderingKeyPrefix` and `orderingLockTtl` options.
+
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 
 

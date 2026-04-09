@@ -303,6 +303,13 @@ export default {
 };
 ~~~~
 
+If you use queue ordering keys on Cloudflare Workers, instantiate
+`WorkersMessageQueue` with an `orderingKv` namespace and call
+`WorkersMessageQueue.processMessage()` before
+`Federation.processQueuedTask()`.  See the
+[*`WorkersMessageQueue`* section](./mq.md#workersmessagequeue-cloudflare-workers-only)
+for a complete example and caveats about best-effort ordering.
+
 ### Example deployment
 
 For a complete working example, see the [Cloudflare Workers example]
