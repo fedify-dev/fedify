@@ -9,7 +9,7 @@ import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
 import { getInstruction } from "./utils.ts";
 
 const frameworkDescription: WebFrameworkDescription = {
-  name: "프레임워크", // Fill 프레임워크 with the official framework name
+  label: "프레임워크", // Fill 프레임워크 with the official framework name
   packageManagers: [
     // List the package managers that support this framework,
     // the list should be a subset of `PACKAGE_MANAGER` from `../const.ts`.
