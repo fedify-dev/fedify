@@ -163,7 +163,7 @@ on your infrastructure:
 
 Development
 :   Use [`MemoryKvStore`](./kv.md#memorykvstore) and
-    [`InProcessMessageQueue`](./mq.md#inprocessmessagequeu) for quick setup.
+    [`InProcessMessageQueue`](./mq.md#inprocessmessagequeue) for quick setup.
 
 Production
 :   Consider [`PostgresKvStore`](./kv.md#postgreskvstore) and
@@ -291,8 +291,8 @@ export default {
     for (const message of batch.messages) {
       try {
         await federation.processQueuedTask(
-          message.body as unknown as Message,
           env,
+          message.body as unknown as Message,
         );
         message.ack();
       } catch (error) {
@@ -302,6 +302,13 @@ export default {
   },
 };
 ~~~~
+
+If you use queue ordering keys on Cloudflare Workers, instantiate
+`WorkersMessageQueue` with an `orderingKv` namespace and call
+`WorkersMessageQueue.processMessage()` before
+`Federation.processQueuedTask()`.  See the
+[*`WorkersMessageQueue`* section](./mq.md#workersmessagequeue-cloudflare-workers-only)
+for a complete example and caveats about best-effort ordering.
 
 ### Example deployment
 

@@ -604,6 +604,56 @@ export default {
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
 
+> [!NOTE]
+> If you use `~MessageQueueEnqueueOptions.orderingKey` with
+> `WorkersMessageQueue`, you also need to provide a KV namespace for ordering
+> locks and pass each raw queue message through
+> `~WorkersMessageQueue.processMessage()` before calling
+> `Federation.processQueuedTask()`.  Otherwise, the ordering key is embedded in
+> the message, but not enforced when the worker consumes it.
+>
+> ~~~~ typescript
+> import { createFederationBuilder, type Message } from "@fedify/fedify";
+> import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+>
+> type Env = {
+>   KV_NAMESPACE: KVNamespace<string>;
+>   QUEUE_BINDING: Queue;
+>   ORDERING_KV: KVNamespace<string>;
+> };
+>
+> const builder = createFederationBuilder<Env>();
+>
+> export default {
+>   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+>     const queue = new WorkersMessageQueue(env.QUEUE_BINDING, {
+>       orderingKv: env.ORDERING_KV,
+>     });
+>     const federation = await builder.build({
+>       kv: new WorkersKvStore(env.KV_NAMESPACE),
+>       queue,
+>     });
+>
+>     for (const message of batch.messages) {
+>       const result = await queue.processMessage(message.body);
+>       if (!result.shouldProcess) {
+>         message.retry();
+>         continue;
+>       }
+>       try {
+>         await federation.processQueuedTask(
+>           env,
+>           result.message as Message,
+>         );
+>         message.ack();
+>       } finally {
+>         await result.release?.();
+>       }
+>     }
+>   },
+> };
+> ~~~~
+
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 

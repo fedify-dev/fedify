@@ -16,7 +16,7 @@ implementations for [Cloudflare Workers]:
  -  [`WorkersMessageQueue`]
 
 ~~~~ typescript
-import type { Federation } from "@fedify/fedify";
+import { createFederation, type Message } from "@fedify/fedify";
 import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
 export default {
@@ -26,22 +26,25 @@ export default {
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
-    
-    return federation.handle(request, { contextData: env });
+
+    return federation.fetch(request, { contextData: env });
   },
-  
+
   async queue(batch, env, ctx) {
     const federation = createFederation({
       kv: new WorkersKvStore(env.KV_BINDING),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
-    
+
     for (const message of batch.messages) {
-      await federation.processQueuedTask(message.body);
+      await federation.processQueuedTask(
+        env,
+        message.body as unknown as Message,
+      );
     }
   }
-} satisfies ExportedHandler<{ 
+} satisfies ExportedHandler<{
   KV_BINDING: KVNamespace<string>;
   QUEUE_BINDING: Queue;
 }>;
@@ -100,6 +103,14 @@ management.
 > method, you need to call `Federation.processQueuedTask()` method to manually
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
+
+> [!NOTE]
+> If you use `orderingKey` when enqueueing messages, construct
+> `WorkersMessageQueue` with an `orderingKv` namespace and pass each raw queue
+> message through `WorkersMessageQueue.processMessage()` before calling
+> `Federation.processQueuedTask()`.  This acquires and releases the best-effort
+> ordering lock for that key.  You can also customize the lock behavior with
+> the `orderingKeyPrefix` and `orderingLockTtl` options.
 
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 
