@@ -29,7 +29,7 @@ class PostStore {
   delete(id: URL) {
     const existed = this.#map.delete(id.toString());
     if (existed) {
-      this.#timeline = this.#timeline.filter((i) => i !== id);
+      this.#timeline = this.#timeline.filter((i) => i.href !== id.href);
     }
   }
 }
