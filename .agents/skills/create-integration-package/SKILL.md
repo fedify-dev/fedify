@@ -299,7 +299,7 @@ patterns of existing entries.
 Before running the tests, ensure that the tunneling service is usable.  
 The tests use the tunneling service `pinggy.io` to make the example app
 accessible to the test suite.  If the tunneling service is not usable,
-the tests may not finish forever or may fail due to a connection error.
+the tests may never finish or may fail due to a connection error.
 
 While developing the example, run only the new example to iterate
 quickly:

@@ -64,7 +64,7 @@ Then, add Fedify middleware to your server:
 
 ~~~~ typescript
 import fedifyHandler from "@fedify/프레임워크";
-import { federation } from "./federation.ts";
+import federation from "./federation.ts";
 
 const fedifyMiddleware = fedifyHandler(federation);
 

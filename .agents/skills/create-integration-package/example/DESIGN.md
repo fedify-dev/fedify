@@ -6,7 +6,7 @@ Visual theme & atmosphere
 
 Clean, functional, and developer-friendly.  The aesthetic is minimal and
 modern: a neutral canvas with a single bold gradient accent for profile
-sections.  The overall feel is “documentation site meets social app” —-
+sections.  The overall feel is "documentation site meets social app" —
 sparse enough to read comfortably, colorful enough to feel alive.
 
 Dark and light themes are mandatory.  The system detects
@@ -20,7 +20,7 @@ toggle.
     primary actions
  -  Card-based content layout with subtle shadows
  -  Monospace typesetting for handles and federation addresses
- -  No framework-specific branding in UI chrome —- only the demo profile
+ -  No framework-specific branding in UI chrome — only the demo profile
     and Fedify logo
 
 

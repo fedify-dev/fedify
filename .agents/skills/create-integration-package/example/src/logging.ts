@@ -9,7 +9,7 @@ await configure({
   filters: {},
   loggers: [
     {
-      category: "default example",
+      category: ["default", "example"],
       lowestLevel: "debug",
       sinks: ["console"],
     },
