@@ -189,7 +189,7 @@ a:hover {
 
 .form-textarea {
   width: 100%;
-  resize: none;
+  resize: vertical;
   border-radius: 0.5rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   padding: 0.75rem;
