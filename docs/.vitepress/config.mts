@@ -3,6 +3,7 @@ import abbr from "markdown-it-abbr";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
 import { jsrRef } from "markdown-it-jsr-ref";
+import { readFileSync } from "node:fs";
 import process from "node:process";
 import { ModuleKind, ModuleResolutionKind, ScriptTarget } from "typescript";
 import { defineConfig } from "vitepress";
@@ -41,6 +42,48 @@ if (process.env.PLAUSIBLE_DOMAIN) {
       },
     ],
   ];
+}
+
+interface RootDenoConfig {
+  workspace?: string[];
+}
+
+interface PackageDenoConfig {
+  name?: string;
+  publish?: boolean | { exclude?: string[] };
+}
+
+function getReferenceItems(): { text: string; link: string }[] {
+  const repoRootUrl = new URL("../../", import.meta.url);
+  const rootDenoConfig = JSON.parse(
+    readFileSync(new URL("deno.json", repoRootUrl), "utf-8"),
+  ) as RootDenoConfig;
+
+  const names = new Set<string>();
+  for (const workspaceEntry of rootDenoConfig.workspace ?? []) {
+    if (!workspaceEntry.startsWith("./packages/")) continue;
+    const packageDenoJsonUrl = new URL(`${workspaceEntry}/deno.json`, repoRootUrl);
+    const packageDenoConfig = JSON.parse(
+      readFileSync(packageDenoJsonUrl, "utf-8"),
+    ) as PackageDenoConfig;
+    if (packageDenoConfig.publish === false || packageDenoConfig.name == null) {
+      continue;
+    }
+    names.add(packageDenoConfig.name);
+  }
+
+  return Array.from(names)
+    .sort((a, b) =>
+      a === "@fedify/fedify"
+        ? -1
+        : b === "@fedify/fedify"
+        ? 1
+        : a.localeCompare(b)
+    )
+    .map((name) => ({
+      text: name,
+      link: `https://jsr.io/${name}/doc`,
+    }));
 }
 
 const TUTORIAL = {
@@ -88,30 +131,7 @@ const MANUAL = {
 
 const REFERENCES = {
   text: "References",
-  items: [
-    // Don't include @fedify/cli and @fedify/lint here
-    { text: "@fedify/fedify", link: "https://jsr.io/@fedify/fedify/doc" },
-    { text: "@fedify/amqp", link: "https://jsr.io/@fedify/amqp/doc" },
-    { text: "@fedify/astro", link: "https://jsr.io/@fedify/astro/doc" },
-    { text: "@fedify/cfworkers", link: "https://jsr.io/@fedify/cfworkers/doc" },
-    { text: "@fedify/debugger", link: "https://jsr.io/@fedify/debugger/doc" },
-    { text: "@fedify/denokv", link: "https://jsr.io/@fedify/denokv/doc" },
-    { text: "@fedify/express", link: "https://jsr.io/@fedify/express/doc" },
-    { text: "@fedify/fastify", link: "https://jsr.io/@fedify/fastify/doc" },
-    { text: "@fedify/fresh", link: "https://jsr.io/@fedify/fresh/doc" },
-    { text: "@fedify/h3", link: "https://jsr.io/@fedify/h3/doc" },
-    { text: "@fedify/hono", link: "https://jsr.io/@fedify/hono/doc" },
-    { text: "@fedify/koa", link: "https://jsr.io/@fedify/koa/doc" },
-    { text: "@fedify/mysql", link: "https://jsr.io/@fedify/mysql/doc" },
-    { text: "@fedify/postgres", link: "https://jsr.io/@fedify/postgres/doc" },
-    { text: "@fedify/redis", link: "https://jsr.io/@fedify/redis/doc" },
-    { text: "@fedify/relay", link: "https://jsr.io/@fedify/relay/doc" },
-    { text: "@fedify/sqlite", link: "https://jsr.io/@fedify/sqlite/doc" },
-    { text: "@fedify/sveltekit", link: "https://jsr.io/@fedify/sveltekit/doc" },
-    { text: "@fedify/testing", link: "https://jsr.io/@fedify/testing/doc" },
-    { text: "@fedify/vocab-runtime", link: "https://jsr.io/@fedify/vocab-runtime/doc" },
-    { text: "@fedify/vocab-tools", link: "https://jsr.io/@fedify/vocab-tools/doc" },
-  ],
+  items: getReferenceItems(),
 };
 
 export default withMermaid(defineConfig({
