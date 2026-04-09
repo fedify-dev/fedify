@@ -12,10 +12,10 @@
 
 This package provides a simple way to integrate [Fedify] with [프레임워크].
 
-[JSR badge]: https://jsr.io/badges/@fedify/nuxt
-[JSR]: https://jsr.io/@fedify/nuxt
-[npm badge]: https://img.shields.io/npm/v/@fedify/nuxt?logo=npm
-[npm]: https://www.npmjs.com/package/@fedify/nuxt
+[JSR badge]: https://jsr.io/badges/@fedify/프레임워크
+[JSR]: https://jsr.io/@fedify/프레임워크
+[npm badge]: https://img.shields.io/npm/v/@fedify/프레임워크?logo=npm
+[npm]: https://www.npmjs.com/package/@fedify/프레임워크
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
