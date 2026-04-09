@@ -197,10 +197,10 @@ When adding a new package to the monorepo, the following files must be updated:
     *docs/manual/integration.md*.
  -  If the package implements `KvStore`: Update *docs/manual/kv.md*.
  -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*.
- -  If the package is published to JSR: Add JSR link to the `REFERENCES` data
-    in *docs/.vitepress/config.mts* (note: only JSR links are added here,
-    not npm links; *@fedify/cli* and *@fedify/lint* are excluded from
-    REFERENCES).
+ -  If the package is published to JSR: Ensure the package's *deno.json*
+    contains the correct `name` and `publish` metadata.  The docs “References”
+    section is generated automatically from publishable workspace packages, so
+    no manual change to *docs/.vitepress/config.mts* is needed.
 
 **Optional updates:**
 
