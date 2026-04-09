@@ -35,6 +35,12 @@ To be released.
 [FEP-0837]: https://w3id.org/fep/0837
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 
+### @fedify/adonis
+
+ -  Added `@fedify/adonis` package for integrating Fedify with [AdonisJS].
+
+[AdonisJS]: https://adonisjs.com/
+
 ### @fedify/solidstart
 
  -  Added `@fedify/solidstart` package for integrating Fedify with

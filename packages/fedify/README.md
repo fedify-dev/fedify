@@ -96,6 +96,7 @@ Here is the list of packages:
 | [@fedify/fedify](/packages/fedify/)               | [JSR]                            | [npm]                            | The core framework of Fedify             |
 | [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
 | [@fedify/create](/packages/create/)               |                                  | [npm][npm:@fedify/create]        | Create a new Fedify project              |
+| [@fedify/adonis](/packages/adonis/)               | [JSR][jsr:@fedify/adonis]        | [npm][npm:@fedify/adonis]        | AdonisJS integration                     |
 | [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
 | [@fedify/astro](/packages/astro/)                 | [JSR][jsr:@fedify/astro]         | [npm][npm:@fedify/astro]         | Astro integration                        |
 | [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
@@ -128,6 +129,8 @@ Here is the list of packages:
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
 [npm:@fedify/create]: https://www.npmjs.com/package/@fedify/create
+[jsr:@fedify/adonis]: https://jsr.io/@fedify/adonis
+[npm:@fedify/adonis]: https://www.npmjs.com/package/@fedify/adonis
 [jsr:@fedify/amqp]: https://jsr.io/@fedify/amqp
 [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp
 [jsr:@fedify/astro]: https://jsr.io/@fedify/astro

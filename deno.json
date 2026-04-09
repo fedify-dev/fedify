@@ -1,5 +1,6 @@
 {
   "workspace": [
+    "./packages/adonis",
     "./packages/amqp",
     "./packages/astro",
     "./packages/cfworkers",

@@ -148,6 +148,16 @@ type TestResult =
 
 const SERVER_EXAMPLES: ServerExample[] = [
   {
+    // AdonisJS server with @fedify/adonis middleware;
+    // actor path is /users/{identifier}.
+    name: "adonis",
+    dir: "adonis",
+    startCmd: ["pnpm", "dev"],
+    port: 3333,
+    actor: "demo",
+    readyUrl: "http://localhost:3333/",
+  },
+  {
     // Deno-native Hono server; actor path is /{identifier} but only "sample"
     // is registered.
     name: "hono-sample",

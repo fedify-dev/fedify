@@ -14,6 +14,7 @@ export const WEB_FRAMEWORK = [
   "astro",
   "express",
   "solidstart",
+  "adonis",
 ] as const;
 /** All supported message queue backend identifiers. */
 export const MESSAGE_QUEUE = Object.keys(mq) as readonly (keyof typeof mq)[];

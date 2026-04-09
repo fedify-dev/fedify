@@ -1,4 +1,5 @@
 packages:
+- packages/adonis
 - packages/amqp
 - packages/astro
 - packages/cfworkers
@@ -30,6 +31,7 @@ packages:
 - packages/vocab-tools
 - packages/webfinger
 - docs
+- examples/adonis
 - examples/astro
 - examples/cloudflare-workers
 - examples/elysia

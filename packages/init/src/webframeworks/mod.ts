@@ -1,4 +1,5 @@
 import type { WebFrameworks } from "../types.ts";
+import adonis from "./adonis.ts";
 import astro from "./astro.ts";
 import bareBones from "./bare-bones.ts";
 import elysia from "./elysia.ts";
@@ -17,6 +18,7 @@ import solidstart from "./solidstart.ts";
  */
 const webFrameworks: WebFrameworks = {
   "bare-bones": bareBones,
+  adonis,
   astro,
   elysia,
   express,

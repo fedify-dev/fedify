@@ -1,0 +1,23 @@
+{
+  "name": "fedify-adonis-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Fedify AdonisJS integration example",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "test": "true"
+  },
+  "dependencies": {
+    "@adonisjs/core": ">=6.0.0",
+    "@fedify/adonis": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@logtape/logtape": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

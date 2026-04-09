@@ -94,6 +94,7 @@ export function reservePort(): Promise<
 }
 
 const ENTRY_FILES: Partial<Record<WebFramework, string>> = {
+  adonis: "src/index.ts",
   "bare-bones": "src/main.ts",
   express: "src/index.ts",
   hono: "src/index.ts",

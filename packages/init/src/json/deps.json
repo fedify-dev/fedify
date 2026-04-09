@@ -1,4 +1,5 @@
 {
+  "npm:@adonisjs/core": "^7.3.0",
   "@hongminhee/x-forwarded-fetch": "^0.2.0",
   "@hono/hono": "^4.12.9",
   "@logtape/logtape": "^2.0.5",
