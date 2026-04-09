@@ -17,12 +17,11 @@ Adding an integration package to a web framework
 Follow these steps in order to implement the integration package.
 
 1.  Research the web framework
-2.  Create the package directory
-3.  Implement the package
-4.  Add to `@fedify/init`
-5.  Test with `mise test:init`
-6.  Add an example
-7.  Lint, format, and final checks
+2.  Implement the package
+3.  Add to `@fedify/init`
+4.  Test with `mise test:init`
+5.  Add an example
+6.  Lint, format, and final checks
 
 
 Research the web framework
@@ -48,11 +47,11 @@ Implement the package
 the package integrates smoothly with the framework so users do not
 experience friction when connecting it.
 
-Unless there are significant hurdles, please set up the package to publish
-on both JSR and NPM.
-
 Create the package directory inside the `packages/` directory. For example, if
 the framework is named “framework”, create the directory `packages/framework/`.
+
+Unless there are significant hurdles, please set up the package to publish
+on both JSR and NPM.
 
 Copy the template files from <package/\*> into the directory you created. Then,
 implement the package according to the framework. Since the comments in the
