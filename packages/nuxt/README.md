@@ -1,6 +1,6 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/Nuxt: Integrate Fedify with Nuxt
+@fedify/nuxt: Integrate Fedify with Nuxt
 ========================================
 
 [![JSR][JSR badge]][JSR]

@@ -53,7 +53,7 @@ To be released.
 [#601]: https://github.com/fedify-dev/fedify/pull/601
 [#652]: https://github.com/fedify-dev/fedify/pull/652
 
-### @fedify/Nuxt
+### @fedify/nuxt
 
  -  Added `@fedify/nuxt` for integrating Fedify with [Nuxt] through
     `server/middleware` and Nitro's `errorHandler`, so Nuxt routes and

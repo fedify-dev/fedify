@@ -27,6 +27,7 @@ proper_nouns = [
   "@fedify/hono",
   "@fedify/koa",
   "@fedify/mysql",
+  "@fedify/nuxt",
   "@fedify/nestjs",
   "@fedify/postgres",
   "@fedify/redis",
