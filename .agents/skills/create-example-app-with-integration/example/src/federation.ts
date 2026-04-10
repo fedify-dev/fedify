@@ -15,6 +15,7 @@ import {
   type Recipient,
   Undo,
 } from "@fedify/vocab";
+import { keyPairsStore, postStore, relationStore } from "./store.ts";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
