@@ -158,10 +158,14 @@ Common tasks
 
 ### Implementing framework integrations
 
-A detailed step-by-step guide is available in
-*.agents/skills/create-integration-package/SKILL.md*.  It covers the entire
-workflow: researching the framework, creating the package, adding it to
-`fedify init`, testing, and writing an example.
+A detailed step-by-step guide is available across three skills:
+
+ -  *.agents/skills/create-integration-package/SKILL.md*: Researching the
+    framework and creating the integration package.
+ -  *.agents/skills/add-to-fedify-init/SKILL.md*: Adding the package to
+    `fedify init` and testing with `mise test:init`.
+ -  *.agents/skills/create-example-app-with-integration/SKILL.md*: Writing an
+    example application and testing with `mise test:examples`.
 
 ### Creating database adapters
 

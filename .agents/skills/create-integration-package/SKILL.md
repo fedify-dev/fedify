@@ -18,10 +18,7 @@ Follow these steps in order to implement the integration package.
 
 1.  Research the web framework
 2.  Implement the package
-3.  Add to `@fedify/init`
-4.  Test with `mise test:init`
-5.  Add an example
-6.  Lint, format, and final checks
+3.  Lint, format, and final checks
 
 
 Research the web framework
@@ -163,162 +160,6 @@ Deno, Node.js, and Bun.  Name test files with the `*.test.ts` convention
 9.  Record changes in *CHANGES.md*
 
 
-Add to `@fedify/init`
----------------------
-
-Add the new package to the `@fedify/init` package so users can select the
-new framework via the `fedify init` command.  Follow these steps.
-
-Steps may require code modifications not explicitly listed.  For example,
-if the new package needs specific configuration, utility functions in
-`packages/init/src/webframeworks/utils.ts` may need updating.  Make
-modifications consistent with the existing code style and context.
-
-### Write the `WebFrameworkDescription` object
-
-Create a `packages/init/src/webframeworks/framework.ts` file and write the
-`WebFrameworkDescription` object, referring to <init/framework.ts>.  Check
-the specifications in the comments in `packages/init/src/types.ts` for
-details.
-
-### Add to the `WEB_FRAMEWORK` array
-
-Add the new framework name to the end of the `WEB_FRAMEWORK` array in
-`packages/init/src/const.ts`.
-
-~~~~ typescript
-export const WEB_FRAMEWORK = [
-  // ... other frameworks
-  "framework", // Fill with the framework name
-];
-~~~~
-
-### Add to the `webFrameworks` object
-
-Add the new `WebFrameworkDescription` object in alphabetical order to the
-`webFrameworks` object in `packages/init/src/webframeworks/mod.ts`.
-
-~~~~ typescript
-// packages/init/src/webframeworks/mod.ts
-
-// ... other imports
-import framework from "./framework.ts"; // Fill with the framework name
-
-const webFrameworks: Record<string, WebFrameworkDescription> = {
-  // ... other frameworks
-  framework, // Fill with the framework name
-};
-~~~~
-
-### Add templates in `packages/init/src/templates/framework/`
-
-If additional files need to be generated, add template files under the
-`packages/init/src/templates/framework/` directory.  Template files must
-end with the `.tpl` extension appended to their base name.  Then, in
-`packages/init/src/webframeworks/framework.ts`, load the templates using
-the `readTemplate` function defined in `packages/init/src/lib.ts` and add
-them to the `WebFrameworkDescription.init().files` object.
-
-
-Test with `mise test:init`
---------------------------
-
-Run `mise test:init` to verify that the new package is generated and runs
-correctly.  If a test fails, the output and error file paths are printed;
-read them to diagnose the issue.
-
-Running `mise test:init` without arguments tests all option combinations
-and can take a very long time.  Use appropriate options to narrow the test
-scope.
-
-Immediately remove test paths after completing the tests and analyzing any
-resulting errors.
-
-At a minimum, test the following three combinations.
-
- -  `mise test:init -w framework -m in-process -k in-memory --no-dry-run`:
-    Tests the new framework with the in-memory KV store and in-process message
-    queue, which are the most basic options.  This combination verify that the
-    newly created package can be used without issues by minimizing dependencies
-    on other environments.
- -  `mise test:init -w framework`: Tests all package manager, KV store,
-    and message queue combinations with the framework selected.  If a
-    required database is not installed or running, this combinations are
-    useless. Therefore, if the test output indicates that the databases are
-    not running, don't use this combination ever again for the session.  
-    Instead, use the previous one or the next one.
- -  `mise test:init -m in-process -k in-memory --no-dry-run`: Fixes the
-    KV store and message queue and tests all web framework and package
-    manager combinations.  This test is mandatory if you modified logic
-    beyond just writing the `WebFrameworkDescription` object.
-
-For details on options, run `mise test:init --help`.
-
-Some frameworks or combinations may be untestable.  Analyze the test
-results; if there are impossible combinations, identify the reason and add
-the combination and reason as a key-value pair to the
-`BANNED_LOOKUP_REASONS` object in
-`packages/init/src/test/lookup.ts`.
-
-
-Add an example
---------------
-
-Create an `examples/framework/` app and write an example for the new
-package.  If Deno is supported, add a *deno.json* based on <example/deno.json>;
-if Node.js is supported, add *package.json* based on <example/package.jsonc>
-and *tsdown.config.ts*.  Depending on the supported environments,
-add the example path to the `workspace` field in
-the root *deno.json* and to the `packages` field in
-*pnpm-workspace.yaml*.
-
-If the framework is backend-only and needs a frontend framework, and there
-is no natural pairing like solidstart-solid, use Hono.
-
-Base the example on the files under the <example/\*> path.
-<example/ARCHITECTURE.md> describes the example's architecture.
-<example/DESIGN.md> describes the example's design.  Both documents are
-references for writing the example and are not needed in the actual
-generated example app — do not create these two files.  Copy the remaining
-files as-is and modify as needed.
-
-If the framework does not have a prescribed entry point, use `src/main.ts`
-as the application entry point.  Define and export the framework app in
-`src/app.ts`, then import and run it from the entry file.  Register the
-Fedify middleware in `src/app.ts`.  Import `src/logging.ts` in the entry
-file to initialize `@logtape/logtape`.  When logging is needed, use the
-`getLogger` function from `@logtape/logtape` to create a logger.
-
-### Test the example with `mise test:examples`
-
-Register the new example in `examples/test-examples/mod.ts`.  Read the
-comments above the example registry arrays in that file to determine
-which array is appropriate and what fields are required.  Follow the
-patterns of existing entries.
-
-Before running the tests, ensure that the tunneling service is usable.  
-The tests use the tunneling service `pinggy.io` to make the example app
-accessible to the test suite.  If the tunneling service is not usable,
-the tests may never finish or may fail due to a connection error.
-
-While developing the example, run only the new example to iterate
-quickly:
-
-~~~~ bash
-mise test:examples framework
-~~~~
-
-where `framework` is the `name` field of the registered entry.  Pass
-`--debug` for verbose output if the test fails.
-
-After the example is complete, run the full suite once to confirm nothing
-is broken:
-
-~~~~ bash
-mise test:examples
-~~~~
-
-
 Lint, format, and final checks
 ------------------------------
 
@@ -329,3 +170,11 @@ the `.hongdown.toml`.
 After implementation, run `mise run fmt && mise check`.
 If there are lint or format errors, fix them and run the command again until
 there are no errors.
+
+
+Next steps
+----------
+
+If there are no particular issues, continue by using the
+`add-to-fedify-init` and `create-example-app-with-integration` skills to complete
+the remaining implementation.
