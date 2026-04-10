@@ -31,6 +31,23 @@
         "..."
       ]
     },
+    "Markdown": {
+      "formatter": {
+        "external": {
+          "command": "hongdown",
+          "arguments": [
+            "-"
+          ]
+        }
+      },
+      "language_servers": [
+        "!deno",
+        "!typescript-language-server",
+        "!vtsls",
+        "!biome",
+        "..."
+      ]
+    },
     "TypeScript": {
       "code_actions_on_format": {
         "source.sortImports": true
