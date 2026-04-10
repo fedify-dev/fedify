@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# Interoperability smoke tests for Sharkey (Misskey fork).
+# Uses Caddy TLS proxies because Sharkey requires HTTPS for all ActivityPub
+# federation lookups (hardcoded in checkHttps() and WebFingerService).
+# See: https://github.com/fedify-dev/fedify/issues/654
+name: smoke-sharkey
+
+on:
+  push:
+    branches:
+      - main
+      - next
+      - "*.*-maintenance"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      COMPOSE: >-
+        docker compose
+        -f test/smoke/sharkey/docker-compose.yml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-mise
+
+      - name: Generate TLS certificates
+        run: bash test/smoke/sharkey/generate-certs.sh test/smoke/sharkey/.certs
+
+      - name: Verify certificates
+        run: |
+          openssl verify -CAfile test/smoke/sharkey/.certs/ca.crt \
+            test/smoke/sharkey/.certs/fedify-harness.crt
+          openssl verify -CAfile test/smoke/sharkey/.certs/ca.crt \
+            test/smoke/sharkey/.certs/sharkey.crt
+
+      - name: Pull Sharkey image
+        run: |
+          docker pull registry.activitypub.software/transfem-org/sharkey:2025.4.6
+
+      - name: Pre-cache harness dependencies
+        run: deno cache test/smoke/harness/main.ts
+
+      - name: Start database and redis
+        run: |
+          $COMPOSE up -d db redis
+          $COMPOSE exec -T db \
+            sh -c 'until pg_isready -U sharkey; do sleep 1; done'
+
+      - name: Start Sharkey stack
+        run: $COMPOSE up --wait
+        timeout-minutes: 12
+
+      - name: Provision Sharkey
+        run: bash test/smoke/sharkey/provision.sh
+
+      - name: Verify connectivity
+        run: |
+          echo "=== Harness health (from sharkey-web-backend, via Caddy TLS) ==="
+          $COMPOSE exec -T \
+            -e NODE_EXTRA_CA_CERTS=/tmp/ca-bundle.crt \
+            sharkey-web-backend \
+            node -e "fetch('https://fedify-harness/_test/health').then(r=>{if(!r.ok)process.exit(1);return r.text()}).then(console.log)"
+          echo " OK"
+
+      - name: Run smoke tests
+        run: |
+          set -a && source test/smoke/.env.test && set +a
+          deno run --allow-net --allow-env --unstable-temporal \
+            test/smoke/orchestrator.ts
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose logs ==="
+          $COMPOSE logs --tail=500
+
+      - name: Teardown
+        if: always()
+        run: $COMPOSE down -v

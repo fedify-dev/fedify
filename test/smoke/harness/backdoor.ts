@@ -9,18 +9,62 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-// Build recipient manually — in non-strict mode Mastodon's WebFinger requires
-// HTTPS but our harness only has HTTP, so we use http:// for the inbox URL.
-// In strict mode, Caddy terminates TLS, so we use https:// everywhere.
-function parseRecipient(
+// Resolve a handle (user@domain) to the correct actor URI and inbox URL
+// via WebFinger + actor document fetch.  Falls back to the Mastodon URL
+// convention (/users/{username}) when WebFinger is unavailable.
+const recipientCache = new Map<string, { inboxId: URL; actorId: URL }>();
+
+async function parseRecipient(
   handle: string,
-): { inboxId: URL; actorId: URL } {
+): Promise<{ inboxId: URL; actorId: URL }> {
+  const cached = recipientCache.get(handle);
+  if (cached) return cached;
+
   const [user, domain] = handle.split("@");
   const scheme = Deno.env.get("STRICT_MODE") ? "https" : "http";
+
+  // Try WebFinger resolution first — this discovers the correct actor URI
+  // regardless of server software (Mastodon, Sharkey, etc.)
+  try {
+    const wfUrl = `${scheme}://${domain}/.well-known/webfinger?resource=${
+      encodeURIComponent(`acct:${handle}`)
+    }`;
+    const wfRes = await fetch(wfUrl, {
+      headers: { Accept: "application/jrd+json" },
+    });
+    if (wfRes.ok) {
+      const wf = await wfRes.json() as {
+        links?: { rel: string; type?: string; href?: string }[];
+      };
+      const self = wf.links?.find(
+        (l) => l.rel === "self" && l.type === "application/activity+json",
+      );
+      if (self?.href) {
+        const actorId = new URL(self.href);
+        // Fetch the actor document to discover the inbox URL
+        const actorRes = await fetch(self.href, {
+          headers: { Accept: "application/activity+json" },
+        });
+        if (actorRes.ok) {
+          const actor = await actorRes.json() as { inbox?: string };
+          if (actor.inbox) {
+            const result = { inboxId: new URL(actor.inbox), actorId };
+            recipientCache.set(handle, result);
+            return result;
+          }
+        }
+      }
+    }
+  } catch {
+    // WebFinger failed; fall back to Mastodon convention
+  }
+
+  // Fallback: construct URLs using Mastodon convention
   const inboxId = new URL(`${scheme}://${domain}/users/${user}/inbox`);
-  // Mastodon generates https:// actor URIs; use that as the canonical id
   const actorId = new URL(`https://${domain}/users/${user}`);
-  return { inboxId, actorId };
+  const result = { inboxId, actorId };
+  recipientCache.set(handle, result);
+  return result;
 }
 
 export async function handleBackdoor(
@@ -35,6 +79,7 @@ export async function handleBackdoor(
 
   if (url.pathname === "/_test/reset" && request.method === "POST") {
     store.clear();
+    recipientCache.clear();
     return json({ ok: true });
   }
 
@@ -57,7 +102,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, inboxId } = parseRecipient(to);
+    const { actorId, inboxId } = await parseRecipient(to);
     const recipient = { id: actorId, inboxId };
 
     const noteId = crypto.randomUUID();
@@ -100,7 +145,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, inboxId } = parseRecipient(target);
+    const { actorId, inboxId } = await parseRecipient(target);
     const recipient = { id: actorId, inboxId };
 
     const follow = new Follow({
@@ -134,7 +179,7 @@ export async function handleBackdoor(
       undefined as void,
     );
 
-    const { actorId, inboxId } = parseRecipient(target);
+    const { actorId, inboxId } = await parseRecipient(target);
     const recipient = { id: actorId, inboxId };
 
     const undo = new Undo({
