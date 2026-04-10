@@ -8,7 +8,7 @@ export type ContextDataFactory<TContextData, FrameworkContext> = (
   context: FrameworkContext,
 ) => TContextData | Promise<TContextData>;
 
-export function fedifyMiddleware<TContextData, FrameworkContext>(
+export default function fedifyMiddleware<TContextData, FrameworkContext>(
   federation: Federation<TContextData>,
   contextDataFactory: ContextDataFactory<TContextData, FrameworkContext> =
     (() => void 0 as TContextData),

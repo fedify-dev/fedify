@@ -72,10 +72,10 @@ export default federation;
 Then, add Fedify middleware to your server:
 
 ~~~~ typescript
-import fedifyHandler from "@fedify/프레임워크";
+import fedifyMiddleware from "@fedify/프레임워크";
 import federation from "./federation.ts";
 
-const fedifyMiddleware = fedifyHandler(federation);
+const fedify = fedifyMiddleware(federation);
 
-app.use(fedifyMiddleware);
+app.use(fedify);
 ~~~~
