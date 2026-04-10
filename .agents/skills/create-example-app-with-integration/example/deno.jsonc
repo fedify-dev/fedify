@@ -5,7 +5,7 @@
     // you don't need to add import maps for here.
   },
   "tasks": {
-    // `dev` task STRONGLY RECOMMENDED for `mise test:example`.
+    // `dev` task STRONGLY RECOMMENDED for `mise test:examples`.
     // Other tasks can be added as needed.
     // Follow the convention of the framework you are integrating with.
     "dev": "deno run --watch -A src/main.ts"

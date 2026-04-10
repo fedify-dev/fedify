@@ -6,7 +6,7 @@
   "type": "module",
   "description": "Fedify app with 프레임워크 integration",
   "scripts": {
-    // `dev` script STRONGLY RECOMMENDED for `mise test:example`.
+    // `dev` script STRONGLY RECOMMENDED for `mise test:examples`.
     // Other scripts can be added as needed.
     // Follow the convention of the framework you are integrating with.
     "dev": ""
