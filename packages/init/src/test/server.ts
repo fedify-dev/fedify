@@ -1,6 +1,8 @@
-import $ from "@david/dax";
+import { spawn } from "node:child_process";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { join as joinPath } from "node:path";
+import process from "node:process";
+import { Readable } from "node:stream";
 import { printErrorMessage } from "../utils.ts";
 import { ensurePortReleased, killProcessOnPort } from "./port.ts";
 
@@ -45,20 +47,22 @@ export async function serverClosure<T>(
   await releasePort?.();
 
   const devCommand = cmd.split(" ");
-  const serverProcess = $`${devCommand}`
-    .cwd(dir)
-    .env("PORT", String(defaultPort))
-    .stdin("null")
-    .stdout("piped")
-    .stderr("piped")
-    .noThrow()
-    .spawn();
+  const child = spawn(devCommand[0], devCommand.slice(1), {
+    cwd: dir,
+    env: { ...process.env, PORT: String(defaultPort) },
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true, // creates a new process group so we can kill the tree
+  });
 
-  // Prevent unhandled rejection when the process is killed
-  serverProcess.catch(() => {});
+  // Prevent unhandled exception when the process is killed
+  child.on("error", () => {});
 
-  const [stdoutForFile, stdoutForPort] = serverProcess.stdout().tee();
-  const [stderrForFile, stderrForPort] = serverProcess.stderr().tee();
+  // Convert Node.js readable streams to Web ReadableStreams for tee()
+  const stdoutWeb = Readable.toWeb(child.stdout!) as ReadableStream<Uint8Array>;
+  const stderrWeb = Readable.toWeb(child.stderr!) as ReadableStream<Uint8Array>;
+
+  const [stdoutForFile, stdoutForPort] = stdoutWeb.tee();
+  const [stderrForFile, stderrForPort] = stderrWeb.tee();
 
   // Shared signal to cancel all background stream readers on cleanup
   const cleanup = new AbortController();
@@ -82,8 +86,18 @@ export async function serverClosure<T>(
     });
     return await callback(port);
   } finally {
+    // Kill the entire process group (tsx watch + all its children)
     try {
-      serverProcess.kill("SIGKILL");
+      if (child.pid != null) {
+        process.kill(-child.pid, "SIGKILL");
+      }
+    } catch {
+      // Process group already exited
+    }
+
+    // Also kill the child directly in case it wasn't in the group
+    try {
+      child.kill("SIGKILL");
     } catch {
       // Process already exited
     }
