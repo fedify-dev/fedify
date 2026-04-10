@@ -73,7 +73,7 @@ federation
       return;
     }
     const follower = await follow.getActor(context) as Person;
-    if (!follower?.id || follower.id === null) {
+    if (!follower?.id) {
       throw new Error("follower is null");
     }
     await context.sendActivity(
