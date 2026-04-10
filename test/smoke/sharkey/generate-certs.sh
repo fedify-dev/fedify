@@ -13,21 +13,17 @@ mkdir -p "$OUT"
 HOSTS=(fedify-harness sharkey)
 
 echo "→ Generating CA key + certificate..."
-openssl genrsa -out "$OUT/ca.key" 2048 2>/dev/null
-openssl req -x509 -new -nodes \
+openssl genrsa -out "$OUT/ca.key" 2048openssl req -x509 -new -nodes \
   -key "$OUT/ca.key" \
   -sha256 -days 1 \
   -subj "/CN=Smoke Test CA" \
-  -out "$OUT/ca.crt" 2>/dev/null
-
+  -out "$OUT/ca.crt"
 for HOST in "${HOSTS[@]}"; do
   echo "→ Generating certificate for $HOST..."
-  openssl genrsa -out "$OUT/$HOST.key" 2048 2>/dev/null
-  openssl req -new \
+  openssl genrsa -out "$OUT/$HOST.key" 2048  openssl req -new \
     -key "$OUT/$HOST.key" \
     -subj "/CN=$HOST" \
-    -out "$OUT/$HOST.csr" 2>/dev/null
-
+    -out "$OUT/$HOST.csr"
   # Create a SAN extension config so the cert is valid for the hostname
   cat > "$OUT/$HOST.ext" <<EOF
 authorityKeyIdentifier=keyid,issuer
@@ -40,8 +36,7 @@ EOF
     -CA "$OUT/ca.crt" -CAkey "$OUT/ca.key" -CAcreateserial \
     -days 1 -sha256 \
     -extfile "$OUT/$HOST.ext" \
-    -out "$OUT/$HOST.crt" 2>/dev/null
-
+    -out "$OUT/$HOST.crt"
   rm -f "$OUT/$HOST.csr" "$OUT/$HOST.ext"
 done
 
