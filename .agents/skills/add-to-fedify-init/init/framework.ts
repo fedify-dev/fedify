@@ -4,7 +4,7 @@
 // so do not modify them unless necessary.
 
 import deps from "../json/deps.json" with { type: "json" };
-import { WebFrameworkDescription } from "../types.ts";
+import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
 import { getInstruction } from "./utils.ts";
 
