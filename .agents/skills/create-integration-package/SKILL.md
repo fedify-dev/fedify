@@ -176,5 +176,5 @@ Next steps
 ----------
 
 If there are no particular issues, continue by using the
-`add-to-fedify-init` and `create-example-app-with-integration` skills to complete
-the remaining implementation.
+`add-to-fedify-init` and `create-example-app-with-integration` skills to
+complete the remaining implementation.

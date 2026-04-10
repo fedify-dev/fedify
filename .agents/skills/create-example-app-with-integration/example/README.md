@@ -43,7 +43,8 @@ Communicate with other federated servers
     fedify tunnel 0000 
     ~~~~
 
-2.  Open your browser tunneled URL and check the server is running properly.
+2.  Open the tunneled URL in your browser and check that the server is running
+    properly.
 
 3.  Search your handle and follow from other federated servers such as Mastodon
     or Misskey.
