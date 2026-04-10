@@ -24,6 +24,10 @@ The key features of the `Context` object are as follows:
  -  [Looking up remote objects](#looking-up-remote-objects)
  -  [NodeInfo client](./nodeinfo.md#nodeinfo-client)
 
+For advanced helpers—URI parsing, manual activity routing, signature
+introspection, and authenticated document loading—see the
+[*Advanced context helpers*](./context-advanced.md) guide.
+
 
 Where to get a `Context` object
 -------------------------------

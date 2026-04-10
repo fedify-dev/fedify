@@ -104,6 +104,7 @@ const MANUAL = {
   items: [
     { text: "Federation", link: "/manual/federation.md" },
     { text: "Context", link: "/manual/context.md" },
+    { text: "Advanced context helpers", link: "/manual/context-advanced.md" },
     { text: "Vocabulary", link: "/manual/vocab.md" },
     { text: "Actor dispatcher", link: "/manual/actor.md" },
     { text: "Inbox listeners", link: "/manual/inbox.md" },
