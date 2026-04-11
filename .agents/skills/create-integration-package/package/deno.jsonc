@@ -1,0 +1,28 @@
+{
+  "name": "@fedify/프레임워크", // Replace `프레임워크` with the framework name in lowercase
+  "version": "*.*.*", // Sync with packages/fedify/deno.json
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "imports": {
+    // Add Fedify and framework dependencies here.
+    // Use JSR packages in Deno, and alias to the npm name when they differ.
+    // Example:
+    //   "hono": "jsr:@hono/hono@^4"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts", // If there are test files
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test" // Add if --allow-* for permissions is needed
+  }
+}

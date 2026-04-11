@@ -158,11 +158,14 @@ Common tasks
 
 ### Implementing framework integrations
 
-1.  Create a new package in *packages/* directory for new integrations
-2.  Follow pattern from existing integration packages (*packages/hono/*,
-    *packages/sveltekit/*)
-3.  Use standard request/response interfaces for compatibility
-4.  Consider creating example applications in *examples/* that demonstrate usage
+A detailed step-by-step guide is available across three skills:
+
+ -  *.agents/skills/create-integration-package/SKILL.md*: Researching the
+    framework and creating the integration package.
+ -  *.agents/skills/add-to-fedify-init/SKILL.md*: Adding the package to
+    `fedify init` and testing with `mise test:init`.
+ -  *.agents/skills/create-example-app-with-integration/SKILL.md*: Writing an
+    example application and testing with `mise test:examples`.
 
 ### Creating database adapters
 
