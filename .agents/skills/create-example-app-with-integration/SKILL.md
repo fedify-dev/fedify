@@ -27,7 +27,7 @@ Two reference documents describe what the example must do and how it must
 look.  Both are references only — do not create these files in the actual
 generated example app.
 
-### <ARCHITECTURE.md>
+### [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 Defines the example's functional behavior.  Consult it for:
 
@@ -44,10 +44,11 @@ Defines the example's functional behavior.  Consult it for:
     bridge between the framework routing layer and the federation layer.
  -  **Federation** and **Storing**: Which source files to set up
     (`src/federation.ts`, `src/store.ts`) and the template files they are
-    based on (<example/src/federation.ts>, <example/src/store.ts>).
+    based on ([example/src/federation.ts](./example/src/federation.ts),
+    [example/src/store.ts](./example/src/store.ts)).
  -  **Logging**: How to use `@logtape/logtape` and `src/logging.ts`.
 
-### <DESIGN.md>
+### [DESIGN.md](./DESIGN.md)
 
 Defines the example's visual presentation.  Consult it for:
 
@@ -61,7 +62,8 @@ Defines the example's visual presentation.  Consult it for:
  -  **Layout principles**: Spacing, containers, grid, and whitespace.
  -  **Responsive behavior**: Single breakpoint at `768px` and mobile
     adaptations.
- -  **Static assets**: Files to serve from `public/` (<example/public/\*>).
+ -  **Static assets**: Files to serve from `public/`
+    ([example/public/](./example/public/)).
  -  **Page structure**: Detailed layout of the home page, actor profile
     page, and post detail page.
 
@@ -70,18 +72,41 @@ Set up the example project
 --------------------------
 
 Create an `examples/framework/` app and write an example for the new
-package.  Unless the framework itself prevents it, support both Deno and
-Node.js environments.  If Deno is supported, add a *deno.json* based on
-<example/deno.json>; if Node.js is supported, add *package.json* based on
-<example/package.jsonc> and *tsdown.config.ts*.  Depending on the supported
-environments, add the example path to the `workspace` field in
-the root *deno.json* and to the `packages` field in
-*pnpm-workspace.yaml*.
+package. Copy the template files from [example/](./example/) as-is and modify
+as needed.
+
+ -  [deno.json](./example/deno.jsonc)
+     -  Deno configuration for the example app.
+     -  If the framework does not support Deno, this file can be omitted.
+ -  [package.json](./example/package.jsonc)
+     -  Node.js configuration for the example app.
+     -  If the framework does not support Node.js, this file can be omitted.
+ -  [federation.ts](./example/src/federation.ts): Set up the Federation instance
+    and configure ActivityPub handling.
+ -  [logging.ts](./example/src/logging.ts): Set up Logtape logging.
+ -  [store.ts](./example/src/store.ts): Set up in-memory stores for actors,
+    posts, and followers.
+ -  [fedify-logo.svg](./example/public/fedify-logo.svg)
+     -  The Fedify logo.
+     -  Use this file as favicon.
+     -  You can make a custom logo to add the svg of the framework logo.
+ -  [demo-profile.png](./example/public/demo-profile.png):
+     -  Profile image for the demo user.
+     -  You can make this image from the `fedify-logo.svg` rendering to png
+ -  [style.css](./example/public/style.css): The CSS file for the example app.
+ -  [theme.js](./example/public/theme.js): The JavaScript file for theme
+    toggling dark/light mode in the example app.
+
+Unless the framework itself prevents it, support both Deno
+and Node.js environments.  If Deno is supported, add a *deno.json* based on
+[example/deno.json](./example/deno.jsonc); if Node.js is supported, add
+*package.json* based on [example/package.jsonc](./example/package.jsonc) and
+*tsdown.config.ts*.  Depending on the supported environments, add the example
+path to the `workspace` field in the root *deno.json* and to the `packages`
+field in *pnpm-workspace.yaml*.
 
 If the framework is backend-only and needs a frontend framework, and there
 is no natural pairing like solidstart-solid, use Hono.
-
-Copy the template files from <example/\*> as-is and modify as needed.
 
 If the framework does not have a prescribed entry point, use `src/main.ts`
 as the application entry point.  Define and export the framework app in
@@ -90,26 +115,34 @@ as the application entry point.  Define and export the framework app in
 When logging is needed, use the `getLogger` function from `@logtape/logtape`
 to create a logger.
 
+When configuring the example app server, disable host restrictions and allow
+all hosts so tunneled/public domains can access the app during development
+and tests.
+
 
 Implement the example app
 -------------------------
 
-Follow the specifications in <ARCHITECTURE.md> and <DESIGN.md> to
-implement the example.  In particular:
+Follow the specifications in [ARCHITECTURE.md](./ARCHITECTURE.md) and
+[DESIGN.md](./DESIGN.md) to implement the example.  In particular:
 
  -  Register the Fedify middleware in `src/app.ts` per the “Middleware
     integration” and “Reverse proxy support” sections of
-    <ARCHITECTURE.md>.
+    [ARCHITECTURE.md](./ARCHITECTURE.md).
  -  Set up federation logic in `src/federation.ts` based on
-    <example/src/federation.ts>.  Set up in-memory stores in `src/store.ts`
-    based on <example/src/store.ts>.
+    [example/src/federation.ts](./example/src/federation.ts).  Set up in-memory
+    stores in `src/store.ts` based on
+    [example/src/store.ts](./example/src/store.ts).
  -  Implement all routes listed in the “Routing” section of
-    <ARCHITECTURE.md>, using `RequestContext` as described in the
-    “Server-side data access” section.
- -  Render HTML pages according to <DESIGN.md>.  Serve static assets from
-    the `public/` directory (copy from <example/public/\*>).
+    [ARCHITECTURE.md](./ARCHITECTURE.md), using `RequestContext` as described
+    in the “Server-side data access” section.
+ -  Render HTML pages according to [DESIGN.md](./DESIGN.md).  Serve static assets
+    from the `public/` directory (copy from
+    [example/public/](./example/public/)).
  -  Implement the SSE endpoint per the “Server-sent events” section of
-    <ARCHITECTURE.md>.
+    [ARCHITECTURE.md](./ARCHITECTURE.md).
+ -  Ensure the app can build and run in the supported environments
+    (Deno, Node.js, or both).
 
 
 Test the example with `mise test:examples`
@@ -142,6 +175,11 @@ is broken:
 mise test:examples
 ~~~~
 
+If the `test:examples` can not be run, just run the server and test with curl:
+
+~~~~ bash
+curl -H "Accept: application/activity+json" http://localhost:0000/users/demo
+
 
 Lint, format, and final checks
 ------------------------------
@@ -152,3 +190,4 @@ root path.
 After implementation, run `mise run fmt && mise check`.
 If there are lint or format errors, fix them and run the command again until
 there are no errors.
+~~~~
