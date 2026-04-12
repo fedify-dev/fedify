@@ -145,6 +145,20 @@ export async function replacePortInApp(
     return;
   }
 
+  if (wf === "nuxt") {
+    // Insert server.port into the Nuxt config (via nitro config in nuxt.config.ts)
+    const configPath = join(dir, "nuxt.config.ts");
+    const content = await readFile(configPath, "utf8");
+    await writeFile(
+      configPath,
+      content.replace(
+        "defineNuxtConfig({",
+        `defineNuxtConfig({\n  nitro: { port: ${newPort} },`,
+      ),
+    );
+    return;
+  }
+
   printErrorMessage`Unknown framework ${wf} — cannot replace port.`;
 }
 
