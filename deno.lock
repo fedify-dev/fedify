@@ -78,6 +78,7 @@
     "npm:@mjackson/node-fetch-server@0.7": "0.7.0",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.17_reflect-metadata@0.2.2_rxjs@7.8.2",
+    "npm:@nuxt/kit@4": "4.4.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
     "npm:@opentelemetry/context-async-hooks@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
     "npm:@opentelemetry/core@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
@@ -2423,6 +2424,31 @@
         "fastq"
       ]
     },
+    "@nuxt/kit@4.4.2": {
+      "integrity": "sha512-5+IPRNX2CjkBhuWUwz0hBuLqiaJPRoKzQ+SvcdrQDbAyE+VDeFt74VpSFr5/R0ujrK4b+XnSHUJWdS72w6hsog==",
+      "dependencies": [
+        "c12",
+        "consola",
+        "defu",
+        "destr",
+        "errx",
+        "exsolve",
+        "ignore@7.0.5",
+        "jiti@2.6.1",
+        "klona",
+        "mlly",
+        "ohash",
+        "pathe@2.0.3",
+        "pkg-types@2.3.0",
+        "rc9",
+        "scule",
+        "semver@7.7.4",
+        "tinyglobby",
+        "ufo",
+        "unctx",
+        "untyped"
+      ]
+    },
     "@opentelemetry/api@1.9.1": {
       "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
     },
@@ -4651,6 +4677,9 @@
       "dependencies": [
         "stackframe"
       ]
+    },
+    "errx@0.1.0": {
+      "integrity": "sha512-fZmsRiDNv07K6s2KkKFTiD2aIvECa7++PKyD5NC32tpRw46qZA3sOz+aM+/V9V0GDHxVTKLziveV4JhzBHDp9Q=="
     },
     "es-define-property@1.0.1": {
       "integrity": "sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g=="
@@ -9435,6 +9464,12 @@
             "npm:eslint@9"
           ]
         }
+      },
+      "packages/nuxt": {
+        "dependencies": [
+          "npm:@nuxt/kit@4",
+          "npm:h3@^1.15.0"
+        ]
       },
       "packages/relay": {
         "dependencies": [

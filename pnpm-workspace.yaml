@@ -11,13 +11,14 @@ packages:
 - packages/fedify
 - packages/fixture
 - packages/h3
-- packages/init
 - packages/hono
+- packages/init
 - packages/koa
 - packages/lint
 - packages/mysql
 - packages/nestjs
 - packages/next
+- packages/nuxt
 - packages/postgres
 - packages/redis
 - packages/relay
@@ -69,6 +70,7 @@ catalog:
   "@types/koa": ^2.15.0
   "@types/node": ^22.17.0
   "@nestjs/common": ^11.0.1
+  "@nuxt/kit": ^4.4.0
   astro: ^5.0.0
   amqplib: ^0.10.9
   asn1js: ^3.0.6
@@ -88,6 +90,7 @@ catalog:
   next: ^15.4.6
   pkijs: ^3.3.3
   mysql2: ^3.18.0
+  nuxt: ^4.4.2
   postgres: ^3.4.7
   tsdown: ^0.21.6
   typescript: ^5.9.2

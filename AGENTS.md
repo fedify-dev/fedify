@@ -89,6 +89,7 @@ for the complete package list.
 
  -  *packages/init/*: Project initializer (`@fedify/init`) for Fedify.
     Separated from `@fedify/cli` to enable standalone use.
+ -  *packages/nuxt/*: Nuxt integration (`@fedify/nuxt`) for Fedify.
  -  *packages/create/*: Standalone CLI (`@fedify/create`)
     for creating new Fedify projects via `npm init @fedify`.
  -  *docs/*: Documentation built with VitePress (see *docs/README.md*)
@@ -331,7 +332,8 @@ The monorepo uses different build processes for different packages:
 3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
      -  *packages/amqp/*, *packages/astro/*, *packages/elysia*,
         *packages/express/*, *packages/h3/*,
-        *packages/mysql/*, *packages/sqlite/*, *packages/postgres/*,
+        *packages/mysql/*, *packages/nuxt/*, *packages/sqlite/*,
+        *packages/postgres/*,
         *packages/redis/*, *packages/nestjs/*
      -  Built to support Node.js and Bun environments
 

@@ -1,0 +1,70 @@
+{
+  "name": "@fedify/nuxt",
+  "version": "2.2.0",
+  "description": "Integrate Fedify with Nuxt",
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse",
+    "Nuxt"
+  ],
+  "author": {
+    "name": "ChanHaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://chomu.dev/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/nuxt"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      },
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "src/runtime/",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@nuxt/kit": "catalog:",
+    "h3": "catalog:",
+    "nuxt": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/nuxt... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "node --experimental-transform-types --test"
+  }
+}
