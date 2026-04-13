@@ -22,6 +22,6 @@
   },
   "tasks": {
     "test": "deno test",
-    "check": "deno fmt --check && deno lint && deno check src/*.ts"
+    "check": "deno fmt --check && deno lint && deno check src/*.ts src/runtime/server/*.ts"
   }
 }
