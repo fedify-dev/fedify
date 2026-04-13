@@ -9,8 +9,9 @@ The Fedify project has the following rules for AI usage:
 
  -  *All AI usage in any form must be disclosed.*  You must state the tool you
     used (e.g., Claude, Cursor, GitHub Copilot) along with the extent that
-    the work was AI-assisted in your pull request description and/or commit
-    messages.
+    the work was AI-assisted in both your pull request description and commit
+    messages.  For commit messages, use the `Assisted-by` trailer (see below
+    for the required format).
 
  -  *Pull requests created in any way by AI can only be for accepted issues.*
     Drive-by pull requests that do not reference an accepted issue will be
@@ -45,6 +46,31 @@ exempt from these rules and may use AI tools at their discretion; they've
 proven themselves trustworthy to apply good judgment.
 
 [1]: https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md
+
+
+Disclosing AI assistance in commit messages
+-------------------------------------------
+
+When AI tools assist with a commit, add an `Assisted-by` trailer to the commit
+message.  Do *not* use `Co-authored-by` for AI assistants; that trailer is
+reserved for human co-authors.
+
+The format is:
+
+~~~~
+Assisted-by: AGENT_NAME:MODEL_VERSION
+~~~~
+
+For example:
+
+~~~~
+Assisted-by: OpenCode:qwen3.6-plus
+Assisted-by: Claude Code:claude-sonnet-4-6
+Assisted-by: Gemini CLI:gemini-3.1-pro-preview
+Assisted-by: Codex:gpt-5.4
+~~~~
+
+If multiple AI tools were used, include one `Assisted-by` line per tool.
 
 
 There are humans here
