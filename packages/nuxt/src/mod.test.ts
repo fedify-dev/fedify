@@ -1,5 +1,6 @@
-import { strict as assert } from "node:assert";
 import { test } from "@fedify/fixture";
+import { strict as assert } from "node:assert";
+import { buildContextFactoryResolver } from "./module.ts";
 import {
   fetchWithFedify,
   resolveDeferredNotAcceptable,
@@ -86,4 +87,45 @@ test("framework response is preserved for shared HTML route", async () => {
 
   const negotiated = resolveDeferredNotAcceptable(true, 200);
   assert.equal(negotiated, undefined);
+});
+
+test("contextFactoryResolver validates contextDataFactory export", () => {
+  // Evaluate the generated code with a mock contextFactoryModule
+  function evalResolver(
+    contextFactoryModule: Record<string, unknown> | null,
+  ): unknown {
+    const code = buildContextFactoryResolver(
+      contextFactoryModule == null ? null : "~/factory",
+    );
+    const fn = new Function(
+      "contextFactoryModule",
+      code + "\nreturn contextDataFactory;",
+    );
+    return fn(contextFactoryModule);
+  }
+
+  // 1. contextDataFactoryModule is null
+  assert.equal(evalResolver(null), undefined);
+
+  // 2. default export is a function
+  const factory = () => ({});
+  assert.equal(evalResolver({ default: factory }), factory);
+
+  // 3. default export is not a function
+  assert.throws(
+    () => evalResolver({ default: "not-a-function" }),
+    TypeError,
+  );
+
+  // 4. named export contextDataFactory is a function
+  assert.equal(
+    evalResolver({ default: undefined, contextDataFactory: factory }),
+    factory,
+  );
+
+  // 5. named export contextDataFactory is not a function
+  assert.throws(
+    () => evalResolver({ default: undefined, contextDataFactory: 42 }),
+    TypeError,
+  );
 });
