@@ -6,7 +6,7 @@ import {
   defineNuxtModule,
   resolveAlias,
 } from "@nuxt/kit";
-import type { Nuxt } from "@nuxt/schema";
+import type { Nuxt, NuxtModule } from "@nuxt/schema";
 import type { H3Event } from "h3";
 
 /**
@@ -40,75 +40,76 @@ export interface ModuleOptions {
 /**
  * Nuxt module to integrate Fedify with Nuxt/Nitro request handling.
  */
-const fedifyNuxtModule = defineNuxtModule<ModuleOptions>({
-  meta: {
-    name: "@fedify/nuxt",
-    configKey: "fedify",
-  },
-  defaults: {
-    federationModule: "~/server/federation",
-    contextDataFactoryModule: undefined,
-  },
-  setup(options: ModuleOptions, nuxt: Nuxt) {
-    const resolver = createResolver(import.meta.url);
-    const federationModule = resolveAlias(
-      options.federationModule,
-      nuxt.options.alias,
-    );
-    const contextDataFactoryModule = options.contextDataFactoryModule == null
-      ? undefined
-      : resolveAlias(options.contextDataFactoryModule, nuxt.options.alias);
+const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
+  defineNuxtModule<ModuleOptions>({
+    meta: {
+      name: "@fedify/nuxt",
+      configKey: "fedify",
+    },
+    defaults: {
+      federationModule: "~/server/federation",
+      contextDataFactoryModule: undefined,
+    },
+    setup(options: ModuleOptions, nuxt: Nuxt) {
+      const resolver = createResolver(import.meta.url);
+      const federationModule = resolveAlias(
+        options.federationModule,
+        nuxt.options.alias,
+      );
+      const contextDataFactoryModule = options.contextDataFactoryModule == null
+        ? undefined
+        : resolveAlias(options.contextDataFactoryModule, nuxt.options.alias);
 
-    const middlewareFilename = "fedify-nuxt-options.mjs";
+      const middlewareFilename = "fedify-nuxt-options.mjs";
 
-    addServerTemplate({
-      filename: middlewareFilename,
-      getContents: () => {
-        const imports = [
-          `import * as federationModule from ${
-            JSON.stringify(federationModule)
-          };`,
-          `import { createFedifyMiddleware } from ${
-            JSON.stringify(
-              resolver.resolve("../src/runtime/server/middleware.ts"),
-            )
-          };`,
-        ];
-
-        if (contextDataFactoryModule != null) {
-          imports.push(
-            `import * as contextFactoryModule from ${
-              JSON.stringify(contextDataFactoryModule)
+      addServerTemplate({
+        filename: middlewareFilename,
+        getContents: () => {
+          const imports = [
+            `import * as federationModule from ${
+              JSON.stringify(federationModule)
             };`,
-          );
-        }
+            `import { createFedifyMiddleware } from ${
+              JSON.stringify(
+                resolver.resolve("../src/runtime/server/middleware.ts"),
+              )
+            };`,
+          ];
 
-        const contextFactoryResolver = contextDataFactoryModule == null
-          ? "const contextDataFactory = undefined;"
-          : [
-            "const contextDataFactory =",
-            "  contextFactoryModule.default ??",
-            "  contextFactoryModule.contextDataFactory;",
+          if (contextDataFactoryModule != null) {
+            imports.push(
+              `import * as contextFactoryModule from ${
+                JSON.stringify(contextDataFactoryModule)
+              };`,
+            );
+          }
+
+          const contextFactoryResolver = contextDataFactoryModule == null
+            ? "const contextDataFactory = undefined;"
+            : [
+              "const contextDataFactory =",
+              "  contextFactoryModule.default ??",
+              "  contextFactoryModule.contextDataFactory;",
+            ].join("\n");
+
+          return [
+            ...imports,
+            "const federation = federationModule.default ?? federationModule.federation;",
+            contextFactoryResolver,
+            "export default createFedifyMiddleware(federation, contextDataFactory);",
+            "",
           ].join("\n");
+        },
+      });
 
-        return [
-          ...imports,
-          "const federation = federationModule.default ?? federationModule.federation;",
-          contextFactoryResolver,
-          "export default createFedifyMiddleware(federation, contextDataFactory);",
-          "",
-        ].join("\n");
-      },
-    });
+      addServerHandler({
+        route: "",
+        middleware: true,
+        handler: middlewareFilename,
+      });
 
-    addServerHandler({
-      route: "",
-      middleware: true,
-      handler: middlewareFilename,
-    });
-
-    addServerPlugin(resolver.resolve("../src/runtime/server/plugin.ts"));
-  },
-});
+      addServerPlugin(resolver.resolve("../src/runtime/server/plugin.ts"));
+    },
+  });
 
 export default fedifyNuxtModule;
