@@ -5,7 +5,6 @@ import {
   createResolver,
   defineNuxtModule,
   resolveAlias,
-  type Nuxt,
 } from "@nuxt/kit";
 import type { H3Event } from "h3";
 

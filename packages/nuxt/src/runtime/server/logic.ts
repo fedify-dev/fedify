@@ -1,18 +1,18 @@
 import type { FederationFetchOptions } from "@fedify/fedify/federation";
+import { NOT_ACCEPTABLE_BODY } from "./lib.ts";
+
+export { DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY } from "./lib.ts";
 
 const DUMMY_NOT_FOUND_RESPONSE = new Response("", { status: 404 });
 
 const createNotAcceptableResponse = () =>
-  new Response("Not acceptable", {
+  new Response(NOT_ACCEPTABLE_BODY, {
     status: 406,
     headers: {
       "Content-Type": "text/plain",
       Vary: "Accept",
     },
   });
-
-export const DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY =
-  "__fedify_deferred_not_acceptable__";
 
 export type FetchResult =
   | { kind: "handled"; response: Response }

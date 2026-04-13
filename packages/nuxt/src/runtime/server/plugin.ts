@@ -1,9 +1,7 @@
 import { getResponseStatus, setResponseHeader, setResponseStatus } from "h3";
 import type { H3Event } from "h3";
-import {
-  DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY,
-  resolveDeferredNotAcceptable,
-} from "./logic.ts";
+import { DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY, NOT_ACCEPTABLE_BODY } from "./lib.ts";
+import { resolveDeferredNotAcceptable } from "./logic.ts";
 
 interface ResponsePayload {
   body?: unknown;
@@ -39,7 +37,7 @@ const fedifyPlugin: NitroAppPlugin = (nitroApp: MinimalNitroApp) => {
         setResponseHeader(event, key, value);
       });
 
-      payload.body = "Not acceptable";
+      payload.body = NOT_ACCEPTABLE_BODY;
     },
   );
 };
