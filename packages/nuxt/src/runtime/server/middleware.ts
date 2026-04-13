@@ -1,5 +1,5 @@
 import type { Federation } from "@fedify/fedify/federation";
-import { defineEventHandler, toWebRequest } from "h3";
+import { defineEventHandler, toWebRequest, type H3Event } from "h3";
 import {
   DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY,
   fetchWithFedify,
@@ -19,7 +19,7 @@ function assertFederation(
 
 export function createFedifyMiddleware(
   federation: unknown,
-  contextDataFactory?: (event: unknown, request: Request) => unknown,
+  contextDataFactory?: (event: H3Event, request: Request) => unknown,
 ) {
   assertFederation(federation);
 
