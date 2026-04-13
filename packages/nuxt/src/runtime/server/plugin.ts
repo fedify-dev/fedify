@@ -1,6 +1,9 @@
-import { getResponseStatus, setResponseHeader, setResponseStatus } from "h3";
 import type { H3Event } from "h3";
-import { DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY, NOT_ACCEPTABLE_BODY } from "./lib.ts";
+import { getResponseStatus, setResponseHeader, setResponseStatus } from "h3";
+import {
+  DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY,
+  NOT_ACCEPTABLE_BODY,
+} from "./lib.ts";
 import { resolveDeferredNotAcceptable } from "./logic.ts";
 
 interface ResponsePayload {

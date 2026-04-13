@@ -1,5 +1,5 @@
 import type { Federation } from "@fedify/fedify/federation";
-import { defineEventHandler, toWebRequest, type H3Event } from "h3";
+import { defineEventHandler, type H3Event, toWebRequest } from "h3";
 import { DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY } from "./lib.ts";
 import { fetchWithFedify } from "./logic.ts";
 
