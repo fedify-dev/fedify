@@ -68,8 +68,13 @@ To be released.
     `TypeError: Cannot read properties of undefined` from `mysql2`.
     [[#649], [#656] by ChanHaeng Lee]
 
+ -  Supported [Nuxt] as a web framework option in `fedify init`, with
+    templates for federation setup, logging, and Nitro middleware.
+    [[#149], [#675] by ChanHaeng Lee]
+
 [#649]: https://github.com/fedify-dev/fedify/issues/649
 [#656]: https://github.com/fedify-dev/fedify/pull/656
+[#675]: https://github.com/fedify-dev/fedify/pull/675
 
 
 Version 2.1.5
