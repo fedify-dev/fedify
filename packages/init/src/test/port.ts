@@ -100,6 +100,12 @@ const ENTRY_FILES: Partial<Record<WebFramework, string>> = {
   elysia: "src/index.ts",
 };
 
+const WF_READ_PORT_FROM_ENV: Set<WebFramework> = new Set([
+  "nuxt",
+  "nitro",
+  "solidstart",
+]);
+
 /**
  * Replace the hardcoded default port with `newPort` in the generated test
  * app's source files.  Strategy varies by framework.
@@ -110,6 +116,7 @@ export async function replacePortInApp(
   defaultPort: number,
   newPort: number,
 ): Promise<void> {
+  if (WF_READ_PORT_FROM_ENV.has(wf)) return;
   if (defaultPort === newPort) return;
 
   const entryFile = ENTRY_FILES[wf];
@@ -125,12 +132,6 @@ export async function replacePortInApp(
     return;
   }
 
-  if (wf === "nitro") {
-    // Nitro reads PORT from .env
-    await appendFile(join(dir, ".env"), `\nPORT=${newPort}\n`);
-    return;
-  }
-
   if (wf === "astro") {
     // Insert server.port into the Astro config
     const configPath = join(dir, "astro.config.ts");
@@ -140,20 +141,6 @@ export async function replacePortInApp(
       content.replace(
         "defineConfig({",
         `defineConfig({\n  server: { port: ${newPort} },`,
-      ),
-    );
-    return;
-  }
-
-  if (wf === "nuxt") {
-    // Insert server.port into the Nuxt config (via nitro config in nuxt.config.ts)
-    const configPath = join(dir, "nuxt.config.ts");
-    const content = await readFile(configPath, "utf8");
-    await writeFile(
-      configPath,
-      content.replace(
-        "defineNuxtConfig({",
-        `defineNuxtConfig({\n  nitro: { port: ${newPort} },`,
       ),
     );
     return;
