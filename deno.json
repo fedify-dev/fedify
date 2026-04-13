@@ -72,6 +72,8 @@
   ],
   "exclude": [
     "**/pnpm-lock.yaml",
+    ".agents/skills/",
+    ".claude/skills/",
     ".github/",
     "docs/",
     "pnpm-lock.yaml",
