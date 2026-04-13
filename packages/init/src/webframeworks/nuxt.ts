@@ -22,11 +22,6 @@ const nuxtDescription: WebFrameworkDescription = {
     env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "nuxt.config.ts": await readTemplate("nuxt/nuxt.config.ts"),
-      "server/federation.ts": await readTemplate("nuxt/server/federation.ts"),
-      "server/logging.ts": await readTemplate("nuxt/server/logging.ts"),
-      "server/middleware/federation.ts": await readTemplate(
-        "nuxt/server/middleware/federation.ts",
-      ),
       ...(pm !== "deno" && {
         "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
       }),
@@ -42,16 +37,21 @@ export default nuxtDescription;
 
 function* getInitCommand(pm: PackageManager) {
   yield* getNuxtInitCommand(pm);
-  yield "init";
-  yield ".";
-  yield "--template";
-  yield "minimal";
-  yield "--no-install";
-  yield "--force";
-  yield "--packageManager";
-  yield pm;
-  yield "--no-gitInit";
-  yield "--no-modules";
+  yield* [
+    "init",
+    ".",
+    "--template",
+    "minimal",
+    "--no-install",
+    "--force",
+    "--packageManager",
+    pm,
+    "--no-gitInit",
+    "--no-modules",
+    "&&",
+    "rm",
+    "nuxt.config.ts",
+  ];
 }
 
 /**
@@ -71,13 +71,8 @@ const getDeps = (pm: PackageManager): Record<string, string> =>
   pm !== "deno"
     ? {
       "@fedify/nuxt": PACKAGE_VERSION,
-      "h3": deps["npm:h3"],
-      "nuxt": deps["npm:nuxt"],
     }
     : {
       ...defaultDenoDependencies,
       "@fedify/nuxt": PACKAGE_VERSION,
-      "npm:@nuxt/kit": deps["npm:@nuxt/kit"],
-      "npm:h3": deps["npm:h3"],
-      "npm:nuxt": deps["npm:nuxt"],
     };

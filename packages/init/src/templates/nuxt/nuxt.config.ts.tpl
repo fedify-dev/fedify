@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  ssr: false,
-  devtools: { enabled: true },
+  modules: ["@fedify/nuxt"],
+  fedify: { federationModule: "~~/server/federation" },
+  ssr: true,
 });
