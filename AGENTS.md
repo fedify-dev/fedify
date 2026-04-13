@@ -264,7 +264,9 @@ See *CONTRIBUTING.md* for full conventions. Key points:
  -  Focus on *why* the change was made, not just *what* changed.
  -  Use permalink URLs for issue/PR references instead of `#123`.
  -  When listing items after a colon, add a blank line after the colon.
- -  When using LLMs or coding agents, include credit via `Co-Authored-By:`.
+ -  When using LLMs or coding agents, include credit via `Assisted-by:`
+    (not `Co-Authored-By:`, which is reserved for human co-authors).
+    See *AI\_POLICY.md* for the required format.
 
 
 Changelog (*CHANGES.md*)
