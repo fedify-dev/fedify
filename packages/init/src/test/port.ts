@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { createConnection, createServer } from "node:net";
 import { join } from "node:path";
 import process from "node:process";
