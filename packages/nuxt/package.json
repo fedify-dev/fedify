@@ -51,12 +51,13 @@
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "@nuxt/kit": "catalog:",
+    "@nuxt/kit": "^4.4.0",
     "h3": "catalog:",
     "nuxt": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@nuxt/schema": "^4.4.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
