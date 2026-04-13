@@ -54,10 +54,11 @@ To be released.
     supports shared-route content negotiation, and returns deferred
     `406 Not acceptable` when Fedify routes are requested without
     ActivityPub-compatible `Accept` headers and Nuxt has no matching page.
-    [[#149] by ChanHaeng Lee]
+    [[#149], [#674] by ChanHaeng Lee]
 
 [Nuxt]: https://nuxt.com/
 [#149]: https://github.com/fedify-dev/fedify/issues/149
+[#674]: https://github.com/fedify-dev/fedify/pull/674
 
 ### @fedify/init
 
