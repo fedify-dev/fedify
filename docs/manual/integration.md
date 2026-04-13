@@ -394,7 +394,7 @@ bun add @fedify/nuxt
 
 :::
 
-Create your federation instance in _server/federation.ts_:
+Create your federation instance in *server/federation.ts*:
 
 ~~~~ typescript
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
@@ -406,7 +406,7 @@ const federation = createFederation({
 export default federation;
 ~~~~
 
-Then enable the module in _nuxt.config.ts_:
+Then enable the module in *nuxt.config.ts*:
 
 ~~~~ typescript
 export default defineNuxtConfig({
@@ -415,7 +415,7 @@ export default defineNuxtConfig({
 ~~~~
 
 By default, _@fedify/nuxt_ loads the federation instance from
-`~/server/federation`. You can customize module paths using `fedify` options:
+*~/server/federation*. You can customize module paths using `fedify` options:
 
 ~~~~ typescript
 export default defineNuxtConfig({

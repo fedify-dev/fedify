@@ -175,10 +175,11 @@ is broken:
 mise test:examples
 ~~~~
 
-If the `test:examples` can not be run, just run the server and test with curl:
+If the `test:examples` cannot be run, just run the server and test with curl:
 
 ~~~~ bash
 curl -H "Accept: application/activity+json" http://localhost:0000/users/demo
+~~~~
 
 
 Lint, format, and final checks
@@ -190,4 +191,3 @@ root path.
 After implementation, run `mise run fmt && mise check`.
 If there are lint or format errors, fix them and run the command again until
 there are no errors.
-~~~~
