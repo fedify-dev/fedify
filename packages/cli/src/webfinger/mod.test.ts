@@ -1,8 +1,6 @@
-import { clearActiveConfig, setActiveConfig } from "@optique/config";
 import { parse } from "@optique/core/parser";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configContext } from "../config.ts";
 import { lookupSingleWebFinger } from "./action.ts";
 import { webFingerCommand } from "./command.ts";
 
@@ -19,9 +17,7 @@ const ALIASES = [
 
 test("Test webFingerCommand - resources only", async () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  setActiveConfig(configContext.id, {});
   const result = await parse(webFingerCommand, argsWithResourcesOnly);
-  clearActiveConfig(configContext.id);
 
   assert.ok(result.success);
   if (result.success) {

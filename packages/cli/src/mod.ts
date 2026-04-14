@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --disable-warning=ExperimentalWarning
-import { runWithConfig } from "@optique/config/run";
 import { group, merge, message, or } from "@optique/core";
-import { printError } from "@optique/run";
+import { printError, run } from "@optique/run";
 import { merge as deepMerge } from "es-toolkit";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -82,58 +81,62 @@ const command = merge(
 );
 
 async function main() {
-  const result = await runWithConfig(command, configContext, {
-    programName: "fedify",
-    load: (parsed) => {
-      if (parsed.ignoreConfig) return {};
+  const result = await run(command, {
+    contexts: [configContext],
+    contextOptions: {
+      load: (parsed) => {
+        if (parsed.ignoreConfig) return undefined;
 
-      // Load system-wide configs (XDG_CONFIG_DIRS on Linux/macOS, ProgramData on Windows)
-      const systemConfigs = getSystemConfigPaths().map(tryLoadToml);
-      const system = systemConfigs.reduce(
-        (acc, config) => deepMerge(acc, config),
-        {},
-      );
-      const user = tryLoadToml(getUserConfigPath());
-      const project = tryLoadToml(join(process.cwd(), ".fedify.toml"));
+        // Load system-wide configs (XDG_CONFIG_DIRS on Linux/macOS, ProgramData on Windows)
+        const systemConfigs = getSystemConfigPaths().map(tryLoadToml);
+        const system = systemConfigs.reduce(
+          (acc, config) => deepMerge(acc, config),
+          {},
+        );
+        const user = tryLoadToml(getUserConfigPath());
+        const project = tryLoadToml(join(process.cwd(), ".fedify.toml"));
 
-      // Custom config via --config exits with error if file is missing or invalid
-      let custom: Record<string, unknown> = {};
-      if (parsed.configPath) {
-        try {
-          custom = parseToml(readFileSync(parsed.configPath, "utf-8"));
-        } catch (error) {
-          printError(
-            message`Could not load config file at ${parsed.configPath}: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-          process.exit(1);
+        // Custom config via --config exits with error if file is missing or invalid
+        let custom: Record<string, unknown> = {};
+        if (parsed.configPath) {
+          try {
+            custom = parseToml(readFileSync(parsed.configPath, "utf-8"));
+          } catch (error) {
+            printError(
+              message`Could not load config file at ${parsed.configPath}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+            process.exit(1);
+          }
         }
-      }
 
-      return [system, user, project, custom].reduce(
-        (acc, config) => deepMerge(acc, config),
-        {},
-      );
+        return {
+          config: [system, user, project, custom].reduce(
+            (acc, config) => deepMerge(acc, config),
+            {},
+          ),
+          meta: undefined,
+        };
+      },
     },
+    programName: "fedify",
     args: process.argv.slice(2),
     help: {
-      mode: "both",
-      onShow: () => process.exit(0),
-      group: "Meta commands",
+      command: { group: "Meta commands" },
+      option: { group: "Meta commands" },
     },
     version: {
-      mode: "both",
       value: metadata.version,
-      group: "Meta commands",
+      command: { group: "Meta commands" },
+      option: { group: "Meta commands" },
     },
     completion: {
-      mode: "command",
-      name: "both",
-      helpVisibility: "plural",
-      group: "Meta commands",
+      command: {
+        names: ["completions", "completion"],
+        group: "Meta commands",
+      },
     },
-    onError: () => process.exit(1),
     colors: process.stdout.isTTY &&
       (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
     maxWidth: process.stdout.columns,

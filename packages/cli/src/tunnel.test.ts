@@ -1,15 +1,15 @@
 import type { Tunnel, TunnelOptions } from "@hongminhee/localtunnel";
-import { run } from "@optique/run";
+import { runSync } from "@optique/run";
 import { deepEqual, rejects } from "node:assert/strict";
 import test from "node:test";
 import type { Ora } from "ora";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 
 test("tunnel command structure", () => {
-  const testCommandWithOptions = run(tunnelCommand, {
+  const testCommandWithOptions = runSync(tunnelCommand, {
     args: ["tunnel", "3001", "-s", "pinggy.io"],
   });
-  const testCommandWithoutOptions = run(tunnelCommand, {
+  const testCommandWithoutOptions = runSync(tunnelCommand, {
     args: ["tunnel", "3000"],
   });
 
