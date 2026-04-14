@@ -93,14 +93,14 @@ When a request arrives, the integration middleware calls
 `application/activity+json`, Fedify generates and returns the JSON-LD
 response directly.  Framework-side routing does not execute.
 
-#### Fallthrough on 404 (not found)
+#### Fallthrough on `404 Not Found`
 
 When `federation.fetch()` does not recognize the path, it invokes the
 `onNotFound` callback.  The integration should delegate to the framework's
 next handler so that non-federation routes (HTML pages, API endpoints,
 etc.) are served normally.
 
-#### Deferred 406 (not acceptable)
+#### Deferred `406 Not Acceptable`
 
 When Fedify owns the route but the client does not accept an ActivityPub
 media type (e.g., a browser requesting `text/html`), it invokes the

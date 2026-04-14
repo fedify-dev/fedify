@@ -2,7 +2,7 @@
 
 <!-- Replace `프레임워크` with the name of the framework you are integrating with -->
 
-Fedify-프레임워크 integration example application
+Fedify–프레임워크 integration example application
 =================================================
 
 A comprehensive example of building a federated server application using

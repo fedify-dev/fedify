@@ -52,7 +52,7 @@ To be released.
  -  Added `@fedify/nuxt` package for integrating Fedify with [Nuxt].
     It provides a Nuxt module that delegates non-federation requests to Nuxt,
     supports shared-route content negotiation, and returns deferred
-    `406 Not acceptable` when Fedify routes are requested without
+    `406 Not Acceptable` when Fedify routes are requested without
     ActivityPub-compatible `Accept` headers and Nuxt has no matching page.
     [[#149], [#674] by ChanHaeng Lee]
 
