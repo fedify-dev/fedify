@@ -19,13 +19,13 @@ export type FetchResult =
   | { kind: "not-found" }
   | { kind: "not-acceptable" };
 
-export async function fetchWithFedify(
+export async function fetchWithFedify<TContextData = unknown>(
   fetcher: (
     request: Request,
-    options: FederationFetchOptions<unknown>,
+    options: FederationFetchOptions<TContextData>,
   ) => Promise<Response>,
   request: Request,
-  contextData: unknown,
+  contextData: TContextData,
 ): Promise<FetchResult> {
   let notAcceptableResponse: Response | null = null;
 
