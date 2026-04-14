@@ -27,17 +27,22 @@ export async function fetchWithFedify(
   request: Request,
   contextData: unknown,
 ): Promise<FetchResult> {
+  let notAcceptableResponse: Response | null = null;
+
   const response = await fetcher(request, {
     contextData,
     onNotFound: () => DUMMY_NOT_FOUND_RESPONSE,
-    onNotAcceptable: createNotAcceptableResponse,
+    onNotAcceptable: () => {
+      notAcceptableResponse = createNotAcceptableResponse();
+      return notAcceptableResponse;
+    },
   });
 
   if (response === DUMMY_NOT_FOUND_RESPONSE) {
     return { kind: "not-found" };
   }
 
-  if (response.status === 406) {
+  if (notAcceptableResponse != null && response === notAcceptableResponse) {
     return { kind: "not-acceptable" };
   }
 
