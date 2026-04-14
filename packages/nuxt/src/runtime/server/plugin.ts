@@ -32,6 +32,7 @@ const fedifyPlugin: NitroAppPlugin = (nitroApp: MinimalNitroApp) => {
       const negotiatedResponse = resolveDeferredNotAcceptable(
         deferred,
         getResponseStatus(event),
+        event.context.matchedRoute != null,
       );
       if (negotiatedResponse == null) return;
 

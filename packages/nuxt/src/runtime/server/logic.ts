@@ -52,7 +52,9 @@ export async function fetchWithFedify(
 export function resolveDeferredNotAcceptable(
   isDeferred: boolean,
   frameworkStatus: number,
+  routeHandled?: boolean,
 ): Response | undefined {
   if (!isDeferred || frameworkStatus !== 404) return undefined;
+  if (routeHandled) return undefined;
   return createNotAcceptableResponse();
 }
