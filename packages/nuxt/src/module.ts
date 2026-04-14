@@ -8,6 +8,7 @@ import {
 } from "@nuxt/kit";
 import type { Nuxt, NuxtModule } from "@nuxt/schema";
 import type { H3Event } from "h3";
+import { isAbsolute, resolve } from "node:path";
 
 /**
  * A factory function that creates context data for the Federation instance.
@@ -35,6 +36,16 @@ export interface ModuleOptions {
    *  - a named export `contextDataFactory`.
    */
   contextDataFactoryModule?: string;
+}
+
+export function resolveModulePath(
+  modulePath: string,
+  aliases: Record<string, string>,
+  rootDir: string,
+): string {
+  const resolved = resolveAlias(modulePath, aliases);
+  if (isAbsolute(resolved)) return resolved;
+  return resolve(rootDir, resolved);
 }
 
 export function buildContextFactoryResolver(
@@ -69,13 +80,19 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
     },
     setup(options: ModuleOptions, nuxt: Nuxt) {
       const resolver = createResolver(import.meta.url);
-      const federationModule = resolveAlias(
+      const rootDir = nuxt.options.rootDir;
+      const federationModule = resolveModulePath(
         options.federationModule,
         nuxt.options.alias,
+        rootDir,
       );
       const contextDataFactoryModule = options.contextDataFactoryModule == null
         ? undefined
-        : resolveAlias(options.contextDataFactoryModule, nuxt.options.alias);
+        : resolveModulePath(
+          options.contextDataFactoryModule,
+          nuxt.options.alias,
+          rootDir,
+        );
 
       const middlewareFilename = "fedify-nuxt-options.mjs";
 
