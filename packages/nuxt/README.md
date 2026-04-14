@@ -69,7 +69,7 @@ export default defineNuxtConfig({
 ~~~~
 
 By default, `@fedify/nuxt` loads your Federation instance from
-*~/server/federation*.
+*#server/federation*.
 
 If your project uses a different file path or context data factory,
 configure the module options:
@@ -78,8 +78,8 @@ configure the module options:
 export default defineNuxtConfig({
   modules: ["@fedify/nuxt"],
   fedify: {
-    federationModule: "~/server/federation",
-    contextDataFactoryModule: "~/server/fedify-context",
+    federationModule: "#server/federation",
+    contextDataFactoryModule: "#server/fedify-context",
   },
 });
 ~~~~

@@ -80,7 +80,7 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
       configKey: "fedify",
     },
     defaults: {
-      federationModule: "~/server/federation",
+      federationModule: "#server/federation",
       contextDataFactoryModule: undefined,
     },
     setup(options: ModuleOptions, nuxt: Nuxt) {

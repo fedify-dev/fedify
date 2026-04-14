@@ -415,14 +415,14 @@ export default defineNuxtConfig({
 ~~~~
 
 By default, _@fedify/nuxt_ loads the federation instance from
-*~/server/federation*. You can customize module paths using `fedify` options:
+*#server/federation*. You can customize module paths using `fedify` options:
 
 ~~~~ typescript
 export default defineNuxtConfig({
   modules: ["@fedify/nuxt"],
   fedify: {
-    federationModule: "~/server/federation",
-    contextDataFactoryModule: "~/server/fedify-context",
+    federationModule: "#server/federation",
+    contextDataFactoryModule: "#server/fedify-context",
   },
 });
 ~~~~
