@@ -61,7 +61,7 @@ Create the package directory inside the `packages/` directory. For example, if
 the framework is named “framework”, create the directory `packages/framework/`.
 
 Copy the template files from the [package/](./package/) directory into
-the directory you created. Use this commands in the root path:
+the directory you created. Use these commands in the root path:
 
 ~~~~ sh
 mkdir -p packages/framework
@@ -259,7 +259,14 @@ Unless there are critical blockers (e.g., the package fails to build or
 tests do not pass), **strongly consider** proceeding immediately with
 the following two skills to complete the full integration:
 
-1.  **`add-to-fedify-init`**: Add the new package to the `fedify init`
-    command so users can select it when creating a new project.
-2.  **`create-example-app-with-integration`**: Create an example
-    application that demonstrates the integration.
+1.  [create-example-app-with-integration](../create-example-app-with-integration/SKILL.md):
+    Create an example application that demonstrates the integration.
+2.  [add-to-fedify-init](../add-to-fedify-init/SKILL.md):
+    Add the new package to the `@fedify/init` package so users can select
+    it when creating a new project. Also, you can test the package with
+    `fedify test:init` after adding it to `@fedify/init`.
+
+Developing the package while implementing examples allows you to catch package
+errors early. However, to facilitate the review process, pull requests should
+be submitted separately; therefore, please ensure your commits are logically
+separated. [commit](../commit/SKILL.md) skill can help you with this.
