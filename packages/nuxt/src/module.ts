@@ -45,7 +45,13 @@ export function resolveModulePath(
 ): string {
   const resolved = resolveAlias(modulePath, aliases);
   if (isAbsolute(resolved)) return resolved;
-  return resolve(rootDir, resolved);
+  if (
+    resolved.startsWith("./") || resolved.startsWith("../")
+  ) {
+    return resolve(rootDir, resolved);
+  }
+  // Bare specifier (e.g. "@acme/federation") — pass through for the bundler
+  return resolved;
 }
 
 export function buildContextFactoryResolver(

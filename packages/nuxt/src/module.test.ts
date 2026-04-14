@@ -31,6 +31,23 @@ test(
 );
 
 test(
+  "bare specifier must be preserved for bundler resolution",
+  () => {
+    const aliases = { "~": "/app", "@": "/app" };
+    const rootDir = "/app";
+
+    equal(
+      resolveModulePath("@acme/federation", aliases, rootDir),
+      "@acme/federation",
+    );
+    equal(
+      resolveModulePath("my-federation-pkg", aliases, rootDir),
+      "my-federation-pkg",
+    );
+  },
+);
+
+test(
   "missing exports must throw, not silently return undefined",
   () => {
     const code = buildContextFactoryResolver("~/factory");
