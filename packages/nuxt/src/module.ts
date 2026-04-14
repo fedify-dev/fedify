@@ -58,7 +58,12 @@ export function buildContextFactoryResolver(
 const contextDataFactory =
   contextFactoryModule.default ??
   contextFactoryModule.contextDataFactory;
-if (contextDataFactory != null && typeof contextDataFactory !== 'function') {
+if (contextDataFactory == null) {
+  throw new TypeError(
+    \'@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory", but neither was found.\'
+  );
+}
+if (typeof contextDataFactory !== 'function') {
   throw new TypeError(
     \'@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory".\'
   );
