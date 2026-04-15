@@ -78,8 +78,8 @@ const needsUnstableTemporal = (): boolean => {
     when(isString, parseVersion),
   );
   return isArray(version)
-    ? isLaterOrEqualThan(TEMPORAL_STABLE_FROM)(version)
-    : true;
+    ? !isLaterOrEqualThan(TEMPORAL_STABLE_FROM)(version)
+    : false;
 };
 
 const getDenoVersionFromCommand = (): string | null => {
@@ -108,7 +108,7 @@ const getDenoVersionFromRuntime = (): string | null =>
 const parseVersion: (match: string) => Version | null = (deno: string) =>
   pipe(
     deno.match(/^(\d+)\.(\d+)\.(\d+)/),
-    unless(isNull, (arr) => arr.map(Number) as Version),
+    unless(isNull, ([, ...segments]) => segments.map(Number) as Version),
   );
 
 const isLaterOrEqualThan = (basis: Version) => (target: Version): boolean =>

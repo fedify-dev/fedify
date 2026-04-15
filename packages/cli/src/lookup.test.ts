@@ -5,12 +5,15 @@ import { UrlError } from "@fedify/vocab-runtime";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import process from "node:process";
 import { Writable } from "node:stream";
 import test from "node:test";
 import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
+import { runCli } from "./runner.ts";
 import {
   authorizedFetchOption,
   clearTimeoutSignal,
@@ -35,6 +38,9 @@ async function parseWithConfig<TValue, TState>(
   args: readonly string[],
   config: Record<string, unknown> = {},
 ): Promise<Result<TValue>> {
+  // Optique 1.0 removed the old active-config test helpers. For parser-only
+  // assertions, we still need the phase-2 annotations that bindConfig()
+  // consumes, so these tests emulate that request directly.
   const annotations = await (configContext.getAnnotations as (
     request?: unknown,
     options?: unknown,
@@ -379,6 +385,57 @@ test("authorizedFetchOption - reads firstKnock from config", async () => {
     assert.strictEqual(result.value.authorizedFetch, true);
     assert.strictEqual(result.value.firstKnock, "rfc9421");
     assert.strictEqual(result.value.tunnelService, "serveo.net");
+  }
+});
+
+test("lookup runner loads config from --config", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "fedify-cli-lookup-"));
+  const configPath = join(tempDir, "fedify.toml");
+
+  try {
+    await writeFile(configPath, "[lookup]\nallowPrivateAddress = true\n");
+    const result = await runCli([
+      "--config",
+      configPath,
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+
+    assert.strictEqual(result.command, "lookup");
+    assert.strictEqual(result.allowPrivateAddress, true);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("lookup runner honors --ignore-config", async () => {
+  const cwd = process.cwd();
+  const tempDir = await mkdtemp(join(tmpdir(), "fedify-cli-ignore-config-"));
+
+  try {
+    await writeFile(
+      join(tempDir, ".fedify.toml"),
+      "[lookup]\nallowPrivateAddress = true\n",
+    );
+    process.chdir(tempDir);
+
+    const withConfig = await runCli([
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+    assert.strictEqual(withConfig.command, "lookup");
+    assert.strictEqual(withConfig.allowPrivateAddress, true);
+
+    const ignored = await runCli([
+      "--ignore-config",
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+    assert.strictEqual(ignored.command, "lookup");
+    assert.strictEqual(ignored.allowPrivateAddress, false);
+  } finally {
+    process.chdir(cwd);
+    await rm(tempDir, { recursive: true, force: true });
   }
 });
 

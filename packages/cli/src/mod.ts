@@ -1,148 +1,17 @@
 #!/usr/bin/env -S node --disable-warning=ExperimentalWarning
-import { group, merge, message, or } from "@optique/core";
-import { printError, run } from "@optique/run";
-import { merge as deepMerge } from "es-toolkit";
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { runGenerateVocab } from "./generate-vocab/mod.ts";
+import { runInbox } from "./inbox.tsx";
+import { runInit } from "./init/mod.ts";
+import { runLookup } from "./lookup.ts";
+import { runNodeInfo } from "./nodeinfo.ts";
 import process from "node:process";
-import { parse as parseToml } from "smol-toml";
-import { configContext, tryLoadToml } from "./config.ts";
-import {
-  generateVocabCommand,
-  runGenerateVocab,
-} from "./generate-vocab/mod.ts";
-import { inboxCommand, runInbox } from "./inbox.tsx";
-import { initCommand, runInit } from "./init/mod.ts";
-import { lookupCommand, runLookup } from "./lookup.ts";
-import { nodeInfoCommand, runNodeInfo } from "./nodeinfo.ts";
-import { globalOptions } from "./options.ts";
-import { relayCommand, runRelay } from "./relay.ts";
-import { runTunnel, tunnelCommand } from "./tunnel.ts";
-import { runWebFinger, webFingerCommand } from "./webfinger/mod.ts";
-import metadata from "../deno.json" with { type: "json" };
-
-/**
- * Returns the system-wide configuration file paths.
- * - Linux/macOS: Searches `$XDG_CONFIG_DIRS` (default: /etc/xdg)
- * - Windows: Uses `%ProgramData%` (default: C:\ProgramData)
- */
-function getSystemConfigPaths(): string[] {
-  if (process.platform === "win32") {
-    const programData = process.env.ProgramData || "C:\\ProgramData";
-    return [join(programData, "fedify", "config.toml")];
-  }
-  return (process.env.XDG_CONFIG_DIRS || "/etc/xdg")
-    .split(":")
-    .map((dir) => join(dir, "fedify", "config.toml"));
-}
-
-/**
- * Returns the user-level configuration file path.
- * - Linux/macOS: `$XDG_CONFIG_HOME/fedify/config.toml` (default: ~/.config)
- * - Windows: `%APPDATA%\fedify\config.toml`
- */
-function getUserConfigPath(): string {
-  if (process.platform === "win32") {
-    const appData = process.env.APPDATA ||
-      join(homedir(), "AppData", "Roaming");
-    return join(appData, "fedify", "config.toml");
-  }
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME ||
-    join(homedir(), ".config");
-  return join(xdgConfigHome, "fedify", "config.toml");
-}
-
-const command = merge(
-  or(
-    group(
-      "Generating code",
-      or(
-        initCommand,
-        generateVocabCommand,
-      ),
-    ),
-    group(
-      "ActivityPub tools",
-      or(
-        webFingerCommand,
-        lookupCommand,
-        inboxCommand,
-        nodeInfoCommand,
-        relayCommand,
-      ),
-    ),
-    group(
-      "Network tools",
-      tunnelCommand,
-    ),
-  ),
-  globalOptions,
-);
+import { runRelay } from "./relay.ts";
+import { runCli } from "./runner.ts";
+import { runTunnel } from "./tunnel.ts";
+import { runWebFinger } from "./webfinger/mod.ts";
 
 async function main() {
-  const result = await run(command, {
-    contexts: [configContext],
-    contextOptions: {
-      load: (parsed) => {
-        if (parsed.ignoreConfig) return undefined;
-
-        // Load system-wide configs (XDG_CONFIG_DIRS on Linux/macOS, ProgramData on Windows)
-        const systemConfigs = getSystemConfigPaths().map(tryLoadToml);
-        const system = systemConfigs.reduce(
-          (acc, config) => deepMerge(acc, config),
-          {},
-        );
-        const user = tryLoadToml(getUserConfigPath());
-        const project = tryLoadToml(join(process.cwd(), ".fedify.toml"));
-
-        // Custom config via --config exits with error if file is missing or invalid
-        let custom: Record<string, unknown> = {};
-        if (parsed.configPath) {
-          try {
-            custom = parseToml(readFileSync(parsed.configPath, "utf-8"));
-          } catch (error) {
-            printError(
-              message`Could not load config file at ${parsed.configPath}: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            );
-            process.exit(1);
-          }
-        }
-
-        return {
-          config: [system, user, project, custom].reduce(
-            (acc, config) => deepMerge(acc, config),
-            {},
-          ),
-          meta: undefined,
-        };
-      },
-    },
-    programName: "fedify",
-    args: process.argv.slice(2),
-    help: {
-      command: { group: "Meta commands" },
-      option: { group: "Meta commands" },
-    },
-    version: {
-      value: metadata.version,
-      command: { group: "Meta commands" },
-      option: { group: "Meta commands" },
-    },
-    completion: {
-      command: {
-        names: ["completions", "completion"],
-        group: "Meta commands",
-      },
-    },
-    colors: process.stdout.isTTY &&
-      (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
-    maxWidth: process.stdout.columns,
-    showDefault: true,
-    showChoices: true,
-  });
+  const result = await runCli(process.argv.slice(2));
   if (result.command === "init") {
     await runInit(result);
   } else if (result.command === "lookup") {
