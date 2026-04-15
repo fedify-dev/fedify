@@ -61,6 +61,11 @@ const QUOTE_CONTEXT_TERMS = {
   },
 } as const;
 
+const WRAPPER_QUOTE_CONTEXT_TERMS = {
+  ...QUOTE_CONTEXT_TERMS,
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+} as const;
+
 test("handleActor()", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let context = createRequestContext<void>({
@@ -712,7 +717,7 @@ test("handleCollection()", async () => {
         "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
       },
       _misskey_quote: "misskey:_misskey_quote",
-      ...QUOTE_CONTEXT_TERMS,
+      ...WRAPPER_QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {
@@ -736,7 +741,7 @@ test("handleCollection()", async () => {
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
         _misskey_quote: "misskey:_misskey_quote",
-        ...QUOTE_CONTEXT_TERMS,
+        ...WRAPPER_QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -836,7 +841,7 @@ test("handleCollection()", async () => {
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
         _misskey_quote: "misskey:_misskey_quote",
-        ...QUOTE_CONTEXT_TERMS,
+        ...WRAPPER_QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -907,7 +912,7 @@ test("handleCollection()", async () => {
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
         _misskey_quote: "misskey:_misskey_quote",
-        ...QUOTE_CONTEXT_TERMS,
+        ...WRAPPER_QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -974,7 +979,7 @@ test("handleCollection()", async () => {
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
         _misskey_quote: "misskey:_misskey_quote",
-        ...QUOTE_CONTEXT_TERMS,
+        ...WRAPPER_QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1045,7 +1050,7 @@ test("handleCollection()", async () => {
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
         _misskey_quote: "misskey:_misskey_quote",
-        ...QUOTE_CONTEXT_TERMS,
+        ...WRAPPER_QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1616,7 +1621,7 @@ test("handleCustomCollection()", async () => {
         "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
       },
       _misskey_quote: "misskey:_misskey_quote",
-      ...QUOTE_CONTEXT_TERMS,
+      ...WRAPPER_QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {
@@ -1639,7 +1644,7 @@ test("handleCustomCollection()", async () => {
       sensitive: "as:sensitive",
       votersCount: "toot:votersCount",
       _misskey_quote: "misskey:_misskey_quote",
-      ...QUOTE_CONTEXT_TERMS,
+      ...WRAPPER_QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {

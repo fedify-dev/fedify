@@ -1232,6 +1232,22 @@ test("Note.quoteAuthorization", async () => {
     loaded.quoteAuthorizationId,
     new URL("https://example.com/authorizations/1"),
   );
+
+  const loadedFromGoToSocialContext = await Note.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://gotosocial.org/ns",
+    ],
+    type: "Note",
+    quoteAuthorization: "https://example.com/authorizations/2",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    loadedFromGoToSocialContext.quoteAuthorizationId,
+    new URL("https://example.com/authorizations/2"),
+  );
 });
 
 test("InteractionPolicy.canQuote", async () => {
@@ -1293,6 +1309,26 @@ test("QuoteAuthorization.fromJsonLd()", async () => {
     await authorization.toJsonLd({ contextLoader: mockDocumentLoader }),
     jsonLd,
   );
+
+  const loadedFromGoToSocialContext = await QuoteAuthorization.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://gotosocial.org/ns",
+    ],
+    type: "QuoteAuthorization",
+    id: "https://example.com/users/alice/stamps/2",
+    attributedTo: "https://example.com/users/alice",
+    interactingObject: "https://example.com/users/bob/statuses/2",
+    interactionTarget: "https://example.com/users/alice/statuses/2",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(loadedFromGoToSocialContext, QuoteAuthorization);
+  deepStrictEqual(
+    loadedFromGoToSocialContext.id,
+    new URL("https://example.com/users/alice/stamps/2"),
+  );
 });
 
 test("QuoteRequest.toJsonLd()", async () => {
@@ -1328,6 +1364,23 @@ test("QuoteRequest.toJsonLd()", async () => {
   deepStrictEqual(
     await loaded.toJsonLd({ contextLoader: mockDocumentLoader }),
     expected,
+  );
+
+  const loadedFromGoToSocialContext = await QuoteRequest.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://gotosocial.org/ns",
+    ],
+    type: "QuoteRequest",
+    object: "https://example.com/users/alice/statuses/3",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(loadedFromGoToSocialContext, QuoteRequest);
+  deepStrictEqual(
+    loadedFromGoToSocialContext.objectId,
+    new URL("https://example.com/users/alice/statuses/3"),
   );
 });
 
