@@ -13,6 +13,7 @@ import {
   getTypeId,
   lookupObject,
   Multikey,
+  Tombstone,
   traverseCollection,
 } from "@fedify/vocab";
 import type {
@@ -2685,13 +2686,14 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
         },
       );
     }
-    return await this.federation.actorCallbacks.dispatcher(
+    const actor = await this.federation.actorCallbacks.dispatcher(
       new RequestContextImpl({
         ...this,
         invokedFromActorDispatcher: { identifier },
       }),
       identifier,
     );
+    return actor instanceof Tombstone ? null : actor;
   }
 
   async getObject<TObject extends Object>(

@@ -1,4 +1,4 @@
-import type { Activity, Actor, Object } from "@fedify/vocab";
+import type { Activity, Actor, Object, Tombstone } from "@fedify/vocab";
 import type { Link } from "@fedify/webfinger";
 import type { VerifyRequestFailureReason } from "../sig/http.ts";
 import type { NodeInfo } from "../nodeinfo/types.ts";
@@ -28,7 +28,7 @@ export type WebFingerLinksDispatcher<TContextData> = (
 ) => readonly Link[] | Promise<readonly Link[]>;
 
 /**
- * A callback that dispatches an {@link Actor} object.
+ * A callback that dispatches an {@link Actor} object or a {@link Tombstone}.
  *
  * @template TContextData The context data to pass to the {@link Context}.
  * @param context The request context.
@@ -37,7 +37,7 @@ export type WebFingerLinksDispatcher<TContextData> = (
 export type ActorDispatcher<TContextData> = (
   context: RequestContext<TContextData>,
   identifier: string,
-) => Actor | null | Promise<Actor | null>;
+) => Actor | Tombstone | null | Promise<Actor | Tombstone | null>;
 
 /**
  * A callback that dispatches key pairs for an actor.

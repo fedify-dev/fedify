@@ -911,8 +911,13 @@ test({
 
       federation.setActorDispatcher(
         "/users/{identifier}",
-        (_ctx, identifier) =>
-          new vocab.Person({ preferredUsername: identifier }),
+        (ctx, identifier) =>
+          identifier === "gone"
+            ? new vocab.Tombstone({
+              id: ctx.getActorUri(identifier),
+              deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+            })
+            : new vocab.Person({ preferredUsername: identifier }),
       );
       const ctx2 = federation.createContext(req, 789);
       assertEquals(ctx2.request, req);
@@ -922,6 +927,7 @@ test({
         await ctx2.getActor("john"),
         new vocab.Person({ preferredUsername: "john" }),
       );
+      assertEquals(await ctx2.getActor("gone"), null);
 
       federation.setObjectDispatcher(
         vocab.Note,
@@ -1047,6 +1053,12 @@ test("Federation.fetch()", async (t) => {
       "/users/{identifier}",
       (ctx, identifier) => {
         dispatches.push(identifier);
+        if (identifier === "gone") {
+          return new vocab.Tombstone({
+            id: ctx.getActorUri(identifier),
+            deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+          });
+        }
         return new vocab.Person({
           id: ctx.getActorUri(identifier),
           inbox: ctx.getInboxUri(identifier),
@@ -1226,6 +1238,63 @@ test("Federation.fetch()", async (t) => {
 
     assertEquals(dispatches, ["activity"]);
     assertEquals(response.status, 200);
+  });
+
+  await t.step("GET tombstoned actor returns 410 Gone", async () => {
+    const { federation, dispatches } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request("https://example.com/users/gone", {
+        method: "GET",
+        headers: {
+          "Accept": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(dispatches, ["gone"]);
+    assertEquals(response.status, 410);
+    assertEquals(await response.json(), {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
+      ],
+      id: "https://example.com/users/gone",
+      type: "Tombstone",
+      deleted: "2024-01-15T00:00:00Z",
+    });
+  });
+
+  await t.step("WebFinger for tombstoned actor returns 410 Gone", async () => {
+    const { federation, dispatches } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request(
+        "https://example.com/.well-known/webfinger?resource=acct:gone@example.com",
+      ),
+      { contextData: undefined },
+    );
+
+    assertEquals(dispatches, ["gone"]);
+    assertEquals(response.status, 410);
+    assertEquals(await response.text(), "");
+  });
+
+  await t.step("POST to tombstoned inbox returns not found", async () => {
+    const { federation, inbox } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request("https://example.com/users/gone/inbox", {
+        method: "POST",
+        headers: { "accept": "application/ld+json" },
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(inbox, []);
+    assertEquals(response.status, 404);
   });
 
   await t.step("onNotAcceptable with GET", async () => {

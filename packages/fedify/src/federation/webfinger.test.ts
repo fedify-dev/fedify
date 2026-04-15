@@ -1,6 +1,6 @@
 import { test } from "@fedify/fixture";
 import type { Actor } from "@fedify/vocab";
-import { Image, Link, Person } from "@fedify/vocab";
+import { Image, Link, Person, Tombstone } from "@fedify/vocab";
 import { assertEquals } from "@std/assert";
 import type {
   ActorAliasMapper,
@@ -27,10 +27,11 @@ test("handleWebFinger()", async (t) => {
         return new URL(`${url.origin}/users/${identifier}`);
       },
       async getActor(handle): Promise<Actor | null> {
-        return await actorDispatcher(
+        const actor = await actorDispatcher(
           context,
           handle,
         );
+        return actor instanceof Tombstone ? null : actor;
       },
       parseUri(uri) {
         if (uri == null) return null;
@@ -48,6 +49,12 @@ test("handleWebFinger()", async (t) => {
   }
 
   const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier === "gone") {
+      return new Tombstone({
+        id: ctx.getActorUri(identifier),
+        deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+      });
+    }
     if (identifier !== "someone" && identifier !== "someone2") return null;
     const actorUri = ctx.getActorUri(identifier);
     return new Person({
@@ -217,6 +224,34 @@ test("handleWebFinger()", async (t) => {
     });
     assertEquals(response.status, 200);
     assertEquals(await response.json(), expected2);
+  });
+
+  await t.step("gone: resource=acct:...", async () => {
+    const u = new URL(url);
+    u.searchParams.set("resource", "acct:gone@example.com");
+    const context = createContext(u);
+    const request = context.request;
+    const response = await handleWebFinger(request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+    });
+    assertEquals(response.status, 410);
+    assertEquals(onNotFoundCalled, null);
+  });
+
+  await t.step("gone: resource=https:...", async () => {
+    const u = new URL(url);
+    u.searchParams.set("resource", "https://example.com/users/gone");
+    const context = createContext(u);
+    const request = context.request;
+    const response = await handleWebFinger(request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+    });
+    assertEquals(response.status, 410);
+    assertEquals(onNotFoundCalled, null);
   });
 
   await t.step("not found: resource=acct:...", async () => {
