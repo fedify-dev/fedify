@@ -13,6 +13,10 @@ import {
 import { configContext } from "../config.ts";
 import { createTunnelOption } from "../options.ts";
 
+const DEFAULT_EPHEMERAL_INBOX_NAME = "Fedify Ephemeral Inbox";
+const DEFAULT_EPHEMERAL_INBOX_SUMMARY =
+  "An ephemeral ActivityPub inbox for testing purposes.";
+
 export const inboxCommand = command(
   "inbox",
   merge(
@@ -50,8 +54,9 @@ export const inboxCommand = command(
         }),
         {
           context: configContext,
-          key: (config) => config.inbox?.actorName ?? "Fedify Ephemeral Inbox",
-          default: "Fedify Ephemeral Inbox",
+          key: (config) =>
+            config.inbox?.actorName ?? DEFAULT_EPHEMERAL_INBOX_NAME,
+          default: DEFAULT_EPHEMERAL_INBOX_NAME,
         },
       ),
       actorSummary: bindConfig(
@@ -62,8 +67,8 @@ export const inboxCommand = command(
           context: configContext,
           key: (config) =>
             config.inbox?.actorSummary ??
-              "An ephemeral ActivityPub inbox for testing purposes.",
-          default: "An ephemeral ActivityPub inbox for testing purposes.",
+              DEFAULT_EPHEMERAL_INBOX_SUMMARY,
+          default: DEFAULT_EPHEMERAL_INBOX_SUMMARY,
         },
       ),
       authorizedFetch: bindConfig(

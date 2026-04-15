@@ -71,7 +71,7 @@ function setDenoVersion(
   });
 }
 
-test("loadDenoConfig omits unstable.temporal on Deno 2.7.0 and newer", () => {
+test("loadDenoConfig omits unstable.temporal on Deno 2.7.0", () => {
   const originalDeno = (globalThis as Record<string, unknown>).Deno;
   setDenoVersion({ deno: "2.7.0", v8: "0.0.0", typescript: "0.0.0" });
 
