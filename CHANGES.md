@@ -22,6 +22,14 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added [FEP-044f] vocabulary support for Mastodon-style quote posts.
+    [[#452], [#679]]
+
+     -  Added `QuoteRequest` and `QuoteAuthorization` classes.
+     -  Added `canQuote` to `InteractionPolicy`.
+     -  Added `quote` and `quoteAuthorization` properties to `Article`,
+        `ChatMessage`, `Note`, and `Question`.
+
  -  Added vocabulary types for [FEP-0837], economic resource coordination
     in federated networks.  [[#578] by Samuel Brinkmann]
 
@@ -32,8 +40,11 @@ To be released.
      -  Added `Measure` class for representing quantities with units of
         measure, with `unit` and `numericalValue` properties.
 
+[FEP-044f]: https://w3id.org/fep/044f
 [FEP-0837]: https://w3id.org/fep/0837
+[#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
+[#679]: https://github.com/fedify-dev/fedify/pull/679
 
 ### @fedify/solidstart
 

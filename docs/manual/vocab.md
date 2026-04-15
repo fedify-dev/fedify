@@ -173,6 +173,19 @@ property.
 > | [`_misskey_followedMessage`] | `Application.followedMessage`/`Group.followedMessage`/`Organization.followedMessage`/`Person.followedMessage`/`Service.followedMessage` |
 > | [`_misskey_quote`]           | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl`                                                           |
 
+> [!NOTE]
+>
+> Fedify exposes both the legacy `quoteUrl` compatibility surface and the
+> newer [FEP-044f] `quote` surface for quote posts.
+>
+>  -  `Article.quoteUrl`, `ChatMessage.quoteUrl`, `Note.quoteUrl`, and
+>     `Question.quoteUrl` map to the legacy `quoteUrl`, `quoteUri`, and
+>     `_misskey_quote` properties.
+>  -  `Article.quoteId`/`Article.getQuote()`, `ChatMessage.quoteId`/
+>     `ChatMessage.getQuote()`, `Note.quoteId`/`Note.getQuote()`, and
+>     `Question.quoteId`/`Question.getQuote()` represent the
+>     [FEP-044f] `quote` property.
+
 [`alsoKnownAs`]: https://www.w3.org/TR/did-core/#dfn-alsoknownas
 [`anyOf`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-anyof
 [`attributedTo`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-attributedto
@@ -190,6 +203,7 @@ property.
 [`votersCount`]: https://docs.joinmastodon.org/spec/activitypub/#poll-specific-properties
 [`_misskey_followedMessage`]: https://misskey-hub.net/ns#_misskey_followedmessage
 [`_misskey_quote`]: https://misskey-hub.net/ns#_misskey_quote
+[FEP-044f]: https://w3id.org/fep/044f
 
 
 Object IDs and remote objects
