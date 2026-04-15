@@ -119,6 +119,11 @@ export function loadConfig(
   };
 }
 
+/**
+ * Runs the Fedify CLI with the given command-line arguments.
+ * @param args Command-line arguments, usually `process.argv.slice(2)`.
+ * @returns The parsed command result from Optique's runner.
+ */
 export function runCli(args: string[]) {
   return run(command, {
     contexts: [configContext],

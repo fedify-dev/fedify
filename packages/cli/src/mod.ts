@@ -19,9 +19,9 @@ async function main() {
   } else if (result.command === "webfinger") {
     await runWebFinger(result);
   } else if (result.command === "inbox") {
-    runInbox(result);
+    await runInbox(result);
   } else if (result.command === "nodeinfo") {
-    runNodeInfo(result);
+    await runNodeInfo(result);
   } else if (result.command === "tunnel") {
     await runTunnel(result);
   } else if (result.command === "generate-vocab") {
