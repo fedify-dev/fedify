@@ -71,6 +71,7 @@ import type {
   ActorKeyPair,
   Context,
   ForwardActivityOptions,
+  GetActorOptions,
   GetSignedKeyOptions,
   InboxContext,
   ParseUriResult,
@@ -2667,7 +2668,18 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     });
   }
 
-  async getActor(identifier: string): Promise<Actor | null> {
+  getActor(
+    identifier: string,
+    options: GetActorOptions & { readonly tombstone: "passthrough" },
+  ): Promise<Actor | Tombstone | null>;
+  getActor(
+    identifier: string,
+    options?: GetActorOptions,
+  ): Promise<Actor | null>;
+  async getActor(
+    identifier: string,
+    options?: GetActorOptions,
+  ): Promise<Actor | Tombstone | null> {
     if (
       this.federation.actorCallbacks == null ||
       this.federation.actorCallbacks.dispatcher == null
@@ -2693,7 +2705,10 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       }),
       identifier,
     );
-    return actor instanceof Tombstone ? null : actor;
+    if (actor instanceof Tombstone && options?.tombstone !== "passthrough") {
+      return null;
+    }
+    return actor;
   }
 
   async getObject<TObject extends Object>(

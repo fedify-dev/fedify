@@ -14,6 +14,9 @@ To be released.
     Fedify now serves those actor URIs as `410 Gone` with the serialized
     tombstone body, and the corresponding WebFinger lookups also return
     `410 Gone` instead of pretending the account was never handled.
+    Added a `RequestContext.getActor()` overload that can return those
+    tombstones to application code when called with
+    `{ tombstone: "passthrough" }`.
     [[#644], [#680]]
 
  -  Added `DoubleKnockOptions.maxRedirection` to configure the maximum number

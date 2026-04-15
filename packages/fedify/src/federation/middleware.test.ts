@@ -52,6 +52,10 @@ import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 import { RouterError } from "./router.ts";
 
+type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
+  (<T>() => T extends B ? 1 : 2) ? true : false;
+type Assert<T extends true> = T;
+
 test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
 
@@ -927,7 +931,32 @@ test({
         await ctx2.getActor("john"),
         new vocab.Person({ preferredUsername: "john" }),
       );
-      assertEquals(await ctx2.getActor("gone"), null);
+      const defaultActorPromise = ctx2.getActor("gone");
+      type DefaultActorType = Assert<
+        IsEqual<Awaited<typeof defaultActorPromise>, vocab.Actor | null>
+      >;
+      const defaultActorTypeCheck: DefaultActorType = true;
+      void defaultActorTypeCheck;
+      assertEquals(await defaultActorPromise, null);
+
+      const tombstoneActorPromise = ctx2.getActor("gone", {
+        tombstone: "passthrough",
+      });
+      type TombstoneActorType = Assert<
+        IsEqual<
+          Awaited<typeof tombstoneActorPromise>,
+          vocab.Actor | vocab.Tombstone | null
+        >
+      >;
+      const tombstoneActorTypeCheck: TombstoneActorType = true;
+      void tombstoneActorTypeCheck;
+      assertEquals(
+        await tombstoneActorPromise,
+        new vocab.Tombstone({
+          id: new URL("https://example.com/users/gone"),
+          deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+        }),
+      );
 
       federation.setObjectDispatcher(
         vocab.Note,

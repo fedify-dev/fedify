@@ -214,6 +214,26 @@ if (actor != null) {
 }
 ~~~~
 
+By default, `RequestContext.getActor()` suppresses tombstoned actors and returns
+`null` for them.  If you need to distinguish a deleted actor from a missing
+identifier, pass `{ tombstone: "passthrough" }`:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Tombstone } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+const request = new Request("");
+const identifier: string = "";
+// ---cut-before---
+const ctx = federation.createContext(request, undefined);
+const actor = await ctx.getActor(identifier, {
+  tombstone: "passthrough",
+});
+if (actor instanceof Tombstone) {
+  console.log(`${identifier} was deleted at ${actor.deleted}`);
+}
+~~~~
+
 > [!NOTE]
 > The `RequestContext.getActor()` method is only available when the actor
 > dispatcher is registered to the `Federation` object.  If the actor dispatcher
