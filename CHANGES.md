@@ -46,6 +46,12 @@ To be released.
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 [#679]: https://github.com/fedify-dev/fedify/pull/679
 
+### @fedify/cli
+
+ -  Added [FEP-044f] `quote` support to `fedify lookup --recurse`, so the CLI
+    can follow both the new quote-post relation and the older `quoteUrl`
+    compatibility surface.  [[#452], [#679]]
+
 ### @fedify/solidstart
 
  -  Added `@fedify/solidstart` package for integrating Fedify with
