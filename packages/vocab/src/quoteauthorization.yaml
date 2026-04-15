@@ -1,0 +1,39 @@
+$schema: ../../vocab-tools/schema.yaml
+name: QuoteAuthorization
+compactName: QuoteAuthorization
+uri: "https://w3id.org/fep/044f#QuoteAuthorization"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  Proves that a quote interaction has been approved by the quoted object's
+  author.
+
+  This object is dereferenceable and is used by third parties to verify that a
+  quote was authorized.  The `attributedTo` property identifies the author who
+  granted the authorization.
+
+  See [FEP-044f](https://w3id.org/fep/044f) for details.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+
+properties:
+- singularName: interactingObject
+  functional: true
+  compactName: interactingObject
+  uri: "https://gotosocial.org/ns#interactingObject"
+  description: |
+    The URI of the quote object that has been authorized.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: interactionTarget
+  functional: true
+  compactName: interactionTarget
+  uri: "https://gotosocial.org/ns#interactionTarget"
+  description: |
+    The URI of the object that is the target of the authorized quote.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"

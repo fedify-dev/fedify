@@ -9,7 +9,7 @@ import {
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
-import { decodeHex, encodeHex } from "byte-encodings/hex";
+import { decodeHex } from "byte-encodings/hex";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -78,12 +78,11 @@ test("createProof()", async () => {
   assertEquals(proof.cryptosuite, "eddsa-jcs-2022");
   assertEquals(proof.verificationMethodId, ed25519PublicKey.id);
   assertEquals(proof.proofPurpose, "assertionMethod");
-  console.log(encodeHex(proof.proofValue!));
   assertEquals(
     proof.proofValue,
     decodeHex(
-      "860dda2bec0ab493ae9b0223ac4133ee82246d7d75d6505be2d6c53755a34454" +
-        "dcb05feae02403ac51faf853d2e873d467f32a252d3b15a9f025e3ed0750b90b",
+      "0b488add84517041508743ceb7d389ef570a068c1e51aa4d640523b3b767fa28" +
+        "dacc765e629b32b7ff8cc80bcc1e5f75791eb6202a472718d2223be200e6e900",
     ),
   );
   assertEquals(proof.created, created);

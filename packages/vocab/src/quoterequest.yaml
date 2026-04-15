@@ -1,10 +1,20 @@
 $schema: ../../vocab-tools/schema.yaml
-name: Create
-compactName: Create
-uri: "https://www.w3.org/ns/activitystreams#Create"
+name: QuoteRequest
+compactName: QuoteRequest
+uri: "https://w3id.org/fep/044f#QuoteRequest"
 extends: "https://www.w3.org/ns/activitystreams#Activity"
 entity: true
-description: Indicates that the `actor` has created the `object`.
+description: |
+  A request to quote an object that requires approval from the quoted object's
+  author.
+
+  The `object` property references the quoted object, and the `instrument`
+  property contains the quote post itself.
+
+  The quoted object's author responds with an {@link Accept} (with a
+  {@link QuoteAuthorization} as `result`) or a {@link Reject}.
+
+  See [FEP-044f](https://w3id.org/fep/044f) for details.
 defaultContext:
 - "https://w3id.org/identity/v1"
 - "https://www.w3.org/ns/activitystreams"
@@ -20,6 +30,7 @@ defaultContext:
   Emoji: "toot:Emoji"
   Hashtag: "as:Hashtag"
   ChatMessage: "http://litepub.social/ns#ChatMessage"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
   quote:
     "@id": "https://w3id.org/fep/044f#quote"
     "@type": "@id"

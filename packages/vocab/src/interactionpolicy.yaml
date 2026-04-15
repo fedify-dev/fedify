@@ -6,8 +6,9 @@ entity: false
 typeless: true
 description: |
   Represents an interaction policy attached to a post, specifying who can
-  like, reply to, or announce it.  Each sub-policy ({@link InteractionRule})
-  defines which actors receive automatic or manual approval.
+  like, reply to, announce, or quote it.  Each sub-policy
+  ({@link InteractionRule}) defines which actors receive automatic or manual
+  approval.
 
   See [GoToSocial interaction controls](https://docs.gotosocial.org/en/latest/federation/interaction_controls/)
   for details.
@@ -49,6 +50,19 @@ properties:
     The sub-policy specifying who can announce (boost) the post.
 
     When absent, implementations should assume that anyone can announce
+    (i.e., `automaticApproval` defaults to the public collection).
+  range:
+  - "https://gotosocial.org/ns#InteractionRule"
+
+- singularName: canQuote
+  functional: true
+  compactName: canQuote
+  uri: "https://gotosocial.org/ns#canQuote"
+  untyped: true
+  description: |
+    The sub-policy specifying who can quote the post.
+
+    When absent, implementations should assume that anyone can quote the post
     (i.e., `automaticApproval` defaults to the public collection).
   range:
   - "https://gotosocial.org/ns#InteractionRule"

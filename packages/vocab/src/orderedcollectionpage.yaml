@@ -20,9 +20,16 @@ defaultContext:
   votersCount: "toot:votersCount"
   Emoji: "toot:Emoji"
   Hashtag: "as:Hashtag"
+  quote:
+    "@id": "https://w3id.org/fep/044f#quote"
+    "@type": "@id"
   quoteUrl: "as:quoteUrl"
   _misskey_quote: "misskey:_misskey_quote"
   quoteUri: "fedibird:quoteUri"
+  QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  quoteAuthorization:
+    "@id": "https://w3id.org/fep/044f#quoteAuthorization"
+    "@type": "@id"
   emojiReactions:
     "@id": "fedibird:emojiReactions"
     "@type": "@id"
