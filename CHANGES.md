@@ -10,10 +10,19 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Allowed actor dispatchers to return `Tombstone` for deleted accounts.
+    Fedify now serves those actor URIs as `410 Gone` with the serialized
+    tombstone body, and the corresponding WebFinger lookups also return
+    `410 Gone` instead of pretending the account was never handled.
+    [[#644], [#680]]
+
  -  Added `DoubleKnockOptions.maxRedirection` to configure the maximum number
     of redirects followed by `doubleKnock()`.
     `getAuthenticatedDocumentLoader()` now also respects
     `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
+
+[#644]: https://github.com/fedify-dev/fedify/issues/644
+[#680]: https://github.com/fedify-dev/fedify/pull/680
 
 ### @fedify/vocab-runtime
 

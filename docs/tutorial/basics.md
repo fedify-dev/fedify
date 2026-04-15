@@ -471,8 +471,9 @@ In the above code, we use the `~Federatable.setActorDispatcher()` method to set
 an actor dispatcher for the server.  The first argument is the path pattern
 for the actor, and the second argument is a callback function that takes
 a `Context` object and the actor's identifier.  The callback function should
-return an `Actor` object or `null` if the actor is not found.  In this case,
-we return a `Person` object for the actor *me*.
+return an `Actor` object, a `Tombstone` if the account is gone, or `null` if
+the actor is not found.  In this case, we return a `Person` object for the
+actor *me*.
 
 Alright, we have an actor on the server.  Let's see if it works by querying
 WebFinger for the actor.  Run the server by executing the following command:
