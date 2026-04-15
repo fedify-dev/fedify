@@ -44,6 +44,36 @@ import {
   Source,
 } from "./vocab.ts";
 
+const NOTE_QUOTE_CONTEXT = [
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+  "https://gotosocial.org/ns",
+  {
+    Emoji: "toot:Emoji",
+    Hashtag: "as:Hashtag",
+    _misskey_quote: "misskey:_misskey_quote",
+    QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
+    fedibird: "http://fedibird.com/ns#",
+    misskey: "https://misskey-hub.net/ns#",
+    quote: {
+      "@id": "https://w3id.org/fep/044f#quote",
+      "@type": "@id",
+    },
+    quoteAuthorization: {
+      "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+      "@type": "@id",
+    },
+    quoteUri: "fedibird:quoteUri",
+    quoteUrl: "as:quoteUrl",
+    sensitive: "as:sensitive",
+    toot: "http://joinmastodon.org/ns#",
+    emojiReactions: {
+      "@id": "fedibird:emojiReactions",
+      "@type": "@id",
+    },
+  },
+] as const;
+
 test("new Object()", () => {
   const obj = new Object({
     name: "Test",
@@ -1085,35 +1115,7 @@ test("Note.quoteUrl", async () => {
     quoteUrl: new URL("https://example.com/object"),
   });
   const expected = {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        _misskey_quote: "misskey:_misskey_quote",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": NOTE_QUOTE_CONTEXT,
     _misskey_quote: "https://example.com/object",
     quoteUri: "https://example.com/object",
     quoteUrl: "https://example.com/object",
@@ -1155,35 +1157,7 @@ test("Note.quote", async () => {
     quote: new URL("https://example.com/object"),
   });
   const expected = {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        _misskey_quote: "misskey:_misskey_quote",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": NOTE_QUOTE_CONTEXT,
     quote: "https://example.com/object",
     type: "Note",
   };
@@ -1211,35 +1185,7 @@ test("Note.quoteAuthorization", async () => {
     quoteAuthorization: new URL("https://example.com/authorizations/1"),
   });
   const expected = {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        _misskey_quote: "misskey:_misskey_quote",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": NOTE_QUOTE_CONTEXT,
     quoteAuthorization: "https://example.com/authorizations/1",
     type: "Note",
   };
@@ -1277,35 +1223,7 @@ test("InteractionPolicy.canQuote", async () => {
     }),
   });
   const expected = {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        _misskey_quote: "misskey:_misskey_quote",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": NOTE_QUOTE_CONTEXT,
     interactionPolicy: {
       canQuote: {
         automaticApproval: "as:Public",

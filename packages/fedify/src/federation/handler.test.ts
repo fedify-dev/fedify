@@ -49,6 +49,18 @@ import { InboxListenerSet } from "./inbox.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
 
+const QUOTE_CONTEXT_TERMS = {
+  QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
+  quote: {
+    "@id": "https://w3id.org/fep/044f#quote",
+    "@type": "@id",
+  },
+  quoteAuthorization: {
+    "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+    "@type": "@id",
+  },
+} as const;
+
 test("handleActor()", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let context = createRequestContext<void>({
@@ -405,18 +417,10 @@ test("handleObject()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         toot: "http://joinmastodon.org/ns#",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
         fedibird: "http://fedibird.com/ns#",
         misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -513,18 +517,10 @@ test("handleObject()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         toot: "http://joinmastodon.org/ns#",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
         fedibird: "http://fedibird.com/ns#",
         misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -715,16 +711,8 @@ test("handleCollection()", async () => {
         "@id": "toot:votersCount",
         "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
       },
-      QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
       _misskey_quote: "misskey:_misskey_quote",
-      quote: {
-        "@id": "https://w3id.org/fep/044f#quote",
-        "@type": "@id",
-      },
-      quoteAuthorization: {
-        "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-        "@type": "@id",
-      },
+      ...QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {
@@ -747,16 +735,8 @@ test("handleCollection()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -855,16 +835,8 @@ test("handleCollection()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -934,16 +906,8 @@ test("handleCollection()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1009,16 +973,8 @@ test("handleCollection()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1088,16 +1044,8 @@ test("handleCollection()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         votersCount: "toot:votersCount",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1344,18 +1292,10 @@ test("respondWithObject()", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         toot: "http://joinmastodon.org/ns#",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
         fedibird: "http://fedibird.com/ns#",
         misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1487,18 +1427,10 @@ test("respondWithObjectIfAcceptable", async () => {
         Hashtag: "as:Hashtag",
         sensitive: "as:sensitive",
         toot: "http://joinmastodon.org/ns#",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
         _misskey_quote: "misskey:_misskey_quote",
         fedibird: "http://fedibird.com/ns#",
         misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
+        ...QUOTE_CONTEXT_TERMS,
         quoteUri: "fedibird:quoteUri",
         quoteUrl: "as:quoteUrl",
         emojiReactions: {
@@ -1683,16 +1615,8 @@ test("handleCustomCollection()", async () => {
         "@id": "toot:votersCount",
         "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
       },
-      QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
       _misskey_quote: "misskey:_misskey_quote",
-      quote: {
-        "@id": "https://w3id.org/fep/044f#quote",
-        "@type": "@id",
-      },
-      quoteAuthorization: {
-        "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-        "@type": "@id",
-      },
+      ...QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {
@@ -1714,16 +1638,8 @@ test("handleCustomCollection()", async () => {
       Hashtag: "as:Hashtag",
       sensitive: "as:sensitive",
       votersCount: "toot:votersCount",
-      QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
       _misskey_quote: "misskey:_misskey_quote",
-      quote: {
-        "@id": "https://w3id.org/fep/044f#quote",
-        "@type": "@id",
-      },
-      quoteAuthorization: {
-        "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-        "@type": "@id",
-      },
+      ...QUOTE_CONTEXT_TERMS,
       quoteUri: "fedibird:quoteUri",
       quoteUrl: "as:quoteUrl",
       emojiReactions: {
