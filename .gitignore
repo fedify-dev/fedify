@@ -10,7 +10,6 @@ repomix-output.xml
 test/smoke/.env.test
 test/smoke/mastodon/.certs/
 test/smoke/mastodon/mastodon.env
-test/smoke/mastodon/mastodon-strict.env
 test/smoke/sharkey/.certs/
 test/smoke/sharkey/sharkey.env
 smoke.log
