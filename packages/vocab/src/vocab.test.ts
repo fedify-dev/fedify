@@ -27,6 +27,7 @@ import {
   Create,
   CryptographicKey,
   type DataIntegrityProof,
+  Delete,
   Endpoints,
   Follow,
   Hashtag,
@@ -70,6 +71,55 @@ const NOTE_QUOTE_CONTEXT = [
     emojiReactions: {
       "@id": "fedibird:emojiReactions",
       "@type": "@id",
+    },
+  },
+] as const;
+
+const QUOTE_REQUEST_CONTEXT = [
+  "https://w3id.org/identity/v1",
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+  "https://gotosocial.org/ns",
+  {
+    ...NOTE_QUOTE_CONTEXT[3],
+    ChatMessage: "http://litepub.social/ns#ChatMessage",
+    QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+    votersCount: {
+      "@id": "toot:votersCount",
+      "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
+    },
+  },
+] as const;
+
+const DELETE_QUOTE_REQUEST_CONTEXT = [
+  "https://w3id.org/identity/v1",
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+  "https://gotosocial.org/ns",
+  {
+    ChatMessage: "http://litepub.social/ns#ChatMessage",
+    Emoji: "toot:Emoji",
+    Hashtag: "as:Hashtag",
+    QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
+    QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+    _misskey_quote: "misskey:_misskey_quote",
+    fedibird: "http://fedibird.com/ns#",
+    misskey: "https://misskey-hub.net/ns#",
+    quote: {
+      "@id": "https://w3id.org/fep/044f#quote",
+      "@type": "@id",
+    },
+    quoteAuthorization: {
+      "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+      "@type": "@id",
+    },
+    quoteUri: "fedibird:quoteUri",
+    quoteUrl: "as:quoteUrl",
+    sensitive: "as:sensitive",
+    toot: "http://joinmastodon.org/ns#",
+    votersCount: {
+      "@id": "toot:votersCount",
+      "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
     },
   },
 ] as const;
@@ -280,35 +330,7 @@ test("Note.toJsonLd()", async () => {
     ],
   });
   deepStrictEqual(await note.toJsonLd({ contextLoader: mockDocumentLoader }), {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        _misskey_quote: "misskey:_misskey_quote",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": NOTE_QUOTE_CONTEXT,
     tag: {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -1283,42 +1305,7 @@ test("QuoteRequest.toJsonLd()", async () => {
     }),
   });
   const expected = {
-    "@context": [
-      "https://w3id.org/identity/v1",
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-      {
-        Emoji: "toot:Emoji",
-        Hashtag: "as:Hashtag",
-        ChatMessage: "http://litepub.social/ns#ChatMessage",
-        QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
-        QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
-        _misskey_quote: "misskey:_misskey_quote",
-        fedibird: "http://fedibird.com/ns#",
-        misskey: "https://misskey-hub.net/ns#",
-        quote: {
-          "@id": "https://w3id.org/fep/044f#quote",
-          "@type": "@id",
-        },
-        quoteAuthorization: {
-          "@id": "https://w3id.org/fep/044f#quoteAuthorization",
-          "@type": "@id",
-        },
-        quoteUri: "fedibird:quoteUri",
-        quoteUrl: "as:quoteUrl",
-        sensitive: "as:sensitive",
-        toot: "http://joinmastodon.org/ns#",
-        votersCount: {
-          "@id": "toot:votersCount",
-          "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
-        },
-        emojiReactions: {
-          "@id": "fedibird:emojiReactions",
-          "@type": "@id",
-        },
-      },
-    ],
+    "@context": QUOTE_REQUEST_CONTEXT,
     type: "QuoteRequest",
     object: "https://example.com/users/alice/statuses/1",
     instrument: {
@@ -1341,6 +1328,78 @@ test("QuoteRequest.toJsonLd()", async () => {
   deepStrictEqual(
     await loaded.toJsonLd({ contextLoader: mockDocumentLoader }),
     expected,
+  );
+});
+
+test("Collection.toJsonLd() compacts embedded QuoteRequest", async () => {
+  const collection = new Collection({
+    items: [
+      new QuoteRequest({
+        object: new URL("https://example.com/users/alice/statuses/1"),
+      }),
+    ],
+  });
+  deepStrictEqual(
+    await collection.toJsonLd({ contextLoader: mockDocumentLoader }),
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
+        {
+          ChatMessage: "http://litepub.social/ns#ChatMessage",
+          Emoji: "toot:Emoji",
+          Hashtag: "as:Hashtag",
+          QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
+          QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+          _misskey_quote: "misskey:_misskey_quote",
+          fedibird: "http://fedibird.com/ns#",
+          misskey: "https://misskey-hub.net/ns#",
+          quote: {
+            "@id": "https://w3id.org/fep/044f#quote",
+            "@type": "@id",
+          },
+          quoteAuthorization: {
+            "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+            "@type": "@id",
+          },
+          quoteUri: "fedibird:quoteUri",
+          quoteUrl: "as:quoteUrl",
+          sensitive: "as:sensitive",
+          toot: "http://joinmastodon.org/ns#",
+          votersCount: "toot:votersCount",
+          emojiReactions: {
+            "@id": "fedibird:emojiReactions",
+            "@type": "@id",
+          },
+        },
+      ],
+      items: {
+        "@context": QUOTE_REQUEST_CONTEXT,
+        object: "https://example.com/users/alice/statuses/1",
+        type: "QuoteRequest",
+      },
+      type: "Collection",
+    },
+  );
+});
+
+test("Delete.toJsonLd() compacts embedded QuoteRequest", async () => {
+  const activity = new Delete({
+    object: new QuoteRequest({
+      object: new URL("https://example.com/users/alice/statuses/1"),
+    }),
+  });
+  deepStrictEqual(
+    await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
+    {
+      "@context": DELETE_QUOTE_REQUEST_CONTEXT,
+      object: {
+        object: "https://example.com/users/alice/statuses/1",
+        type: "QuoteRequest",
+      },
+      type: "Delete",
+    },
   );
 });
 

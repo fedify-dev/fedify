@@ -26,6 +26,7 @@ defaultContext:
   _misskey_quote: "misskey:_misskey_quote"
   quoteUri: "fedibird:quoteUri"
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
   quoteAuthorization:
     "@id": "https://w3id.org/fep/044f#quoteAuthorization"
     "@type": "@id"

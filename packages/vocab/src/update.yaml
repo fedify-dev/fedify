@@ -53,6 +53,7 @@ defaultContext:
   fedibird: "http://fedibird.com/ns#"
   quoteUri: "fedibird:quoteUri"
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
   quoteAuthorization:
     "@id": "https://w3id.org/fep/044f#quoteAuthorization"
     "@type": "@id"
