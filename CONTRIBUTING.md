@@ -392,6 +392,7 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
  -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
+ -  *packages/nuxt/*: Nuxt integration (@fedify/nuxt) for Fedify.
  -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
  -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
  -  *packages/relay/*: ActivityPub relay support (@fedify/relay) for Fedify.

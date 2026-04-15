@@ -47,6 +47,19 @@ To be released.
 [#601]: https://github.com/fedify-dev/fedify/pull/601
 [#652]: https://github.com/fedify-dev/fedify/pull/652
 
+### @fedify/nuxt
+
+ -  Added `@fedify/nuxt` package for integrating Fedify with [Nuxt].
+    It provides a Nuxt module that delegates non-federation requests to Nuxt,
+    supports shared-route content negotiation, and returns deferred
+    `406 Not Acceptable` when Fedify routes are requested without
+    ActivityPub-compatible `Accept` headers and Nuxt has no matching page.
+    [[#149], [#674] by ChanHaeng Lee]
+
+[Nuxt]: https://nuxt.com/
+[#149]: https://github.com/fedify-dev/fedify/issues/149
+[#674]: https://github.com/fedify-dev/fedify/pull/674
+
 ### @fedify/init
 
  -  Fixed errors when using `fedify init` with certain web framework

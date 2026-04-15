@@ -78,6 +78,9 @@
     "npm:@mjackson/node-fetch-server@0.7": "0.7.0",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.17_reflect-metadata@0.2.2_rxjs@7.8.2",
+    "npm:@nuxt/kit@4": "4.4.2",
+    "npm:@nuxt/schema@4": "4.4.2",
+    "npm:@nuxt/schema@^4.4.0": "4.4.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
     "npm:@opentelemetry/context-async-hooks@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
     "npm:@opentelemetry/core@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
@@ -2423,6 +2426,41 @@
         "fastq"
       ]
     },
+    "@nuxt/kit@4.4.2": {
+      "integrity": "sha512-5+IPRNX2CjkBhuWUwz0hBuLqiaJPRoKzQ+SvcdrQDbAyE+VDeFt74VpSFr5/R0ujrK4b+XnSHUJWdS72w6hsog==",
+      "dependencies": [
+        "c12",
+        "consola",
+        "defu",
+        "destr",
+        "errx",
+        "exsolve",
+        "ignore@7.0.5",
+        "jiti@2.6.1",
+        "klona",
+        "mlly",
+        "ohash",
+        "pathe@2.0.3",
+        "pkg-types@2.3.0",
+        "rc9",
+        "scule",
+        "semver@7.7.4",
+        "tinyglobby",
+        "ufo",
+        "unctx",
+        "untyped"
+      ]
+    },
+    "@nuxt/schema@4.4.2": {
+      "integrity": "sha512-/q6C7Qhiricgi+PKR7ovBnJlKTL0memCbA1CzRT+itCW/oeYzUfeMdQ35mGntlBoyRPNrMXbzuSUhfDbSCU57w==",
+      "dependencies": [
+        "@vue/shared",
+        "defu",
+        "pathe@2.0.3",
+        "pkg-types@2.3.0",
+        "std-env@4.0.0"
+      ]
+    },
     "@opentelemetry/api@1.9.1": {
       "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
     },
@@ -3524,6 +3562,9 @@
         "loupe",
         "tinyrainbow"
       ]
+    },
+    "@vue/shared@3.5.32": {
+      "integrity": "sha512-ksNyrmRQzWJJ8n3cRDuSF7zNNontuJg1YHnmWRJd2AMu8Ij2bqwiiri2lH5rHtYPZjj4STkNcgcmiQqlOjiYGg=="
     },
     "abbrev@3.0.1": {
       "integrity": "sha512-AO2ac6pjRB3SJmGJo+v5/aK6Omggp6fsLrs6wN9bd35ulu4cCwaAU9+7ZhXjeqHVkaHThLuzH0nZr0YpCDhygg=="
@@ -4651,6 +4692,9 @@
       "dependencies": [
         "stackframe"
       ]
+    },
+    "errx@0.1.0": {
+      "integrity": "sha512-fZmsRiDNv07K6s2KkKFTiD2aIvECa7++PKyD5NC32tpRw46qZA3sOz+aM+/V9V0GDHxVTKLziveV4JhzBHDp9Q=="
     },
     "es-define-property@1.0.1": {
       "integrity": "sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g=="
@@ -9433,6 +9477,18 @@
             "npm:@typescript-eslint/parser@^8.49.0",
             "npm:@typescript-eslint/utils@8",
             "npm:eslint@9"
+          ]
+        }
+      },
+      "packages/nuxt": {
+        "dependencies": [
+          "npm:@nuxt/kit@4",
+          "npm:@nuxt/schema@4",
+          "npm:h3@^1.15.0"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@nuxt/schema@^4.4.0"
           ]
         }
       },

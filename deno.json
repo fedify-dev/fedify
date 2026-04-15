@@ -17,6 +17,7 @@
     "./packages/koa",
     "./packages/lint",
     "./packages/mysql",
+    "./packages/nuxt",
     "./packages/postgres",
     "./packages/redis",
     "./packages/relay",

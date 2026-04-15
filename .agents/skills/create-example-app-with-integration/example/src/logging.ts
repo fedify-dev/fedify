@@ -1,4 +1,7 @@
-import { configure, getConsoleSink } from "@logtape/logtape";
+import {
+  configure, // If top-level await is not supported, replace with configureSync
+  getConsoleSink
+} from "@logtape/logtape";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 await configure({

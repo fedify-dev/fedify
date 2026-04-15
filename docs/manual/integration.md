@@ -4,6 +4,8 @@ description: >-
   explains how to integrate Fedify with web frameworks.
 ---
 
+<!-- deno-fmt-ignore-file -->
+
 Integration
 ===========
 
@@ -357,6 +359,76 @@ app.use(router);
 [Vinxi]: https://vinxi.vercel.app/
 [SolidStart]: https://start.solidjs.com/
 [TanStack Start]: https://tanstack.com/start
+
+
+Nuxt
+----
+
+_This API is available since Fedify 2.2.0._
+
+[Nuxt] is a full-stack framework built on [Nitro] and [Vue]. The _@fedify/nuxt_
+package provides a Nuxt module that wires Fedify into Nitro middleware and
+performs deferred `406 Not Acceptable` handling for content negotiation:
+
+::: code-group
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/nuxt
+~~~~
+
+~~~~ sh [npm]
+npm add @fedify/nuxt
+~~~~
+
+~~~~ sh [pnpm]
+pnpm add @fedify/nuxt
+~~~~
+
+~~~~ sh [Yarn]
+yarn add @fedify/nuxt
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/nuxt
+~~~~
+
+:::
+
+Create your federation instance in *server/federation.ts*:
+
+~~~~ typescript
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+});
+
+export default federation;
+~~~~
+
+Then enable the module in *nuxt.config.ts*:
+
+~~~~ typescript
+export default defineNuxtConfig({
+  modules: ["@fedify/nuxt"],
+});
+~~~~
+
+By default, _@fedify/nuxt_ loads the federation instance from
+*#server/federation*. You can customize module paths using `fedify` options:
+
+~~~~ typescript
+export default defineNuxtConfig({
+  modules: ["@fedify/nuxt"],
+  fedify: {
+    federationModule: "#server/federation",
+    contextDataFactoryModule: "#server/fedify-context",
+  },
+});
+~~~~
+
+[Nuxt]: https://nuxt.com/
+[Vue]: https://vuejs.org/
 
 
 SvelteKit

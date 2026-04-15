@@ -1,0 +1,27 @@
+{
+  "name": "@fedify/nuxt",
+  "version": "2.2.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "imports": {
+    "@nuxt/kit": "npm:@nuxt/kit@^4.0.0",
+    "@nuxt/schema": "npm:@nuxt/schema@^4.0.0",
+    "h3": "npm:h3@^1.15.0"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "test": "deno test --allow-env",
+    "check": "deno fmt --check && deno lint && deno check src/*.ts src/runtime/server/*.ts"
+  }
+}

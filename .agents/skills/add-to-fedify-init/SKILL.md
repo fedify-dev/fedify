@@ -34,9 +34,9 @@ modifications consistent with the existing code style and context.
 ### Write the `WebFrameworkDescription` object
 
 Create a `packages/init/src/webframeworks/framework.ts` file and write the
-`WebFrameworkDescription` object, referring to <init/framework.ts>.  Check
-the specifications in the comments in `packages/init/src/types.ts` for
-details.
+`WebFrameworkDescription` object, referring to
+[init/framework.ts](./init/framework.ts).  Check the specifications in the
+comments in `packages/init/src/types.ts` for details.
 
 ### Add to the `WEB_FRAMEWORK` array
 

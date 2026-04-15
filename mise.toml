@@ -227,6 +227,10 @@ run = "deno task -f @fedify/fedify bench"
 description = "Run the Fedify CLI tool"
 run = "deno task cli"
 
+[tasks.tunnel]
+description = "Tunnel port with the Fedify CLI"
+run = "deno task cli tunnel"
+
 [tasks.update-init-deps]
 description = "Update third-party dependency versions in fedify init templates"
 run = "deno task -f @fedify/init update-init-deps"

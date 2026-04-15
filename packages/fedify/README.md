@@ -112,6 +112,7 @@ Here is the list of packages:
 | [@fedify/lint](/packages/lint/)                   | [JSR][jsr:@fedify/lint]          | [npm][npm:@fedify/lint]          | Linting utilities                        |
 | [@fedify/nestjs](/packages/nestjs/)               |                                  | [npm][npm:@fedify/nestjs]        | NestJS integration                       |
 | [@fedify/next](/packages/next/)                   |                                  | [npm][npm:@fedify/next]          | Next.js integration                      |
+| [@fedify/nuxt](/packages/nuxt/)                   | [JSR][jsr:@fedify/nuxt]          | [npm][npm:@fedify/nuxt]          | Nuxt integration                         |
 | [@fedify/mysql](/packages/mysql/)                 | [JSR][jsr:@fedify/mysql]         | [npm][npm:@fedify/mysql]         | MySQL/MariaDB driver                     |
 | [@fedify/postgres](/packages/postgres/)           | [JSR][jsr:@fedify/postgres]      | [npm][npm:@fedify/postgres]      | PostgreSQL driver                        |
 | [@fedify/redis](/packages/redis/)                 | [JSR][jsr:@fedify/redis]         | [npm][npm:@fedify/redis]         | Redis driver                             |
@@ -155,6 +156,8 @@ Here is the list of packages:
 [npm:@fedify/lint]: https://www.npmjs.com/package/@fedify/lint
 [npm:@fedify/nestjs]: https://www.npmjs.com/package/@fedify/nestjs
 [npm:@fedify/next]: https://www.npmjs.com/package/@fedify/next
+[jsr:@fedify/nuxt]: https://jsr.io/@fedify/nuxt
+[npm:@fedify/nuxt]: https://www.npmjs.com/package/@fedify/nuxt
 [jsr:@fedify/mysql]: https://jsr.io/@fedify/mysql
 [npm:@fedify/mysql]: https://www.npmjs.com/package/@fedify/mysql
 [jsr:@fedify/postgres]: https://jsr.io/@fedify/postgres
