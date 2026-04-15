@@ -20,9 +20,17 @@ defaultContext:
   Emoji: "toot:Emoji"
   Hashtag: "as:Hashtag"
   ChatMessage: "http://litepub.social/ns#ChatMessage"
+  quote:
+    "@id": "https://w3id.org/fep/044f#quote"
+    "@type": "@id"
   quoteUrl: "as:quoteUrl"
   _misskey_quote: "misskey:_misskey_quote"
   quoteUri: "fedibird:quoteUri"
+  QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
+  quoteAuthorization:
+    "@id": "https://w3id.org/fep/044f#quoteAuthorization"
+    "@type": "@id"
   emojiReactions:
     "@id": "fedibird:emojiReactions"
     "@type": "@id"

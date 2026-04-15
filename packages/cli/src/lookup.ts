@@ -56,13 +56,16 @@ import { colorEnabled, colors, formatObject } from "./utils.ts";
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
 const IN_REPLY_TO_IRI = "https://www.w3.org/ns/activitystreams#inReplyTo";
+const QUOTE_IRI = "https://w3id.org/fep/044f#quote";
 const QUOTE_URL_IRI = "https://www.w3.org/ns/activitystreams#quoteUrl";
 const MISSKEY_QUOTE_IRI = "https://misskey-hub.net/ns#_misskey_quote";
 const FEDIBIRD_QUOTE_IRI = "http://fedibird.com/ns#quoteUri";
 const recurseProperties = [
   "replyTarget",
+  "quote",
   "quoteUrl",
   IN_REPLY_TO_IRI,
+  QUOTE_IRI,
   QUOTE_URL_IRI,
   MISSKEY_QUOTE_IRI,
   FEDIBIRD_QUOTE_IRI,
@@ -602,6 +605,11 @@ export function getRecursiveTargetId(
     case "replyTarget":
     case IN_REPLY_TO_IRI:
       return object.replyTargetId;
+    case "quote":
+    case QUOTE_IRI: {
+      const quote = (object as { quoteId?: unknown }).quoteId;
+      return quote instanceof URL ? quote : null;
+    }
     case "quoteUrl":
     case QUOTE_URL_IRI:
     case MISSKEY_QUOTE_IRI:

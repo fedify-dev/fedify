@@ -622,8 +622,22 @@ test("lookupCommand - accepts short-form quoteUrl", () => {
   }
 });
 
+test("lookupCommand - accepts short-form quote", () => {
+  const result = parse(lookupCommand, [
+    "lookup",
+    "--recurse",
+    "quote",
+    "https://example.com/notes/1",
+  ]);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.recurse, "quote");
+  }
+});
+
 for (
   const recurseProperty of [
+    "https://w3id.org/fep/044f#quote",
     "https://www.w3.org/ns/activitystreams#quoteUrl",
     "https://misskey-hub.net/ns#_misskey_quote",
     "http://fedibird.com/ns#quoteUri",
@@ -674,6 +688,27 @@ test("getRecursiveTargetId - returns quote URL for short name", () => {
     quoteUrl,
   });
   assert.equal(getRecursiveTargetId(note, "quoteUrl"), quoteUrl);
+});
+
+test("getRecursiveTargetId - returns quote for short name", () => {
+  const quote = new URL("https://example.com/notes/quoted");
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    quote,
+  });
+  assert.equal(getRecursiveTargetId(note, "quote"), quote);
+});
+
+test("getRecursiveTargetId - returns quote for IRI", () => {
+  const quote = new URL("https://example.com/notes/quoted");
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    quote,
+  });
+  assert.equal(
+    getRecursiveTargetId(note, "https://w3id.org/fep/044f#quote"),
+    quote,
+  );
 });
 
 for (

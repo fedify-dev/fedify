@@ -27,9 +27,16 @@ defaultContext:
     "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
   Emoji: "toot:Emoji"
   Hashtag: "as:Hashtag"
+  quote:
+    "@id": "https://w3id.org/fep/044f#quote"
+    "@type": "@id"
   quoteUrl: "as:quoteUrl"
   _misskey_quote: "misskey:_misskey_quote"
   quoteUri: "fedibird:quoteUri"
+  QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  quoteAuthorization:
+    "@id": "https://w3id.org/fep/044f#quoteAuthorization"
+    "@type": "@id"
   emojiReactions:
     "@id": "fedibird:emojiReactions"
     "@type": "@id"
@@ -80,6 +87,17 @@ properties:
   range:
   - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
 
+- singularName: quote
+  functional: true
+  compactName: quote
+  uri: "https://w3id.org/fep/044f#quote"
+  description: |
+    The quoted ActivityStreams object.
+
+    This property is serialized as an IRI-valued JSON-LD property.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
 - singularName: quoteUrl
   functional: true
   compactName: quoteUrl
@@ -102,3 +120,13 @@ properties:
     the values of those three properties in order.
   range:
   - "fedify:url"
+
+- singularName: quoteAuthorization
+  functional: true
+  compactName: quoteAuthorization
+  uri: "https://w3id.org/fep/044f#quoteAuthorization"
+  description: |
+    A {@link QuoteAuthorization} object that proves this quote was approved
+    by the quoted object's author.
+  range:
+  - "https://w3id.org/fep/044f#QuoteAuthorization"

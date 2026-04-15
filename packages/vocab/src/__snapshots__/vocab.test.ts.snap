@@ -169,7 +169,9 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -213,7 +215,9 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  quoteUrl: URL "https://fedify.dev/"
+  quote: URL "https://example.com/",
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: URL "https://example.com/"
 }'
 `;
 
@@ -257,7 +261,9 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -725,7 +731,8 @@ snapshot[`Deno.inspect(InteractionPolicy) [auto] 1`] = `
   id: URL "https://example.com/",
   canLike: InteractionRule {},
   canReply: InteractionRule {},
-  canAnnounce: InteractionRule {}
+  canAnnounce: InteractionRule {},
+  canQuote: InteractionRule {}
 }'
 `;
 
@@ -734,7 +741,8 @@ snapshot[`Deno.inspect(InteractionPolicy) [auto] 2`] = `
   id: URL "https://example.com/",
   canLike: InteractionRule {},
   canReply: InteractionRule {},
-  canAnnounce: InteractionRule {}
+  canAnnounce: InteractionRule {},
+  canQuote: InteractionRule {}
 }'
 `;
 
@@ -743,7 +751,8 @@ snapshot[`Deno.inspect(InteractionPolicy) [auto] 3`] = `
   id: URL "https://example.com/",
   canLike: InteractionRule {},
   canReply: InteractionRule {},
-  canAnnounce: InteractionRule {}
+  canAnnounce: InteractionRule {},
+  canQuote: InteractionRule {}
 }'
 `;
 
@@ -1288,6 +1297,288 @@ snapshot[`Deno.inspect(ReplyRequest) [auto] 2`] = `
 
 snapshot[`Deno.inspect(ReplyRequest) [auto] 3`] = `
 'ReplyRequest {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Object {} ],
+  attributions: [ Application {}, Application {} ],
+  audiences: [ Object {}, Object {} ],
+  contents: [ "hello", "hello" ],
+  contexts: [ Object {}, Object {} ],
+  names: [ "hello", "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Object {} ],
+  icons: [ Image {}, Image {} ],
+  images: [ Image {}, Image {} ],
+  replyTargets: [ Object {}, Object {} ],
+  locations: [ Object {}, Object {} ],
+  previews: [ Link {}, Link {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", "hello" ],
+  tags: [ Object {}, Object {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", URL "https://example.com/" ],
+  tos: [ Object {}, Object {} ],
+  btos: [ Object {}, Object {} ],
+  ccs: [ Object {}, Object {} ],
+  bccs: [ Object {}, Object {} ],
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proofs: [ DataIntegrityProof {}, DataIntegrityProof {} ],
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  actors: [ Application {}, Application {} ],
+  objects: [ Object {}, Object {} ],
+  targets: [ Object {}, Object {} ],
+  results: [ Object {}, Object {} ],
+  origins: [ Object {}, Object {} ],
+  instruments: [ Object {}, Object {} ]
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteAuthorization) [auto] 1`] = `
+'QuoteAuthorization {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Link {}, PropertyValue {} ],
+  attributions: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
+  audience: Object {},
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ Object {}, Link {} ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Link {} ],
+  icon: Image {},
+  image: Image {},
+  replyTargets: [ Object {}, Link {} ],
+  locations: [ Object {}, Link {} ],
+  previews: [ Link {}, Object {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ Object {}, Link {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: Object {},
+  bto: Object {},
+  cc: Object {},
+  bcc: Object {},
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: DataIntegrityProof {},
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  interactingObject: Object {},
+  interactionTarget: Object {}
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteAuthorization) [auto] 2`] = `
+'QuoteAuthorization {
+  id: URL "https://example.com/",
+  attachments: [ URL "https://example.com/" ],
+  attribution: URL "https://example.com/",
+  audience: URL "https://example.com/",
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ URL "https://example.com/" ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ URL "https://example.com/" ],
+  icon: URL "https://example.com/",
+  image: URL "https://example.com/",
+  replyTarget: URL "https://example.com/",
+  location: URL "https://example.com/",
+  preview: URL "https://example.com/",
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: URL "https://example.com/",
+  shares: URL "https://example.com/",
+  likes: URL "https://example.com/",
+  emojiReactions: URL "https://example.com/",
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ URL "https://example.com/" ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: URL "https://example.com/",
+  bto: URL "https://example.com/",
+  cc: URL "https://example.com/",
+  bcc: URL "https://example.com/",
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: URL "https://example.com/",
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: URL "https://example.com/",
+  replyAuthorization: URL "https://example.com/",
+  announceAuthorization: URL "https://example.com/",
+  interactingObject: URL "https://example.com/",
+  interactionTarget: URL "https://example.com/"
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteAuthorization) [auto] 3`] = `
+'QuoteAuthorization {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Object {} ],
+  attributions: [ Application {}, Application {} ],
+  audiences: [ Object {}, Object {} ],
+  contents: [ "hello", "hello" ],
+  contexts: [ Object {}, Object {} ],
+  names: [ "hello", "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Object {} ],
+  icons: [ Image {}, Image {} ],
+  images: [ Image {}, Image {} ],
+  replyTargets: [ Object {}, Object {} ],
+  locations: [ Object {}, Object {} ],
+  previews: [ Link {}, Link {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", "hello" ],
+  tags: [ Object {}, Object {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", URL "https://example.com/" ],
+  tos: [ Object {}, Object {} ],
+  btos: [ Object {}, Object {} ],
+  ccs: [ Object {}, Object {} ],
+  bccs: [ Object {}, Object {} ],
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proofs: [ DataIntegrityProof {}, DataIntegrityProof {} ],
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  interactingObject: Object {},
+  interactionTarget: Object {}
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteRequest) [auto] 1`] = `
+'QuoteRequest {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Link {}, PropertyValue {} ],
+  attributions: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
+  audience: Object {},
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ Object {}, Link {} ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Link {} ],
+  icon: Image {},
+  image: Image {},
+  replyTargets: [ Object {}, Link {} ],
+  locations: [ Object {}, Link {} ],
+  previews: [ Link {}, Object {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ Object {}, Link {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: Object {},
+  bto: Object {},
+  cc: Object {},
+  bcc: Object {},
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: DataIntegrityProof {},
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
+  object: Object {},
+  target: Object {},
+  result: Object {},
+  origin: Object {},
+  instrument: Object {}
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteRequest) [auto] 2`] = `
+'QuoteRequest {
+  id: URL "https://example.com/",
+  attachments: [ URL "https://example.com/" ],
+  attribution: URL "https://example.com/",
+  audience: URL "https://example.com/",
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ URL "https://example.com/" ],
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ URL "https://example.com/" ],
+  icon: URL "https://example.com/",
+  image: URL "https://example.com/",
+  replyTarget: URL "https://example.com/",
+  location: URL "https://example.com/",
+  preview: URL "https://example.com/",
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: URL "https://example.com/",
+  shares: URL "https://example.com/",
+  likes: URL "https://example.com/",
+  emojiReactions: URL "https://example.com/",
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ URL "https://example.com/" ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: URL "https://example.com/",
+  bto: URL "https://example.com/",
+  cc: URL "https://example.com/",
+  bcc: URL "https://example.com/",
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: URL "https://example.com/",
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: URL "https://example.com/",
+  replyAuthorization: URL "https://example.com/",
+  announceAuthorization: URL "https://example.com/",
+  actor: URL "https://example.com/",
+  object: URL "https://example.com/",
+  target: URL "https://example.com/",
+  result: URL "https://example.com/",
+  origin: URL "https://example.com/",
+  instrument: URL "https://example.com/"
+}'
+`;
+
+snapshot[`Deno.inspect(QuoteRequest) [auto] 3`] = `
+'QuoteRequest {
   id: URL "https://example.com/",
   attachments: [ Object {}, Object {} ],
   attributions: [ Application {}, Application {} ],
@@ -2647,7 +2938,9 @@ snapshot[`Deno.inspect(Article) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -2691,7 +2984,9 @@ snapshot[`Deno.inspect(Article) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  quoteUrl: URL "https://fedify.dev/"
+  quote: URL "https://example.com/",
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: URL "https://example.com/"
 }'
 `;
 
@@ -2735,7 +3030,9 @@ snapshot[`Deno.inspect(Article) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -6172,7 +6469,9 @@ snapshot[`Deno.inspect(Note) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -6216,7 +6515,9 @@ snapshot[`Deno.inspect(Note) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  quoteUrl: URL "https://fedify.dev/"
+  quote: URL "https://example.com/",
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: URL "https://example.com/"
 }'
 `;
 
@@ -6260,7 +6561,9 @@ snapshot[`Deno.inspect(Note) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -7742,7 +8045,9 @@ snapshot[`Deno.inspect(Question) [auto] 1`] = `
   inclusiveOptions: [ Object {} ],
   closed: 2024-03-03T08:30:06.796196096Z,
   voters: 123,
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 
@@ -7796,7 +8101,9 @@ snapshot[`Deno.inspect(Question) [auto] 2`] = `
   inclusiveOptions: [ URL "https://example.com/" ],
   closed: 2024-03-03T08:30:06.796196096Z,
   voters: 123,
-  quoteUrl: URL "https://fedify.dev/"
+  quote: URL "https://example.com/",
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: URL "https://example.com/"
 }'
 `;
 
@@ -7850,7 +8157,9 @@ snapshot[`Deno.inspect(Question) [auto] 3`] = `
   inclusiveOptions: [ Object {}, Object {} ],
   closed: 2024-03-03T08:30:06.796196096Z,
   voters: 123,
-  quoteUrl: URL "https://fedify.dev/"
+  quote: Object {},
+  quoteUrl: URL "https://fedify.dev/",
+  quoteAuthorization: QuoteAuthorization {}
 }'
 `;
 

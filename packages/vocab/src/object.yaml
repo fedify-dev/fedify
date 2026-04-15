@@ -411,9 +411,9 @@ properties:
   untyped: true
   description: |
     The interaction policy for this object, specifying who can like, reply to,
-    or announce it.  Contains sub-policies (`canLike`, `canReply`,
-    `canAnnounce`) each defining `automaticApproval` and `manualApproval`
-    lists.
+    announce, or quote it.  Contains sub-policies (`canLike`, `canReply`,
+    `canAnnounce`, `canQuote`) each defining `automaticApproval` and
+    `manualApproval` lists.
 
     When absent, implementations should assume anyone can interact with
     the object.  Setting this property signals that the server understands

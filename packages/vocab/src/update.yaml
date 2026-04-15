@@ -47,8 +47,16 @@ defaultContext:
   PropertyValue: "schema:PropertyValue"
   value: "schema:value"
   ChatMessage: "http://litepub.social/ns#ChatMessage"
+  quote:
+    "@id": "https://w3id.org/fep/044f#quote"
+    "@type": "@id"
   fedibird: "http://fedibird.com/ns#"
   quoteUri: "fedibird:quoteUri"
+  QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
+  quoteAuthorization:
+    "@id": "https://w3id.org/fep/044f#quoteAuthorization"
+    "@type": "@id"
   misskey: "https://misskey-hub.net/ns#"
   _misskey_quote: "misskey:_misskey_quote"
   _misskey_followedMessage: "misskey:_misskey_followedMessage"

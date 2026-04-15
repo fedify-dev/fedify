@@ -41,8 +41,10 @@ const lookupSchema = pipe(
     recurse: optional(
       picklist([
         "replyTarget",
+        "quote",
         "quoteUrl",
         "https://www.w3.org/ns/activitystreams#inReplyTo",
+        "https://w3id.org/fep/044f#quote",
         "https://www.w3.org/ns/activitystreams#quoteUrl",
         "https://misskey-hub.net/ns#_misskey_quote",
         "http://fedibird.com/ns#quoteUri",

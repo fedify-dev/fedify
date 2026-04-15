@@ -1,12 +1,20 @@
 $schema: ../../vocab-tools/schema.yaml
-name: Delete
-compactName: Delete
-uri: "https://www.w3.org/ns/activitystreams#Delete"
+name: QuoteRequest
+compactName: QuoteRequest
+uri: "https://w3id.org/fep/044f#QuoteRequest"
 extends: "https://www.w3.org/ns/activitystreams#Activity"
 entity: true
 description: |
-  Indicates that the `actor` has deleted the `object`.  If specified,
-  the `origin` indicates the context from which the `object` was deleted.
+  A request to quote an object that requires approval from the quoted object's
+  author.
+
+  The `object` property references the quoted object, and the `instrument`
+  property contains the quote post itself.
+
+  The quoted object's author responds with an {@link Accept} (with a
+  {@link QuoteAuthorization} as `result`) or a {@link Reject}.
+
+  See [FEP-044f](https://w3id.org/fep/044f) for details.
 defaultContext:
 - "https://w3id.org/identity/v1"
 - "https://www.w3.org/ns/activitystreams"
@@ -22,6 +30,7 @@ defaultContext:
   Emoji: "toot:Emoji"
   Hashtag: "as:Hashtag"
   ChatMessage: "http://litepub.social/ns#ChatMessage"
+  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
   quote:
     "@id": "https://w3id.org/fep/044f#quote"
     "@type": "@id"
@@ -29,8 +38,10 @@ defaultContext:
   _misskey_quote: "misskey:_misskey_quote"
   quoteUri: "fedibird:quoteUri"
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization"
-  QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest"
   quoteAuthorization:
     "@id": "https://w3id.org/fep/044f#quoteAuthorization"
+    "@type": "@id"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
     "@type": "@id"
 properties: []
