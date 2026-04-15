@@ -124,7 +124,7 @@ export const authorizedFetchOption = withDefault(
         default: "draft-cavage-http-signatures-12" as const,
       },
     ),
-    tunnelService: createTunnelServiceOption(),
+    tunnelService: optional(createTunnelServiceOption()),
   }),
   {
     authorizedFetch: false as const,

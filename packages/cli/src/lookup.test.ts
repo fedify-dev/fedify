@@ -1,17 +1,19 @@
 import { Activity, Collection, Note } from "@fedify/vocab";
-import { clearActiveConfig, setActiveConfig } from "@optique/config";
-import { runWithConfig } from "@optique/config/run";
-import { parse } from "@optique/core/parser";
+import type { Annotations } from "@optique/core/annotations";
+import { parse, type Parser, type Result } from "@optique/core/parser";
 import { UrlError } from "@fedify/vocab-runtime";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import process from "node:process";
 import { Writable } from "node:stream";
 import test from "node:test";
 import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
+import { runCli } from "./runner.ts";
 import {
   authorizedFetchOption,
   clearTimeoutSignal,
@@ -30,6 +32,24 @@ import {
   writeObjectToStream,
   writeSeparator,
 } from "./lookup.ts";
+
+async function parseWithConfig<TValue, TState>(
+  parser: Parser<"sync", TValue, TState>,
+  args: readonly string[],
+  config: Record<string, unknown> = {},
+): Promise<Result<TValue>> {
+  // Optique 1.0 removed the old active-config test helpers. For parser-only
+  // assertions, we still need the phase-2 annotations that bindConfig()
+  // consumes, so these tests emulate that request directly.
+  const annotations = await (configContext.getAnnotations as (
+    request?: unknown,
+    options?: unknown,
+  ) => PromiseLike<Annotations> | Annotations)(
+    { phase: "phase2", parsed: {} },
+    { load: () => ({ config, meta: undefined }) },
+  );
+  return parse(parser, args, { annotations });
+}
 
 test("writeObjectToStream - writes Note object with default options", async () => {
   const testDir = "./test_output_note";
@@ -309,9 +329,7 @@ test("clearTimeoutSignal - cleans up timer properly", async () => {
 });
 
 test("authorizedFetchOption - parses successfully without -a flag", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, []);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, false);
@@ -321,65 +339,124 @@ test("authorizedFetchOption - parses successfully without -a flag", () => {
 });
 
 test("authorizedFetchOption - parses with -a without tunnelService config", async () => {
-  const result = await runWithConfig(authorizedFetchOption, configContext, {
-    load: () => ({}),
-    args: ["-a"],
-  });
-  assert.strictEqual(result.authorizedFetch, true);
-  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
-  assert.strictEqual(result.tunnelService, undefined);
+  const result = await parseWithConfig(authorizedFetchOption, ["-a"]);
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(
+      result.value.firstKnock,
+      "draft-cavage-http-signatures-12",
+    );
+    assert.strictEqual(result.value.tunnelService, undefined);
+  }
 });
 
 test("authorizedFetchOption - uses config to enable authorized fetch", async () => {
-  const result = await runWithConfig(authorizedFetchOption, configContext, {
-    load: () => ({ lookup: { authorizedFetch: true } }),
-    args: [],
-  });
-  assert.strictEqual(result.authorizedFetch, true);
-  assert.strictEqual(result.firstKnock, "draft-cavage-http-signatures-12");
-  assert.strictEqual(result.tunnelService, undefined);
+  const result = await parseWithConfig(
+    authorizedFetchOption,
+    [],
+    { lookup: { authorizedFetch: true } },
+  );
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(
+      result.value.firstKnock,
+      "draft-cavage-http-signatures-12",
+    );
+    assert.strictEqual(result.value.tunnelService, undefined);
+  }
 });
 
 test("authorizedFetchOption - reads firstKnock from config", async () => {
-  const result = await runWithConfig(authorizedFetchOption, configContext, {
-    load: () => ({
+  const result = await parseWithConfig(
+    authorizedFetchOption,
+    [],
+    {
       lookup: {
         authorizedFetch: true,
         firstKnock: "rfc9421",
       },
       tunnelService: "serveo.net",
-    }),
-    args: [],
-  });
-  assert.strictEqual(result.authorizedFetch, true);
-  assert.strictEqual(result.firstKnock, "rfc9421");
-  assert.strictEqual(result.tunnelService, undefined);
+    },
+  );
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.authorizedFetch, true);
+    assert.strictEqual(result.value.firstKnock, "rfc9421");
+    assert.strictEqual(result.value.tunnelService, "serveo.net");
+  }
+});
+
+test("lookup runner loads config from --config", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "fedify-cli-lookup-"));
+  const configPath = join(tempDir, "fedify.toml");
+
+  try {
+    await writeFile(configPath, "[lookup]\nallowPrivateAddress = true\n");
+    const result = await runCli([
+      "--config",
+      configPath,
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+
+    assert.strictEqual(result.command, "lookup");
+    assert.strictEqual(result.allowPrivateAddress, true);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("lookup runner honors --ignore-config", async () => {
+  const cwd = process.cwd();
+  const tempDir = await mkdtemp(join(tmpdir(), "fedify-cli-ignore-config-"));
+
+  try {
+    await writeFile(
+      join(tempDir, ".fedify.toml"),
+      "[lookup]\nallowPrivateAddress = true\n",
+    );
+    process.chdir(tempDir);
+
+    const withConfig = await runCli([
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+    assert.strictEqual(withConfig.command, "lookup");
+    assert.strictEqual(withConfig.allowPrivateAddress, true);
+
+    const ignored = await runCli([
+      "--ignore-config",
+      "lookup",
+      "https://example.com/notes/1",
+    ]);
+    assert.strictEqual(ignored.command, "lookup");
+    assert.strictEqual(ignored.allowPrivateAddress, false);
+  } finally {
+    process.chdir(cwd);
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("authorizedFetchOption - invalid when --first-knock is used without -a", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, [
     "--first-knock",
     "rfc9421",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(!result.success);
 });
 
 test("authorizedFetchOption - invalid when --tunnel-service is used without -a", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, [
     "--tunnel-service",
     "serveo.net",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(!result.success);
 });
 
 test("authorizedFetchOption - parses successfully with -a flag", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, ["-a"]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -392,13 +469,11 @@ test("authorizedFetchOption - parses successfully with -a flag", () => {
 });
 
 test("authorizedFetchOption - parses with -a and --first-knock", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, [
     "-a",
     "--first-knock",
     "rfc9421",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -408,13 +483,11 @@ test("authorizedFetchOption - parses with -a and --first-knock", () => {
 });
 
 test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(authorizedFetchOption, [
     "-a",
     "--tunnel-service",
     "serveo.net",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -427,13 +500,11 @@ test("authorizedFetchOption - parses with -a and --tunnel-service", () => {
 });
 
 test("lookupCommand - parses --allow-private-address", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--allow-private-address",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.allowPrivateAddress, true);
@@ -441,21 +512,23 @@ test("lookupCommand - parses --allow-private-address", () => {
 });
 
 test("lookupCommand - reads allowPrivateAddress from config", async () => {
-  const result = await runWithConfig(lookupCommand, configContext, {
-    load: () => ({ lookup: { allowPrivateAddress: true } }),
-    args: ["lookup", "https://example.com/notes/1"],
-  });
-  assert.strictEqual(result.allowPrivateAddress, true);
+  const result = await parseWithConfig(
+    lookupCommand,
+    ["lookup", "https://example.com/notes/1"],
+    { lookup: { allowPrivateAddress: true } },
+  );
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.allowPrivateAddress, true);
+  }
 });
 
 test("lookupCommand - parses --reverse", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--reverse",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.reverse, true);
@@ -463,22 +536,24 @@ test("lookupCommand - parses --reverse", () => {
 });
 
 test("lookupCommand - reads reverse from config", async () => {
-  const result = await runWithConfig(lookupCommand, configContext, {
-    load: () => ({ lookup: { reverse: true } }),
-    args: ["lookup", "https://example.com/notes/1"],
-  });
-  assert.strictEqual(result.reverse, true);
+  const result = await parseWithConfig(
+    lookupCommand,
+    ["lookup", "https://example.com/notes/1"],
+    { lookup: { reverse: true } },
+  );
+  assert.ok(result.success);
+  if (result.success) {
+    assert.strictEqual(result.value.reverse, true);
+  }
 });
 
 test("lookupCommand - parses recurse option", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--recurse",
     "replyTarget",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.recurse, "replyTarget");
@@ -488,19 +563,16 @@ test("lookupCommand - parses recurse option", () => {
 });
 
 test("lookupCommand - rejects recurse-depth without recurse", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--recurse-depth",
     "10",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(!result.success);
 });
 
 test("lookupCommand - rejects traverse with recurse", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--traverse",
@@ -508,31 +580,26 @@ test("lookupCommand - rejects traverse with recurse", () => {
     "replyTarget",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(!result.success);
 });
 
 test("lookupCommand - rejects short-form inReplyTo", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--recurse",
     "inReplyTo",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(!result.success);
 });
 
 test("lookupCommand - accepts IRI inReplyTo", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--recurse",
     "https://www.w3.org/ns/activitystreams#inReplyTo",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(
@@ -543,14 +610,12 @@ test("lookupCommand - accepts IRI inReplyTo", () => {
 });
 
 test("lookupCommand - accepts short-form quoteUrl", () => {
-  setActiveConfig(configContext.id, {});
   const result = parse(lookupCommand, [
     "lookup",
     "--recurse",
     "quoteUrl",
     "https://example.com/notes/1",
   ]);
-  clearActiveConfig(configContext.id);
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.recurse, "quoteUrl");
@@ -565,14 +630,12 @@ for (
   ]
 ) {
   test(`lookupCommand - accepts IRI ${recurseProperty}`, () => {
-    setActiveConfig(configContext.id, {});
     const result = parse(lookupCommand, [
       "lookup",
       "--recurse",
       recurseProperty,
       "https://example.com/notes/1",
     ]);
-    clearActiveConfig(configContext.id);
     assert.ok(result.success);
     if (result.success) {
       assert.strictEqual(result.value.recurse, recurseProperty);

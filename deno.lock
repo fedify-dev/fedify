@@ -11,18 +11,18 @@
     "jsr:@deno/loader@~0.3.2": "0.3.11",
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2": "2.2.0",
-    "jsr:@fresh/core@^2.1.4": "2.2.0",
+    "jsr:@fresh/core@^2.1.4": "2.2.2",
     "jsr:@fresh/core@^2.2.0": "2.2.0",
     "jsr:@fresh/plugin-vite@^1.0.7": "1.0.8",
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
     "jsr:@hono/hono@^4.7.1": "4.12.4",
-    "jsr:@hono/hono@^4.8.3": "4.12.4",
+    "jsr:@hono/hono@^4.8.3": "4.12.12",
     "jsr:@logtape/file@^2.0.5": "2.0.5",
     "jsr:@logtape/logtape@^1.0.4": "1.3.7",
     "jsr:@logtape/logtape@^2.0.5": "2.0.5",
-    "jsr:@optique/config@~0.10.7": "0.10.7",
-    "jsr:@optique/core@~0.10.7": "0.10.7",
-    "jsr:@optique/run@~0.10.7": "0.10.7",
+    "jsr:@optique/config@1": "1.0.0",
+    "jsr:@optique/core@1": "1.0.0",
+    "jsr:@optique/run@1": "1.0.0",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
     "jsr:@std/assert@^1.0.13": "1.0.19",
@@ -58,7 +58,7 @@
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.0",
     "jsr:@std/yaml@^1.0.8": "1.0.12",
-    "jsr:@valibot/valibot@^1.2.0": "1.2.0",
+    "jsr:@valibot/valibot@^1.2.0": "1.3.1",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.4_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.2__yaml@2.8.3_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@6.0.2_yaml@2.8.3",
     "npm:@babel/core@^7.28.0": "7.29.0",
@@ -86,6 +86,7 @@
     "npm:@poppanator/http-constants@^1.1.1": "1.1.1",
     "npm:@preact/signals@^2.2.1": "2.9.0_preact@10.29.0",
     "npm:@preact/signals@^2.3.2": "2.9.0_preact@10.29.0",
+    "npm:@preact/signals@^2.5.1": "2.9.0_preact@10.29.0",
     "npm:@prefresh/vite@^2.4.8": "2.4.12_preact@10.29.0_vite@7.3.1__@types+node@24.12.0__tsx@4.21.0__yaml@2.8.3",
     "npm:@solidjs/start@^1.3.0": "1.3.2_vinxi@0.5.11__@emnapi+core@1.9.2__@emnapi+runtime@1.9.2__@types+node@24.12.0__ioredis@5.10.1__mysql2@3.20.0___@types+node@24.12.0__rolldown@1.0.0-rc.12___@emnapi+core@1.9.2___@emnapi+runtime@1.9.2__tsx@4.21.0__yaml@2.8.3_@emnapi+core@1.9.2_@emnapi+runtime@1.9.2_@types+node@24.12.0_ioredis@5.10.1_mysql2@3.20.0__@types+node@24.12.0_rolldown@1.0.0-rc.12__@emnapi+core@1.9.2__@emnapi+runtime@1.9.2_solid-js@1.9.12_tsx@4.21.0_vite@7.3.1__@types+node@24.12.0__tsx@4.21.0__yaml@2.8.3_yaml@2.8.3",
     "npm:@standard-schema/spec@^1.1.0": "1.1.0",
@@ -144,6 +145,8 @@
     "npm:preact@10.19.6": "10.19.6",
     "npm:preact@^10.27.0": "10.29.0",
     "npm:preact@^10.27.2": "10.29.0",
+    "npm:preact@^10.28.2": "10.29.0",
+    "npm:preact@^10.28.3": "10.29.0",
     "npm:rollup@^4.50.0": "4.60.1",
     "npm:shiki@^1.6.4": "1.29.2",
     "npm:smol-toml@^1.6.0": "1.6.1",
@@ -231,6 +234,30 @@
         "npm:preact@^10.27.2"
       ]
     },
+    "@fresh/core@2.2.2": {
+      "integrity": "c34873df58457720f7b915a65fef6fe5cd7215f237cf4d1064d1925b320de96c",
+      "dependencies": [
+        "jsr:@deno/esbuild-plugin",
+        "jsr:@fresh/build-id",
+        "jsr:@std/encoding",
+        "jsr:@std/fmt@^1.0.8",
+        "jsr:@std/fs@^1.0.19",
+        "jsr:@std/html",
+        "jsr:@std/http",
+        "jsr:@std/jsonc",
+        "jsr:@std/media-types",
+        "jsr:@std/path@^1.1.2",
+        "jsr:@std/semver",
+        "jsr:@std/uuid",
+        "npm:@opentelemetry/api",
+        "npm:@preact/signals@^2.5.1",
+        "npm:esbuild-wasm",
+        "npm:esbuild@0.25.7",
+        "npm:preact-render-to-string",
+        "npm:preact@^10.28.2",
+        "npm:preact@^10.28.3"
+      ]
+    },
     "@fresh/plugin-vite@1.0.8": {
       "integrity": "5780d842ed82e4cbccd93dd8ba2d54bf59dff5aee65921134aab15a4cd457c56",
       "dependencies": [
@@ -257,6 +284,9 @@
     "@hono/hono@4.12.4": {
       "integrity": "3b80b0165bbcaf8ddf23afc593e40416da8e9a27cb3dd460a1f04c7a44583030"
     },
+    "@hono/hono@4.12.12": {
+      "integrity": "dc765178d38b5c4619b358062f6aa5514f7205bb0530b2823ff6265bec69c535"
+    },
     "@logtape/file@2.0.5": {
       "integrity": "368621b15b73fd63c137e47ae43411e350627683ce7e0b4492af3ccb159e098b",
       "dependencies": [
@@ -270,18 +300,18 @@
     "@logtape/logtape@2.0.5": {
       "integrity": "604d2121ed4ffb7aad35b47e729e2298d0cd7a7ddf1cb4171d27a61fa7d840a5"
     },
-    "@optique/config@0.10.7": {
-      "integrity": "2b5faae72106c2158e07e2b9b3c34ef595708a004798914059657b91851a3680",
+    "@optique/config@1.0.0": {
+      "integrity": "8230c7f216b14ffd807df596bceee4d5ac756cf4dd0e493e175b2016f1c08043",
       "dependencies": [
         "jsr:@optique/core",
         "npm:@standard-schema/spec"
       ]
     },
-    "@optique/core@0.10.7": {
-      "integrity": "7669bbf1840c356526634d205c8803fa286147d2b112c67aa1057a9e60f1da3d"
+    "@optique/core@1.0.0": {
+      "integrity": "841e61ea4606cf1fbacac2e0fe16961decf8c0e1bcd86f9fcfb5e43c396a3b36"
     },
-    "@optique/run@0.10.7": {
-      "integrity": "1529119beac780f219608dd59367c523f9e6c9ab711b15b6c6cb76e91b36851c",
+    "@optique/run@1.0.0": {
+      "integrity": "b5ba928cce667530f44265bebb71064a7974435c73f7608bdee90c310c415db3",
       "dependencies": [
         "jsr:@optique/core"
       ]
@@ -404,6 +434,9 @@
     },
     "@valibot/valibot@1.2.0": {
       "integrity": "61c118a4d027ed55912caf381c78f0a178f335f46ad0c4bcb136498dc1ef2285"
+    },
+    "@valibot/valibot@1.3.1": {
+      "integrity": "635faaec9d32a25efca7b4614e7a07306cc03937bfd0679e05530d31081bc501"
     }
   },
   "npm": {
@@ -9182,9 +9215,9 @@
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@^2.0.5",
       "jsr:@logtape/logtape@^2.0.5",
-      "jsr:@optique/config@~0.10.7",
-      "jsr:@optique/core@~0.10.7",
-      "jsr:@optique/run@~0.10.7",
+      "jsr:@optique/config@1",
+      "jsr:@optique/core@1",
+      "jsr:@optique/run@1",
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/async@^1.0.13",
       "jsr:@std/encoding@^1.0.10",

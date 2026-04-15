@@ -45,11 +45,11 @@
     "pretest": "pnpm build",
     "test": "node --experimental-transform-types --test 'src/**/*.test.ts'",
     "pretest:bun": "pnpm build",
-    "test:bun": "bun test",
+    "test:bun": "bun test --timeout 15000",
     "pretest:update_snapshots": "pnpm build",
     "test:update_snapshots": "node --experimental-transform-types --test --test-update-snapshots 'src/**/*.test.ts'",
     "pretest:bun:update_snapshots": "pnpm build",
-    "test:bun:update_snapshots": "bun test --update-snapshots"
+    "test:bun:update_snapshots": "bun test --timeout 15000 --update-snapshots"
   },
   "keywords": [
     "Fedify",

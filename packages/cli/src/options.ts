@@ -35,14 +35,16 @@ export type TunnelService = typeof TUNNEL_SERVICES[number];
  * Creates a tunnel service option with customizable option names.
  */
 export function createTunnelServiceOption(
-  optionNames: OptionName[] = ["--tunnel-service"],
+  optionNames: readonly [OptionName, ...OptionName[]] = ["--tunnel-service"],
 ) {
+  const [firstOptionName, ...restOptionNames] = optionNames;
   // Note that we don't provide a default value here, since the tunneling
   // implementation will randomly select a service if none is specified.
   return withDefault(
     bindConfig(
       option(
-        ...optionNames,
+        firstOptionName,
+        ...restOptionNames,
         choice(TUNNEL_SERVICES, { metavar: "SERVICE" }),
         {
           description: message`The tunneling service to use.

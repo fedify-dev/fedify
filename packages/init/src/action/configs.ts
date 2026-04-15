@@ -1,6 +1,4 @@
 import {
-  always,
-  cases,
   concat,
   filter,
   head,
@@ -59,26 +57,30 @@ export const loadDenoConfig = (data: InitCommandData) => ({
 const getUnstable = <T extends Pick<InitCommandData, "kv" | "mq">>({
   kv: { denoUnstable: kv = [] },
   mq: { denoUnstable: mq = [] },
-}: T): { unstable?: string[] } =>
-  pipe(
+}: T): { unstable?: string[] } => {
+  const unstable = pipe(
     needsUnstableTemporal() ? ["temporal"] : [],
     concat(kv),
     concat(mq),
     uniq,
     toArray,
-    cases(isEmpty, always({}), (unstable) => ({ unstable })),
-  ) as { unstable?: string[] };
+  );
+  return isEmpty(unstable) ? {} : { unstable };
+};
 
 type Version = [number, number, number];
 const TEMPORAL_STABLE_FROM: Version = [2, 7, 0] as const;
 
-const needsUnstableTemporal = (): boolean =>
-  pipe(
+const needsUnstableTemporal = (): boolean => {
+  const version = pipe(
     getDenoVersionFromRuntime(),
     when(isNull, getDenoVersionFromCommand),
     when(isString, parseVersion),
-    cases(isArray, isLaterOrEqualThan(TEMPORAL_STABLE_FROM), always(true)),
   );
+  return isArray(version)
+    ? !isLaterOrEqualThan(TEMPORAL_STABLE_FROM)(version)
+    : false;
+};
 
 const getDenoVersionFromCommand = (): string | null => {
   try {
@@ -106,7 +108,7 @@ const getDenoVersionFromRuntime = (): string | null =>
 const parseVersion: (match: string) => Version | null = (deno: string) =>
   pipe(
     deno.match(/^(\d+)\.(\d+)\.(\d+)/),
-    unless(isNull, (arr) => arr.map(Number) as Version),
+    unless(isNull, ([, ...segments]) => segments.map(Number) as Version),
   );
 
 const isLaterOrEqualThan = (basis: Version) => (target: Version): boolean =>
