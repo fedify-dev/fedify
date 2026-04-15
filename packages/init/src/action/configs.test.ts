@@ -43,42 +43,55 @@ function createInitData(): InitCommandData {
 }
 
 function restoreDeno(
-  globals: Record<string, unknown>,
   originalDeno: unknown,
 ) {
   if (originalDeno == null) {
-    Reflect.deleteProperty(globals, "Deno");
+    Reflect.deleteProperty(globalThis, "Deno");
   } else {
-    globals.Deno = originalDeno;
+    Object.defineProperty(globalThis, "Deno", {
+      value: originalDeno,
+      configurable: true,
+      enumerable: true,
+      writable: true,
+    });
   }
 }
 
+function setDenoVersion(
+  version: { deno: string; v8: string; typescript: string },
+) {
+  const current = (globalThis as Record<string, unknown>).Deno;
+  const value = current == null || typeof current !== "object"
+    ? { version }
+    : { ...(current as Record<string, unknown>), version };
+  Object.defineProperty(globalThis, "Deno", {
+    value,
+    configurable: true,
+    enumerable: true,
+    writable: true,
+  });
+}
+
 test("loadDenoConfig omits unstable.temporal on Deno 2.7.0 and newer", () => {
-  const globals = globalThis as Record<string, unknown>;
-  const originalDeno = globals.Deno;
-  globals.Deno = {
-    version: { deno: "2.7.0", v8: "0.0.0", typescript: "0.0.0" },
-  };
+  const originalDeno = (globalThis as Record<string, unknown>).Deno;
+  setDenoVersion({ deno: "2.7.0", v8: "0.0.0", typescript: "0.0.0" });
 
   try {
     const config = loadDenoConfig(createInitData()).data;
     assert.strictEqual(config.unstable, undefined);
   } finally {
-    restoreDeno(globals, originalDeno);
+    restoreDeno(originalDeno);
   }
 });
 
 test("loadDenoConfig keeps unstable.temporal before Deno 2.7.0", () => {
-  const globals = globalThis as Record<string, unknown>;
-  const originalDeno = globals.Deno;
-  globals.Deno = {
-    version: { deno: "2.6.9", v8: "0.0.0", typescript: "0.0.0" },
-  };
+  const originalDeno = (globalThis as Record<string, unknown>).Deno;
+  setDenoVersion({ deno: "2.6.9", v8: "0.0.0", typescript: "0.0.0" });
 
   try {
     const config = loadDenoConfig(createInitData()).data;
     assert.deepStrictEqual(config.unstable, ["temporal"]);
   } finally {
-    restoreDeno(globals, originalDeno);
+    restoreDeno(originalDeno);
   }
 });
