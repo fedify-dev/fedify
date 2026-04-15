@@ -1,26 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { message } from "@optique/core";
 import type { InitCommandData } from "../types.ts";
 import { loadDenoConfig } from "./configs.ts";
 
 function createInitData(): InitCommandData {
-  return {
+  const data = {
+    command: "init",
     projectName: "example",
     packageManager: "deno",
     webFramework: "hono",
     kvStore: "denokv",
     messageQueue: "denokv",
-    skipInstall: false,
-    devcontainer: false,
     dryRun: false,
     testMode: false,
     dir: "/tmp/example",
-    projectDir: "/tmp/example",
-    projectNameOption: undefined,
     initializer: {
       federationFile: "federation.ts",
       loggingFile: "logging.ts",
-      instruction: "done" as never,
+      instruction: message`done`,
       tasks: {},
       compilerOptions: {},
     },
@@ -39,7 +37,8 @@ function createInitData(): InitCommandData {
       denoUnstable: [],
     },
     env: {},
-  } as unknown as InitCommandData;
+  } satisfies InitCommandData;
+  return data;
 }
 
 function restoreDeno(
