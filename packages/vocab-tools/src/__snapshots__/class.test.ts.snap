@@ -93320,7 +93320,8 @@ export class Tombstone extends Object {
     static override get typeId(): URL {
       return new URL("https://www.w3.org/ns/activitystreams#Tombstone");
     }
-  #_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted: (Temporal.Instant)[] = [];
+  #_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType: ($EntityType)[] = [];
+#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted: (Temporal.Instant)[] = [];
 
   /**
    * Constructs a new instance of Tombstone with the given values.
@@ -93347,7 +93348,8 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;deleted?: Temporal.Instant | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;formerType?: $EntityType | null;
+formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -93356,6 +93358,42 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     } = {},
   ) {
   super(values, options);
+        if ("formerType" in values &&             values.formerType != null) {
+          if (isEntityType(values.formerType)) {
+            // @ts-ignore: type is checked above.
+            this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = [values.formerType];
+      
+          } else {
+            throw new TypeError(
+              "The formerType must be of type " +
+              "$EntityType" + ".",
+            );
+          }
+        }
+      
+        if ("formerTypes" in values &&             values.formerTypes != null) {
+      
+          if ("formerType" in values &&
+              values.formerType != null) {
+            throw new TypeError(
+              "Cannot initialize both formerType and " +
+                "formerTypes at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.formerTypes) &&
+              values.formerTypes.every(v => isEntityType(v))) {
+            // @ts-ignore: type is checked above.
+            this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = values.formerTypes;
+      
+          } else {
+            throw new TypeError(
+              "The formerTypes must be an array of type " +
+              "$EntityType" + ".",
+            );
+          }
+        }
+      
         if ("deleted" in values &&             values.deleted != null) {
           if (values.deleted instanceof Temporal.Instant) {
             // @ts-ignore: type is checked above.
@@ -93396,7 +93434,8 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;deleted?: Temporal.Instant | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;formerType?: $EntityType | null;
+formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
 
     = {},
     options: {
@@ -93412,7 +93451,43 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       // @ts-ignore: $warning is not recognized as a property, but it is.
       options = { ...options, $warning: this._warning };
     }
-  const clone = super.clone(values, options) as unknown as Tombstone;clone.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted;
+  const clone = super.clone(values, options) as unknown as Tombstone;clone.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType;
+        if ("formerType" in values &&             values.formerType != null) {
+          if (isEntityType(values.formerType)) {
+            // @ts-ignore: type is checked above.
+            clone.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = [values.formerType];
+      
+          } else {
+            throw new TypeError(
+              "The formerType must be of type " +
+              "$EntityType" + ".",
+            );
+          }
+        }
+      
+        if ("formerTypes" in values &&             values.formerTypes != null) {
+      
+          if ("formerType" in values &&
+              values.formerType != null) {
+            throw new TypeError(
+              "Cannot update both formerType and " +
+                "formerTypes at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.formerTypes) &&
+              values.formerTypes.every(v => isEntityType(v))) {
+            // @ts-ignore: type is checked above.
+            clone.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = values.formerTypes;
+      
+          } else {
+            throw new TypeError(
+              "The formerTypes must be an array of type " +
+              "$EntityType" + ".",
+            );
+          }
+        }
+      clone.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted;
         if ("deleted" in values &&             values.deleted != null) {
           if (values.deleted instanceof Temporal.Instant) {
             // @ts-ignore: type is checked above.
@@ -93429,6 +93504,29 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     return clone;
   }
   
+/** On a \`Tombstone\` object, the \`formerType\` property identifies the type of
+ * the object that was deleted.
+ * 
+ */
+ get formerType(): ($EntityType | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.length < 1) return null;
+        return this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType[0];
+      }
+      
+/** On a \`Tombstone\` object, the \`formerType\` property identifies the type of
+ * the object that was deleted.
+ * 
+ */
+get formerTypes(): ($EntityType)[] {
+        return this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType;
+      }
+      
 /** On a \`Tombstone\` object, the \`deleted\` property is a timestamp for when
  * the object was deleted.
  * 
@@ -93485,6 +93583,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       let compactItems: unknown[];
     
       compactItems = [];
+      for (const v of this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType) {
+        const item = (
+      { "@id": v.typeId.href }
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["formerType"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted) {
         const item = (
       v.toString()
@@ -93518,6 +93632,21 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       string,
       unknown[] | { "@list": unknown[] } | string
     >;
+    
+    array = [];
+    for (const v of this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType) {
+      const element = (
+    { "@id": v.typeId.href }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values["https://www.w3.org/ns/activitystreams#formerType"] = propValue;
+    
+    }
     
     array = [];
     for (const v of this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted) {
@@ -93572,6 +93701,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   protected override isCompactable(): boolean {
 
+      if (
+        this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType != null &&
+        this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.length > 0
+      ) return false;
+      
     return super.isCompactable();
   }
   
@@ -93680,6 +93814,33 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(instance instanceof Tombstone)) {
       throw new TypeError("Unexpected type: " + instance.constructor.name);
     }
+    const _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType: ($EntityType)[] = [];
+
+    let _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array = values["https://www.w3.org/ns/activitystreams#formerType"];
+    
+    for (
+      const v of _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array == null
+        ? []
+        : _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array.length === 1 && "@list" in _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array[0]
+        ? _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array[0]["@list"]
+        : _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = (() => {
+        const entityType = getEntityTypeById(v["@id"]);
+        if (entityType == null) {
+          getLogger(["fedify", "vocab"]).warn(
+            "Ignoring unknown vocabulary entity type reference: {typeId}",
+            { typeId: v["@id"] },
+          );
+        }
+        return entityType;
+      })();
+      if (typeof decoded === "undefined") continue;
+      _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.push(decoded)
+    }
+    instance.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType;
     const _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted: (Temporal.Instant)[] = [];
 
     let _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted__array = values["https://www.w3.org/ns/activitystreams#deleted"];
@@ -93718,6 +93879,32 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   
   protected override _getCustomInspectProxy(): Record<string, unknown> {
   const proxy: Record<string, unknown> = super._getCustomInspectProxy();
+      const _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType = this.#_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.length == 1) {
+        proxy.formerType = _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType[0];
+      }
+      
+      if (_Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.length > 1
+          || !("formerType" in proxy)
+          && _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType.length > 0) {
+        proxy.formerTypes = _Pn8kdUztYSt4nyoAkVsMcQaLo9U_formerType;
+      }
+      
       const _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL

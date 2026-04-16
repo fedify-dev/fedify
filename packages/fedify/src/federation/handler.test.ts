@@ -89,6 +89,7 @@ test("handleActor()", async () => {
     if (identifier !== "gone") return null;
     return new Tombstone({
       id: ctx.getActorUri(identifier),
+      formerType: Person,
       deleted: deletedAt,
     });
   };
@@ -346,6 +347,7 @@ test("handleActor()", async () => {
     ],
     id: "https://example.com/users/gone",
     type: "Tombstone",
+    formerType: "Person",
     deleted: "2024-01-15T00:00:00Z",
   });
   assertEquals(onNotFoundCalled, null);

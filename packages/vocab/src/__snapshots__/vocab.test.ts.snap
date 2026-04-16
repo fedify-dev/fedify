@@ -9295,6 +9295,7 @@ snapshot[`Deno.inspect(Tombstone) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
+  formerType: [class Person extends Object],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
 `;
@@ -9339,6 +9340,7 @@ snapshot[`Deno.inspect(Tombstone) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
+  formerType: [class Person extends Object],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
 `;
@@ -9383,6 +9385,7 @@ snapshot[`Deno.inspect(Tombstone) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
+  formerTypes: [ [class Person extends Object], [class Person extends Object] ],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
 `;

@@ -4,6 +4,7 @@ import {
   LanguageString,
   parseDecimal,
 } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import {
   areAllScalarTypes,
   loadSchemaFiles,
@@ -43,6 +44,7 @@ import {
   QuoteAuthorization,
   QuoteRequest,
   Source,
+  Tombstone,
 } from "./vocab.ts";
 
 const NOTE_QUOTE_CONTEXT = [
@@ -728,6 +730,109 @@ test("Person.toJsonLd()", async () => {
     alsoKnownAs: "https://example.com/alias",
     type: "Person",
   });
+});
+
+test("Tombstone.toJsonLd() serializes formerType", async () => {
+  const deleted = Temporal.Instant.from("2024-01-15T00:00:00Z");
+  const tombstone = new Tombstone({
+    id: new URL("https://example.com/users/alice"),
+    formerType: Person,
+    deleted,
+  });
+
+  deepStrictEqual(
+    await tombstone.toJsonLd({ contextLoader: mockDocumentLoader }),
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
+      ],
+      id: "https://example.com/users/alice",
+      type: "Tombstone",
+      formerType: "Person",
+      deleted: "2024-01-15T00:00:00Z",
+    },
+  );
+
+  const expanded = await tombstone.toJsonLd({
+    format: "expand",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>[];
+  deepStrictEqual(expanded, [{
+    "@id": "https://example.com/users/alice",
+    "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
+    "https://www.w3.org/ns/activitystreams#formerType": [{
+      "@id": "https://www.w3.org/ns/activitystreams#Person",
+    }],
+    "https://www.w3.org/ns/activitystreams#deleted": [{
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+      "@value": "2024-01-15T00:00:00Z",
+    }],
+  }]);
+});
+
+test("Tombstone.fromJsonLd() restores formerType", async () => {
+  const tombstone = await Tombstone.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
+    ],
+    id: "https://example.com/users/alice",
+    type: "Tombstone",
+    formerType: "Person",
+    deleted: "2024-01-15T00:00:00Z",
+  }, {
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(tombstone.formerType, Person);
+  deepStrictEqual(tombstone.formerTypes, [Person]);
+  deepStrictEqual(
+    tombstone.deleted,
+    Temporal.Instant.from("2024-01-15T00:00:00Z"),
+  );
+});
+
+test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
+  const records: LogRecord[] = [];
+  await reset();
+  await configure({
+    sinks: {
+      buffer(record: LogRecord): void {
+        records.push(record);
+      },
+    },
+    filters: {},
+    loggers: [{ category: [], sinks: ["buffer"] }],
+  });
+
+  const tombstone = await Tombstone.fromJsonLd({
+    "@id": "https://example.com/users/alice",
+    "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
+    "https://www.w3.org/ns/activitystreams#formerType": [{
+      "@id": "https://example.com/ns#Widget",
+    }],
+    "https://www.w3.org/ns/activitystreams#deleted": [{
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+      "@value": "2024-01-15T00:00:00Z",
+    }],
+  });
+
+  deepStrictEqual(tombstone.formerTypes, []);
+  deepStrictEqual(
+    tombstone.deleted,
+    Temporal.Instant.from("2024-01-15T00:00:00Z"),
+  );
+  deepStrictEqual(
+    records.some((record) =>
+      JSON.stringify(record).includes(
+        "Ignoring unknown vocabulary entity type reference",
+      )
+    ),
+    true,
+  );
 });
 
 test("Endpoints.toJsonLd() omits type", async () => {
@@ -2276,6 +2381,7 @@ const sampleValues: Record<string, any> = {
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
   "fedify:proofPurpose": "assertionMethod",
   "fedify:units": "m",
+  "fedify:vocabEntityType": Person,
 };
 
 const types: Record<string, TypeSchema> =
