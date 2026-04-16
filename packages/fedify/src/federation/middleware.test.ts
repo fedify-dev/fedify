@@ -1331,7 +1331,7 @@ test("Federation.fetch()", async (t) => {
 
     assertEquals(dispatches, ["gone"]);
     assertEquals(response.status, 410);
-    assertEquals(await response.text(), "");
+    assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
   });
 
   await t.step("POST to tombstoned inbox returns not found", async () => {
