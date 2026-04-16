@@ -828,9 +828,9 @@ test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
     );
     deepStrictEqual(
       records.some((record) =>
-        JSON.stringify(record).includes(
-          "Ignoring unknown vocabulary entity type reference",
-        )
+        record.rawMessage ===
+          "Ignoring unknown vocabulary entity type reference: {typeId}" &&
+        record.properties.typeId === "https://example.com/ns#Widget"
       ),
       true,
     );

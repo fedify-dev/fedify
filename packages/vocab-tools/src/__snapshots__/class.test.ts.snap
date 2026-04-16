@@ -95780,15 +95780,87 @@ const entityTypes: readonly $EntityType[] = [
   View,
 ];
 
-const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map(
-  entityTypes.map((entityType) => [entityType.typeId.href, entityType]),
+const entityTypeSet: ReadonlySet<$EntityType> = new Set(entityTypes);
+
+const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map<string, $EntityType>(
+  [
+    ["https://www.w3.org/ns/activitystreams#Object", Object],
+    ["http://joinmastodon.org/ns#Emoji", Emoji],
+    ["http://litepub.social/ns#ChatMessage", ChatMessage],
+    ["https://www.w3.org/ns/activitystreams#Activity", Activity],
+    ["http://litepub.social/ns#EmojiReact", EmojiReact],
+    ["https://gotosocial.org/ns#AnnounceAuthorization", AnnounceAuthorization],
+    ["https://gotosocial.org/ns#AnnounceRequest", AnnounceRequest],
+    ["https://gotosocial.org/ns#LikeApproval", LikeAuthorization],
+    ["https://gotosocial.org/ns#LikeRequest", LikeRequest],
+    ["https://gotosocial.org/ns#ReplyAuthorization", ReplyAuthorization],
+    ["https://gotosocial.org/ns#ReplyRequest", ReplyRequest],
+    ["https://w3id.org/fep/044f#QuoteAuthorization", QuoteAuthorization],
+    ["https://w3id.org/fep/044f#QuoteRequest", QuoteRequest],
+    ["https://www.w3.org/ns/did#Service", DidService],
+    ["https://w3id.org/fep/9091#Export", Export],
+    ["https://w3id.org/security#DataIntegrityProof", DataIntegrityProof],
+    ["https://w3id.org/security#Key", CryptographicKey],
+    ["https://w3id.org/security#Multikey", Multikey],
+    ["https://w3id.org/valueflows/ont/vf#Proposal", Proposal],
+    ["https://www.w3.org/ns/activitystreams#Accept", Accept],
+    ["https://www.w3.org/ns/activitystreams#Add", Add],
+    ["https://www.w3.org/ns/activitystreams#Announce", Announce],
+    ["https://www.w3.org/ns/activitystreams#Application", Application],
+    ["https://www.w3.org/ns/activitystreams#IntransitiveActivity", IntransitiveActivity],
+    ["https://www.w3.org/ns/activitystreams#Arrive", Arrive],
+    ["https://www.w3.org/ns/activitystreams#Article", Article],
+    ["https://www.w3.org/ns/activitystreams#Document", Document],
+    ["https://www.w3.org/ns/activitystreams#Audio", Audio],
+    ["https://www.w3.org/ns/activitystreams#Ignore", Ignore],
+    ["https://www.w3.org/ns/activitystreams#Block", Block],
+    ["https://www.w3.org/ns/activitystreams#Collection", Collection],
+    ["https://www.w3.org/ns/activitystreams#CollectionPage", CollectionPage],
+    ["https://www.w3.org/ns/activitystreams#Create", Create],
+    ["https://www.w3.org/ns/activitystreams#Delete", Delete],
+    ["https://www.w3.org/ns/activitystreams#Dislike", Dislike],
+    ["https://www.w3.org/ns/activitystreams#Event", Event],
+    ["https://www.w3.org/ns/activitystreams#Flag", Flag],
+    ["https://www.w3.org/ns/activitystreams#Follow", Follow],
+    ["https://www.w3.org/ns/activitystreams#Group", Group],
+    ["https://www.w3.org/ns/activitystreams#Image", Image],
+    ["https://www.w3.org/ns/activitystreams#Offer", Offer],
+    ["https://www.w3.org/ns/activitystreams#Invite", Invite],
+    ["https://www.w3.org/ns/activitystreams#Join", Join],
+    ["https://www.w3.org/ns/activitystreams#Leave", Leave],
+    ["https://www.w3.org/ns/activitystreams#Like", Like],
+    ["https://www.w3.org/ns/activitystreams#Listen", Listen],
+    ["https://www.w3.org/ns/activitystreams#Move", Move],
+    ["https://www.w3.org/ns/activitystreams#Note", Note],
+    ["https://www.w3.org/ns/activitystreams#OrderedCollection", OrderedCollection],
+    ["https://www.w3.org/ns/activitystreams#OrderedCollectionPage", OrderedCollectionPage],
+    ["https://www.w3.org/ns/activitystreams#Organization", Organization],
+    ["https://www.w3.org/ns/activitystreams#Page", Page],
+    ["https://www.w3.org/ns/activitystreams#Person", Person],
+    ["https://www.w3.org/ns/activitystreams#Place", Place],
+    ["https://www.w3.org/ns/activitystreams#Profile", Profile],
+    ["https://www.w3.org/ns/activitystreams#Question", Question],
+    ["https://www.w3.org/ns/activitystreams#Read", Read],
+    ["https://www.w3.org/ns/activitystreams#Reject", Reject],
+    ["https://www.w3.org/ns/activitystreams#Relationship", Relationship],
+    ["https://www.w3.org/ns/activitystreams#Remove", Remove],
+    ["https://www.w3.org/ns/activitystreams#Service", Service],
+    ["https://www.w3.org/ns/activitystreams#TentativeAccept", TentativeAccept],
+    ["https://www.w3.org/ns/activitystreams#TentativeReject", TentativeReject],
+    ["https://www.w3.org/ns/activitystreams#Tombstone", Tombstone],
+    ["https://www.w3.org/ns/activitystreams#Travel", Travel],
+    ["https://www.w3.org/ns/activitystreams#Undo", Undo],
+    ["https://www.w3.org/ns/activitystreams#Update", Update],
+    ["https://www.w3.org/ns/activitystreams#Video", Video],
+    ["https://www.w3.org/ns/activitystreams#View", View],
+  ],
 );
 
 /**
  * Checks whether the given value is a generated vocabulary entity class.
  */
 export function isEntityType(value: unknown): value is $EntityType {
-  return entityTypes.includes(value as $EntityType);
+  return entityTypeSet.has(value as $EntityType);
 }
 
 /**

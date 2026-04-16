@@ -113,10 +113,9 @@ function* generateEntityTypeHelpers(
   sortedTypeUris: string[],
   types: Record<string, TypeSchema>,
 ): Iterable<string> {
-  const entityTypeNames = sortedTypeUris.filter((typeUri) =>
-    types[typeUri].entity
-  )
-    .map((typeUri) => types[typeUri].name);
+  const entityTypes = sortedTypeUris.filter((typeUri) => types[typeUri].entity)
+    .map((typeUri) => ({ name: types[typeUri].name, uri: typeUri }));
+  const entityTypeNames = entityTypes.map((entityType) => entityType.name);
   const entityTypeUnion = entityTypeNames.length < 1
     ? " never"
     : `\n  | typeof ${entityTypeNames.join("\n  | typeof ")}`;
@@ -132,15 +131,22 @@ const entityTypes: readonly $EntityType[] = [
   }
   yield `];
 
-const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map(
-  entityTypes.map((entityType) => [entityType.typeId.href, entityType]),
+const entityTypeSet: ReadonlySet<$EntityType> = new Set(entityTypes);
+
+const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map<string, $EntityType>(
+  [
+`;
+  for (const entityType of entityTypes) {
+    yield `    [${JSON.stringify(entityType.uri)}, ${entityType.name}],\n`;
+  }
+  yield `  ],
 );
 
 /**
  * Checks whether the given value is a generated vocabulary entity class.
  */
 export function isEntityType(value: unknown): value is $EntityType {
-  return entityTypes.includes(value as $EntityType);
+  return entityTypeSet.has(value as $EntityType);
 }
 
 /**

@@ -93,11 +93,19 @@ test("generateClasses() emits $EntityType helpers for fedify:vocabEntityType", a
   );
   match(
     entireCode,
+    /const entityTypeSet: ReadonlySet<\$EntityType> = new Set\(entityTypes\);/,
+  );
+  match(
+    entireCode,
     /export function isEntityType\(value: unknown\): value is \$EntityType/,
   );
   match(
     entireCode,
     /export function getEntityTypeById\(id: string \| URL\): \$EntityType \| undefined/,
+  );
+  match(
+    entireCode,
+    /const entityTypeIds: ReadonlyMap<string, \$EntityType> = new Map<string, \$EntityType>\(\s*\[\s*\["https:\/\/example.com\/entity", Entity\],\s*\["https:\/\/example.com\/child-entity", ChildEntity\],\s*\["https:\/\/example.com\/tombstone", Tombstone\],\s*\],\s*\);/s,
   );
   match(
     entireCode,
