@@ -163,7 +163,7 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.href`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@id" in ${v}
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
         && typeof ${v}["@id"] === "string"
         && ${v}["@id"] !== ""`;
     },
@@ -403,7 +403,7 @@ const scalarTypes: Record<string, ScalarType> = {
       return v;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@id" in ${v}
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
         && typeof ${v}["@id"] === "string"
         && ${v}["@id"].startsWith("https://w3id.org/security#")
         && [
@@ -435,6 +435,36 @@ const scalarTypes: Record<string, ScalarType> = {
     },
     decoder(v) {
       return `${v}["@value"]`;
+    },
+  },
+  "fedify:vocabEntityType": {
+    name: "$EntityType",
+    typeGuard(v) {
+      return `isEntityType(${v})`;
+    },
+    encoder(v) {
+      return `{ "@id": ${v}.typeId.href }`;
+    },
+    dataCheck(v) {
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
+        && typeof ${v}["@id"] === "string"
+        && ${v}["@id"] !== ""`;
+    },
+    decoder(v) {
+      return `(() => {
+        if (${v} == null || typeof ${v} !== "object" || !("@id" in ${v}) ||
+            typeof ${v}["@id"] !== "string" || ${v}["@id"] === "") {
+          return undefined;
+        }
+        const entityType = getEntityTypeById(${v}["@id"]);
+        if (entityType == null) {
+          getLogger(["fedify", "vocab"]).warn(
+            "Ignoring unknown vocabulary entity type reference: {typeId}",
+            { typeId: ${v}["@id"] },
+          );
+        }
+        return entityType;
+      })()`;
     },
   },
 };

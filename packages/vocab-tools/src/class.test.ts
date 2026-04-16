@@ -81,6 +81,47 @@ test("generateClasses() imports Decimal helpers for xsd:decimal", async () => {
   match(entireCode, /parseDecimal\(v\["@value"\]\)/);
 });
 
+test("generateClasses() emits $EntityType helpers for fedify:vocabEntityType", async () => {
+  const entireCode = await getEntityTypeFixtureCode();
+  match(
+    entireCode,
+    /export type \$EntityType =\s+\| typeof Entity\s+\| typeof ChildEntity\s+\| typeof Tombstone;/s,
+  );
+  match(
+    entireCode,
+    /const entityTypes: readonly \$EntityType\[\] = \[\s*Entity,\s*ChildEntity,\s*Tombstone,\s*\];/s,
+  );
+  match(
+    entireCode,
+    /const entityTypeSet: ReadonlySet<\$EntityType> = new Set\(entityTypes\);/,
+  );
+  match(
+    entireCode,
+    /export function isEntityType\(value: unknown\): value is \$EntityType/,
+  );
+  match(
+    entireCode,
+    /export function getEntityTypeById\(id: string \| URL\): \$EntityType \| undefined/,
+  );
+  match(
+    entireCode,
+    /const entityTypeIds: ReadonlyMap<string, \$EntityType> = new Map<string, \$EntityType>\(\s*\[\s*\["https:\/\/example.com\/entity", Entity\],\s*\["https:\/\/example.com\/child-entity", ChildEntity\],\s*\["https:\/\/example.com\/tombstone", Tombstone\],\s*\],\s*\);/s,
+  );
+  match(
+    entireCode,
+    /return entityTypeIds\.get\(typeof id === "string" \? id : id\?\.href\);/,
+  );
+});
+
+test("generateClasses() uses entity type helpers for fedify:vocabEntityType", async () => {
+  const entireCode = await getEntityTypeFixtureCode();
+  match(entireCode, /formerType\?: \$EntityType \| null;/);
+  match(entireCode, /formerTypes\?: \(\$EntityType\)\[\];/);
+  match(entireCode, /isEntityType\(values\.formerType\)/);
+  match(entireCode, /v\.typeId\.href/);
+  match(entireCode, /getEntityTypeById\(v\["@id"\]\)/);
+});
+
 test("getDataCheck() uses canParseDecimal() for xsd:decimal", () => {
   const check = getDataCheck(
     "http://www.w3.org/2001/XMLSchema#decimal",
@@ -168,6 +209,64 @@ async function getDecimalFixtureCode() {
           uri: "https://example.com/amount",
           description: "An exact decimal amount.",
           range: ["http://www.w3.org/2001/XMLSchema#decimal"],
+        },
+      ],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+  };
+  return (await Array.fromAsync(generateClasses(types))).join("");
+}
+
+async function getEntityTypeFixtureCode() {
+  const types: Record<string, TypeSchema> = {
+    "https://example.com/entity": {
+      name: "Entity",
+      uri: "https://example.com/entity",
+      compactName: "Entity",
+      entity: true,
+      description: "An entity.",
+      properties: [],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+    "https://example.com/child-entity": {
+      name: "ChildEntity",
+      uri: "https://example.com/child-entity",
+      compactName: "ChildEntity",
+      extends: "https://example.com/entity",
+      entity: true,
+      description: "A child entity.",
+      properties: [],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+    "https://example.com/value": {
+      name: "Value",
+      uri: "https://example.com/value",
+      compactName: "Value",
+      entity: false,
+      description: "A value type.",
+      properties: [],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+    "https://example.com/tombstone": {
+      name: "Tombstone",
+      uri: "https://example.com/tombstone",
+      compactName: "Tombstone",
+      extends: "https://example.com/entity",
+      entity: true,
+      description: "A tombstone.",
+      properties: [
+        {
+          singularName: "formerType",
+          pluralName: "formerTypes",
+          singularAccessor: true,
+          compactName: "formerType",
+          uri: "https://example.com/formerType",
+          description: "The former type.",
+          range: ["fedify:vocabEntityType"],
         },
       ],
       defaultContext:

@@ -14,6 +14,16 @@ defaultContext:
 - "https://gotosocial.org/ns"
 
 properties:
+- pluralName: formerTypes
+  singularName: formerType
+  singularAccessor: true
+  compactName: formerType
+  uri: "https://www.w3.org/ns/activitystreams#formerType"
+  description: |
+    On a `Tombstone` object, the `formerType` property identifies the type of
+    the object that was deleted.
+  range:
+  - "fedify:vocabEntityType"
 - singularName: deleted
   functional: true
   compactName: deleted

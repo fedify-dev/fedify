@@ -109,6 +109,56 @@ async function* generateClass(
   }
 }
 
+function* generateEntityTypeHelpers(
+  sortedTypeUris: string[],
+  types: Record<string, TypeSchema>,
+): Iterable<string> {
+  const entityTypes = sortedTypeUris.filter((typeUri) => types[typeUri].entity)
+    .map((typeUri) => ({ name: types[typeUri].name, uri: typeUri }));
+  const entityTypeNames = entityTypes.map((entityType) => entityType.name);
+  const entityTypeUnion = entityTypeNames.length < 1
+    ? " never"
+    : `\n  | typeof ${entityTypeNames.join("\n  | typeof ")}`;
+  yield `/**
+ * Constructor types for all generated vocabulary entity classes.
+ */
+export type $EntityType =${entityTypeUnion};
+
+const entityTypes: readonly $EntityType[] = [
+`;
+  for (const entityTypeName of entityTypeNames) {
+    yield `  ${entityTypeName},\n`;
+  }
+  yield `];
+
+const entityTypeSet: ReadonlySet<$EntityType> = new Set(entityTypes);
+
+const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map<string, $EntityType>(
+  [
+`;
+  for (const entityType of entityTypes) {
+    yield `    [${JSON.stringify(entityType.uri)}, ${entityType.name}],\n`;
+  }
+  yield `  ],
+);
+
+/**
+ * Checks whether the given value is a generated vocabulary entity class.
+ */
+export function isEntityType(value: unknown): value is $EntityType {
+  return entityTypeSet.has(value as $EntityType);
+}
+
+/**
+ * Gets the generated vocabulary entity class for the given type URI.
+ */
+export function getEntityTypeById(id: string | URL): $EntityType | undefined {
+  return entityTypeIds.get(typeof id === "string" ? id : id?.href);
+}
+
+`;
+}
+
 /**
  * Generates the TypeScript classes from the given types.
  * @param types The types to generate classes from.
@@ -147,4 +197,5 @@ export async function* generateClasses(
   for (const typeUri of sorted) {
     for await (const code of generateClass(typeUri, types)) yield code;
   }
+  for (const code of generateEntityTypeHelpers(sorted, types)) yield code;
 }

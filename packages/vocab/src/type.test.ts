@@ -1,7 +1,7 @@
 import { test } from "@fedify/fixture";
 import { deepStrictEqual } from "node:assert/strict";
 import { getTypeId } from "./type.ts";
-import { Person } from "./vocab.ts";
+import { getEntityTypeById, isEntityType, Link, Person } from "./vocab.ts";
 
 test("getTypeId()", () => {
   const obj = new Person({});
@@ -17,4 +17,20 @@ test("getTypeId()", () => {
   deepStrictEqual(getTypeId(obj4), null);
   const obj5: Person | null | undefined = undefined;
   deepStrictEqual(getTypeId(obj5), undefined);
+});
+
+test("entity type helpers", () => {
+  deepStrictEqual(isEntityType(Person), true);
+  deepStrictEqual(isEntityType(Link), false);
+  deepStrictEqual(getEntityTypeById(Person.typeId), Person);
+  deepStrictEqual(getEntityTypeById(Person.typeId.href), Person);
+  deepStrictEqual(getEntityTypeById(Link.typeId), undefined);
+  deepStrictEqual(
+    getEntityTypeById(null as unknown as string | URL),
+    undefined,
+  );
+  deepStrictEqual(
+    getEntityTypeById(undefined as unknown as string | URL),
+    undefined,
+  );
 });

@@ -60,7 +60,7 @@ instead of `null`:
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { type Federation } from "@fedify/fedify";
-import { Tombstone } from "@fedify/vocab";
+import { Person, Tombstone } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 const deletedAt = Temporal.Instant.from("2024-01-15T00:00:00Z");
 // ---cut-before---
@@ -68,6 +68,7 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
   if (identifier !== "alice") return null;
   return new Tombstone({
     id: ctx.getActorUri(identifier),
+    formerType: Person,
     deleted: deletedAt,
   });
 });
@@ -75,7 +76,9 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
 
 When an actor dispatcher returns a `Tombstone`, Fedify responds from the actor
 endpoint with `410 Gone` and the serialized tombstone body.  WebFinger for the
-same account also responds with `410 Gone`.
+same account also responds with `410 Gone`.  If you know the deleted actor's
+former Fedify entity class, set `formerType` so the tombstone preserves the
+original ActivityStreams type.
 
 Use `null` only when the identifier is not handled at all and the request
 should fall through to the next middleware or `onNotFound` handler.

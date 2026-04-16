@@ -34,6 +34,14 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added `Tombstone.formerType` plus generated entity type helpers for deleted
+    vocabulary objects.  Applications can now construct tombstones with Fedify
+    entity classes such as `Person`, and `@fedify/vocab` now exports
+    `$EntityType`, `isEntityType()`, and `getEntityTypeById()` for working with
+    those references.  Unknown remote `formerType` values are ignored with a
+    warning instead of making the whole tombstone fail to parse.
+    [[#645], [#681]]
+
  -  Added [FEP-044f] vocabulary support for Mastodon-style quote posts.
     [[#452], [#679]]
 
@@ -56,7 +64,18 @@ To be released.
 [FEP-0837]: https://w3id.org/fep/0837
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
+[#645]: https://github.com/fedify-dev/fedify/issues/645
 [#679]: https://github.com/fedify-dev/fedify/pull/679
+[#681]: https://github.com/fedify-dev/fedify/pull/681
+
+### @fedify/vocab-tools
+
+ -  Added the `fedify:vocabEntityType` pseudo-scalar to the vocabulary
+    generator.  Vocabulary properties can now accept generated Fedify entity
+    constructors instead of arbitrary IRIs when the schema wants a reference to
+    a known vocabulary type.  Generated code now also emits the supporting
+    `$EntityType`, `isEntityType()`, and `getEntityTypeById()` helpers for
+    working with those references.  [[#645], [#681]]
 
 ### @fedify/cli
 
