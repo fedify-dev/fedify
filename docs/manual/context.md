@@ -230,7 +230,10 @@ const actor = await ctx.getActor(identifier, {
   tombstone: "passthrough",
 });
 if (actor instanceof Tombstone) {
-  console.log(`${identifier} was deleted at ${actor.deleted}`);
+  console.log(
+    `${identifier} was deleted at ${actor.deleted} ` +
+      `(former type: ${actor.formerType?.name ?? "unknown"})`,
+  );
 }
 ~~~~
 
