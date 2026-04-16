@@ -39,7 +39,7 @@ import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
-import type { Context } from "./context.ts";
+import type { Context, GetActorOptions } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {
   ContextImpl,
@@ -51,6 +51,10 @@ import {
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 import { RouterError } from "./router.ts";
+
+type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
+  (<T>() => T extends B ? 1 : 2) ? true : false;
+type Assert<T extends true> = T;
 
 test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
@@ -911,8 +915,13 @@ test({
 
       federation.setActorDispatcher(
         "/users/{identifier}",
-        (_ctx, identifier) =>
-          new vocab.Person({ preferredUsername: identifier }),
+        (ctx, identifier) =>
+          identifier === "gone"
+            ? new vocab.Tombstone({
+              id: ctx.getActorUri(identifier),
+              deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+            })
+            : new vocab.Person({ preferredUsername: identifier }),
       );
       const ctx2 = federation.createContext(req, 789);
       assertEquals(ctx2.request, req);
@@ -921,6 +930,55 @@ test({
       assertEquals(
         await ctx2.getActor("john"),
         new vocab.Person({ preferredUsername: "john" }),
+      );
+      const defaultActorPromise = ctx2.getActor("gone");
+      type DefaultActorType = Assert<
+        IsEqual<Awaited<typeof defaultActorPromise>, vocab.Actor | null>
+      >;
+      const defaultActorTypeCheck: DefaultActorType = true;
+      void defaultActorTypeCheck;
+      assertEquals(await defaultActorPromise, null);
+
+      const tombstoneActorPromise = ctx2.getActor("gone", {
+        tombstone: "passthrough",
+      });
+      type TombstoneActorType = Assert<
+        IsEqual<
+          Awaited<typeof tombstoneActorPromise>,
+          vocab.Actor | vocab.Tombstone | null
+        >
+      >;
+      const tombstoneActorTypeCheck: TombstoneActorType = true;
+      void tombstoneActorTypeCheck;
+      assertEquals(
+        await tombstoneActorPromise,
+        new vocab.Tombstone({
+          id: new URL("https://example.com/users/gone"),
+          deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+        }),
+      );
+
+      const broadTombstoneOptions: GetActorOptions = {
+        tombstone: "passthrough",
+      };
+      const broadTombstoneActorPromise = ctx2.getActor(
+        "gone",
+        broadTombstoneOptions,
+      );
+      type BroadTombstoneActorType = Assert<
+        IsEqual<
+          Awaited<typeof broadTombstoneActorPromise>,
+          vocab.Actor | vocab.Tombstone | null
+        >
+      >;
+      const broadTombstoneActorTypeCheck: BroadTombstoneActorType = true;
+      void broadTombstoneActorTypeCheck;
+      assertEquals(
+        await broadTombstoneActorPromise,
+        new vocab.Tombstone({
+          id: new URL("https://example.com/users/gone"),
+          deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+        }),
       );
 
       federation.setObjectDispatcher(
@@ -1047,6 +1105,12 @@ test("Federation.fetch()", async (t) => {
       "/users/{identifier}",
       (ctx, identifier) => {
         dispatches.push(identifier);
+        if (identifier === "gone") {
+          return new vocab.Tombstone({
+            id: ctx.getActorUri(identifier),
+            deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+          });
+        }
         return new vocab.Person({
           id: ctx.getActorUri(identifier),
           inbox: ctx.getInboxUri(identifier),
@@ -1226,6 +1290,63 @@ test("Federation.fetch()", async (t) => {
 
     assertEquals(dispatches, ["activity"]);
     assertEquals(response.status, 200);
+  });
+
+  await t.step("GET tombstoned actor returns 410 Gone", async () => {
+    const { federation, dispatches } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request("https://example.com/users/gone", {
+        method: "GET",
+        headers: {
+          "Accept": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(dispatches, ["gone"]);
+    assertEquals(response.status, 410);
+    assertEquals(await response.json(), {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
+      ],
+      id: "https://example.com/users/gone",
+      type: "Tombstone",
+      deleted: "2024-01-15T00:00:00Z",
+    });
+  });
+
+  await t.step("WebFinger for tombstoned actor returns 410 Gone", async () => {
+    const { federation, dispatches } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request(
+        "https://example.com/.well-known/webfinger?resource=acct:gone@example.com",
+      ),
+      { contextData: undefined },
+    );
+
+    assertEquals(dispatches, ["gone"]);
+    assertEquals(response.status, 410);
+    assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
+  });
+
+  await t.step("POST to tombstoned inbox returns not found", async () => {
+    const { federation, inbox } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request("https://example.com/users/gone/inbox", {
+        method: "POST",
+        headers: { "accept": "application/ld+json" },
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(inbox, []);
+    assertEquals(response.status, 404);
   });
 
   await t.step("onNotAcceptable with GET", async () => {

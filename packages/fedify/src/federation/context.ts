@@ -8,6 +8,7 @@ import type {
   Multikey,
   Object,
   Recipient,
+  Tombstone,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
@@ -438,6 +439,20 @@ export interface Context<TContextData> {
 }
 
 /**
+ * Options for {@link RequestContext.getActor}.
+ * @since 2.2.0
+ */
+export interface GetActorOptions {
+  /**
+   * Controls how tombstoned actors are returned.
+   *
+   * By default, tombstones are suppressed and returned as `null`.  Set this to
+   * `"passthrough"` to receive a {@link Tombstone} result instead.
+   */
+  readonly tombstone?: "suppress" | "passthrough";
+}
+
+/**
  * A context for a request.
  */
 export interface RequestContext<TContextData> extends Context<TContextData> {
@@ -469,6 +484,54 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * @since 0.7.0
    */
   getActor(identifier: string): Promise<Actor | null>;
+
+  /**
+   * Gets an {@link Actor} object or {@link Tombstone} for the given
+   * identifier.
+   * @param identifier The actor's identifier.
+   * @param options Options for getting the actor.  Set
+   *                `options.tombstone` to `"passthrough"` to receive
+   *                tombstoned actors instead of `null`.
+   * @returns The actor object, a tombstone, or `null` if the actor is not
+   *          found.
+   * @throws {Error} If no actor dispatcher is available.
+   * @since 2.2.0
+   */
+  getActor(
+    identifier: string,
+    options: GetActorOptions & { readonly tombstone: "passthrough" },
+  ): Promise<Actor | Tombstone | null>;
+
+  /**
+   * Gets an {@link Actor} object for the given identifier.
+   * @param identifier The actor's identifier.
+   * @param options Options for getting the actor.
+   * @returns The actor object, or `null` if the actor is not found.
+   *          Tombstoned actors are suppressed unless `options.tombstone` is
+   *          `"passthrough"`.
+   * @throws {Error} If no actor dispatcher is available.
+   * @since 2.2.0
+   */
+  getActor(
+    identifier: string,
+    options: GetActorOptions & { readonly tombstone?: "suppress" | undefined },
+  ): Promise<Actor | null>;
+
+  /**
+   * Gets an {@link Actor} object or {@link Tombstone} for the given
+   * identifier.
+   * @param identifier The actor's identifier.
+   * @param options Options for getting the actor.
+   * @returns The actor object, a tombstone, or `null` if the actor is not
+   *          found.  This broad overload is used when the caller passes an
+   *          options value whose `tombstone` mode is not known statically.
+   * @throws {Error} If no actor dispatcher is available.
+   * @since 2.2.0
+   */
+  getActor(
+    identifier: string,
+    options: GetActorOptions,
+  ): Promise<Actor | Tombstone | null>;
 
   /**
    * Gets an object of the given class with the given values.

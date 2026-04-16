@@ -1,4 +1,4 @@
-import { Link as LinkObject } from "@fedify/vocab";
+import { Link as LinkObject, Tombstone } from "@fedify/vocab";
 import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import type { Span, Tracer } from "@opentelemetry/api";
@@ -200,6 +200,14 @@ async function handleWebFingerInternal<TContextData>(
     logger.error("Actor {identifier} not found.", { identifier });
     return await onNotFound(request);
   }
+  if (actor instanceof Tombstone) {
+    return new Response(null, {
+      status: 410,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
   const links: Link[] = [
     {
       rel: "self",
@@ -240,10 +248,11 @@ async function handleWebFingerInternal<TContextData>(
   }
 
   const aliases: string[] = [];
-  if (resourceUrl.protocol != "acct:" && actor.preferredUsername != null) {
-    aliases.push(`acct:${actor.preferredUsername}@${host ?? context.url.host}`);
+  const preferredUsername = actor.preferredUsername;
+  if (resourceUrl.protocol != "acct:" && preferredUsername != null) {
+    aliases.push(`acct:${preferredUsername}@${host ?? context.url.host}`);
     if (host != null && host !== context.url.host) {
-      aliases.push(`acct:${actor.preferredUsername}@${context.url.host}`);
+      aliases.push(`acct:${preferredUsername}@${context.url.host}`);
     }
   }
   if (resourceUrl.href !== context.getActorUri(identifier).href) {

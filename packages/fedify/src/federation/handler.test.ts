@@ -9,6 +9,7 @@ import {
   Note,
   type Object,
   Person,
+  Tombstone,
 } from "@fedify/vocab";
 import { FetchError } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
@@ -68,6 +69,7 @@ const WRAPPER_QUOTE_CONTEXT_TERMS = {
 
 test("handleActor()", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const deletedAt = Temporal.Instant.from("2024-01-15T00:00:00Z");
   let context = createRequestContext<void>({
     federation,
     data: undefined,
@@ -81,6 +83,13 @@ test("handleActor()", async () => {
     return new Person({
       id: ctx.getActorUri(identifier),
       name: "Someone",
+    });
+  };
+  const tombstoneDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "gone") return null;
+    return new Tombstone({
+      id: ctx.getActorUri(identifier),
+      deleted: deletedAt,
     });
   };
   let onNotFoundCalled: Request | null = null;
@@ -291,6 +300,53 @@ test("handleActor()", async () => {
     id: "https://example.com/users/someone",
     type: "Person",
     name: "Someone",
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  onNotFoundCalled = null;
+  response = await handleActor(
+    context.request,
+    {
+      context,
+      identifier: "gone",
+      actorDispatcher: tombstoneDispatcher,
+      authorizePredicate: () => false,
+      onNotFound,
+      onUnauthorized,
+    },
+  );
+  assertEquals(response.status, 401);
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onUnauthorizedCalled, context.request);
+
+  onUnauthorizedCalled = null;
+  response = await handleActor(
+    context.request,
+    {
+      context,
+      identifier: "gone",
+      actorDispatcher: tombstoneDispatcher,
+      authorizePredicate: () => true,
+      onNotFound,
+      onUnauthorized,
+    },
+  );
+  assertEquals(response.status, 410);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(response.headers.get("Vary"), "Accept");
+  assertEquals(await response.json(), {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://gotosocial.org/ns",
+    ],
+    id: "https://example.com/users/gone",
+    type: "Tombstone",
+    deleted: "2024-01-15T00:00:00Z",
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);

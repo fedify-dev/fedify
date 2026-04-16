@@ -6,7 +6,7 @@ import type {
   Object,
   Recipient,
 } from "@fedify/vocab";
-import { getTypeId } from "@fedify/vocab";
+import { getTypeId, Tombstone } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { Tracer } from "@opentelemetry/api";
@@ -265,6 +265,7 @@ export class FederationBuilderImpl<TContextData>
               "Context.getActorUri(identifier).",
           );
         }
+        if (actor instanceof Tombstone) return actor;
         if (
           this.followingCallbacks != null &&
           this.followingCallbacks.dispatcher != null

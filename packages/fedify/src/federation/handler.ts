@@ -10,6 +10,7 @@ import {
   Object,
   OrderedCollection,
   OrderedCollectionPage,
+  Tombstone,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
@@ -103,6 +104,16 @@ export async function handleActor<TContextData>(
     if (!await authorizePredicate(context, identifier)) {
       return await onUnauthorized(request);
     }
+  }
+  if (actor instanceof Tombstone) {
+    const jsonLd = await actor.toJsonLd(context);
+    return new Response(JSON.stringify(jsonLd), {
+      status: 410,
+      headers: {
+        "Content-Type": "application/activity+json",
+        Vary: "Accept",
+      },
+    });
   }
   const jsonLd = await actor.toJsonLd(context);
   return new Response(JSON.stringify(jsonLd), {
@@ -560,7 +571,7 @@ async function handleInboxInternal<TContextData>(
     return await onNotFound(request);
   } else if (recipient != null) {
     const actor = await actorDispatcher(ctx, recipient);
-    if (actor == null) {
+    if (actor == null || actor instanceof Tombstone) {
       logger.error("Actor {recipient} not found.", { recipient });
       span.setStatus({
         code: SpanStatusCode.ERROR,

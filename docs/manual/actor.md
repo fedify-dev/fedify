@@ -14,8 +14,8 @@ by its identifier.  Since the actor dispatcher is the most significant part of
 Fedify, it is the first thing you need to do to make Fedify work.
 
 An actor dispatcher is a callback function that takes a `Context` object and
-an identifier, and returns an actor object.  The actor object can be one of
-the following:
+an identifier, and returns an actor object, a `Tombstone`, or `null`.
+Live actor objects can be one of the following:
 
  -  `Application`
  -  `Group`
@@ -25,7 +25,7 @@ the following:
 
 The below example shows how to register an actor dispatcher:
 
-~~~~ typescript{7-15} twoslash
+~~~~ typescript{8-16} twoslash
 // @noErrors: 2451 2345
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
@@ -53,6 +53,32 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
 In the above example, the `~Federatable.setActorDispatcher()` method registers
 an actor dispatcher for the `/users/{identifier}` path.  This pattern syntax
 follows the [URI Template] specification.
+
+If the actor exists but should be represented as deleted, return a `Tombstone`
+instead of `null`:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { type Federation } from "@fedify/fedify";
+import { Tombstone } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+const deletedAt = Temporal.Instant.from("2024-01-15T00:00:00Z");
+// ---cut-before---
+federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+  if (identifier !== "alice") return null;
+  return new Tombstone({
+    id: ctx.getActorUri(identifier),
+    deleted: deletedAt,
+  });
+});
+~~~~
+
+When an actor dispatcher returns a `Tombstone`, Fedify responds from the actor
+endpoint with `410 Gone` and the serialized tombstone body.  WebFinger for the
+same account also responds with `410 Gone`.
+
+Use `null` only when the identifier is not handled at all and the request
+should fall through to the next middleware or `onNotFound` handler.
 
 > [!TIP]
 > By registering the actor dispatcher, `Federation.fetch()` automatically
