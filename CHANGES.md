@@ -32,14 +32,6 @@ To be released.
  -  Added `DocumentLoaderFactoryOptions.maxRedirection` to configure the
     maximum number of redirects followed by `getDocumentLoader()`.
 
- -  Patched the preloaded ActivityStreams context so `formerType` is compacted
-    as a vocabulary term like `Person` instead of an `@id`-style IRI token.
-    This lets `Tombstone.formerType` round-trip cleanly through compact
-    ActivityStreams JSON-LD.  [[#645], [#681]]
-
-[#645]: https://github.com/fedify-dev/fedify/issues/645
-[#681]: https://github.com/fedify-dev/fedify/pull/681
-
 ### @fedify/vocab
 
  -  Added `Tombstone.formerType` plus generated entity type helpers for deleted
@@ -72,7 +64,9 @@ To be released.
 [FEP-0837]: https://w3id.org/fep/0837
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
+[#645]: https://github.com/fedify-dev/fedify/issues/645
 [#679]: https://github.com/fedify-dev/fedify/pull/679
+[#681]: https://github.com/fedify-dev/fedify/pull/681
 
 ### @fedify/vocab-tools
 

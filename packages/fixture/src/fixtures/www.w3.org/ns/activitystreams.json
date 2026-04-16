@@ -295,7 +295,7 @@
     },
     "formerType": {
       "@id": "as:formerType",
-      "@type": "@vocab"
+      "@type": "@id"
     },
     "deleted": {
       "@id": "as:deleted",

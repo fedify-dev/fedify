@@ -750,7 +750,7 @@ test("Tombstone.toJsonLd() serializes formerType", async () => {
       ],
       id: "https://example.com/users/alice",
       type: "Tombstone",
-      formerType: "Person",
+      formerType: "as:Person",
       deleted: "2024-01-15T00:00:00Z",
     },
   );
@@ -781,7 +781,7 @@ test("Tombstone.fromJsonLd() restores formerType", async () => {
     ],
     id: "https://example.com/users/alice",
     type: "Tombstone",
-    formerType: "Person",
+    formerType: "as:Person",
     deleted: "2024-01-15T00:00:00Z",
   }, {
     contextLoader: mockDocumentLoader,

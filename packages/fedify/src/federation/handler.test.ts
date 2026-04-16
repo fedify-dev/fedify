@@ -347,7 +347,7 @@ test("handleActor()", async () => {
     ],
     id: "https://example.com/users/gone",
     type: "Tombstone",
-    formerType: "Person",
+    formerType: "as:Person",
     deleted: "2024-01-15T00:00:00Z",
   });
   assertEquals(onNotFoundCalled, null);
