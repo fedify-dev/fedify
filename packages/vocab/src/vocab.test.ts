@@ -798,41 +798,45 @@ test("Tombstone.fromJsonLd() restores formerType", async () => {
 test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
   const records: LogRecord[] = [];
   await reset();
-  await configure({
-    sinks: {
-      buffer(record: LogRecord): void {
-        records.push(record);
+  try {
+    await configure({
+      sinks: {
+        buffer(record: LogRecord): void {
+          records.push(record);
+        },
       },
-    },
-    filters: {},
-    loggers: [{ category: [], sinks: ["buffer"] }],
-  });
+      filters: {},
+      loggers: [{ category: [], sinks: ["buffer"] }],
+    });
 
-  const tombstone = await Tombstone.fromJsonLd({
-    "@id": "https://example.com/users/alice",
-    "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
-    "https://www.w3.org/ns/activitystreams#formerType": [{
-      "@id": "https://example.com/ns#Widget",
-    }],
-    "https://www.w3.org/ns/activitystreams#deleted": [{
-      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-      "@value": "2024-01-15T00:00:00Z",
-    }],
-  });
+    const tombstone = await Tombstone.fromJsonLd({
+      "@id": "https://example.com/users/alice",
+      "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
+      "https://www.w3.org/ns/activitystreams#formerType": [{
+        "@id": "https://example.com/ns#Widget",
+      }],
+      "https://www.w3.org/ns/activitystreams#deleted": [{
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+        "@value": "2024-01-15T00:00:00Z",
+      }],
+    });
 
-  deepStrictEqual(tombstone.formerTypes, []);
-  deepStrictEqual(
-    tombstone.deleted,
-    Temporal.Instant.from("2024-01-15T00:00:00Z"),
-  );
-  deepStrictEqual(
-    records.some((record) =>
-      JSON.stringify(record).includes(
-        "Ignoring unknown vocabulary entity type reference",
-      )
-    ),
-    true,
-  );
+    deepStrictEqual(tombstone.formerTypes, []);
+    deepStrictEqual(
+      tombstone.deleted,
+      Temporal.Instant.from("2024-01-15T00:00:00Z"),
+    );
+    deepStrictEqual(
+      records.some((record) =>
+        JSON.stringify(record).includes(
+          "Ignoring unknown vocabulary entity type reference",
+        )
+      ),
+      true,
+    );
+  } finally {
+    await reset();
+  }
 });
 
 test("Endpoints.toJsonLd() omits type", async () => {
