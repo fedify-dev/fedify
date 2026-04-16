@@ -839,6 +839,26 @@ test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
   }
 });
 
+test("Tombstone.fromJsonLd() ignores malformed formerType values", async () => {
+  const tombstone = await Tombstone.fromJsonLd({
+    "@id": "https://example.com/users/alice",
+    "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
+    "https://www.w3.org/ns/activitystreams#formerType": [{
+      "@value": "Widget",
+    }],
+    "https://www.w3.org/ns/activitystreams#deleted": [{
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+      "@value": "2024-01-15T00:00:00Z",
+    }],
+  });
+
+  deepStrictEqual(tombstone.formerTypes, []);
+  deepStrictEqual(
+    tombstone.deleted,
+    Temporal.Instant.from("2024-01-15T00:00:00Z"),
+  );
+});
+
 test("Endpoints.toJsonLd() omits type", async () => {
   const ep = new Endpoints({
     sharedInbox: new URL("https://example.com/inbox"),

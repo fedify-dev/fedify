@@ -452,6 +452,10 @@ const scalarTypes: Record<string, ScalarType> = {
     },
     decoder(v) {
       return `(() => {
+        if (typeof ${v} !== "object" || !("@id" in ${v}) ||
+            typeof ${v}["@id"] !== "string" || ${v}["@id"] === "") {
+          return undefined;
+        }
         const entityType = getEntityTypeById(${v}["@id"]);
         if (entityType == null) {
           getLogger(["fedify", "vocab"]).warn(
