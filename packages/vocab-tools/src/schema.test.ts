@@ -1,4 +1,4 @@
-import { deepStrictEqual, ok } from "node:assert";
+import { deepStrictEqual, ok, throws } from "node:assert";
 import { test } from "node:test";
 import {
   hasSingularAccessor,
@@ -230,18 +230,17 @@ test("validateTypeSchemas() rejects mixed fedify:vocabEntityType ranges", () => 
     },
   };
 
-  let error: unknown;
-  try {
-    validateTypeSchemas(types);
-  } catch (e) {
-    error = e;
-  }
-
-  ok(error instanceof TypeError);
-  deepStrictEqual(
-    error.message,
-    "The property Tombstone.formerType cannot mix fedify:vocabEntityType " +
-      "with other range types because the generated decoder cannot " +
-      "disambiguate entity type references from ordinary IRIs.",
+  throws(
+    () => validateTypeSchemas(types),
+    (error) => {
+      ok(error instanceof TypeError);
+      deepStrictEqual(
+        error.message,
+        "The property Tombstone.formerType cannot mix fedify:vocabEntityType " +
+          "with other range types because the generated decoder cannot " +
+          "disambiguate entity type references from ordinary IRIs.",
+      );
+      return true;
+    },
   );
 });
