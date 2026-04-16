@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { createConnection, createServer } from "node:net";
 import { join } from "node:path";
 import process from "node:process";
@@ -100,6 +100,12 @@ const ENTRY_FILES: Partial<Record<WebFramework, string>> = {
   elysia: "src/index.ts",
 };
 
+const WF_READ_PORT_FROM_ENV: Set<WebFramework> = new Set([
+  "nuxt",
+  "nitro",
+  "solidstart",
+]);
+
 /**
  * Replace the hardcoded default port with `newPort` in the generated test
  * app's source files.  Strategy varies by framework.
@@ -110,6 +116,7 @@ export async function replacePortInApp(
   defaultPort: number,
   newPort: number,
 ): Promise<void> {
+  if (WF_READ_PORT_FROM_ENV.has(wf)) return;
   if (defaultPort === newPort) return;
 
   const entryFile = ENTRY_FILES[wf];
@@ -122,12 +129,6 @@ export async function replacePortInApp(
       filePath,
       content.replaceAll(String(defaultPort), String(newPort)),
     );
-    return;
-  }
-
-  if (wf === "nitro") {
-    // Nitro reads PORT from .env
-    await appendFile(join(dir, ".env"), `\nPORT=${newPort}\n`);
     return;
   }
 
