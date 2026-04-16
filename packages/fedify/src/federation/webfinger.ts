@@ -201,7 +201,12 @@ async function handleWebFingerInternal<TContextData>(
     return await onNotFound(request);
   }
   if (actor instanceof Tombstone) {
-    return new Response(null, { status: 410 });
+    return new Response(null, {
+      status: 410,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
   const links: Link[] = [
     {
@@ -243,9 +248,7 @@ async function handleWebFingerInternal<TContextData>(
   }
 
   const aliases: string[] = [];
-  const preferredUsername = actor instanceof Tombstone
-    ? null
-    : actor.preferredUsername;
+  const preferredUsername = actor.preferredUsername;
   if (resourceUrl.protocol != "acct:" && preferredUsername != null) {
     aliases.push(`acct:${preferredUsername}@${host ?? context.url.host}`);
     if (host != null && host !== context.url.host) {

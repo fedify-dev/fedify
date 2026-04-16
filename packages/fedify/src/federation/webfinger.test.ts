@@ -237,6 +237,7 @@ test("handleWebFinger()", async (t) => {
       onNotFound,
     });
     assertEquals(response.status, 410);
+    assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
     assertEquals(onNotFoundCalled, null);
   });
 
@@ -251,6 +252,7 @@ test("handleWebFinger()", async (t) => {
       onNotFound,
     });
     assertEquals(response.status, 410);
+    assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
     assertEquals(onNotFoundCalled, null);
   });
 

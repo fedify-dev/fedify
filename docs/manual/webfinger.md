@@ -202,8 +202,6 @@ The WebFinger links dispatcher receives two parameters:
 > Fedify responds to the corresponding WebFinger lookup with `410 Gone`
 > instead of a JRD document.  This matches the actor endpoint behavior,
 > which also returns `410 Gone` for the tombstoned actor URI.
-
-> [!NOTE]
 > Before the introduction of `~Federatable.setWebFingerLinksDispatcher()` in
 > Fedify 1.9.0, WebFinger responses could only be customized through
 > `~Federatable.setActorDispatcher()` by setting the actor's `url` property.
