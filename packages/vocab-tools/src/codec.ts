@@ -451,7 +451,7 @@ export async function* generateDecoder(
         )
       };
       if (typeof decoded === "undefined") continue;
-      ${variable}.push(decoded)`;
+      ${variable}.push(decoded);`;
     } else {
       yield `
       const decoded =

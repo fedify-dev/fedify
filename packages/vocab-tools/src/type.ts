@@ -163,7 +163,7 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.href`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@id" in ${v}
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
         && typeof ${v}["@id"] === "string"
         && ${v}["@id"] !== ""`;
     },
@@ -403,7 +403,7 @@ const scalarTypes: Record<string, ScalarType> = {
       return v;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@id" in ${v}
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
         && typeof ${v}["@id"] === "string"
         && ${v}["@id"].startsWith("https://w3id.org/security#")
         && [
@@ -446,13 +446,13 @@ const scalarTypes: Record<string, ScalarType> = {
       return `{ "@id": ${v}.typeId.href }`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@id" in ${v}
+      return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
         && typeof ${v}["@id"] === "string"
         && ${v}["@id"] !== ""`;
     },
     decoder(v) {
       return `(() => {
-        if (typeof ${v} !== "object" || !("@id" in ${v}) ||
+        if (${v} == null || typeof ${v} !== "object" || !("@id" in ${v}) ||
             typeof ${v}["@id"] !== "string" || ${v}["@id"] === "") {
           return undefined;
         }
