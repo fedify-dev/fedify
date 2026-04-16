@@ -109,7 +109,7 @@ test("generateClasses() emits $EntityType helpers for fedify:vocabEntityType", a
   );
   match(
     entireCode,
-    /return entityTypeIds\.get\(typeof id === "string" \? id : id\.href\);/,
+    /return entityTypeIds\.get\(typeof id === "string" \? id : id\?\.href\);/,
   );
 });
 

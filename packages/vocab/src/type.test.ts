@@ -25,4 +25,12 @@ test("entity type helpers", () => {
   deepStrictEqual(getEntityTypeById(Person.typeId), Person);
   deepStrictEqual(getEntityTypeById(Person.typeId.href), Person);
   deepStrictEqual(getEntityTypeById(Link.typeId), undefined);
+  deepStrictEqual(
+    getEntityTypeById(null as unknown as string | URL),
+    undefined,
+  );
+  deepStrictEqual(
+    getEntityTypeById(undefined as unknown as string | URL),
+    undefined,
+  );
 });

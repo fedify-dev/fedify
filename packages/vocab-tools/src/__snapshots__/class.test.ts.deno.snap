@@ -95871,7 +95871,7 @@ export function isEntityType(value: unknown): value is \$EntityType {
  * Gets the generated vocabulary entity class for the given type URI.
  */
 export function getEntityTypeById(id: string | URL): \$EntityType | undefined {
-  return entityTypeIds.get(typeof id === \\"string\\" ? id : id.href);
+  return entityTypeIds.get(typeof id === \\"string\\" ? id : id?.href);
 }
 
 "
