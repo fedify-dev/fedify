@@ -39,7 +39,7 @@ import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
-import type { Context } from "./context.ts";
+import type { Context, GetActorOptions } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {
   ContextImpl,
@@ -952,6 +952,29 @@ test({
       void tombstoneActorTypeCheck;
       assertEquals(
         await tombstoneActorPromise,
+        new vocab.Tombstone({
+          id: new URL("https://example.com/users/gone"),
+          deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+        }),
+      );
+
+      const broadTombstoneOptions: GetActorOptions = {
+        tombstone: "passthrough",
+      };
+      const broadTombstoneActorPromise = ctx2.getActor(
+        "gone",
+        broadTombstoneOptions,
+      );
+      type BroadTombstoneActorType = Assert<
+        IsEqual<
+          Awaited<typeof broadTombstoneActorPromise>,
+          vocab.Actor | vocab.Tombstone | null
+        >
+      >;
+      const broadTombstoneActorTypeCheck: BroadTombstoneActorType = true;
+      void broadTombstoneActorTypeCheck;
+      assertEquals(
+        await broadTombstoneActorPromise,
         new vocab.Tombstone({
           id: new URL("https://example.com/users/gone"),
           deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),

@@ -115,8 +115,8 @@ export interface Federatable<TContextData> {
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one variable: `{identifier}`.
    * @param dispatcher An actor dispatcher callback to register.  It may return
-   *                   an actor, a {@link Tombstone}, or `null` if the actor is
-   *                   not found.
+   *                   an actor, a `Tombstone`, or `null` if the actor is not
+   *                   found.
    * @returns An object with methods to set other actor dispatcher callbacks.
    * @throws {RouterError} Thrown if the path pattern is invalid.
    */

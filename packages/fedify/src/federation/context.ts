@@ -514,8 +514,24 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    */
   getActor(
     identifier: string,
-    options?: GetActorOptions,
+    options: GetActorOptions & { readonly tombstone?: "suppress" | undefined },
   ): Promise<Actor | null>;
+
+  /**
+   * Gets an {@link Actor} object or {@link Tombstone} for the given
+   * identifier.
+   * @param identifier The actor's identifier.
+   * @param options Options for getting the actor.
+   * @returns The actor object, a tombstone, or `null` if the actor is not
+   *          found.  This broad overload is used when the caller passes an
+   *          options value whose `tombstone` mode is not known statically.
+   * @throws {Error} If no actor dispatcher is available.
+   * @since 2.2.0
+   */
+  getActor(
+    identifier: string,
+    options: GetActorOptions,
+  ): Promise<Actor | Tombstone | null>;
 
   /**
    * Gets an object of the given class with the given values.

@@ -2670,12 +2670,19 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
 
   getActor(
     identifier: string,
+  ): Promise<Actor | null>;
+  getActor(
+    identifier: string,
     options: GetActorOptions & { readonly tombstone: "passthrough" },
   ): Promise<Actor | Tombstone | null>;
   getActor(
     identifier: string,
-    options?: GetActorOptions,
+    options: GetActorOptions & { readonly tombstone?: "suppress" | undefined },
   ): Promise<Actor | null>;
+  getActor(
+    identifier: string,
+    options: GetActorOptions,
+  ): Promise<Actor | Tombstone | null>;
   async getActor(
     identifier: string,
     options?: GetActorOptions,
