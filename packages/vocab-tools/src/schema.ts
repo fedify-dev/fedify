@@ -242,6 +242,7 @@ export function hasSingularAccessor(property: PropertySchema): boolean {
 
 const XSD_STRING_URI = "http://www.w3.org/2001/XMLSchema#string";
 const XSD_DECIMAL_URI = "http://www.w3.org/2001/XMLSchema#decimal";
+const FEDIFY_VOCAB_ENTITY_TYPE_URI = "fedify:vocabEntityType";
 
 /**
  * Validates schema combinations that cannot be represented safely by the
@@ -266,6 +267,17 @@ export function validateTypeSchemas(
           `The property ${type.name}.${property.singularName} cannot have ` +
             `both xsd:string and xsd:decimal in its range because the ` +
             `generated encoder cannot disambiguate them at runtime.`,
+        );
+      }
+      if (
+        property.range.includes(FEDIFY_VOCAB_ENTITY_TYPE_URI) &&
+        property.range.length > 1
+      ) {
+        throw new TypeError(
+          `The property ${type.name}.${property.singularName} cannot mix ` +
+            `fedify:vocabEntityType with other range types because the ` +
+            `generated decoder cannot disambiguate entity type references ` +
+            `from ordinary IRIs.`,
         );
       }
     }

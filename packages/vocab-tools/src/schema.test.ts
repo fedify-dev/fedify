@@ -4,7 +4,9 @@ import {
   hasSingularAccessor,
   isNonFunctionalProperty,
   type PropertySchema,
+  type TypeSchema,
   type TypeUri,
+  validateTypeSchemas,
 } from "./schema.ts";
 
 test(
@@ -200,4 +202,46 @@ test("Type guard combinations: untyped property", () => {
 
   ok(isNonFunctionalProperty(property));
   ok(!hasSingularAccessor(property));
+});
+
+test("validateTypeSchemas() rejects mixed fedify:vocabEntityType ranges", () => {
+  const types: Record<string, TypeSchema> = {
+    "https://example.com/tombstone": {
+      name: "Tombstone",
+      uri: "https://example.com/tombstone" as TypeUri,
+      compactName: "Tombstone",
+      entity: true,
+      description: "A tombstone.",
+      properties: [
+        {
+          singularName: "formerType",
+          pluralName: "formerTypes",
+          uri: "https://example.com/formerType",
+          compactName: "formerType",
+          description: "The former type.",
+          range: [
+            "fedify:vocabEntityType",
+            "http://www.w3.org/2001/XMLSchema#anyURI",
+          ] as [TypeUri, TypeUri],
+        },
+      ],
+      defaultContext:
+        "https://example.com/context" as TypeSchema["defaultContext"],
+    },
+  };
+
+  let error: unknown;
+  try {
+    validateTypeSchemas(types);
+  } catch (e) {
+    error = e;
+  }
+
+  ok(error instanceof TypeError);
+  deepStrictEqual(
+    error.message,
+    "The property Tombstone.formerType cannot mix fedify:vocabEntityType " +
+      "with other range types because the generated decoder cannot " +
+      "disambiguate entity type references from ordinary IRIs.",
+  );
 });

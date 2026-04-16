@@ -440,7 +440,8 @@ export async function* generateDecoder(
       `;
     }
     if (property.range.length == 1) {
-      yield `${variable}.push(${
+      yield `
+      const decoded = ${
         getDecoder(
           property.range[0],
           types,
@@ -448,7 +449,9 @@ export async function* generateDecoder(
           "options",
           `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
         )
-      })`;
+      };
+      if (typeof decoded === "undefined") continue;
+      ${variable}.push(decoded)`;
     } else {
       yield `
       const decoded =

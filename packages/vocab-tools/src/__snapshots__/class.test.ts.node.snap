@@ -10553,10 +10553,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.push(decoded)
     }
     instance.#_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience = _3ocC3VVi88cEd5sPWL8djkZsvTN6_audience;
     const _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content: ((string | LanguageString))[] = [];
@@ -10662,11 +10665,14 @@ get urls(): ((URL | Link))[] {
         : _219RwDanjScTv5tYCjwGZVCM7KZ9_endTime__array
     ) {
       if (v == null) continue;
-    _219RwDanjScTv5tYCjwGZVCM7KZ9_endTime.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _219RwDanjScTv5tYCjwGZVCM7KZ9_endTime.push(decoded)
     }
     instance.#_219RwDanjScTv5tYCjwGZVCM7KZ9_endTime = _219RwDanjScTv5tYCjwGZVCM7KZ9_endTime;
     
@@ -10736,10 +10742,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(await Image.fromJsonLd(
+      
+      const decoded = await Image.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(decoded)
     }
     instance.#_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon = _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon;
     
@@ -10766,10 +10775,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(await Image.fromJsonLd(
+      
+      const decoded = await Image.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(decoded)
     }
     instance.#_3dXrUdkARxwyJLtJcYi1AJ92H41U_image = _3dXrUdkARxwyJLtJcYi1AJ92H41U_image;
     
@@ -10913,11 +10925,14 @@ get urls(): ((URL | Link))[] {
         : _5e258TDXtuhaFRPZiGoDfEpjdMr_published__array
     ) {
       if (v == null) continue;
-    _5e258TDXtuhaFRPZiGoDfEpjdMr_published.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _5e258TDXtuhaFRPZiGoDfEpjdMr_published.push(decoded)
     }
     instance.#_5e258TDXtuhaFRPZiGoDfEpjdMr_published = _5e258TDXtuhaFRPZiGoDfEpjdMr_published;
     
@@ -10944,10 +10959,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _7UpwM3JWcXhADcscukEehBorf6k_replies.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _7UpwM3JWcXhADcscukEehBorf6k_replies.push(decoded)
     }
     instance.#_7UpwM3JWcXhADcscukEehBorf6k_replies = _7UpwM3JWcXhADcscukEehBorf6k_replies;
     
@@ -10974,10 +10992,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3kAfck9PcEYt2L7xug5y99YPbANs_shares.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3kAfck9PcEYt2L7xug5y99YPbANs_shares.push(decoded)
     }
     instance.#_3kAfck9PcEYt2L7xug5y99YPbANs_shares = _3kAfck9PcEYt2L7xug5y99YPbANs_shares;
     
@@ -11004,10 +11025,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _S3ceDnpMdzoTRCccB9FkJWrEzYW_likes.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _S3ceDnpMdzoTRCccB9FkJWrEzYW_likes.push(decoded)
     }
     instance.#_S3ceDnpMdzoTRCccB9FkJWrEzYW_likes = _S3ceDnpMdzoTRCccB9FkJWrEzYW_likes;
     
@@ -11034,10 +11058,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions.push(decoded)
     }
     instance.#_kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions = _kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions;
     const _2w3Jmue4up8iVDUA51WZqomEF438_startTime: (Temporal.Instant)[] = [];
@@ -11052,11 +11079,14 @@ get urls(): ((URL | Link))[] {
         : _2w3Jmue4up8iVDUA51WZqomEF438_startTime__array
     ) {
       if (v == null) continue;
-    _2w3Jmue4up8iVDUA51WZqomEF438_startTime.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2w3Jmue4up8iVDUA51WZqomEF438_startTime.push(decoded)
     }
     instance.#_2w3Jmue4up8iVDUA51WZqomEF438_startTime = _2w3Jmue4up8iVDUA51WZqomEF438_startTime;
     const _4LqirZspQbFWWQEbFcXAxm7tTDN1_summary: ((string | LanguageString))[] = [];
@@ -11138,11 +11168,14 @@ get urls(): ((URL | Link))[] {
         : _385aB7ySixcf5Un6z3VsWmThgCzQ_updated__array
     ) {
       if (v == null) continue;
-    _385aB7ySixcf5Un6z3VsWmThgCzQ_updated.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _385aB7ySixcf5Un6z3VsWmThgCzQ_updated.push(decoded)
     }
     instance.#_385aB7ySixcf5Un6z3VsWmThgCzQ_updated = _385aB7ySixcf5Un6z3VsWmThgCzQ_updated;
     const _2oPEH9MQ3aj8JVwyYuWkqoVwV865_url: ((URL | Link))[] = [];
@@ -11212,10 +11245,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.push(decoded)
     }
     instance.#_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to = _3hFbw7DTpHhq3cvVhkY8njhcsXbd_to;
     
@@ -11242,10 +11278,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.push(decoded)
     }
     instance.#_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto = _aLZupjwL8XB7tzdLgCMXdjZ6qej_bto;
     
@@ -11272,10 +11311,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.push(decoded)
     }
     instance.#_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc = _42a1SvBs24QSLzKcfjCyNTjW5a1g_cc;
     
@@ -11302,10 +11344,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.push(decoded)
     }
     instance.#_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc = _3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc;
     const _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType: (string)[] = [];
@@ -11320,7 +11365,10 @@ get urls(): ((URL | Link))[] {
         : _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType__array
     ) {
       if (v == null) continue;
-    _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(decoded)
     }
     instance.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType;
     const _3bNvLMBN1bCJETiTihM3wvi1B2JX_duration: (Temporal.Duration)[] = [];
@@ -11335,7 +11383,10 @@ get urls(): ((URL | Link))[] {
         : _3bNvLMBN1bCJETiTihM3wvi1B2JX_duration__array
     ) {
       if (v == null) continue;
-    _3bNvLMBN1bCJETiTihM3wvi1B2JX_duration.push(Temporal.Duration.from(v[\\"@value\\"]))
+    
+      const decoded = Temporal.Duration.from(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bNvLMBN1bCJETiTihM3wvi1B2JX_duration.push(decoded)
     }
     instance.#_3bNvLMBN1bCJETiTihM3wvi1B2JX_duration = _3bNvLMBN1bCJETiTihM3wvi1B2JX_duration;
     const _u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive: (boolean)[] = [];
@@ -11350,7 +11401,10 @@ get urls(): ((URL | Link))[] {
         : _u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive__array
     ) {
       if (v == null) continue;
-    _u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive.push(decoded)
     }
     instance.#_u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive = _u8gdcDTtChQ4tbSQMXc4cYWyum7_sensitive;
     const _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source: (Source)[] = [];
@@ -11365,10 +11419,13 @@ get urls(): ((URL | Link))[] {
         : _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source__array
     ) {
       if (v == null) continue;
-    _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source.push(await Source.fromJsonLd(
+    
+      const decoded = await Source.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source.push(decoded)
     }
     instance.#_2ZwCFoS787v8y8bXKjMoE6MAbrEB_source = _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source;
     
@@ -11395,10 +11452,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.push(await DataIntegrityProof.fromJsonLd(
+      
+      const decoded = await DataIntegrityProof.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.push(decoded)
     }
     instance.#_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof = _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof;
     const _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy: (InteractionPolicy)[] = [];
@@ -11413,10 +11473,13 @@ get urls(): ((URL | Link))[] {
         : _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy__array
     ) {
       if (v == null) continue;
-    _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy.push(await InteractionPolicy.fromJsonLd(
+    
+      const decoded = await InteractionPolicy.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy.push(decoded)
     }
     instance.#_2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy = _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy;
     const _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy: (URL)[] = [];
@@ -11431,7 +11494,8 @@ get urls(): ((URL | Link))[] {
         : _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy__array
     ) {
       if (v == null) continue;
-    _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -11446,7 +11510,9 @@ get urls(): ((URL | Link))[] {
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy.push(decoded)
     }
     instance.#_23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy = _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy;
     
@@ -11473,10 +11539,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(await LikeAuthorization.fromJsonLd(
+      
+      const decoded = await LikeAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(decoded)
     }
     instance.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization = _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization;
     
@@ -11503,10 +11572,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(await ReplyAuthorization.fromJsonLd(
+      
+      const decoded = await ReplyAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(decoded)
     }
     instance.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization = _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization;
     
@@ -11533,10 +11605,13 @@ get urls(): ((URL | Link))[] {
         );
         continue;
       }
-      _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(await AnnounceAuthorization.fromJsonLd(
+      
+      const decoded = await AnnounceAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(decoded)
     }
     instance.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization = _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization;
     
@@ -13757,10 +13832,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded)
     }
     instance.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote = _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote;
     const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
@@ -13783,7 +13861,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array
     ) {
       if (v == null) continue;
-    _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(new URL(v[\\"@value\\"]))
+    
+      const decoded = new URL(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(decoded)
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
@@ -13810,10 +13891,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(await QuoteAuthorization.fromJsonLd(
+      
+      const decoded = await QuoteAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded)
     }
     instance.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization = _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization;
     
@@ -16946,10 +17030,13 @@ instruments?: (Object | URL)[];}
         );
         continue;
       }
-      _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(decoded)
     }
     instance.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object = _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object;
     
@@ -16976,10 +17063,13 @@ instruments?: (Object | URL)[];}
         );
         continue;
       }
-      _3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.push(decoded)
     }
     instance.#_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target = _3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target;
     
@@ -17006,10 +17096,13 @@ instruments?: (Object | URL)[];}
         );
         continue;
       }
-      _u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.push(decoded)
     }
     instance.#_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result = _u4QGFbRFcYmPEKGbPv1hpBR9r5G_result;
     
@@ -17036,10 +17129,13 @@ instruments?: (Object | URL)[];}
         );
         continue;
       }
-      _25zu2s3VxVujgEKqrDycjE284XQR_origin.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _25zu2s3VxVujgEKqrDycjE284XQR_origin.push(decoded)
     }
     instance.#_25zu2s3VxVujgEKqrDycjE284XQR_origin = _25zu2s3VxVujgEKqrDycjE284XQR_origin;
     
@@ -17066,10 +17162,13 @@ instruments?: (Object | URL)[];}
         );
         continue;
       }
-      _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.push(decoded)
     }
     instance.#_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument = _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument;
     
@@ -18657,7 +18756,10 @@ unit?: string | null;numericalValue?: Decimal | null;}
         : _27fgyFbosTtMAhuepJH8K3ZGURT6__array
     ) {
       if (v == null) continue;
-    _27fgyFbosTtMAhuepJH8K3ZGURT6.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _27fgyFbosTtMAhuepJH8K3ZGURT6.push(decoded)
     }
     instance.#_27fgyFbosTtMAhuepJH8K3ZGURT6 = _27fgyFbosTtMAhuepJH8K3ZGURT6;
     const _1GQx8o2RgxRs4x9G5uT39XYBv7D: (Decimal)[] = [];
@@ -18672,7 +18774,10 @@ unit?: string | null;numericalValue?: Decimal | null;}
         : _1GQx8o2RgxRs4x9G5uT39XYBv7D__array
     ) {
       if (v == null) continue;
-    _1GQx8o2RgxRs4x9G5uT39XYBv7D.push(parseDecimal(v[\\"@value\\"]))
+    
+      const decoded = parseDecimal(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _1GQx8o2RgxRs4x9G5uT39XYBv7D.push(decoded)
     }
     instance.#_1GQx8o2RgxRs4x9G5uT39XYBv7D = _1GQx8o2RgxRs4x9G5uT39XYBv7D;
     
@@ -19659,10 +19764,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded)
     }
     instance.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject = _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject;
     
@@ -19689,10 +19797,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded)
     }
     instance.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget = _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget;
     
@@ -20676,10 +20787,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         : _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike__array
     ) {
       if (v == null) continue;
-    _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike.push(await InteractionRule.fromJsonLd(
+    
+      const decoded = await InteractionRule.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike.push(decoded)
     }
     instance.#_3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike = _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike;
     const _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply: (InteractionRule)[] = [];
@@ -20694,10 +20808,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         : _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply__array
     ) {
       if (v == null) continue;
-    _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply.push(await InteractionRule.fromJsonLd(
+    
+      const decoded = await InteractionRule.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply.push(decoded)
     }
     instance.#_2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply = _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply;
     const _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce: (InteractionRule)[] = [];
@@ -20712,10 +20829,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         : _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce__array
     ) {
       if (v == null) continue;
-    _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce.push(await InteractionRule.fromJsonLd(
+    
+      const decoded = await InteractionRule.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce.push(decoded)
     }
     instance.#_fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce = _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce;
     const _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote: (InteractionRule)[] = [];
@@ -20730,10 +20850,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         : _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote__array
     ) {
       if (v == null) continue;
-    _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote.push(await InteractionRule.fromJsonLd(
+    
+      const decoded = await InteractionRule.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote.push(decoded)
     }
     instance.#_LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote = _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote;
     
@@ -21412,7 +21535,8 @@ get manualApprovals(): (URL)[] {
         : _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval__array
     ) {
       if (v == null) continue;
-    _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -21427,7 +21551,9 @@ get manualApprovals(): (URL)[] {
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval.push(decoded)
     }
     instance.#_2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval = _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval;
     const _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval: (URL)[] = [];
@@ -21442,7 +21568,8 @@ get manualApprovals(): (URL)[] {
         : _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval__array
     ) {
       if (v == null) continue;
-    _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -21457,7 +21584,9 @@ get manualApprovals(): (URL)[] {
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval.push(decoded)
     }
     instance.#_sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval = _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval;
     
@@ -22455,10 +22584,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded)
     }
     instance.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject = _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject;
     
@@ -22485,10 +22617,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded)
     }
     instance.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget = _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget;
     
@@ -23801,10 +23936,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded)
     }
     instance.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject = _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject;
     
@@ -23831,10 +23969,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded)
     }
     instance.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget = _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget;
     
@@ -25146,10 +25287,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded)
     }
     instance.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject = _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject;
     
@@ -25176,10 +25320,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded)
     }
     instance.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget = _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget;
     
@@ -26020,7 +26167,8 @@ get endpoints(): (URL)[] {
         : _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint__array
     ) {
       if (v == null) continue;
-    _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -26035,7 +26183,9 @@ get endpoints(): (URL)[] {
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint.push(decoded)
     }
     instance.#_2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint = _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint;
     
@@ -27184,7 +27334,10 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         : _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite__array
     ) {
       if (v == null) continue;
-    _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite.push(decoded)
     }
     instance.#_3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite = _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite;
     
@@ -27211,10 +27364,13 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         );
         continue;
       }
-      _2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod.push(decoded)
     }
     instance.#_2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod = _2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod;
     const _2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose: (\\"assertionMethod\\" | \\"authentication\\" | \\"capabilityInvocation\\" | \\"capabilityDelegation\\" | \\"keyAgreement\\")[] = [];
@@ -27229,7 +27385,10 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         : _2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose__array
     ) {
       if (v == null) continue;
-    _2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose.push(v[\\"@id\\"].substring(26))
+    
+      const decoded = v[\\"@id\\"].substring(26);
+      if (typeof decoded === \\"undefined\\") continue;
+      _2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose.push(decoded)
     }
     instance.#_2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose = _2AeEnPcAvVrPEuKbpmn9ZKNmWHKb_proofPurpose;
     const _3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue: (Uint8Array)[] = [];
@@ -27244,7 +27403,10 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         : _3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue__array
     ) {
       if (v == null) continue;
-    _3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue.push(decodeMultibase(v[\\"@value\\"]))
+    
+      const decoded = decodeMultibase(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue.push(decoded)
     }
     instance.#_3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue = _3CjFK5vfKpX4HQuNh2b18TykoVLq_proofValue;
     const _3qzP3ukEZoUziK5FEiA1RhU4aqac: (Temporal.Instant)[] = [];
@@ -27259,11 +27421,14 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         : _3qzP3ukEZoUziK5FEiA1RhU4aqac__array
     ) {
       if (v == null) continue;
-    _3qzP3ukEZoUziK5FEiA1RhU4aqac.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3qzP3ukEZoUziK5FEiA1RhU4aqac.push(decoded)
     }
     instance.#_3qzP3ukEZoUziK5FEiA1RhU4aqac = _3qzP3ukEZoUziK5FEiA1RhU4aqac;
     
@@ -28187,7 +28352,10 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         : _2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem__array
     ) {
       if (v == null) continue;
-    _2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem.push(await importPem(v[\\"@value\\"]))
+    
+      const decoded = await importPem(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem.push(decoded)
     }
     instance.#_2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem = _2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem;
     
@@ -29062,7 +29230,10 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         : _4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase__array
     ) {
       if (v == null) continue;
-    _4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase.push(await importMultibaseKey(v[\\"@value\\"]))
+    
+      const decoded = await importMultibaseKey(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase.push(decoded)
     }
     instance.#_4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase = _4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase;
     
@@ -29841,7 +30012,10 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         : _38VmZKmXJSBy3AvgqNa9GVqbdphy_action__array
     ) {
       if (v == null) continue;
-    _38VmZKmXJSBy3AvgqNa9GVqbdphy_action.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _38VmZKmXJSBy3AvgqNa9GVqbdphy_action.push(decoded)
     }
     instance.#_38VmZKmXJSBy3AvgqNa9GVqbdphy_action = _38VmZKmXJSBy3AvgqNa9GVqbdphy_action;
     const _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo: (URL)[] = [];
@@ -29856,7 +30030,8 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         : _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo__array
     ) {
       if (v == null) continue;
-    _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -29871,7 +30046,9 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo.push(decoded)
     }
     instance.#_BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo = _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo;
     const _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity: (Measure)[] = [];
@@ -29886,10 +30063,13 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         : _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity__array
     ) {
       if (v == null) continue;
-    _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity.push(await Measure.fromJsonLd(
+    
+      const decoded = await Measure.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity.push(decoded)
     }
     instance.#_2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity = _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity;
     const _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity: (Measure)[] = [];
@@ -29904,10 +30084,13 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         : _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity__array
     ) {
       if (v == null) continue;
-    _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity.push(await Measure.fromJsonLd(
+    
+      const decoded = await Measure.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity.push(decoded)
     }
     instance.#_YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity = _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity;
     const _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity: (Measure)[] = [];
@@ -29922,10 +30105,13 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         : _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity__array
     ) {
       if (v == null) continue;
-    _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity.push(await Measure.fromJsonLd(
+    
+      const decoded = await Measure.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity.push(decoded)
     }
     instance.#_3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity = _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity;
     
@@ -30703,7 +30889,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _4wb2xgUBheR2gaD2Se8QBH4LEC7_purpose__array
     ) {
       if (v == null) continue;
-    _4wb2xgUBheR2gaD2Se8QBH4LEC7_purpose.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _4wb2xgUBheR2gaD2Se8QBH4LEC7_purpose.push(decoded)
     }
     instance.#_4wb2xgUBheR2gaD2Se8QBH4LEC7_purpose = _4wb2xgUBheR2gaD2Se8QBH4LEC7_purpose;
     const _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes: (Intent)[] = [];
@@ -30718,10 +30907,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes__array
     ) {
       if (v == null) continue;
-    _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes.push(await Intent.fromJsonLd(
+    
+      const decoded = await Intent.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes.push(decoded)
     }
     instance.#_sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes = _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes;
     const _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal: (Intent)[] = [];
@@ -30736,10 +30928,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal__array
     ) {
       if (v == null) continue;
-    _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal.push(await Intent.fromJsonLd(
+    
+      const decoded = await Intent.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal.push(decoded)
     }
     instance.#_Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal = _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal;
     const _48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased: (boolean)[] = [];
@@ -30754,7 +30949,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased__array
     ) {
       if (v == null) continue;
-    _48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased.push(decoded)
     }
     instance.#_48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased = _48ncwmfGhSoqAFByMVh2UxoiozPq_unitBased;
     
@@ -37408,10 +37606,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(await CryptographicKey.fromJsonLd(
+      
+      const decoded = await CryptographicKey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded)
     }
     instance.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey = _axq166E2eZADq34V4MYUc8KMZdC_publicKey;
     
@@ -37438,10 +37639,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded)
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
@@ -37456,7 +37660,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array
     ) {
       if (v == null) continue;
-    _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(decoded)
     }
     instance.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers;
     
@@ -37565,10 +37772,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded)
     }
     instance.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following = _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following;
     
@@ -37595,10 +37805,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded)
     }
     instance.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers = _BBCTgfphhsFzpVfKTykGSpBNwoA_followers;
     
@@ -37625,10 +37838,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded)
     }
     instance.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked = _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked;
     
@@ -37655,10 +37871,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded)
     }
     instance.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured = _4N1vBJzXDf8NbBumeECQMFvKetja_featured;
     
@@ -37685,10 +37904,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded)
     }
     instance.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags = _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags;
     
@@ -37715,10 +37937,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded)
     }
     instance.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams = _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
     const _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints: (Endpoints)[] = [];
@@ -37733,10 +37958,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints__array
     ) {
       if (v == null) continue;
-    _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(await Endpoints.fromJsonLd(
+    
+      const decoded = await Endpoints.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded)
     }
     instance.#_sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints = _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints;
     const _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable: (boolean)[] = [];
@@ -37751,7 +37979,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable__array
     ) {
       if (v == null) continue;
-    _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(decoded)
     }
     instance.#_gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable = _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable;
     const _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
@@ -37766,7 +37997,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended__array
     ) {
       if (v == null) continue;
-    _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(decoded)
     }
     instance.#_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended = _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended;
     const _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
@@ -37781,7 +38015,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial__array
     ) {
       if (v == null) continue;
-    _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(decoded)
     }
     instance.#_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial = _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial;
     const _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
@@ -37796,7 +38033,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable__array
     ) {
       if (v == null) continue;
-    _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(decoded)
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
     
@@ -37929,10 +38169,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(await DidService.fromJsonLd(
+      
+      const decoded = await DidService.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded)
     }
     instance.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service = _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
     const _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage: (string)[] = [];
@@ -37947,7 +38190,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage__array
     ) {
       if (v == null) continue;
-    _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(decoded)
     }
     instance.#_QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage = _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage;
     const _2xEU4QtkC53RAun67T81Egqt9vmL_isCat: (boolean)[] = [];
@@ -37962,7 +38208,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2xEU4QtkC53RAun67T81Egqt9vmL_isCat__array
     ) {
       if (v == null) continue;
-    _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(decoded)
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
@@ -40136,10 +40385,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded)
     }
     instance.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote = _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote;
     const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
@@ -40162,7 +40414,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array
     ) {
       if (v == null) continue;
-    _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(new URL(v[\\"@value\\"]))
+    
+      const decoded = new URL(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(decoded)
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
@@ -40189,10 +40444,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(await QuoteAuthorization.fromJsonLd(
+      
+      const decoded = await QuoteAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded)
     }
     instance.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization = _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization;
     
@@ -40772,7 +41030,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width__array
     ) {
       if (v == null) continue;
-    _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width.push(decoded)
     }
     instance.#_2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width = _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width;
     const _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height: (number)[] = [];
@@ -40787,7 +41048,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height__array
     ) {
       if (v == null) continue;
-    _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.push(decoded)
     }
     instance.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height = _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height;
     
@@ -45664,7 +45928,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems__array
     ) {
       if (v == null) continue;
-    _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems.push(decoded)
     }
     instance.#_XDbmNDuWHmrhqH712zqtecdbv1V_totalItems = _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems;
     
@@ -45691,10 +45958,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3UyUdxnyn6cDn53QKrh4MBiearma_current.push(await CollectionPage.fromJsonLd(
+      
+      const decoded = await CollectionPage.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3UyUdxnyn6cDn53QKrh4MBiearma_current.push(decoded)
     }
     instance.#_3UyUdxnyn6cDn53QKrh4MBiearma_current = _3UyUdxnyn6cDn53QKrh4MBiearma_current;
     
@@ -45721,10 +45991,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _J52RqweMe6hhv7RnLJMC8BExTE5_first.push(await CollectionPage.fromJsonLd(
+      
+      const decoded = await CollectionPage.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _J52RqweMe6hhv7RnLJMC8BExTE5_first.push(decoded)
     }
     instance.#_J52RqweMe6hhv7RnLJMC8BExTE5_first = _J52RqweMe6hhv7RnLJMC8BExTE5_first;
     
@@ -45751,10 +46024,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _gyJJnyEFnuNVi1HFZKfAn3Hfn26_last.push(await CollectionPage.fromJsonLd(
+      
+      const decoded = await CollectionPage.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _gyJJnyEFnuNVi1HFZKfAn3Hfn26_last.push(decoded)
     }
     instance.#_gyJJnyEFnuNVi1HFZKfAn3Hfn26_last = _gyJJnyEFnuNVi1HFZKfAn3Hfn26_last;
     
@@ -45824,10 +46100,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf.push(decoded)
     }
     instance.#_4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf = _4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf;
     
@@ -45854,10 +46133,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf.push(decoded)
     }
     instance.#_3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf = _3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf;
     
@@ -45884,10 +46166,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf.push(decoded)
     }
     instance.#_3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf = _3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf;
     
@@ -45914,10 +46199,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf.push(decoded)
     }
     instance.#_2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf = _2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf;
     
@@ -45944,10 +46232,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf.push(decoded)
     }
     instance.#_4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf = _4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf;
     
@@ -45974,10 +46265,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf.push(decoded)
     }
     instance.#_41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf = _41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf;
     
@@ -46004,10 +46298,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf.push(decoded)
     }
     instance.#_2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf = _2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf;
     
@@ -46034,10 +46331,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf.push(decoded)
     }
     instance.#_2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf = _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf;
     
@@ -47507,10 +47807,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf.push(decoded)
     }
     instance.#_2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf = _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf;
     
@@ -47537,10 +47840,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next.push(await CollectionPage.fromJsonLd(
+      
+      const decoded = await CollectionPage.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next.push(decoded)
     }
     instance.#_3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next = _3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next;
     
@@ -47567,10 +47873,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev.push(await CollectionPage.fromJsonLd(
+      
+      const decoded = await CollectionPage.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev.push(decoded)
     }
     instance.#_3b8yG8tDNzQFFEnWhCc13G8eHooA_prev = _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev;
     
@@ -49432,7 +49741,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl__array
     ) {
       if (v == null) continue;
-    _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49447,7 +49757,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl.push(decoded)
     }
     instance.#_2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl = _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl;
     const _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint: (URL)[] = [];
@@ -49462,7 +49774,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint__array
     ) {
       if (v == null) continue;
-    _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49477,7 +49790,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint.push(decoded)
     }
     instance.#_25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint = _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint;
     const _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint: (URL)[] = [];
@@ -49492,7 +49807,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint__array
     ) {
       if (v == null) continue;
-    _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49507,7 +49823,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint.push(decoded)
     }
     instance.#_iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint = _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint;
     const _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey: (URL)[] = [];
@@ -49522,7 +49840,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey__array
     ) {
       if (v == null) continue;
-    _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49537,7 +49856,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey.push(decoded)
     }
     instance.#_8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey = _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey;
     const _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey: (URL)[] = [];
@@ -49552,7 +49873,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey__array
     ) {
       if (v == null) continue;
-    _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49567,7 +49889,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey.push(decoded)
     }
     instance.#_3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey = _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey;
     const _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox: (URL)[] = [];
@@ -49582,7 +49906,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         : _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox__array
     ) {
       if (v == null) continue;
-    _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -49597,7 +49922,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.push(decoded)
     }
     instance.#_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox = _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox;
     
@@ -56304,10 +56631,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(await CryptographicKey.fromJsonLd(
+      
+      const decoded = await CryptographicKey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded)
     }
     instance.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey = _axq166E2eZADq34V4MYUc8KMZdC_publicKey;
     
@@ -56334,10 +56664,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded)
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
@@ -56352,7 +56685,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array
     ) {
       if (v == null) continue;
-    _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(decoded)
     }
     instance.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers;
     
@@ -56461,10 +56797,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded)
     }
     instance.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following = _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following;
     
@@ -56491,10 +56830,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded)
     }
     instance.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers = _BBCTgfphhsFzpVfKTykGSpBNwoA_followers;
     
@@ -56521,10 +56863,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded)
     }
     instance.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked = _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked;
     
@@ -56551,10 +56896,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded)
     }
     instance.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured = _4N1vBJzXDf8NbBumeECQMFvKetja_featured;
     
@@ -56581,10 +56929,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded)
     }
     instance.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags = _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags;
     
@@ -56611,10 +56962,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded)
     }
     instance.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams = _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
     const _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints: (Endpoints)[] = [];
@@ -56629,10 +56983,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints__array
     ) {
       if (v == null) continue;
-    _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(await Endpoints.fromJsonLd(
+    
+      const decoded = await Endpoints.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded)
     }
     instance.#_sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints = _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints;
     const _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable: (boolean)[] = [];
@@ -56647,7 +57004,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable__array
     ) {
       if (v == null) continue;
-    _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(decoded)
     }
     instance.#_gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable = _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable;
     const _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
@@ -56662,7 +57022,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended__array
     ) {
       if (v == null) continue;
-    _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(decoded)
     }
     instance.#_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended = _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended;
     const _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
@@ -56677,7 +57040,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial__array
     ) {
       if (v == null) continue;
-    _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(decoded)
     }
     instance.#_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial = _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial;
     const _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
@@ -56692,7 +57058,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable__array
     ) {
       if (v == null) continue;
-    _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(decoded)
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
     
@@ -56825,10 +57194,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(await DidService.fromJsonLd(
+      
+      const decoded = await DidService.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded)
     }
     instance.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service = _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
     const _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage: (string)[] = [];
@@ -56843,7 +57215,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage__array
     ) {
       if (v == null) continue;
-    _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(decoded)
     }
     instance.#_QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage = _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage;
     const _2xEU4QtkC53RAun67T81Egqt9vmL_isCat: (boolean)[] = [];
@@ -56858,7 +57233,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2xEU4QtkC53RAun67T81Egqt9vmL_isCat__array
     ) {
       if (v == null) continue;
-    _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(decoded)
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
@@ -58649,7 +59027,8 @@ get names(): ((string | LanguageString))[] {
         : _pVjLsybKQdmkjuU7MHjiVmNnuj7_href__array
     ) {
       if (v == null) continue;
-    _pVjLsybKQdmkjuU7MHjiVmNnuj7_href.push(v[\\"@id\\"].startsWith(\\"at://\\")
+    
+      const decoded = v[\\"@id\\"].startsWith(\\"at://\\")
         ? new URL(\\"at://\\" +
           encodeURIComponent(
             v[\\"@id\\"].includes(\\"/\\", 5)
@@ -58664,7 +59043,9 @@ get names(): ((string | LanguageString))[] {
         )
         : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))))
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+      if (typeof decoded === \\"undefined\\") continue;
+      _pVjLsybKQdmkjuU7MHjiVmNnuj7_href.push(decoded)
     }
     instance.#_pVjLsybKQdmkjuU7MHjiVmNnuj7_href = _pVjLsybKQdmkjuU7MHjiVmNnuj7_href;
     const _2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel: (string)[] = [];
@@ -58679,7 +59060,10 @@ get names(): ((string | LanguageString))[] {
         : _2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel__array
     ) {
       if (v == null) continue;
-    _2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel.push(decoded)
     }
     instance.#_2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel = _2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel;
     const _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType: (string)[] = [];
@@ -58694,7 +59078,10 @@ get names(): ((string | LanguageString))[] {
         : _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType__array
     ) {
       if (v == null) continue;
-    _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(decoded)
     }
     instance.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType;
     const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
@@ -58733,7 +59120,10 @@ get names(): ((string | LanguageString))[] {
         : _f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang__array
     ) {
       if (v == null) continue;
-    _f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang.push(new Intl.Locale(v[\\"@value\\"]))
+    
+      const decoded = new Intl.Locale(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang.push(decoded)
     }
     instance.#_f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang = _f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang;
     const _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height: (number)[] = [];
@@ -58748,7 +59138,10 @@ get names(): ((string | LanguageString))[] {
         : _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height__array
     ) {
       if (v == null) continue;
-    _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.push(decoded)
     }
     instance.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height = _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height;
     const _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width: (number)[] = [];
@@ -58763,7 +59156,10 @@ get names(): ((string | LanguageString))[] {
         : _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width__array
     ) {
       if (v == null) continue;
-    _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width.push(decoded)
     }
     instance.#_2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width = _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width;
     
@@ -63295,10 +63691,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded)
     }
     instance.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote = _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote;
     const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
@@ -63321,7 +63720,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array
     ) {
       if (v == null) continue;
-    _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(new URL(v[\\"@value\\"]))
+    
+      const decoded = new URL(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(decoded)
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
@@ -63348,10 +63750,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(await QuoteAuthorization.fromJsonLd(
+      
+      const decoded = await QuoteAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded)
     }
     instance.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization = _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization;
     
@@ -64899,7 +65304,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex__array
     ) {
       if (v == null) continue;
-    _2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex.push(decoded)
     }
     instance.#_2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex = _2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex;
     
@@ -70505,10 +70913,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(await CryptographicKey.fromJsonLd(
+      
+      const decoded = await CryptographicKey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded)
     }
     instance.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey = _axq166E2eZADq34V4MYUc8KMZdC_publicKey;
     
@@ -70535,10 +70946,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded)
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
@@ -70553,7 +70967,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array
     ) {
       if (v == null) continue;
-    _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(decoded)
     }
     instance.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers;
     
@@ -70662,10 +71079,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded)
     }
     instance.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following = _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following;
     
@@ -70692,10 +71112,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded)
     }
     instance.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers = _BBCTgfphhsFzpVfKTykGSpBNwoA_followers;
     
@@ -70722,10 +71145,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded)
     }
     instance.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked = _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked;
     
@@ -70752,10 +71178,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded)
     }
     instance.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured = _4N1vBJzXDf8NbBumeECQMFvKetja_featured;
     
@@ -70782,10 +71211,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded)
     }
     instance.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags = _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags;
     
@@ -70812,10 +71244,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded)
     }
     instance.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams = _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
     const _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints: (Endpoints)[] = [];
@@ -70830,10 +71265,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints__array
     ) {
       if (v == null) continue;
-    _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(await Endpoints.fromJsonLd(
+    
+      const decoded = await Endpoints.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded)
     }
     instance.#_sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints = _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints;
     const _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable: (boolean)[] = [];
@@ -70848,7 +71286,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable__array
     ) {
       if (v == null) continue;
-    _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(decoded)
     }
     instance.#_gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable = _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable;
     const _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
@@ -70863,7 +71304,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended__array
     ) {
       if (v == null) continue;
-    _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(decoded)
     }
     instance.#_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended = _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended;
     const _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
@@ -70878,7 +71322,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial__array
     ) {
       if (v == null) continue;
-    _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(decoded)
     }
     instance.#_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial = _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial;
     const _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
@@ -70893,7 +71340,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable__array
     ) {
       if (v == null) continue;
-    _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(decoded)
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
     
@@ -71026,10 +71476,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(await DidService.fromJsonLd(
+      
+      const decoded = await DidService.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded)
     }
     instance.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service = _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
     const _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage: (string)[] = [];
@@ -71044,7 +71497,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage__array
     ) {
       if (v == null) continue;
-    _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(decoded)
     }
     instance.#_QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage = _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage;
     const _2xEU4QtkC53RAun67T81Egqt9vmL_isCat: (boolean)[] = [];
@@ -71059,7 +71515,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2xEU4QtkC53RAun67T81Egqt9vmL_isCat__array
     ) {
       if (v == null) continue;
-    _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(decoded)
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
@@ -77432,10 +77891,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(await CryptographicKey.fromJsonLd(
+      
+      const decoded = await CryptographicKey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded)
     }
     instance.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey = _axq166E2eZADq34V4MYUc8KMZdC_publicKey;
     
@@ -77462,10 +77924,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded)
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
@@ -77480,7 +77945,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array
     ) {
       if (v == null) continue;
-    _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(decoded)
     }
     instance.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers;
     
@@ -77589,10 +78057,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded)
     }
     instance.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following = _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following;
     
@@ -77619,10 +78090,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded)
     }
     instance.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers = _BBCTgfphhsFzpVfKTykGSpBNwoA_followers;
     
@@ -77649,10 +78123,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded)
     }
     instance.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked = _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked;
     
@@ -77679,10 +78156,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded)
     }
     instance.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured = _4N1vBJzXDf8NbBumeECQMFvKetja_featured;
     
@@ -77709,10 +78189,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded)
     }
     instance.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags = _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags;
     
@@ -77739,10 +78222,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded)
     }
     instance.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams = _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
     const _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints: (Endpoints)[] = [];
@@ -77757,10 +78243,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints__array
     ) {
       if (v == null) continue;
-    _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(await Endpoints.fromJsonLd(
+    
+      const decoded = await Endpoints.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded)
     }
     instance.#_sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints = _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints;
     const _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable: (boolean)[] = [];
@@ -77775,7 +78264,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable__array
     ) {
       if (v == null) continue;
-    _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(decoded)
     }
     instance.#_gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable = _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable;
     const _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
@@ -77790,7 +78282,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended__array
     ) {
       if (v == null) continue;
-    _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(decoded)
     }
     instance.#_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended = _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended;
     const _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
@@ -77805,7 +78300,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial__array
     ) {
       if (v == null) continue;
-    _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(decoded)
     }
     instance.#_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial = _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial;
     const _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
@@ -77820,7 +78318,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable__array
     ) {
       if (v == null) continue;
-    _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(decoded)
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
     
@@ -77953,10 +78454,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(await DidService.fromJsonLd(
+      
+      const decoded = await DidService.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded)
     }
     instance.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service = _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
     const _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage: (string)[] = [];
@@ -77971,7 +78475,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage__array
     ) {
       if (v == null) continue;
-    _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(decoded)
     }
     instance.#_QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage = _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage;
     const _2xEU4QtkC53RAun67T81Egqt9vmL_isCat: (boolean)[] = [];
@@ -77986,7 +78493,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2xEU4QtkC53RAun67T81Egqt9vmL_isCat__array
     ) {
       if (v == null) continue;
-    _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(decoded)
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
@@ -79266,7 +79776,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy__array
     ) {
       if (v == null) continue;
-    _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy.push(decoded)
     }
     instance.#_3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy = _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy;
     const _3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude: (number)[] = [];
@@ -79281,7 +79794,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude__array
     ) {
       if (v == null) continue;
-    _3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude.push(decoded)
     }
     instance.#_3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude = _3Q6KDcFQUJRRaBux1BL2yp5QWiBi_altitude;
     const _3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude: (number)[] = [];
@@ -79296,7 +79812,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude__array
     ) {
       if (v == null) continue;
-    _3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude.push(decoded)
     }
     instance.#_3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude = _3g85RoKRnaNjP7DFyLSvsWDg7HGM_latitude;
     const _B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude: (number)[] = [];
@@ -79311,7 +79830,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude__array
     ) {
       if (v == null) continue;
-    _B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude.push(decoded)
     }
     instance.#_B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude = _B2GEYdS9yBAF3ho1pm1rcRg7cSf_longitude;
     const _3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius: (number)[] = [];
@@ -79326,7 +79848,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius__array
     ) {
       if (v == null) continue;
-    _3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius.push(decoded)
     }
     instance.#_3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius = _3ga86BKHUtRkGx5PHBjRiUXXzwnw_radius;
     const _oKrwxU4V8wiKhMW1QEYQibcJh8c_units: ((\\"cm\\" | \\"feet\\" | \\"inches\\" | \\"km\\" | \\"m\\" | \\"miles\\" | URL))[] = [];
@@ -80134,10 +80659,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         );
         continue;
       }
-      _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes.push(decoded)
     }
     instance.#_3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes = _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes;
     
@@ -81786,10 +82314,13 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         );
         continue;
       }
-      _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.push(decoded)
     }
     instance.#_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf = _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf;
     
@@ -81816,10 +82347,13 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         );
         continue;
       }
-      _2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.push(decoded)
     }
     instance.#_2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf = _2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf;
     const _3KronwL8DiiKBRcJFKQPiEHm8xb6_closed: ((Temporal.Instant | boolean))[] = [];
@@ -81865,7 +82399,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         : _3H4RdST7dxfmghccvE3rKD3KgcxG_votersCount__array
     ) {
       if (v == null) continue;
-    _3H4RdST7dxfmghccvE3rKD3KgcxG_votersCount.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3H4RdST7dxfmghccvE3rKD3KgcxG_votersCount.push(decoded)
     }
     instance.#_3H4RdST7dxfmghccvE3rKD3KgcxG_votersCount = _3H4RdST7dxfmghccvE3rKD3KgcxG_votersCount;
     
@@ -81892,10 +82429,13 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         );
         continue;
       }
-      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded)
     }
     instance.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote = _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote;
     const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
@@ -81918,7 +82458,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         : _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array
     ) {
       if (v == null) continue;
-    _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(new URL(v[\\"@value\\"]))
+    
+      const decoded = new URL(v[\\"@value\\"]);
+      if (typeof decoded === \\"undefined\\") continue;
+      _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl.push(decoded)
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
@@ -81945,10 +82488,13 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         );
         continue;
       }
-      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(await QuoteAuthorization.fromJsonLd(
+      
+      const decoded = await QuoteAuthorization.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded)
     }
     instance.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization = _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization;
     
@@ -84282,10 +84828,13 @@ relationships?: (Object | URL)[];}
         );
         continue;
       }
-      _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject.push(decoded)
     }
     instance.#_2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject = _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject;
     
@@ -84312,10 +84861,13 @@ relationships?: (Object | URL)[];}
         );
         continue;
       }
-      _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(decoded)
     }
     instance.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object = _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object;
     
@@ -84342,10 +84894,13 @@ relationships?: (Object | URL)[];}
         );
         continue;
       }
-      _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.push(await Object.fromJsonLd(
+      
+      const decoded = await Object.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.push(decoded)
     }
     instance.#_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship = _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship;
     
@@ -90315,10 +90870,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(await CryptographicKey.fromJsonLd(
+      
+      const decoded = await CryptographicKey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded)
     }
     instance.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey = _axq166E2eZADq34V4MYUc8KMZdC_publicKey;
     
@@ -90345,10 +90903,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(await Multikey.fromJsonLd(
+      
+      const decoded = await Multikey.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded)
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
@@ -90363,7 +90924,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array
     ) {
       if (v == null) continue;
-    _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers.push(decoded)
     }
     instance.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers;
     
@@ -90472,10 +91036,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded)
     }
     instance.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following = _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following;
     
@@ -90502,10 +91069,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded)
     }
     instance.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers = _BBCTgfphhsFzpVfKTykGSpBNwoA_followers;
     
@@ -90532,10 +91102,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded)
     }
     instance.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked = _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked;
     
@@ -90562,10 +91135,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded)
     }
     instance.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured = _4N1vBJzXDf8NbBumeECQMFvKetja_featured;
     
@@ -90592,10 +91168,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded)
     }
     instance.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags = _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags;
     
@@ -90622,10 +91201,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(await Collection.fromJsonLd(
+      
+      const decoded = await Collection.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded)
     }
     instance.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams = _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
     const _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints: (Endpoints)[] = [];
@@ -90640,10 +91222,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints__array
     ) {
       if (v == null) continue;
-    _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(await Endpoints.fromJsonLd(
+    
+      const decoded = await Endpoints.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded)
     }
     instance.#_sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints = _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints;
     const _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable: (boolean)[] = [];
@@ -90658,7 +91243,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable__array
     ) {
       if (v == null) continue;
-    _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable.push(decoded)
     }
     instance.#_gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable = _gAJzg1QDc4rcefFsUzGSYmyXvNH_discoverable;
     const _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
@@ -90673,7 +91261,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended__array
     ) {
       if (v == null) continue;
-    _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended.push(decoded)
     }
     instance.#_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended = _2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended;
     const _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
@@ -90688,7 +91279,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial__array
     ) {
       if (v == null) continue;
-    _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial.push(decoded)
     }
     instance.#_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial = _79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial;
     const _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
@@ -90703,7 +91297,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable__array
     ) {
       if (v == null) continue;
-    _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.push(decoded)
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
     
@@ -90836,10 +91433,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         );
         continue;
       }
-      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(await DidService.fromJsonLd(
+      
+      const decoded = await DidService.fromJsonLd(
       v,
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
-    ))
+    );
+      if (typeof decoded === \\"undefined\\") continue;
+      _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded)
     }
     instance.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service = _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
     const _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage: (string)[] = [];
@@ -90854,7 +91454,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage__array
     ) {
       if (v == null) continue;
-    _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage.push(decoded)
     }
     instance.#_QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage = _QuxorEK1txp7jGjq8BRQfTPvUwp__misskey_followedMessage;
     const _2xEU4QtkC53RAun67T81Egqt9vmL_isCat: (boolean)[] = [];
@@ -90869,7 +91472,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         : _2xEU4QtkC53RAun67T81Egqt9vmL_isCat__array
     ) {
       if (v == null) continue;
-    _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _2xEU4QtkC53RAun67T81Egqt9vmL_isCat.push(decoded)
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
@@ -91921,7 +92527,10 @@ get contents(): ((string | LanguageString))[] {
         : _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType__array
     ) {
       if (v == null) continue;
-    _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(v[\\"@value\\"])
+    
+      const decoded = v[\\"@value\\"];
+      if (typeof decoded === \\"undefined\\") continue;
+      _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(decoded)
     }
     instance.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType;
     
@@ -93081,11 +93690,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         : _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted__array
     ) {
       if (v == null) continue;
-    _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted.push(Temporal.Instant.from(
+    
+      const decoded = Temporal.Instant.from(
         v[\\"@value\\"].substring(19).match(/[Z+-]/)
           ? v[\\"@value\\"]
           : v[\\"@value\\"] + \\"Z\\"
-      ))
+      );
+      if (typeof decoded === \\"undefined\\") continue;
+      _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted.push(decoded)
     }
     instance.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted;
     
@@ -94833,5 +95445,169 @@ instruments?: (Object | URL)[];}
     const proxy = this._getCustomInspectProxy();
     return \\"View \\" + inspect(proxy, options);
   };
-  "
+  /**
+ * Constructor types for all generated vocabulary entity classes.
+ */
+export type $EntityType =
+  | typeof Object
+  | typeof Emoji
+  | typeof ChatMessage
+  | typeof Activity
+  | typeof EmojiReact
+  | typeof AnnounceAuthorization
+  | typeof AnnounceRequest
+  | typeof LikeAuthorization
+  | typeof LikeRequest
+  | typeof ReplyAuthorization
+  | typeof ReplyRequest
+  | typeof QuoteAuthorization
+  | typeof QuoteRequest
+  | typeof DidService
+  | typeof Export
+  | typeof DataIntegrityProof
+  | typeof CryptographicKey
+  | typeof Multikey
+  | typeof Proposal
+  | typeof Accept
+  | typeof Add
+  | typeof Announce
+  | typeof Application
+  | typeof IntransitiveActivity
+  | typeof Arrive
+  | typeof Article
+  | typeof Document
+  | typeof Audio
+  | typeof Ignore
+  | typeof Block
+  | typeof Collection
+  | typeof CollectionPage
+  | typeof Create
+  | typeof Delete
+  | typeof Dislike
+  | typeof Event
+  | typeof Flag
+  | typeof Follow
+  | typeof Group
+  | typeof Image
+  | typeof Offer
+  | typeof Invite
+  | typeof Join
+  | typeof Leave
+  | typeof Like
+  | typeof Listen
+  | typeof Move
+  | typeof Note
+  | typeof OrderedCollection
+  | typeof OrderedCollectionPage
+  | typeof Organization
+  | typeof Page
+  | typeof Person
+  | typeof Place
+  | typeof Profile
+  | typeof Question
+  | typeof Read
+  | typeof Reject
+  | typeof Relationship
+  | typeof Remove
+  | typeof Service
+  | typeof TentativeAccept
+  | typeof TentativeReject
+  | typeof Tombstone
+  | typeof Travel
+  | typeof Undo
+  | typeof Update
+  | typeof Video
+  | typeof View;
+
+const entityTypes: readonly $EntityType[] = [
+  Object,
+  Emoji,
+  ChatMessage,
+  Activity,
+  EmojiReact,
+  AnnounceAuthorization,
+  AnnounceRequest,
+  LikeAuthorization,
+  LikeRequest,
+  ReplyAuthorization,
+  ReplyRequest,
+  QuoteAuthorization,
+  QuoteRequest,
+  DidService,
+  Export,
+  DataIntegrityProof,
+  CryptographicKey,
+  Multikey,
+  Proposal,
+  Accept,
+  Add,
+  Announce,
+  Application,
+  IntransitiveActivity,
+  Arrive,
+  Article,
+  Document,
+  Audio,
+  Ignore,
+  Block,
+  Collection,
+  CollectionPage,
+  Create,
+  Delete,
+  Dislike,
+  Event,
+  Flag,
+  Follow,
+  Group,
+  Image,
+  Offer,
+  Invite,
+  Join,
+  Leave,
+  Like,
+  Listen,
+  Move,
+  Note,
+  OrderedCollection,
+  OrderedCollectionPage,
+  Organization,
+  Page,
+  Person,
+  Place,
+  Profile,
+  Question,
+  Read,
+  Reject,
+  Relationship,
+  Remove,
+  Service,
+  TentativeAccept,
+  TentativeReject,
+  Tombstone,
+  Travel,
+  Undo,
+  Update,
+  Video,
+  View,
+];
+
+const entityTypeIds: ReadonlyMap<string, $EntityType> = new Map(
+  entityTypes.map((entityType) => [entityType.typeId.href, entityType]),
+);
+
+/**
+ * Checks whether the given value is a generated vocabulary entity class.
+ */
+export function isEntityType(value: unknown): value is $EntityType {
+  return entityTypes.includes(value as $EntityType);
+}
+
+/**
+ * Gets the generated vocabulary entity class for the given type URI.
+ */
+export function getEntityTypeById(id: string | URL): $EntityType | undefined {
+  return entityTypeIds.get(typeof id === \\"string\\" ? id : id.href);
+}
+
+"
 `;
