@@ -2519,8 +2519,9 @@ test("Federation.setOutboxListeners()", async (t) => {
           enqueued.push(message);
           return Promise.resolve();
         },
-        async listen(): Promise<void> {
+        listen(): Promise<void> {
           listenCalled = true;
+          return Promise.resolve();
         },
       };
       const federation = new FederationImpl<void>({
