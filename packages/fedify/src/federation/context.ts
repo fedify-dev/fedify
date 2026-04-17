@@ -699,6 +699,51 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
   readonly identifier: string;
 
   /**
+   * Forwards a posted activity to the recipients' inboxes without
+   * re-serializing the original payload.  The forwarded activity will be
+   * signed in HTTP Signatures by the forwarder, but its payload will not be
+   * modified, i.e., Linked Data Signatures and Object Integrity Proofs will
+   * not be added.  Therefore, if the posted activity is not signed (i.e., it
+   * has neither Linked Data Signatures nor Object Integrity Proofs), the
+   * recipient probably will not trust the activity.
+   * @param forwarder The forwarder's identifier or the forwarder's username
+   *                  or the forwarder's key pair(s).
+   * @param recipients The recipients of the activity.
+   * @param options Options for forwarding the activity.
+   * @since 2.2.0
+   */
+  forwardActivity(
+    forwarder:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string },
+    recipients: Recipient | Recipient[],
+    options?: ForwardActivityOptions,
+  ): Promise<void>;
+
+  /**
+   * Forwards a posted activity to the recipients' inboxes without
+   * re-serializing the original payload.  The forwarded activity will be
+   * signed in HTTP Signatures by the forwarder, but its payload will not be
+   * modified, i.e., Linked Data Signatures and Object Integrity Proofs will
+   * not be added.  Therefore, if the posted activity is not signed (i.e., it
+   * has neither Linked Data Signatures nor Object Integrity Proofs), the
+   * recipient probably will not trust the activity.
+   * @param forwarder The forwarder's identifier or the forwarder's username.
+   * @param recipients In this case, it must be `"followers"`.
+   * @param options Options for forwarding the activity.
+   * @since 2.2.0
+   */
+  forwardActivity(
+    forwarder:
+      | { identifier: string }
+      | { username: string },
+    recipients: "followers",
+    options?: ForwardActivityOptions,
+  ): Promise<void>;
+
+  /**
    * Creates a new context with the same properties as this one,
    * but with the given data.
    * @param data The new data to associate with the context.

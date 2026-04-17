@@ -646,12 +646,12 @@ export async function handleOutbox<TContextData>(
     });
   }
   if (
-    "hasSentActivity" in outboxContext &&
-    typeof outboxContext.hasSentActivity === "function" &&
-    !outboxContext.hasSentActivity()
+    "hasDeliveredActivity" in outboxContext &&
+    typeof outboxContext.hasDeliveredActivity === "function" &&
+    !outboxContext.hasDeliveredActivity()
   ) {
     logger.warn(
-      "Outbox listener for {identifier} returned without calling ctx.sendActivity().",
+      "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity().",
       {
         identifier,
         activityId: activity.id?.href,
