@@ -98,7 +98,9 @@
   },
   "fmt": {
     "exclude": [
-      "**/*.md"
+      "**/*.html",
+      "**/*.md",
+      "**/*.svg"
     ]
   },
   "nodeModulesDir": "auto",
