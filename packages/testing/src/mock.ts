@@ -76,18 +76,17 @@ function expandUriTemplate(
 }
 
 function hasLinkedDataSignature(jsonLd: unknown): boolean {
-  return jsonLd != null && typeof jsonLd === "object" &&
-    "signature" in jsonLd && jsonLd.signature != null &&
-    typeof jsonLd.signature === "object" &&
-    "type" in jsonLd.signature &&
-    typeof jsonLd.signature.type === "string" &&
-    (("creator" in jsonLd.signature &&
-      typeof jsonLd.signature.creator === "string") ||
-      ("verificationMethod" in jsonLd.signature &&
-        typeof jsonLd.signature.verificationMethod === "string")) &&
-    (("signatureValue" in jsonLd.signature &&
-      typeof jsonLd.signature.signatureValue === "string") ||
-      ("jws" in jsonLd.signature && typeof jsonLd.signature.jws === "string"));
+  if (jsonLd == null || typeof jsonLd !== "object") return false;
+  const record = jsonLd as Record<string, unknown>;
+  const signature = record.signature;
+  if (signature == null || typeof signature !== "object") return false;
+  const signatureRecord = signature as Record<string, unknown>;
+
+  return typeof signatureRecord.type === "string" &&
+    (typeof signatureRecord.creator === "string" ||
+      typeof signatureRecord.verificationMethod === "string") &&
+    (typeof signatureRecord.signatureValue === "string" ||
+      typeof signatureRecord.jws === "string");
 }
 
 /**
