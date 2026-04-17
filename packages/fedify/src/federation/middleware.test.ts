@@ -57,6 +57,14 @@ type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
 type Assert<T extends true> = T;
 
+let logtapeLock: Promise<void> = Promise.resolve();
+
+async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = logtapeLock.then(fn, fn);
+  logtapeLock = run.then(() => undefined, () => undefined);
+  return await run;
+}
+
 test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
 
@@ -2258,180 +2266,86 @@ test("Federation.setOutboxListeners()", async (t) => {
   );
 
   await t.step("warns when listener omits delivery", async () => {
-    const postedFixture = {
-      ...createFixture,
-      actor: "https://example.com/users/john",
-    };
-    const records: LogRecord[] = [];
-    await reset();
-    try {
-      await configure({
-        sinks: {
-          buffer(record: LogRecord): void {
-            records.push(record);
+    await withLogtapeLock(async () => {
+      const postedFixture = {
+        ...createFixture,
+        actor: "https://example.com/users/john",
+      };
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: {
+            buffer(record: LogRecord): void {
+              records.push(record);
+            },
           },
-        },
-        filters: {},
-        loggers: [{ category: [], sinks: ["buffer"] }],
-      });
-
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
-      });
-      federation
-        .setActorDispatcher(
-          "/users/{identifier}",
-          (_ctx, identifier) =>
-            identifier === "john" ? new vocab.Person({}) : null,
-        )
-        .setKeyPairsDispatcher(() => [{
-          privateKey: rsaPrivateKey2,
-          publicKey: rsaPublicKey2.publicKey!,
-        }]);
-
-      federation
-        .setOutboxListeners("/users/{identifier}/outbox")
-        .on(vocab.Activity, () => {})
-        .authorize((ctx, identifier) => {
-          return identifier === "john" &&
-            ctx.request.headers.get("authorization") === "Bearer token";
+          filters: {},
+          loggers: [{ category: [], sinks: ["buffer"] }],
         });
 
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/outbox", {
-          method: "POST",
-          body: JSON.stringify(postedFixture),
-          headers: {
-            authorization: "Bearer token",
-            "content-type": "application/activity+json",
-          },
-        }),
-        { contextData: undefined },
-      );
+        const federation = createFederation<void>({
+          kv,
+          documentLoaderFactory: () => mockDocumentLoader,
+        });
+        federation
+          .setActorDispatcher(
+            "/users/{identifier}",
+            (_ctx, identifier) =>
+              identifier === "john" ? new vocab.Person({}) : null,
+          )
+          .setKeyPairsDispatcher(() => [{
+            privateKey: rsaPrivateKey2,
+            publicKey: rsaPublicKey2.publicKey!,
+          }]);
 
-      assertEquals(response.status, 202);
-      assertEquals(
-        records.some((record) =>
-          record.rawMessage ===
-            "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()." &&
-          record.properties.identifier === "john"
-        ),
-        true,
-      );
-    } finally {
-      await reset();
-    }
+        federation
+          .setOutboxListeners("/users/{identifier}/outbox")
+          .on(vocab.Activity, () => {})
+          .authorize((ctx, identifier) => {
+            return identifier === "john" &&
+              ctx.request.headers.get("authorization") === "Bearer token";
+          });
+
+        const response = await federation.fetch(
+          new Request("https://example.com/users/john/outbox", {
+            method: "POST",
+            body: JSON.stringify(postedFixture),
+            headers: {
+              authorization: "Bearer token",
+              "content-type": "application/activity+json",
+            },
+          }),
+          { contextData: undefined },
+        );
+
+        assertEquals(response.status, 202);
+        assertEquals(
+          records.some((record) =>
+            record.rawMessage ===
+              "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()." &&
+            record.properties.identifier === "john"
+          ),
+          true,
+        );
+      } finally {
+        await reset();
+      }
+    });
   });
 
   await t.step("does not warn when listener calls sendActivity()", async () => {
-    const postedFixture = {
-      ...createFixture,
-      actor: "https://example.com/users/john",
-    };
-    const records: LogRecord[] = [];
-    await reset();
-    fetchMock.spyGlobal();
-    fetchMock.post("https://remote.example/inbox", {
-      status: 202,
-      body: "Accepted",
-    });
-
-    try {
-      await configure({
-        sinks: {
-          buffer(record: LogRecord): void {
-            records.push(record);
-          },
-        },
-        filters: {},
-        loggers: [{ category: [], sinks: ["buffer"] }],
-      });
-
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
-      });
-      federation
-        .setActorDispatcher(
-          "/users/{identifier}",
-          (_ctx, identifier) =>
-            identifier === "john" ? new vocab.Person({}) : null,
-        )
-        .setKeyPairsDispatcher(() => [{
-          privateKey: rsaPrivateKey2,
-          publicKey: rsaPublicKey2.publicKey!,
-        }]);
-
-      federation
-        .setOutboxListeners("/users/{identifier}/outbox")
-        .on(vocab.Activity, async (ctx, activity) => {
-          await ctx.sendActivity(
-            { identifier: ctx.identifier },
-            new vocab.Person({
-              id: new URL("https://remote.example/users/alice"),
-              inbox: new URL("https://remote.example/inbox"),
-            }),
-            activity,
-          );
-        })
-        .authorize((ctx, identifier) => {
-          return identifier === "john" &&
-            ctx.request.headers.get("authorization") === "Bearer token";
-        });
-
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/outbox", {
-          method: "POST",
-          body: JSON.stringify(postedFixture),
-          headers: {
-            authorization: "Bearer token",
-            "content-type": "application/activity+json",
-          },
-        }),
-        { contextData: undefined },
-      );
-
-      assertEquals(response.status, 202);
-      assertEquals(
-        records.some((record) =>
-          record.rawMessage ===
-            "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()."
-        ),
-        false,
-      );
-    } finally {
-      fetchMock.hardReset();
-      await reset();
-    }
-  });
-
-  await t.step(
-    "does not warn when listener calls forwardActivity()",
-    async () => {
-      const postedFixture = await signJsonLd(
-        {
-          ...createFixture,
-          actor: "https://example.com/person2",
-        },
-        rsaPrivateKey3,
-        rsaPublicKey3.id!,
-        { contextLoader: mockDocumentLoader },
-      );
+    await withLogtapeLock(async () => {
+      const postedFixture = {
+        ...createFixture,
+        actor: "https://example.com/users/john",
+      };
       const records: LogRecord[] = [];
-      let ldsVerified = false;
       await reset();
       fetchMock.spyGlobal();
-      fetchMock.post("https://remote.example/inbox", async (cl) => {
-        const verifyOptions = {
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        };
-        ldsVerified = await verifyJsonLd(
-          await cl.request!.json(),
-          verifyOptions,
-        );
-        return new Response(null, { status: ldsVerified ? 202 : 401 });
+      fetchMock.post("https://remote.example/inbox", {
+        status: 202,
+        body: "Accepted",
       });
 
       try {
@@ -2451,9 +2365,9 @@ test("Federation.setOutboxListeners()", async (t) => {
         });
         federation
           .setActorDispatcher(
-            "/{identifier}",
+            "/users/{identifier}",
             (_ctx, identifier) =>
-              identifier === "person2" ? new vocab.Person({}) : null,
+              identifier === "john" ? new vocab.Person({}) : null,
           )
           .setKeyPairsDispatcher(() => [{
             privateKey: rsaPrivateKey2,
@@ -2462,23 +2376,23 @@ test("Federation.setOutboxListeners()", async (t) => {
 
         federation
           .setOutboxListeners("/users/{identifier}/outbox")
-          .on(vocab.Activity, async (ctx) => {
-            await ctx.forwardActivity(
-              [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
-              {
+          .on(vocab.Activity, async (ctx, activity) => {
+            await ctx.sendActivity(
+              { identifier: ctx.identifier },
+              new vocab.Person({
                 id: new URL("https://remote.example/users/alice"),
-                inboxId: new URL("https://remote.example/inbox"),
-              },
-              { skipIfUnsigned: true },
+                inbox: new URL("https://remote.example/inbox"),
+              }),
+              activity,
             );
           })
           .authorize((ctx, identifier) => {
-            return identifier === "person2" &&
+            return identifier === "john" &&
               ctx.request.headers.get("authorization") === "Bearer token";
           });
 
         const response = await federation.fetch(
-          new Request("https://example.com/users/person2/outbox", {
+          new Request("https://example.com/users/john/outbox", {
             method: "POST",
             body: JSON.stringify(postedFixture),
             headers: {
@@ -2490,7 +2404,6 @@ test("Federation.setOutboxListeners()", async (t) => {
         );
 
         assertEquals(response.status, 202);
-        assertEquals(ldsVerified, true);
         assertEquals(
           records.some((record) =>
             record.rawMessage ===
@@ -2502,6 +2415,107 @@ test("Federation.setOutboxListeners()", async (t) => {
         fetchMock.hardReset();
         await reset();
       }
+    });
+  });
+
+  await t.step(
+    "does not warn when listener calls forwardActivity()",
+    async () => {
+      await withLogtapeLock(async () => {
+        const postedFixture = await signJsonLd(
+          {
+            ...createFixture,
+            actor: "https://example.com/person2",
+          },
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+          { contextLoader: mockDocumentLoader },
+        );
+        const records: LogRecord[] = [];
+        let ldsVerified = false;
+        await reset();
+        fetchMock.spyGlobal();
+        fetchMock.post("https://remote.example/inbox", async (cl) => {
+          const verifyOptions = {
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          };
+          ldsVerified = await verifyJsonLd(
+            await cl.request!.json(),
+            verifyOptions,
+          );
+          return new Response(null, { status: ldsVerified ? 202 : 401 });
+        });
+
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation
+            .setActorDispatcher(
+              "/{identifier}",
+              (_ctx, identifier) =>
+                identifier === "person2" ? new vocab.Person({}) : null,
+            )
+            .setKeyPairsDispatcher(() => [{
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            }]);
+
+          federation
+            .setOutboxListeners("/users/{identifier}/outbox")
+            .on(vocab.Activity, async (ctx) => {
+              await ctx.forwardActivity(
+                [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+                {
+                  id: new URL("https://remote.example/users/alice"),
+                  inboxId: new URL("https://remote.example/inbox"),
+                },
+                { skipIfUnsigned: true },
+              );
+            })
+            .authorize((ctx, identifier) => {
+              return identifier === "person2" &&
+                ctx.request.headers.get("authorization") === "Bearer token";
+            });
+
+          const response = await federation.fetch(
+            new Request("https://example.com/users/person2/outbox", {
+              method: "POST",
+              body: JSON.stringify(postedFixture),
+              headers: {
+                authorization: "Bearer token",
+                "content-type": "application/activity+json",
+              },
+            }),
+            { contextData: undefined },
+          );
+
+          assertEquals(response.status, 202);
+          assertEquals(ldsVerified, true);
+          assertEquals(
+            records.some((record) =>
+              record.rawMessage ===
+                "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()."
+            ),
+            false,
+          );
+        } finally {
+          fetchMock.hardReset();
+          await reset();
+        }
+      });
     },
   );
 
@@ -2572,6 +2586,9 @@ test("Federation.setOutboxListeners()", async (t) => {
       assertEquals(listenCalled, true);
       assertEquals(enqueued.length, 1);
       assertEquals(enqueued[0].type, "outbox");
+      assertEquals((enqueued[0] as OutboxMessage).actorIds, [
+        "https://remote.example/users/alice",
+      ]);
     },
   );
 });

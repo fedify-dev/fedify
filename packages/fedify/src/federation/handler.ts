@@ -626,7 +626,7 @@ export async function handleOutbox<TContextData>(
         {
           error,
           activityId: activity.id?.href,
-          activity: json,
+          activityType: getTypeId(activity).href,
           identifier,
         },
       );

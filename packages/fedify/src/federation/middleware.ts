@@ -3057,6 +3057,7 @@ async function forwardActivityInternal<TContextData>(
       activityType: ctx.activityType,
       inbox,
       sharedInbox: inboxes[inbox].sharedInbox,
+      actorIds: [...inboxes[inbox].actorIds],
       started,
       attempt: 0,
       headers: {},
