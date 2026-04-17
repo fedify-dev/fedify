@@ -131,6 +131,27 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - bracket notation delivery call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx["sendActivity"](
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ✅ Good - template literal delivery expression`,
   lintTest({
     code: `

@@ -74,11 +74,16 @@ function escapeRegExp(value: string): string {
   return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const stripCommentsAndStrings = (code: string): string =>
-  code
+function stripCommentsAndStrings(code: string): string {
+  return code
     .replaceAll(/\/\*[\s\S]*?\*\//g, "")
     .replaceAll(/\/\/.*$/gm, "")
-    .replaceAll(/(["'])(?:\\.|(?!\1)[^\\])*\1/g, '""');
+    .replaceAll(/(["'])(?:\\.|(?!\1)[^\\])*\1/g, (literal) => {
+      const quote = literal[0];
+      const value = literal.slice(1, -1);
+      return DELIVERY_METHOD_NAMES.has(value) ? literal : `${quote}${quote}`;
+    });
+}
 
 function getDeliveryAliasName(node: Node): string | null {
   if (node.type === "Identifier") return node.name;
