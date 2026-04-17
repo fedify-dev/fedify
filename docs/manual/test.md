@@ -308,12 +308,22 @@ const federation = createFederation<{ userId: string }>({
   contextData: { userId: "test-user" },
 });
 
+let receivedActivityId = "";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Create, (_ctx, activity) => {
+    receivedActivityId = activity.id?.href ?? "";
+  });
+
 const activity = new Create({
   id: new URL("https://example.com/activities/1"),
   actor: new URL("https://example.com/users/alice"),
 });
 
 await federation.postOutboxActivity("alice", activity);
+
+console.log(receivedActivityId);  // https://example.com/activities/1
 ~~~~
 
 ### Testing URI generation

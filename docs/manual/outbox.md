@@ -13,7 +13,9 @@ This is useful when you want to accept ActivityPub client-to-server activities
 from your own clients without exposing a separate non-standard API.
 
 This guide covers `POST /outbox`.  To serve `GET /outbox`, use the
-[*Collections*](./collections.md#outbox) guide.
+[*Collections*][collections-outbox] guide.
+
+[collections-outbox]: ./collections.md#outbox
 
 
 Registering an outbox listener
@@ -28,6 +30,12 @@ import { type Federation } from "@fedify/fedify";
 import { Activity, Create, Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 const myKnownRecipients: Person[] = [];
+async function verifyAccessToken(
+  authorization: string | null,
+): Promise<{ identifier: string } | null> {
+  authorization;
+  return null;
+}
 async function savePostedActivity(
   identifier: string,
   activity: Activity,
@@ -47,8 +55,10 @@ federation
     );
   })
   .authorize(async (ctx, identifier) => {
-    const token = ctx.request.headers.get("authorization");
-    return token === `Bearer ${identifier}`;
+    const session = await verifyAccessToken(
+      ctx.request.headers.get("authorization"),
+    );
+    return session?.identifier === identifier;
   });
 ~~~~
 
@@ -71,7 +81,9 @@ actor who owns the addressed outbox.
 > `{identifier}` (simple expansion) and `{+identifier}` (reserved expansion).
 > If your identifiers contain URIs or special characters, you may need to use
 > `{+identifier}` to avoid double-encoding issues.  See the
-> [*URI Template* guide](./uri-template.md) for details.
+> [*URI Template* guide][uri-template-guide] for details.
+
+[uri-template-guide]: ./uri-template.md
 
 
 Looking at `OutboxContext.identifier`
@@ -140,12 +152,14 @@ federation
 
 If a listener returns without calling one of these delivery methods, Fedify
 logs a runtime warning.  The `@fedify/lint` package also provides a lint rule
-for the same mistake; see [*Linting*](./lint.md) for details.
+for the same mistake; see [*Linting*][linting-guide] for details.
 
 > [!TIP]
 > Explicit delivery keeps outbox listeners symmetric with inbox listeners:
 > Fedify never guesses the recipient list for you, so applications can reuse
 > their own caches and delivery policies.
+
+[linting-guide]: ./lint.md
 
 
 Handling errors

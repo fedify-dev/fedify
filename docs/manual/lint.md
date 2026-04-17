@@ -630,7 +630,7 @@ federation
   .on(Activity, async (ctx, activity) => {
     await ctx.sendActivity(
       { identifier: ctx.identifier },
-      [],
+      "followers",
       activity,
     );
   });
@@ -641,8 +641,7 @@ federation
   .on(Activity, async (ctx) => {
     await ctx.forwardActivity(
       { identifier: ctx.identifier },
-      [],
-      { skipIfUnsigned: true },
+      "followers",
     );
   });
 ~~~~

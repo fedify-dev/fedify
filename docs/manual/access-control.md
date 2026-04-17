@@ -108,12 +108,20 @@ requests:
 ~~~~ typescript twoslash
 import { type Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
+async function verifyAccessToken(
+  authorization: string | null,
+): Promise<{ identifier: string } | null> {
+  authorization;
+  return null;
+}
 // ---cut-before---
 federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .authorize(async (ctx, identifier) => {
-    const token = ctx.request.headers.get("authorization");
-    return token === `Bearer ${identifier}`;
+    const session = await verifyAccessToken(
+      ctx.request.headers.get("authorization"),
+    );
+    return session?.identifier === identifier;
   });
 ~~~~
 
