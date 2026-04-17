@@ -2868,38 +2868,34 @@ function forwardActivity<TContextData>(
     metadata.name,
     metadata.version,
   );
-  return new Promise<boolean>((resolve, reject) => {
-    tracer.startActiveSpan(
-      "activitypub.outbox",
-      {
-        kind: ctx.federation.outboxQueue == null || options?.immediate
-          ? SpanKind.CLIENT
-          : SpanKind.PRODUCER,
-        attributes: { "activitypub.activity.type": ctx.activityType },
-      },
-      async (span) => {
-        try {
-          if (ctx.activityId != null) {
-            span.setAttribute("activitypub.activity.id", ctx.activityId);
-          }
-          resolve(
-            await forwardActivityInternal(
-              ctx,
-              loggerCategory,
-              forwarder,
-              recipients,
-              options,
-            ),
-          );
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          reject(e);
-        } finally {
-          span.end();
+  return tracer.startActiveSpan(
+    "activitypub.outbox",
+    {
+      kind: ctx.federation.outboxQueue == null || options?.immediate
+        ? SpanKind.CLIENT
+        : SpanKind.PRODUCER,
+      attributes: { "activitypub.activity.type": ctx.activityType },
+    },
+    async (span) => {
+      try {
+        if (ctx.activityId != null) {
+          span.setAttribute("activitypub.activity.id", ctx.activityId);
         }
-      },
-    );
-  });
+        return await forwardActivityInternal(
+          ctx,
+          loggerCategory,
+          forwarder,
+          recipients,
+          options,
+        );
+      } catch (e) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+        throw e;
+      } finally {
+        span.end();
+      }
+    },
+  );
 }
 
 async function forwardActivityInternal<TContextData>(
@@ -3047,6 +3043,7 @@ async function forwardActivityInternal<TContextData>(
   const carrier: Record<string, string> = {};
   propagation.inject(context.active(), carrier);
   const orderingKey = options?.orderingKey;
+  const started = new Date().toISOString();
   const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
   for (const inbox in inboxes) {
     const inboxUrl = new URL(inbox);
@@ -3060,7 +3057,7 @@ async function forwardActivityInternal<TContextData>(
       activityType: ctx.activityType,
       inbox,
       sharedInbox: inboxes[inbox].sharedInbox,
-      started: new Date().toISOString(),
+      started,
       attempt: 0,
       headers: {},
       orderingKey: orderingKey == null
