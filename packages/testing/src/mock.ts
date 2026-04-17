@@ -208,7 +208,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private featuredDispatcher?: any;
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
-  private outboxListeners: Map<string, any[]> = new Map();
+  private outboxListeners: Map<string, any> = new Map();
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -370,10 +370,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     return {
       on(type: any, listener: any): any {
         const typeName = type.name;
-        if (!self.outboxListeners.has(typeName)) {
-          self.outboxListeners.set(typeName, []);
+        if (self.outboxListeners.has(typeName)) {
+          throw new TypeError("Listener already set for this type.");
         }
-        self.outboxListeners.get(typeName)!.push(listener);
+        self.outboxListeners.set(typeName, listener);
         return this;
       },
       onError(): any {
@@ -494,12 +494,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     activity: Activity,
   ): Promise<void> {
     const typeName = activity.constructor.name;
-    const listeners = [
-      ...(this.outboxListeners.get(typeName) || []),
-      ...(this.outboxListeners.get("Activity") || []),
-    ];
+    const listener = this.outboxListeners.get(typeName) ??
+      this.outboxListeners.get("Activity");
 
-    if (listeners.length > 0 && this.contextData === undefined) {
+    if (listener != null && this.contextData === undefined) {
       throw new Error(
         "MockFederation.postOutboxActivity(): contextData is not initialized. " +
           "Please provide contextData through the constructor or call startQueue() before posting activities.",
@@ -511,7 +509,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       this.contextData as TContextData,
     );
 
-    for (const listener of listeners) {
+    if (listener != null) {
       const context = createOutboxContext({
         ...baseContext,
         clone: undefined,

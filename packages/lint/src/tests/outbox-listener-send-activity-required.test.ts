@@ -93,3 +93,42 @@ federation
       "Outbox listeners should call ctx.sendActivity() explicitly.",
   }),
 );
+
+test(
+  `${ruleName}: ❌ Bad - comment mentioning sendActivity`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    // ctx.sendActivity(...)
+    console.log(ctx.identifier, activity.id?.href);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should call ctx.sendActivity() explicitly.",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - string mentioning sendActivity`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async () => {
+    return ".sendActivity(";
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should call ctx.sendActivity() explicitly.",
+  }),
+);

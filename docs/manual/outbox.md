@@ -21,7 +21,7 @@ Registering an outbox listener
 
 With Fedify, you can register outbox listeners per activity type, just like
 inbox listeners.  The following shows how to register a listener for `Create`
-activities and a catch-all for every other activity type:
+activities:
 
 ~~~~ typescript twoslash
 import { type Federation } from "@fedify/fedify";
@@ -46,9 +46,6 @@ federation
       activity,
     );
   })
-  .on(Activity, async (_ctx, _activity) => {
-    // Catch any other activity type.
-  })
   .authorize(async (ctx, identifier) => {
     const token = ctx.request.headers.get("authorization");
     return token === `Bearer ${identifier}`;
@@ -64,8 +61,10 @@ Fedify also rejects a posted activity if its `actor` does not match the local
 actor who owns the addressed outbox.
 
 > [!TIP]
-> If you want to catch every activity type, register a listener for the
-> `Activity` class.
+> If you need to handle every activity type, register a listener for the
+> `Activity` class.  Unsupported activity types can also be left unhandled,
+> in which case Fedify responds with `202 Accepted` without dispatching a
+> listener.
 
 > [!NOTE]
 > The URI Template syntax supports different expansion types like

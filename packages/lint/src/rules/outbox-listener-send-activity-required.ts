@@ -31,10 +31,19 @@ const isChainedFromOutboxListeners = (
   return false;
 };
 
+const stripCommentsAndStrings = (code: string): string =>
+  code
+    .replaceAll(/\/\*[\s\S]*?\*\//g, "")
+    .replaceAll(/\/\/.*$/gm, "")
+    .replaceAll(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '""');
+
 const listenerCallsSendActivity = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionNode,
-): boolean => sourceCode.getText(listener).includes(".sendActivity(");
+): boolean =>
+  stripCommentsAndStrings(sourceCode.getText(listener)).includes(
+    ".sendActivity(",
+  );
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   buildReport: Context extends Deno.lint.RuleContext ? {

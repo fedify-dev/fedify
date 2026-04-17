@@ -1,7 +1,7 @@
 import type { InboxContext, OutboxContext } from "@fedify/fedify/federation";
 import { test } from "@fedify/fixture";
-import { Create, Note, Person } from "@fedify/vocab";
-import { assertEquals, assertRejects } from "@std/assert";
+import { Activity, Create, Note, Person } from "@fedify/vocab";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { createFederation, createOutboxContext } from "./mock.ts";
 
 test("getSentActivities returns sent activities", async () => {
@@ -133,6 +133,45 @@ test("postOutboxActivity triggers outbox listeners", async () => {
   assertEquals(receivedIdentifier, "alice");
   assertEquals(mockFederation.sentActivities.length, 1);
   assertEquals(mockFederation.sentActivities[0].activity, activity);
+});
+
+test("postOutboxActivity prefers the most specific listener", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  const calls: string[] = [];
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Activity, () => {
+      calls.push("Activity");
+    })
+    .on(Create, () => {
+      calls.push("Create");
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(calls, ["Create"]);
+});
+
+test("setOutboxListeners rejects duplicate listeners for the same type", () => {
+  const mockFederation = createFederation<void>();
+  const listeners = mockFederation.setOutboxListeners(
+    "/users/{identifier}/outbox",
+  );
+
+  listeners.on(Create, () => {});
+
+  assertThrows(
+    () => listeners.on(Create, () => {}),
+    TypeError,
+  );
 });
 
 test("createOutboxContext exposes identifier", () => {
