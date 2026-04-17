@@ -597,6 +597,44 @@ federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
 });
 ~~~~
 
+### `outbox-listener-send-activity-required`
+
+Warns when an outbox listener body does not call `ctx.sendActivity()`.
+
+**When this rule applies:**
+You've registered an outbox listener with `setOutboxListeners()`, but the
+listener body never calls `ctx.sendActivity()`.
+
+**Why it matters:**
+Fedify does not federate client-to-server outbox posts automatically.  If your
+application intends to deliver a posted activity, the listener must call
+`ctx.sendActivity()` explicitly.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Listener stores the activity locally but never federates it
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });
+
+// ✅ Good: Listener federates explicitly
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      [],
+      activity,
+    );
+  });
+~~~~
+
 ### `actor-followers-property-required`
 
 Ensures `followers` is defined when `setFollowersDispatcher()` is configured.

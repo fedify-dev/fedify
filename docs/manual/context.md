@@ -38,6 +38,7 @@ callbacks that take a `Context` object as the first parameter:
 
  -  [Actor dispatcher](./actor.md)
  -  [Inbox listeners](./inbox.md)
+ -  [Outbox listeners](./outbox.md)
  -  [Outbox collection dispatcher](./collections.md#outbox)
  -  [Inbox collection dispatcher](./collections.md#inbox)
  -  [Following collection dispatcher](./collections.md#following)

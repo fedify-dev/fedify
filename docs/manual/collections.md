@@ -31,6 +31,10 @@ own URI, the outbox collection has its own URI, too.  The URI of the outbox
 collection is determined by the first parameter of
 the `~Federatable.setOutboxDispatcher()` method:
 
+> [!TIP]
+> Use `~Federatable.setOutboxListeners()` to handle `POST` requests to the same
+> outbox path.  See the [*Outbox listeners*](./outbox.md) guide.
+
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import type { Federation } from "@fedify/fedify";

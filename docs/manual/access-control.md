@@ -102,6 +102,24 @@ federation
 If the predicate returns `false`, the request is rejected with a
 `401 Unauthorized` response.
 
+Outbox listeners can use a similar hook for client-to-server `POST /outbox`
+requests:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .authorize(async (ctx, identifier) => {
+    const token = ctx.request.headers.get("authorization");
+    return token === `Bearer ${identifier}`;
+  });
+~~~~
+
+Unlike authorized fetch, this hook is purely local application logic for
+incoming client requests.  It does not verify HTTP Signatures by itself.
+
 
 Fine-grained access control
 ---------------------------

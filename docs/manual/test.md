@@ -281,6 +281,22 @@ console.log("Context sent activities:", sentActivities);
 console.log("Federation sent activities:", federation.sentActivities);
 ~~~~
 
+If you want to test an outbox listener directly, you can also create an
+`OutboxContext` with the `createOutboxContext()` helper:
+
+~~~~ typescript twoslash
+import { createFederation, createOutboxContext } from "@fedify/testing";
+
+const federation = createFederation<{ userId: string }>();
+const context = createOutboxContext({
+  federation,
+  data: { userId: "test-user" },
+  identifier: "alice",
+});
+
+console.log(context.identifier);  // alice
+~~~~
+
 ### Testing URI generation
 
 Mock contexts created with the `createContext()` method provide mock
