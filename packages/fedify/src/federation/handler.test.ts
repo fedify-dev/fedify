@@ -1495,10 +1495,14 @@ test("handleOutbox()", async () => {
       return new URL(`https://example.com/users/${identifier}`);
     },
   });
+  let invalidActivityId: string | undefined;
+  let invalidActivityType: string | undefined;
   response = await handleOutbox(invalidRequest, {
     identifier: "someone",
     context: invalidContext,
-    outboxContextFactory(identifier) {
+    outboxContextFactory(identifier, _json, activityId, activityType) {
+      invalidActivityId = activityId;
+      invalidActivityType = activityType;
       return createOutboxContext({
         ...invalidContext,
         clone: undefined,
@@ -1511,11 +1515,57 @@ test("handleOutbox()", async () => {
     onUnauthorized,
   });
   assertEquals(response.status, 400);
+  assertEquals(invalidActivityId, undefined);
+  assertEquals(invalidActivityType, "Create");
 
   const mismatchedActorJson = (await activity.toJsonLd()) as Record<
     string,
     unknown
   >;
+
+  const missingActorRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...mismatchedActorJson,
+        actor: undefined,
+      }),
+    },
+  );
+  const missingActorContext = createRequestContext({
+    federation,
+    request: missingActorRequest,
+    url: new URL(missingActorRequest.url),
+    data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  let missingActorErrorMessage: string | null = null;
+  response = await handleOutbox(missingActorRequest, {
+    identifier: "someone",
+    context: missingActorContext,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...missingActorContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    outboxErrorHandler: (_ctx, error) => {
+      missingActorErrorMessage = error.message;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "The posted activity has no actor."],
+  );
+  assertEquals(missingActorErrorMessage, "The posted activity has no actor.");
   const mismatchedActorRequest = new Request(
     "https://example.com/users/someone/outbox",
     {

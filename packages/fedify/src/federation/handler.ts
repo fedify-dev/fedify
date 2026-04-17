@@ -581,7 +581,12 @@ export async function handleOutbox<TContextData>(
       ...summary,
       error,
     });
-    const outboxContext = outboxContextFactory(identifier, json, undefined, "");
+    const outboxContext = outboxContextFactory(
+      identifier,
+      json,
+      summary.activityId,
+      summary.activityType ?? "",
+    );
     try {
       await outboxErrorHandler?.(outboxContext, error as Error);
     } catch (error) {
@@ -602,8 +607,32 @@ export async function handleOutbox<TContextData>(
     getTypeId(activity).href,
   );
   const expectedActorId = actor.id ?? ctx.getActorUri(identifier);
+  if (activity.actorIds.length < 1) {
+    const error = new Error("The posted activity has no actor.");
+    logger.error("The posted activity has no actor for outbox {identifier}.", {
+      identifier,
+      activityId: activity.id?.href,
+      expectedActorId: expectedActorId.href,
+    });
+    try {
+      await outboxErrorHandler?.(outboxContext, error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in outbox error handler:\n{error}",
+        {
+          error,
+          activityId: activity.id?.href,
+          activityType: getTypeId(activity).href,
+          identifier,
+        },
+      );
+    }
+    return new Response(error.message, {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   if (
-    activity.actorIds.length < 1 ||
     !activity.actorIds.every((actorId) => actorId.href === expectedActorId.href)
   ) {
     const error = new Error(

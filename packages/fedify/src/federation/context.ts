@@ -705,7 +705,7 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
    * modified, i.e., Linked Data Signatures and Object Integrity Proofs will
    * not be added.  Therefore, if the posted activity is not signed (i.e., it
    * has neither Linked Data Signatures nor Object Integrity Proofs), the
-   * recipient probably will not trust the activity.
+   * recipients probably will not trust the activity.
    * @param forwarder The forwarder's identifier or the forwarder's username
    *                  or the forwarder's key pair(s).
    * @param recipients The recipients of the activity.
@@ -729,7 +729,7 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
    * modified, i.e., Linked Data Signatures and Object Integrity Proofs will
    * not be added.  Therefore, if the posted activity is not signed (i.e., it
    * has neither Linked Data Signatures nor Object Integrity Proofs), the
-   * recipient probably will not trust the activity.
+   * recipients probably will not trust the activity.
    * @param forwarder The forwarder's identifier or the forwarder's username.
    * @param recipients In this case, it must be `"followers"`.
    * @param options Options for forwarding the activity.

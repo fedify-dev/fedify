@@ -2195,6 +2195,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       { contextData: undefined },
     );
     assertEquals(response.status, 405);
+    assertEquals(response.headers.get("allow"), "GET, HEAD");
   });
 
   await t.step(
