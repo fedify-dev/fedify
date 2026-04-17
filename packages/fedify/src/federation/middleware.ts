@@ -3167,6 +3167,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
 export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
   implements OutboxContext<TContextData> {
+  readonly #sendActivityState: { sent: boolean };
   readonly identifier: string;
   readonly activity: unknown;
   readonly activityId?: string;
@@ -3178,12 +3179,32 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     activityId: string | undefined,
     activityType: string,
     options: ContextOptions<TContextData>,
+    sendActivityState: { sent: boolean } = { sent: false },
   ) {
     super(options);
+    this.#sendActivityState = sendActivityState;
     this.identifier = identifier;
     this.activity = activity;
     this.activityId = activityId;
     this.activityType = activityType;
+  }
+
+  hasSentActivity(): boolean {
+    return this.#sendActivityState.sent;
+  }
+
+  override sendActivity(
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string },
+    recipients: Recipient | Recipient[] | "followers",
+    activity: Activity,
+    options: SendActivityOptionsForCollection = {},
+  ): Promise<void> {
+    this.#sendActivityState.sent = true;
+    return super.sendActivity(sender, recipients, activity, options);
   }
 
   override clone(data: TContextData): OutboxContext<TContextData> {
@@ -3201,6 +3222,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
         invokedFromActorKeyPairsDispatcher:
           this.invokedFromActorKeyPairsDispatcher,
       },
+      this.#sendActivityState,
     );
   }
 }

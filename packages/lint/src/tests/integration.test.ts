@@ -179,6 +179,41 @@ test("Integration: ✅ Complete valid code passes all rules", () => {
   assertNoErrors(COMPLETE_VALID_CODE);
 });
 
+test(
+  "Integration: ✅ outbox-listener-send-activity-required - explicit sendActivity",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });`),
+);
+
+test(
+  "Integration: ❌ outbox-listener-send-activity-required - missing sendActivity",
+  () =>
+    pipe(
+      `${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });`,
+      assertHasError("outbox-listener-send-activity-required"),
+    ),
+);
+
 test("Integration: ❌ actor-id-required - missing id property", () =>
   pipe(
     COMPLETE_VALID_CODE,

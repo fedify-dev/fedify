@@ -1,4 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
 import { getTypeId, lookupObject } from "@fedify/vocab";
 import {
@@ -2182,6 +2183,147 @@ test("Federation.setOutboxListeners()", async (t) => {
       { contextData: undefined },
     );
     assertEquals(response.status, 405);
+  });
+
+  await t.step("warns when listener omits sendActivity()", async () => {
+    const records: LogRecord[] = [];
+    await reset();
+    try {
+      await configure({
+        sinks: {
+          buffer(record: LogRecord): void {
+            records.push(record);
+          },
+        },
+        filters: {},
+        loggers: [{ category: [], sinks: ["buffer"] }],
+      });
+
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation
+        .setActorDispatcher(
+          "/users/{identifier}",
+          (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
+        )
+        .setKeyPairsDispatcher(() => [{
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        }]);
+
+      federation
+        .setOutboxListeners("/users/{identifier}/outbox")
+        .on(vocab.Activity, () => {})
+        .authorize((ctx, identifier) => {
+          return identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token";
+        });
+
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/outbox", {
+          method: "POST",
+          body: JSON.stringify(createFixture),
+          headers: {
+            authorization: "Bearer token",
+            "content-type": "application/activity+json",
+          },
+        }),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(
+        records.some((record) =>
+          record.rawMessage ===
+            "Outbox listener for {identifier} returned without calling ctx.sendActivity()." &&
+          record.properties.identifier === "john"
+        ),
+        true,
+      );
+    } finally {
+      await reset();
+    }
+  });
+
+  await t.step("does not warn when listener calls sendActivity()", async () => {
+    const records: LogRecord[] = [];
+    await reset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://remote.example/inbox", {
+      status: 202,
+      body: "Accepted",
+    });
+
+    try {
+      await configure({
+        sinks: {
+          buffer(record: LogRecord): void {
+            records.push(record);
+          },
+        },
+        filters: {},
+        loggers: [{ category: [], sinks: ["buffer"] }],
+      });
+
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation
+        .setActorDispatcher(
+          "/users/{identifier}",
+          (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
+        )
+        .setKeyPairsDispatcher(() => [{
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        }]);
+
+      federation
+        .setOutboxListeners("/users/{identifier}/outbox")
+        .on(vocab.Activity, async (ctx, activity) => {
+          await ctx.sendActivity(
+            { identifier: ctx.identifier },
+            new vocab.Person({
+              id: new URL("https://remote.example/users/alice"),
+              inbox: new URL("https://remote.example/inbox"),
+            }),
+            activity,
+          );
+        })
+        .authorize((ctx, identifier) => {
+          return identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token";
+        });
+
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/outbox", {
+          method: "POST",
+          body: JSON.stringify(createFixture),
+          headers: {
+            authorization: "Bearer token",
+            "content-type": "application/activity+json",
+          },
+        }),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(
+        records.some((record) =>
+          record.rawMessage ===
+            "Outbox listener for {identifier} returned without calling ctx.sendActivity()."
+        ),
+        false,
+      );
+    } finally {
+      fetchMock.hardReset();
+      await reset();
+    }
   });
 });
 

@@ -626,6 +626,20 @@ export async function handleOutbox<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  if (
+    "hasSentActivity" in outboxContext &&
+    typeof outboxContext.hasSentActivity === "function" &&
+    !outboxContext.hasSentActivity()
+  ) {
+    logger.warn(
+      "Outbox listener for {identifier} returned without calling ctx.sendActivity().",
+      {
+        identifier,
+        activityId: activity.id?.href,
+        activityType: getTypeId(activity).href,
+      },
+    );
+  }
   logger.info(
     "Activity {activityId} has been processed in outbox listener.",
     {
