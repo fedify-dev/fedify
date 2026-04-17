@@ -1,5 +1,6 @@
 import type { InboxContext, OutboxContext } from "@fedify/fedify/federation";
-import { test } from "@fedify/fixture";
+import { signJsonLd } from "@fedify/fedify/sig";
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   Activity,
   Arrive,
@@ -9,6 +10,10 @@ import {
   Person,
 } from "@fedify/vocab";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import {
+  rsaPrivateKey3,
+  rsaPublicKey3,
+} from "../../fedify/src/testing/keys.ts";
 import { createFederation, createOutboxContext } from "./mock.ts";
 
 test("getSentActivities returns sent activities", async () => {
@@ -198,6 +203,49 @@ test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
   assertEquals(mockFederation.sentActivities.length, 0);
 });
 
+test(
+  "postOutboxActivity forwardActivity treats linked data signatures as signed",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(
+        Create,
+        async (ctx: OutboxContext<{ test: string }>) => {
+          await ctx.forwardActivity(
+            { identifier: ctx.identifier },
+            new Person({ id: new URL("https://example.com/users/bob") }),
+            { skipIfUnsigned: true },
+          );
+        },
+      );
+
+    const signedJson = await signJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://example.com/activities/1",
+        type: "Create",
+        actor: "https://example.com/users/alice",
+      },
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { contextLoader: mockDocumentLoader },
+    );
+    const activity = await Activity.fromJsonLd(signedJson, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+
+    await mockFederation.postOutboxActivity("alice", activity);
+
+    assertEquals(mockFederation.sentActivities.length, 1);
+    assertEquals(mockFederation.sentActivities[0].activity, activity);
+  },
+);
+
 test("postOutboxActivity prefers the most specific listener", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -272,6 +320,41 @@ test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
   );
   assertEquals(called, false);
 });
+
+test(
+  "postOutboxActivity accepts the dispatched actor id as the owner",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+    let called = false;
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      (_ctx, identifier) => {
+        if (identifier !== "alice") return null;
+        return new Person({
+          id: new URL("https://example.com/actors/alice"),
+        });
+      },
+    );
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(Create, () => {
+        called = true;
+      });
+
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/actors/alice"),
+    });
+
+    await mockFederation.postOutboxActivity("alice", activity);
+
+    assertEquals(called, true);
+  },
+);
 
 test("setOutboxListeners rejects duplicate listeners for the same type", () => {
   const mockFederation = createFederation<void>();

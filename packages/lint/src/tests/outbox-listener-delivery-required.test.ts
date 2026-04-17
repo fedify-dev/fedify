@@ -89,6 +89,70 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - assignment pattern context parameter`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx = globalThis.ctx) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      new Activity({}),
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - optional chaining and type assertion`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await (ctx as typeof ctx)?.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - template literal delivery expression`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const rendered = \`\${await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    )}\`;
+    console.log(rendered);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ✅ Good - non-federation object`,
   lintTest({
     code: `

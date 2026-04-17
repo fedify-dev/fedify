@@ -71,6 +71,12 @@ function expandUriTemplate(
   });
 }
 
+function hasLinkedDataSignature(jsonLd: unknown): boolean {
+  return jsonLd != null && typeof jsonLd === "object" &&
+    "signature" in jsonLd && jsonLd.signature != null &&
+    typeof jsonLd.signature === "object";
+}
+
 /**
  * Represents a sent activity with metadata about how it was sent.
  * @since 1.8.0
@@ -424,12 +430,14 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     // deno-lint-ignore no-this-alias
     const mockFederation = this;
 
-    const url = baseUrlOrRequest instanceof Request
-      ? new URL(baseUrlOrRequest.url)
-      : baseUrlOrRequest;
+    const request = baseUrlOrRequest instanceof Request
+      ? baseUrlOrRequest
+      : null;
+    const url = request == null ? baseUrlOrRequest : new URL(request.url);
 
     return new MockContext({
       url,
+      request,
       data: contextData,
       federation: mockFederation as any,
     });
@@ -493,12 +501,21 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     identifier: string,
     activity: Activity,
   ): Promise<void> {
+    const origin = new URL(this.options.origin ?? "https://example.com");
+    const routingContext = this.createContext(
+      origin,
+      this.contextData as TContextData,
+    );
+    const request = new Request(routingContext.getOutboxUri(identifier), {
+      method: "POST",
+    });
     const baseContext = this.createContext(
-      new URL(this.options.origin ?? "https://example.com"),
+      request,
       this.contextData as TContextData,
     );
 
-    const expectedActorId = baseContext.getActorUri(identifier);
+    const actor = await baseContext.getActor(identifier);
+    const expectedActorId = actor?.id ?? baseContext.getActorUri(identifier);
     if (
       activity.actorIds.length < 1 ||
       !activity.actorIds.every((actorId) =>
@@ -523,6 +540,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     }
 
     if (listener != null) {
+      const rawActivity = await activity.toJsonLd({
+        contextLoader: baseContext.contextLoader,
+      });
       const context = createOutboxContext({
         ...baseContext,
         clone: undefined,
@@ -534,7 +554,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           recipients: any,
           options?: any,
         ) => {
-          if (options?.skipIfUnsigned && await activity.getProof() == null) {
+          const hasProof = await activity.getProof() != null;
+          const hasLds = hasLinkedDataSignature(rawActivity);
+          if (options?.skipIfUnsigned && !hasProof && !hasLds) {
             return;
           }
           return baseContext.sendActivity(
@@ -708,6 +730,7 @@ class MockContext<TContextData> implements Context<TContextData> {
   constructor(
     options: {
       url?: URL;
+      request?: Request | null;
       data: TContextData;
       federation: Federation<TContextData>;
       documentLoader?: DocumentLoader;
@@ -721,7 +744,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     this.host = url.host;
     this.hostname = url.hostname;
     this.url = url;
-    this.request = new Request(url);
+    this.request = options.request ?? new Request(url);
     this.data = options.data;
     this.federation = options.federation;
     // deno-lint-ignore require-await

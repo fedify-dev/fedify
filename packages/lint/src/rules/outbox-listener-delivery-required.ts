@@ -8,6 +8,7 @@ import {
 } from "../lib/pred.ts";
 import { trackFederationVariables } from "../lib/tracker.ts";
 import type {
+  AssignmentPattern,
   CallExpression,
   Expression,
   FunctionNode,
@@ -61,11 +62,36 @@ const getMemberPropertyName = (expr: Expression): string | null => {
   return null;
 };
 
+function unwrapContextParam(node: Node | undefined): Node | null {
+  let current: Node | null = node ?? null;
+  while (current?.type === "AssignmentPattern") {
+    current = (current as AssignmentPattern).left as Node;
+  }
+  return current;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const stripCommentsAndStrings = (code: string): string =>
   code
     .replaceAll(/\/\*[\s\S]*?\*\//g, "")
     .replaceAll(/\/\/.*$/gm, "")
-    .replaceAll(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '""');
+    .replaceAll(/(["'])(?:\\.|(?!\1)[^\\])*\1/g, '""');
+
+function getDeliveryAliasName(node: Node): string | null {
+  if (node.type === "Identifier") return node.name;
+  if (node.type === "AssignmentPattern" && node.left.type === "Identifier") {
+    return node.left.name;
+  }
+  return null;
+}
+
+function buildContextExpressionPattern(contextName: string): string {
+  const name = escapeRegExp(contextName);
+  return String.raw`(?:${name}|\(\s*${name}(?:\s+as\s+[^)]+)?\s*\))`;
+}
 
 const resolveListenerReference = (
   expr: Expression,
@@ -127,40 +153,37 @@ const listenerCallsDeliveryMethod = (
 ): boolean => {
   const code = stripCommentsAndStrings(sourceCode.getText(listener));
   const aliases = new Set<string>();
-  const contextParam = listener.params[0] as Node | undefined;
+  const contextParam = unwrapContextParam(
+    listener.params[0] as Node | undefined,
+  );
   const contextName = contextParam?.type === "Identifier"
-    ? (contextParam as Identifier).name
+    ? contextParam.name
     : null;
 
   if (contextParam?.type === "ObjectPattern") {
     for (const prop of contextParam.properties) {
-      if ((prop as Node).type !== "Property") continue;
-      const property = prop as {
-        key: Node;
-        value: Node;
-      };
-      const keyName = property.key.type === "Identifier"
-        ? property.key.name
-        : property.key.type === "Literal" &&
-            typeof property.key.value === "string"
-        ? property.key.value
+      if (!isNode(prop) || prop.type !== "Property") continue;
+      const keyName = prop.key.type === "Identifier"
+        ? prop.key.name
+        : prop.key.type === "Literal" && typeof prop.key.value === "string"
+        ? prop.key.value
         : null;
       if (keyName == null || !DELIVERY_METHOD_NAMES.has(keyName)) continue;
-      if (property.value.type === "Identifier") {
-        aliases.add(property.value.name);
-      }
+      const alias = getDeliveryAliasName(prop.value as Node);
+      if (alias != null) aliases.add(alias);
     }
   }
 
   if (contextName != null) {
+    const contextExpr = buildContextExpressionPattern(contextName);
     const memberPattern = new RegExp(
       String
-        .raw`\b${contextName}\s*(?:\.\s*(?:sendActivity|forwardActivity)|\[\s*["'](?:sendActivity|forwardActivity)["']\s*\])\s*\(`,
+        .raw`${contextExpr}\s*(?:\?\s*\.\s*(?:sendActivity|forwardActivity)|\.\s*(?:sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'](?:sendActivity|forwardActivity)["']\s*\]|\[\s*["'](?:sendActivity|forwardActivity)["']\s*\])\s*\(`,
     );
     if (memberPattern.test(code)) return true;
 
     const destructuringPattern = new RegExp(
-      String.raw`(?:const|let|var)\s*{([^}]*)}\s*=\s*${contextName}\b`,
+      String.raw`(?:const|let|var)\s*{([^}]*)}\s*=\s*${contextExpr}`,
       "g",
     );
     for (const match of code.matchAll(destructuringPattern)) {
@@ -178,7 +201,7 @@ const listenerCallsDeliveryMethod = (
 
     const aliasPattern = new RegExp(
       String
-        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextName}\s*(?:\.\s*(sendActivity|forwardActivity)|\[\s*["'](sendActivity|forwardActivity)["']\s*\])`,
+        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextExpr}\s*(?:\?\s*\.\s*(sendActivity|forwardActivity)|\.\s*(sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'](sendActivity|forwardActivity)["']\s*\]|\[\s*["'](sendActivity|forwardActivity)["']\s*\])`,
       "g",
     );
     for (const match of code.matchAll(aliasPattern)) {
@@ -187,7 +210,7 @@ const listenerCallsDeliveryMethod = (
   }
 
   return globalThis.Array.from(aliases).some((alias) =>
-    new RegExp(String.raw`\b${alias}\s*\(`).test(code)
+    new RegExp(String.raw`\b${escapeRegExp(alias)}\s*\(`).test(code)
   );
 };
 
@@ -206,7 +229,6 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
     const sourceCode =
       (context as { sourceCode: { getText(node: unknown): string } })
         .sourceCode;
-
     return {
       VariableDeclarator(node: VariableDeclarator): void {
         federationTracker.VariableDeclarator(node);
