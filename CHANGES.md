@@ -46,9 +46,9 @@ To be released.
 
 ### @fedify/testing
 
- -  Added `createOutboxContext()` and mock `setOutboxListeners()` support so
-    outbox listeners can be tested without spinning up a live federation
-    server.  [[#430], [#682]]
+ -  Added `createOutboxContext()` plus `postOutboxActivity()` and mock
+    `setOutboxListeners()` support so outbox listeners can be tested without
+    spinning up a live federation server.  [[#430], [#682]]
 
 ### @fedify/vocab-runtime
 

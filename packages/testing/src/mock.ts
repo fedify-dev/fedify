@@ -132,6 +132,7 @@ interface TestFederation<TContextData>
 
   // Test-specific methods
   receiveActivity(activity: Activity): Promise<void>;
+  postOutboxActivity(identifier: string, activity: Activity): Promise<void>;
   reset(): void;
 
   // Override createContext to return TestContext
@@ -473,6 +474,50 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       const context = createInboxContext({
         data: this.contextData as TContextData,
         federation: this as any,
+      });
+      await listener(context, activity);
+    }
+  }
+
+  /**
+   * Simulates posting an activity to a local actor outbox.
+   * This method is specific to the mock implementation and is used for
+   * testing purposes.
+   *
+   * @param identifier The identifier of the outbox owner.
+   * @param activity The activity to post.
+   * @returns A promise that resolves when the activity has been processed.
+   * @since 2.2.0
+   */
+  async postOutboxActivity(
+    identifier: string,
+    activity: Activity,
+  ): Promise<void> {
+    const typeName = activity.constructor.name;
+    const listeners = [
+      ...(this.outboxListeners.get(typeName) || []),
+      ...(this.outboxListeners.get("Activity") || []),
+    ];
+
+    if (listeners.length > 0 && this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      );
+    }
+
+    const baseContext = this.createContext(
+      new URL(this.options.origin ?? "https://example.com"),
+      this.contextData as TContextData,
+    );
+
+    for (const listener of listeners) {
+      const context = createOutboxContext({
+        ...baseContext,
+        clone: undefined,
+        federation: this as any,
+        identifier,
+        sendActivity: baseContext.sendActivity.bind(baseContext),
       });
       await listener(context, activity);
     }

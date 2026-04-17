@@ -60,6 +60,9 @@ the `~OutboxListenerSetters.on()` method registers a listener for a specific
 activity type.  The `~OutboxListenerSetters.authorize()` hook runs before the
 listener and can reject unauthorized requests with `401 Unauthorized`.
 
+Fedify also rejects a posted activity if its `actor` does not match the local
+actor who owns the addressed outbox.
+
 > [!TIP]
 > If you want to catch every activity type, register a listener for the
 > `Activity` class.

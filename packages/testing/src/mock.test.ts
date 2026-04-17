@@ -99,6 +99,42 @@ test("receiveActivity triggers inbox listeners", async () => {
   assertEquals(receivedActivity, activity);
 });
 
+test("postOutboxActivity triggers outbox listeners", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let receivedIdentifier: string | null = null;
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(
+      Create,
+      async (ctx: OutboxContext<{ test: string }>, activity: Create) => {
+        receivedIdentifier = ctx.identifier;
+        await ctx.sendActivity(
+          { identifier: ctx.identifier },
+          new Person({ id: new URL("https://example.com/users/bob") }),
+          activity,
+        );
+      },
+    );
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+    object: new Note({
+      id: new URL("https://example.com/notes/1"),
+      content: "Test note",
+    }),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(receivedIdentifier, "alice");
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
+});
+
 test("createOutboxContext exposes identifier", () => {
   const mockFederation = createFederation<void>();
   const ctx = createOutboxContext({
@@ -304,6 +340,27 @@ test("receiveActivity throws error when contextData not initialized", async () =
     () => mockFederation.receiveActivity(activity),
     Error,
     "MockFederation.receiveActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before receiving activities.",
+  );
+});
+
+test("postOutboxActivity throws error when contextData not initialized", async () => {
+  const mockFederation = createFederation<void>();
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, (_ctx: OutboxContext<void>, _activity: Create) => {
+      return Promise.resolve();
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
   );
 });
 

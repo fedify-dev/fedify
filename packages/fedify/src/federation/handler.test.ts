@@ -1338,10 +1338,10 @@ test("handleInbox()", async () => {
 test("handleOutbox()", async () => {
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
-    actor: new URL("https://example.com/person2"),
+    actor: new URL("https://example.com/users/someone"),
     object: new Note({
       id: new URL("https://example.com/notes/1"),
-      attribution: new URL("https://example.com/person2"),
+      attribution: new URL("https://example.com/users/someone"),
       content: "Hello, world!",
     }),
   });
@@ -1355,6 +1355,9 @@ test("handleOutbox()", async () => {
     request,
     url: new URL(request.url),
     data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
   });
   let onNotFoundCalled: Request | null = null;
   const onNotFound = (request: Request) => {
@@ -1366,9 +1369,9 @@ test("handleOutbox()", async () => {
     onUnauthorizedCalled = request;
     return new Response("Unauthorized", { status: 401 });
   };
-  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
     if (identifier !== "someone") return null;
-    return new Person({ name: "Someone" });
+    return new Person({ id: ctx.getActorUri(identifier), name: "Someone" });
   };
   const listeners = new OutboxListenerSet<void>();
   const seen: string[] = [];
@@ -1479,6 +1482,9 @@ test("handleOutbox()", async () => {
     request: invalidRequest,
     url: new URL(invalidRequest.url),
     data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
   });
   response = await handleOutbox(invalidRequest, {
     identifier: "someone",
@@ -1496,6 +1502,49 @@ test("handleOutbox()", async () => {
     onUnauthorized,
   });
   assertEquals(response.status, 400);
+
+  const mismatchedActorJson = (await activity.toJsonLd()) as Record<
+    string,
+    unknown
+  >;
+  const mismatchedActorRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...mismatchedActorJson,
+        actor: "https://example.com/users/somebody-else",
+      }),
+    },
+  );
+  const mismatchedActorContext = createRequestContext({
+    federation,
+    request: mismatchedActorRequest,
+    url: new URL(mismatchedActorRequest.url),
+    data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  response = await handleOutbox(mismatchedActorRequest, {
+    identifier: "someone",
+    context: mismatchedActorContext,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...mismatchedActorContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "The activity actor does not match the outbox owner."],
+  );
 
   const throwingListeners = new OutboxListenerSet<void>();
   let onErrorCalled = false;

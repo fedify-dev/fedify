@@ -297,6 +297,25 @@ const context = createOutboxContext({
 console.log(context.identifier);  // alice
 ~~~~
 
+If you prefer to exercise registered outbox listeners through the mock
+federation, use `postOutboxActivity()`:
+
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/testing";
+import { Create } from "@fedify/vocab";
+
+const federation = createFederation<{ userId: string }>({
+  contextData: { userId: "test-user" },
+});
+
+const activity = new Create({
+  id: new URL("https://example.com/activities/1"),
+  actor: new URL("https://example.com/users/alice"),
+});
+
+await federation.postOutboxActivity("alice", activity);
+~~~~
+
 ### Testing URI generation
 
 Mock contexts created with the `createContext()` method provide mock

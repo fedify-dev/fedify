@@ -582,6 +582,25 @@ export async function handleOutbox<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  const expectedActorId = actor.id ?? ctx.getActorUri(identifier);
+  if (
+    activity.actorIds.length < 1 ||
+    !activity.actorIds.every((actorId) => actorId.href === expectedActorId.href)
+  ) {
+    logger.error(
+      "The posted activity actor does not match outbox owner {identifier}.",
+      {
+        identifier,
+        activityId: activity.id?.href,
+        expectedActorId: expectedActorId.href,
+        actorIds: activity.actorIds.map((actorId) => actorId.href),
+      },
+    );
+    return new Response("The activity actor does not match the outbox owner.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   const dispatched = outboxListeners?.dispatchWithClass(activity);
   if (dispatched == null) {
     logger.debug("Unsupported activity type:\n{activity}", {
