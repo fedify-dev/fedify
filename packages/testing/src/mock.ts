@@ -527,22 +527,6 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       );
     }
 
-    let ctor = activity.constructor as ActivityConstructor;
-    let listener = this.outboxListeners.get(ctor);
-    while (listener == null && ctor !== Activity) {
-      ctor = globalThis.Object.getPrototypeOf(ctor);
-      listener = this.outboxListeners.get(ctor);
-    }
-
-    if (listener == null) return;
-
-    if (this.contextData === undefined) {
-      throw new Error(
-        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
-          "Please provide contextData through the constructor or call startQueue() before posting activities.",
-      );
-    }
-
     const origin = new URL(this.options.origin ?? "https://example.com");
     const routingContext = this.createContext(
       origin,
@@ -611,6 +595,22 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         error,
       );
       throw error;
+    }
+
+    let ctor = activity.constructor as ActivityConstructor;
+    let listener = this.outboxListeners.get(ctor);
+    while (listener == null && ctor !== Activity) {
+      ctor = globalThis.Object.getPrototypeOf(ctor);
+      listener = this.outboxListeners.get(ctor);
+    }
+
+    if (listener == null) return;
+
+    if (this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      );
     }
 
     if (listener != null) {

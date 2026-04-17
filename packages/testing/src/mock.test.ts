@@ -662,6 +662,14 @@ test("postOutboxActivity fails fast without outbox listeners", async () => {
 
 test("postOutboxActivity without matching listener is a no-op", async () => {
   const mockFederation = createFederation<void>();
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
   mockFederation.setOutboxListeners("/users/{identifier}/outbox");
 
   const activity = new Create({
@@ -673,6 +681,41 @@ test("postOutboxActivity without matching listener is a no-op", async () => {
 
   assertEquals(mockFederation.sentActivities.length, 0);
 });
+
+test(
+  "postOutboxActivity without matching listener still validates ownership",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      (_ctx, identifier) => {
+        return new Person({
+          id: new URL(`https://example.com/users/${identifier}`),
+        });
+      },
+    );
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(Arrive, () => {
+        throw new Error("listener should not run");
+      });
+
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/users/bob"),
+    });
+
+    await assertRejects(
+      () => mockFederation.postOutboxActivity("alice", activity),
+      Error,
+      "The activity actor does not match the outbox owner.",
+    );
+  },
+);
 
 test("postOutboxActivity invokes outbox error handler", async () => {
   const mockFederation = createFederation<{ test: string }>({
@@ -976,20 +1019,6 @@ test("postOutboxActivity throws error when contextData not initialized", async (
     Error,
     "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
   );
-});
-
-test("postOutboxActivity without matching listener is a no-op", async () => {
-  const mockFederation = createFederation<void>();
-  mockFederation.setOutboxListeners("/users/{identifier}/outbox");
-
-  const activity = new Create({
-    id: new URL("https://example.com/activities/1"),
-    actor: new URL("https://example.com/users/alice"),
-  });
-
-  await mockFederation.postOutboxActivity("alice", activity);
-
-  assertEquals(mockFederation.sentActivities.length, 0);
 });
 
 test("MockFederation distinguishes between immediate and queued activities", async () => {
