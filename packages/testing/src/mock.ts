@@ -211,6 +211,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
   private outboxAuthorizePredicate?: any;
+  private outboxDispatcherAuthorizePredicate?: any;
   private outboxListenerErrorHandler?: any;
   private followingDispatcher?: any;
   private followersDispatcher?: any;
@@ -285,7 +286,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
       setLastCursor: () => this as any,
-      authorize: () => this as any,
+      authorize: (predicate: any) => {
+        this.outboxDispatcherAuthorizePredicate = predicate;
+        return this as any;
+      },
     };
   }
 
@@ -506,6 +510,25 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     identifier: string,
     activity: Activity,
   ): Promise<void> {
+    let ctor = activity.constructor as ActivityConstructor;
+    let listener = this.outboxListeners.get(ctor);
+    while (listener == null && ctor !== Activity) {
+      ctor = globalThis.Object.getPrototypeOf(ctor);
+      listener = this.outboxListeners.get(ctor);
+    }
+
+    if (this.outboxListeners.size < 1) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+      );
+    }
+    if (listener != null && this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      );
+    }
+
     const origin = new URL(this.options.origin ?? "https://example.com");
     const routingContext = this.createContext(
       origin,
@@ -521,11 +544,23 @@ class MockFederation<TContextData> implements Federation<TContextData> {
 
     const actor = await baseContext.getActor(identifier);
     if (actor == null) {
-      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
+      const error = new Error(`Actor ${JSON.stringify(identifier)} not found.`);
+      await this.outboxListenerErrorHandler?.(
+        createOutboxContext({
+          ...baseContext,
+          clone: undefined,
+          federation: this as any,
+          identifier,
+        }),
+        error,
+      );
+      throw error;
     }
+    const authorizePredicate = this.outboxAuthorizePredicate ??
+      this.outboxDispatcherAuthorizePredicate;
     if (
-      this.outboxAuthorizePredicate != null &&
-      !await this.outboxAuthorizePredicate(baseContext, identifier)
+      authorizePredicate != null &&
+      !await authorizePredicate(baseContext, identifier)
     ) {
       throw new Error("Unauthorized.");
     }
@@ -537,21 +572,19 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         actorId.href === expectedActorId.href
       )
     ) {
-      throw new Error("The activity actor does not match the outbox owner.");
-    }
-
-    let ctor = activity.constructor as ActivityConstructor;
-    let listener = this.outboxListeners.get(ctor);
-    while (listener == null && ctor !== Activity) {
-      ctor = globalThis.Object.getPrototypeOf(ctor);
-      listener = this.outboxListeners.get(ctor);
-    }
-
-    if (listener != null && this.contextData === undefined) {
-      throw new Error(
-        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
-          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      const error = new Error(
+        "The activity actor does not match the outbox owner.",
       );
+      await this.outboxListenerErrorHandler?.(
+        createOutboxContext({
+          ...baseContext,
+          clone: undefined,
+          federation: this as any,
+          identifier,
+        }),
+        error,
+      );
+      throw error;
     }
 
     if (listener != null) {

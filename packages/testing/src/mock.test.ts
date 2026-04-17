@@ -382,6 +382,43 @@ test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
   assertEquals(called, false);
 });
 
+test("postOutboxActivity routes owner mismatch through onError", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let handled: string | null = null;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .onError((_ctx: OutboxContext<{ test: string }>, error: Error) => {
+      handled = error.message;
+    })
+    .on(Create, () => {
+      throw new Error("listener should not run");
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/bob"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "The activity actor does not match the outbox owner.",
+  );
+  assertEquals(handled, "The activity actor does not match the outbox owner.");
+});
+
 test(
   "postOutboxActivity accepts the dispatched actor id as the owner",
   async () => {
@@ -477,6 +514,67 @@ test("postOutboxActivity enforces authorize predicate", async () => {
   assertEquals(called, false);
 });
 
+test("postOutboxActivity falls back to dispatcher authorize predicate", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let called = false;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+  mockFederation
+    .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }))
+    .authorize(() => false);
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, () => {
+      called = true;
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "Unauthorized.",
+  );
+  assertEquals(called, false);
+});
+
+test("postOutboxActivity fails fast without outbox listeners", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    () => {
+      throw new Error("actor dispatcher should not run");
+    },
+  );
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+  );
+});
+
 test("postOutboxActivity invokes outbox error handler", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -494,7 +592,7 @@ test("postOutboxActivity invokes outbox error handler", async () => {
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
-    .onError((_ctx, error) => {
+    .onError((_ctx: OutboxContext<{ test: string }>, error: Error) => {
       handled = error.message;
     })
     .on(Create, () => {
