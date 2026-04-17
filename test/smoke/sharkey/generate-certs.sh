@@ -13,14 +13,16 @@ mkdir -p "$OUT"
 HOSTS=(fedify-harness sharkey)
 
 echo "→ Generating CA key + certificate..."
-openssl genrsa -out "$OUT/ca.key" 2048openssl req -x509 -new -nodes \
+openssl genrsa -out "$OUT/ca.key" 2048
+openssl req -x509 -new -nodes \
   -key "$OUT/ca.key" \
   -sha256 -days 1 \
   -subj "/CN=Smoke Test CA" \
   -out "$OUT/ca.crt"
 for HOST in "${HOSTS[@]}"; do
   echo "→ Generating certificate for $HOST..."
-  openssl genrsa -out "$OUT/$HOST.key" 2048  openssl req -new \
+  openssl genrsa -out "$OUT/$HOST.key" 2048
+  openssl req -new \
     -key "$OUT/$HOST.key" \
     -subj "/CN=$HOST" \
     -out "$OUT/$HOST.csr"
