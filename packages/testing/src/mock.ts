@@ -22,11 +22,17 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import {
   createContext,
   createInboxContext,
+  createOutboxContext,
   createRequestContext,
 } from "./context.ts";
 
 // Re-export for public API
-export { createContext, createInboxContext, createRequestContext };
+export {
+  createContext,
+  createInboxContext,
+  createOutboxContext,
+  createRequestContext,
+};
 
 // Create a no-op tracer provider.
 // We use `any` type instead of importing TracerProvider from @opentelemetry/api
@@ -201,6 +207,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private featuredDispatcher?: any;
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
+  private outboxListeners: Map<string, any[]> = new Map();
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -350,6 +357,28 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         return this;
       },
       withIdempotency(): any {
+        return this;
+      },
+    };
+  }
+
+  setOutboxListeners(outboxPath: any): any {
+    this.outboxPath = outboxPath;
+    // deno-lint-ignore no-this-alias
+    const self = this;
+    return {
+      on(type: any, listener: any): any {
+        const typeName = type.name;
+        if (!self.outboxListeners.has(typeName)) {
+          self.outboxListeners.set(typeName, []);
+        }
+        self.outboxListeners.get(typeName)!.push(listener);
+        return this;
+      },
+      onError(): any {
+        return this;
+      },
+      authorize(): any {
         return this;
       },
     };

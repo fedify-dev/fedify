@@ -8,6 +8,7 @@ import { trace } from "@opentelemetry/api";
 import type {
   Context,
   InboxContext,
+  OutboxContext,
   RequestContext,
 } from "../federation/context.ts";
 import type { Federation } from "../federation/federation.ts";
@@ -150,5 +151,20 @@ export function createInboxContext<TContextData>(
     forwardActivity: args.forwardActivity ?? ((_params) => {
       throw new Error("Not implemented");
     }),
+  };
+}
+
+export function createOutboxContext<TContextData>(
+  args: Partial<OutboxContext<TContextData>> & {
+    url?: URL;
+    data: TContextData;
+    identifier: string;
+    federation: Federation<TContextData>;
+  },
+): OutboxContext<TContextData> {
+  return {
+    ...createContext(args),
+    clone: args.clone ?? ((data) => createOutboxContext({ ...args, data })),
+    identifier: args.identifier,
   };
 }

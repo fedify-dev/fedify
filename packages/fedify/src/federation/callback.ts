@@ -3,7 +3,12 @@ import type { Link } from "@fedify/webfinger";
 import type { VerifyRequestFailureReason } from "../sig/http.ts";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
-import type { Context, InboxContext, RequestContext } from "./context.ts";
+import type {
+  Context,
+  InboxContext,
+  OutboxContext,
+  RequestContext,
+} from "./context.ts";
 import type { SendActivityError, SenderKeyPair } from "./send.ts";
 
 /**
@@ -182,6 +187,20 @@ export type InboxListener<TContextData, TActivity extends Activity> = (
 ) => void | Promise<void>;
 
 /**
+ * A callback that listens for activities in an outbox.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TActivity The type of activity to listen for.
+ * @param context The outbox context.
+ * @param activity The activity that was received.
+ * @since 2.2.0
+ */
+export type OutboxListener<TContextData, TActivity extends Activity> = (
+  context: OutboxContext<TContextData>,
+  activity: TActivity,
+) => void | Promise<void>;
+
+/**
  * The reason why an incoming activity could not be verified.
  *
  * Unlike inbox listeners registered through {@link InboxListenerSetters.on},
@@ -218,6 +237,19 @@ export type UnverifiedActivityHandler<TContextData> = (
  */
 export type InboxErrorHandler<TContextData> = (
   context: Context<TContextData>,
+  error: Error,
+) => void | Promise<void>;
+
+/**
+ * A callback that handles errors in an outbox listener.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The outbox context.
+ * @param error The error that occurred.
+ * @since 2.2.0
+ */
+export type OutboxListenerErrorHandler<TContextData> = (
+  context: OutboxContext<TContextData>,
   error: Error,
 ) => void | Promise<void>;
 

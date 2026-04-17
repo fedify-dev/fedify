@@ -2062,6 +2062,129 @@ test("Federation.setInboxListeners()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("Federation.setOutboxListeners()", async (t) => {
+  const kv = new MemoryKvStore();
+
+  await t.step("path match", () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setOutboxDispatcher(
+      "/users/{identifier}/outbox",
+      () => ({ items: [] }),
+    );
+    assertThrows(
+      () => federation.setOutboxListeners("/users/{identifier}/outbox2"),
+      RouterError,
+    );
+  });
+
+  await t.step("on() and authorize()", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    const received: string[] = [];
+    federation
+      .setActorDispatcher(
+        "/users/{identifier}",
+        (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
+      )
+      .setKeyPairsDispatcher(() => [{
+        privateKey: rsaPrivateKey2,
+        publicKey: rsaPublicKey2.publicKey!,
+      }]);
+
+    federation
+      .setOutboxDispatcher(
+        "/users/{identifier}/outbox",
+        () => ({ items: [] }),
+      )
+      .authorize((_ctx, identifier) => identifier === "john");
+
+    federation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(vocab.Activity, (ctx, activity) => {
+        received.push(`${ctx.identifier}:${activity.id?.href}`);
+      })
+      .authorize((ctx, identifier) => {
+        return identifier === "john" &&
+          ctx.request.headers.get("authorization") === "Bearer token";
+      });
+
+    let response = await federation.fetch(
+      new Request("https://example.com/users/john/outbox", {
+        method: "POST",
+        body: JSON.stringify(createFixture),
+        headers: {
+          "content-type": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 401);
+    assertEquals(received, []);
+
+    response = await federation.fetch(
+      new Request("https://example.com/users/john/outbox", {
+        method: "POST",
+        body: JSON.stringify(createFixture),
+        headers: {
+          authorization: "Bearer token",
+          "content-type": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals([response.status, await response.text()], [202, ""]);
+    assertEquals(received, [
+      `john:${createFixture.id}`,
+    ]);
+
+    response = await federation.fetch(
+      new Request("https://example.com/users/no-one/outbox", {
+        method: "POST",
+        body: JSON.stringify(createFixture),
+        headers: {
+          authorization: "Bearer token",
+          "content-type": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("POST without listeners returns 405", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setOutboxDispatcher(
+      "/users/{identifier}/outbox",
+      () => ({ items: [] }),
+    );
+
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/outbox", {
+        method: "POST",
+        body: JSON.stringify(createFixture),
+        headers: {
+          "content-type": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 405);
+  });
+});
+
 test("Federation.setInboxDispatcher()", async (t) => {
   const kv = new MemoryKvStore();
 

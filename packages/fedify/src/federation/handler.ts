@@ -43,10 +43,16 @@ import type {
   InboxErrorHandler,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
+  OutboxListenerErrorHandler,
   UnverifiedActivityHandler,
 } from "./callback.ts";
 import type { PageItems } from "./collection.ts";
-import type { Context, InboxContext, RequestContext } from "./context.ts";
+import type {
+  Context,
+  InboxContext,
+  OutboxContext,
+  RequestContext,
+} from "./context.ts";
 import type {
   ConstructorWithTypeId,
   IdempotencyKeyCallback,
@@ -58,6 +64,7 @@ import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
+import type { OutboxListenerSet } from "./outbox.ts";
 
 /**
  * Parameters for handling an actor request.
@@ -460,6 +467,174 @@ function filterCollectionItems<TItem extends Object | Link | Recipient | URL>(
     result.push(mappedItem);
   }
   return result;
+}
+
+/**
+ * Parameters for handling an outbox POST request.
+ * @template TContextData The context data to pass to the context.
+ */
+export interface OutboxHandlerParameters<TContextData> {
+  identifier: string;
+  context: RequestContext<TContextData>;
+  outboxContextFactory(
+    identifier: string,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+  ): OutboxContext<TContextData>;
+  actorDispatcher?: ActorDispatcher<TContextData>;
+  authorizePredicate?: AuthorizePredicate<TContextData>;
+  outboxListeners?: OutboxListenerSet<TContextData>;
+  outboxErrorHandler?: OutboxListenerErrorHandler<TContextData>;
+  onUnauthorized(request: Request): Response | Promise<Response>;
+  onNotFound(request: Request): Response | Promise<Response>;
+}
+
+/**
+ * Handles an outbox POST request.
+ * @template TContextData The context data to pass to the context.
+ * @param request The HTTP request.
+ * @param parameters The parameters for handling the request.
+ * @returns A promise that resolves to an HTTP response.
+ * @since 2.2.0
+ */
+export async function handleOutbox<TContextData>(
+  request: Request,
+  {
+    identifier,
+    context: ctx,
+    outboxContextFactory,
+    actorDispatcher,
+    authorizePredicate,
+    outboxListeners,
+    outboxErrorHandler,
+    onUnauthorized,
+    onNotFound,
+  }: OutboxHandlerParameters<TContextData>,
+): Promise<Response> {
+  const logger = getLogger(["fedify", "federation", "outbox"]);
+  if (actorDispatcher == null) {
+    logger.error("Actor dispatcher is not set.", { identifier });
+    return await onNotFound(request);
+  }
+  const actor = await actorDispatcher(ctx, identifier);
+  if (actor == null || actor instanceof Tombstone) {
+    logger.error("Actor {identifier} not found.", { identifier });
+    return await onNotFound(request);
+  }
+  if (authorizePredicate != null) {
+    if (!await authorizePredicate(ctx, identifier)) {
+      return await onUnauthorized(request);
+    }
+  }
+  if (request.bodyUsed) {
+    logger.error("Request body has already been read.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  } else if (request.body?.locked) {
+    logger.error("Request body is locked.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  let json: unknown;
+  try {
+    json = await request.clone().json();
+  } catch (error) {
+    logger.error("Failed to parse JSON:\n{error}", { identifier, error });
+    const outboxContext = outboxContextFactory(identifier, null, undefined, "");
+    try {
+      await outboxErrorHandler?.(outboxContext, error as Error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in outbox error handler:\n{error}",
+        { error, identifier },
+      );
+    }
+    return new Response("Invalid JSON.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  let activity: Activity;
+  try {
+    activity = await Activity.fromJsonLd(json, ctx);
+  } catch (error) {
+    logger.error("Failed to parse activity:\n{error}", {
+      identifier,
+      activity: json,
+      error,
+    });
+    const outboxContext = outboxContextFactory(identifier, json, undefined, "");
+    try {
+      await outboxErrorHandler?.(outboxContext, error as Error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in outbox error handler:\n{error}",
+        { error, activity: json, identifier },
+      );
+    }
+    return new Response("Invalid activity.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  const dispatched = outboxListeners?.dispatchWithClass(activity);
+  if (dispatched == null) {
+    logger.debug("Unsupported activity type:\n{activity}", {
+      identifier,
+      activity: json,
+    });
+    return new Response(null, { status: 202 });
+  }
+  const outboxContext = outboxContextFactory(
+    identifier,
+    json,
+    activity.id?.href,
+    getTypeId(activity).href,
+  );
+  try {
+    await dispatched.listener(outboxContext, activity);
+  } catch (error) {
+    try {
+      await outboxErrorHandler?.(outboxContext, error as Error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in outbox error handler:\n{error}",
+        {
+          error,
+          activityId: activity.id?.href,
+          activity: json,
+          identifier,
+        },
+      );
+    }
+    logger.error(
+      "Failed to process the incoming activity {activityId}:\n{error}",
+      {
+        error,
+        activityId: activity.id?.href,
+        activity: json,
+        identifier,
+      },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  logger.info(
+    "Activity {activityId} has been processed in outbox listener.",
+    {
+      activityId: activity.id?.href,
+      activity: json,
+      identifier,
+    },
+  );
+  return new Response(null, { status: 202 });
 }
 
 /**

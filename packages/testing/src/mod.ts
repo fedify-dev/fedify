@@ -15,6 +15,7 @@
  * - {@link createContext} - Create a basic Context for testing
  * - {@link createRequestContext} - Create a RequestContext for testing
  * - {@link createInboxContext} - Create an InboxContext for testing
+ * - {@link createOutboxContext} - Create an OutboxContext for testing
  *
  * These functions provide the same testing capabilities while avoiding the
  * problematic type exports.
@@ -27,6 +28,7 @@ export {
   createContext,
   createFederation,
   createInboxContext,
+  createOutboxContext,
   createRequestContext,
 } from "./mock.ts";
 export {

@@ -4,7 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import {
-  type Activity,
+  Activity,
   Create,
   Note,
   type Object,
@@ -17,6 +17,7 @@ import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import {
   createInboxContext,
+  createOutboxContext,
   createRequestContext,
 } from "../testing/context.ts";
 import {
@@ -43,12 +44,14 @@ import {
   handleCustomCollection,
   handleInbox,
   handleObject,
+  handleOutbox,
   respondWithObject,
   respondWithObjectIfAcceptable,
 } from "./handler.ts";
 import { InboxListenerSet } from "./inbox.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
+import { OutboxListenerSet } from "./outbox.ts";
 
 const QUOTE_CONTEXT_TERMS = {
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
@@ -1330,6 +1333,195 @@ test("handleInbox()", async () => {
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(response.status, 400);
+});
+
+test("handleOutbox()", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/1"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello, world!",
+    }),
+  });
+  const request = new Request("https://example.com/users/someone/outbox", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request,
+    url: new URL(request.url),
+    data: undefined,
+  });
+  let onNotFoundCalled: Request | null = null;
+  const onNotFound = (request: Request) => {
+    onNotFoundCalled = request;
+    return new Response("Not found", { status: 404 });
+  };
+  let onUnauthorizedCalled: Request | null = null;
+  const onUnauthorized = (request: Request) => {
+    onUnauthorizedCalled = request;
+    return new Response("Unauthorized", { status: 401 });
+  };
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const listeners = new OutboxListenerSet<void>();
+  const seen: string[] = [];
+  listeners.add(Activity, (ctx, activity) => {
+    seen.push(`${ctx.identifier}:${activity.id?.href}`);
+  });
+
+  let response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher: undefined,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, request);
+  assertEquals(response.status, 404);
+
+  onNotFoundCalled = null;
+  response = await handleOutbox(request, {
+    identifier: "nobody",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, request);
+  assertEquals(response.status, 404);
+
+  onNotFoundCalled = null;
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: () => false,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onUnauthorizedCalled, request);
+  assertEquals(response.status, 401);
+  assertEquals(seen, []);
+
+  onUnauthorizedCalled = null;
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: () => true,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onUnauthorizedCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(seen, [
+    `someone:${activity.id?.href}`,
+  ]);
+
+  const invalidRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          true,
+          23,
+        ],
+        type: "Create",
+        object: { type: "Note", content: "Hello, world!" },
+        actor: "https://example.com/users/alice",
+      }),
+    },
+  );
+  const invalidContext = createRequestContext({
+    federation,
+    request: invalidRequest,
+    url: new URL(invalidRequest.url),
+    data: undefined,
+  });
+  response = await handleOutbox(invalidRequest, {
+    identifier: "someone",
+    context: invalidContext,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...invalidContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 400);
+
+  const throwingListeners = new OutboxListenerSet<void>();
+  let onErrorCalled = false;
+  throwingListeners.add(Create, () => {
+    throw new Error("Boom");
+  });
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: throwingListeners,
+    outboxErrorHandler: (_ctx, _error) => {
+      onErrorCalled = true;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 500);
+  assertEquals(onErrorCalled, true);
 });
 
 test("respondWithObject()", async () => {

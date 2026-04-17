@@ -74,6 +74,7 @@ import type {
   GetActorOptions,
   GetSignedKeyOptions,
   InboxContext,
+  OutboxContext,
   ParseUriResult,
   RequestContext,
   RouteActivityOptions,
@@ -94,6 +95,7 @@ import {
   handleInbox,
   handleObject,
   handleOrderedCollection,
+  handleOutbox,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -1453,6 +1455,28 @@ export class FederationImpl<TContextData>
         });
       }
       case "outbox":
+        if (request.method === "POST") {
+          if (this.outboxListeners == null) {
+            return new Response("Method not allowed.", {
+              status: 405,
+              headers: {
+                Allow: "GET, HEAD",
+                "Content-Type": "text/plain; charset=utf-8",
+              },
+            });
+          }
+          return await handleOutbox(request, {
+            identifier: route.values.identifier,
+            context,
+            outboxContextFactory: context.toOutboxContext.bind(context),
+            actorDispatcher: this.actorCallbacks?.dispatcher,
+            authorizePredicate: this.outboxAuthorizePredicate,
+            outboxListeners: this.outboxListeners,
+            outboxErrorHandler: this.outboxListenerErrorHandler,
+            onUnauthorized,
+            onNotFound,
+          });
+        }
         return await handleCollection(request, {
           name: "outbox",
           identifier: route.values.identifier,
@@ -1699,6 +1723,29 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       invokedFromActorKeyPairsDispatcher:
         this.invokedFromActorKeyPairsDispatcher,
     });
+  }
+
+  toOutboxContext(
+    identifier: string,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+  ): OutboxContextImpl<TContextData> {
+    return new OutboxContextImpl(
+      identifier,
+      activity,
+      activityId,
+      activityType,
+      {
+        url: this.url,
+        federation: this.federation,
+        data: this.data,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        invokedFromActorKeyPairsDispatcher:
+          this.invokedFromActorKeyPairsDispatcher,
+      },
+    );
   }
 
   get hostname(): string {
@@ -3115,6 +3162,46 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
         }
       }
     }
+  }
+}
+
+export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
+  implements OutboxContext<TContextData> {
+  readonly identifier: string;
+  readonly activity: unknown;
+  readonly activityId?: string;
+  readonly activityType: string;
+
+  constructor(
+    identifier: string,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+    options: ContextOptions<TContextData>,
+  ) {
+    super(options);
+    this.identifier = identifier;
+    this.activity = activity;
+    this.activityId = activityId;
+    this.activityType = activityType;
+  }
+
+  override clone(data: TContextData): OutboxContext<TContextData> {
+    return new OutboxContextImpl<TContextData>(
+      this.identifier,
+      this.activity,
+      this.activityId,
+      this.activityType,
+      {
+        url: this.url,
+        federation: this.federation,
+        data,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        invokedFromActorKeyPairsDispatcher:
+          this.invokedFromActorKeyPairsDispatcher,
+      },
+    );
   }
 }
 

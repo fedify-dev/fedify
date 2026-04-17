@@ -3,6 +3,7 @@ import type {
   Context,
   Federation,
   InboxContext,
+  OutboxContext,
   RequestContext,
 } from "@fedify/fedify/federation";
 import { RouterError } from "@fedify/fedify/federation";
@@ -179,6 +180,13 @@ function createRequestContext<TContextData>(
 type TestInboxContext<TContextData> = InboxContext<TContextData>;
 
 /**
+ * Test-specific OutboxContext type alias.
+ * This indirection helps avoid JSR type analyzer issues.
+ * @since 2.2.0
+ */
+type TestOutboxContext<TContextData> = OutboxContext<TContextData>;
+
+/**
  * Creates an InboxContext for testing purposes.
  * Not exported - used internally only. Public API is in mock.ts
  * @param args Partial InboxContext properties
@@ -203,5 +211,33 @@ function createInboxContext<TContextData>(
   };
 }
 
+/**
+ * Creates an OutboxContext for testing purposes.
+ * Not exported - used internally only. Public API is in mock.ts
+ * @param args Partial OutboxContext properties
+ * @returns An OutboxContext instance
+ * @since 2.2.0
+ */
+function createOutboxContext<TContextData>(
+  args: Partial<OutboxContext<TContextData>> & {
+    url?: URL;
+    data: TContextData;
+    identifier: string;
+    federation: Federation<TContextData>;
+  },
+): TestOutboxContext<TContextData> {
+  return {
+    ...createContext(args),
+    clone: args.clone ??
+      ((data: TContextData) => createOutboxContext({ ...args, data })),
+    identifier: args.identifier,
+  };
+}
+
 // Export for internal use by mock.ts only
-export { createContext, createInboxContext, createRequestContext };
+export {
+  createContext,
+  createInboxContext,
+  createOutboxContext,
+  createRequestContext,
+};

@@ -688,6 +688,28 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
 }
 
 /**
+ * A context for outbox listeners.
+ * @since 2.2.0
+ */
+export interface OutboxContext<TContextData> extends Context<TContextData> {
+  /**
+   * The identifier of the actor whose outbox received the POST.
+   * @since 2.2.0
+   */
+  readonly identifier: string;
+
+  /**
+   * Creates a new context with the same properties as this one,
+   * but with the given data.
+   * @param data The new data to associate with the context.
+   * @returns A new context with the same properties as this one,
+   *          but with the given data.
+   * @since 2.2.0
+   */
+  clone(data: TContextData): OutboxContext<TContextData>;
+}
+
+/**
  * A result of parsing an URI.
  */
 export type ParseUriResult =

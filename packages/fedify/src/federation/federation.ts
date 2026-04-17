@@ -31,6 +31,8 @@ import type {
   ObjectAuthorizePredicate,
   ObjectDispatcher,
   OutboxErrorHandler,
+  OutboxListener,
+  OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
@@ -307,6 +309,34 @@ export interface Federatable<TContextData> {
     TContextData,
     void
   >;
+
+  /**
+   * Assigns the URL path for the outbox and starts setting outbox listeners.
+   *
+   * @example
+   * ``` typescript
+   * federation
+   *   .setOutboxListeners("/users/{identifier}/outbox")
+   *   .on(Activity, async (ctx, activity) => {
+   *     await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+   *   })
+   *   .authorize(async (ctx, identifier) => {
+   *     return ctx.request.headers.get("authorization") === `Bearer ${identifier}`;
+   *   });
+   * ```
+   *
+   * @param outboxPath The URI path pattern for the outbox.  The syntax is based
+   *                   on URI Template
+   *                   ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The
+   *                   path must have one variable: `{identifier}`, and must
+   *                   match the outbox dispatcher path.
+   * @returns An object to register outbox listeners.
+   * @throws {RouterError} Thrown if the path pattern is invalid.
+   * @since 2.2.0
+   */
+  setOutboxListeners(
+    outboxPath: `${string}${Rfc6570Expression<"identifier">}${string}`,
+  ): OutboxListenerSetters<TContextData>;
 
   /**
    * Registers a following collection dispatcher.
@@ -1192,6 +1222,49 @@ export type IdempotencyKeyCallback<TContextData> = (
   ctx: InboxContext<TContextData>,
   activity: Activity,
 ) => string | null | Promise<string | null>;
+
+/**
+ * Registry for outbox listeners for different activity types.
+ * @since 2.2.0
+ */
+export interface OutboxListenerSetters<TContextData> {
+  /**
+   * Registers a listener for a specific incoming activity type.
+   *
+   * @param type A subclass of {@link Activity} to listen to.
+   * @param listener A callback to handle an incoming activity.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.2.0
+   */
+  on<TActivity extends Activity>(
+    // deno-lint-ignore no-explicit-any
+    type: new (...args: any[]) => TActivity,
+    listener: OutboxListener<TContextData, TActivity>,
+  ): OutboxListenerSetters<TContextData>;
+
+  /**
+   * Registers an error handler for outbox listeners.  Any exceptions thrown
+   * from the listeners are caught and passed to this handler.
+   *
+   * @param handler A callback to handle an error.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.2.0
+   */
+  onError(
+    handler: OutboxListenerErrorHandler<TContextData>,
+  ): OutboxListenerSetters<TContextData>;
+
+  /**
+   * Registers a callback to authorize POST requests to the outbox.
+   *
+   * @param predicate A callback to authorize the request.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.2.0
+   */
+  authorize(
+    predicate: AuthorizePredicate<TContextData>,
+  ): OutboxListenerSetters<TContextData>;
+}
 
 /**
  * Registry for inbox listeners for different activity types.

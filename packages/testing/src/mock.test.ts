@@ -1,8 +1,8 @@
-import type { InboxContext } from "@fedify/fedify/federation";
+import type { InboxContext, OutboxContext } from "@fedify/fedify/federation";
 import { test } from "@fedify/fixture";
 import { Create, Note, Person } from "@fedify/vocab";
 import { assertEquals, assertRejects } from "@std/assert";
-import { createFederation } from "./mock.ts";
+import { createFederation, createOutboxContext } from "./mock.ts";
 
 test("getSentActivities returns sent activities", async () => {
   const mockFederation = createFederation<void>();
@@ -97,6 +97,18 @@ test("receiveActivity triggers inbox listeners", async () => {
 
   // Verify the listener was triggered
   assertEquals(receivedActivity, activity);
+});
+
+test("createOutboxContext exposes identifier", () => {
+  const mockFederation = createFederation<void>();
+  const ctx = createOutboxContext({
+    federation: mockFederation,
+    data: undefined,
+    identifier: "alice",
+  });
+
+  assertEquals((ctx as OutboxContext<void>).identifier, "alice");
+  assertEquals(ctx.clone(undefined).identifier, "alice");
 });
 
 test("MockContext tracks sent activities", async () => {
@@ -253,6 +265,21 @@ test("MockContext URI methods respect registered paths", () => {
   assertEquals(
     context.getFeaturedTagsUri("alice").href,
     "https://example.com/actors/alice/tags",
+  );
+});
+
+test("MockContext getOutboxUri respects outbox listener path", () => {
+  const mockFederation = createFederation<void>();
+  mockFederation.setOutboxListeners("/actors/{identifier}/outbox");
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  assertEquals(
+    context.getOutboxUri("alice").href,
+    "https://example.com/actors/alice/outbox",
   );
 });
 
