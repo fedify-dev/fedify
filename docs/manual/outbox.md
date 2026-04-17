@@ -200,4 +200,4 @@ In particular, Fedify does not currently do the following for you:
     `ctx.forwardActivity()`
 
 If you need full `GET /outbox` support as well, combine this guide with the
-[*Collections*](./collections.md#outbox) guide.
+[*Collections*][collections-outbox] guide.
