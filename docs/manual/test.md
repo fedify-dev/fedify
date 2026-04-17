@@ -302,7 +302,7 @@ federation, use `postOutboxActivity()`:
 
 ~~~~ typescript twoslash
 import { createFederation } from "@fedify/testing";
-import { Create } from "@fedify/vocab";
+import { Create, Person } from "@fedify/vocab";
 
 const federation = createFederation<{ userId: string }>({
   contextData: { userId: "test-user" },
@@ -310,10 +310,24 @@ const federation = createFederation<{ userId: string }>({
 
 let receivedActivityId = "";
 
+federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
+  return new Person({
+    id: new URL(`https://example.com/users/${identifier}`),
+  });
+});
+
 federation
   .setOutboxListeners("/users/{identifier}/outbox")
-  .on(Create, (_ctx, activity) => {
+  .on(Create, async (ctx, activity) => {
     receivedActivityId = activity.id?.href ?? "";
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new Person({
+        id: new URL("https://example.com/users/bob"),
+        inbox: new URL("https://example.com/users/bob/inbox"),
+      }),
+      activity,
+    );
   });
 
 const activity = new Create({

@@ -3,5 +3,5 @@ export {
   createOutboxContext,
   createRequestContext,
 } from "./context.ts";
-// without bellows, `test:cfworkers` makes error
+// Without the export below, `test:cfworkers` makes an error.
 export { testDefinitions } from "@fedify/fixture";

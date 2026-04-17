@@ -117,6 +117,15 @@ test("postOutboxActivity triggers outbox listeners", async () => {
   });
   let receivedIdentifier: string | null = null;
 
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
     .on(
@@ -152,6 +161,15 @@ test("postOutboxActivity supports forwardActivity", async () => {
     contextData: { test: "data" },
   });
 
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
     .on(
@@ -179,6 +197,15 @@ test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
   });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
@@ -209,6 +236,15 @@ test(
     const mockFederation = createFederation<{ test: string }>({
       contextData: { test: "data" },
     });
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      (_ctx, identifier) => {
+        return new Person({
+          id: new URL(`https://example.com/users/${identifier}`),
+        });
+      },
+    );
 
     mockFederation
       .setOutboxListeners("/users/{identifier}/outbox")
@@ -252,6 +288,15 @@ test("postOutboxActivity prefers the most specific listener", async () => {
   });
   const calls: string[] = [];
 
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
     .on(Activity, () => {
@@ -277,6 +322,13 @@ test(
     const mockFederation = createFederation<{ test: string }>({
       contextData: { test: "data" },
     });
+
+    mockFederation
+      .setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
+        return new Person({
+          id: new URL(`https://example.com/users/${identifier}`),
+        });
+      });
     const calls: string[] = [];
 
     mockFederation
@@ -301,6 +353,15 @@ test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
     contextData: { test: "data" },
   });
   let called = false;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
@@ -355,6 +416,103 @@ test(
     assertEquals(called, true);
   },
 );
+
+test("postOutboxActivity rejects missing actors before dispatch", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let called = false;
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, () => {
+      called = true;
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    'Actor "alice" not found.',
+  );
+  assertEquals(called, false);
+});
+
+test("postOutboxActivity enforces authorize predicate", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let called = false;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .authorize(() => false)
+    .on(Create, () => {
+      called = true;
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "Unauthorized.",
+  );
+  assertEquals(called, false);
+});
+
+test("postOutboxActivity invokes outbox error handler", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let handled: string | null = null;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .onError((_ctx, error) => {
+      handled = error.message;
+    })
+    .on(Create, () => {
+      throw new Error("Boom");
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "Boom",
+  );
+  assertEquals(handled, "Boom");
+});
 
 test("setOutboxListeners rejects duplicate listeners for the same type", () => {
   const mockFederation = createFederation<void>();
@@ -554,6 +712,21 @@ test("MockContext getOutboxUri respects outbox listener path", () => {
   );
 });
 
+test("MockContext getOutboxUri supports reserved expansion", () => {
+  const mockFederation = createFederation<void>();
+  mockFederation.setOutboxListeners("/actors/{+identifier}/outbox");
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  assertEquals(
+    context.getOutboxUri("alice/profile").href,
+    "https://example.com/actors/alice/profile/outbox",
+  );
+});
+
 test("receiveActivity throws error when contextData not initialized", async () => {
   const mockFederation = createFederation<void>();
 
@@ -580,6 +753,15 @@ test("receiveActivity throws error when contextData not initialized", async () =
 
 test("postOutboxActivity throws error when contextData not initialized", async () => {
   const mockFederation = createFederation<void>();
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")

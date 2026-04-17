@@ -67,7 +67,8 @@ function expandUriTemplate(
   values: Record<string, string>,
 ): string {
   return template.replace(/{([^}]+)}/g, (match, key) => {
-    return values[key] || match;
+    const normalizedKey = key.startsWith("+") ? key.slice(1) : key;
+    return values[normalizedKey] || match;
   });
 }
 
@@ -209,6 +210,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public objectDispatchers: Map<string, any> = new Map();
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
+  private outboxAuthorizePredicate?: any;
+  private outboxListenerErrorHandler?: any;
   private followingDispatcher?: any;
   private followersDispatcher?: any;
   private likedDispatcher?: any;
@@ -382,10 +385,12 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         self.outboxListeners.set(type, listener);
         return this;
       },
-      onError(): any {
+      onError(handler: any): any {
+        self.outboxListenerErrorHandler = handler;
         return this;
       },
-      authorize(): any {
+      authorize(predicate: any): any {
+        self.outboxAuthorizePredicate = predicate;
         return this;
       },
     };
@@ -515,7 +520,17 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     );
 
     const actor = await baseContext.getActor(identifier);
-    const expectedActorId = actor?.id ?? baseContext.getActorUri(identifier);
+    if (actor == null) {
+      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
+    }
+    if (
+      this.outboxAuthorizePredicate != null &&
+      !await this.outboxAuthorizePredicate(baseContext, identifier)
+    ) {
+      throw new Error("Unauthorized.");
+    }
+
+    const expectedActorId = actor.id ?? baseContext.getActorUri(identifier);
     if (
       activity.actorIds.length < 1 ||
       !activity.actorIds.every((actorId) =>
@@ -567,7 +582,12 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           );
         },
       });
-      await listener(context, activity);
+      try {
+        await listener(context, activity);
+      } catch (error) {
+        await this.outboxListenerErrorHandler?.(context, error);
+        throw error;
+      }
     }
   }
 
