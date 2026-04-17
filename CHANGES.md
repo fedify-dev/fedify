@@ -16,7 +16,7 @@ To be released.
     types with `.on()`, and require explicit `ctx.sendActivity()` calls for any
     federation delivery.  Fedify now also logs a runtime warning when an
     outbox listener returns without calling `ctx.sendActivity()`.
-    [[#430], [#682]]
+    [[#430], [#688]]
 
  -  Allowed actor dispatchers to return `Tombstone` for deleted accounts.
     Fedify now serves those actor URIs as `410 Gone` with the serialized
@@ -35,20 +35,20 @@ To be released.
 [#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680
-[#682]: https://github.com/fedify-dev/fedify/pull/682
+[#688]: https://github.com/fedify-dev/fedify/pull/688
 
 ### @fedify/lint
 
  -  Added the `outbox-listener-send-activity-required` rule.  It warns when an
     outbox listener registered through `setOutboxListeners()` returns without an
     explicit `ctx.sendActivity()` call, which would otherwise leave a posted
-    client activity unfederated.  [[#430], [#682]]
+    client activity unfederated.  [[#430], [#688]]
 
 ### @fedify/testing
 
  -  Added `createOutboxContext()` plus `postOutboxActivity()` and mock
     `setOutboxListeners()` support so outbox listeners can be tested without
-    spinning up a live federation server.  [[#430], [#682]]
+    spinning up a live federation server.  [[#430], [#688]]
 
 ### @fedify/vocab-runtime
 
