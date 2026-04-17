@@ -371,9 +371,7 @@
             // Extract a readable name from the actor URI
             try {
               const u = new URL(info.id);
-              li.textContent = `${
-                u.pathname.split("/").pop()
-              }@${u.hostname}`;
+              li.textContent = `${u.pathname.split("/").pop()}@${u.hostname}`;
             } catch {
               li.textContent = info.id;
             }
