@@ -2189,6 +2189,74 @@ test("Federation.setOutboxListeners()", async (t) => {
     assertEquals(response.status, 405);
   });
 
+  await t.step(
+    "falls back to outbox dispatcher authorize when listener authorize is unset",
+    async () => {
+      const postedFixture = {
+        ...createFixture,
+        actor: "https://example.com/users/john",
+      };
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      const received: string[] = [];
+      federation
+        .setActorDispatcher(
+          "/users/{identifier}",
+          (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
+        )
+        .setKeyPairsDispatcher(() => [{
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        }]);
+
+      federation
+        .setOutboxDispatcher(
+          "/users/{identifier}/outbox",
+          () => ({ items: [] }),
+        )
+        .authorize((ctx, identifier) => {
+          return identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token";
+        });
+
+      federation
+        .setOutboxListeners("/users/{identifier}/outbox")
+        .on(vocab.Activity, (ctx, activity) => {
+          received.push(`${ctx.identifier}:${activity.id?.href}`);
+        });
+
+      let response = await federation.fetch(
+        new Request("https://example.com/users/john/outbox", {
+          method: "POST",
+          body: JSON.stringify(postedFixture),
+          headers: {
+            "content-type": "application/activity+json",
+          },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 401);
+      assertEquals(received, []);
+
+      response = await federation.fetch(
+        new Request("https://example.com/users/john/outbox", {
+          method: "POST",
+          body: JSON.stringify(postedFixture),
+          headers: {
+            authorization: "Bearer token",
+            "content-type": "application/activity+json",
+          },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals([response.status, await response.text()], [202, ""]);
+      assertEquals(received, [`john:${createFixture.id}`]);
+    },
+  );
+
   await t.step("warns when listener omits delivery", async () => {
     const postedFixture = {
       ...createFixture,

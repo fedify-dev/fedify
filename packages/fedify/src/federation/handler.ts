@@ -542,7 +542,7 @@ export async function handleOutbox<TContextData>(
   }
   let json: unknown;
   try {
-    json = await request.clone().json();
+    json = await request.json();
   } catch (error) {
     logger.error("Failed to parse JSON:\n{error}", { identifier, error });
     const outboxContext = outboxContextFactory(identifier, null, undefined, "");
@@ -582,11 +582,20 @@ export async function handleOutbox<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  const outboxContext = outboxContextFactory(
+    identifier,
+    json,
+    activity.id?.href,
+    getTypeId(activity).href,
+  );
   const expectedActorId = actor.id ?? ctx.getActorUri(identifier);
   if (
     activity.actorIds.length < 1 ||
     !activity.actorIds.every((actorId) => actorId.href === expectedActorId.href)
   ) {
+    const error = new Error(
+      "The activity actor does not match the outbox owner.",
+    );
     logger.error(
       "The posted activity actor does not match outbox owner {identifier}.",
       {
@@ -596,7 +605,20 @@ export async function handleOutbox<TContextData>(
         actorIds: activity.actorIds.map((actorId) => actorId.href),
       },
     );
-    return new Response("The activity actor does not match the outbox owner.", {
+    try {
+      await outboxErrorHandler?.(outboxContext, error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in outbox error handler:\n{error}",
+        {
+          error,
+          activityId: activity.id?.href,
+          activity: json,
+          identifier,
+        },
+      );
+    }
+    return new Response(error.message, {
       status: 400,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
@@ -609,12 +631,6 @@ export async function handleOutbox<TContextData>(
     });
     return new Response(null, { status: 202 });
   }
-  const outboxContext = outboxContextFactory(
-    identifier,
-    json,
-    activity.id?.href,
-    getTypeId(activity).href,
-  );
   try {
     await dispatched.listener(outboxContext, activity);
   } catch (error) {

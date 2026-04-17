@@ -328,8 +328,9 @@ export interface Federatable<TContextData> {
    * @param outboxPath The URI path pattern for the outbox.  The syntax is based
    *                   on URI Template
    *                   ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The
-   *                   path must have one variable: `{identifier}`, and must
-   *                   match the outbox dispatcher path.
+   *                   path must have one variable: `{identifier}`.  If an
+   *                   outbox dispatcher is configured, this path must match
+   *                   the outbox dispatcher path.
    * @returns An object to register outbox listeners.
    * @throws {RouterError} Thrown if the path pattern is invalid.
    * @since 2.2.0

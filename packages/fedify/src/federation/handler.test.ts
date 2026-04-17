@@ -1345,20 +1345,25 @@ test("handleOutbox()", async () => {
       content: "Hello, world!",
     }),
   });
-  const request = new Request("https://example.com/users/someone/outbox", {
-    method: "POST",
-    body: JSON.stringify(await activity.toJsonLd()),
-  });
+  const requestUrl = "https://example.com/users/someone/outbox";
+  const requestBody = JSON.stringify(await activity.toJsonLd());
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
-  const context = createRequestContext({
-    federation,
-    request,
-    url: new URL(request.url),
-    data: undefined,
-    getActorUri(identifier: string) {
-      return new URL(`https://example.com/users/${identifier}`);
-    },
-  });
+  const createRequestContextPair = (body = requestBody) => {
+    const request = new Request(requestUrl, {
+      method: "POST",
+      body,
+    });
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      getActorUri(identifier: string) {
+        return new URL(`https://example.com/users/${identifier}`);
+      },
+    });
+    return { request, context };
+  };
   let onNotFoundCalled: Request | null = null;
   const onNotFound = (request: Request) => {
     onNotFoundCalled = request;
@@ -1379,6 +1384,7 @@ test("handleOutbox()", async () => {
     seen.push(`${ctx.identifier}:${activity.id?.href}`);
   });
 
+  let { request, context } = createRequestContextPair();
   let response = await handleOutbox(request, {
     identifier: "someone",
     context,
@@ -1398,6 +1404,7 @@ test("handleOutbox()", async () => {
   assertEquals(response.status, 404);
 
   onNotFoundCalled = null;
+  ({ request, context } = createRequestContextPair());
   response = await handleOutbox(request, {
     identifier: "nobody",
     context,
@@ -1417,6 +1424,7 @@ test("handleOutbox()", async () => {
   assertEquals(response.status, 404);
 
   onNotFoundCalled = null;
+  ({ request, context } = createRequestContextPair());
   response = await handleOutbox(request, {
     identifier: "someone",
     context,
@@ -1439,6 +1447,7 @@ test("handleOutbox()", async () => {
   assertEquals(seen, []);
 
   onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
   response = await handleOutbox(request, {
     identifier: "someone",
     context,
@@ -1526,6 +1535,7 @@ test("handleOutbox()", async () => {
       return new URL(`https://example.com/users/${identifier}`);
     },
   });
+  let mismatchedActorErrorMessage: string | null = null;
   response = await handleOutbox(mismatchedActorRequest, {
     identifier: "someone",
     context: mismatchedActorContext,
@@ -1538,6 +1548,9 @@ test("handleOutbox()", async () => {
     },
     actorDispatcher,
     outboxListeners: listeners,
+    outboxErrorHandler: (_ctx, error) => {
+      mismatchedActorErrorMessage = error.message;
+    },
     onNotFound,
     onUnauthorized,
   });
@@ -1545,12 +1558,17 @@ test("handleOutbox()", async () => {
     [response.status, await response.text()],
     [400, "The activity actor does not match the outbox owner."],
   );
+  assertEquals(
+    mismatchedActorErrorMessage,
+    "The activity actor does not match the outbox owner.",
+  );
 
   const throwingListeners = new OutboxListenerSet<void>();
   let onErrorCalled = false;
   throwingListeners.add(Create, () => {
     throw new Error("Boom");
   });
+  ({ request, context } = createRequestContextPair());
   response = await handleOutbox(request, {
     identifier: "someone",
     context,

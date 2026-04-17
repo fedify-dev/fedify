@@ -1470,7 +1470,8 @@ export class FederationImpl<TContextData>
             context,
             outboxContextFactory: context.toOutboxContext.bind(context),
             actorDispatcher: this.actorCallbacks?.dispatcher,
-            authorizePredicate: this.outboxAuthorizePredicate,
+            authorizePredicate: this.outboxAuthorizePredicate ??
+              this.outboxCallbacks?.authorizePredicate,
             outboxListeners: this.outboxListeners,
             outboxErrorHandler: this.outboxListenerErrorHandler,
             onUnauthorized,

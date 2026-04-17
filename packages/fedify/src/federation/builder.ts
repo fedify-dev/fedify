@@ -729,7 +729,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("outbox")) {
       if (this.outboxPath !== path) {
         throw new RouterError(
-          "Outbox listener path must match outbox dispatcher path.",
+          "Outbox dispatcher path must match outbox listener path.",
         );
       }
     } else {
