@@ -75,14 +75,133 @@ function escapeRegExp(value: string): string {
 }
 
 function stripCommentsAndStrings(code: string): string {
-  return code
-    .replaceAll(/\/\*[\s\S]*?\*\//g, "")
-    .replaceAll(/\/\/.*$/gm, "")
-    .replaceAll(/(["'])(?:\\.|(?!\1)[^\\])*\1/g, (literal) => {
-      const quote = literal[0];
-      const value = literal.slice(1, -1);
-      return DELIVERY_METHOD_NAMES.has(value) ? literal : `${quote}${quote}`;
-    });
+  let result = "";
+  let index = 0;
+
+  const skipQuotedString = (quote: "'" | '"'): void => {
+    const start = index;
+    index += 1;
+    while (index < code.length) {
+      const char = code[index];
+      if (char === "\\") {
+        index += 2;
+        continue;
+      }
+      index += 1;
+      if (char === quote) break;
+    }
+    const literal = code.slice(start, index);
+    const value = literal.slice(1, -1);
+    result += DELIVERY_METHOD_NAMES.has(value) ? literal : `${quote}${quote}`;
+  };
+
+  const stripTemplateLiteral = (): void => {
+    const start = index;
+    index += 1;
+    let raw = "";
+    let hasExpression = false;
+
+    while (index < code.length) {
+      const char = code[index];
+      if (char === "\\") {
+        raw += char;
+        raw += code[index + 1] ?? "";
+        index += 2;
+        continue;
+      }
+      if (char === "`") {
+        index += 1;
+        if (!hasExpression && DELIVERY_METHOD_NAMES.has(raw)) {
+          result += code.slice(start, index);
+        } else {
+          result += "``";
+        }
+        return;
+      }
+      if (char === "$" && code[index + 1] === "{") {
+        hasExpression = true;
+        result += "`${";
+        index += 2;
+        let depth = 1;
+        while (index < code.length && depth > 0) {
+          const exprChar = code[index];
+          const next = code[index + 1];
+          if (exprChar === "'" || exprChar === '"') {
+            skipQuotedString(exprChar);
+            continue;
+          }
+          if (exprChar === "`") {
+            stripTemplateLiteral();
+            continue;
+          }
+          if (exprChar === "/" && next === "*") {
+            index += 2;
+            while (index < code.length) {
+              if (code[index] === "*" && code[index + 1] === "/") {
+                index += 2;
+                break;
+              }
+              index += 1;
+            }
+            continue;
+          }
+          if (exprChar === "/" && next === "/") {
+            index += 2;
+            while (index < code.length && code[index] !== "\n") {
+              index += 1;
+            }
+            continue;
+          }
+          result += exprChar;
+          index += 1;
+          if (exprChar === "{") depth += 1;
+          else if (exprChar === "}") depth -= 1;
+        }
+        continue;
+      }
+      raw += char;
+      index += 1;
+    }
+
+    result += "``";
+  };
+
+  while (index < code.length) {
+    const char = code[index];
+    const next = code[index + 1];
+
+    if (char === "/" && next === "*") {
+      index += 2;
+      while (index < code.length) {
+        if (code[index] === "*" && code[index + 1] === "/") {
+          index += 2;
+          break;
+        }
+        index += 1;
+      }
+      continue;
+    }
+    if (char === "/" && next === "/") {
+      index += 2;
+      while (index < code.length && code[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      skipQuotedString(char);
+      continue;
+    }
+    if (char === "`") {
+      stripTemplateLiteral();
+      continue;
+    }
+
+    result += char;
+    index += 1;
+  }
+
+  return result;
 }
 
 function getDeliveryAliasName(node: Node): string | null {
@@ -183,7 +302,7 @@ const listenerCallsDeliveryMethod = (
     const contextExpr = buildContextExpressionPattern(contextName);
     const memberPattern = new RegExp(
       String
-        .raw`${contextExpr}\s*(?:\?\s*\.\s*(?:sendActivity|forwardActivity)|\.\s*(?:sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'](?:sendActivity|forwardActivity)["']\s*\]|\[\s*["'](?:sendActivity|forwardActivity)["']\s*\])\s*\(`,
+        .raw`${contextExpr}\s*(?:\?\s*\.\s*(?:sendActivity|forwardActivity)|\.\s*(?:sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\])\s*\(`,
     );
     if (memberPattern.test(code)) return true;
 
@@ -206,7 +325,7 @@ const listenerCallsDeliveryMethod = (
 
     const aliasPattern = new RegExp(
       String
-        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextExpr}\s*(?:\?\s*\.\s*(sendActivity|forwardActivity)|\.\s*(sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'](sendActivity|forwardActivity)["']\s*\]|\[\s*["'](sendActivity|forwardActivity)["']\s*\])`,
+        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextExpr}\s*(?:\?\s*\.\s*(sendActivity|forwardActivity)|\.\s*(sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\])`,
       "g",
     );
     for (const match of code.matchAll(aliasPattern)) {

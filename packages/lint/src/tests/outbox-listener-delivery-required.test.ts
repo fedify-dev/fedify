@@ -152,6 +152,27 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - template literal bracket delivery call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx[\`sendActivity\`](
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ✅ Good - template literal delivery expression`,
   lintTest({
     code: `
@@ -333,6 +354,25 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async () => {
     return \`.sendActivity(.forwardActivity(\`;
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - template literal mentioning ctx.sendActivity`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async () => {
+    return \`ctx.sendActivity(\`;
   });
 `,
     rule,
