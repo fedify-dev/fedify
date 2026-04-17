@@ -71,7 +71,7 @@ function expandUriTemplate(
     const normalizedKey = reserved ? key.slice(1) : key;
     const value = values[normalizedKey];
     if (value == null) return match;
-    return reserved ? value : encodeURIComponent(value);
+    return reserved ? encodeURI(value) : encodeURIComponent(value);
   });
 }
 
@@ -80,13 +80,14 @@ function hasLinkedDataSignature(jsonLd: unknown): boolean {
     "signature" in jsonLd && jsonLd.signature != null &&
     typeof jsonLd.signature === "object" &&
     "type" in jsonLd.signature &&
-    jsonLd.signature.type === "RsaSignature2017" &&
-    "creator" in jsonLd.signature &&
-    typeof jsonLd.signature.creator === "string" &&
-    "created" in jsonLd.signature &&
-    typeof jsonLd.signature.created === "string" &&
-    "signatureValue" in jsonLd.signature &&
-    typeof jsonLd.signature.signatureValue === "string";
+    typeof jsonLd.signature.type === "string" &&
+    (("creator" in jsonLd.signature &&
+      typeof jsonLd.signature.creator === "string") ||
+      ("verificationMethod" in jsonLd.signature &&
+        typeof jsonLd.signature.verificationMethod === "string")) &&
+    (("signatureValue" in jsonLd.signature &&
+      typeof jsonLd.signature.signatureValue === "string") ||
+      ("jws" in jsonLd.signature && typeof jsonLd.signature.jws === "string"));
 }
 
 /**
@@ -100,6 +101,8 @@ interface SentActivity {
   queue?: "inbox" | "outbox" | "fanout";
   /** The activity that was sent. */
   activity: Activity;
+  /** The raw forwarded payload, if preserved by the caller. */
+  rawActivity?: unknown;
   /** The order in which the activity was sent (auto-incrementing counter). */
   sentOrder: number;
 }
@@ -131,6 +134,7 @@ interface TestContext<TContextData>
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }>;
   reset(): void;
 }
@@ -527,6 +531,20 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       );
     }
 
+    let ctor = activity.constructor as ActivityConstructor;
+    let listener = this.outboxListeners.get(ctor);
+    while (listener == null && ctor !== Activity) {
+      ctor = globalThis.Object.getPrototypeOf(ctor);
+      listener = this.outboxListeners.get(ctor);
+    }
+
+    if (listener != null && this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      );
+    }
+
     const origin = new URL(this.options.origin ?? "https://example.com");
     const routingContext = this.createContext(
       origin,
@@ -597,21 +615,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       throw error;
     }
 
-    let ctor = activity.constructor as ActivityConstructor;
-    let listener = this.outboxListeners.get(ctor);
-    while (listener == null && ctor !== Activity) {
-      ctor = globalThis.Object.getPrototypeOf(ctor);
-      listener = this.outboxListeners.get(ctor);
-    }
-
     if (listener == null) return;
-
-    if (this.contextData === undefined) {
-      throw new Error(
-        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
-          "Please provide contextData through the constructor or call startQueue() before posting activities.",
-      );
-    }
 
     if (listener != null) {
       const rawActivity = await activity.toJsonLd({
@@ -637,7 +641,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
             forwarder,
             recipients,
             activity,
-            options,
+            { ...options, rawActivity },
           );
         },
       });
@@ -804,6 +808,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }> = [];
 
   constructor(
@@ -1114,9 +1119,14 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any,
     recipients: any,
     activity: Activity,
-    _options?: any,
+    options?: any,
   ): Promise<void> {
-    this.sentActivities.push({ sender, recipients, activity });
+    this.sentActivities.push({
+      sender,
+      recipients,
+      activity,
+      rawActivity: options?.rawActivity,
+    });
 
     // If this is a MockFederation, also record it there
     if (this.federation instanceof MockFederation) {
@@ -1125,6 +1135,7 @@ class MockContext<TContextData> implements Context<TContextData> {
         queued,
         queue: queued ? "outbox" : undefined,
         activity,
+        rawActivity: options?.rawActivity,
         sentOrder: ++this.federation.sentCounter,
       });
     }
@@ -1151,6 +1162,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }> {
     return [...this.sentActivities];
   }

@@ -279,6 +279,60 @@ test(
 
     assertEquals(mockFederation.sentActivities.length, 1);
     assertEquals(mockFederation.sentActivities[0].activity, activity);
+    assertEquals(mockFederation.sentActivities[0].rawActivity, signedJson);
+  },
+);
+
+test(
+  "postOutboxActivity forwardActivity treats alternate linked data signature suites as signed",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      (_ctx, identifier) => {
+        return new Person({
+          id: new URL(`https://example.com/users/${identifier}`),
+        });
+      },
+    );
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(
+        Create,
+        async (ctx: OutboxContext<{ test: string }>) => {
+          await ctx.forwardActivity(
+            { identifier: ctx.identifier },
+            new Person({ id: new URL("https://example.com/users/bob") }),
+            { skipIfUnsigned: true },
+          );
+        },
+      );
+
+    const signedJson = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/activities/1",
+      type: "Create",
+      actor: "https://example.com/users/alice",
+      signature: {
+        type: "Ed25519Signature2020",
+        verificationMethod: "https://example.com/users/alice#main-key",
+        jws: "signature",
+      },
+    };
+    const activity = await Activity.fromJsonLd(signedJson, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+
+    await mockFederation.postOutboxActivity("alice", activity);
+
+    assertEquals(mockFederation.sentActivities.length, 1);
+    assertEquals(mockFederation.sentActivities[0].activity, activity);
+    assertEquals(mockFederation.sentActivities[0].rawActivity, signedJson);
   },
 );
 
@@ -636,6 +690,42 @@ test("postOutboxActivity falls back to dispatcher authorize predicate", async ()
   assertEquals(called, false);
 });
 
+test(
+  "postOutboxActivity with matching listener fails fast before auth when contextData is missing",
+  async () => {
+    const mockFederation = createFederation<void>();
+    let authorizeCalled = false;
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      () => {
+        throw new Error("actor dispatcher should not run");
+      },
+    );
+    mockFederation
+      .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }))
+      .authorize(() => {
+        authorizeCalled = true;
+        return true;
+      });
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(Create, () => {});
+
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/users/alice"),
+    });
+
+    await assertRejects(
+      () => mockFederation.postOutboxActivity("alice", activity),
+      Error,
+      "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+    );
+    assertEquals(authorizeCalled, false);
+  },
+);
+
 test("postOutboxActivity fails fast without outbox listeners", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -964,6 +1054,21 @@ test("MockContext getOutboxUri supports reserved expansion", () => {
   assertEquals(
     context.getOutboxUri("alice/profile").href,
     "https://example.com/actors/alice/profile/outbox",
+  );
+});
+
+test("MockContext reserved expansion encodes non-reserved characters", () => {
+  const mockFederation = createFederation<void>();
+  mockFederation.setOutboxListeners("/actors/{+identifier}/outbox");
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  assertEquals(
+    context.getOutboxUri("alice profile/notes").href,
+    "https://example.com/actors/alice%20profile/notes/outbox",
   );
 });
 
