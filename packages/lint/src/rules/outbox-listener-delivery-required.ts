@@ -4,9 +4,17 @@ import {
   hasMemberExpressionCallee,
   hasMethodName,
   isFunction,
+  isNode,
 } from "../lib/pred.ts";
 import { trackFederationVariables } from "../lib/tracker.ts";
-import type { CallExpression, Expression, FunctionNode } from "../lib/types.ts";
+import type {
+  CallExpression,
+  Expression,
+  FunctionNode,
+  Identifier,
+  Node,
+  VariableDeclarator,
+} from "../lib/types.ts";
 
 const MESSAGE =
   "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().";
@@ -32,21 +40,156 @@ const isChainedFromOutboxListeners = (
   return false;
 };
 
+const DELIVERY_METHOD_NAMES = new Set(["sendActivity", "forwardActivity"]);
+
+type FunctionLikeNode =
+  | FunctionNode
+  | (Node & {
+    type: "FunctionDeclaration";
+    id: Identifier | null;
+    params: unknown[];
+    body: unknown;
+  });
+
+const getMemberPropertyName = (expr: Expression): string | null => {
+  if (expr.type !== "MemberExpression") return null;
+  const property = expr.property as Node;
+  if (property.type === "Identifier") return property.name;
+  if (property.type === "Literal" && typeof property.value === "string") {
+    return property.value;
+  }
+  return null;
+};
+
 const stripCommentsAndStrings = (code: string): string =>
   code
     .replaceAll(/\/\*[\s\S]*?\*\//g, "")
     .replaceAll(/\/\/.*$/gm, "")
     .replaceAll(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '""');
 
+const resolveListenerReference = (
+  expr: Expression,
+  bindings: Map<string, unknown>,
+  seen = new Set<string>(),
+): FunctionLikeNode | null => {
+  if (isFunction(expr)) return expr;
+  if (expr.type === "Identifier") {
+    if (seen.has(expr.name)) return null;
+    seen.add(expr.name);
+    const binding = bindings.get(expr.name);
+    if (binding == null || !isNode(binding)) return null;
+    if (
+      isFunction(binding as Expression) ||
+      (binding as { type?: string }).type === "FunctionDeclaration"
+    ) {
+      return binding as FunctionLikeNode;
+    }
+    if (binding.type === "Identifier") {
+      return resolveListenerReference(binding, bindings, seen);
+    }
+    return null;
+  }
+  if (
+    expr.type === "MemberExpression" && expr.object.type === "Identifier" &&
+    !expr.computed
+  ) {
+    const binding = bindings.get(expr.object.name);
+    if (
+      binding == null || !isNode(binding) || binding.type !== "ObjectExpression"
+    ) {
+      return null;
+    }
+    const propertyName = getMemberPropertyName(expr);
+    if (propertyName == null) return null;
+    for (const prop of binding.properties) {
+      if (!isNode(prop) || prop.type !== "Property") continue;
+      const keyName = prop.key.type === "Identifier"
+        ? prop.key.name
+        : prop.key.type === "Literal" && typeof prop.key.value === "string"
+        ? prop.key.value
+        : null;
+      if (keyName !== propertyName || !isNode(prop.value)) continue;
+      const value = prop.value as unknown;
+      if (
+        isFunction(value as Expression) ||
+        (value as { type?: string }).type === "FunctionDeclaration"
+      ) {
+        return value as FunctionLikeNode;
+      }
+    }
+  }
+  return null;
+};
+
 const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
-  listener: FunctionNode,
-): boolean =>
-  [".sendActivity(", ".forwardActivity("]
-    .some((method) =>
-      stripCommentsAndStrings(sourceCode.getText(listener))
-        .includes(method)
+  listener: FunctionLikeNode,
+): boolean => {
+  const code = stripCommentsAndStrings(sourceCode.getText(listener));
+  const aliases = new Set<string>();
+  const contextParam = listener.params[0] as Node | undefined;
+  const contextName = contextParam?.type === "Identifier"
+    ? (contextParam as Identifier).name
+    : null;
+
+  if (contextParam?.type === "ObjectPattern") {
+    for (const prop of contextParam.properties) {
+      if ((prop as Node).type !== "Property") continue;
+      const property = prop as {
+        key: Node;
+        value: Node;
+      };
+      const keyName = property.key.type === "Identifier"
+        ? property.key.name
+        : property.key.type === "Literal" &&
+            typeof property.key.value === "string"
+        ? property.key.value
+        : null;
+      if (keyName == null || !DELIVERY_METHOD_NAMES.has(keyName)) continue;
+      if (property.value.type === "Identifier") {
+        aliases.add(property.value.name);
+      }
+    }
+  }
+
+  if (contextName != null) {
+    const memberPattern = new RegExp(
+      String
+        .raw`\b${contextName}\s*(?:\.\s*(?:sendActivity|forwardActivity)|\[\s*["'](?:sendActivity|forwardActivity)["']\s*\])\s*\(`,
     );
+    if (memberPattern.test(code)) return true;
+
+    const destructuringPattern = new RegExp(
+      String.raw`(?:const|let|var)\s*{([^}]*)}\s*=\s*${contextName}\b`,
+      "g",
+    );
+    for (const match of code.matchAll(destructuringPattern)) {
+      const fields = match[1].split(",").map((field) => field.trim()).filter(
+        Boolean,
+      );
+      for (const field of fields) {
+        const [sourceName, aliasName] = field.split(":").map((part) =>
+          part.trim()
+        );
+        if (!DELIVERY_METHOD_NAMES.has(sourceName)) continue;
+        aliases.add(aliasName ?? sourceName);
+      }
+    }
+
+    const aliasPattern = new RegExp(
+      String
+        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextName}\s*(?:\.\s*(sendActivity|forwardActivity)|\[\s*["'](sendActivity|forwardActivity)["']\s*\])`,
+      "g",
+    );
+    for (const match of code.matchAll(aliasPattern)) {
+      aliases.add(match[1]);
+    }
+  }
+
+  return globalThis.Array.from(aliases).some((alias) =>
+    new RegExp(String.raw`\b${alias}\s*\(`).test(code)
+  );
+};
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   buildReport: Context extends Deno.lint.RuleContext ? {
@@ -59,12 +202,27 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 ) {
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
+    const bindings = new Map<string, unknown>();
     const sourceCode =
       (context as { sourceCode: { getText(node: unknown): string } })
         .sourceCode;
 
     return {
-      VariableDeclarator: federationTracker.VariableDeclarator,
+      VariableDeclarator(node: VariableDeclarator): void {
+        federationTracker.VariableDeclarator(node);
+        if (node.id.type === "Identifier" && node.init != null) {
+          bindings.set(node.id.name, node.init);
+        }
+      },
+
+      FunctionDeclaration(
+        node: Node & {
+          type: "FunctionDeclaration";
+          id: Identifier | null;
+        },
+      ): void {
+        if (node.id != null) bindings.set(node.id.name, node);
+      },
 
       CallExpression(node: CallExpression): void {
         if (
@@ -81,13 +239,19 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           return;
         }
 
-        const listener = node.arguments[1];
-        if (!isFunction(listener)) return;
+        const listener = node.arguments[1] as unknown;
+        const resolvedListener =
+          isNode(listener) && isFunction(listener as Expression)
+            ? listener as FunctionLikeNode
+            : isNode(listener)
+            ? resolveListenerReference(listener as Expression, bindings)
+            : null;
+        if (resolvedListener == null) return;
 
-        if (listenerCallsDeliveryMethod(sourceCode, listener)) return;
+        if (listenerCallsDeliveryMethod(sourceCode, resolvedListener)) return;
 
         (context as { report: (arg: unknown) => void }).report({
-          node: listener,
+          node: resolvedListener,
           ...buildReport,
         });
       },

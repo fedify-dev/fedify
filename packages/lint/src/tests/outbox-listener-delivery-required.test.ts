@@ -48,6 +48,47 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - named listener callback`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+const handler = async (ctx, activity) => {
+  await ctx.sendActivity(
+    { identifier: ctx.identifier },
+    new URL("https://example.com/inbox"),
+    activity,
+  );
+};
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, handler);
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - destructured ctx delivery alias`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    const { forwardActivity: deliver } = ctx;
+    await deliver({ identifier: ctx.identifier }, [], { skipIfUnsigned: true });
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ✅ Good - non-federation object`,
   lintTest({
     code: `
@@ -116,6 +157,27 @@ federation
 );
 
 test(
+  `${ruleName}: ❌ Bad - named listener without delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+const handler = async (ctx, activity) => {
+  console.log(ctx.identifier, activity.id?.href);
+};
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, handler);
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
   `${ruleName}: ❌ Bad - comment mentioning delivery methods`,
   lintTest({
     code: `
@@ -146,6 +208,27 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async () => {
     return ".sendActivity(.forwardActivity(";
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - other object sendActivity false positive`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const other = { sendActivity: async () => {} };
+    await other.sendActivity(activity);
+    console.log(ctx.identifier, activity.id?.href);
   });
 `,
     rule,

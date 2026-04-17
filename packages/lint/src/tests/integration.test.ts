@@ -232,6 +232,45 @@ federation
     ),
 );
 
+test(
+  "Integration: ✅ outbox-listener-delivery-required - chained authorize/onError",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .authorize(async (_ctx, _identifier) => true)
+  .onError(async (_ctx, _error) => {})
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });`),
+);
+
+test(
+  "Integration: ❌ outbox-listener-delivery-required - chained authorize/onError missing delivery",
+  () =>
+    pipe(
+      `${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .authorize(async (_ctx, _identifier) => true)
+  .onError(async (_ctx, _error) => {})
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });`,
+      assertHasError("outbox-listener-delivery-required"),
+    ),
+);
+
 test("Integration: ❌ actor-id-required - missing id property", () =>
   pipe(
     COMPLETE_VALID_CODE,

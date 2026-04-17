@@ -1,6 +1,13 @@
 import type { InboxContext, OutboxContext } from "@fedify/fedify/federation";
 import { test } from "@fedify/fixture";
-import { Activity, Create, Note, Person } from "@fedify/vocab";
+import {
+  Activity,
+  Arrive,
+  Create,
+  IntransitiveActivity,
+  Note,
+  Person,
+} from "@fedify/vocab";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { createFederation, createOutboxContext } from "./mock.ts";
 
@@ -214,6 +221,56 @@ test("postOutboxActivity prefers the most specific listener", async () => {
   await mockFederation.postOutboxActivity("alice", activity);
 
   assertEquals(calls, ["Create"]);
+});
+
+test(
+  "postOutboxActivity matches listeners through the prototype chain",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+    const calls: string[] = [];
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(IntransitiveActivity, () => {
+        calls.push("IntransitiveActivity");
+      });
+
+    const activity = new Arrive({
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/users/alice"),
+    });
+
+    await mockFederation.postOutboxActivity("alice", activity);
+
+    assertEquals(calls, ["IntransitiveActivity"]);
+  },
+);
+
+test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let called = false;
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, () => {
+      called = true;
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/bob"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "The activity actor does not match the outbox owner.",
+  );
+  assertEquals(called, false);
 });
 
 test("setOutboxListeners rejects duplicate listeners for the same type", () => {

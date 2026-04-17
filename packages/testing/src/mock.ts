@@ -10,9 +10,8 @@ import type {
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
-import { CryptographicKey, Multikey } from "@fedify/vocab";
+import { Activity, CryptographicKey, Multikey } from "@fedify/vocab";
 import type {
-  Activity,
   Collection,
   LookupObjectOptions,
   Object,
@@ -142,6 +141,8 @@ interface TestFederation<TContextData>
   ): TestContext<TContextData>;
 }
 
+type ActivityConstructor = new (...args: any[]) => Activity;
+
 /**
  * A mock implementation of the {@link Federation} interface for unit testing.
  * This class provides a way to test Fedify applications without needing
@@ -208,7 +209,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private featuredDispatcher?: any;
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
-  private outboxListeners: Map<string, any> = new Map();
+  private outboxListeners: Map<ActivityConstructor, any> = new Map();
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -369,11 +370,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     const self = this;
     return {
       on(type: any, listener: any): any {
-        const typeName = type.name;
-        if (self.outboxListeners.has(typeName)) {
+        if (self.outboxListeners.has(type)) {
           throw new TypeError("Listener already set for this type.");
         }
-        self.outboxListeners.set(typeName, listener);
+        self.outboxListeners.set(type, listener);
         return this;
       },
       onError(): any {
@@ -493,9 +493,27 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     identifier: string,
     activity: Activity,
   ): Promise<void> {
-    const typeName = activity.constructor.name;
-    const listener = this.outboxListeners.get(typeName) ??
-      this.outboxListeners.get("Activity");
+    const baseContext = this.createContext(
+      new URL(this.options.origin ?? "https://example.com"),
+      this.contextData as TContextData,
+    );
+
+    const expectedActorId = baseContext.getActorUri(identifier);
+    if (
+      activity.actorIds.length < 1 ||
+      !activity.actorIds.every((actorId) =>
+        actorId.href === expectedActorId.href
+      )
+    ) {
+      throw new Error("The activity actor does not match the outbox owner.");
+    }
+
+    let ctor = activity.constructor as ActivityConstructor;
+    let listener = this.outboxListeners.get(ctor);
+    while (listener == null && ctor !== Activity) {
+      ctor = globalThis.Object.getPrototypeOf(ctor);
+      listener = this.outboxListeners.get(ctor);
+    }
 
     if (listener != null && this.contextData === undefined) {
       throw new Error(
@@ -503,11 +521,6 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           "Please provide contextData through the constructor or call startQueue() before posting activities.",
       );
     }
-
-    const baseContext = this.createContext(
-      new URL(this.options.origin ?? "https://example.com"),
-      this.contextData as TContextData,
-    );
 
     if (listener != null) {
       const context = createOutboxContext({
