@@ -3036,6 +3036,9 @@ async function forwardActivityInternal<TContextData>(
     "Enqueuing activity {activityId} to forward later.",
     { activityId: ctx.activityId, activity: ctx.activity },
   );
+  if (!ctx.federation.manuallyStartQueue) {
+    ctx.federation._startQueueInternal(ctx.data);
+  }
   const keyJwkPairs: SenderKeyJwkPair[] = [];
   for (const { keyId, privateKey } of keys) {
     const privateKeyJwk = await exportJwk(privateKey);

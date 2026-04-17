@@ -490,6 +490,18 @@ export interface OutboxHandlerParameters<TContextData> {
   onNotFound(request: Request): Response | Promise<Response>;
 }
 
+function summarizeJsonActivity(json: unknown): {
+  activityId?: string;
+  activityType?: string;
+} {
+  if (json == null || typeof json !== "object") return {};
+  const id = "id" in json && typeof json.id === "string" ? json.id : undefined;
+  const type = "type" in json && typeof json.type === "string"
+    ? json.type
+    : undefined;
+  return { activityId: id, activityType: type };
+}
+
 /**
  * Handles an outbox POST request.
  * @template TContextData The context data to pass to the context.
@@ -563,9 +575,10 @@ export async function handleOutbox<TContextData>(
   try {
     activity = await Activity.fromJsonLd(json, ctx);
   } catch (error) {
+    const summary = summarizeJsonActivity(json);
     logger.error("Failed to parse activity:\n{error}", {
       identifier,
-      activity: json,
+      ...summary,
       error,
     });
     const outboxContext = outboxContextFactory(identifier, json, undefined, "");
@@ -574,7 +587,7 @@ export async function handleOutbox<TContextData>(
     } catch (error) {
       logger.error(
         "An unexpected error occurred in outbox error handler:\n{error}",
-        { error, activity: json, identifier },
+        { error, identifier, ...summary },
       );
     }
     return new Response("Invalid activity.", {
@@ -625,9 +638,10 @@ export async function handleOutbox<TContextData>(
   }
   const dispatched = outboxListeners?.dispatchWithClass(activity);
   if (dispatched == null) {
-    logger.debug("Unsupported activity type:\n{activity}", {
+    logger.debug("Unsupported activity type {activityType}.", {
       identifier,
-      activity: json,
+      activityId: activity.id?.href,
+      activityType: getTypeId(activity).href,
     });
     return new Response(null, { status: 202 });
   }
@@ -642,7 +656,7 @@ export async function handleOutbox<TContextData>(
         {
           error,
           activityId: activity.id?.href,
-          activity: json,
+          activityType: getTypeId(activity).href,
           identifier,
         },
       );
@@ -652,7 +666,7 @@ export async function handleOutbox<TContextData>(
       {
         error,
         activityId: activity.id?.href,
-        activity: json,
+        activityType: getTypeId(activity).href,
         identifier,
       },
     );
@@ -679,7 +693,7 @@ export async function handleOutbox<TContextData>(
     "Activity {activityId} has been processed in outbox listener.",
     {
       activityId: activity.id?.href,
-      activity: json,
+      activityType: getTypeId(activity).href,
       identifier,
     },
   );

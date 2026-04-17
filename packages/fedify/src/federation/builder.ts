@@ -789,7 +789,7 @@ export class FederationBuilderImpl<TContextData>
   }
 
   setOutboxListeners(
-    outboxPath: `${string}{identifier}${string}`,
+    outboxPath: `${string}${Rfc6570Expression<"identifier">}${string}`,
   ): OutboxListenerSetters<TContextData> {
     if (this.outboxListeners != null) {
       throw new RouterError("Outbox listeners already set.");

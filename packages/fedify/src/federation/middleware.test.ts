@@ -2504,6 +2504,75 @@ test("Federation.setOutboxListeners()", async (t) => {
       }
     },
   );
+
+  await t.step(
+    "forwardActivity starts the outbox queue automatically",
+    async () => {
+      const postedFixture = {
+        ...createFixture,
+        actor: "https://example.com/users/john",
+      };
+      let listenCalled = false;
+      const enqueued: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message: Message): Promise<void> {
+          enqueued.push(message);
+          return Promise.resolve();
+        },
+        async listen(): Promise<void> {
+          listenCalled = true;
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue,
+      });
+      federation
+        .setActorDispatcher(
+          "/users/{identifier}",
+          (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
+        )
+        .setKeyPairsDispatcher(() => [{
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        }]);
+
+      federation
+        .setOutboxListeners("/users/{identifier}/outbox")
+        .on(vocab.Activity, async (ctx) => {
+          await ctx.forwardActivity(
+            { identifier: ctx.identifier },
+            {
+              id: new URL("https://remote.example/users/alice"),
+              inboxId: new URL("https://remote.example/inbox"),
+            },
+          );
+        })
+        .authorize((ctx, identifier) => {
+          return identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token";
+        });
+
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/outbox", {
+          method: "POST",
+          body: JSON.stringify(postedFixture),
+          headers: {
+            authorization: "Bearer token",
+            "content-type": "application/activity+json",
+          },
+        }),
+        { contextData: undefined },
+      );
+
+      assertEquals(response.status, 202);
+      assertEquals(listenCalled, true);
+      assertEquals(enqueued.length, 1);
+      assertEquals(enqueued[0].type, "outbox");
+    },
+  );
 });
 
 test("Federation.setInboxDispatcher()", async (t) => {
