@@ -516,6 +516,21 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         federation: this as any,
         identifier,
         sendActivity: baseContext.sendActivity.bind(baseContext),
+        forwardActivity: async (
+          forwarder: any,
+          recipients: any,
+          options?: any,
+        ) => {
+          if (options?.skipIfUnsigned && await activity.getProof() == null) {
+            return;
+          }
+          return baseContext.sendActivity(
+            forwarder,
+            recipients,
+            activity,
+            options,
+          );
+        },
       });
       await listener(context, activity);
     }

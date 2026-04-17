@@ -201,13 +201,15 @@ function createInboxContext<TContextData>(
     federation: Federation<TContextData>;
   },
 ): TestInboxContext<TContextData> {
+  const forwardActivity = args.forwardActivity ??
+    (((_forwarder: unknown, _recipients: unknown, _options?: unknown) => {
+      throw new Error("Not implemented");
+    }) as TestInboxContext<TContextData>["forwardActivity"]);
   return {
     ...createContext(args),
     clone: args.clone ?? ((data) => createInboxContext({ ...args, data })),
     recipient: args.recipient ?? null,
-    forwardActivity: args.forwardActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+    forwardActivity,
   };
 }
 
@@ -226,11 +228,16 @@ function createOutboxContext<TContextData>(
     federation: Federation<TContextData>;
   },
 ): TestOutboxContext<TContextData> {
+  const forwardActivity = args.forwardActivity ??
+    (((_forwarder: unknown, _recipients: unknown, _options?: unknown) => {
+      throw new Error("Not implemented");
+    }) as TestOutboxContext<TContextData>["forwardActivity"]);
   return {
     ...createContext(args),
     clone: args.clone ??
       ((data: TContextData) => createOutboxContext({ ...args, data })),
     identifier: args.identifier,
+    forwardActivity,
   };
 }
 

@@ -180,7 +180,7 @@ test("Integration: ✅ Complete valid code passes all rules", () => {
 });
 
 test(
-  "Integration: ✅ outbox-listener-send-activity-required - explicit sendActivity",
+  "Integration: ✅ outbox-listener-delivery-required - explicit sendActivity",
   () =>
     assertNoErrors(`${COMPLETE_VALID_CODE}
 
@@ -198,7 +198,25 @@ federation
 );
 
 test(
-  "Integration: ❌ outbox-listener-send-activity-required - missing sendActivity",
+  "Integration: ✅ outbox-listener-delivery-required - explicit forwardActivity",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      [],
+      { skipIfUnsigned: true },
+    );
+  });`),
+);
+
+test(
+  "Integration: ❌ outbox-listener-delivery-required - missing delivery",
   () =>
     pipe(
       `${COMPLETE_VALID_CODE}
@@ -210,7 +228,7 @@ federation
   .on(Activity, async (ctx, activity) => {
     console.log(ctx.identifier, activity.id?.href);
   });`,
-      assertHasError("outbox-listener-send-activity-required"),
+      assertHasError("outbox-listener-delivery-required"),
     ),
 );
 

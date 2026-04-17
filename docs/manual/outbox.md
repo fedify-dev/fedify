@@ -96,8 +96,8 @@ Federating posted activities
 ----------------------------
 
 Fedify does not federate client-posted activities automatically.  If you want
-to deliver a posted activity, call `~Context.sendActivity()` explicitly inside
-your outbox listener.
+to deliver a posted activity, call `~Context.sendActivity()` or
+`~OutboxContext.forwardActivity()` explicitly inside your outbox listener.
 
 ~~~~ typescript twoslash
 import { type Federation } from "@fedify/fedify";
@@ -116,9 +116,31 @@ federation
   });
 ~~~~
 
-If a listener returns without calling `~Context.sendActivity()`, Fedify logs a
-runtime warning.  The `@fedify/lint` package also provides a lint rule for the
-same mistake; see [*Linting*](./lint.md) for details.
+If the client already signed the posted JSON-LD with Linked Data Signatures or
+Object Integrity Proofs and you want to preserve that payload verbatim, use
+`~OutboxContext.forwardActivity()` instead of round-tripping through Fedify's
+vocabulary objects:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Activity, Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+const recipients: Person[] = [];
+// ---cut-before---
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      recipients,
+      { skipIfUnsigned: true },
+    );
+  });
+~~~~
+
+If a listener returns without calling one of these delivery methods, Fedify
+logs a runtime warning.  The `@fedify/lint` package also provides a lint rule
+for the same mistake; see [*Linting*](./lint.md) for details.
 
 > [!TIP]
 > Explicit delivery keeps outbox listeners symmetric with inbox listeners:
@@ -160,7 +182,8 @@ In particular, Fedify does not currently do the following for you:
  -  Persist the posted activity in your outbox collection
  -  Generate IDs or `Location` headers for newly posted activities
  -  Wrap non-`Activity` objects in `Create` automatically
- -  Federate anything unless your listener calls `ctx.sendActivity()`
+ -  Federate anything unless your listener calls `ctx.sendActivity()` or
+    `ctx.forwardActivity()`
 
 If you need full `GET /outbox` support as well, combine this guide with the
 [*Collections*](./collections.md#outbox) guide.

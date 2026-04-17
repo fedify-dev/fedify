@@ -67,8 +67,8 @@ import {
   eslint as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
-  eslint as outboxListenerSendActivityRequired,
-} from "./rules/outbox-listener-send-activity-required.ts";
+  eslint as outboxListenerDeliveryRequired,
+} from "./rules/outbox-listener-delivery-required.ts";
 
 const rules: Record<
   typeof RULE_IDS[keyof typeof RULE_IDS],
@@ -97,8 +97,7 @@ const rules: Record<
   [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
   [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
-  [RULE_IDS.outboxListenerSendActivityRequired]:
-    outboxListenerSendActivityRequired,
+  [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
 };
 
 const recommendedRuleIds: (keyof typeof rules)[] = [

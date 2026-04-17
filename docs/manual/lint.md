@@ -597,18 +597,19 @@ federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
 });
 ~~~~
 
-### `outbox-listener-send-activity-required`
+### `outbox-listener-delivery-required`
 
-Warns when an outbox listener body does not call `ctx.sendActivity()`.
+Warns when an outbox listener body does not deliver the posted activity with
+`ctx.sendActivity()` or `ctx.forwardActivity()`.
 
 **When this rule applies:**
 You've registered an outbox listener with `setOutboxListeners()`, but the
-listener body never calls `ctx.sendActivity()`.
+listener body never calls either delivery method.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
-application intends to deliver a posted activity, the listener must call
-`ctx.sendActivity()` explicitly.
+application intends to deliver a posted activity, the listener must choose an
+explicit delivery path.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -631,6 +632,17 @@ federation
       { identifier: ctx.identifier },
       [],
       activity,
+    );
+  });
+
+// ✅ Good: Listener forwards the original posted payload explicitly
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      [],
+      { skipIfUnsigned: true },
     );
   });
 ~~~~

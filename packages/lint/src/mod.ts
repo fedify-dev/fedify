@@ -59,8 +59,8 @@ import {
   deno as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
-  deno as outboxListenerSendActivityRequired,
-} from "./rules/outbox-listener-send-activity-required.ts";
+  deno as outboxListenerDeliveryRequired,
+} from "./rules/outbox-listener-delivery-required.ts";
 
 const plugin: Deno.lint.Plugin = {
   name: "fedify-lint",
@@ -90,8 +90,7 @@ const plugin: Deno.lint.Plugin = {
     [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
     [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
     [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
-    [RULE_IDS.outboxListenerSendActivityRequired]:
-      outboxListenerSendActivityRequired,
+    [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
   },
 };
 

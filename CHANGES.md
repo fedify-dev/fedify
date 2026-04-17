@@ -13,9 +13,10 @@ To be released.
  -  Added `setOutboxListeners()` and `OutboxContext` for handling
     client-to-server `POST` requests to actor outboxes.  Outbox listeners use
     application-defined authorization through `.authorize()`, catch activity
-    types with `.on()`, and require explicit `ctx.sendActivity()` calls for any
-    federation delivery.  Fedify now also logs a runtime warning when an
-    outbox listener returns without calling `ctx.sendActivity()`.
+    types with `.on()`, and require explicit delivery through
+    `ctx.sendActivity()` or `ctx.forwardActivity()`.  Fedify now also logs a
+    runtime warning when an outbox listener returns without delivering the
+    posted activity.
     [[#430], [#688]]
 
  -  Allowed actor dispatchers to return `Tombstone` for deleted accounts.
@@ -39,16 +40,17 @@ To be released.
 
 ### @fedify/lint
 
- -  Added the `outbox-listener-send-activity-required` rule.  It warns when an
+ -  Added the `outbox-listener-delivery-required` rule.  It warns when an
     outbox listener registered through `setOutboxListeners()` returns without an
-    explicit `ctx.sendActivity()` call, which would otherwise leave a posted
-    client activity unfederated.  [[#430], [#688]]
+    explicit delivery call, which would otherwise leave a posted client
+    activity unfederated.  [[#430], [#688]]
 
 ### @fedify/testing
 
  -  Added `createOutboxContext()` plus `postOutboxActivity()` and mock
-    `setOutboxListeners()` support so outbox listeners can be tested without
-    spinning up a live federation server.  [[#430], [#688]]
+    `setOutboxListeners()` support so outbox listeners using either
+    `sendActivity()` or `forwardActivity()` can be tested without spinning up
+    a live federation server.  [[#430], [#688]]
 
 ### @fedify/vocab-runtime
 

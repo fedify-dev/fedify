@@ -8,7 +8,8 @@ import {
 import { trackFederationVariables } from "../lib/tracker.ts";
 import type { CallExpression, Expression, FunctionNode } from "../lib/types.ts";
 
-const MESSAGE = "Outbox listeners should call ctx.sendActivity() explicitly.";
+const MESSAGE =
+  "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().";
 
 const isChainedFromOutboxListeners = (
   expr: Expression,
@@ -37,13 +38,15 @@ const stripCommentsAndStrings = (code: string): string =>
     .replaceAll(/\/\/.*$/gm, "")
     .replaceAll(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '""');
 
-const listenerCallsSendActivity = (
+const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionNode,
 ): boolean =>
-  stripCommentsAndStrings(sourceCode.getText(listener)).includes(
-    ".sendActivity(",
-  );
+  [".sendActivity(", ".forwardActivity("]
+    .some((method) =>
+      stripCommentsAndStrings(sourceCode.getText(listener))
+        .includes(method)
+    );
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   buildReport: Context extends Deno.lint.RuleContext ? {
@@ -81,7 +84,7 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
         const listener = node.arguments[1];
         if (!isFunction(listener)) return;
 
-        if (listenerCallsSendActivity(sourceCode, listener)) return;
+        if (listenerCallsDeliveryMethod(sourceCode, listener)) return;
 
         (context as { report: (arg: unknown) => void }).report({
           node: listener,
@@ -100,7 +103,8 @@ export const eslint: Rule.RuleModule = {
   meta: {
     type: "suggestion",
     docs: {
-      description: "Warn when an outbox listener omits ctx.sendActivity()",
+      description:
+        "Warn when an outbox listener omits explicit delivery methods",
     },
     schema: [],
     messages: {

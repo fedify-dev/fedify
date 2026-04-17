@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import { RULE_IDS } from "../lib/const.ts";
 import lintTest from "../lib/test.ts";
-import * as rule from "../rules/outbox-listener-send-activity-required.ts";
+import * as rule from "../rules/outbox-listener-delivery-required.ts";
 
-const ruleName = RULE_IDS.outboxListenerSendActivityRequired;
+const ruleName = RULE_IDS.outboxListenerDeliveryRequired;
 
 test(
   `${ruleName}: ✅ Good - direct sendActivity call`,
@@ -18,6 +18,27 @@ federation
       { identifier: ctx.identifier },
       new URL("https://example.com/inbox"),
       activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - direct forwardActivity call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      [],
+      { skipIfUnsigned: true },
     );
   });
 `,
@@ -56,7 +77,7 @@ fakeFederation
 );
 
 test(
-  `${ruleName}: ❌ Bad - missing sendActivity call`,
+  `${ruleName}: ❌ Bad - missing delivery call`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -70,12 +91,12 @@ federation
     rule,
     ruleName,
     expectedError:
-      "Outbox listeners should call ctx.sendActivity() explicitly.",
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
 
 test(
-  `${ruleName}: ❌ Bad - chained authorize without sendActivity`,
+  `${ruleName}: ❌ Bad - chained authorize without delivery`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -90,12 +111,12 @@ federation
     rule,
     ruleName,
     expectedError:
-      "Outbox listeners should call ctx.sendActivity() explicitly.",
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
 
 test(
-  `${ruleName}: ❌ Bad - comment mentioning sendActivity`,
+  `${ruleName}: ❌ Bad - comment mentioning delivery methods`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -104,18 +125,19 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async (ctx, activity) => {
     // ctx.sendActivity(...)
+    // ctx.forwardActivity(...)
     console.log(ctx.identifier, activity.id?.href);
   });
 `,
     rule,
     ruleName,
     expectedError:
-      "Outbox listeners should call ctx.sendActivity() explicitly.",
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
 
 test(
-  `${ruleName}: ❌ Bad - string mentioning sendActivity`,
+  `${ruleName}: ❌ Bad - string mentioning delivery methods`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -123,12 +145,12 @@ import { Activity } from "@fedify/vocab";
 federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async () => {
-    return ".sendActivity(";
+    return ".sendActivity(.forwardActivity(";
   });
 `,
     rule,
     ruleName,
     expectedError:
-      "Outbox listeners should call ctx.sendActivity() explicitly.",
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );

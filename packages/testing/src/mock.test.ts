@@ -135,6 +135,62 @@ test("postOutboxActivity triggers outbox listeners", async () => {
   assertEquals(mockFederation.sentActivities[0].activity, activity);
 });
 
+test("postOutboxActivity supports forwardActivity", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(
+      Create,
+      async (ctx: OutboxContext<{ test: string }>) => {
+        await ctx.forwardActivity(
+          { identifier: ctx.identifier },
+          new Person({ id: new URL("https://example.com/users/bob") }),
+        );
+      },
+    );
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
+});
+
+test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(
+      Create,
+      async (ctx: OutboxContext<{ test: string }>) => {
+        await ctx.forwardActivity(
+          { identifier: ctx.identifier },
+          new Person({ id: new URL("https://example.com/users/bob") }),
+          { skipIfUnsigned: true },
+        );
+      },
+    );
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(mockFederation.sentActivities.length, 0);
+});
+
 test("postOutboxActivity prefers the most specific listener", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
