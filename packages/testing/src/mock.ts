@@ -67,15 +67,26 @@ function expandUriTemplate(
   values: Record<string, string>,
 ): string {
   return template.replace(/{([^}]+)}/g, (match, key) => {
-    const normalizedKey = key.startsWith("+") ? key.slice(1) : key;
-    return values[normalizedKey] || match;
+    const reserved = key.startsWith("+");
+    const normalizedKey = reserved ? key.slice(1) : key;
+    const value = values[normalizedKey];
+    if (value == null) return match;
+    return reserved ? value : encodeURIComponent(value);
   });
 }
 
 function hasLinkedDataSignature(jsonLd: unknown): boolean {
   return jsonLd != null && typeof jsonLd === "object" &&
     "signature" in jsonLd && jsonLd.signature != null &&
-    typeof jsonLd.signature === "object";
+    typeof jsonLd.signature === "object" &&
+    "type" in jsonLd.signature &&
+    jsonLd.signature.type === "RsaSignature2017" &&
+    "creator" in jsonLd.signature &&
+    typeof jsonLd.signature.creator === "string" &&
+    "created" in jsonLd.signature &&
+    typeof jsonLd.signature.created === "string" &&
+    "signatureValue" in jsonLd.signature &&
+    typeof jsonLd.signature.signatureValue === "string";
 }
 
 /**
@@ -510,6 +521,12 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     identifier: string,
     activity: Activity,
   ): Promise<void> {
+    if (this.outboxPath == null) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+      );
+    }
+
     let ctor = activity.constructor as ActivityConstructor;
     let listener = this.outboxListeners.get(ctor);
     while (listener == null && ctor !== Activity) {
@@ -517,12 +534,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       listener = this.outboxListeners.get(ctor);
     }
 
-    if (this.outboxListeners.size < 1) {
-      throw new Error(
-        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
-      );
-    }
-    if (listener != null && this.contextData === undefined) {
+    if (listener == null) return;
+
+    if (this.contextData === undefined) {
       throw new Error(
         "MockFederation.postOutboxActivity(): contextData is not initialized. " +
           "Please provide contextData through the constructor or call startQueue() before posting activities.",
@@ -566,8 +580,20 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     }
 
     const expectedActorId = actor.id ?? baseContext.getActorUri(identifier);
+    if (activity.actorIds.length < 1) {
+      const error = new Error("The posted activity has no actor.");
+      await this.outboxListenerErrorHandler?.(
+        createOutboxContext({
+          ...baseContext,
+          clone: undefined,
+          federation: this as any,
+          identifier,
+        }),
+        error,
+      );
+      throw error;
+    }
     if (
-      activity.actorIds.length < 1 ||
       !activity.actorIds.every((actorId) =>
         actorId.href === expectedActorId.href
       )
