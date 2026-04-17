@@ -59,7 +59,7 @@ import {
   verifyRequest,
 } from "../sig/http.ts";
 import { exportJwk, importJwk, validateCryptoKey } from "../sig/key.ts";
-import { hasSignature, signJsonLd } from "../sig/ld.ts";
+import { hasSignatureLike, signJsonLd } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
@@ -2954,7 +2954,7 @@ async function forwardActivityInternal<TContextData>(
   } else {
     keys = [forwarder];
   }
-  if (!hasSignature(ctx.activity)) {
+  if (!hasSignatureLike(ctx.activity)) {
     let hasProof: boolean;
     try {
       const activity = await Activity.fromJsonLd(ctx.activity, ctx);

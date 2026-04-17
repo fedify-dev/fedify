@@ -4266,6 +4266,44 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
     assertEquals(verified, ["ld"]);
   });
 
+  await t.step("alternate LD signature shapes", async () => {
+    const activity = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Create",
+      "id": "https://example.com/activity",
+      "actor": "https://example.com/person2",
+      "signature": {
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "https://example.com/person2#main-key",
+        "jws": "signature",
+      },
+    };
+    const ctx = new InboxContextImpl(
+      null,
+      activity,
+      "https://example.com/activity",
+      "https://www.w3.org/ns/activitystreams#Create",
+      {
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
+      },
+    );
+    await assertRejects(() =>
+      ctx.forwardActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        { skipIfUnsigned: true },
+      )
+    );
+    assertEquals(verified, []);
+  });
+
   fetchMock.hardReset();
 });
 

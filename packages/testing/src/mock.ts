@@ -10,6 +10,7 @@ import type {
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
+import { hasSignatureLike } from "@fedify/fedify/sig";
 import { Activity, CryptographicKey, Multikey } from "@fedify/vocab";
 import type {
   Collection,
@@ -73,20 +74,6 @@ function expandUriTemplate(
     if (value == null) return match;
     return reserved ? encodeURI(value) : encodeURIComponent(value);
   });
-}
-
-function hasLinkedDataSignature(jsonLd: unknown): boolean {
-  if (jsonLd == null || typeof jsonLd !== "object") return false;
-  const record = jsonLd as Record<string, unknown>;
-  const signature = record.signature;
-  if (signature == null || typeof signature !== "object") return false;
-  const signatureRecord = signature as Record<string, unknown>;
-
-  return typeof signatureRecord.type === "string" &&
-    (typeof signatureRecord.creator === "string" ||
-      typeof signatureRecord.verificationMethod === "string") &&
-    (typeof signatureRecord.signatureValue === "string" ||
-      typeof signatureRecord.jws === "string");
 }
 
 /**
@@ -559,17 +546,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
 
     const actor = await baseContext.getActor(identifier);
     if (actor == null) {
-      const error = new Error(`Actor ${JSON.stringify(identifier)} not found.`);
-      await this.outboxListenerErrorHandler?.(
-        createOutboxContext({
-          ...baseContext,
-          clone: undefined,
-          federation: this as any,
-          identifier,
-        }),
-        error,
-      );
-      throw error;
+      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
     }
     const authorizePredicate = this.outboxAuthorizePredicate ??
       this.outboxDispatcherAuthorizePredicate;
@@ -632,7 +609,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           options?: any,
         ) => {
           const hasProof = await activity.getProof() != null;
-          const hasLds = hasLinkedDataSignature(rawActivity);
+          const hasLds = hasSignatureLike(rawActivity);
           if (options?.skipIfUnsigned && !hasProof && !hasLds) {
             return;
           }

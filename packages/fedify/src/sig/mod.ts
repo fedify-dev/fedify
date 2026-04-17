@@ -41,6 +41,7 @@ export {
   createSignature,
   type CreateSignatureOptions,
   detachSignature,
+  hasSignatureLike,
   signJsonLd,
   type SignJsonLdOptions,
   verifyJsonLd,

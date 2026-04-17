@@ -177,6 +177,27 @@ interface SignedJsonLd {
 }
 
 /**
+ * Checks if the given JSON-LD document has a Linked Data Signature-like
+ * object, without restricting it to a single suite-specific shape.
+ * @param jsonLd The JSON-LD document to check.
+ * @returns `true` if the document has a signature-like object; `false`
+ *          otherwise.
+ * @since 2.2.0
+ */
+export function hasSignatureLike(jsonLd: unknown): boolean {
+  if (typeof jsonLd !== "object" || jsonLd == null) return false;
+  const record = jsonLd as Record<string, unknown>;
+  const signature = record.signature;
+  if (typeof signature !== "object" || signature == null) return false;
+  const signatureRecord = signature as Record<string, unknown>;
+  return typeof signatureRecord.type === "string" &&
+    (typeof signatureRecord.creator === "string" ||
+      typeof signatureRecord.verificationMethod === "string") &&
+    (typeof signatureRecord.signatureValue === "string" ||
+      typeof signatureRecord.jws === "string");
+}
+
+/**
  * Checks if the given JSON-LD document has a Linked Data Signature.
  * @param jsonLd The JSON-LD document to check.
  * @returns `true` if the document has a signature; `false` otherwise.

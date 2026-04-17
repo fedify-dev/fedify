@@ -558,6 +558,34 @@ test("postOutboxActivity routes missing actor through onError", async () => {
   assertEquals(handled, "The posted activity has no actor.");
 });
 
+test("postOutboxActivity missing owner does not invoke onError", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let handled = false;
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .onError((_ctx: OutboxContext<{ test: string }>, _error: Error) => {
+      handled = true;
+    })
+    .on(Create, () => {
+      throw new Error("listener should not run");
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    'Actor "alice" not found.',
+  );
+  assertEquals(handled, false);
+});
+
 test(
   "postOutboxActivity accepts the dispatched actor id as the owner",
   async () => {
