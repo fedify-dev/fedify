@@ -2082,6 +2082,10 @@ test("Federation.setOutboxListeners()", async (t) => {
   });
 
   await t.step("on() and authorize()", async () => {
+    const postedFixture = {
+      ...createFixture,
+      actor: "https://example.com/users/john",
+    };
     const federation = createFederation<void>({
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
@@ -2118,7 +2122,7 @@ test("Federation.setOutboxListeners()", async (t) => {
     let response = await federation.fetch(
       new Request("https://example.com/users/john/outbox", {
         method: "POST",
-        body: JSON.stringify(createFixture),
+        body: JSON.stringify(postedFixture),
         headers: {
           "content-type": "application/activity+json",
         },
@@ -2131,7 +2135,7 @@ test("Federation.setOutboxListeners()", async (t) => {
     response = await federation.fetch(
       new Request("https://example.com/users/john/outbox", {
         method: "POST",
-        body: JSON.stringify(createFixture),
+        body: JSON.stringify(postedFixture),
         headers: {
           authorization: "Bearer token",
           "content-type": "application/activity+json",
@@ -2186,6 +2190,10 @@ test("Federation.setOutboxListeners()", async (t) => {
   });
 
   await t.step("warns when listener omits sendActivity()", async () => {
+    const postedFixture = {
+      ...createFixture,
+      actor: "https://example.com/users/john",
+    };
     const records: LogRecord[] = [];
     await reset();
     try {
@@ -2225,7 +2233,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       const response = await federation.fetch(
         new Request("https://example.com/users/john/outbox", {
           method: "POST",
-          body: JSON.stringify(createFixture),
+          body: JSON.stringify(postedFixture),
           headers: {
             authorization: "Bearer token",
             "content-type": "application/activity+json",
@@ -2249,6 +2257,10 @@ test("Federation.setOutboxListeners()", async (t) => {
   });
 
   await t.step("does not warn when listener calls sendActivity()", async () => {
+    const postedFixture = {
+      ...createFixture,
+      actor: "https://example.com/users/john",
+    };
     const records: LogRecord[] = [];
     await reset();
     fetchMock.spyGlobal();
@@ -2303,7 +2315,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       const response = await federation.fetch(
         new Request("https://example.com/users/john/outbox", {
           method: "POST",
-          body: JSON.stringify(createFixture),
+          body: JSON.stringify(postedFixture),
           headers: {
             authorization: "Bearer token",
             "content-type": "application/activity+json",
