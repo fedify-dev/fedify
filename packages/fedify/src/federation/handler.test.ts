@@ -35,7 +35,7 @@ import type {
   CustomCollectionDispatcher,
   ObjectDispatcher,
 } from "./callback.ts";
-import type { RequestContext } from "./context.ts";
+import type { InboxContext, OutboxContext, RequestContext } from "./context.ts";
 import type { ConstructorWithTypeId } from "./federation.ts";
 import {
   type CustomCollectionCallbacks,
@@ -48,10 +48,9 @@ import {
   respondWithObject,
   respondWithObjectIfAcceptable,
 } from "./handler.ts";
-import { InboxListenerSet } from "./inbox.ts";
+import { ActivityListenerSet } from "./activity-listener.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
-import { OutboxListenerSet } from "./outbox.ts";
 
 const QUOTE_CONTEXT_TERMS = {
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
@@ -1378,7 +1377,7 @@ test("handleOutbox()", async () => {
     if (identifier !== "someone") return null;
     return new Person({ id: ctx.getActorUri(identifier), name: "Someone" });
   };
-  const listeners = new OutboxListenerSet<void>();
+  const listeners = new ActivityListenerSet<OutboxContext<void>>();
   const seen: string[] = [];
   listeners.add(Activity, (ctx, activity) => {
     seen.push(`${ctx.identifier}:${activity.id?.href}`);
@@ -1613,7 +1612,7 @@ test("handleOutbox()", async () => {
     "The activity actor does not match the outbox owner.",
   );
 
-  const throwingListeners = new OutboxListenerSet<void>();
+  const throwingListeners = new ActivityListenerSet<OutboxContext<void>>();
   let onErrorCalled = false;
   throwingListeners.add(Create, () => {
     throw new Error("Boom");
@@ -1689,7 +1688,7 @@ test("handleInbox() - authentication bypass vulnerability", async () => {
 
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let processedActivity: Create | undefined;
-  const inboxListeners = new InboxListenerSet<void>();
+  const inboxListeners = new ActivityListenerSet<InboxContext<void>>();
   inboxListeners.add(Create, (_ctx, activity) => {
     // Track that the malicious activity was processed
     processedActivity = activity;
@@ -2277,7 +2276,7 @@ test("handleInbox() records OpenTelemetry span events", async () => {
     });
   };
 
-  const listeners = new InboxListenerSet<void>();
+  const listeners = new ActivityListenerSet<InboxContext<void>>();
   let receivedActivity: Activity | null = null;
   listeners.add(Create, (_ctx, activity) => {
     receivedActivity = activity;
@@ -2411,7 +2410,7 @@ test("handleInbox() records unverified HTTP signature details", async () => {
       acceptSignatureNonce: ["acceptSignatureNonce"],
     },
     actorDispatcher,
-    inboxListeners: new InboxListenerSet<void>(),
+    inboxListeners: new ActivityListenerSet<InboxContext<void>>(),
     inboxErrorHandler: undefined,
     unverifiedActivityHandler() {
       return new Response("", { status: 202 });

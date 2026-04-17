@@ -35,7 +35,13 @@ import type {
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
-import type { Context, RequestContext } from "./context.ts";
+import type {
+  Context,
+  InboxContext,
+  OutboxContext,
+  RequestContext,
+} from "./context.ts";
+import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
@@ -55,8 +61,6 @@ import type {
   CollectionCallbacks,
   CustomCollectionCallbacks,
 } from "./handler.ts";
-import { InboxListenerSet } from "./inbox.ts";
-import { OutboxListenerSet } from "./outbox.ts";
 import { Router, RouterError } from "./router.ts";
 
 export class FederationBuilderImpl<TContextData>
@@ -111,8 +115,8 @@ export class FederationBuilderImpl<TContextData>
     TContextData,
     void
   >;
-  inboxListeners?: InboxListenerSet<TContextData>;
-  outboxListeners?: OutboxListenerSet<TContextData>;
+  inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
+  outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
   outboxAuthorizePredicate?: AuthorizePredicate<TContextData>;
@@ -812,7 +816,9 @@ export class FederationBuilderImpl<TContextData>
       }
       this.outboxPath = outboxPath;
     }
-    const listeners = this.outboxListeners = new OutboxListenerSet();
+    const listeners = this.outboxListeners = new ActivityListenerSet<
+      OutboxContext<TContextData>
+    >();
     const setters: OutboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
         // deno-lint-ignore no-explicit-any
@@ -1209,7 +1215,9 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     }
-    const listeners = this.inboxListeners = new InboxListenerSet();
+    const listeners = this.inboxListeners = new ActivityListenerSet<
+      InboxContext<TContextData>
+    >();
     const setters: InboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
         // deno-lint-ignore no-explicit-any

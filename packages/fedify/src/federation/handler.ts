@@ -53,18 +53,18 @@ import type {
   OutboxContext,
   RequestContext,
 } from "./context.ts";
+import type { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ConstructorWithTypeId,
   IdempotencyKeyCallback,
   IdempotencyStrategy,
   InboxChallengePolicy,
 } from "./federation.ts";
-import { type InboxListenerSet, routeActivity } from "./inbox.ts";
+import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
-import type { OutboxListenerSet } from "./outbox.ts";
 
 /**
  * Parameters for handling an actor request.
@@ -484,7 +484,7 @@ export interface OutboxHandlerParameters<TContextData> {
   ): OutboxContext<TContextData>;
   actorDispatcher?: ActorDispatcher<TContextData>;
   authorizePredicate?: AuthorizePredicate<TContextData>;
-  outboxListeners?: OutboxListenerSet<TContextData>;
+  outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
   outboxErrorHandler?: OutboxListenerErrorHandler<TContextData>;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
@@ -750,7 +750,7 @@ export interface InboxHandlerParameters<TContextData> {
   };
   queue?: MessageQueue;
   actorDispatcher?: ActorDispatcher<TContextData>;
-  inboxListeners?: InboxListenerSet<TContextData>;
+  inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   onNotFound(request: Request): Response | Promise<Response>;
