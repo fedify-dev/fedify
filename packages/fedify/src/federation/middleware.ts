@@ -61,7 +61,7 @@ import {
 import { exportJwk, importJwk, validateCryptoKey } from "../sig/key.ts";
 import { hasSignatureLike, signJsonLd } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
-import { signObject, verifyObject } from "../sig/proof.ts";
+import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { FederationBuilderImpl } from "./builder.ts";
@@ -2955,13 +2955,7 @@ async function forwardActivityInternal<TContextData>(
     keys = [forwarder];
   }
   if (!hasSignatureLike(ctx.activity)) {
-    let hasProof: boolean;
-    try {
-      const activity = await Activity.fromJsonLd(ctx.activity, ctx);
-      hasProof = await activity.getProof() != null;
-    } catch {
-      hasProof = false;
-    }
+    const hasProof = hasProofLike(ctx.activity);
     if (!hasProof) {
       if (options?.skipIfUnsigned) return false;
       logger.warn(

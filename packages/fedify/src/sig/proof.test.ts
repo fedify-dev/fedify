@@ -8,7 +8,13 @@ import {
   Place,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import { decodeHex } from "byte-encodings/hex";
 import {
   ed25519Multikey,
@@ -20,6 +26,7 @@ import {
 import type { KeyCache } from "./key.ts";
 import {
   createProof,
+  hasProofLike,
   signObject,
   verifyObject,
   type VerifyObjectOptions,
@@ -263,6 +270,40 @@ test("signObject()", async () => {
     TypeError,
     "Unsupported algorithm",
   );
+});
+
+test("hasProofLike()", () => {
+  assert(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: "https://example.com/users/alice#main-key",
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    proof: [{
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    }],
+  }));
+  assertFalse(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+    },
+  }));
 });
 
 test("verifyProof()", async () => {

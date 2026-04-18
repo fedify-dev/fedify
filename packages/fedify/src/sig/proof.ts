@@ -21,6 +21,36 @@ import {
 const logger = getLogger(["fedify", "sig", "proof"]);
 
 /**
+ * Checks if the given JSON-LD document has a DataIntegrityProof-like object,
+ * without fully deserializing it into vocabulary classes.
+ * @param jsonLd The JSON-LD document to check.
+ * @returns `true` if the document has a proof-like object; `false` otherwise.
+ * @since 2.2.0
+ */
+export function hasProofLike(jsonLd: unknown): boolean {
+  if (typeof jsonLd !== "object" || jsonLd == null) return false;
+  const record = jsonLd as Record<string, unknown>;
+  const proof = record.proof;
+
+  const isReference = (value: unknown): boolean => {
+    if (typeof value === "string") return true;
+    return typeof value === "object" && value != null &&
+      "id" in value && typeof value.id === "string";
+  };
+
+  const isProofLike = (value: unknown): boolean => {
+    if (typeof value !== "object" || value == null) return false;
+    const proofRecord = value as Record<string, unknown>;
+    return proofRecord.type === "DataIntegrityProof" &&
+      isReference(proofRecord.verificationMethod) &&
+      typeof proofRecord.proofPurpose === "string" &&
+      typeof proofRecord.proofValue === "string";
+  };
+
+  return Array.isArray(proof) ? proof.some(isProofLike) : isProofLike(proof);
+}
+
+/**
  * Options for {@link createProof}.
  * @since 0.10.0
  */
