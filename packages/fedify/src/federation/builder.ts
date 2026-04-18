@@ -63,6 +63,19 @@ import type {
 } from "./handler.ts";
 import { Router, RouterError } from "./router.ts";
 
+function validateSingleIdentifierVariablePath(
+  path: string,
+  errorMessage: string,
+): void {
+  const variables = globalThis.Array.from(
+    path.matchAll(/{(\+?)([A-Za-z_][A-Za-z0-9_]*)}/g),
+    (match) => match[2],
+  );
+  if (variables.length !== 1 || variables[0] !== "identifier") {
+    throw new RouterError(errorMessage);
+  }
+}
+
 export class FederationBuilderImpl<TContextData>
   implements FederationBuilder<TContextData> {
   router: Router;
@@ -805,15 +818,11 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      const variables = this.router.add(outboxPath, "outbox");
-      if (
-        variables.size !== 1 ||
-        !variables.has("identifier")
-      ) {
-        throw new RouterError(
-          "Path for outbox must have one variable: {identifier}",
-        );
-      }
+      validateSingleIdentifierVariablePath(
+        outboxPath,
+        "Path for outbox must have one variable: {identifier}",
+      );
+      this.router.add(outboxPath, "outbox");
       this.outboxPath = outboxPath;
     }
     const listeners = this.outboxListeners = new ActivityListenerSet<

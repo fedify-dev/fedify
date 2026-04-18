@@ -157,6 +157,16 @@ test("FederationBuilder", async (t) => {
       RouterError,
     );
 
+    const builderAfterInvalid = createFederationBuilder<void>();
+    assertThrows(
+      () =>
+        builderAfterInvalid.setOutboxListeners(
+          "/users/{identifier}/outbox/{extra}",
+        ),
+      RouterError,
+    );
+    builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
+
     const builder2 = createFederationBuilder<void>();
     builder2.setOutboxListeners("/users/{identifier}/outbox");
 
