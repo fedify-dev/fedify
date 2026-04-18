@@ -920,6 +920,44 @@ test("setOutboxListeners rejects duplicate registration", () => {
   );
 });
 
+test("setOutboxListeners validates dispatcher path compatibility", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+    items: [],
+  }));
+
+  assertThrows(
+    () => mockFederation.setOutboxListeners("/actors/{identifier}/outbox"),
+    TypeError,
+    "Outbox listener path must match outbox dispatcher path.",
+  );
+});
+
+test("setOutboxListeners validates path variables", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  assertThrows(
+    () =>
+      mockFederation.setOutboxListeners(
+        "/users/outbox" as `${string}{identifier}${string}`,
+      ),
+    TypeError,
+    "Path for outbox must have one variable: {identifier}",
+  );
+
+  assertThrows(
+    () =>
+      mockFederation.setOutboxListeners("/users/{identifier}/outbox/{extra}"),
+    TypeError,
+    "Path for outbox must have one variable: {identifier}",
+  );
+});
+
 test("createOutboxContext exposes identifier", () => {
   const mockFederation = createFederation<void>();
   const ctx = createOutboxContext({

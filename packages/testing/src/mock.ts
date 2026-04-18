@@ -76,6 +76,24 @@ function expandUriTemplate(
   });
 }
 
+function validateOutboxListenerPath(
+  path: string,
+  dispatcherPath?: string,
+): void {
+  if (dispatcherPath != null && dispatcherPath !== path) {
+    throw new TypeError(
+      "Outbox listener path must match outbox dispatcher path.",
+    );
+  }
+  const variables = globalThis.Array.from(
+    path.matchAll(/{(\+?)([A-Za-z_][A-Za-z0-9_]*)}/g),
+    (match) => match[2],
+  );
+  if (variables.length !== 1 || variables[0] !== "identifier") {
+    throw new TypeError("Path for outbox must have one variable: {identifier}");
+  }
+}
+
 /**
  * Represents a sent activity with metadata about how it was sent.
  * @since 1.8.0
@@ -383,6 +401,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (this.outboxListenersInitialized) {
       throw new TypeError("Outbox listeners already set.");
     }
+    validateOutboxListenerPath(outboxPath, this.outboxPath);
     this.outboxListenersInitialized = true;
     this.outboxPath = outboxPath;
     // deno-lint-ignore no-this-alias

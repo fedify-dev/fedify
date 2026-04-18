@@ -214,7 +214,9 @@ function getDeliveryAliasName(node: Node): string | null {
 
 function buildContextExpressionPattern(contextName: string): string {
   const name = escapeRegExp(contextName);
-  return String.raw`(?:${name}|\(\s*${name}(?:\s+as\s+[^)]+)?\s*\))`;
+  const boundedName = String.raw`(?<![\w$])${name}(?![\w$])`;
+  return String
+    .raw`(?:${boundedName}|\(\s*${boundedName}(?:\s+as\s+[^)]+)?\s*\))`;
 }
 
 const resolveListenerReference = (

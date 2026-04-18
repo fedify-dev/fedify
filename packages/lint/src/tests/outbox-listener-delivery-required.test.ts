@@ -345,6 +345,31 @@ federation
 );
 
 test(
+  `${ruleName}: ❌ Bad - identifier containing ctx substring`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const myctx = {
+      sendActivity: async () => {
+        console.log(activity.id?.href);
+      },
+    };
+    await myctx.sendActivity();
+    console.log(ctx.identifier);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
   `${ruleName}: ❌ Bad - template literal mentioning delivery methods`,
   lintTest({
     code: `
