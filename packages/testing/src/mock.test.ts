@@ -1259,6 +1259,36 @@ test("MockContext getOutboxUri supports reserved expansion", () => {
   );
 });
 
+test("MockContext getOutboxUri supports path-segment expansion", () => {
+  const mockFederation = createFederation<void>();
+  mockFederation.setOutboxListeners("/actors{/identifier}/outbox");
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  assertEquals(
+    context.getOutboxUri("alice/profile").href,
+    "https://example.com/actors/alice/profile/outbox",
+  );
+});
+
+test("MockContext getOutboxUri supports query expansion", () => {
+  const mockFederation = createFederation<void>();
+  mockFederation.setOutboxListeners("/actors/outbox{?identifier}");
+
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+
+  assertEquals(
+    context.getOutboxUri("alice/profile").href,
+    "https://example.com/actors/outbox?identifier=alice%2Fprofile",
+  );
+});
+
 test("MockContext reserved expansion encodes non-reserved characters", () => {
   const mockFederation = createFederation<void>();
   mockFederation.setOutboxListeners("/actors/{+identifier}/outbox");

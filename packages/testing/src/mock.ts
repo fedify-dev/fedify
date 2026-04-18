@@ -57,8 +57,8 @@ const noopTracerProvider: any = {
 };
 
 /**
- * Helper function to expand URI templates with values.
- * Supports simple placeholders like {identifier}, etc.
+ * Helper function to expand single-variable URI templates used by the mock.
+ * Supports the RFC 6570 operators accepted by Fedify's identifier paths.
  * @param template The URI template pattern
  * @param values The values to substitute
  * @returns The expanded URI path
@@ -67,12 +67,33 @@ function expandUriTemplate(
   template: string,
   values: Record<string, string>,
 ): string {
-  return template.replace(/{([^}]+)}/g, (match, key) => {
-    const reserved = key.startsWith("+");
-    const normalizedKey = reserved ? key.slice(1) : key;
-    const value = values[normalizedKey];
+  return template.replace(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g, (
+    match,
+    operator,
+    key,
+  ) => {
+    const value = values[key];
     if (value == null) return match;
-    return reserved ? encodeURI(value) : encodeURIComponent(value);
+    switch (operator) {
+      case "":
+        return encodeURIComponent(value);
+      case "+":
+        return encodeURI(value);
+      case "#":
+        return `#${encodeURI(value)}`;
+      case ".":
+        return `.${encodeURIComponent(value)}`;
+      case "/":
+        return `/${encodeURI(value)}`;
+      case ";":
+        return `;${key}=${encodeURIComponent(value)}`;
+      case "?":
+        return `?${key}=${encodeURIComponent(value)}`;
+      case "&":
+        return `&${key}=${encodeURIComponent(value)}`;
+      default:
+        return match;
+    }
   });
 }
 
@@ -86,7 +107,7 @@ function validateOutboxListenerPath(
     );
   }
   const variables = globalThis.Array.from(
-    path.matchAll(/{(\+?)([A-Za-z_][A-Za-z0-9_]*)}/g),
+    path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
     (match) => match[2],
   );
   if (variables.length !== 1 || variables[0] !== "identifier") {
