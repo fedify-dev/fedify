@@ -1,5 +1,5 @@
 "use strict";
-var mq = window.matchMedia("(prefers-color-scheme: dark)");
+const mq = globalThis.window.matchMedia("(prefers-color-scheme: dark)");
 document.body.classList.add(mq.matches ? "dark" : "light");
 mq.addEventListener("change", function (e) {
   document.body.classList.remove("light", "dark");

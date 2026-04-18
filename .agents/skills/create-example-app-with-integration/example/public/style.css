@@ -20,8 +20,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-size: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
 }
 
 a {
