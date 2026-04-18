@@ -40,11 +40,12 @@ export class ActivityListenerSet<TContext> {
     listener: ActivityListener<TContext, TActivity>;
   } | null {
     let cls: ActivityConstructor = activity.constructor as ActivityConstructor;
-    while (true) {
+    while (cls != null) {
       if (this.#listeners.has(cls)) break;
       if (cls === Activity) return null;
       cls = globalThis.Object.getPrototypeOf(cls);
     }
+    if (cls == null) return null;
     const listener = this.#listeners.get(cls)!;
     return { class: cls, listener };
   }

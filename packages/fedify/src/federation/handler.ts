@@ -710,7 +710,7 @@ export async function handleOutbox<TContextData>(
     !outboxContext.hasDeliveredActivity()
   ) {
     logger.warn(
-      "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity().",
+      "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery.",
       {
         identifier,
         activityId: activity.id?.href,

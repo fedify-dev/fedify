@@ -2324,7 +2324,7 @@ test("Federation.setOutboxListeners()", async (t) => {
         assertEquals(
           records.some((record) =>
             record.rawMessage ===
-              "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()." &&
+              "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
             record.properties.identifier === "john"
           ),
           true,
@@ -2408,7 +2408,7 @@ test("Federation.setOutboxListeners()", async (t) => {
         assertEquals(
           records.some((record) =>
             record.rawMessage ===
-              "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()."
+              "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery."
           ),
           false,
         );
@@ -2508,7 +2508,7 @@ test("Federation.setOutboxListeners()", async (t) => {
           assertEquals(
             records.some((record) =>
               record.rawMessage ===
-                "Outbox listener for {identifier} returned without delivering the posted activity through ctx.sendActivity() or ctx.forwardActivity()."
+                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery."
             ),
             false,
           );

@@ -2965,7 +2965,7 @@ async function forwardActivityInternal<TContextData>(
     if (!hasProof) {
       if (options?.skipIfUnsigned) return false;
       logger.warn(
-        "The received activity {activityId} is not signed; even if it is " +
+        "The activity {activityId} is not signed; even if it is " +
           "forwarded to other servers as is, it may not be accepted by " +
           "them due to the lack of a signature/proof.",
       );
