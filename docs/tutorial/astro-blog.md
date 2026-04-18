@@ -655,8 +655,8 @@ Create the file *src/lib/store.ts*:
 // chapter when we introduce SQLite.
 
 declare global {
-  var _keyPairs: Map<string, CryptoKeyPair[]>; // eslint-disable-line no-var
-  var _followers: Map<string, string>; // eslint-disable-line no-var
+  var _keyPairs: Map<string, CryptoKeyPair[]>;
+  var _followers: Map<string, string>;
 }
 
 if (globalThis._keyPairs == null) globalThis._keyPairs = new Map();
