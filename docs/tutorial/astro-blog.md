@@ -662,7 +662,8 @@ export const followers: Map<string, string> = globalThis._followers;
 ~~~~
 
 The `_followers` map is also declared here even though we won't use it until
-Chapter 6—it's easier to keep both maps in the same place.
+[*Implementing followers*](#implementing-followers)—it's easier to keep both
+maps in the same place.
 
 > [!NOTE]
 > We use `globalThis` instead of module-level variables because Astro's
@@ -785,10 +786,11 @@ one [Ed25519] key (faster, modern).  Both are stored in the `keyPairs` map.
 **`setInboxListeners`** registers the inbox and shared inbox routes.  We need
 to call this even before we add any handlers because Fedify needs to know the
 inbox path to include it in the actor's JSON-LD.  We'll add actual handlers in
-Chapter 6 (Followers).
+[*Implementing followers*](#implementing-followers).
 
 **`setFollowersDispatcher`** registers the followers collection route.  For now
-it returns an empty list; we'll fill it in Chapter 6.
+it returns an empty list; we'll fill it in
+[*Implementing followers*](#implementing-followers).
 
 [RSA-PKCS1-v1.5]: https://en.wikipedia.org/wiki/PKCS_1
 [Ed25519]: https://en.wikipedia.org/wiki/EdDSA#Ed25519
@@ -807,9 +809,10 @@ export const onRequest = fedifyMiddleware(federation, (_context) => undefined);
 ~~~~
 
 The `import "./logging.ts"` side-effect import ensures that the LogTape
-configuration we defined in Chapter 2 is loaded before the first request
-arrives.  Without it, log messages from the federation layer would be silently
-discarded.
+configuration we defined in
+[*Setting up the development environment*](#setting-up-the-development-environment)
+is loaded before the first request arrives.  Without it, log messages from the
+federation layer would be silently discarded.
 
 ### The actor profile page
 
@@ -2614,7 +2617,8 @@ remove comments when a follower unfollows.
 > [!WARNING]
 > The `content` field on `Note` is HTML sent by a remote server.  Storing
 > and rendering it verbatim exposes your visitors to XSS attacks.  See
-> Chapter 10 for guidance on sanitization.
+> [*Security: sanitizing comment HTML*](#security-sanitizing-comment-html) for
+> guidance on sanitization.
 
 ### Displaying comments on the post page
 
@@ -2707,7 +2711,8 @@ Mastodon's HTML formatting (bold, links, mentions) is preserved.
 ### Testing with ActivityPub.Academy
 
 Make sure the dev server is running and the tunnel is active, and that you
-have followed the blog from ActivityPub.Academy (see Chapter 5).  Open the
+have followed the blog from ActivityPub.Academy (see
+[*Interoperating with Mastodon*](#interoperating-with-mastodon)).  Open the
 tunnel URL in a browser to trigger `syncPosts` with the correct public URL:
 
 ~~~~ sh
