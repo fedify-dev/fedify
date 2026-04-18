@@ -763,15 +763,11 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      const variables = this.router.add(path, "outbox");
-      if (
-        variables.size !== 1 ||
-        !variables.has("identifier")
-      ) {
-        throw new RouterError(
-          "Path for outbox dispatcher must have one variable: {identifier}",
-        );
-      }
+      validateSingleIdentifierVariablePath(
+        path,
+        "Path for outbox dispatcher must have one variable: {identifier}",
+      );
+      this.router.add(path, "outbox");
       this.outboxPath = path;
     }
     const callbacks: CollectionCallbacks<
