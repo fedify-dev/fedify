@@ -984,3 +984,143 @@ Person {
 The blog now has a valid ActivityPub identity.  However, it can't receive
 follows or deliver posts to the fediverse yet—those features require a public
 URL, which we'll set up next.
+
+Interoperating with Mastodon
+============================
+
+So far we've verified the actor endpoint works locally.  Now let's confirm
+it's recognizable to other ActivityPub software—in this case, Mastodon.  To
+do that, we need a publicly reachable HTTPS URL.
+
+This chapter has no code changes.  After it you'll commit the tunnel support
+from the previous chapter.
+
+### Exposing the server with `fedify tunnel`
+
+The `fedify` CLI includes a built-in tunneling command that creates a secure
+public URL pointing at your local server:
+
+~~~~ sh
+fedify tunnel 4321
+~~~~
+
+You'll see output like this after a few seconds:
+
+~~~~ console
+✔ Tunnel is ready!
+  Public URL: https://3f8a2b1c4d5e6f.lhr.life/
+~~~~
+
+> [!NOTE]
+> The tunnel uses one of several free tunneling services
+> (localhost.run, serveo.net, or pinggy.io).  The URL changes each
+> time you run the command, so you'll need to update any references
+> when you restart it.
+
+Keep the tunnel running in a separate terminal while you continue
+testing.
+
+However, there's one more thing to do.  The tunnel terminates HTTPS
+and forwards plain HTTP to your local server.  Without extra
+configuration, Fedify would generate `http://` actor IDs rather than
+`https://`, which other servers will reject.
+
+To fix this, update *src/middleware.ts* to rewrite the request URL based on
+the `X-Forwarded-Proto` header that the tunnel sets:
+
+~~~~ typescript [src/middleware.ts]
+import { fedifyMiddleware } from "@fedify/astro";
+import type { MiddlewareHandler } from "astro";
+import federation from "./federation.ts";
+import "./logging.ts";
+
+export const onRequest: MiddlewareHandler = (context, next) => {
+  // Rewrite the request URL scheme based on X-Forwarded-Proto when running
+  // behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
+  const proto = context.request.headers.get("x-forwarded-proto");
+  const url = new URL(context.request.url);
+  if (proto != null && url.protocol !== `${proto}:`) {
+    url.protocol = proto;
+    context.request = new Request(url.toString(), context.request);
+  }
+  return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);
+};
+~~~~
+
+Also update *astro.config.ts* to allow requests from external hostnames
+(the tunnel assigns a different hostname than `localhost`):
+
+~~~~ typescript{9-13} [astro.config.ts]
+import node from "@astrojs/node";
+import { fedifyIntegration } from "@fedify/astro";
+import { defineConfig } from "astro/config";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: node({ mode: "standalone" }),
+  vite: {
+    server: {
+      allowedHosts: true,
+    },
+  },
+});
+~~~~
+
+> [!WARNING]
+> `allowedHosts: true` disables Vite's host checking.  This is fine for
+> local development where only you control the server.  Do **not** use
+> this setting in production—Astro uses a different server configuration
+> when built for deployment.
+
+Restart the dev server after these changes.  Now run `fedify lookup`
+with the tunnel URL to confirm the actor ID uses `https://`:
+
+~~~~ sh
+fedify lookup https://3f8a2b1c4d5e6f.lhr.life/users/blog
+~~~~
+
+You should see:
+
+~~~~ console
+✔ Looking up the object...
+Person {
+  id: URL "https://3f8a2b1c4d5e6f.lhr.life/users/blog",
+  name: "Fedify Blog Example",
+  ...
+}
+~~~~
+
+### Searching for the blog on Mastodon
+
+With the server publicly accessible, open your Mastodon account (or
+any Mastodon instance), type the blog's handle into the search box, and
+press <kbd>Enter</kbd>:
+
+~~~~ console
+@blog@3f8a2b1c4d5e6f.lhr.life
+~~~~
+
+Mastodon sends a [WebFinger] lookup to your server to resolve the handle.
+You should see the blog appear in the search results:
+
+![Mastodon search box showing the blog handle, with matching profile results](./astro-blog/mastodon-search.png)
+
+> [!NOTE]
+> You must be signed in to a Mastodon instance for remote actor resolution
+> to work.  Unauthenticated searches only show locally cached results.
+
+You can click the blog's profile to see it:
+
+~~~~ console
+Fedify Blog Example
+@blog@3f8a2b1c4d5e6f.lhr.life
+
+A sample federated blog powered by Fedify and Astro.
+~~~~
+
+The blog is now discoverable across the fediverse.  In the next chapter
+we'll implement inbox listeners so it can actually receive and respond
+to Follow activities.
+
+[WebFinger]: https://webfinger.net/
