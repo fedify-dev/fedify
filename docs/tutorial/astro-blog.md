@@ -1123,4 +1123,223 @@ The blog is now discoverable across the fediverse.  In the next chapter
 we'll implement inbox listeners so it can actually receive and respond
 to Follow activities.
 
+Implementing followers
+======================
+
+Our blog actor is now discoverable, but if a remote user tries to follow it,
+nothing happens—we haven't implemented the inbox yet.  In this chapter we'll
+handle `Follow` activities (auto-accepting them and storing followers) and
+`Undo(Follow)` activities (removing followers).  We'll also display the
+follower count on the home page.
+
 [WebFinger]: https://webfinger.net/
+
+### Updating the federation module
+
+Replace *src/federation.ts* with the following:
+
+~~~~ typescript [src/federation.ts]
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { followers, keyPairs } from "./lib/store.ts";
+
+const logger = getLogger("astro-blog");
+
+export const BLOG_IDENTIFIER = "blog";
+export const BLOG_NAME = "Fedify Blog Example";
+export const BLOG_SUMMARY =
+  "A sample federated blog powered by Fedify and Astro.";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) {
+      logger.debug("Unknown actor identifier: {identifier}", { identifier });
+      return null;
+    }
+    const kp = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: BLOG_NAME,
+      summary: BLOG_SUMMARY,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: kp[0].cryptographicKey,
+      assertionMethods: kp.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return [];
+    const stored = keyPairs.get(identifier);
+    if (stored) return stored;
+    const [rsaKey, ed25519Key] = await Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]);
+    const kp = [rsaKey, ed25519Key];
+    keyPairs.set(identifier, kp);
+    return kp;
+  });
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.actorId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor" || parsed.identifier !== BLOG_IDENTIFIER) {
+      return;
+    }
+    const follower = await follow.getActor(ctx);
+    if (follower == null || follower.id == null || follower.inboxId == null) {
+      return;
+    }
+    followers.set(follower.id.href, follower.inboxId.href);
+    logger.info("New follower: {follower}", { follower: follower.id.href });
+    await ctx.sendActivity(
+      { identifier: BLOG_IDENTIFIER },
+      follower,
+      new Accept({
+        id: new URL(
+          `#accepts/${follower.id.href}`,
+          ctx.getActorUri(BLOG_IDENTIFIER),
+        ),
+        actor: ctx.getActorUri(BLOG_IDENTIFIER),
+        object: follow,
+      }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null) return;
+    followers.delete(undo.actorId.href);
+    logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return null;
+    const items = Array.from(followers.entries()).map(([id, inboxId]) => ({
+      id: new URL(id),
+      inboxId: new URL(inboxId),
+    }));
+    return { items };
+  },
+);
+
+export default federation;
+~~~~
+
+Let's walk through the new pieces:
+
+**Importing `Accept`, `Follow`, and `Undo`** from `@fedify/vocab` gives us the
+activity types we need to handle.  We also import `followers` from the store.
+
+**`.on(Follow, ...)`** registers a handler for incoming `Follow` activities.
+When someone follows the blog:
+
+1.  We use `ctx.parseUri(follow.objectId)` to confirm they're following our
+    blog actor (not some other actor).
+2.  We call `follow.getActor(ctx)` to fetch the follower's actor document—this
+    gives us their `id` and `inboxId`.
+3.  We store the follower in the `followers` map.
+4.  We send back an `Accept(Follow)` activity to confirm the follow.  Without
+    this, the follow request stays pending on the remote server.
+
+**`.on(Undo, ...)`** handles `Undo(Follow)` activities, which are sent when
+someone unfollows.  We use `undo.getObject(ctx)` to retrieve the original
+`Follow` activity.  If it's a `Follow`, we remove the actor from the
+`followers` map.
+
+**`setFollowersDispatcher`** now returns the real follower list instead of an
+empty array.  Each item needs both an `id` (the actor's URL) and an `inboxId`
+(where to deliver activities)—Fedify uses these when sending activities to all
+followers.
+
+### Showing follower count on the home page
+
+Update *src/pages/index.astro* to display the follower count and a link to
+the actor profile:
+
+~~~~ astro{2-4,11-14} [src/pages/index.astro]
+---
+import { getCollection } from "astro:content";
+import { BLOG_IDENTIFIER, BLOG_NAME } from "../federation.ts";
+import { followers } from "../lib/store.ts";
+import Layout from "../layouts/Layout.astro";
+
+const allPosts = await getCollection("posts");
+const posts = allPosts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const followerCount = followers.size;
+const handle = `@${BLOG_IDENTIFIER}@${Astro.url.host}`;
+---
+
+<Layout>
+  <h1>{BLOG_NAME}</h1>
+  <p class="tagline">
+    <a href={`/users/${BLOG_IDENTIFIER}`}>{handle}</a>
+    · {followerCount} {followerCount === 1 ? "follower" : "followers"}
+  </p>
+  ...
+</Layout>
+~~~~
+
+### Testing with ActivityPub.Academy
+
+To test the follow flow, we need a real ActivityPub server to send `Follow`
+activities to our blog.  [ActivityPub.Academy] is a sandbox Mastodon instance
+designed specifically for this purpose.
+
+Make sure the dev server is running and the tunnel is active:
+
+~~~~ sh
+bun run dev
+# In a separate terminal:
+fedify tunnel 4321
+~~~~
+
+On ActivityPub.Academy, sign in (or create a test account) and search for
+your blog's handle:
+
+~~~~ console
+@blog@3f8a2b1c4d5e6f.lhr.life
+~~~~
+
+Click **Follow**.  Within a second or two, you should see a log message in
+your dev server terminal:
+
+~~~~ console
+18:42:01.123 INF astro-blog New follower: https://activitypub.academy/users/testuser
+~~~~
+
+Refresh the home page—the follower count should now read `1 follower`:
+
+![Blog home page showing “1 follower” in the tagline](./astro-blog/blog-home-followers.png)
+
+To test unfollowing, click **Unfollow** on ActivityPub.Academy.  The follower
+count should drop back to 0.
+
+> [!NOTE]
+> Followers are stored in memory and are lost when you restart the
+> server.  We'll fix this in the next chapter when we migrate to SQLite.
+
+[ActivityPub.Academy]: https://activitypub.academy
