@@ -2056,7 +2056,6 @@ export async function syncPosts(
   ctx: RequestContext<unknown>,
 ): Promise<void> {
   const recipients = getFollowers();
-  if (recipients.length === 0) return;
 
   const allPosts = await getCollection("posts");
   const current = allPosts.filter((p) => !p.data.draft);
@@ -2092,16 +2091,18 @@ export async function syncPosts(
     });
 
     if (!stored.has(slug)) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Create({
-          id: new URL(`#create-${Date.now()}`, articleId),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: article,
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Create({
+            id: new URL(`#create-${Date.now()}`, articleId),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: article,
+          }),
+        );
+      }
       db.run(
         `INSERT INTO posts (id, title, url, content_hash, published_at)
          VALUES (?, ?, ?, ?, ?)`,
@@ -2114,16 +2115,18 @@ export async function syncPosts(
         ],
       );
     } else if (stored.get(slug)?.content_hash !== contentHash) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Update({
-          id: new URL(`#update-${Date.now()}`, articleId),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: article,
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Update({
+            id: new URL(`#update-${Date.now()}`, articleId),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: article,
+          }),
+        );
+      }
       db.run(
         `UPDATE posts SET title = ?, content_hash = ?, published_at = ?
          WHERE id = ?`,
@@ -2134,16 +2137,18 @@ export async function syncPosts(
 
   for (const [slug, row] of stored) {
     if (!currentIds.has(slug)) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Delete({
-          id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: new URL(row.url),
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Delete({
+            id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: new URL(row.url),
+          }),
+        );
+      }
       db.run("DELETE FROM posts WHERE id = ?", [slug]);
     }
   }
@@ -2159,9 +2164,10 @@ hash, triggering an `Update(Article)` activity.
 **`AS_PUBLIC`** is the ActivityPub [public addressing] URL.  Activities
 addressed `to` this URL are publicly visible on fediverse clients.
 
-**`getFollowers()`** returns the list of all followers from SQLite.
-`syncPosts` returns early if there are no followers—if nobody follows the
-blog, there's nobody to notify.
+**`getFollowers()`** returns the list of all followers from SQLite.  The DB
+reconciliation always runs regardless of whether there are any followers, so
+the `posts` table stays accurate even during follower-free periods.
+`sendActivity()` calls, however, are skipped when `recipients` is empty.
 
 **The loop** iterates over current non-draft posts and checks the SQLite
 table:
@@ -2544,6 +2550,8 @@ federation
     const parsed = ctx.parseUri(replyTargetId);
     if (parsed?.type !== "object" || parsed.class !== Article) return;
     const { slug } = parsed.values;
+    const allPosts = await getCollection("posts");
+    if (!allPosts.some((p) => p.id === slug && !p.data.draft)) return;
     const author = await create.getActor(ctx);
     if (author == null || author.id == null) return;
     const authorName =
