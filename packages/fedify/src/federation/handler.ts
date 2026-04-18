@@ -547,11 +547,12 @@ export async function handleOutbox<TContextData>(
     logger.error("Actor {identifier} not found.", { identifier });
     return await onNotFound(request);
   }
-  const requestForParsing = request.clone();
+  const requestForParsing = authorizePredicate == null
+    ? request
+    : request.clone();
   if (authorizePredicate != null) {
-    const requestForUnauthorized = request.clone() as Request;
     if (!await authorizePredicate(ctx, identifier)) {
-      return await onUnauthorized(requestForUnauthorized);
+      return await onUnauthorized(requestForParsing as Request);
     }
   }
   let json: unknown;
