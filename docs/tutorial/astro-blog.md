@@ -1093,26 +1093,28 @@ Person {
 }
 ~~~~
 
-### Searching for the blog on Mastodon
+### Searching for the blog on ActivityPub.Academy
 
-With the server publicly accessible, open your Mastodon account (or
-any Mastodon instance), type the blog's handle into the search box, and
-press <kbd>Enter</kbd>:
+With the server publicly accessible, head to [ActivityPub.Academy]—a
+sandbox Mastodon instance designed for ActivityPub testing—and sign in
+(or create a free test account).  Once logged in, type the blog's handle
+into the search box and press <kbd>Enter</kbd>:
 
 ~~~~ console
 @blog@3f8a2b1c4d5e6f.lhr.life
 ~~~~
 
-Mastodon sends a [WebFinger] lookup to your server to resolve the handle.
-You should see the blog appear in the search results:
+ActivityPub.Academy sends a [WebFinger] lookup to your server to resolve
+the handle.  You should see the blog appear in the search results:
 
-![Mastodon search box showing the blog handle, with matching profile results](./astro-blog/mastodon-search.png)
+![ActivityPub.Academy search box showing the blog handle, with matching profile result](./astro-blog/mastodon-search.png)
 
 > [!NOTE]
-> You must be signed in to a Mastodon instance for remote actor resolution
-> to work.  Unauthenticated searches only show locally cached results.
+> You must be **signed in** for remote actor resolution to work.
+> Unauthenticated searches only show locally cached results, so the
+> blog won't appear if you search without logging in first.
 
-You can click the blog's profile to see it:
+Click the blog's profile to confirm all the metadata looks correct:
 
 ~~~~ console
 Fedify Blog Example
@@ -1134,6 +1136,7 @@ handle `Follow` activities (auto-accepting them and storing followers) and
 `Undo(Follow)` activities (removing followers).  We'll also display the
 follower count on the home page.
 
+[ActivityPub.Academy]: https://activitypub.academy
 [WebFinger]: https://webfinger.net/
 
 ### Updating the federation module
@@ -1358,8 +1361,6 @@ new posts.
 The fix is straightforward: persist everything in a SQLite database that
 survives restarts.  Bun ships with `bun:sqlite`, a zero-dependency, high-speed
 SQLite driver, so we don't need to install anything new.
-
-[ActivityPub.Academy]: https://activitypub.academy
 
 ### Adding Bun-types
 
