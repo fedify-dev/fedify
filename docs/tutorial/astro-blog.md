@@ -619,8 +619,9 @@ Click any post title to see the individual post page:
 
 Stop the server with <kbd>Ctrl</kbd>+<kbd>C</kbd> when you're done.
 
+
 Implementing the ActivityPub actor
-==================================
+----------------------------------
 
 We now have a working blog, but it's not federated yet.  To make the blog
 discoverable by other ActivityPub servers (like Mastodon), we need to expose an
@@ -986,8 +987,9 @@ The blog now has a valid ActivityPub identity.  However, it can't receive
 follows or deliver posts to the fediverse yet—those features require a public
 URL, which we'll set up next.
 
+
 Interoperating with Mastodon
-============================
+----------------------------
 
 So far we've verified the actor endpoint works locally.  Now let's confirm
 it's recognizable to other ActivityPub software—in this case, Mastodon.  To
@@ -1149,17 +1151,18 @@ The blog is now discoverable across the fediverse.  In the next chapter
 we'll implement inbox listeners so it can actually receive and respond
 to Follow activities.
 
+[ActivityPub.Academy]: https://activitypub.academy
+[WebFinger]: https://webfinger.net/
+
+
 Implementing followers
-======================
+----------------------
 
 Our blog actor is now discoverable, but if a remote user tries to follow it,
 nothing happens—we haven't implemented the inbox yet.  In this chapter we'll
 handle `Follow` activities (auto-accepting them and storing followers) and
 `Undo(Follow)` activities (removing followers).  We'll also display the
 follower count on the home page.
-
-[ActivityPub.Academy]: https://activitypub.academy
-[WebFinger]: https://webfinger.net/
 
 ### Updating the federation module
 
@@ -1370,8 +1373,9 @@ count should drop back to 0.
 > Followers are stored in memory and are lost when you restart the
 > server.  We'll fix this in the next chapter when we migrate to SQLite.
 
+
 Persisting data with SQLite
-===========================
+---------------------------
 
 Our blog now handles followers—but there is a catch.  Every time you restart
 the dev server, both the key pairs and the follower list vanish.  This means
@@ -1751,8 +1755,9 @@ list.
 > echo "blog.db" >> .gitignore
 > ~~~~
 
+
 Publishing posts
-================
+----------------
 
 The blog now survives restarts—but followers still don't see its posts.  In
 this chapter we'll add a *startup sync* that compares the current Astro content
@@ -2230,8 +2235,9 @@ The blog title and description are shown (we include the description as
 To test updates, change the title or description of the new post and
 restart.  To test deletion, remove the file and restart.
 
+
 Receiving and displaying comments
-=================================
+---------------------------------
 
 Followers can now read our posts in their fediverse timelines.  In this chapter
 we'll make the conversation two-way: when someone replies to one of our posts
@@ -2749,8 +2755,9 @@ below the post:
 To test deletion: delete the reply on ActivityPub.Academy and reload the
 post page.  The comment should disappear.
 
+
 What's next
-===========
+-----------
 
 You've built a fully federated blog: static Markdown posts backed by Astro,
 ActivityPub federation backed by Fedify, and a SQLite database that makes
