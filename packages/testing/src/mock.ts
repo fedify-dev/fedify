@@ -101,6 +101,9 @@ function validateOutboxListenerPath(
   path: string,
   dispatcherPath?: string,
 ): void {
+  if (!path.startsWith("/")) {
+    throw new TypeError("Path must start with a slash.");
+  }
   if (dispatcherPath != null && dispatcherPath !== path) {
     throw new TypeError(
       "Outbox listener path and outbox dispatcher path must match.",
@@ -609,13 +612,28 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       this.contextData as TContextData,
     );
     const rawActivity = postedJson;
+    const deliveryState = { delivered: false };
     const createMockOutboxContext = () =>
       createOutboxContext({
         ...baseContext,
         clone: undefined,
         federation: this as any,
         identifier,
-        sendActivity: baseContext.sendActivity.bind(baseContext),
+        hasDeliveredActivity: () => deliveryState.delivered,
+        sendActivity: async (
+          sender: any,
+          recipients: any,
+          outboundActivity: Activity,
+          options?: any,
+        ) => {
+          await baseContext.sendActivity(
+            sender,
+            recipients,
+            outboundActivity,
+            options,
+          );
+          deliveryState.delivered = true;
+        },
         forwardActivity: async (
           forwarder: any,
           recipients: any,
@@ -626,12 +644,13 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           if (options?.skipIfUnsigned && !hasProof && !hasLds) {
             return;
           }
-          return baseContext.sendActivity(
+          await baseContext.sendActivity(
             forwarder,
             recipients,
             activity,
             { ...options, rawActivity },
           );
+          deliveryState.delivered = true;
         },
       });
 

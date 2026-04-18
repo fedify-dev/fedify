@@ -1005,6 +1005,37 @@ test("setOutboxListeners rejects duplicate registration", () => {
   );
 });
 
+test("setOutboxListeners requires a leading slash", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  assertThrows(
+    () =>
+      mockFederation.setOutboxListeners(
+        "users/{identifier}/outbox" as `${string}{identifier}${string}`,
+      ),
+    TypeError,
+    "Path must start with a slash.",
+  );
+});
+
+test("setOutboxDispatcher requires a leading slash", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  assertThrows(
+    () =>
+      mockFederation.setOutboxDispatcher(
+        "users/{identifier}/outbox",
+        () => ({ items: [] }),
+      ),
+    TypeError,
+    "Path must start with a slash.",
+  );
+});
+
 test("setOutboxListeners validates dispatcher path compatibility", () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -1058,6 +1089,43 @@ test("setOutboxListeners validates path variables", () => {
     TypeError,
     "Path for outbox must have exactly one variable named identifier.",
   );
+});
+
+test("mock outbox context tracks delivery state", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  const deliveryStates: boolean[] = [];
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, async (ctx, activity) => {
+      deliveryStates.push(ctx.hasDeliveredActivity());
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        activity,
+      );
+      deliveryStates.push(ctx.hasDeliveredActivity());
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(deliveryStates, [false, true]);
 });
 
 test("createOutboxContext exposes identifier", () => {
