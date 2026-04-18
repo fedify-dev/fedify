@@ -352,9 +352,43 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
     const bindings = new Map<string, unknown>();
+    const pendingCalls: CallExpression[] = [];
     const sourceCode =
       (context as { sourceCode: { getText(node: unknown): string } })
         .sourceCode;
+
+    const inspectCall = (node: CallExpression): void => {
+      if (
+        !hasMemberExpressionCallee(node) ||
+        !hasIdentifierProperty(node) ||
+        !hasMethodName("on")(node) ||
+        node.arguments.length < 2
+      ) {
+        return;
+      }
+      if (
+        !isChainedFromOutboxListeners(node.callee.object, federationTracker)
+      ) {
+        return;
+      }
+
+      const listener = node.arguments[1] as unknown;
+      const resolvedListener =
+        isNode(listener) && isFunction(listener as Expression)
+          ? listener as FunctionLikeNode
+          : isNode(listener)
+          ? resolveListenerReference(listener as Expression, bindings)
+          : null;
+      if (resolvedListener == null) return;
+
+      if (listenerCallsDeliveryMethod(sourceCode, resolvedListener)) return;
+
+      (context as { report: (arg: unknown) => void }).report({
+        node: resolvedListener,
+        ...buildReport,
+      });
+    };
+
     return {
       VariableDeclarator(node: VariableDeclarator): void {
         federationTracker.VariableDeclarator(node);
@@ -373,35 +407,11 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
       },
 
       CallExpression(node: CallExpression): void {
-        if (
-          !hasMemberExpressionCallee(node) ||
-          !hasIdentifierProperty(node) ||
-          !hasMethodName("on")(node) ||
-          node.arguments.length < 2
-        ) {
-          return;
-        }
-        if (
-          !isChainedFromOutboxListeners(node.callee.object, federationTracker)
-        ) {
-          return;
-        }
+        pendingCalls.push(node);
+      },
 
-        const listener = node.arguments[1] as unknown;
-        const resolvedListener =
-          isNode(listener) && isFunction(listener as Expression)
-            ? listener as FunctionLikeNode
-            : isNode(listener)
-            ? resolveListenerReference(listener as Expression, bindings)
-            : null;
-        if (resolvedListener == null) return;
-
-        if (listenerCallsDeliveryMethod(sourceCode, resolvedListener)) return;
-
-        (context as { report: (arg: unknown) => void }).report({
-          node: resolvedListener,
-          ...buildReport,
-        });
+      "Program:exit"(): void {
+        for (const node of pendingCalls) inspectCall(node);
       },
     };
   };

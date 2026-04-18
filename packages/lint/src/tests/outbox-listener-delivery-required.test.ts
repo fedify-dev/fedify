@@ -284,6 +284,27 @@ federation
 );
 
 test(
+  `${ruleName}: ❌ Bad - hoisted function declaration without delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, handleOutbox);
+
+function handleOutbox(ctx, activity) {
+  console.log(ctx.identifier, activity.id?.href);
+}
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
   `${ruleName}: ❌ Bad - comment mentioning delivery methods`,
   lintTest({
     code: `
