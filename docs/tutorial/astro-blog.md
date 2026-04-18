@@ -2681,3 +2681,113 @@ Reload the post page—the comment should appear in the “Comments” section.
 
 To test deletion: delete the reply on ActivityPub.Academy and reload the
 page.  The comment should disappear.
+
+What's next
+===========
+
+You've built a fully federated blog: static Markdown posts backed by Astro,
+ActivityPub federation backed by Fedify, and a SQLite database that makes
+everything survive restarts.  Here are some directions to take the project
+further.
+
+### Security: sanitizing comment HTML
+
+The most important production concern is HTML sanitization.  Fediverse servers
+send `Note.content` as HTML, and rendering it verbatim with `set:html` exposes
+your readers to XSS.  Before shipping:
+
+1.  Install a sanitization library such as [sanitize-html] or
+    [DOMPurify] (the latter runs in a Web Worker or via [jsdom] on the server).
+
+2.  Before calling `addComment`, strip the HTML down to a safe subset:
+
+    ~~~~ typescript
+    import sanitizeHtml from "sanitize-html";
+
+    const safeContent = sanitizeHtml(object.content?.toString() ?? "", {
+      allowedTags: ["p", "br", "a", "strong", "em", "code", "pre"],
+      allowedAttributes: { a: ["href", "rel"] },
+    });
+    ~~~~
+
+3.  Consider stripping the `href` attribute on links too unless you validate
+    the URL scheme (to prevent `javascript:` links).
+
+[sanitize-html]: https://www.npmjs.com/package/sanitize-html
+[DOMPurify]: https://www.npmjs.com/package/dompurify
+[jsdom]: https://www.npmjs.com/package/jsdom
+
+### Notifying followers when the actor profile changes
+
+If you change `BLOG_NAME` or `BLOG_SUMMARY`, remote servers will still show
+the old profile until they re-fetch the actor.  Send an
+`Update(Person)` activity on startup whenever the actor metadata changes:
+
+~~~~ typescript
+await ctx.sendActivity(
+  { identifier: BLOG_IDENTIFIER },
+  "followers",
+  new Update({
+    id: new URL(`#update-actor-${Date.now()}`, ctx.getActorUri(BLOG_IDENTIFIER)),
+    actor: ctx.getActorUri(BLOG_IDENTIFIER),
+    object: await ctx.getActor(BLOG_IDENTIFIER),
+  }),
+);
+~~~~
+
+### Sending delete(article) when a post file is removed
+
+Our current `syncPosts` implementation sends `Delete(Article)` when a post
+slug disappears from the collection, but only if the server has been running
+long enough to have stored the post in SQLite.  If you've never deployed a
+version that ran `syncPosts`, the `posts` table may be empty and the deletion
+won't be noticed.  One fix is to seed the `posts` table from a deployment
+manifest.
+
+### Image attachments
+
+To include images in posts, set the `attachment` property on the `Article`
+object to a list of `Document` or `Image` objects with the image URL,
+media type, and optional alt text:
+
+~~~~ typescript
+import { Document } from "@fedify/vocab";
+
+new Article({
+  // ...
+  attachments: [
+    new Document({
+      mediaType: "image/jpeg",
+      url: new URL("/images/my-photo.jpg", ctx.url),
+      name: "My photo alt text",
+    }),
+  ],
+});
+~~~~
+
+### Deploying to Fly.io
+
+When deploying, attach a [Fly Volume] to store `blog.db`.  Set the volume
+mount path in `fly.toml` and point the SQLite database at that path:
+
+~~~~ typescript
+const db = new Database(process.env.DB_PATH ?? "blog.db");
+~~~~
+
+Make sure your `Dockerfile` runs `bun run build` and starts the server
+with `node dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
+output).
+
+[Fly Volume]: https://fly.io/docs/volumes/
+
+### Congratulations
+
+You've covered a lot of ground: WebFinger, HTTP Signatures, Object Integrity
+Proofs, actor/inbox/followers dispatchers, `Create`/`Update`/`Delete`
+activities, content negotiation, and SQLite persistence.  These are the
+building blocks of everything federated on the web today.
+
+The full source code for this tutorial is available at the [Fedify examples]
+repository.
+
+[Fedify examples]: https://github.com/fedify-dev/fedify/tree/main/examples
