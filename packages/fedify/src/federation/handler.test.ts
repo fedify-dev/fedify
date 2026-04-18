@@ -1469,6 +1469,30 @@ test("handleOutbox()", async () => {
     `someone:${activity.id?.href}`,
   ]);
 
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: async (ctx) => {
+      await ctx.request.json();
+      return true;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onUnauthorizedCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+
   const invalidRequest = new Request(
     "https://example.com/users/someone/outbox",
     {

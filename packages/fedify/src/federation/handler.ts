@@ -525,6 +525,20 @@ export async function handleOutbox<TContextData>(
   }: OutboxHandlerParameters<TContextData>,
 ): Promise<Response> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
+  if (request.bodyUsed) {
+    logger.error("Request body has already been read.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  } else if (request.body?.locked) {
+    logger.error("Request body is locked.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  const requestForParsing = request.clone();
   if (actorDispatcher == null) {
     logger.error("Actor dispatcher is not set.", { identifier });
     return await onNotFound(request);
@@ -539,22 +553,9 @@ export async function handleOutbox<TContextData>(
       return await onUnauthorized(request);
     }
   }
-  if (request.bodyUsed) {
-    logger.error("Request body has already been read.", { identifier });
-    return new Response("Internal server error.", {
-      status: 500,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  } else if (request.body?.locked) {
-    logger.error("Request body is locked.", { identifier });
-    return new Response("Internal server error.", {
-      status: 500,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }
   let json: unknown;
   try {
-    json = await request.json();
+    json = await requestForParsing.json();
   } catch (error) {
     logger.error("Failed to parse JSON:\n{error}", { identifier, error });
     const outboxContext = outboxContextFactory(identifier, null, undefined, "");
