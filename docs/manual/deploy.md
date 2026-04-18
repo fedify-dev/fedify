@@ -1,364 +1,214 @@
 ---
 description: >-
-  This document explains how to deploy Fedify applications to various platforms
-  and runtime environments, with specific guidance for serverless platforms
-  that have unique architectural constraints.
+  A production deployment guide for Fedify applications.  Covers runtime
+  selection, reverse proxies, persistent backends, container and traditional
+  deployments, serverless platforms, security, observability, and the
+  ActivityPub-specific operational concerns that general web-app deployment
+  guides don't cover.
 ---
 
 Deployment
 ==========
 
-Fedify applications can be deployed to various platforms and runtime
-environments.  While the core development patterns remain consistent across
-platforms, some deployment targets—particularly serverless environments—require
-specific architectural considerations and configuration patterns.
+This document is a practical guide to putting a Fedify application into
+production.  It is written primarily for readers who have already built
+something with Fedify locally and are about to deploy it for the first time—
+and secondarily for readers who deploy web applications routinely but have not
+worked with Fedify or the fediverse before.
 
-This document covers deployment-specific concerns that go beyond basic
-application development, focusing on platform-specific requirements,
-configuration patterns, and operational considerations.
+It does *not* retread general web-application deployment advice that is
+already well-covered elsewhere.  Instead, it focuses on the choices and
+pitfalls that are specific to Fedify and to ActivityPub: how to pin your
+canonical origin, where to terminate TLS, how to keep inbox delivery healthy
+at scale, how to sanitize federated HTML, how to defend the fetches Fedify
+can't protect for you, and how to retire a server without orphaning every
+remote follower.
 
-
-General deployment considerations
----------------------------------
-
-### Environment configuration
-
-Fedify applications typically require several environment-specific
-configurations that should be managed through environment variables or secure
-configuration systems:
-
-Domain configuration
-:   Set your canonical domain through
-    the [`origin`](./federation.md#explicitly-setting-the-canonical-origin)
-    option or ensure proper `Host` header handling.
-
-Database connections
-:   Configure your chosen [key–value store](./kv.md) and
-    [message queue](./mq.md) implementations.
-
-Cryptographic keys
-:   Securely manage actor key pairs outside your application code.
-
-### Observability
-
-Fedify provides comprehensive observability features that should be configured
-for production deployments:
-
-Logging
-:   [Configure loggers](./log.md) with appropriate log levels and sinks (output
-    destinations) for your environment.
-
-Tracing
-:   Enable [OpenTelemetry](./opentelemetry.md) integration to trace ActivityPub
-    operations across your infrastructure.
-
-Monitoring
-:   Set up monitoring for queue depths, delivery success rates, and response
-    times to ensure your application is performing optimally.
-
-### Scaling considerations
-
-ActivityPub applications have unique scaling characteristics due to their
-federated nature.  Consider the following when deploying:
-
-Message processing
-:   [Consider separating web traffic from background message
-    processing](./mq.md#separating-message-processing-from-the-main-process)
-    for better resource utilization.
-
-Database performance
-:   Optimize your [key–value store](./kv.md) and [message queue](./mq.md) for
-    the expected load patterns, including read/write ratios and concurrency.
+The document assumes you already have a working Fedify app.  If you are still
+getting started, read the [*Manual* chapters](./federation.md) first, then
+come back here when you are ready to ship.
 
 
-Traditional server environments
--------------------------------
+Choosing a JavaScript runtime
+-----------------------------
 
-While Fedify works seamlessly with traditional server deployments on Node.js,
-Bun, and Deno, each runtime has specific considerations for production use.
+Fedify supports Deno, Node.js, and Bun as first-class runtimes, and has
+dedicated support for Cloudflare Workers.  The choice matters for production.
 
-### Node.js
+Node.js
+:   The default recommendation.  Mature, widely deployed, extensive package
+    ecosystem, well-understood operational tooling.  Node.js does not provide
+    a built-in HTTP server that accepts `fetch()`-style handlers, so you
+    will need [@hono/node-server] (or an equivalent adapter).
 
-Node.js does not provide a built-in HTTP server that accepts `fetch()`-style
-handlers, so you will need an adapter.  The [@hono/node-server] package provides
-this functionality:
+Deno
+:   A strong choice if you prefer TypeScript-first tooling, a built-in HTTP
+    server (`Deno.serve()`), permission-based sandboxing, and native
+    OpenTelemetry support via the `--unstable-otel` flag.  If you are already
+    comfortable with Deno, there is no reason to switch to Node.js for
+    production.
 
-~~~~ typescript twoslash
-import { MemoryKvStore } from "@fedify/fedify";
-// ---cut-before---
-import { serve } from "@hono/node-server";
-import { createFederation } from "@fedify/fedify";
-
-const federation = createFederation<void>({
-// ---cut-start---
-  kv: new MemoryKvStore(),
-// ---cut-end---
-  // Configuration...
-});
-
-serve({
-  async fetch(request) {
-    return await federation.fetch(request, { contextData: undefined });
-  },
-});
-~~~~
-
-For production deployments, consider using process managers like [PM2] or
-[systemd] to ensure reliability and automatic restarts.
-
-[@hono/node-server]: https://github.com/honojs/node-server
-[PM2]: https://pm2.keymetrics.io/
-[systemd]: https://systemd.io/
-
-### Bun and Deno
-
-Both Bun and Deno provide built-in HTTP servers with `fetch()`-style handlers,
-making integration straightforward:
-
-~~~~ typescript twoslash [index.ts]
-import { MemoryKvStore } from "@fedify/fedify";
-// ---cut-before---
-import { createFederation } from "@fedify/fedify";
-
-const federation = createFederation<void>({
-// ---cut-start---
-  kv: new MemoryKvStore(),
-// ---cut-end---
-  // Configuration...
-});
-
-export default {
-  async fetch(request: Request): Promise<Response> {
-    return await federation.fetch(request, { contextData: undefined });
-  },
-};
-~~~~
-
-Then, you can run your application using the built-in server commands:
-
-::: code-group
-
-~~~~ bash [Deno]
-deno serve index.ts
-~~~~
-
-~~~~ bash [Bun]
-bun run index.ts
-~~~~
-
-:::
-
-> [!TIP]
->
-> See also the documentation for [`deno serve`] and
-> [Bun's `export default` syntax].
-
-[`deno serve`]: https://docs.deno.com/runtime/reference/cli/serve/
-[Bun's `export default` syntax]: https://bun.sh/docs/api/http#export-default-syntax
-
-### Key–value store and message queue
-
-For traditional server environments, choose persistent storage solutions based
-on your infrastructure:
-
-Development
-:   Use [`MemoryKvStore`](./kv.md#memorykvstore) and
-    [`InProcessMessageQueue`](./mq.md#inprocessmessagequeue) for quick setup.
-
-Production
-:   Consider [`PostgresKvStore`](./kv.md#postgreskvstore) and
-    [`PostgresMessageQueue`](./mq.md#postgresmessagequeue) if you already use
-    PostgreSQL, [`MysqlKvStore`](./kv.md#mysqlkvstore) and
-    [`MysqlMessageQueue`](./mq.md#mysqlmessagequeue) if you already use
-    MySQL or MariaDB, or [`RedisKvStore`](./kv.md#rediskvstore) and
-    [`RedisMessageQueue`](./mq.md#redismessagequeue) for dedicated caching
-    infrastructure. There is also [`AmqpMessageQueue`](./mq.md#amqpmessagequeue)
-    for RabbitMQ users.
-
-### Key management
-
-In traditional server environments, actor key pairs should be generated once
-during user registration and securely stored in your database.  Avoid generating
-keys on every server restart—this will break federation with other servers that
-have cached your public keys.
-
-### Web frameworks
-
-For web framework integration patterns,
-see the [*Integration* section](./integration.md), which covers Express, Hono,
-Fresh, SvelteKit, and other popular frameworks.
-
+Bun
+:   Bun runs Fedify, but has known memory-leak issues that make it a
+    difficult recommendation for long-running production workloads at the time
+    of writing.  A common compromise is to develop on Bun (for its fast
+    install and test loops) and deploy on Node.js, since both consume the same
+    npm-style package sources.  Revisit Bun for production once the memory
+    profile stabilizes for your workload.
 
 Cloudflare Workers
-------------------
+:   A cost-effective option for servers that do not need persistent
+    long-running processes.  Workers impose architectural constraints—no
+    global mutable state across requests, bindings-only access to queues and
+    KV, execution time limits—that Fedify accommodates through a dedicated
+    [builder pattern](./federation.md#builder-pattern-for-structuring) and the
+    [`@fedify/cfworkers`] package.
 
-*Cloudflare Workers support is available in Fedify 1.6.0 and later.*
+The rest of this guide assumes a traditional server environment (Node.js or
+Deno) unless noted otherwise.
 
-[Cloudflare Workers] presents a unique deployment environment with specific
-constraints and architectural requirements.  Unlike traditional server
-environments, Workers operate within strict execution time limits and provide
-access to platform services through binding mechanisms rather than global
-imports.
+[@hono/node-server]: https://github.com/honojs/node-server
+[`@fedify/cfworkers`]: https://jsr.io/@fedify/cfworkers
 
-[Cloudflare Workers]: https://workers.cloudflare.com/
 
-### Node.js compatibility
+Configuration fundamentals
+--------------------------
 
-Fedify requires [Node.js compatibility flag] to function properly on Cloudflare
-Workers.  Add the following to your *wrangler.jsonc* configuration file:
+These decisions apply to every deployment target.  Make them once, early, and
+document them—changing them after launch ranges from painful to impossible
+(see [*Domain name permanence*](#domain-name-permanence)).
 
-~~~~ jsonc
-"compatibility_date": "2025-05-31",
-"compatibility_flags": ["nodejs_compat"],
-~~~~
+### Canonical origin
 
-This enables essential Node.js APIs that Fedify depends on, including
-cryptographic functions and DNS resolution.
-
-[Node.js compatibility flag]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
-
-### Builder pattern
-
-Unlike other environments where you can initialize a `Federation` object
-globally, Workers only provide access to bindings (KV, Queues, etc.) through
-`env` parameter in request handlers.  This makes the [builder
-pattern](./federation.md#builder-pattern-for-structuring) mandatory:
+Pin your canonical origin explicitly with the
+`~FederationOptions.origin` option unless you are intentionally hosting
+multiple domains on the same Fedify instance:
 
 ~~~~ typescript twoslash
-// @noErrors: 2345
-type Env = {
-  KV_NAMESPACE: KVNamespace<string>;
-  QUEUE: Queue;
-};
-import { Person } from "@fedify/vocab";
+import { type KvStore } from "@fedify/fedify";
 // ---cut-before---
-import { createFederationBuilder } from "@fedify/fedify";
-import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
-
-const builder = createFederationBuilder<Env>();
-
-// Configure your federation using the builder
-builder.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-  // Your actor logic here
-// ---cut-start---
-  return new Person({});
-// ---cut-end---
-});
-
-// Export the default handler
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const federation = await builder.build({
-      kv: new WorkersKvStore(env.KV_NAMESPACE),
-      queue: new WorkersMessageQueue(env.QUEUE),
-      // Other options...
-    });
-
-    return federation.fetch(request, { contextData: env });
-  },
-};
-~~~~
-
-### Manual queue processing
-
-Cloudflare Queues don't provide polling-based APIs, so the `WorkersMessageQueue`
-cannot implement a traditional `~MessageQueue.listen()` method.  Instead, you
-must manually connect queue handlers:
-
-~~~~ typescript twoslash
-// @noErrors: 2345
-import { createFederationBuilder, type Message } from "@fedify/fedify";
-import { Person } from "@fedify/vocab";
-import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
-
-type Env = {
-  KV_NAMESPACE: KVNamespace<string>;
-  QUEUE: Queue;
-};
-
-const builder = createFederationBuilder<Env>();
-// ---cut-before---
-// Handle queue messages
-export default {
-  // ... fetch handler above
-
-  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
-    const federation = await builder.build({
-      kv: new WorkersKvStore(env.KV_NAMESPACE),
-      queue: new WorkersMessageQueue(env.QUEUE),
-    });
-
-    for (const message of batch.messages) {
-      try {
-        await federation.processQueuedTask(
-          env,
-          message.body as unknown as Message,
-        );
-        message.ack();
-      } catch (error) {
-        message.retry();
-      }
-    }
-  },
-};
-~~~~
-
-If you use queue ordering keys on Cloudflare Workers, instantiate
-`WorkersMessageQueue` with an `orderingKv` namespace and call
-`WorkersMessageQueue.processMessage()` before
-`Federation.processQueuedTask()`.  See the
-[*`WorkersMessageQueue`* section](./mq.md#workersmessagequeue-cloudflare-workers-only)
-for a complete example and caveats about best-effort ordering.
-
-### Example deployment
-
-For a complete working example, see the [Cloudflare Workers example]
-in the Fedify repository, which demonstrates a simple functional ActivityPub
-server deployed to Cloudflare Workers.
-
-[Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
-
-
-Deno Deploy
------------
-
-[Deno Deploy] is a serverless platform optimized for Deno applications, offering
-global distribution and built-in persistence through Deno KV.  Fedify provides
-first-class support for Deno Deploy through [dedicated key–value
-store](./kv.md#denokvstore-deno-only) and [message
-queue](./mq.md#denokvmessagequeue-deno-only) implementations.
-
-Deno Deploy applications can use Deno KV and leverage it for message queueing
-as well:
-
-~~~~ typescript
 import { createFederation } from "@fedify/fedify";
-import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
-
-// Open Deno KV (automatically available on Deno Deploy)
-const kv = await Deno.openKv();
 
 const federation = createFederation<void>({
-  kv: new DenoKvStore(kv),
-  queue: new DenoKvMessageQueue(kv),
-  // Other configuration...
+  origin: "https://example.com",
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+  // Other options...
 });
-
-// Standard Deno Deploy handler
-Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
 ~~~~
 
-[Deno Deploy]: https://deno.com/deploy
+When `~FederationOptions.origin` is set, Fedify constructs actor URIs,
+activity IDs, and collection URLs using the canonical origin rather than the
+origin derived from the incoming `Host` header.  Without this option, an
+attacker who bypasses your reverse proxy and hits the upstream directly can
+coerce Fedify into constructing URLs with the upstream's address—leaking
+infrastructure details and potentially producing activities that other
+fediverse servers reject or cache under the wrong identity.
 
+See [*Explicitly setting the canonical
+origin*](./federation.md#explicitly-setting-the-canonical-origin) for the
+full API, including the
+`~FederationOrigin.handleHost`/`~FederationOrigin.webOrigin` split for
+separating WebFinger handles from the server origin.
 
-Other platforms
----------------
+### Behind a reverse proxy
 
-Support for additional serverless platforms is planned for future releases.
-Each platform may have similar architectural requirements to Cloudflare Workers,
-particularly around resource binding and execution constraints.
+If you cannot pin a single canonical origin—typically because you host
+multiple domains on the same process—the alternative is to trust your
+reverse proxy's forwarded headers and let Fedify reconstruct the request URL
+from them.  The [x-forwarded-fetch] package does exactly this: it rewrites
+the incoming `Request` so that `request.url` reflects the `X-Forwarded-Host`,
+`X-Forwarded-Proto`, and related headers instead of the internal address the
+proxy connected on.
 
-If you are interested in support for a specific platform, please [open an issue]
-to discuss requirements and implementation approaches.
+On Node.js with Hono or similar frameworks, wrap your handler:
 
-[open an issue]: https://github.com/fedify-dev/fedify/issues
+~~~~ typescript
+import { serve } from "@hono/node-server";
+import { behindProxy } from "x-forwarded-fetch";
+
+serve({
+  fetch: process.env.BEHIND_PROXY === "true"
+    ? behindProxy(app.fetch.bind(app))
+    : app.fetch.bind(app),
+  port: 3000,
+});
+~~~~
+
+On Deno with Fresh (or anywhere you have direct access to a middleware
+chain), call `getXForwardedRequest()`:
+
+~~~~ typescript
+import { getXForwardedRequest } from "@hongminhee/x-forwarded-fetch";
+
+app.use(async (ctx) => {
+  if (Deno.env.get("BEHIND_PROXY") === "true") {
+    ctx.req = await getXForwardedRequest(ctx.req);
+    ctx.url = new URL(ctx.req.url);
+  }
+  return await ctx.next();
+});
+~~~~
+
+> [!WARNING]
+> Only enable `x-forwarded-fetch` when you actually sit behind a proxy you
+> control.  If the process is ever reachable directly from the public
+> internet, a malicious client can spoof `X-Forwarded-Host` and impersonate
+> any hostname.  The common pattern is to gate the middleware behind a
+> `BEHIND_PROXY=true` environment variable and set it only in the deployment
+> that runs behind your proxy.
+
+If you can pin a canonical `~FederationOptions.origin`, prefer that over
+`x-forwarded-fetch`—it is the simpler, safer default.
+
+[x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
+
+### Persistent KV store and message queue
+
+The in-memory defaults are for development only.
+`MemoryKvStore` loses data on restart, and `InProcessMessageQueue` loses every
+in-flight activity; neither survives horizontal scaling.  Pick a persistent
+backend before you take traffic:
+
+| Backend                | KV store          | Message queue          | When to choose                        |
+| ---------------------- | ----------------- | ---------------------- | ------------------------------------- |
+| PostgreSQL             | `PostgresKvStore` | `PostgresMessageQueue` | You already run Postgres for app data |
+| Redis                  | `RedisKvStore`    | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
+| MySQL / MariaDB        | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
+| SQLite                 | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node / embedded deployments    |
+| RabbitMQ               | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
+| Deno KV                | `DenoKvStore`     | `DenoKvMessageQueue`   | Deno Deploy                           |
+| Cloudflare KV + Queues | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
+
+See the [*Key–value store*](./kv.md) and [*Message queue*](./mq.md) chapters
+for setup details and trade-offs between backends (connection pooling,
+ordering guarantees, native retry support).
+
+A reasonable default if you have no prior preference: PostgreSQL for both
+KV and MQ, on the same database you already use for your application data.
+Single operational surface, one backup strategy, one set of metrics.
+
+### Actor key lifecycle
+
+Actor key pairs must be generated **once** per actor and stored durably—
+typically in the same row as the actor record itself.  Do not regenerate them
+on startup or during deploys.  Other fediverse servers cache your public keys
+(often for hours or days), and a key rotation they don't know about will
+cause every incoming signature verification to fail against the cached key
+and every outgoing activity you sign with the new key to be rejected.  The
+symptoms—silent federation breakage with no clear error—are among the most
+frustrating to diagnose after the fact.
+
+Keep two distinct categories of secret separate:
+
+ -  **Instance-wide secrets** (session secret, instance actor private key,
+    database credentials) live in environment variables or a secret manager.
+    See [*Secret and key management*](#secret-and-key-management).
+ -  **Per-actor key pairs** live in the database, one pair per actor, created
+    at registration time.
+
+If you need to rotate a compromised key, use the `Update` activity to
+announce the new key and keep serving both the old and new keys from the
+actor document for a transition window.  Fediverse clients will eventually
+pick up the new one as caches expire.
