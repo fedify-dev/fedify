@@ -69,7 +69,8 @@ To keep things focused, we'll impose the following limitations:
 
  -  The author's profile (bio, avatar, etc.) can only be changed by editing
     source files.
- -  Editing or deleting posts after they've been delivered is not supported.
+ -  Post changes only propagate to followers on the next server restart;
+    there is no mechanism to push immediate edits or deletions.
  -  There are no likes or reposts.
  -  There is no search feature.
  -  There are no authentication or authorization features.
@@ -576,7 +577,11 @@ const { Content } = await render(post);
     <header class="post-header">
       <h1>{post.data.title}</h1>
       <time datetime={post.data.pubDate.toISOString()}>
-        {post.data.pubDate.toLocaleDateString("en-US", { ... })}
+        {post.data.pubDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
       </time>
     </header>
     <div class="post-content">
@@ -1090,6 +1095,15 @@ export default defineConfig({
 matches any domain.  Without this, the server ignores `X-Forwarded-Host`
 and Fedify falls back to `localhost` in all generated URLs, which other
 fediverse servers can't reach.
+
+> [!WARNING]
+> Trusting all forwarded headers (`allowedDomains: [{}]`) is only safe when
+> the server is exclusively reachable through a trusted reverse proxy or
+> tunnel that sets `X-Forwarded-Host` correctly.  If the server were directly
+> accessible from the internet, a malicious client could forge
+> `X-Forwarded-Host` and cause Fedify to generate incorrect ActivityPub IDs.
+> For a production deployment behind a known proxy (e.g. Fly.io), you can
+> restrict `allowedDomains` to the exact hostname(s) your proxy uses.
 
 > [!WARNING]
 > `allowedHosts: true` disables Vite's host checking.  This is fine for
@@ -1789,7 +1803,8 @@ vocabulary defines several standard properties for it:
  -  **`attribution`** — the actor who wrote the post
  -  **`name`** — the post title
  -  **`summary`** — a short description
- -  **`content`** — the post body as HTML
+ -  **`content`** — an HTML representation of the post (in this tutorial,
+    just the description wrapped in `<p>` tags rather than the full body)
  -  **`url`** — the canonical URL of the HTML page (same as `id` in our case)
  -  **`published`** — the publication date as a `Temporal.Instant`
 
@@ -2016,8 +2031,12 @@ import { BLOG_IDENTIFIER } from "../federation.ts";
 import db from "./db.ts";
 import { getFollowers } from "./store.ts";
 
-async function hashPost(title: string, body: string): Promise<string> {
-  const data = new TextEncoder().encode(`${title}\n${body}`);
+async function hashPost(
+  title: string,
+  description: string,
+  body: string,
+): Promise<string> {
+  const data = new TextEncoder().encode(`${title}\n${description}\n${body}`);
   const buf = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(buf)]
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -2049,7 +2068,11 @@ export async function syncPosts(
     currentIds.add(slug);
 
     const articleId = ctx.getObjectUri(Article, { slug });
-    const contentHash = await hashPost(post.data.title, post.body ?? "");
+    const contentHash = await hashPost(
+      post.data.title,
+      post.data.description,
+      post.body ?? "",
+    );
 
     const article = new Article({
       id: articleId,
@@ -2122,8 +2145,9 @@ export async function syncPosts(
 
 A few things to unpack here:
 
-**`hashPost`** computes a SHA-256 digest of the title and body concatenated
-together.  Any change to the post's title or text will change the hash.
+**`hashPost`** computes a SHA-256 digest of the title, description, and body
+concatenated together.  Any change to those fields will produce a different
+hash, triggering an `Update(Article)` activity.
 
 **`AS_PUBLIC`** is the ActivityPub [public addressing] URL.  Activities
 addressed `to` this URL are publicly visible on fediverse clients.
