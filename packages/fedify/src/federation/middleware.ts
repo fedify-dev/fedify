@@ -2988,6 +2988,14 @@ async function forwardActivityInternal<TContextData>(
     preferSharedInbox: options?.preferSharedInbox,
     excludeBaseUris: options?.excludeBaseUris,
   });
+  if (globalThis.Object.keys(inboxes).length < 1) {
+    logger.debug("No inboxes found for activity {activityId}.", {
+      activityId: ctx.activityId,
+      activityType: ctx.activityType,
+      identifier: identifier ?? undefined,
+    });
+    return false;
+  }
   logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
     inboxes: globalThis.Object.keys(inboxes),
     activityId: ctx.activityId,

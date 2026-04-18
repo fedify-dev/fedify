@@ -34,16 +34,27 @@ export function hasProofLike(jsonLd: unknown): boolean {
 
   const isReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
+    if (Array.isArray(value)) return value.some(isReference);
     return typeof value === "object" && value != null &&
-      "id" in value && typeof value.id === "string";
+      (("id" in value && typeof value.id === "string") ||
+        ("@id" in value && typeof value["@id"] === "string"));
+  };
+
+  const hasType = (value: unknown): boolean => {
+    if (typeof value === "string") {
+      return value === "DataIntegrityProof" ||
+        value === "https://w3id.org/security#DataIntegrityProof";
+    }
+    if (Array.isArray(value)) return value.some(hasType);
+    return false;
   };
 
   const isProofLike = (value: unknown): boolean => {
     if (typeof value !== "object" || value == null) return false;
     const proofRecord = value as Record<string, unknown>;
-    return proofRecord.type === "DataIntegrityProof" &&
+    return hasType(proofRecord.type) &&
       isReference(proofRecord.verificationMethod) &&
-      typeof proofRecord.proofPurpose === "string" &&
+      isReference(proofRecord.proofPurpose) &&
       typeof proofRecord.proofValue === "string";
   };
 
