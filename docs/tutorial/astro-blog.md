@@ -1003,8 +1003,9 @@ So far we've verified the actor endpoint works locally.  Now let's confirm
 it's recognizable to other ActivityPub software—in this case, Mastodon.  To
 do that, we need a publicly reachable HTTPS URL.
 
-This chapter has no code changes.  After it you'll commit the tunnel support
-from the previous chapter.
+In this chapter you'll first expose your local server through a tunnel,
+then update the middleware and Astro configuration so the server works
+correctly behind that public URL.
 
 ### Exposing the server with `fedify tunnel`
 
@@ -2737,12 +2738,7 @@ Mastodon's HTML formatting (bold, links, mentions) is preserved.
 Make sure the dev server is running and the tunnel is active, and that you
 have followed the blog from ActivityPub.Academy (see
 [*Interoperating with Mastodon*](#interoperating-with-mastodon)).  Open the
-tunnel URL in a browser to trigger `syncPosts` with the correct public URL:
-
-~~~~ sh
-open https://your-tunnel-url.trycloudflare.com/
-~~~~
-
+tunnel URL in a browser to trigger `syncPosts` with the correct public URL.
 After a few seconds you should see log lines like:
 
 ~~~~ console
@@ -2770,12 +2766,7 @@ inbox.  Within a second or two you should see:
 INF astro-blog New comment on /hello-fediverse by https://...
 ~~~~
 
-Now open the corresponding post in your browser:
-
-~~~~ sh
-open http://localhost:4321/posts/hello-fediverse
-~~~~
-
+Now open http://localhost:4321/posts/hello-fediverse in your browser.
 The comment from ActivityPub.Academy appears in the “Comments” section
 below the post:
 
@@ -2849,7 +2840,7 @@ manifest.
 
 ### Image attachments
 
-To include images in posts, set the `attachment` property on the `Article`
+To include images in posts, set the `attachments` property on the `Article`
 object to a list of `Document` or `Image` objects with the image URL,
 media type, and optional alt text:
 
