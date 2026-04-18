@@ -644,3 +644,111 @@ Follow the links for setup details.
 [Google Cloud Run]: https://cloud.google.com/run/docs
 [Render]: https://render.com/docs
 [Railway]: https://docs.railway.com/
+
+
+Separating web and worker nodes
+-------------------------------
+
+By default, a Fedify process both accepts HTTP requests and runs the
+message-queue consumer that delivers outgoing activities and dispatches
+incoming ones.  For low-traffic servers this works fine.  For anything busy
+enough to care about tail latency—or for any server where a queue backlog
+during a federation spike would hurt web responsiveness—split these roles
+into separate processes:
+
+ -  **Web nodes** serve HTTP, enqueue outgoing activities, and accept
+    incoming ones.  They do not consume the queue.
+ -  **Worker nodes** consume the queue and process delivery.  They do not
+    serve HTTP and should not be exposed through your load balancer.
+
+This is a Fedify-level concern implemented with two options:
+`~FederationOptions.manuallyStartQueue: true` tells Fedify not to start the
+queue consumer automatically, and `Federation.startQueue()` starts it only
+on nodes that should consume.
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+import { RedisMessageQueue } from "@fedify/redis";
+import Redis from "ioredis";
+import process from "node:process";
+
+const federation = createFederation<void>({
+  queue: new RedisMessageQueue(() => new Redis()),
+  manuallyStartQueue: true,
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+  // Other options...
+});
+
+if (process.env.NODE_TYPE === "worker") {
+  const controller = new AbortController();
+  process.on("SIGINT", () => controller.abort());
+  process.on("SIGTERM", () => controller.abort());
+  await federation.startQueue(undefined, { signal: controller.signal });
+}
+~~~~
+
+The [*Separating message processing from the main
+process*](./mq.md#separating-message-processing-from-the-main-process)
+section has the complete reference, including the Deno variant and the
+table describing which role enqueues versus processes.
+
+The deployment-side pieces are:
+
+Compose
+:   Two services referencing the same image with different `NODE_TYPE`
+    environment variables, as in the Compose example
+    [above](#docker-compose-podman-compose).
+
+systemd
+:   Either two separate units (*fedify-web.service* and
+    *fedify-worker.service*, each with its own `EnvironmentFile=`), or a
+    single templated *fedify@.service* unit instantiated twice
+    (`systemctl start fedify@web.service fedify@worker.service`).
+
+Kubernetes
+:   Two Deployments.  Only the web Deployment gets a Service and Ingress.
+    Scale workers on queue depth (via a custom metric adapter reading from
+    your MQ backend) rather than CPU—a queue that's falling behind is not
+    necessarily CPU-bound.
+
+> [!WARNING]
+> Do not place worker nodes behind a load balancer or expose them on a
+> public address.  They do not accept HTTP requests (or rather, they accept
+> them but don't enqueue properly), and exposing them weakens the invariant
+> that every Fedify HTTP response is signed by a node that has the full
+> web configuration.
+
+### Avoid `immediate: true` in production
+
+`Context.sendActivity()` accepts an `immediate: true` option that bypasses
+the message queue and attempts delivery synchronously as part of the
+current request.  It has a specific purpose—delivery in environments
+where no queue is configured, or in tests—but it is actively dangerous in
+production:
+
+ -  Remote servers that are slow to respond will block your request.
+ -  There is no retry on failure; a single transient network error silently
+    loses the activity.
+ -  It ties delivery success to request lifetime, which breaks the
+    invariant that `sendActivity()` is fire-and-forget from the caller's
+    point of view.
+
+Before launch, search your codebase for `immediate: true` and remove every
+occurrence that isn't in a test fixture.
+
+### Parallel processing and connection pools
+
+If you wrap your queue in `ParallelMessageQueue(queue, N)` to consume
+messages concurrently on a single worker process, make sure the database
+connection pool behind your KV store and MQ can accommodate at least `N`
+plus a few extra connections.  A pool that's too small won't cause errors
+you'll notice immediately—it causes jobs to stall waiting on connections,
+which looks like a slow queue rather than a misconfiguration.
+
+See [*Parallel message processing*](./mq.md#parallel-message-processing)
+for the full context, which includes specific notes about
+`PostgresMessageQueue` and shared pools.
