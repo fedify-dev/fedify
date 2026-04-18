@@ -2745,7 +2745,7 @@ await ctx.sendActivity(
 );
 ~~~~
 
-### Sending delete(article) when a post file is removed
+### Sending `Delete(Article)` when a post file is removed
 
 Our current `syncPosts` implementation sends `Delete(Article)` when a post
 slug disappears from the collection, but only if the server has been running
