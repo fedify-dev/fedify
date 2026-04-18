@@ -30,7 +30,7 @@ const logger = getLogger(["fedify", "sig", "proof"]);
 export function hasProofLike(jsonLd: unknown): boolean {
   if (typeof jsonLd !== "object" || jsonLd == null) return false;
   const record = jsonLd as Record<string, unknown>;
-  const proof = record.proof;
+  const proof = record.proof ?? record["https://w3id.org/security#proof"];
 
   const isReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
