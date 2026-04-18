@@ -1543,27 +1543,28 @@ export function getFollowers(): { id: URL; inboxId: URL }[] {
 
 A few things worth noting here:
 
-**Key serialization.** `CryptoKey` objects exist only in memory—they cannot
-be stored directly.  We export private keys with [`crypto.subtle.exportKey`]
-using the PKCS#8 format and public keys using the SPKI format, both of which
-produce `ArrayBuffer` values that SQLite stores as BLOBs.  On the way back we
-call [`crypto.subtle.importKey`] with the reverse formats.  RSA keys also need
-the hash algorithm (SHA-256) specified at import time, so we branch on the
-algorithm name stored in the row.
+ -  *Key serialization:* `CryptoKey` objects exist only in memory—they cannot
+    be stored directly.  We export private keys with [`crypto.subtle.exportKey`]
+    using the PKCS#8 format and public keys using the SPKI format, both of
+    which produce `ArrayBuffer` values that SQLite stores as BLOBs.  On the
+    way back we call [`crypto.subtle.importKey`] with the reverse formats.
+    RSA keys also need the hash algorithm (SHA-256) specified at import time,
+    so we branch on the algorithm name stored in the row.
 
-**BLOB return type.** Bun's SQLite driver returns BLOB columns as
-`Uint8Array<ArrayBufferLike>`, but the Web Crypto API's `importKey` expects
-`Uint8Array<ArrayBuffer>`.  The difference is purely a TypeScript typing
-issue—the underlying bytes are identical—so we silence it with
-`as unknown as Uint8Array<ArrayBuffer>`.
+ -  *BLOB return type:* Bun's SQLite driver returns BLOB columns as
+    `Uint8Array<ArrayBufferLike>`, but the [Web Crypto API]'s `importKey`
+    expects `Uint8Array<ArrayBuffer>`.  The difference is purely a TypeScript
+    typing issue—the underlying bytes are identical—so we silence it with
+    `as unknown as Uint8Array<ArrayBuffer>`.
 
-**Synchronous followers.** Unlike key pairs, follower operations don't involve
-any cryptography, so the four follower functions (`addFollower`,
-`removeFollower`, `countFollowers`, `getFollowers`) are plain synchronous
-functions.
+ -  *Synchronous followers:* Unlike key pairs, follower operations don't
+    involve any cryptography, so the four follower functions (`addFollower`,
+    `removeFollower`, `countFollowers`, `getFollowers`) are plain synchronous
+    functions.
 
 [`crypto.subtle.exportKey`]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
 [`crypto.subtle.importKey`]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/importKey
+[Web Crypto API]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API
 
 ### Updating the federation module
 
