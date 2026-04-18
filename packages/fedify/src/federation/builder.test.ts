@@ -180,7 +180,10 @@ test("FederationBuilder", async (t) => {
     );
 
     const builder3 = createFederationBuilder<void>();
-    builder3.setOutboxListeners("/users{?identifier}/outbox");
+    assertThrows(
+      () => builder3.setOutboxListeners("/users{?identifier}/outbox"),
+      RouterError,
+    );
   });
 
   await t.step("should pass build options correctly", async () => {

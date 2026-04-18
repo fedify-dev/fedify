@@ -103,13 +103,22 @@ function validateOutboxListenerPath(
 ): void {
   if (dispatcherPath != null && dispatcherPath !== path) {
     throw new TypeError(
-      "Outbox listener path must match outbox dispatcher path.",
+      "Outbox listener path and outbox dispatcher path must match.",
     );
   }
-  const variables = globalThis.Array.from(
+  const operatorMatches = globalThis.Array.from(
     path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
-    (match) => match[2],
   );
+  if (
+    operatorMatches.some((match) =>
+      ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
+    )
+  ) {
+    throw new TypeError(
+      "Path for outbox must have exactly one variable named identifier.",
+    );
+  }
+  const variables = operatorMatches.map((match) => match[2]);
   if (variables.length !== 1 || variables[0] !== "identifier") {
     throw new TypeError(
       "Path for outbox must have exactly one variable named identifier.",
@@ -659,14 +668,12 @@ class MockFederation<TContextData> implements Federation<TContextData> {
 
     if (listener == null) return;
 
-    if (listener != null) {
-      const context = createMockOutboxContext();
-      try {
-        await listener(context, activity);
-      } catch (error) {
-        await this.outboxListenerErrorHandler?.(context, error);
-        throw error;
-      }
+    const context = createMockOutboxContext();
+    try {
+      await listener(context, activity);
+    } catch (error) {
+      await this.outboxListenerErrorHandler?.(context, error);
+      throw error;
     }
   }
 

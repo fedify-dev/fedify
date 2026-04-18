@@ -1017,7 +1017,7 @@ test("setOutboxListeners validates dispatcher path compatibility", () => {
   assertThrows(
     () => mockFederation.setOutboxListeners("/actors/{identifier}/outbox"),
     TypeError,
-    "Outbox listener path must match outbox dispatcher path.",
+    "Outbox listener path and outbox dispatcher path must match.",
   );
 });
 
@@ -1034,7 +1034,7 @@ test("setOutboxDispatcher validates listener path compatibility", () => {
         items: [],
       })),
     TypeError,
-    "Outbox listener path must match outbox dispatcher path.",
+    "Outbox listener path and outbox dispatcher path must match.",
   );
 });
 
@@ -1274,18 +1274,12 @@ test("MockContext getOutboxUri supports path-segment expansion", () => {
   );
 });
 
-test("MockContext getOutboxUri supports query expansion", () => {
+test("MockContext rejects query expansion for outbox paths", () => {
   const mockFederation = createFederation<void>();
-  mockFederation.setOutboxListeners("/actors/outbox{?identifier}");
-
-  const context = mockFederation.createContext(
-    new URL("https://example.com"),
-    undefined,
-  );
-
-  assertEquals(
-    context.getOutboxUri("alice/profile").href,
-    "https://example.com/actors/outbox?identifier=alice%2Fprofile",
+  assertThrows(
+    () => mockFederation.setOutboxListeners("/actors/outbox{?identifier}"),
+    TypeError,
+    "Path for outbox must have exactly one variable named identifier.",
   );
 });
 
