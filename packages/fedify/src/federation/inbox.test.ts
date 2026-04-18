@@ -2,10 +2,11 @@ import { test } from "@fedify/fixture";
 import { Activity, Create, Invite, Offer, Update } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertThrows } from "@std/assert/assert-throws";
-import { InboxListenerSet } from "./inbox.ts";
+import type { InboxContext } from "./context.ts";
+import { ActivityListenerSet } from "./activity-listener.ts";
 
-test("InboxListenerSet", () => {
-  const listeners = new InboxListenerSet<void>();
+test("ActivityListenerSet", () => {
+  const listeners = new ActivityListenerSet<InboxContext<void>>();
   const activity = new Activity({});
   const offer = new Offer({});
   const invite = new Invite({});

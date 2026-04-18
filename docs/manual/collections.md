@@ -43,6 +43,10 @@ federation
   });
 ~~~~
 
+> [!TIP]
+> Use `~Federatable.setOutboxListeners()` to handle `POST` requests to the same
+> outbox path.  See the [*Outbox listeners*](./outbox.md) guide.
+
 Each actor has its own outbox collection, so the URI pattern of the outbox
 dispatcher should include the actor's `{identifier}`.  The URI pattern syntax
 follows the [URI Template] specification.

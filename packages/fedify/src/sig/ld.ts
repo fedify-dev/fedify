@@ -177,6 +177,45 @@ interface SignedJsonLd {
 }
 
 /**
+ * Checks if the given JSON-LD document has a Linked Data Signature-like
+ * object, without restricting it to a single suite-specific shape.
+ * @param jsonLd The JSON-LD document to check.
+ * @returns `true` if the document has a signature-like object; `false`
+ *          otherwise.
+ * @since 2.2.0
+ */
+export function hasSignatureLike(jsonLd: unknown): boolean {
+  if (typeof jsonLd !== "object" || jsonLd == null) return false;
+  const record = jsonLd as Record<string, unknown>;
+  const signature = record.signature;
+
+  const hasReference = (value: unknown): boolean => {
+    if (typeof value === "string") return true;
+    if (Array.isArray(value)) return value.some(hasReference);
+    return typeof value === "object" && value != null &&
+      (("id" in value && typeof value.id === "string") ||
+        ("@id" in value && typeof value["@id"] === "string"));
+  };
+
+  const hasSignatureObject = (value: unknown): boolean => {
+    if (typeof value !== "object" || value == null) return false;
+    const signatureRecord = value as Record<string, unknown>;
+    const hasType = typeof signatureRecord.type === "string" ||
+      (Array.isArray(signatureRecord.type) &&
+        signatureRecord.type.some((item) => typeof item === "string"));
+    return hasType &&
+      (hasReference(signatureRecord.creator) ||
+        hasReference(signatureRecord.verificationMethod)) &&
+      (typeof signatureRecord.signatureValue === "string" ||
+        typeof signatureRecord.jws === "string");
+  };
+
+  return Array.isArray(signature)
+    ? signature.some(hasSignatureObject)
+    : hasSignatureObject(signature);
+}
+
+/**
  * Checks if the given JSON-LD document has a Linked Data Signature.
  * @param jsonLd The JSON-LD document to check.
  * @returns `true` if the document has a signature; `false` otherwise.

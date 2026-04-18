@@ -28,12 +28,20 @@ import type {
   NodeInfoDispatcher,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
+  OutboxListener,
+  OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
-import type { Context, RequestContext } from "./context.ts";
+import type {
+  Context,
+  InboxContext,
+  OutboxContext,
+  RequestContext,
+} from "./context.ts";
+import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
@@ -46,14 +54,40 @@ import type {
   IdempotencyStrategy,
   InboxListenerSetters,
   ObjectCallbackSetters,
+  OutboxListenerSetters,
   Rfc6570Expression,
 } from "./federation.ts";
 import type {
   CollectionCallbacks,
   CustomCollectionCallbacks,
 } from "./handler.ts";
-import { InboxListenerSet } from "./inbox.ts";
 import { Router, RouterError } from "./router.ts";
+
+function validateSingleIdentifierVariablePath(
+  path: string,
+  errorMessage: string,
+): void {
+  const operatorMatches = globalThis.Array.from(
+    path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
+  );
+  if (
+    operatorMatches.length !== 1 ||
+    operatorMatches[0]?.[2] !== "identifier"
+  ) {
+    throw new RouterError(errorMessage);
+  }
+  if (
+    operatorMatches.some((match) =>
+      ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
+    )
+  ) {
+    throw new RouterError(errorMessage);
+  }
+  const variables = new Router().add(path, "outbox");
+  if (variables.size !== 1 || !variables.has("identifier")) {
+    throw new RouterError(errorMessage);
+  }
+}
 
 export class FederationBuilderImpl<TContextData>
   implements FederationBuilder<TContextData> {
@@ -64,6 +98,7 @@ export class FederationBuilderImpl<TContextData>
   objectCallbacks: Record<string, ObjectCallbacks<TContextData, string>>;
   objectTypeIds: Record<string, ConstructorWithTypeId<Object>>;
   inboxPath?: string;
+  outboxPath?: string;
   inboxCallbacks?: CollectionCallbacks<
     Activity,
     RequestContext<TContextData>,
@@ -106,8 +141,11 @@ export class FederationBuilderImpl<TContextData>
     TContextData,
     void
   >;
-  inboxListeners?: InboxListenerSet<TContextData>;
+  inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
+  outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
+  outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
+  outboxAuthorizePredicate?: AuthorizePredicate<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
@@ -166,6 +204,7 @@ export class FederationBuilderImpl<TContextData>
     f.objectCallbacks = { ...this.objectCallbacks };
     f.objectTypeIds = { ...this.objectTypeIds };
     f.inboxPath = this.inboxPath;
+    f.outboxPath = this.outboxPath;
     f.inboxCallbacks = this.inboxCallbacks == null
       ? undefined
       : { ...this.inboxCallbacks };
@@ -188,7 +227,10 @@ export class FederationBuilderImpl<TContextData>
       ? undefined
       : { ...this.featuredTagsCallbacks };
     f.inboxListeners = this.inboxListeners?.clone();
+    f.outboxListeners = this.outboxListeners?.clone();
     f.inboxErrorHandler = this.inboxErrorHandler;
+    f.outboxListenerErrorHandler = this.outboxListenerErrorHandler;
+    f.outboxAuthorizePredicate = this.outboxAuthorizePredicate;
     f.sharedInboxKeyDispatcher = this.sharedInboxKeyDispatcher;
     f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
@@ -711,17 +753,22 @@ export class FederationBuilderImpl<TContextData>
     TContextData,
     void
   > {
-    if (this.router.has("outbox")) {
+    if (this.outboxCallbacks != null) {
       throw new RouterError("Outbox dispatcher already set.");
     }
-    const variables = this.router.add(path, "outbox");
-    if (
-      variables.size !== 1 ||
-      !variables.has("identifier")
-    ) {
-      throw new RouterError(
+    if (this.router.has("outbox")) {
+      if (this.outboxPath !== path) {
+        throw new RouterError(
+          "Outbox dispatcher path must match outbox listener path.",
+        );
+      }
+    } else {
+      validateSingleIdentifierVariablePath(
+        path,
         "Path for outbox dispatcher must have one variable: {identifier}",
       );
+      this.router.add(path, "outbox");
+      this.outboxPath = path;
     }
     const callbacks: CollectionCallbacks<
       Activity,
@@ -761,6 +808,54 @@ export class FederationBuilderImpl<TContextData>
       },
       authorize(predicate: AuthorizePredicate<TContextData>) {
         callbacks.authorizePredicate = predicate;
+        return setters;
+      },
+    };
+    return setters;
+  }
+
+  setOutboxListeners(
+    outboxPath: `${string}${Rfc6570Expression<"identifier">}${string}`,
+  ): OutboxListenerSetters<TContextData> {
+    if (this.outboxListeners != null) {
+      throw new RouterError("Outbox listeners already set.");
+    }
+    if (this.router.has("outbox")) {
+      if (this.outboxPath !== outboxPath) {
+        throw new RouterError(
+          "Outbox listener path must match outbox dispatcher path.",
+        );
+      }
+    } else {
+      validateSingleIdentifierVariablePath(
+        outboxPath,
+        "Path for outbox must have one variable: {identifier}",
+      );
+      this.router.add(outboxPath, "outbox");
+      this.outboxPath = outboxPath;
+    }
+    const listeners = this.outboxListeners = new ActivityListenerSet<
+      OutboxContext<TContextData>
+    >();
+    const setters: OutboxListenerSetters<TContextData> = {
+      on<TActivity extends Activity>(
+        // deno-lint-ignore no-explicit-any
+        type: new (...args: any[]) => TActivity,
+        listener: OutboxListener<TContextData, TActivity>,
+      ): OutboxListenerSetters<TContextData> {
+        listeners.add(type, listener as OutboxListener<TContextData, Activity>);
+        return setters;
+      },
+      onError: (
+        handler: OutboxListenerErrorHandler<TContextData>,
+      ): OutboxListenerSetters<TContextData> => {
+        this.outboxListenerErrorHandler = handler;
+        return setters;
+      },
+      authorize: (
+        predicate: AuthorizePredicate<TContextData>,
+      ): OutboxListenerSetters<TContextData> => {
+        this.outboxAuthorizePredicate = predicate;
         return setters;
       },
     };
@@ -1138,7 +1233,9 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     }
-    const listeners = this.inboxListeners = new InboxListenerSet();
+    const listeners = this.inboxListeners = new ActivityListenerSet<
+      InboxContext<TContextData>
+    >();
     const setters: InboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
         // deno-lint-ignore no-explicit-any

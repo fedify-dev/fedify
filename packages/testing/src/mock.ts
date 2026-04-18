@@ -10,9 +10,9 @@ import type {
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
-import { CryptographicKey, Multikey } from "@fedify/vocab";
+import { hasProofLike, hasSignatureLike } from "@fedify/fedify/sig";
+import { Activity, CryptographicKey, Multikey } from "@fedify/vocab";
 import type {
-  Activity,
   Collection,
   LookupObjectOptions,
   Object,
@@ -22,11 +22,17 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import {
   createContext,
   createInboxContext,
+  createOutboxContext,
   createRequestContext,
 } from "./context.ts";
 
 // Re-export for public API
-export { createContext, createInboxContext, createRequestContext };
+export {
+  createContext,
+  createInboxContext,
+  createOutboxContext,
+  createRequestContext,
+};
 
 // Create a no-op tracer provider.
 // We use `any` type instead of importing TracerProvider from @opentelemetry/api
@@ -51,8 +57,8 @@ const noopTracerProvider: any = {
 };
 
 /**
- * Helper function to expand URI templates with values.
- * Supports simple placeholders like {identifier}, etc.
+ * Helper function to expand URI templates used by the mock.
+ * Supports the RFC 6570 operators accepted by Fedify's identifier paths.
  * @param template The URI template pattern
  * @param values The values to substitute
  * @returns The expanded URI path
@@ -61,9 +67,66 @@ function expandUriTemplate(
   template: string,
   values: Record<string, string>,
 ): string {
-  return template.replace(/{([^}]+)}/g, (match, key) => {
-    return values[key] || match;
+  return template.replace(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g, (
+    match,
+    operator,
+    key,
+  ) => {
+    const value = values[key];
+    if (value == null) return match;
+    switch (operator) {
+      case "":
+        return encodeURIComponent(value);
+      case "+":
+        return encodeURI(value);
+      case "#":
+        return `#${encodeURI(value)}`;
+      case ".":
+        return `.${encodeURIComponent(value)}`;
+      case "/":
+        return `/${encodeURIComponent(value)}`;
+      case ";":
+        return `;${key}=${encodeURIComponent(value)}`;
+      case "?":
+        return `?${key}=${encodeURIComponent(value)}`;
+      case "&":
+        return `&${key}=${encodeURIComponent(value)}`;
+      default:
+        return match;
+    }
   });
+}
+
+function validateOutboxListenerPath(
+  path: string,
+  dispatcherPath?: string,
+): void {
+  if (!path.startsWith("/")) {
+    throw new TypeError("Path must start with a slash.");
+  }
+  if (dispatcherPath != null && dispatcherPath !== path) {
+    throw new TypeError(
+      "Outbox listener path and outbox dispatcher path must match.",
+    );
+  }
+  const operatorMatches = globalThis.Array.from(
+    path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
+  );
+  if (
+    operatorMatches.some((match) =>
+      ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
+    )
+  ) {
+    throw new TypeError(
+      "Path for outbox cannot use query or fragment expansion for identifier.",
+    );
+  }
+  const variables = operatorMatches.map((match) => match[2]);
+  if (variables.length !== 1 || variables[0] !== "identifier") {
+    throw new TypeError(
+      "Path for outbox must have exactly one variable named identifier.",
+    );
+  }
 }
 
 /**
@@ -77,6 +140,8 @@ interface SentActivity {
   queue?: "inbox" | "outbox" | "fanout";
   /** The activity that was sent. */
   activity: Activity;
+  /** The raw forwarded payload, if preserved by the caller. */
+  rawActivity?: unknown;
   /** The order in which the activity was sent (auto-incrementing counter). */
   sentOrder: number;
 }
@@ -108,6 +173,7 @@ interface TestContext<TContextData>
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }>;
   reset(): void;
 }
@@ -126,6 +192,7 @@ interface TestFederation<TContextData>
 
   // Test-specific methods
   receiveActivity(activity: Activity): Promise<void>;
+  postOutboxActivity(identifier: string, activity: Activity): Promise<void>;
   reset(): void;
 
   // Override createContext to return TestContext
@@ -134,6 +201,8 @@ interface TestFederation<TContextData>
     contextData: TContextData,
   ): TestContext<TContextData>;
 }
+
+type ActivityConstructor = new (...args: any[]) => Activity;
 
 /**
  * A mock implementation of the {@link Federation} interface for unit testing.
@@ -195,12 +264,17 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public objectDispatchers: Map<string, any> = new Map();
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
+  private outboxAuthorizePredicate?: any;
+  private outboxDispatcherAuthorizePredicate?: any;
+  private outboxListenerErrorHandler?: any;
   private followingDispatcher?: any;
   private followersDispatcher?: any;
   private likedDispatcher?: any;
   private featuredDispatcher?: any;
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
+  private outboxListeners: Map<ActivityConstructor, any> = new Map();
+  private outboxListenersInitialized = false;
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -261,13 +335,20 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setOutboxDispatcher(path: any, dispatcher: any): any {
+    validateOutboxListenerPath(
+      path,
+      this.outboxListenersInitialized ? this.outboxPath : undefined,
+    );
     this.outboxDispatcher = dispatcher;
     this.outboxPath = path;
     return {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
       setLastCursor: () => this as any,
-      authorize: () => this as any,
+      authorize: (predicate: any) => {
+        this.outboxDispatcherAuthorizePredicate = predicate;
+        return this as any;
+      },
     };
   }
 
@@ -355,6 +436,34 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     };
   }
 
+  setOutboxListeners(outboxPath: any): any {
+    if (this.outboxListenersInitialized) {
+      throw new TypeError("Outbox listeners already set.");
+    }
+    validateOutboxListenerPath(outboxPath, this.outboxPath);
+    this.outboxListenersInitialized = true;
+    this.outboxPath = outboxPath;
+    // deno-lint-ignore no-this-alias
+    const self = this;
+    return {
+      on(type: any, listener: any): any {
+        if (self.outboxListeners.has(type)) {
+          throw new TypeError("Listener already set for this type.");
+        }
+        self.outboxListeners.set(type, listener);
+        return this;
+      },
+      onError(handler: any): any {
+        self.outboxListenerErrorHandler = handler;
+        return this;
+      },
+      authorize(predicate: any): any {
+        self.outboxAuthorizePredicate = predicate;
+        return this;
+      },
+    };
+  }
+
   setOutboxPermanentFailureHandler(_handler: any): void {
     // Mock implementation - no-op
   }
@@ -394,12 +503,14 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     // deno-lint-ignore no-this-alias
     const mockFederation = this;
 
-    const url = baseUrlOrRequest instanceof Request
-      ? new URL(baseUrlOrRequest.url)
-      : baseUrlOrRequest;
+    const request = baseUrlOrRequest instanceof Request
+      ? baseUrlOrRequest
+      : null;
+    const url = request == null ? baseUrlOrRequest : new URL(request.url);
 
     return new MockContext({
       url,
+      request,
       data: contextData,
       federation: mockFederation as any,
     });
@@ -446,6 +557,142 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         federation: this as any,
       });
       await listener(context, activity);
+    }
+  }
+
+  /**
+   * Simulates posting an activity to a local actor outbox.
+   * This method is specific to the mock implementation and is used for
+   * testing purposes.
+   *
+   * @param identifier The identifier of the outbox owner.
+   * @param activity The activity to post.
+   * @returns A promise that resolves when the activity has been processed.
+   * @since 2.2.0
+   */
+  async postOutboxActivity(
+    identifier: string,
+    activity: Activity,
+  ): Promise<void> {
+    if (!this.outboxListenersInitialized) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+      );
+    }
+
+    let ctor = activity.constructor as ActivityConstructor;
+    let listener = this.outboxListeners.get(ctor);
+    while (listener == null && ctor !== Activity) {
+      ctor = globalThis.Object.getPrototypeOf(ctor);
+      listener = this.outboxListeners.get(ctor);
+    }
+
+    if (listener != null && this.contextData === undefined) {
+      throw new Error(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. " +
+          "Please provide contextData through the constructor or call startQueue() before posting activities.",
+      );
+    }
+
+    const origin = new URL(this.options.origin ?? "https://example.com");
+    const routingContext = this.createContext(
+      origin,
+      this.contextData as TContextData,
+    );
+    const postedJson = await activity.toJsonLd({
+      contextLoader: routingContext.contextLoader,
+    });
+    const request = new Request(routingContext.getOutboxUri(identifier), {
+      method: "POST",
+      body: JSON.stringify(postedJson),
+      headers: { "content-type": "application/activity+json" },
+    });
+    const baseContext = this.createContext(
+      request,
+      this.contextData as TContextData,
+    );
+    const rawActivity = postedJson;
+    const deliveryState = { delivered: false };
+    const createMockOutboxContext = () =>
+      createOutboxContext({
+        ...baseContext,
+        clone: undefined,
+        federation: this as any,
+        identifier,
+        hasDeliveredActivity: () => deliveryState.delivered,
+        sendActivity: async (
+          sender: any,
+          recipients: any,
+          outboundActivity: Activity,
+          options?: any,
+        ) => {
+          await baseContext.sendActivity(
+            sender,
+            recipients,
+            outboundActivity,
+            options,
+          );
+          deliveryState.delivered = true;
+        },
+        forwardActivity: async (
+          forwarder: any,
+          recipients: any,
+          options?: any,
+        ) => {
+          const hasProof = hasProofLike(rawActivity);
+          const hasLds = hasSignatureLike(rawActivity);
+          if (options?.skipIfUnsigned && !hasProof && !hasLds) {
+            return;
+          }
+          await baseContext.sendActivity(
+            forwarder,
+            recipients,
+            activity,
+            { ...options, rawActivity },
+          );
+          deliveryState.delivered = true;
+        },
+      });
+
+    const actor = await baseContext.getActor(identifier);
+    if (actor == null) {
+      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
+    }
+    const authorizePredicate = this.outboxAuthorizePredicate ??
+      this.outboxDispatcherAuthorizePredicate;
+    if (
+      authorizePredicate != null &&
+      !await authorizePredicate(baseContext, identifier)
+    ) {
+      throw new Error("Unauthorized.");
+    }
+
+    const expectedActorId = actor.id ?? baseContext.getActorUri(identifier);
+    if (activity.actorIds.length < 1) {
+      const error = new Error("The posted activity has no actor.");
+      await this.outboxListenerErrorHandler?.(createMockOutboxContext(), error);
+      throw error;
+    }
+    if (
+      !activity.actorIds.every((actorId) =>
+        actorId.href === expectedActorId.href
+      )
+    ) {
+      const error = new Error(
+        "The activity actor does not match the outbox owner.",
+      );
+      await this.outboxListenerErrorHandler?.(createMockOutboxContext(), error);
+      throw error;
+    }
+
+    if (listener == null) return;
+
+    const context = createMockOutboxContext();
+    try {
+      await listener(context, activity);
+    } catch (error) {
+      await this.outboxListenerErrorHandler?.(context, error);
+      throw error;
     }
   }
 
@@ -603,11 +850,13 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }> = [];
 
   constructor(
     options: {
       url?: URL;
+      request?: Request | null;
       data: TContextData;
       federation: Federation<TContextData>;
       documentLoader?: DocumentLoader;
@@ -621,7 +870,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     this.host = url.host;
     this.hostname = url.hostname;
     this.url = url;
-    this.request = new Request(url);
+    this.request = options.request ?? new Request(url);
     this.data = options.data;
     this.federation = options.federation;
     // deno-lint-ignore require-await
@@ -912,9 +1161,14 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any,
     recipients: any,
     activity: Activity,
-    _options?: any,
+    options?: any,
   ): Promise<void> {
-    this.sentActivities.push({ sender, recipients, activity });
+    this.sentActivities.push({
+      sender,
+      recipients,
+      activity,
+      rawActivity: options?.rawActivity,
+    });
 
     // If this is a MockFederation, also record it there
     if (this.federation instanceof MockFederation) {
@@ -923,6 +1177,7 @@ class MockContext<TContextData> implements Context<TContextData> {
         queued,
         queue: queued ? "outbox" : undefined,
         activity,
+        rawActivity: options?.rawActivity,
         sentOrder: ++this.federation.sentCounter,
       });
     }
@@ -949,6 +1204,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     sender: any;
     recipients: any;
     activity: Activity;
+    rawActivity?: unknown;
   }> {
     return [...this.sentActivities];
   }

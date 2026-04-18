@@ -19,6 +19,7 @@ import {
   attachSignature,
   createSignature,
   detachSignature,
+  hasSignatureLike,
   type Signature,
   signJsonLd,
   verifyJsonLd,
@@ -91,6 +92,69 @@ test("signJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assert(verified);
+});
+
+test("hasSignatureLike()", () => {
+  assert(hasSignatureLike({
+    signature: {
+      type: "RsaSignature2017",
+      creator: "https://example.com/users/alice#main-key",
+      signatureValue: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: "https://example.com/users/alice#main-key",
+      jws: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: {
+        id: "https://example.com/users/alice#main-key",
+      },
+      jws: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: [{
+        id: "https://example.com/users/alice#main-key",
+      }],
+      jws: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: { "@id": "https://example.com/users/alice#main-key" },
+      jws: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: [{
+      type: "Ed25519Signature2020",
+      verificationMethod: { "@id": "https://example.com/users/alice#main-key" },
+      jws: "signature",
+    }],
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: ["Ed25519Signature2020"],
+      verificationMethod: "https://example.com/users/alice#main-key",
+      jws: "signature",
+    },
+  }));
+  assertFalse(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: "https://example.com/users/alice#main-key",
+    },
+  }));
+  assertFalse(hasSignatureLike(null));
 });
 
 const document = {

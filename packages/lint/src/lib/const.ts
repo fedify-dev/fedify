@@ -135,4 +135,7 @@ export const RULE_IDS = {
 
   // Collection rules
   collectionFilteringNotImplemented: "collection-filtering-not-implemented",
+
+  // Listener rules
+  outboxListenerDeliveryRequired: "outbox-listener-delivery-required",
 } as const;

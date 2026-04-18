@@ -59,9 +59,9 @@ import {
   verifyRequest,
 } from "../sig/http.ts";
 import { exportJwk, importJwk, validateCryptoKey } from "../sig/key.ts";
-import { hasSignature, signJsonLd } from "../sig/ld.ts";
+import { hasSignatureLike, signJsonLd } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
-import { signObject, verifyObject } from "../sig/proof.ts";
+import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { FederationBuilderImpl } from "./builder.ts";
@@ -74,6 +74,7 @@ import type {
   GetActorOptions,
   GetSignedKeyOptions,
   InboxContext,
+  OutboxContext,
   ParseUriResult,
   RequestContext,
   RouteActivityOptions,
@@ -94,6 +95,7 @@ import {
   handleInbox,
   handleObject,
   handleOrderedCollection,
+  handleOutbox,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -1453,6 +1455,29 @@ export class FederationImpl<TContextData>
         });
       }
       case "outbox":
+        if (request.method === "POST") {
+          if (this.outboxListeners == null) {
+            return new Response("Method not allowed.", {
+              status: 405,
+              headers: {
+                Allow: "GET, HEAD",
+                "Content-Type": "text/plain; charset=utf-8",
+              },
+            });
+          }
+          return await handleOutbox(request, {
+            identifier: route.values.identifier,
+            context,
+            outboxContextFactory: context.toOutboxContext.bind(context),
+            actorDispatcher: this.actorCallbacks?.dispatcher,
+            authorizePredicate: this.outboxAuthorizePredicate ??
+              this.outboxCallbacks?.authorizePredicate,
+            outboxListeners: this.outboxListeners,
+            outboxErrorHandler: this.outboxListenerErrorHandler,
+            onUnauthorized,
+            onNotFound,
+          });
+        }
         return await handleCollection(request, {
           name: "outbox",
           identifier: route.values.identifier,
@@ -1699,6 +1724,29 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       invokedFromActorKeyPairsDispatcher:
         this.invokedFromActorKeyPairsDispatcher,
     });
+  }
+
+  toOutboxContext(
+    identifier: string,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+  ): OutboxContextImpl<TContextData> {
+    return new OutboxContextImpl(
+      identifier,
+      activity,
+      activityId,
+      activityType,
+      {
+        url: this.url,
+        federation: this.federation,
+        data: this.data,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        invokedFromActorKeyPairsDispatcher:
+          this.invokedFromActorKeyPairsDispatcher,
+      },
+    );
   }
 
   get hostname(): string {
@@ -2194,9 +2242,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         attributes: {
           "activitypub.activity.type": getTypeId(activity).href,
           "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.toIds.map((cc) => cc.href),
+          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
           "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.toIds.map((bcc) => bcc.href),
+          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
         },
       },
       async (span) => {
@@ -2231,7 +2279,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
@@ -2356,6 +2404,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       preferSharedInbox: options.preferSharedInbox,
       excludeBaseUris: options.excludeBaseUris,
     });
+    if (globalThis.Object.keys(inboxes).length < 1) {
+      logger.debug("No inboxes found for activity {activityId}.", {
+        activityId: activity.id?.href,
+        activity,
+      });
+      return false;
+    }
     logger.debug("Sending activity {activityId} to inboxes:\n{inboxes}", {
       inboxes: globalThis.Object.keys(inboxes),
       activityId: activity.id?.href,
@@ -2367,7 +2422,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         globalThis.Object.keys(inboxes).length < FANOUT_THRESHOLD
     ) {
       await this.federation.sendActivity(keys, inboxes, activity, opts);
-      return;
+      return true;
     }
     const keyJwkPairs = await Promise.all(
       keys.map(async ({ keyId, privateKey }) => ({
@@ -2404,6 +2459,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       message,
       { orderingKey: options.orderingKey },
     );
+    return true;
   }
 
   async *getFollowers(identifier: string): AsyncIterable<Recipient> {
@@ -2799,6 +2855,275 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   }
 }
 
+type ForwardActivityContext<TContextData> = ContextImpl<TContextData> & {
+  readonly activity: unknown;
+  readonly activityId?: string;
+  readonly activityType: string;
+};
+
+function forwardActivity<TContextData>(
+  ctx: ForwardActivityContext<TContextData>,
+  loggerCategory: "inbox" | "outbox",
+  forwarder:
+    | SenderKeyPair
+    | SenderKeyPair[]
+    | { identifier: string }
+    | { username: string },
+  recipients: Recipient | Recipient[] | "followers",
+  options?: ForwardActivityOptions,
+): Promise<boolean> {
+  const tracer = ctx.tracerProvider.getTracer(
+    metadata.name,
+    metadata.version,
+  );
+  return tracer.startActiveSpan(
+    ctx.federation.outboxQueue == null || options?.immediate
+      ? `activitypub.${loggerCategory}`
+      : "activitypub.fanout",
+    {
+      kind: ctx.federation.outboxQueue == null || options?.immediate
+        ? SpanKind.CLIENT
+        : SpanKind.PRODUCER,
+      attributes: { "activitypub.activity.type": ctx.activityType },
+    },
+    async (span) => {
+      try {
+        if (ctx.activityId != null) {
+          span.setAttribute("activitypub.activity.id", ctx.activityId);
+        }
+        return await forwardActivityInternal(
+          ctx,
+          loggerCategory,
+          forwarder,
+          recipients,
+          options,
+        );
+      } catch (e) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+        throw e;
+      } finally {
+        span.end();
+      }
+    },
+  );
+}
+
+async function forwardActivityInternal<TContextData>(
+  ctx: ForwardActivityContext<TContextData>,
+  loggerCategory: "inbox" | "outbox",
+  forwarder:
+    | SenderKeyPair
+    | SenderKeyPair[]
+    | { identifier: string }
+    | { username: string },
+  recipients: Recipient | Recipient[] | "followers",
+  options?: ForwardActivityOptions,
+): Promise<boolean> {
+  const logger = getLogger(["fedify", "federation", loggerCategory]);
+  let keys: SenderKeyPair[];
+  let identifier: string | null = null;
+  if (
+    "identifier" in forwarder || "username" in forwarder
+  ) {
+    if ("identifier" in forwarder) {
+      identifier = forwarder.identifier;
+    } else {
+      const username = forwarder.username;
+      if (ctx.federation.actorCallbacks?.handleMapper == null) {
+        identifier = username;
+      } else {
+        const mapped = await ctx.federation.actorCallbacks.handleMapper(
+          ctx,
+          username,
+        );
+        if (mapped == null) {
+          throw new Error(
+            `No actor found for the given username ${
+              JSON.stringify(username)
+            }.`,
+          );
+        }
+        identifier = mapped;
+      }
+    }
+    const actorKeyPairs = await ctx.getActorKeyPairs(identifier);
+    if (actorKeyPairs.length < 1) {
+      throw new Error(
+        `No key pair found for actor ${JSON.stringify(identifier)}.`,
+      );
+    }
+    keys = actorKeyPairs.map((kp) => ({
+      keyId: kp.keyId,
+      privateKey: kp.privateKey,
+    }));
+  } else if (Array.isArray(forwarder)) {
+    if (forwarder.length < 1) {
+      throw new Error("The forwarder's key pairs are empty.");
+    }
+    keys = forwarder;
+  } else {
+    keys = [forwarder];
+  }
+  if (!hasSignatureLike(ctx.activity)) {
+    const hasProof = hasProofLike(ctx.activity);
+    if (!hasProof) {
+      if (options?.skipIfUnsigned) return false;
+      logger.warn(
+        "The activity {activityId} is not signed; even if it is " +
+          "forwarded to other servers as is, it may not be accepted by " +
+          "them due to the lack of a signature/proof.",
+        {
+          activityId: ctx.activityId,
+          activityType: ctx.activityType,
+          identifier: identifier ?? undefined,
+        },
+      );
+    }
+  }
+  if (recipients === "followers") {
+    if (identifier == null) {
+      throw new Error(
+        'If recipients is "followers", ' +
+          "forwarder must be an actor identifier or username.",
+      );
+    }
+    const followers: Recipient[] = [];
+    for await (const recipient of ctx.getFollowers(identifier)) {
+      followers.push(recipient);
+    }
+    recipients = followers;
+  }
+  const inboxes = extractInboxes({
+    recipients: Array.isArray(recipients) ? recipients : [recipients],
+    preferSharedInbox: options?.preferSharedInbox,
+    excludeBaseUris: options?.excludeBaseUris,
+  });
+  if (globalThis.Object.keys(inboxes).length < 1) {
+    logger.debug("No inboxes found for activity {activityId}.", {
+      activityId: ctx.activityId,
+      activityType: ctx.activityType,
+      identifier: identifier ?? undefined,
+    });
+    return false;
+  }
+  logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
+    inboxes: globalThis.Object.keys(inboxes),
+    activityId: ctx.activityId,
+    activity: ctx.activity,
+  });
+  if (options?.immediate || ctx.federation.outboxQueue == null) {
+    if (options?.immediate) {
+      logger.debug(
+        "Forwarding activity immediately without queue since immediate " +
+          "option is set.",
+      );
+    } else {
+      logger.debug(
+        "Forwarding activity immediately without queue since queue is not " +
+          "set.",
+      );
+    }
+    const promises: Promise<void>[] = [];
+    for (const inbox in inboxes) {
+      promises.push(
+        sendActivity({
+          keys,
+          activity: ctx.activity,
+          activityId: ctx.activityId,
+          activityType: ctx.activityType,
+          inbox: new URL(inbox),
+          sharedInbox: inboxes[inbox].sharedInbox,
+          tracerProvider: ctx.tracerProvider,
+          specDeterminer: new KvSpecDeterminer(
+            ctx.federation.kv,
+            ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
+            ctx.federation.firstKnock,
+          ),
+        }),
+      );
+    }
+    await Promise.all(promises);
+    return true;
+  }
+  logger.debug(
+    "Enqueuing activity {activityId} to forward later.",
+    { activityId: ctx.activityId, activity: ctx.activity },
+  );
+  if (!ctx.federation.manuallyStartQueue) {
+    ctx.federation._startQueueInternal(ctx.data);
+  }
+  const keyJwkPairs: SenderKeyJwkPair[] = [];
+  for (const { keyId, privateKey } of keys) {
+    const privateKeyJwk = await exportJwk(privateKey);
+    keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
+  }
+  const carrier: Record<string, string> = {};
+  propagation.inject(context.active(), carrier);
+  const orderingKey = options?.orderingKey;
+  const started = new Date().toISOString();
+  const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
+  for (const inbox in inboxes) {
+    const inboxUrl = new URL(inbox);
+    const message: OutboxMessage = {
+      type: "outbox",
+      id: crypto.randomUUID(),
+      baseUrl: ctx.origin,
+      keys: keyJwkPairs,
+      activity: ctx.activity,
+      activityId: ctx.activityId,
+      activityType: ctx.activityType,
+      inbox,
+      sharedInbox: inboxes[inbox].sharedInbox,
+      actorIds: [...inboxes[inbox].actorIds],
+      started,
+      attempt: 0,
+      headers: {},
+      orderingKey: orderingKey == null
+        ? undefined
+        : `${orderingKey}\n${inboxUrl.origin}`,
+      traceContext: carrier,
+    };
+    messages.push({
+      message,
+      orderingKey: message.orderingKey,
+    });
+  }
+  const { outboxQueue } = ctx.federation;
+  if (outboxQueue.enqueueMany == null || orderingKey != null) {
+    const promises: Promise<void>[] = messages.map((m) =>
+      outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+    );
+    const results = await Promise.allSettled(promises);
+    const errors: unknown[] = results
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as PromiseRejectedResult).reason);
+    if (errors.length > 0) {
+      logger.error(
+        "Failed to enqueue activity {activityId} to forward later:\n{errors}",
+        { activityId: ctx.activityId, errors },
+      );
+      if (errors.length > 1) {
+        throw new AggregateError(
+          errors,
+          `Failed to enqueue activity ${ctx.activityId} to forward later.`,
+        );
+      }
+      throw errors[0];
+    }
+  } else {
+    try {
+      await outboxQueue.enqueueMany(messages.map((m) => m.message));
+    } catch (error) {
+      logger.error(
+        "Failed to enqueue activity {activityId} to forward later:\n{error}",
+        { activityId: ctx.activityId, error },
+      );
+      throw error;
+    }
+  }
+  return true;
+}
+
 export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
   implements InboxContext<TContextData> {
   readonly recipient: string | null;
@@ -2863,24 +3188,82 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
+    return forwardActivity(this, "inbox", forwarder, recipients, options)
+      .then(() => undefined);
+  }
+}
+
+export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
+  implements OutboxContext<TContextData> {
+  readonly #deliveryState: { delivered: boolean };
+  readonly identifier: string;
+  readonly activity: unknown;
+  readonly activityId?: string;
+  readonly activityType: string;
+
+  constructor(
+    identifier: string,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+    options: ContextOptions<TContextData>,
+    deliveryState: { delivered: boolean } = { delivered: false },
+  ) {
+    super(options);
+    this.#deliveryState = deliveryState;
+    this.identifier = identifier;
+    this.activity = activity;
+    this.activityId = activityId;
+    this.activityType = activityType;
+  }
+
+  hasDeliveredActivity(): boolean {
+    return this.#deliveryState.delivered;
+  }
+
+  override sendActivity(
+    sender:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string },
+    recipients: Recipient | Recipient[] | "followers",
+    activity: Activity,
+    options: SendActivityOptionsForCollection = {},
+  ): Promise<void> {
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
     );
     return tracer.startActiveSpan(
-      "activitypub.outbox",
+      this.federation.outboxQueue == null || options.immediate
+        ? "activitypub.outbox"
+        : "activitypub.fanout",
       {
-        kind: this.federation.outboxQueue == null || options?.immediate
+        kind: this.federation.outboxQueue == null || options.immediate
           ? SpanKind.CLIENT
           : SpanKind.PRODUCER,
-        attributes: { "activitypub.activity.type": this.activityType },
+        attributes: {
+          "activitypub.activity.type": getTypeId(activity).href,
+          "activitypub.activity.to": activity.toIds.map((to) => to.href),
+          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
+          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
+          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
+        },
       },
       async (span) => {
         try {
-          if (this.activityId != null) {
-            span.setAttribute("activitypub.activity.id", this.activityId);
+          if (activity.id != null) {
+            span.setAttribute("activitypub.activity.id", activity.id.href);
           }
-          await this.forwardActivityInternal(forwarder, recipients, options);
+          const delivered = await this.sendActivityInternal(
+            sender,
+            recipients,
+            activity,
+            options,
+            span,
+          );
+          if (delivered) this.#deliveryState.delivered = true;
         } catch (e) {
           span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
           throw e;
@@ -2891,7 +3274,23 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     );
   }
 
-  private async forwardActivityInternal(
+  forwardActivity(
+    forwarder:
+      | SenderKeyPair
+      | SenderKeyPair[]
+      | { identifier: string }
+      | { username: string },
+    recipients: Recipient | Recipient[],
+    options?: ForwardActivityOptions,
+  ): Promise<void>;
+  forwardActivity(
+    forwarder:
+      | { identifier: string }
+      | { username: string },
+    recipients: "followers",
+    options?: ForwardActivityOptions,
+  ): Promise<void>;
+  forwardActivity(
     forwarder:
       | SenderKeyPair
       | SenderKeyPair[]
@@ -2900,221 +3299,29 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
-    const logger = getLogger(["fedify", "federation", "inbox"]);
-    let keys: SenderKeyPair[];
-    let identifier: string | null = null;
-    if (
-      "identifier" in forwarder || "username" in forwarder
-    ) {
-      if ("identifier" in forwarder) {
-        identifier = forwarder.identifier;
-      } else {
-        const username = forwarder.username;
-        if (this.federation.actorCallbacks?.handleMapper == null) {
-          identifier = username;
-        } else {
-          const mapped = await this.federation.actorCallbacks.handleMapper(
-            this,
-            username,
-          );
-          if (mapped == null) {
-            throw new Error(
-              `No actor found for the given username ${
-                JSON.stringify(username)
-              }.`,
-            );
-          }
-          identifier = mapped;
-        }
-      }
-      const actorKeyPairs = await this.getActorKeyPairs(identifier);
-      if (actorKeyPairs.length < 1) {
-        throw new Error(
-          `No key pair found for actor ${JSON.stringify(identifier)}.`,
-        );
-      }
-      keys = actorKeyPairs.map((kp) => ({
-        keyId: kp.keyId,
-        privateKey: kp.privateKey,
-      }));
-    } else if (Array.isArray(forwarder)) {
-      if (forwarder.length < 1) {
-        throw new Error("The forwarder's key pairs are empty.");
-      }
-      keys = forwarder;
-    } else {
-      keys = [forwarder];
-    }
-    if (!hasSignature(this.activity)) {
-      let hasProof: boolean;
-      try {
-        const activity = await Activity.fromJsonLd(this.activity, this);
-        hasProof = await activity.getProof() != null;
-      } catch {
-        hasProof = false;
-      }
-      if (!hasProof) {
-        if (options?.skipIfUnsigned) return;
-        logger.warn(
-          "The received activity {activityId} is not signed; even if it is " +
-            "forwarded to other servers as is, it may not be accepted by " +
-            "them due to the lack of a signature/proof.",
-        );
-      }
-    }
-    if (recipients === "followers") {
-      if (identifier == null) {
-        throw new Error(
-          'If recipients is "followers", ' +
-            "forwarder must be an actor identifier or username.",
-        );
-      }
-      const followers: Recipient[] = [];
-      for await (const recipient of this.getFollowers(identifier)) {
-        followers.push(recipient);
-      }
-      recipients = followers;
-    }
-    const inboxes = extractInboxes({
-      recipients: Array.isArray(recipients) ? recipients : [recipients],
-      preferSharedInbox: options?.preferSharedInbox,
-      excludeBaseUris: options?.excludeBaseUris,
-    });
-    logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
-      inboxes: globalThis.Object.keys(inboxes),
-      activityId: this.activityId,
-      activity: this.activity,
-    });
-    if (options?.immediate || this.federation.outboxQueue == null) {
-      if (options?.immediate) {
-        logger.debug(
-          "Forwarding activity immediately without queue since immediate " +
-            "option is set.",
-        );
-      } else {
-        logger.debug(
-          "Forwarding activity immediately without queue since queue is not " +
-            "set.",
-        );
-      }
-      const promises: Promise<void>[] = [];
-      for (const inbox in inboxes) {
-        promises.push(
-          sendActivity({
-            keys,
-            activity: this.activity,
-            activityId: this.activityId,
-            activityType: this.activityType,
-            inbox: new URL(inbox),
-            sharedInbox: inboxes[inbox].sharedInbox,
-            tracerProvider: this.tracerProvider,
-            specDeterminer: new KvSpecDeterminer(
-              this.federation.kv,
-              this.federation.kvPrefixes.httpMessageSignaturesSpec,
-              this.federation.firstKnock,
-            ),
-          }),
-        );
-      }
-      await Promise.all(promises);
-      return;
-    }
-    logger.debug(
-      "Enqueuing activity {activityId} to forward later.",
-      { activityId: this.activityId, activity: this.activity },
-    );
-    const keyJwkPairs: SenderKeyJwkPair[] = [];
-    for (const { keyId, privateKey } of keys) {
-      const privateKeyJwk = await exportJwk(privateKey);
-      keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
-    }
-    const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
-    const orderingKey = options?.orderingKey;
-    const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
-    for (const inbox in inboxes) {
-      const inboxUrl = new URL(inbox);
-      const message: OutboxMessage = {
-        type: "outbox",
-        id: crypto.randomUUID(),
-        baseUrl: this.origin,
-        keys: keyJwkPairs,
-        activity: this.activity,
-        activityId: this.activityId,
-        activityType: this.activityType,
-        inbox,
-        sharedInbox: inboxes[inbox].sharedInbox,
-        started: new Date().toISOString(),
-        attempt: 0,
-        headers: {},
-        orderingKey: orderingKey == null
-          ? undefined
-          : `${orderingKey}\n${inboxUrl.origin}`,
-        traceContext: carrier,
-      };
-      messages.push({
-        message,
-        orderingKey: message.orderingKey,
+    return forwardActivity(this, "outbox", forwarder, recipients, options)
+      .then((delivered) => {
+        if (delivered) this.#deliveryState.delivered = true;
       });
-    }
-    const { outboxQueue } = this.federation;
-    if (outboxQueue.enqueueMany == null) {
-      const promises: Promise<void>[] = messages.map((m) =>
-        outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
-      );
-      const results = await Promise.allSettled(promises);
-      const errors: unknown[] = results
-        .filter((r) => r.status === "rejected")
-        .map((r) => (r as PromiseRejectedResult).reason);
-      if (errors.length > 0) {
-        logger.error(
-          "Failed to enqueue activity {activityId} to forward later:\n{errors}",
-          { activityId: this.activityId, errors },
-        );
-        if (errors.length > 1) {
-          throw new AggregateError(
-            errors,
-            `Failed to enqueue activity ${this.activityId} to forward later.`,
-          );
-        }
-        throw errors[0];
-      }
-    } else {
-      // Note: enqueueMany does not support per-message orderingKey,
-      // so we fall back to individual enqueues when orderingKey is specified
-      if (orderingKey != null) {
-        const promises: Promise<void>[] = messages.map((m) =>
-          outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
-        );
-        const results = await Promise.allSettled(promises);
-        const errors = results
-          .filter((r) => r.status === "rejected")
-          .map((r) => (r as PromiseRejectedResult).reason);
-        if (errors.length > 0) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to forward later:\n{errors}",
-            { activityId: this.activityId, errors },
-          );
-          if (errors.length > 1) {
-            throw new AggregateError(
-              errors,
-              `Failed to enqueue activity ${this.activityId} to forward later.`,
-            );
-          }
-          throw errors[0];
-        }
-      } else {
-        try {
-          await outboxQueue.enqueueMany(messages.map((m) => m.message));
-        } catch (error) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to forward later:\n{error}",
-            { activityId: this.activityId, error },
-          );
-          throw error;
-        }
-      }
-    }
+  }
+
+  override clone(data: TContextData): OutboxContext<TContextData> {
+    return new OutboxContextImpl<TContextData>(
+      this.identifier,
+      this.activity,
+      this.activityId,
+      this.activityType,
+      {
+        url: this.url,
+        federation: this.federation,
+        data,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        invokedFromActorKeyPairsDispatcher:
+          this.invokedFromActorKeyPairsDispatcher,
+      },
+      this.#deliveryState,
+    );
   }
 }
 

@@ -10,6 +10,15 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `setOutboxListeners()` and `OutboxContext` for handling
+    client-to-server `POST` requests to actor outboxes.  Outbox listeners use
+    application-defined authorization through `.authorize()`, catch activity
+    types with `.on()`, and require explicit delivery through
+    `ctx.sendActivity()` or `ctx.forwardActivity()`.  Fedify now also logs a
+    runtime warning when an outbox listener returns without delivering the
+    posted activity.
+    [[#430], [#688]]
+
  -  Allowed actor dispatchers to return `Tombstone` for deleted accounts.
     Fedify now serves those actor URIs as `410 Gone` with the serialized
     tombstone body, and the corresponding WebFinger lookups also return
@@ -24,8 +33,24 @@ To be released.
     `getAuthenticatedDocumentLoader()` now also respects
     `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
 
+[#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680
+[#688]: https://github.com/fedify-dev/fedify/pull/688
+
+### @fedify/lint
+
+ -  Added the `outbox-listener-delivery-required` rule.  It warns when an
+    outbox listener registered through `setOutboxListeners()` returns without an
+    explicit delivery call, which would otherwise leave a posted client
+    activity unfederated.  [[#430], [#688]]
+
+### @fedify/testing
+
+ -  Added `createOutboxContext()` plus `postOutboxActivity()` and mock
+    `setOutboxListeners()` support so outbox listeners using either
+    `sendActivity()` or `forwardActivity()` can be tested without spinning up
+    a live federation server.  [[#430], [#688]]
 
 ### @fedify/vocab-runtime
 

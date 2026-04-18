@@ -4,7 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import {
-  type Activity,
+  Activity,
   Create,
   Note,
   type Object,
@@ -12,11 +12,12 @@ import {
   Tombstone,
 } from "@fedify/vocab";
 import { FetchError } from "@fedify/vocab-runtime";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertInstanceOf } from "@std/assert";
 import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import {
   createInboxContext,
+  createOutboxContext,
   createRequestContext,
 } from "../testing/context.ts";
 import {
@@ -34,7 +35,7 @@ import type {
   CustomCollectionDispatcher,
   ObjectDispatcher,
 } from "./callback.ts";
-import type { RequestContext } from "./context.ts";
+import type { InboxContext, OutboxContext, RequestContext } from "./context.ts";
 import type { ConstructorWithTypeId } from "./federation.ts";
 import {
   type CustomCollectionCallbacks,
@@ -43,10 +44,11 @@ import {
   handleCustomCollection,
   handleInbox,
   handleObject,
+  handleOutbox,
   respondWithObject,
   respondWithObjectIfAcceptable,
 } from "./handler.ts";
-import { InboxListenerSet } from "./inbox.ts";
+import { ActivityListenerSet } from "./activity-listener.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
 
@@ -1332,6 +1334,402 @@ test("handleInbox()", async () => {
   assertEquals(response.status, 400);
 });
 
+test("handleOutbox()", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/someone"),
+    object: new Note({
+      id: new URL("https://example.com/notes/1"),
+      attribution: new URL("https://example.com/users/someone"),
+      content: "Hello, world!",
+    }),
+  });
+  const requestUrl = "https://example.com/users/someone/outbox";
+  const requestBody = JSON.stringify(await activity.toJsonLd());
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const createRequestContextPair = (body = requestBody) => {
+    const request = new Request(requestUrl, {
+      method: "POST",
+      body,
+    });
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      getActorUri(identifier: string) {
+        return new URL(`https://example.com/users/${identifier}`);
+      },
+    });
+    return { request, context };
+  };
+  let onNotFoundCalled: Request | null = null;
+  const onNotFound = (request: Request) => {
+    onNotFoundCalled = request;
+    return new Response("Not found", { status: 404 });
+  };
+  let onUnauthorizedCalled: Request | null = null;
+  const onUnauthorized = (request: Request) => {
+    onUnauthorizedCalled = request;
+    return new Response("Unauthorized", { status: 401 });
+  };
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ id: ctx.getActorUri(identifier), name: "Someone" });
+  };
+  const listeners = new ActivityListenerSet<OutboxContext<void>>();
+  const seen: string[] = [];
+  listeners.add(Activity, (ctx, activity) => {
+    seen.push(`${ctx.identifier}:${activity.id?.href}`);
+  });
+
+  let { request, context } = createRequestContextPair();
+  let response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher: undefined,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, request);
+  assertEquals(response.status, 404);
+
+  onNotFoundCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "nobody",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, request);
+  assertEquals(response.status, 404);
+
+  onNotFoundCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: () => false,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals(onUnauthorizedCalled === request, false);
+  assertEquals(response.status, 401);
+  assertEquals(seen, []);
+
+  onNotFoundCalled = null;
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher: () => null,
+    outboxListeners: listeners,
+    authorizePredicate: () => false,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals(response.status, 401);
+
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: () => true,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onUnauthorizedCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(
+    response.headers.get("content-type"),
+    "text/plain; charset=utf-8",
+  );
+  assertEquals(seen, [
+    `someone:${activity.id?.href}`,
+  ]);
+
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: async (ctx) => {
+      await ctx.request.json();
+      return true;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onUnauthorizedCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(
+    response.headers.get("content-type"),
+    "text/plain; charset=utf-8",
+  );
+  assertEquals(seen, [
+    `someone:${activity.id?.href}`,
+    `someone:${activity.id?.href}`,
+  ]);
+
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  let unauthorizedBody: string | null = null;
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: async (ctx) => {
+      await ctx.request.json();
+      return false;
+    },
+    onNotFound,
+    onUnauthorized: async (request) => {
+      onUnauthorizedCalled = request;
+      unauthorizedBody = await request.text();
+      return new Response("Unauthorized", { status: 401 });
+    },
+  });
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals((unauthorizedBody ?? "").includes('"type":"Create"'), true);
+  assertEquals([response.status, await response.text()], [401, "Unauthorized"]);
+
+  const invalidRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          true,
+          23,
+        ],
+        type: "Create",
+        object: { type: "Note", content: "Hello, world!" },
+        actor: "https://example.com/users/alice",
+      }),
+    },
+  );
+  const invalidContext = createRequestContext({
+    federation,
+    request: invalidRequest,
+    url: new URL(invalidRequest.url),
+    data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  let invalidActivityId: string | undefined;
+  let invalidActivityType: string | undefined;
+  response = await handleOutbox(invalidRequest, {
+    identifier: "someone",
+    context: invalidContext,
+    outboxContextFactory(identifier, _json, activityId, activityType) {
+      invalidActivityId = activityId;
+      invalidActivityType = activityType;
+      return createOutboxContext({
+        ...invalidContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 400);
+  assertEquals(invalidActivityId, undefined);
+  assertEquals(invalidActivityType, "Create");
+
+  const mismatchedActorJson = (await activity.toJsonLd()) as Record<
+    string,
+    unknown
+  >;
+
+  const missingActorRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...mismatchedActorJson,
+        actor: undefined,
+      }),
+    },
+  );
+  const missingActorContext = createRequestContext({
+    federation,
+    request: missingActorRequest,
+    url: new URL(missingActorRequest.url),
+    data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  let missingActorErrorMessage: string | null = null;
+  response = await handleOutbox(missingActorRequest, {
+    identifier: "someone",
+    context: missingActorContext,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...missingActorContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    outboxErrorHandler: (_ctx, error) => {
+      missingActorErrorMessage = error.message;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "The posted activity has no actor."],
+  );
+  assertEquals(missingActorErrorMessage, "The posted activity has no actor.");
+  const mismatchedActorRequest = new Request(
+    "https://example.com/users/someone/outbox",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...mismatchedActorJson,
+        actor: "https://example.com/users/somebody-else",
+      }),
+    },
+  );
+  const mismatchedActorContext = createRequestContext({
+    federation,
+    request: mismatchedActorRequest,
+    url: new URL(mismatchedActorRequest.url),
+    data: undefined,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  let mismatchedActorErrorMessage: string | null = null;
+  response = await handleOutbox(mismatchedActorRequest, {
+    identifier: "someone",
+    context: mismatchedActorContext,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...mismatchedActorContext,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    outboxErrorHandler: (_ctx, error) => {
+      mismatchedActorErrorMessage = error.message;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "The activity actor does not match the outbox owner."],
+  );
+  assertEquals(
+    mismatchedActorErrorMessage,
+    "The activity actor does not match the outbox owner.",
+  );
+
+  const throwingListeners = new ActivityListenerSet<OutboxContext<void>>();
+  let onErrorCalled = false;
+  throwingListeners.add(Create, () => {
+    throw new Error("Boom");
+  });
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: throwingListeners,
+    outboxErrorHandler: (_ctx, _error) => {
+      onErrorCalled = true;
+    },
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 500);
+  assertEquals(onErrorCalled, true);
+});
+
 test("respondWithObject()", async () => {
   const response = await respondWithObject(
     new Note({
@@ -1380,7 +1778,7 @@ test("handleInbox() - authentication bypass vulnerability", async () => {
 
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let processedActivity: Create | undefined;
-  const inboxListeners = new InboxListenerSet<void>();
+  const inboxListeners = new ActivityListenerSet<InboxContext<void>>();
   inboxListeners.add(Create, (_ctx, activity) => {
     // Track that the malicious activity was processed
     processedActivity = activity;
@@ -1968,7 +2366,7 @@ test("handleInbox() records OpenTelemetry span events", async () => {
     });
   };
 
-  const listeners = new InboxListenerSet<void>();
+  const listeners = new ActivityListenerSet<InboxContext<void>>();
   let receivedActivity: Activity | null = null;
   listeners.add(Create, (_ctx, activity) => {
     receivedActivity = activity;
@@ -2102,7 +2500,7 @@ test("handleInbox() records unverified HTTP signature details", async () => {
       acceptSignatureNonce: ["acceptSignatureNonce"],
     },
     actorDispatcher,
-    inboxListeners: new InboxListenerSet<void>(),
+    inboxListeners: new ActivityListenerSet<InboxContext<void>>(),
     inboxErrorHandler: undefined,
     unverifiedActivityHandler() {
       return new Response("", { status: 202 });

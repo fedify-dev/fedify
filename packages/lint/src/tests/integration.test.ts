@@ -179,6 +179,98 @@ test("Integration: ✅ Complete valid code passes all rules", () => {
   assertNoErrors(COMPLETE_VALID_CODE);
 });
 
+test(
+  "Integration: ✅ outbox-listener-delivery-required - explicit sendActivity",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });`),
+);
+
+test(
+  "Integration: ✅ outbox-listener-delivery-required - explicit forwardActivity",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      [],
+      { skipIfUnsigned: true },
+    );
+  });`),
+);
+
+test(
+  "Integration: ❌ outbox-listener-delivery-required - missing delivery",
+  () =>
+    pipe(
+      `${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });`,
+      assertHasError("outbox-listener-delivery-required"),
+    ),
+);
+
+test(
+  "Integration: ✅ outbox-listener-delivery-required - chained authorize/onError",
+  () =>
+    assertNoErrors(`${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .authorize(async (_ctx, _identifier) => true)
+  .onError(async (_ctx, _error) => {})
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });`),
+);
+
+test(
+  "Integration: ❌ outbox-listener-delivery-required - chained authorize/onError missing delivery",
+  () =>
+    pipe(
+      `${COMPLETE_VALID_CODE}
+
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .authorize(async (_ctx, _identifier) => true)
+  .onError(async (_ctx, _error) => {})
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });`,
+      assertHasError("outbox-listener-delivery-required"),
+    ),
+);
+
 test("Integration: ❌ actor-id-required - missing id property", () =>
   pipe(
     COMPLETE_VALID_CODE,

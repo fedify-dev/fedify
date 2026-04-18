@@ -281,6 +281,65 @@ console.log("Context sent activities:", sentActivities);
 console.log("Federation sent activities:", federation.sentActivities);
 ~~~~
 
+If you want to test an outbox listener directly, you can also create an
+`OutboxContext` with the `createOutboxContext()` helper:
+
+~~~~ typescript twoslash
+import { createFederation, createOutboxContext } from "@fedify/testing";
+
+const federation = createFederation<{ userId: string }>();
+const context = createOutboxContext({
+  federation,
+  data: { userId: "test-user" },
+  identifier: "alice",
+});
+
+console.log(context.identifier);  // alice
+~~~~
+
+If you prefer to exercise registered outbox listeners through the mock
+federation, use `postOutboxActivity()`:
+
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/testing";
+import { Create, Person } from "@fedify/vocab";
+
+const federation = createFederation<{ userId: string }>({
+  contextData: { userId: "test-user" },
+});
+
+let receivedActivityId = "";
+
+federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
+  return new Person({
+    id: new URL(`https://example.com/users/${identifier}`),
+  });
+});
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Create, async (ctx, activity) => {
+    receivedActivityId = activity.id?.href ?? "";
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new Person({
+        id: new URL("https://example.com/users/bob"),
+        inbox: new URL("https://example.com/users/bob/inbox"),
+      }),
+      activity,
+    );
+  });
+
+const activity = new Create({
+  id: new URL("https://example.com/activities/1"),
+  actor: new URL("https://example.com/users/alice"),
+});
+
+await federation.postOutboxActivity("alice", activity);
+
+console.log(receivedActivityId);  // https://example.com/activities/1
+~~~~
+
 ### Testing URI generation
 
 Mock contexts created with the `createContext()` method provide mock

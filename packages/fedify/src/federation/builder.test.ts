@@ -8,10 +8,12 @@ import type {
   InboxListener,
   NodeInfoDispatcher,
   ObjectDispatcher,
+  OutboxListener,
   UnverifiedActivityReason,
 } from "./callback.ts";
 import { MemoryKvStore } from "./kv.ts";
 import type { FederationImpl } from "./middleware.ts";
+import { RouterError } from "./router.ts";
 
 test("FederationBuilder", async (t) => {
   await t.step(
@@ -33,6 +35,15 @@ test("FederationBuilder", async (t) => {
       };
       const listeners = builder.setInboxListeners("/users/{identifier}/inbox");
       listeners.on(Activity, inboxListener);
+
+      const outboxListener: OutboxListener<string, Activity> = (
+        _ctx,
+        _activity,
+      ) => {
+        // Do nothing
+      };
+      builder.setOutboxListeners("/users/{identifier}/outbox")
+        .on(Activity, outboxListener);
 
       const objectDispatcher: ObjectDispatcher<string, Note, string> = (
         _ctx,
@@ -73,6 +84,7 @@ test("FederationBuilder", async (t) => {
       );
       assertEquals(impl.router.route("/users/test123")?.name, "actor");
       assertEquals(impl.router.route("/users/test123/inbox")?.name, "inbox");
+      assertEquals(impl.router.route("/users/test123/outbox")?.name, "outbox");
       assertEquals(
         impl.router.route("/notes/456")?.name,
         `object:${Note.typeId.href}`,
@@ -84,6 +96,9 @@ test("FederationBuilder", async (t) => {
 
       const inboxListeners = impl.inboxListeners;
       assertExists(inboxListeners);
+
+      const outboxListeners = impl.outboxListeners;
+      assertExists(outboxListeners);
 
       assertExists(impl.objectCallbacks[Note.typeId.href]);
 
@@ -115,6 +130,78 @@ test("FederationBuilder", async (t) => {
     assertExists(federation);
     const impl = federation as FederationImpl<void>;
     assertEquals(impl.kv, kv);
+  });
+
+  await t.step("should validate outbox listener paths", () => {
+    const builder = createFederationBuilder<void>();
+    builder.setOutboxDispatcher(
+      "/users/{identifier}/outbox",
+      () => ({ items: [] }),
+    );
+
+    assertThrows(
+      () => builder.setOutboxListeners("/actors/{identifier}/outbox"),
+      RouterError,
+    );
+
+    assertThrows(
+      () =>
+        builder.setOutboxListeners(
+          "/users/outbox" as `${string}{identifier}${string}`,
+        ),
+      RouterError,
+    );
+
+    assertThrows(
+      () => builder.setOutboxListeners("/users/{identifier}/outbox/{extra}"),
+      RouterError,
+    );
+
+    assertThrows(
+      () =>
+        builder.setOutboxListeners(
+          "/users/{identifier}/outbox/{identifier}",
+        ),
+      RouterError,
+    );
+
+    const builderAfterInvalid = createFederationBuilder<void>();
+    assertThrows(
+      () =>
+        builderAfterInvalid.setOutboxListeners(
+          "/users/{identifier}/outbox/{extra}",
+        ),
+      RouterError,
+    );
+    builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
+
+    const builder2 = createFederationBuilder<void>();
+    builder2.setOutboxListeners("/users{/identifier}/outbox");
+
+    assertThrows(
+      () =>
+        builder2.setOutboxDispatcher(
+          "/actors/{identifier}/outbox",
+          () => ({ items: [] }),
+        ),
+      RouterError,
+    );
+
+    const builder3 = createFederationBuilder<void>();
+    assertThrows(
+      () => builder3.setOutboxListeners("/users{?identifier}/outbox"),
+      RouterError,
+    );
+
+    const builder4 = createFederationBuilder<void>();
+    assertThrows(
+      () =>
+        builder4.setOutboxDispatcher(
+          "/users{?identifier}/outbox",
+          () => ({ items: [] }),
+        ),
+      RouterError,
+    );
   });
 
   await t.step("should pass build options correctly", async () => {

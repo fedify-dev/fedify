@@ -8,7 +8,13 @@ import {
   Place,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import { decodeHex } from "byte-encodings/hex";
 import {
   ed25519Multikey,
@@ -20,6 +26,7 @@ import {
 import type { KeyCache } from "./key.ts";
 import {
   createProof,
+  hasProofLike,
   signObject,
   verifyObject,
   type VerifyObjectOptions,
@@ -263,6 +270,70 @@ test("signObject()", async () => {
     TypeError,
     "Unsupported algorithm",
   );
+});
+
+test("hasProofLike()", () => {
+  assert(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: "https://example.com/users/alice#main-key",
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    proof: [{
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+      proofValue: "signature",
+    }],
+  }));
+  assert(hasProofLike({
+    proof: {
+      type: ["https://w3id.org/security#DataIntegrityProof"],
+      verificationMethod: [{
+        "@id": "https://example.com/users/alice#main-key",
+      }],
+      proofPurpose: { "@id": "https://w3id.org/security#assertionMethod" },
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    "https://w3id.org/security#proof": {
+      type: "DataIntegrityProof",
+      verificationMethod: { "@id": "https://example.com/users/alice#main-key" },
+      proofPurpose: { "@id": "https://w3id.org/security#assertionMethod" },
+      proofValue: "signature",
+    },
+  }));
+  assert(hasProofLike({
+    "https://w3id.org/security#proof": [{
+      "@type": ["https://w3id.org/security#DataIntegrityProof"],
+      "https://w3id.org/security#verificationMethod": [{
+        "@id": "https://example.com/users/alice#main-key",
+      }],
+      "https://w3id.org/security#proofPurpose": [{
+        "@id": "https://w3id.org/security#assertionMethod",
+      }],
+      "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
+    }],
+  }));
+  assertFalse(hasProofLike({
+    proof: {
+      type: "DataIntegrityProof",
+      verificationMethod: { id: "https://example.com/users/alice#main-key" },
+      proofPurpose: "assertionMethod",
+    },
+  }));
 });
 
 test("verifyProof()", async () => {

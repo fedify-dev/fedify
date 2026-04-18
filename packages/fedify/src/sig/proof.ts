@@ -21,6 +21,66 @@ import {
 const logger = getLogger(["fedify", "sig", "proof"]);
 
 /**
+ * Checks if the given JSON-LD document has a DataIntegrityProof-like object,
+ * without fully deserializing it into vocabulary classes.
+ * @param jsonLd The JSON-LD document to check.
+ * @returns `true` if the document has a proof-like object; `false` otherwise.
+ * @since 2.2.0
+ */
+export function hasProofLike(jsonLd: unknown): boolean {
+  if (typeof jsonLd !== "object" || jsonLd == null) return false;
+  const record = jsonLd as Record<string, unknown>;
+  const proof = record.proof ?? record["https://w3id.org/security#proof"];
+
+  const getField = (
+    source: Record<string, unknown>,
+    compact: string,
+    expanded: string,
+  ): unknown => source[compact] ?? source[expanded];
+
+  const isReference = (value: unknown): boolean => {
+    if (typeof value === "string") return true;
+    if (Array.isArray(value)) return value.some(isReference);
+    return typeof value === "object" && value != null &&
+      (("id" in value && typeof value.id === "string") ||
+        ("@id" in value && typeof value["@id"] === "string") ||
+        ("@value" in value && typeof value["@value"] === "string"));
+  };
+
+  const hasType = (value: unknown): boolean => {
+    if (typeof value === "string") {
+      return value === "DataIntegrityProof" ||
+        value === "https://w3id.org/security#DataIntegrityProof";
+    }
+    if (Array.isArray(value)) return value.some(hasType);
+    return false;
+  };
+
+  const isProofLike = (value: unknown): boolean => {
+    if (typeof value !== "object" || value == null) return false;
+    const proofRecord = value as Record<string, unknown>;
+    return hasType(proofRecord.type ?? proofRecord["@type"]) &&
+      isReference(getField(
+        proofRecord,
+        "verificationMethod",
+        "https://w3id.org/security#verificationMethod",
+      )) &&
+      isReference(getField(
+        proofRecord,
+        "proofPurpose",
+        "https://w3id.org/security#proofPurpose",
+      )) &&
+      isReference(getField(
+        proofRecord,
+        "proofValue",
+        "https://w3id.org/security#proofValue",
+      ));
+  };
+
+  return Array.isArray(proof) ? proof.some(isProofLike) : isProofLike(proof);
+}
+
+/**
  * Options for {@link createProof}.
  * @since 0.10.0
  */

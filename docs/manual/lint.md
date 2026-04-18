@@ -597,6 +597,55 @@ federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
 });
 ~~~~
 
+### `outbox-listener-delivery-required`
+
+Warns when an outbox listener body does not deliver the posted activity with
+`ctx.sendActivity()` or `ctx.forwardActivity()`.
+
+**When this rule applies:**
+You've registered an outbox listener with `setOutboxListeners()`, but the
+listener body never calls either delivery method.
+
+**Why it matters:**
+Fedify does not federate client-to-server outbox posts automatically.  If your
+application intends to deliver a posted activity, the listener must choose an
+explicit delivery path.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Listener stores the activity locally but never federates it
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+  });
+
+// ✅ Good: Listener federates explicitly
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      "followers",
+      activity,
+    );
+  });
+
+// ✅ Good: Listener forwards the original posted payload explicitly
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => {
+    await ctx.forwardActivity(
+      { identifier: ctx.identifier },
+      "followers",
+    );
+  });
+~~~~
+
 ### `actor-followers-property-required`
 
 Ensures `followers` is defined when `setFollowersDispatcher()` is configured.

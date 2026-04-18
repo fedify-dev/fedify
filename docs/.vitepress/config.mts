@@ -108,6 +108,7 @@ const MANUAL = {
     { text: "Vocabulary", link: "/manual/vocab.md" },
     { text: "Actor dispatcher", link: "/manual/actor.md" },
     { text: "Inbox listeners", link: "/manual/inbox.md" },
+    { text: "Outbox listeners", link: "/manual/outbox.md" },
     { text: "Sending activities", link: "/manual/send.md" },
     { text: "Collections", link: "/manual/collections.md" },
     { text: "Object dispatcher", link: "/manual/object.md" },
