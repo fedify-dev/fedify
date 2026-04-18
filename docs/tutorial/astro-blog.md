@@ -1421,7 +1421,7 @@ db.run(`
 export default db;
 ~~~~
 
-`new Database("blog.db")` creates `blog.db` in the project root on the first
+`new Database("blog.db")` creates *blog.db* in the project root on the first
 run and reopens it on subsequent runs.  The `CREATE TABLE IF NOT EXISTS`
 statements are idempotent, so they run safely every time the server starts.
 
@@ -2777,18 +2777,25 @@ new Article({
 
 ### Deploying to Fly.io
 
-When deploying, attach a [Fly Volume] to store `blog.db`.  Set the volume
-mount path in `fly.toml` and point the SQLite database at that path:
+[Fly.io] is a platform that runs your app in Docker containers close to
+your users.  If you choose to deploy there, the main thing to handle is
+SQLite persistence: containers are ephemeral, so *blog.db* would be wiped
+on every deploy unless you store it on a durable volume.
+
+[Fly Volumes] are persistent disks you attach to a Fly machine—similar to
+a network-attached block device.  To use one, mount it in *fly.toml* and
+point the database at the mounted path via an environment variable:
 
 ~~~~ typescript
 const db = new Database(process.env.DB_PATH ?? "blog.db");
 ~~~~
 
-Make sure your `Dockerfile` runs `bun run build` and starts the server
+Make sure your *Dockerfile* runs `bun run build` and starts the server
 with `node dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
 output).
 
-[Fly Volume]: https://fly.io/docs/volumes/
+[Fly.io]: https://fly.io/
+[Fly Volumes]: https://fly.io/docs/volumes/
 
 ### Congratulations
 
