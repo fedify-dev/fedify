@@ -567,7 +567,7 @@ const posts = await getCollection("posts");
 const post = posts.find((p) => p.id === slug);
 
 if (!post || post.data.draft) {
-  return Astro.redirect("/404");
+  return new Response(null, { status: 404, statusText: "Not Found" });
 }
 
 const { Content } = await render(post);
@@ -2668,7 +2668,7 @@ const posts = await getCollection("posts");
 const post = posts.find((p) => p.id === slug);
 
 if (!post || post.data.draft) {
-  return Astro.redirect("/404");
+  return new Response(null, { status: 404, statusText: "Not Found" });
 }
 
 const { Content } = await render(post);
