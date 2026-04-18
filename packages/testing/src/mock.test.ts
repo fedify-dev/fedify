@@ -383,9 +383,12 @@ test(
         "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
       },
     };
-    const activity = await Activity.fromJsonLd(proofJson, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/users/alice"),
+    });
+    Object.assign(activity, {
+      toJsonLd: () => Promise.resolve(proofJson),
     });
 
     await mockFederation.postOutboxActivity("alice", activity);

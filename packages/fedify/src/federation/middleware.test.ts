@@ -2171,7 +2171,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       }),
       { contextData: undefined },
     );
-    assertEquals(response.status, 404);
+    assertEquals(response.status, 401);
   });
 
   await t.step("POST without listeners returns 405", async () => {
