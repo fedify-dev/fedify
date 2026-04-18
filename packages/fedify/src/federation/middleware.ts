@@ -3271,9 +3271,9 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
         attributes: {
           "activitypub.activity.type": getTypeId(activity).href,
           "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.toIds.map((cc) => cc.href),
+          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
           "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.toIds.map((bcc) => bcc.href),
+          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
         },
       },
       async (span) => {

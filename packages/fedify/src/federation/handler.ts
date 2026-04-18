@@ -539,6 +539,7 @@ export async function handleOutbox<TContextData>(
     });
   }
   const requestForParsing = request.clone();
+  const requestForUnauthorized = request.clone() as Request;
   if (actorDispatcher == null) {
     logger.error("Actor dispatcher is not set.", { identifier });
     return await onNotFound(request);
@@ -550,7 +551,7 @@ export async function handleOutbox<TContextData>(
   }
   if (authorizePredicate != null) {
     if (!await authorizePredicate(ctx, identifier)) {
-      return await onUnauthorized(request);
+      return await onUnauthorized(requestForUnauthorized);
     }
   }
   let json: unknown;

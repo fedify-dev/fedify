@@ -12,7 +12,7 @@ import {
   Tombstone,
 } from "@fedify/vocab";
 import { FetchError } from "@fedify/vocab-runtime";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertInstanceOf } from "@std/assert";
 import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import {
@@ -1441,7 +1441,8 @@ test("handleOutbox()", async () => {
     onUnauthorized,
   });
   assertEquals(onNotFoundCalled, null);
-  assertEquals(onUnauthorizedCalled, request);
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals(onUnauthorizedCalled === request, false);
   assertEquals(response.status, 401);
   assertEquals(seen, []);
 
@@ -1492,6 +1493,36 @@ test("handleOutbox()", async () => {
   });
   assertEquals(onUnauthorizedCalled, null);
   assertEquals([response.status, await response.text()], [202, ""]);
+
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  let unauthorizedBody: string | null = null;
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher,
+    outboxListeners: listeners,
+    authorizePredicate: async (ctx) => {
+      await ctx.request.json();
+      return false;
+    },
+    onNotFound,
+    onUnauthorized: async (request) => {
+      onUnauthorizedCalled = request;
+      unauthorizedBody = await request.text();
+      return new Response("Unauthorized", { status: 401 });
+    },
+  });
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals((unauthorizedBody ?? "").includes('"type":"Create"'), true);
+  assertEquals([response.status, await response.text()], [401, "Unauthorized"]);
 
   const invalidRequest = new Request(
     "https://example.com/users/someone/outbox",

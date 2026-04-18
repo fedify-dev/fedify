@@ -1,4 +1,8 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
 import { getTypeId, lookupObject } from "@fedify/vocab";
@@ -3640,6 +3644,47 @@ test("ContextImpl.sendActivity()", async (t) => {
     );
   });
 
+  await t.step("records recipient span attributes correctly", async () => {
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const federation3 = new FederationImpl<void>({
+      kv,
+      contextLoaderFactory: () => mockDocumentLoader,
+      tracerProvider,
+    });
+    const ctx = federation3.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/telemetry"),
+      actor: new URL("https://example.com/person"),
+      to: new URL("https://example.com/to"),
+      cc: new URL("https://example.com/cc"),
+      bto: new URL("https://example.com/bto"),
+      bcc: new URL("https://example.com/bcc"),
+    });
+
+    await ctx.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+    );
+
+    const span = exporter.getSpan("activitypub.outbox");
+    assert(span != null);
+    assertEquals(
+      span.attributes["activitypub.activity.cc"],
+      ["https://example.com/cc"],
+    );
+    assertEquals(
+      span.attributes["activitypub.activity.bcc"],
+      ["https://example.com/bcc"],
+    );
+  });
+
   const queue: MessageQueue & { messages: Message[]; clear(): void } = {
     messages: [],
     enqueue(message) {
@@ -4459,6 +4504,51 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
       )
     );
     assertEquals(verified, []);
+  });
+
+  await t.step("records inbox forwarding span name", async () => {
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const federationWithTracing = new FederationImpl<void>({
+      kv,
+      contextLoaderFactory: () => mockDocumentLoader,
+      tracerProvider,
+    });
+    const activity = await signJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Create",
+        "id": "https://example.com/activity",
+        "actor": "https://example.com/person2",
+      },
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { contextLoader: mockDocumentLoader },
+    );
+    const ctx = new InboxContextImpl(
+      null,
+      activity,
+      "https://example.com/activity",
+      "https://www.w3.org/ns/activitystreams#Create",
+      {
+        data: undefined,
+        federation: federationWithTracing,
+        url: new URL("https://example.com/"),
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
+      },
+    );
+
+    await ctx.forwardActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      { skipIfUnsigned: true },
+    );
+
+    assertEquals(exporter.getSpans("activitypub.inbox").length, 1);
+    assertEquals(exporter.getSpans("activitypub.outbox").length, 0);
   });
 
   fetchMock.hardReset();
