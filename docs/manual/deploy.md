@@ -430,3 +430,217 @@ have an nginx footprint to fit into, Caddy is the path of least resistance.
 > content negotiation depends on these headers matching `application/ld+json`
 > or `application/activity+json` exactly.  A surprising number of default
 > proxy rules on CDNs rewrite or drop them and silently break federation.
+
+
+Container deployments
+---------------------
+
+Running Fedify in a container does not change the application's architecture,
+but it changes how you supervise, scale, and secure it.  This section covers
+the container-specific pieces that matter for a Fedify app: the shape of a
+minimal Dockerfile for each runtime, a Compose file that wires up the
+application, a worker, and the backing services it typically needs, and some
+notes on Kubernetes and managed container platforms.
+
+### Dockerfile
+
+A minimal Node.js Dockerfile follows the familiar pattern: install
+dependencies, copy the source, expose the port, run the server.  Keep the
+runtime image small (the `-alpine` or `-slim` variants are usually fine),
+run as a non-root user, and depend on process supervision from the
+orchestrator (Compose `restart:`, Kubernetes `restartPolicy`, etc.) rather
+than baking in a process manager.
+
+~~~~ dockerfile [Node.js]
+FROM node:24-alpine
+
+# Install runtime OS packages your app needs (e.g., ffmpeg for media).
+RUN apk add --no-cache pnpm
+
+WORKDIR /app
+COPY pnpm-lock.yaml package.json ./
+RUN pnpm install --frozen-lockfile --prod
+
+COPY . .
+
+# Run as an unprivileged user.  The stock `node` user UID 1000 exists in
+# the official node images.
+USER node
+
+EXPOSE 3000
+CMD ["pnpm", "run", "start"]
+~~~~
+
+For Deno, use an official Deno image and lean on `deno task` for the
+command surface.  Deno's permissions flags belong in the `start` task in
+*deno.json*, not in the Dockerfile, so that they are version-controlled
+with the code:
+
+~~~~ dockerfile [Deno]
+FROM denoland/deno:2.7.4
+
+WORKDIR /app
+COPY deno.json deno.lock ./
+RUN deno install
+
+COPY . .
+RUN deno task build
+
+USER deno
+EXPOSE 8000
+CMD ["deno", "task", "start"]
+~~~~
+
+> [!TIP]
+> If you build multi-arch images (linux/amd64 and linux/arm64 are the common
+> pair for fediverse servers, since many operators run on ARM VPSes for
+> cost), use `docker buildx` with `--platform=linux/amd64,linux/arm64`.
+> Avoid base images that only ship amd64.
+
+### Docker compose / Podman compose
+
+A single *compose.yaml* is usually enough to describe a Fedify deployment:
+the app itself, optionally a separate worker process from the same image,
+and the KV/MQ backend (Postgres or Redis).  [Podman Compose] understands
+the same file format, so the example below works unchanged under both
+Docker and Podman.
+
+~~~~ yaml [compose.yaml]
+services:
+  web:
+    image: ghcr.io/example/my-fedify-app:latest
+    environment:
+      NODE_TYPE: web
+      DATABASE_URL: postgres://fedify:${DB_PASSWORD}@postgres:5432/fedify
+      REDIS_URL: redis://redis:6379/0
+      BEHIND_PROXY: "true"
+      FEDIFY_ORIGIN: https://example.com
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/example/my-fedify-app:latest
+    environment:
+      NODE_TYPE: worker
+      DATABASE_URL: postgres://fedify:${DB_PASSWORD}@postgres:5432/fedify
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: fedify
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: fedify
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "fedify"]
+      interval: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+~~~~
+
+The `web` and `worker` services run the same image with different
+`NODE_TYPE` environment variables so that your application code can decide
+whether to bind an HTTP port or only start the message queue processor.
+See [*Separating web and worker
+nodes*](#separating-web-and-worker-nodes) for the code pattern this
+mirrors.  If you do not need that separation yet, drop the `worker` service
+and keep a single combined process.
+
+Bind the application port to `127.0.0.1` rather than `0.0.0.0`, and run
+your [reverse proxy](#reverse-proxy) on the host; this keeps the Fedify
+process unreachable from the public internet, which is the invariant that
+the [canonical origin](#canonical-origin) guarantee depends on.
+
+[Podman Compose]: https://github.com/containers/podman-compose
+
+### Kubernetes
+
+For deployments large enough to justify Kubernetes, the same pattern
+applies—just spread across more objects.  The essentials:
+
+ -  **Two Deployments**: one for web pods (multiple replicas, behind a
+    Service and Ingress) and one for worker pods (replicas tuned to queue
+    depth, no Service).
+ -  **ConfigMap** for non-sensitive environment variables and a
+    **Secret** for credentials and actor private keys.
+ -  **Ingress** terminating TLS with cert-manager.  Most Fedify apps don't
+    need anything exotic here; a default nginx-ingress with
+    `proxy-body-size: 10m` is a reasonable starting point.
+ -  **HorizontalPodAutoscaler** on the worker Deployment targeting queue
+    depth (via a custom metric from your MQ backend) or CPU.  Web pods
+    usually scale on CPU or request count.
+ -  **StatefulSet + PVC** for PostgreSQL if you self-host it, or an
+    external managed database; Fedify is indifferent as long as the
+    connection string works.
+
+This document does not attempt to replace the upstream Kubernetes
+documentation—the mechanics of Deployments, Services, and Ingress are the
+same as for any other HTTP service.  The Fedify-specific pieces are the
+ones covered throughout this guide: origin pinning, forwarded headers,
+worker separation, persistent KV/MQ, and actor key persistence.
+
+### Managed container platforms
+
+Platform-as-a-service container hosts are the fastest way to get a Fedify
+app into production if you don't want to operate the underlying
+infrastructure yourself.  Rather than duplicate each vendor's
+documentation, this section lists which Fedify constraints to watch for.
+Follow the links for setup details.
+
+[Fly.io]
+:   Works well with Fedify.  You can run web and worker processes as
+    separate [processes] in one *fly.toml* and scale them independently.
+    Enable HTTP/2 in `[[services]]` and make sure the forwarded-headers
+    behavior matches what [x-forwarded-fetch] expects.
+
+[AWS ECS] / [AWS EKS]
+:   Standard container-orchestration on AWS.  If you use ALB as the
+    ingress, its request/response byte limits and header handling behave
+    like nginx with generous defaults; the [*Reverse proxy*](#reverse-proxy)
+    `Accept`/`Content-Type` tip still applies.
+
+[Google Cloud Run]
+:   Runs a single container per service with no persistent disk and
+    request-scoped execution.  Worker separation using a long-running
+    queue consumer does not fit Cloud Run's execution model well; if you
+    need that separation, prefer a platform that supports long-running
+    processes (Fly.io, Kubernetes) or move the queue backend to one with
+    a native push consumer.
+
+[Render] / [Railway]
+:   Both treat Fedify apps as ordinary Node.js or Deno services and work
+    well for small-to-medium deployments.  Define a separate “background
+    worker” service for the queue processor.
+
+[Fly.io]: https://fly.io/docs/
+[processes]: https://fly.io/docs/reference/configuration/#the-processes-section
+[AWS ECS]: https://docs.aws.amazon.com/ecs/
+[AWS EKS]: https://docs.aws.amazon.com/eks/
+[Google Cloud Run]: https://cloud.google.com/run/docs
+[Render]: https://render.com/docs
+[Railway]: https://docs.railway.com/
