@@ -495,10 +495,9 @@ function summarizeJsonActivity(json: unknown): {
   activityType?: string;
 } {
   if (json == null || typeof json !== "object") return {};
-  const id = "id" in json && typeof json.id === "string" ? json.id : undefined;
-  const type = "type" in json && typeof json.type === "string"
-    ? json.type
-    : undefined;
+  const activity = json as Record<string, unknown>;
+  const id = typeof activity.id === "string" ? activity.id : undefined;
+  const type = typeof activity.type === "string" ? activity.type : undefined;
   return { activityId: id, activityType: type };
 }
 
@@ -710,11 +709,7 @@ export async function handleOutbox<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  if (
-    "hasDeliveredActivity" in outboxContext &&
-    typeof outboxContext.hasDeliveredActivity === "function" &&
-    !outboxContext.hasDeliveredActivity()
-  ) {
+  if (!outboxContext.hasDeliveredActivity()) {
     logger.warn(
       "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery.",
       {

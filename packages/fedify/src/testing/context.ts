@@ -171,6 +171,7 @@ export function createOutboxContext<TContextData>(
     ...createContext(args),
     clone: args.clone ?? ((data) => createOutboxContext({ ...args, data })),
     identifier: args.identifier,
+    hasDeliveredActivity: args.hasDeliveredActivity ?? (() => false),
     forwardActivity,
   };
 }

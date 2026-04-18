@@ -699,6 +699,15 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
   readonly identifier: string;
 
   /**
+   * Indicates whether the posted activity has been delivered during the
+   * current outbox listener invocation.
+   * @returns `true` if the posted activity has been delivered; `false`
+   *          otherwise.
+   * @since 2.2.0
+   */
+  hasDeliveredActivity(): boolean;
+
+  /**
    * Forwards a posted activity to the recipients' inboxes without
    * re-serializing the original payload.  The forwarded activity will be
    * signed in HTTP Signatures by the forwarder, but its payload will not be

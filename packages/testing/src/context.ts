@@ -237,6 +237,7 @@ function createOutboxContext<TContextData>(
     clone: args.clone ??
       ((data: TContextData) => createOutboxContext({ ...args, data })),
     identifier: args.identifier,
+    hasDeliveredActivity: args.hasDeliveredActivity ?? (() => false),
     forwardActivity,
   };
 }
