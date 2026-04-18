@@ -200,7 +200,10 @@ export function hasSignatureLike(jsonLd: unknown): boolean {
   const hasSignatureObject = (value: unknown): boolean => {
     if (typeof value !== "object" || value == null) return false;
     const signatureRecord = value as Record<string, unknown>;
-    return typeof signatureRecord.type === "string" &&
+    const hasType = typeof signatureRecord.type === "string" ||
+      (Array.isArray(signatureRecord.type) &&
+        signatureRecord.type.some((item) => typeof item === "string"));
+    return hasType &&
       (hasReference(signatureRecord.creator) ||
         hasReference(signatureRecord.verificationMethod)) &&
       (typeof signatureRecord.signatureValue === "string" ||
