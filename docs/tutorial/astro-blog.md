@@ -1126,12 +1126,7 @@ the handle.  You should see the blog appear in the search results:
 
 Click the blog's profile to confirm all the metadata looks correct:
 
-~~~~ console
-Fedify Blog Example
-@blog@3f8a2b1c4d5e6f.lhr.life
-
-A sample federated blog powered by Fedify and Astro.
-~~~~
+![ActivityPub.Academy profile page showing “Fedify Blog Example” with bio and handle](./astro-blog/activitypub-academy-profile.png)
 
 The blog is now discoverable across the fediverse.  In the next chapter
 we'll implement inbox listeners so it can actually receive and respond
