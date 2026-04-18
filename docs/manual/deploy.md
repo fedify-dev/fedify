@@ -752,3 +752,203 @@ which looks like a slow queue rather than a misconfiguration.
 See [*Parallel message processing*](./mq.md#parallel-message-processing)
 for the full context, which includes specific notes about
 `PostgresMessageQueue` and shared pools.
+
+
+Serverless and edge deployments
+-------------------------------
+
+Fedify runs on two classes of platform that don't fit the long-running
+process model: Cloudflare Workers and Deno Deploy.  Both can host a
+Fedify application with zero self-managed infrastructure, at a cost that
+scales down to near-zero for low-traffic servers.  The trade-off is that
+each platform imposes architectural constraints that shape how the code is
+organized—so unlike the traditional- and container-based sections above,
+the choice here affects your *application code*, not just the deployment
+configuration.
+
+### Cloudflare Workers
+
+*Cloudflare Workers support is available in Fedify 1.6.0 and later.*
+
+[Cloudflare Workers] is an edge runtime with per-request execution limits
+and no mutable global state between invocations.  Platform services—KV,
+Queues, R2, D1—are exposed through the `env` parameter of the request
+handler rather than as ambient imports.  Fedify accommodates this through
+the [builder pattern](./federation.md#builder-pattern-for-structuring) and
+the [`@fedify/cfworkers`] package, which provides `WorkersKvStore` and
+`WorkersMessageQueue`.
+
+#### Node.js compatibility
+
+Fedify depends on Node.js APIs for cryptography and DNS, so Workers need
+the Node.js compatibility flag.  In your *wrangler.jsonc*:
+
+~~~~ jsonc
+"compatibility_date": "2025-05-31",
+"compatibility_flags": ["nodejs_compat"],
+~~~~
+
+See the [Node.js compatibility] documentation for details.
+
+#### Builder pattern
+
+Because `env` (the handle to KV, Queues, and other bindings) is only
+available inside the request handler, you cannot instantiate `Federation`
+at module load time.  Use `createFederationBuilder()` to define your
+dispatchers and build the `Federation` object per request:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+type Env = {
+  KV_NAMESPACE: KVNamespace<string>;
+  QUEUE: Queue;
+};
+import { Person } from "@fedify/vocab";
+// ---cut-before---
+import { createFederationBuilder } from "@fedify/fedify";
+import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+
+const builder = createFederationBuilder<Env>();
+
+builder.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+  // Actor logic...
+  // ---cut-start---
+  return new Person({});
+  // ---cut-end---
+});
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const federation = await builder.build({
+      kv: new WorkersKvStore(env.KV_NAMESPACE),
+      queue: new WorkersMessageQueue(env.QUEUE),
+    });
+    return federation.fetch(request, { contextData: env });
+  },
+};
+~~~~
+
+#### Manual queue processing
+
+Cloudflare Queues deliver messages by invoking your Worker's `queue()`
+export rather than via a polling API, so `WorkersMessageQueue` cannot
+implement `~MessageQueue.listen()` the traditional way.  Wire the handler
+manually:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederationBuilder, type Message } from "@fedify/fedify";
+import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+
+type Env = {
+  KV_NAMESPACE: KVNamespace<string>;
+  QUEUE: Queue;
+};
+
+const builder = createFederationBuilder<Env>();
+// ---cut-before---
+export default {
+  // ... fetch handler above
+
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    const federation = await builder.build({
+      kv: new WorkersKvStore(env.KV_NAMESPACE),
+      queue: new WorkersMessageQueue(env.QUEUE),
+    });
+
+    for (const message of batch.messages) {
+      try {
+        await federation.processQueuedTask(
+          env,
+          message.body as unknown as Message,
+        );
+        message.ack();
+      } catch {
+        message.retry();
+      }
+    }
+  },
+};
+~~~~
+
+If you use ordering keys, instantiate `WorkersMessageQueue` with an
+`orderingKv` namespace and call `WorkersMessageQueue.processMessage()`
+before `Federation.processQueuedTask()`.  See the
+[*`WorkersMessageQueue`*](./mq.md#workersmessagequeue-cloudflare-workers-only)
+section for a complete example.
+
+#### Native retry
+
+Cloudflare Queues provide native retry with exponential backoff and
+dead-letter queue support, which Fedify recognizes through
+[`~MessageQueue.nativeRetrial`].  When native retry is available, Fedify
+skips its own retry logic and relies on the backend.  Configure
+`max_retries` and a `dead_letter_queue` in your Queue definition in
+*wrangler.jsonc* rather than in application code.
+
+#### Secrets and WAF
+
+Store secrets with `wrangler secret put` rather than committing them to
+*wrangler.jsonc*'s `vars` section.  The `vars` section is visible in the
+dashboard and to anyone with read access to the Worker; `secrets` are
+encrypted.
+
+Cloudflare's default WAF Bot Protection and “Managed Challenge” rules
+sometimes treat fediverse user agents or the `application/activity+json`
+content type as suspicious and challenge them, which breaks federation
+silently (remote servers don't solve CAPTCHAs).  If your Worker sits
+behind a Cloudflare WAF, add a skip rule for requests whose `Accept` or
+`Content-Type` contains `application/activity+json` or
+`application/ld+json`, and whitelist known-good fediverse user agents.
+
+#### Example deployment
+
+For a complete working example, see the [Cloudflare Workers example] in
+the Fedify repository, which demonstrates a minimal ActivityPub server
+deployed to Workers.
+
+[Cloudflare Workers]: https://workers.cloudflare.com/
+[Node.js compatibility]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+[`~MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
+[Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
+
+### Deno Deploy
+
+[Deno Deploy] is a serverless platform for Deno applications with global
+distribution and built-in persistence through Deno KV.  At the time of
+writing, Deno Deploy offers two products:
+
+ -  **Deno Deploy Early Access (EA)** is the current generation and the
+    one you should target for new deployments.  It runs on Deno 2 with
+    improved cold-start behavior, native HTTP/3, and first-class
+    OpenTelemetry support.
+ -  **Deno Deploy Classic** is the previous generation.  It is now
+    deprecated and in maintenance mode; existing applications continue to
+    run but new deployments should use EA.
+
+Fedify targets Deno Deploy (both EA and Classic) through the
+[`@fedify/denokv`] package, which exposes `DenoKvStore` and
+`DenoKvMessageQueue`.  Deno Deploy EA's Deno KV is automatically
+available—no configuration required, no separate database to provision:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+
+const federation = createFederation<void>({
+  kv: new DenoKvStore(kv),
+  queue: new DenoKvMessageQueue(kv),
+  // Other configuration...
+});
+
+Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
+~~~~
+
+`DenoKvMessageQueue` exposes native retry via
+[`~MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
+Deno KV's built-in exponential-backoff mechanism.
+
+[Deno Deploy]: https://deno.com/deploy
+[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
