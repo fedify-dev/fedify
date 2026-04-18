@@ -263,6 +263,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       deployment_url: ${{ steps.wrangler.outputs.deployment-url }}
     steps:
