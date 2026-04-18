@@ -1096,9 +1096,19 @@ Person {
 ### Searching for the blog on ActivityPub.Academy
 
 With the server publicly accessible, head to [ActivityPub.Academy]—a
-sandbox Mastodon instance designed for ActivityPub testing—and sign in
-(or create a free test account).  Once logged in, type the blog's handle
-into the search box and press <kbd>Enter</kbd>:
+sandbox Mastodon instance designed for ActivityPub testing.  Unlike a
+regular Mastodon server, ActivityPub.Academy issues a temporary anonymous
+account on the spot: there is no email or password.  Accounts are
+automatically deleted after 24 hours, but you can always create a fresh
+one.
+
+To get an account, check **I have read and agree to the privacy policy**
+and click **Sign up**:
+
+![ActivityPub.Academy sign-up page showing the privacy policy checkbox and Sign up button](./astro-blog/activitypub-academy-signup.png)
+
+Once signed in, type the blog's handle into the search box and press
+<kbd>Enter</kbd>:
 
 ~~~~ console
 @blog@3f8a2b1c4d5e6f.lhr.life
