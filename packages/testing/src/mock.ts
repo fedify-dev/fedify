@@ -90,7 +90,9 @@ function validateOutboxListenerPath(
     (match) => match[2],
   );
   if (variables.length !== 1 || variables[0] !== "identifier") {
-    throw new TypeError("Path for outbox must have one variable: {identifier}");
+    throw new TypeError(
+      "Path for outbox must have exactly one variable named identifier.",
+    );
   }
 }
 
@@ -300,6 +302,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setOutboxDispatcher(path: any, dispatcher: any): any {
+    validateOutboxListenerPath(
+      path,
+      this.outboxListenersInitialized ? this.outboxPath : undefined,
+    );
     this.outboxDispatcher = dispatcher;
     this.outboxPath = path;
     return {

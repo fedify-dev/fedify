@@ -980,6 +980,23 @@ test("setOutboxListeners validates dispatcher path compatibility", () => {
   );
 });
 
+test("setOutboxDispatcher validates listener path compatibility", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setOutboxListeners("/users/{identifier}/outbox");
+
+  assertThrows(
+    () =>
+      mockFederation.setOutboxDispatcher("/actors/{identifier}/outbox", () => ({
+        items: [],
+      })),
+    TypeError,
+    "Outbox listener path must match outbox dispatcher path.",
+  );
+});
+
 test("setOutboxListeners validates path variables", () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
@@ -991,14 +1008,14 @@ test("setOutboxListeners validates path variables", () => {
         "/users/outbox" as `${string}{identifier}${string}`,
       ),
     TypeError,
-    "Path for outbox must have one variable: {identifier}",
+    "Path for outbox must have exactly one variable named identifier.",
   );
 
   assertThrows(
     () =>
       mockFederation.setOutboxListeners("/users/{identifier}/outbox/{extra}"),
     TypeError,
-    "Path for outbox must have one variable: {identifier}",
+    "Path for outbox must have exactly one variable named identifier.",
   );
 });
 
