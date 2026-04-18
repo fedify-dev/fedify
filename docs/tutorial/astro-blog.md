@@ -1102,8 +1102,8 @@ account on the spot: there is no email or password.  Accounts are
 automatically deleted after 24 hours, but you can always create a fresh
 one.
 
-To get an account, check **I have read and agree to the privacy policy**
-and click **Sign up**:
+To get an account, check *I have read and agree to the privacy policy*
+and click *Sign up*:
 
 ![ActivityPub.Academy sign-up page showing the privacy policy checkbox and Sign up button](./astro-blog/activitypub-academy-signup.png)
 
@@ -1120,7 +1120,7 @@ the handle.  You should see the blog appear in the search results:
 ![ActivityPub.Academy search box showing the blog handle, with matching profile result](./astro-blog/mastodon-search.png)
 
 > [!NOTE]
-> You must be **signed in** for remote actor resolution to work.
+> You must be *signed in* for remote actor resolution to work.
 > Unauthenticated searches only show locally cached results, so the
 > blog won't appear if you search without logging in first.
 
@@ -1340,7 +1340,7 @@ your blog's handle:
 @blog@3f8a2b1c4d5e6f.lhr.life
 ~~~~
 
-Click **Follow**.  Within a second or two, you should see a log message in
+Click *Follow*.  Within a second or two, you should see a log message in
 your dev server terminal:
 
 ~~~~ console
@@ -1351,7 +1351,7 @@ Refresh the home page—the follower count should now read `1 follower`:
 
 ![Blog home page showing “1 follower” in the tagline](./astro-blog/blog-home-followers.png)
 
-To test unfollowing, click **Unfollow** on ActivityPub.Academy.  The follower
+To test unfollowing, click *Unfollow* on ActivityPub.Academy.  The follower
 count should drop back to 0.
 
 > [!NOTE]
