@@ -1255,7 +1255,7 @@ test("MockContext getOutboxUri supports reserved expansion", () => {
 
   assertEquals(
     context.getOutboxUri("alice/profile").href,
-    "https://example.com/actors/alice%2Fprofile/outbox",
+    "https://example.com/actors/alice/profile/outbox",
   );
 });
 
@@ -1270,7 +1270,7 @@ test("MockContext getOutboxUri supports path-segment expansion", () => {
 
   assertEquals(
     context.getOutboxUri("alice/profile").href,
-    "https://example.com/actors/alice/profile/outbox",
+    "https://example.com/actors/alice%2Fprofile/outbox",
   );
 });
 
