@@ -578,59 +578,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       request,
       this.contextData as TContextData,
     );
-
-    const actor = await baseContext.getActor(identifier);
-    if (actor == null) {
-      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
-    }
-    const authorizePredicate = this.outboxAuthorizePredicate ??
-      this.outboxDispatcherAuthorizePredicate;
-    if (
-      authorizePredicate != null &&
-      !await authorizePredicate(baseContext, identifier)
-    ) {
-      throw new Error("Unauthorized.");
-    }
-
-    const expectedActorId = actor.id ?? baseContext.getActorUri(identifier);
-    if (activity.actorIds.length < 1) {
-      const error = new Error("The posted activity has no actor.");
-      await this.outboxListenerErrorHandler?.(
-        createOutboxContext({
-          ...baseContext,
-          clone: undefined,
-          federation: this as any,
-          identifier,
-        }),
-        error,
-      );
-      throw error;
-    }
-    if (
-      !activity.actorIds.every((actorId) =>
-        actorId.href === expectedActorId.href
-      )
-    ) {
-      const error = new Error(
-        "The activity actor does not match the outbox owner.",
-      );
-      await this.outboxListenerErrorHandler?.(
-        createOutboxContext({
-          ...baseContext,
-          clone: undefined,
-          federation: this as any,
-          identifier,
-        }),
-        error,
-      );
-      throw error;
-    }
-
-    if (listener == null) return;
-
-    if (listener != null) {
-      const rawActivity = postedJson;
-      const context = createOutboxContext({
+    const rawActivity = postedJson;
+    const createMockOutboxContext = () =>
+      createOutboxContext({
         ...baseContext,
         clone: undefined,
         federation: this as any,
@@ -654,6 +604,42 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           );
         },
       });
+
+    const actor = await baseContext.getActor(identifier);
+    if (actor == null) {
+      throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
+    }
+    const authorizePredicate = this.outboxAuthorizePredicate ??
+      this.outboxDispatcherAuthorizePredicate;
+    if (
+      authorizePredicate != null &&
+      !await authorizePredicate(baseContext, identifier)
+    ) {
+      throw new Error("Unauthorized.");
+    }
+
+    const expectedActorId = actor.id ?? baseContext.getActorUri(identifier);
+    if (activity.actorIds.length < 1) {
+      const error = new Error("The posted activity has no actor.");
+      await this.outboxListenerErrorHandler?.(createMockOutboxContext(), error);
+      throw error;
+    }
+    if (
+      !activity.actorIds.every((actorId) =>
+        actorId.href === expectedActorId.href
+      )
+    ) {
+      const error = new Error(
+        "The activity actor does not match the outbox owner.",
+      );
+      await this.outboxListenerErrorHandler?.(createMockOutboxContext(), error);
+      throw error;
+    }
+
+    if (listener == null) return;
+
+    if (listener != null) {
+      const context = createMockOutboxContext();
       try {
         await listener(context, activity);
       } catch (error) {

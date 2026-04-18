@@ -560,6 +560,47 @@ test("postOutboxActivity routes missing actor through onError", async () => {
   assertEquals(handled, "The posted activity has no actor.");
 });
 
+test("postOutboxActivity onError can forward after validation failure", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .onError(async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+      );
+    })
+    .on(Create, () => {
+      throw new Error("listener should not run");
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/bob"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "The activity actor does not match the outbox owner.",
+  );
+  assertEquals(mockFederation.sentActivities.length, 1);
+  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  assertEquals(mockFederation.sentActivities[0].rawActivity != null, true);
+});
+
 test("postOutboxActivity missing owner does not invoke onError", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
