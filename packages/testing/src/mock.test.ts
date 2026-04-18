@@ -1279,7 +1279,7 @@ test("MockContext rejects query expansion for outbox paths", () => {
   assertThrows(
     () => mockFederation.setOutboxListeners("/actors/outbox{?identifier}"),
     TypeError,
-    "Path for outbox must have exactly one variable named identifier.",
+    "Path for outbox cannot use query or fragment expansion for identifier.",
   );
 });
 

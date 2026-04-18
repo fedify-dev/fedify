@@ -57,7 +57,7 @@ const noopTracerProvider: any = {
 };
 
 /**
- * Helper function to expand single-variable URI templates used by the mock.
+ * Helper function to expand URI templates used by the mock.
  * Supports the RFC 6570 operators accepted by Fedify's identifier paths.
  * @param template The URI template pattern
  * @param values The values to substitute
@@ -115,7 +115,7 @@ function validateOutboxListenerPath(
     )
   ) {
     throw new TypeError(
-      "Path for outbox must have exactly one variable named identifier.",
+      "Path for outbox cannot use query or fragment expansion for identifier.",
     );
   }
   const variables = operatorMatches.map((match) => match[2]);
