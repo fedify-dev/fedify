@@ -2090,7 +2090,7 @@ export async function syncPosts(
         { identifier: BLOG_IDENTIFIER },
         recipients,
         new Create({
-          id: new URL(`#create`, articleId),
+          id: new URL(`#create-${Date.now()}`, articleId),
           actor: actorUri,
           to: AS_PUBLIC,
           object: article,
@@ -2132,7 +2132,7 @@ export async function syncPosts(
         { identifier: BLOG_IDENTIFIER },
         recipients,
         new Delete({
-          id: new URL(`#delete-${slug}`, actorUri),
+          id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
           actor: actorUri,
           to: AS_PUBLIC,
           object: new URL(row.url),
