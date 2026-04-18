@@ -319,7 +319,9 @@ test(
       actor: "https://example.com/users/alice",
       signature: {
         type: "Ed25519Signature2020",
-        verificationMethod: "https://example.com/users/alice#main-key",
+        verificationMethod: {
+          id: "https://example.com/users/alice#main-key",
+        },
         jws: "signature",
       },
     };
@@ -679,6 +681,48 @@ test("postOutboxActivity enforces authorize predicate", async () => {
     "Unauthorized.",
   );
   assertEquals(called, false);
+});
+
+test("postOutboxActivity authorize predicate can inspect posted body", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let seenBody = "";
+  let called = false;
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .authorize(async (ctx) => {
+      seenBody = await ctx.request.text();
+      return true;
+    })
+    .on(Create, () => {
+      called = true;
+    });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  assertEquals(seenBody.length > 0, true);
+  assertEquals(
+    seenBody.includes('"https://www.w3.org/ns/activitystreams#actor"'),
+    true,
+  );
+  assertEquals(seenBody.includes("alice"), true);
+  assertEquals(called, true);
 });
 
 test("postOutboxActivity falls back to dispatcher authorize predicate", async () => {

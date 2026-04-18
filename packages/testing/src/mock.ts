@@ -560,8 +560,13 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       origin,
       this.contextData as TContextData,
     );
+    const postedJson = await activity.toJsonLd({
+      contextLoader: routingContext.contextLoader,
+    });
     const request = new Request(routingContext.getOutboxUri(identifier), {
       method: "POST",
+      body: JSON.stringify(postedJson),
+      headers: { "content-type": "application/activity+json" },
     });
     const baseContext = this.createContext(
       request,
@@ -618,9 +623,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (listener == null) return;
 
     if (listener != null) {
-      const rawActivity = await activity.toJsonLd({
-        contextLoader: baseContext.contextLoader,
-      });
+      const rawActivity = postedJson;
       const context = createOutboxContext({
         ...baseContext,
         clone: undefined,
