@@ -642,7 +642,7 @@ solution and migrate to SQLite in a later chapter.
 
 Create the file *src/lib/store.ts*:
 
-~~~~ typescript [src/lib/store.ts]
+~~~~ typescript twoslash [src/lib/store.ts]
 // In-memory store for key pairs and followers.
 // Uses globalThis to persist across Astro module reloads in dev mode.
 // This data is lost when the server restarts — we'll fix that in a later
@@ -678,7 +678,8 @@ Chapter 6—it's easier to keep both maps in the same place.
 Now let's update *src/federation.ts* to implement the actor.  Replace the
 entire file with:
 
-~~~~ typescript [src/federation.ts]
+~~~~ typescript twoslash [src/federation.ts]
+// @noErrors
 import {
   createFederation,
   generateCryptoKeyPair,
@@ -1028,7 +1029,8 @@ configuration, Fedify would generate `http://` actor IDs rather than
 To fix this, update *src/middleware.ts* to rewrite the request URL based on
 the `X-Forwarded-Proto` header that the tunnel sets:
 
-~~~~ typescript [src/middleware.ts]
+~~~~ typescript twoslash [src/middleware.ts]
+// @noErrors
 import { fedifyMiddleware } from "@fedify/astro";
 import type { MiddlewareHandler } from "astro";
 import federation from "./federation.ts";
@@ -1138,7 +1140,8 @@ follower count on the home page.
 
 Replace *src/federation.ts* with the following:
 
-~~~~ typescript [src/federation.ts]
+~~~~ typescript twoslash [src/federation.ts]
+// @noErrors
 import {
   createFederation,
   generateCryptoKeyPair,
@@ -1386,7 +1389,8 @@ Then tell TypeScript to include those declarations by adding a
 Create a new file *src/lib/db.ts* that opens the database and defines the
 schema:
 
-~~~~ typescript [src/lib/db.ts]
+~~~~ typescript twoslash [src/lib/db.ts]
+// @noErrors
 import { Database } from "bun:sqlite";
 
 const db = new Database("blog.db");
@@ -1431,7 +1435,8 @@ The schema has two tables:
 Replace the entire contents of *src/lib/store.ts* with SQLite-backed
 functions:
 
-~~~~ typescript [src/lib/store.ts]
+~~~~ typescript twoslash [src/lib/store.ts]
+// @noErrors
 import db from "./db.ts";
 
 export async function getKeyPairs(
@@ -1559,7 +1564,8 @@ functions.
 *src/federation.ts* now imports functions from the new store instead of
 `Map` objects.  Replace the import line and update the two dispatcher bodies:
 
-~~~~ typescript [src/federation.ts]
+~~~~ typescript twoslash [src/federation.ts]
+// @noErrors
 import {
   createFederation,
   generateCryptoKeyPair,
@@ -1720,3 +1726,472 @@ list.
 > ~~~~ sh
 > echo "blog.db" >> .gitignore
 > ~~~~
+
+Publishing posts
+================
+
+The blog now survives restarts—but followers still don't see its posts.  In
+this chapter we'll add a *startup sync* that compares the current Astro content
+collection against the SQLite `posts` table and sends the appropriate
+ActivityPub activities to all followers.
+
+The mechanism works like this:
+
+ -  A post that exists in the collection but **not** in the database is *new*:
+    send `Create(Article)`.
+ -  A post that exists in both but whose content has changed is *updated*:
+    send `Update(Article)`.
+ -  A post that exists in the database but **not** in the collection has been
+    *deleted*: send `Delete(Article)`.
+
+After sending, the database is brought in sync.  On the next restart, unchanged
+posts produce no activity.
+
+### What is an article?
+
+In ActivityPub, a blog post is represented as an `Article` object.  The
+vocabulary defines several standard properties for it:
+
+ -  **`id`** — the ActivityPub object ID (also the URL that content-negotiates
+    between HTML and JSON-LD)
+ -  **`attribution`** — the actor who wrote the post
+ -  **`name`** — the post title
+ -  **`summary`** — a short description
+ -  **`content`** — the post body as HTML
+ -  **`url`** — the canonical URL of the HTML page (same as `id` in our case)
+ -  **`published`** — the publication date as a `Temporal.Instant`
+
+### Adding the posts table
+
+Open *src/lib/db.ts* and add the `posts` table at the end:
+
+~~~~ typescript twoslash [src/lib/db.ts]
+// @noErrors
+import { Database } from "bun:sqlite";
+
+const db = new Database("blog.db");
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS key_pairs (
+    identifier TEXT NOT NULL,
+    algorithm  TEXT NOT NULL,
+    private_key BLOB NOT NULL,
+    public_key  BLOB NOT NULL,
+    PRIMARY KEY (identifier, algorithm)
+  )
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS followers (
+    actor_id  TEXT PRIMARY KEY,
+    inbox_url TEXT NOT NULL
+  )
+`);
+// ---cut-before---
+db.run(`
+  CREATE TABLE IF NOT EXISTS posts (
+    id           TEXT PRIMARY KEY,
+    title        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    published_at TEXT NOT NULL
+  )
+`);
+
+export default db;
+~~~~
+
+The `id` column stores the Astro content collection slug (e.g.,
+`hello-fediverse`).  `url` is the ActivityPub ID of the Article—it doubles
+as the HTML page URL since we'll share the path `/posts/{slug}` between Astro
+and Fedify via content negotiation.  `content_hash` is a SHA-256 digest of the
+title and body, used to detect edits.
+
+### Adding an article object dispatcher
+
+When a remote server receives a `Create(Article)` activity, it will
+dereference the `Article.id` URL to fetch the full object.  Without an object
+dispatcher, Fedify would return 404.
+
+Add the following dispatcher to *src/federation.ts* (just before
+`export default federation`):
+
+~~~~ typescript twoslash [src/federation.ts]
+// @noErrors
+import { getCollection } from "astro:content";
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import {
+  Accept,
+  Article,
+  Endpoints,
+  Follow,
+  Person,
+  Undo,
+} from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { getLogger } from "@logtape/logtape";
+import {
+  addFollower,
+  getFollowers,
+  getKeyPairs,
+  removeFollower,
+  saveKeyPairs,
+} from "./lib/store.ts";
+
+const logger = getLogger("astro-blog");
+
+export const BLOG_IDENTIFIER = "blog";
+export const BLOG_NAME = "Fedify Blog Example";
+export const BLOG_SUMMARY =
+  "A sample federated blog powered by Fedify and Astro.";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) {
+      logger.debug("Unknown actor identifier: {identifier}", { identifier });
+      return null;
+    }
+    const kp = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: BLOG_NAME,
+      summary: BLOG_SUMMARY,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: kp[0].cryptographicKey,
+      assertionMethods: kp.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return [];
+    const stored = await getKeyPairs(identifier);
+    if (stored) return stored;
+    const [rsaKey, ed25519Key] = await Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]);
+    const kp = [rsaKey, ed25519Key];
+    await saveKeyPairs(identifier, kp);
+    return kp;
+  });
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.actorId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor" || parsed.identifier !== BLOG_IDENTIFIER) {
+      return;
+    }
+    const follower = await follow.getActor(ctx);
+    if (follower == null || follower.id == null || follower.inboxId == null) {
+      return;
+    }
+    addFollower(follower.id.href, follower.inboxId.href);
+    logger.info("New follower: {follower}", { follower: follower.id.href });
+    await ctx.sendActivity(
+      { identifier: BLOG_IDENTIFIER },
+      follower,
+      new Accept({
+        id: new URL(
+          `#accepts/${follower.id.href}`,
+          ctx.getActorUri(BLOG_IDENTIFIER),
+        ),
+        actor: ctx.getActorUri(BLOG_IDENTIFIER),
+        object: follow,
+      }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null) return;
+    removeFollower(undo.actorId.href);
+    logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return null;
+    return { items: getFollowers() };
+  },
+);
+// ---cut-before---
+federation.setObjectDispatcher(
+  Article,
+  "/posts/{slug}",
+  async (ctx, { slug }) => {
+    const allPosts = await getCollection("posts");
+    const post = allPosts.find((p) => p.id === slug && !p.data.draft);
+    if (!post) return null;
+    return new Article({
+      id: ctx.getObjectUri(Article, { slug }),
+      attribution: ctx.getActorUri(BLOG_IDENTIFIER),
+      name: post.data.title,
+      summary: post.data.description,
+      content: `<p>${post.data.description}</p>`,
+      url: new URL(`/posts/${slug}`, ctx.url),
+      published: Temporal.Instant.from(post.data.pubDate.toISOString()),
+    });
+  },
+);
+
+export default federation;
+~~~~
+
+`setObjectDispatcher` registers a path pattern (`/posts/{slug}`) and a
+callback that returns the ActivityPub object for that path.  The `{ slug }`
+destructuring extracts the path parameter.
+
+`ctx.getObjectUri(Article, { slug })` generates the canonical ActivityPub
+ID for the Article, e.g. `https://example.com/posts/hello-fediverse`.  This
+is the same URL as the HTML page—content negotiation (via the `Accept` header)
+determines which representation is served:
+
+ -  Browser sends `Accept: text/html, */*` → Astro renders the HTML page
+ -  ActivityPub client sends `Accept: application/activity+json` → Fedify
+    returns JSON-LD
+
+The `@fedify/astro` middleware handles this negotiation automatically.
+
+### Creating the publish module
+
+Create *src/lib/publish.ts*:
+
+~~~~ typescript twoslash [src/lib/publish.ts]
+// @noErrors
+import type { RequestContext } from "@fedify/fedify";
+import { Article, Create, Delete, Update } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { getCollection } from "astro:content";
+import { BLOG_IDENTIFIER } from "../federation.ts";
+import db from "./db.ts";
+import { getFollowers } from "./store.ts";
+
+async function hashPost(title: string, body: string): Promise<string> {
+  const data = new TextEncoder().encode(`${title}\n${body}`);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(buf)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+const AS_PUBLIC = new URL("https://www.w3.org/ns/activitystreams#Public");
+
+export async function syncPosts(
+  ctx: RequestContext<unknown>,
+): Promise<void> {
+  const recipients = getFollowers();
+  if (recipients.length === 0) return;
+
+  const allPosts = await getCollection("posts");
+  const current = allPosts.filter((p) => !p.data.draft);
+
+  type DbPost = { id: string; content_hash: string; url: string };
+  const storedRows = db
+    .query<DbPost, []>("SELECT id, content_hash, url FROM posts")
+    .all();
+  const stored = new Map(storedRows.map((r) => [r.id, r]));
+
+  const actorUri = ctx.getActorUri(BLOG_IDENTIFIER);
+  const currentIds = new Set<string>();
+
+  for (const post of current) {
+    const slug = post.id;
+    currentIds.add(slug);
+
+    const articleId = ctx.getObjectUri(Article, { slug });
+    const contentHash = await hashPost(post.data.title, post.body ?? "");
+
+    const article = new Article({
+      id: articleId,
+      attribution: actorUri,
+      name: post.data.title,
+      summary: post.data.description,
+      content: `<p>${post.data.description}</p>`,
+      url: new URL(`/posts/${slug}`, ctx.url),
+      published: Temporal.Instant.from(post.data.pubDate.toISOString()),
+    });
+
+    if (!stored.has(slug)) {
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        recipients,
+        new Create({
+          id: new URL(`#create`, articleId),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: article,
+        }),
+      );
+      db.run(
+        `INSERT INTO posts (id, title, url, content_hash, published_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          slug,
+          post.data.title,
+          articleId.href,
+          contentHash,
+          post.data.pubDate.toISOString(),
+        ],
+      );
+    } else if (stored.get(slug)?.content_hash !== contentHash) {
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        recipients,
+        new Update({
+          id: new URL(`#update-${Date.now()}`, articleId),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: article,
+        }),
+      );
+      db.run(
+        `UPDATE posts SET title = ?, content_hash = ?, published_at = ?
+         WHERE id = ?`,
+        [post.data.title, contentHash, post.data.pubDate.toISOString(), slug],
+      );
+    }
+  }
+
+  for (const [slug, row] of stored) {
+    if (!currentIds.has(slug)) {
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        recipients,
+        new Delete({
+          id: new URL(`#delete-${slug}`, actorUri),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: new URL(row.url),
+        }),
+      );
+      db.run("DELETE FROM posts WHERE id = ?", [slug]);
+    }
+  }
+}
+~~~~
+
+A few things to unpack here:
+
+**`hashPost`** computes a SHA-256 digest of the title and body concatenated
+together.  Any change to the post's title or text will change the hash.
+
+**`AS_PUBLIC`** is the ActivityPub [public addressing] URL.  Activities
+addressed `to` this URL are publicly visible on fediverse clients.
+
+**`getFollowers()`** returns the list of all followers from SQLite.
+`syncPosts` returns early if there are no followers—if nobody follows the
+blog, there's nobody to notify.
+
+**The loop** iterates over current non-draft posts and checks the SQLite
+table:
+
+ -  `!stored.has(slug)` → new post → `Create(Article)`
+ -  `stored.get(slug)?.content_hash !== contentHash` → changed post →
+    `Update(Article)`
+ -  Remaining slugs in `stored` that are not in `current` → deleted post →
+    `Delete(Article)`
+
+[public addressing]: https://www.w3.org/TR/activitypub/#public-addressing
+
+### Triggering the sync on startup
+
+Modify *src/middleware.ts* to call `syncPosts` once, on the first HTTP
+request, right after the X-Forwarded-Proto rewrite:
+
+~~~~ typescript twoslash [src/middleware.ts]
+// @noErrors
+import { fedifyMiddleware } from "@fedify/astro";
+import type { MiddlewareHandler } from "astro";
+import federation from "./federation.ts";
+import { syncPosts } from "./lib/publish.ts";
+import "./logging.ts";
+
+let synced = false;
+
+export const onRequest: MiddlewareHandler = (context, next) => {
+  // Rewrite the request URL scheme based on X-Forwarded-Proto when running
+  // behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
+  const proto = context.request.headers.get("x-forwarded-proto");
+  const url = new URL(context.request.url);
+  if (proto != null && url.protocol !== `${proto}:`) {
+    url.protocol = proto;
+    context.request = new Request(url.toString(), context.request);
+  }
+  if (!synced) {
+    synced = true;
+    const ctx = federation.createContext(context.request, undefined);
+    syncPosts(ctx).catch((err) => {
+      console.error("Failed to sync posts:", err);
+    });
+  }
+  return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);
+};
+~~~~
+
+`federation.createContext(request, contextData)` creates a Fedify
+[`RequestContext`] from the current HTTP request.  The context knows the
+server's public URL (including scheme and host), which it uses to generate
+correct ActivityPub IDs.
+
+`syncPosts(ctx)` is fired and *not* awaited, so it runs in the background
+while the response is served immediately.  The `synced` flag ensures it only
+runs once per server process.
+
+> [!TIP]
+> In production you could also trigger `syncPosts` from a startup script or a
+> deploy hook.  The fire-and-forget pattern shown here is simplest for a
+> development tutorial.
+
+[`RequestContext`]: https://jsr.io/@fedify/fedify/doc/~/RequestContext
+
+### Testing
+
+Follow the blog from Mastodon or ActivityPub.Academy (tunnel still required).
+Then add a new post file to *src/content/posts/*:
+
+~~~~ markdown [src/content/posts/new-post.md]
+---
+title: "A new post"
+pubDate: 2025-04-01
+description: "This post appears in followers' timelines."
+---
+
+Hello, followers!  This is a new post sent via ActivityPub.
+~~~~
+
+Restart the dev server:
+
+~~~~ sh
+bun run dev
+~~~~
+
+Within seconds you should see a log line like:
+
+~~~~ console
+18:42:02.456 INF @fedify/fedify Sent activity Create to ...
+~~~~
+
+Check your Mastodon or ActivityPub.Academy timeline—the new post should
+appear there.  The blog title and description are shown (we include the
+description as `content`).
+
+To test updates, change the title or description of the new post and
+restart.  To test deletion, remove the file and restart.
