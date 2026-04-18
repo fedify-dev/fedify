@@ -1342,4 +1342,381 @@ count should drop back to 0.
 > Followers are stored in memory and are lost when you restart the
 > server.  We'll fix this in the next chapter when we migrate to SQLite.
 
+Persisting data with SQLite
+===========================
+
+Our blog now handles followers—but there is a catch.  Every time you restart
+the dev server, both the key pairs and the follower list vanish.  This means
+the blog appears under a *different* public key after each restart, which
+causes all remote servers to reject its HTTP signatures.  Followers accumulated
+during a previous run are also gone, so the blog can no longer notify them of
+new posts.
+
+The fix is straightforward: persist everything in a SQLite database that
+survives restarts.  Bun ships with `bun:sqlite`, a zero-dependency, high-speed
+SQLite driver, so we don't need to install anything new.
+
 [ActivityPub.Academy]: https://activitypub.academy
+
+### Adding Bun-types
+
+`bun:sqlite` is a Bun built-in module.  Its TypeScript declarations are
+shipped in the `bun-types` package.  Install it as a dev dependency:
+
+~~~~ sh
+bun add -d bun-types
+~~~~
+
+Then tell TypeScript to include those declarations by adding a
+`compilerOptions` block to *tsconfig.json*:
+
+~~~~ json [tsconfig.json]
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "types": ["bun-types"]
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+~~~~
+
+### Creating the database module
+
+Create a new file *src/lib/db.ts* that opens the database and defines the
+schema:
+
+~~~~ typescript [src/lib/db.ts]
+import { Database } from "bun:sqlite";
+
+const db = new Database("blog.db");
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS key_pairs (
+    identifier TEXT NOT NULL,
+    algorithm  TEXT NOT NULL,
+    private_key BLOB NOT NULL,
+    public_key  BLOB NOT NULL,
+    PRIMARY KEY (identifier, algorithm)
+  )
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS followers (
+    actor_id  TEXT PRIMARY KEY,
+    inbox_url TEXT NOT NULL
+  )
+`);
+
+export default db;
+~~~~
+
+`new Database("blog.db")` creates `blog.db` in the project root on the first
+run and reopens it on subsequent runs.  The `CREATE TABLE IF NOT EXISTS`
+statements are idempotent, so they run safely every time the server starts.
+
+The schema has two tables:
+
+ -  **`key_pairs`** stores one row per cryptographic key.  The composite primary
+    key `(identifier, algorithm)` lets us store both the RSA-PKCS1-v1\_5 and
+    Ed25519 keys for the same actor.  Private and public key material are kept
+    as raw binary (`BLOB`) using the standard PKCS#8 and SPKI formats.
+
+ -  **`followers`** maps each follower's actor URL (`actor_id`) to their inbox
+    URL (`inbox_url`).  The actor URL is the primary key so that a second
+    `Follow` from the same actor simply overwrites the row.
+
+### Migrating the store
+
+Replace the entire contents of *src/lib/store.ts* with SQLite-backed
+functions:
+
+~~~~ typescript [src/lib/store.ts]
+import db from "./db.ts";
+
+export async function getKeyPairs(
+  identifier: string,
+): Promise<CryptoKeyPair[] | null> {
+  const rows = db
+    .query<
+      { algorithm: string; private_key: Uint8Array; public_key: Uint8Array },
+      [string]
+    >(
+      `SELECT algorithm, private_key, public_key
+       FROM key_pairs WHERE identifier = ? ORDER BY rowid`,
+    )
+    .all(identifier);
+  if (rows.length === 0) return null;
+  return Promise.all(
+    rows.map(async ({ algorithm, private_key, public_key }) => {
+      const alg: AlgorithmIdentifier | RsaHashedImportParams =
+        algorithm === "RSASSA-PKCS1-v1_5"
+          ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
+          : algorithm;
+      const [privateKey, publicKey] = await Promise.all([
+        crypto.subtle.importKey(
+          "pkcs8",
+          private_key as unknown as Uint8Array<ArrayBuffer>,
+          alg,
+          true,
+          ["sign"],
+        ),
+        crypto.subtle.importKey(
+          "spki",
+          public_key as unknown as Uint8Array<ArrayBuffer>,
+          alg,
+          true,
+          ["verify"],
+        ),
+      ]);
+      return { privateKey, publicKey };
+    }),
+  );
+}
+
+export async function saveKeyPairs(
+  identifier: string,
+  kp: CryptoKeyPair[],
+): Promise<void> {
+  const insert = db.prepare(
+    `INSERT OR REPLACE INTO key_pairs
+     (identifier, algorithm, private_key, public_key) VALUES (?, ?, ?, ?)`,
+  );
+  for (const { privateKey, publicKey } of kp) {
+    const [privateKeyData, publicKeyData] = await Promise.all([
+      crypto.subtle.exportKey("pkcs8", privateKey),
+      crypto.subtle.exportKey("spki", publicKey),
+    ]);
+    insert.run(
+      identifier,
+      privateKey.algorithm.name,
+      new Uint8Array(privateKeyData),
+      new Uint8Array(publicKeyData),
+    );
+  }
+}
+
+export function addFollower(actorId: string, inboxUrl: string): void {
+  db.run(
+    `INSERT OR REPLACE INTO followers (actor_id, inbox_url) VALUES (?, ?)`,
+    [actorId, inboxUrl],
+  );
+}
+
+export function removeFollower(actorId: string): void {
+  db.run(`DELETE FROM followers WHERE actor_id = ?`, [actorId]);
+}
+
+export function countFollowers(): number {
+  return (
+    db
+      .query<{ count: number }, []>(
+        `SELECT COUNT(*) AS count FROM followers`,
+      )
+      .get()?.count ?? 0
+  );
+}
+
+export function getFollowers(): { id: URL; inboxId: URL }[] {
+  return db
+    .query<{ actor_id: string; inbox_url: string }, []>(
+      `SELECT actor_id, inbox_url FROM followers`,
+    )
+    .all()
+    .map(({ actor_id, inbox_url }) => ({
+      id: new URL(actor_id),
+      inboxId: new URL(inbox_url),
+    }));
+}
+~~~~
+
+A few things worth noting here:
+
+**Key serialization.** `CryptoKey` objects exist only in memory—they cannot
+be stored directly.  We export private keys with [`crypto.subtle.exportKey`]
+using the PKCS#8 format and public keys using the SPKI format, both of which
+produce `ArrayBuffer` values that SQLite stores as BLOBs.  On the way back we
+call [`crypto.subtle.importKey`] with the reverse formats.  RSA keys also need
+the hash algorithm (SHA-256) specified at import time, so we branch on the
+algorithm name stored in the row.
+
+**BLOB return type.** Bun's SQLite driver returns BLOB columns as
+`Uint8Array<ArrayBufferLike>`, but the Web Crypto API's `importKey` expects
+`Uint8Array<ArrayBuffer>`.  The difference is purely a TypeScript typing
+issue—the underlying bytes are identical—so we silence it with
+`as unknown as Uint8Array<ArrayBuffer>`.
+
+**Synchronous followers.** Unlike key pairs, follower operations don't involve
+any cryptography, so the four follower functions (`addFollower`,
+`removeFollower`, `countFollowers`, `getFollowers`) are plain synchronous
+functions.
+
+[`crypto.subtle.exportKey`]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+[`crypto.subtle.importKey`]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/importKey
+
+### Updating the federation module
+
+*src/federation.ts* now imports functions from the new store instead of
+`Map` objects.  Replace the import line and update the two dispatcher bodies:
+
+~~~~ typescript [src/federation.ts]
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import {
+  addFollower,
+  getFollowers,
+  getKeyPairs,
+  removeFollower,
+  saveKeyPairs,
+} from "./lib/store.ts";
+
+const logger = getLogger("astro-blog");
+
+export const BLOG_IDENTIFIER = "blog";
+export const BLOG_NAME = "Fedify Blog Example";
+export const BLOG_SUMMARY =
+  "A sample federated blog powered by Fedify and Astro.";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) {
+      logger.debug("Unknown actor identifier: {identifier}", { identifier });
+      return null;
+    }
+    const kp = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: BLOG_NAME,
+      summary: BLOG_SUMMARY,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: kp[0].cryptographicKey,
+      assertionMethods: kp.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return [];
+    const stored = await getKeyPairs(identifier);
+    if (stored) return stored;
+    const [rsaKey, ed25519Key] = await Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]);
+    const kp = [rsaKey, ed25519Key];
+    await saveKeyPairs(identifier, kp);
+    return kp;
+  });
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.actorId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor" || parsed.identifier !== BLOG_IDENTIFIER) {
+      return;
+    }
+    const follower = await follow.getActor(ctx);
+    if (follower == null || follower.id == null || follower.inboxId == null) {
+      return;
+    }
+    addFollower(follower.id.href, follower.inboxId.href);
+    logger.info("New follower: {follower}", { follower: follower.id.href });
+    await ctx.sendActivity(
+      { identifier: BLOG_IDENTIFIER },
+      follower,
+      new Accept({
+        id: new URL(
+          `#accepts/${follower.id.href}`,
+          ctx.getActorUri(BLOG_IDENTIFIER),
+        ),
+        actor: ctx.getActorUri(BLOG_IDENTIFIER),
+        object: follow,
+      }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null) return;
+    removeFollower(undo.actorId.href);
+    logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return null;
+    return { items: getFollowers() };
+  },
+);
+
+export default federation;
+~~~~
+
+The key changes are:
+
+ -  `keyPairs.get(identifier)` → `await getKeyPairs(identifier)`
+ -  `keyPairs.set(identifier, kp)` → `await saveKeyPairs(identifier, kp)`
+ -  `followers.set(...)` → `addFollower(...)`
+ -  `followers.delete(...)` → `removeFollower(...)`
+ -  `Array.from(followers.entries()).map(...)` → `getFollowers()`
+
+### Updating the home page
+
+*src/pages/index.astro* used to read `followers.size` directly from the
+in-memory `Map`.  Now it calls `countFollowers()`:
+
+~~~~ astro [src/pages/index.astro]
+---
+import { getCollection } from "astro:content";
+import { BLOG_IDENTIFIER, BLOG_NAME } from "../federation.ts";
+import Layout from "../layouts/Layout.astro";
+import { countFollowers } from "../lib/store.ts";
+
+const allPosts = await getCollection("posts");
+const posts = allPosts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const followerCount = countFollowers();
+const handle = `@${BLOG_IDENTIFIER}@${Astro.url.host}`;
+---
+~~~~
+
+### Trying it out
+
+Restart the dev server and follow the blog from ActivityPub.Academy (using a
+tunnel as described in the previous chapters).  Stop the server, restart it,
+and verify that:
+
+1.  The follower count on the home page still shows the correct number.
+2.  `fedify lookup http://localhost:4321/users/blog` returns the same actor
+    with the same key fingerprints as before the restart.
+
+You should see a *blog.db* file appear in the project root after the first
+run.  This file contains both your persistent key material and the follower
+list.
+
+> [!TIP]
+> Add *blog.db* to *.gitignore* to avoid committing your private keys to
+> version control:
+>
+> ~~~~ sh
+> echo "blog.db" >> .gitignore
+> ~~~~
