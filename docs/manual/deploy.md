@@ -1190,3 +1190,113 @@ Keep the system clock in sync
     issue after reverse-proxy misconfiguration.
 
 [oliphant/blocklists]: https://codeberg.org/oliphant/blocklists
+
+
+Observability in production
+---------------------------
+
+Federation failures are often silent.  An outbox that falls behind, a remote
+server that starts rejecting your signatures, a queue consumer that
+crashes—none of these necessarily produce an alert from basic HTTP
+monitoring, and the resulting trust-cache divergence between your server and
+its peers is hard to diagnose after the fact.  The best defense is the
+observability you set up before launch.
+
+The details of Fedify's logging and tracing APIs belong in their own
+chapters; this section covers only what's different about using them in
+production.
+
+### Structured logging
+
+Fedify uses [LogTape] for logging.  See the [*Logging* chapter](./log.md)
+for the full API, including how to configure per-category log levels for
+Fedify, your application, and dependencies.  For production specifically:
+
+ -  Emit structured logs (JSON Lines or similar) rather than free-form
+    text.  It takes the same amount of effort at write time and makes log
+    aggregation, filtering, and alerting dramatically easier later.
+ -  Send logs to stderr only.  stdout is conventionally reserved for
+    application output that a shell pipeline might consume, and in
+    practice mixing the two produces unreadable logs when the orchestrator
+    captures both streams.  systemd's `StandardOutput=journal`/
+    `StandardError=journal` and Docker's default both handle this
+    correctly if you keep the streams separate.
+ -  Default the log level to `info` or `warn`.  `debug` generates enough
+    output from Fedify and its dependencies to fill a disk on a busy
+    server; enable it per-category when investigating.
+ -  Redact sensitive fields before they reach disk.  Actor private keys,
+    session tokens, authorization headers, and user email addresses should
+    never appear in logs.  LogTape's filter API is the place to attach this
+    transformation; do it once at the sink boundary rather than sprinkling
+    it through call sites.
+
+[LogTape]: https://logtape.org/
+
+### Distributed tracing
+
+Fedify is instrumented for [OpenTelemetry] out of the box.  See the
+[*OpenTelemetry* chapter](./opentelemetry.md) for the setup details,
+including the auto-instrumentation packages that capture ActivityPub
+operations across your infrastructure.  For production:
+
+ -  Export traces via OTLP to whichever backend your organization uses
+    (Jaeger, Tempo, Honeycomb, Datadog, Grafana Cloud—all speak OTLP).
+    Configure the exporter through standard `OTEL_EXPORTER_OTLP_ENDPOINT`
+    environment variables rather than hardcoding URLs.
+ -  Sample aggressively in production.  A 100% sampling rate is fine in
+    staging and prohibitively expensive under real traffic; 1–10%
+    head-based sampling with tail-based error sampling is a common
+    compromise.
+ -  On Deno, remember to pass `--unstable-otel` to enable the built-in
+    OpenTelemetry integration.
+ -  On Cloudflare Workers, use Workers Observability (enable
+    `observability.enabled: true` in *wrangler.jsonc*) or a Workers-native
+    tracing integration; OTLP export from inside a Worker is possible but
+    not the default path.
+
+[OpenTelemetry]: https://opentelemetry.io/
+
+### Error reporting
+
+For error aggregation, the pattern most Fedify applications use is a
+LogTape sink that forwards error-level records to [Sentry] via
+[`@logtape/sentry`].  This way you keep a single logging surface (LogTape)
+while picking up Sentry's grouping, release tracking, and issue assignment
+without a second instrumentation library.
+
+[Sentry]: https://sentry.io/
+[`@logtape/sentry`]: https://jsr.io/@logtape/sentry
+
+### What to actually monitor
+
+The four metrics that correlate most directly with federation health:
+
+Queue depth
+:   How many outgoing activities are waiting in the queue.  A steadily
+    growing queue is the earliest sign that your worker nodes can't keep
+    up with traffic.  Depth that never drains to zero during low-traffic
+    periods means you are permanently falling behind.
+
+Inbox processing latency
+:   The time between accepting an inbox request and finishing the side
+    effects it triggers.  Spikes typically correlate with either a queue
+    backlog or a slow external dependency (database, remote signature
+    fetch).
+
+Outbox delivery success rate
+:   The fraction of outgoing activities that receive a 2xx response from
+    the target inbox.  A drop from 95%+ to 80% probably means specific
+    instances are blocking or rate-limiting you; a drop across the board
+    means an outage at your end.
+
+Remote 410/404 rate
+:   The rate at which inbox deliveries hit 410 Gone or 404 Not Found
+    responses.  Some baseline is normal (actors get deleted), but sudden
+    spikes often mean a large remote instance shut down or changed paths;
+    `permanentFailureStatusCodes` means Fedify will stop retrying these,
+    but you may want to prune orphan follower records yourself.
+
+Any competent metrics backend will also want the usual process-level
+signals: CPU, RSS, event-loop lag, GC pauses, connection pool utilization
+for your KV/MQ backend.  None of these are Fedify-specific, but all of
+them should be in place before you take real traffic.
