@@ -2194,11 +2194,12 @@ export const onRequest: MiddlewareHandler = (context, next) => {
   if (proto != null || host != null) {
     context.request = new Request(url.toString(), context.request);
   }
-  if (!synced) {
+  if (!synced && context.request.headers.get("x-forwarded-host") != null) {
     synced = true;
     const ctx = federation.createContext(context.request, undefined);
     syncPosts(ctx).catch((err) => {
       console.error("Failed to sync posts:", err);
+      synced = false;
     });
   }
   return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);
@@ -2214,8 +2215,11 @@ point, `context.request` always carries the correct public URL when the
 request arrives through the tunnel.
 
 `syncPosts(ctx)` is fired and *not* awaited, so it runs in the background
-while the response is served immediately.  The `synced` flag ensures it only
-runs once per server process.
+while the response is served immediately.  The `synced` flag guards against
+double-firing: it is set on the first request that arrives with an
+`X-Forwarded-Host` header (i.e., the first tunnel request), and reset to
+`false` if `syncPosts` throws so that a transient failure does not
+permanently suppress activity delivery.
 
 > [!TIP]
 > In production you could also trigger `syncPosts` from a startup script or a
