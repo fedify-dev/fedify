@@ -1300,3 +1300,157 @@ Any competent metrics backend will also want the usual process-level
 signals: CPU, RSS, event-loop lag, GC pauses, connection pool utilization
 for your KV/MQ backend.  None of these are Fedify-specific, but all of
 them should be in place before you take real traffic.
+
+
+ActivityPub-specific operational concerns
+-----------------------------------------
+
+Generic deployment guides tell you how to keep a web service running.  The
+items in this section are specific to ActivityPub and the fediverse, and
+they are the ones that surprise first-time operators because nothing else
+on the modern web behaves this way.  None of them are optional for a
+server that expects to stay federated over the long term.
+
+### Domain name permanence
+
+**A Fedify server's domain name is effectively permanent.**  Once actors on
+your server have federated out—been followed, been mentioned, had their
+posts cached or boosted—remote servers store their URIs, which include
+your domain, in their local databases.  Those stored URIs don't renegotiate
+when your domain changes.  If you move to a new domain:
+
+ -  Every follow relationship for every actor breaks.  Remote servers
+    continue to POST to the old domain's inbox URL and either fail or
+    deliver to a different server entirely.
+ -  Thread continuity breaks.  Replies to your existing posts, if they
+    reference your posts by URI, become orphaned.
+ -  Actor identity breaks.  An actor at `@alice@new.example` is,
+    federation-wise, a different actor from `@alice@old.example`; followers
+    do not carry over.
+
+ActivityPub defines a [`Move`] activity that partially mitigates this by
+asking followers to migrate, but:
+
+ -  Not every fediverse server implements `Move`.
+ -  `Move` transfers the follower graph but not the actor's history, posts,
+    interactions, or mutual relationships.
+ -  Remote servers that have cached your old actor under a blocklist will
+    not automatically apply the block to the new one.
+
+Pick your final domain before you federate.  If you are not sure your
+current domain will survive, deploy first to a subdomain you control
+(`ap.example.com` rather than `example.com`) so that moving the marketing
+site later doesn't require migrating the fediverse presence.
+
+If you use the WebFinger/web-origin split (`~FederationOrigin.handleHost`
+vs `~FederationOrigin.webOrigin`), the `webOrigin` is the permanent one—
+that's the domain that appears in actor URIs.  `handleHost` can be moved
+later with a WebFinger redirect, though this is rarely worth the
+complexity.
+
+[`Move`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-move
+
+### Graceful shutdown and service retirement
+
+Turning off a Fedify server is not the same as turning off a web
+application.  A cold shutdown leaves every follower, on every remote
+instance, still trying to deliver activities to your inbox—with your
+signatures still cached as valid, with your actor URIs still in their
+follower lists.  Even well-behaved instances will keep retrying for days
+before giving up, and the traffic will follow your DNS until your
+certificate expires.
+
+The right procedure is:
+
+1.  **Freeze writes first.** Stop accepting new registrations, new posts,
+    and new follow requests.  Your users should see an announcement
+    explaining the shutdown and, if relevant, pointers to migration
+    tools (`Move`, account exports).
+
+2.  **Broadcast `Delete` activities for every local actor** to its
+    followers and to the inboxes of servers that have interacted with
+    that actor.  Use `Context.sendActivity()` and pass `orderingKey` so
+    that the `Delete` can't overtake earlier Creates/Updates for the
+    same actor still in the outbound queue.  Remote servers that process
+    the `Delete` will remove the actor from their local cache and stop
+    delivering.
+
+3.  **Replace actor dispatchers with `Tombstone` responses.** Change your
+    actor dispatcher to return a `Tombstone` instead of the live actor
+    object.  Fedify will respond to actor fetches with HTTP 410 Gone and
+    a Tombstone body.  Set `formerType` on the `Tombstone` to the original
+    ActivityStreams type (`Person`, `Service`, etc.) so that remote servers
+    can preserve the type information in their own logs.  See
+    [*Actor dispatcher*](./actor.md) for the Tombstone-returning pattern.
+
+    ~~~~ typescript twoslash
+    import type { Federation } from "@fedify/fedify";
+    import { Person, Tombstone } from "@fedify/vocab";
+    const federation = null as unknown as Federation<void>;
+    const deletedAt = Temporal.Instant.from("2026-04-19T00:00:00Z");
+    // ---cut-before---
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      (ctx, identifier) =>
+        new Tombstone({
+          id: ctx.getActorUri(identifier),
+          formerType: Person,
+          deleted: deletedAt,
+        }),
+    );
+    ~~~~
+
+4.  **Keep the 410 Gone response online for weeks or months**, not hours.
+    Remote servers' caches expire on different schedules, and some will
+    keep retrying for a long time.  Fedify's default
+    `~FederationOptions.permanentFailureStatusCodes` includes 410, so
+    well-behaved remote servers will stop trying once they receive it—
+    but only if they actually reach your server to receive it.  Serving
+    410 from a cheap static host for a year after shutdown is inexpensive
+    and dramatically reduces the long-term federation noise your domain
+    generates.
+
+5.  **Only then** take down DNS, release the domain, or retire the
+    infrastructure.
+
+Skipping any of these steps is not a catastrophe—the fediverse is
+resilient to servers disappearing ungracefully—but it is discourteous,
+and the ghost traffic it generates is a problem for everyone else's
+operators more than for yours.
+
+### Handling inbound failures
+
+Federation happens with no central coordination, and your peers will
+sometimes misbehave.  A few patterns are worth configuring before you hit
+them in production:
+
+Permanent failures vs. transient failures
+:   `~FederationOptions.permanentFailureStatusCodes` controls which HTTP
+    status codes from remote inboxes mean “don't retry.”  The defaults
+    (404, 410) cover actor-gone cases; you may want to add others (for
+    example, codes specific to instances that return 403 for blocks) if
+    you observe a lot of useless retries against instances that have
+    started refusing you.
+
+Signature time windows and clock drift
+:   HTTP signatures are rejected if the signing time is outside
+    `~FederationOptions.signatureTimeWindow` (one hour by default).  On
+    a fleet with unsynchronized clocks, this produces verification
+    failures that are hard to reproduce because they correlate with which
+    node handled the request.  Run NTP on every node (including workers)
+    and alert on clock drift.
+
+DNS rebinding during application fetches
+:   Fedify's built-in document loaders lock a URL to its initially
+    resolved IP before fetching, which defeats DNS-rebinding attacks on
+    actor lookups and document fetching.  Application code that calls
+    `fetch()` directly on a URL derived from a remote actor (for example,
+    to download an avatar) does not get this protection; see the
+    [SSRF section](#server-side-request-forgery-ssrf) for the
+    `validatePublicUrl()` pattern.
+
+Abusive remotes
+:   Rate-limit inbox requests per remote server, not just per-IP.  A
+    single poorly-behaved instance can flood your inbox with retries
+    during its own outage, and per-IP limits won't distinguish that from
+    a flood of independent users.
