@@ -2551,26 +2551,29 @@ export default federation;
 
 Let's walk through the three new handlers:
 
-**`Create` handler** — called when someone sends a reply:
+`Create`
+:   Called when someone sends a reply:
 
-1.  Fetch the activity's `object` and verify it's a `Note`.
-2.  Check `note.replyTargetId` (the `inReplyTo` URL) and parse it with
-    `ctx.parseUri`.  If it matches our Article dispatcher pattern, we get
-    back `{ type: "object", class: Article, values: { slug: "..." } }`.
-3.  Fetch the author actor to get their display name.
-4.  Store the comment with `addComment`.
+     1.  Fetch the activity's `object` and verify it's a `Note`.
+     2.  Check `note.replyTargetId` (the `inReplyTo` URL) and parse it with
+        `ctx.parseUri`.  If it matches our Article dispatcher pattern, we
+        get back `{ type: "object", class: Article, values: { slug: "…" } }`.
+     3.  Fetch the author actor to get their display name.
+     4.  Store the comment with `addComment`.
 
-**`Update` handler** — called when the author edits their reply:
+`Update`
+:   Called when the author edits their reply:
 
-1.  Verify the note exists in our database.
-2.  Verify the actor matches the stored `authorUrl` (no one else can edit
-    someone else's comment).
-3.  Update the name and content.
+     1.  Verify the note exists in our database.
+     2.  Verify the actor matches the stored `authorUrl` (no one else can
+        edit someone else's comment).
+     3.  Update the name and content.
 
-**`Delete` handler** — called when the author deletes their reply:
+`Delete`
+:   Called when the author deletes their reply:
 
-1.  Check that the actor matches the stored author.
-2.  Delete the row.
+     1.  Check that the actor matches the stored author.
+     2.  Delete the row.
 
 The `Undo` handler ignores non-`Follow` objects, so it won't accidentally
 remove comments when a follower unfollows.
