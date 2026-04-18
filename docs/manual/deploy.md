@@ -212,3 +212,221 @@ If you need to rotate a compromised key, use the `Update` activity to
 announce the new key and keep serving both the old and new keys from the
 actor document for a transition window.  Fediverse clients will eventually
 pick up the new one as caches expire.
+
+
+Traditional deployments
+-----------------------
+
+The most common way to run a Fedify application in production is as a
+long-lived Node.js or Deno process, managed by a service supervisor, behind
+a reverse proxy that terminates TLS.  The pieces are deliberately boring:
+everything in this section predates the fediverse by decades and is
+thoroughly documented by its upstream projects.  This section focuses on the
+details that matter specifically for Fedify.
+
+### Running the process
+
+Node.js needs an adapter because it has no built-in `fetch()`-style HTTP
+server; [@hono/node-server] is the usual choice:
+
+~~~~ typescript twoslash
+import { type KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { serve } from "@hono/node-server";
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+  // Configuration...
+});
+
+serve({
+  fetch: (request) => federation.fetch(request, { contextData: undefined }),
+  port: 3000,
+});
+~~~~
+
+Deno ships a native server; export a default object with a `fetch` method
+and launch it with `deno serve`:
+
+~~~~ typescript twoslash [index.ts]
+import { type KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+  // Configuration...
+});
+
+export default {
+  fetch(request: Request): Promise<Response> {
+    return federation.fetch(request, { contextData: undefined });
+  },
+};
+~~~~
+
+~~~~ bash
+deno serve index.ts
+~~~~
+
+For framework integration patterns (Hono, Express, Fresh, SvelteKit, and
+others), see the [*Integration* chapter](./integration.md).
+
+### Running under systemd
+
+A Fedify process that exits unexpectedly—for any reason, from an OOM kill to
+an unhandled rejection—must be restarted automatically, or federation
+stalls silently while outgoing activities pile up and remote servers time
+out waiting for responses.  On Linux, [systemd] is the standard way to do
+this.
+
+A minimal service unit for a Node.js-based Fedify application might look
+like:
+
+~~~~ ini [/etc/systemd/system/fedify.service]
+[Unit]
+Description=Fedify application
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fedify
+Group=fedify
+WorkingDirectory=/srv/fedify
+EnvironmentFile=/etc/fedify/env
+ExecStart=/usr/bin/node --enable-source-maps dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/fedify
+
+[Install]
+WantedBy=multi-user.target
+~~~~
+
+The `EnvironmentFile=` path should be `chmod 600` and owned by `root:root`
+(or by the service user)—it contains database passwords, session secrets,
+and similar material that must not be world-readable.  Keep the actual
+application code in a path the service user cannot modify
+(`ProtectSystem=strict` enforces this for system directories; the
+`ReadWritePaths=` list is for any local storage you do need).
+
+Enable and start the unit:
+
+~~~~ bash
+systemctl enable --now fedify.service
+journalctl -u fedify.service -f
+~~~~
+
+On Deno, replace the `ExecStart=` line with
+`/usr/bin/deno serve --allow-net --allow-env --allow-read=/srv/fedify --allow-write=/var/lib/fedify /srv/fedify/index.ts`
+(tighten the permission flags to the minimum your app needs—that's the point of
+running on Deno).
+
+If you plan to split web traffic from background queue processing into
+separate processes, see [*Separating web and worker
+nodes*](#separating-web-and-worker-nodes) below; you will typically run two
+service units (or a templated `fedify@.service` instantiated twice) rather
+than one.
+
+[systemd]: https://systemd.io/
+
+### Process managers: PM2 and friends
+
+[PM2] and similar Node.js process managers work with Fedify, but they
+duplicate responsibilities that systemd already handles on any Linux
+server—respawn, log rotation, resource limits—and they don't integrate
+with the rest of your system supervision.  Prefer systemd on Linux.  PM2 is
+reasonable on platforms without systemd, or when you're deploying to a
+shared host where you don't control PID 1.
+
+[PM2]: https://pm2.keymetrics.io/
+
+### Reverse proxy
+
+Run your Fedify process on a loopback port (for example, `127.0.0.1:3000`)
+and put a reverse proxy in front of it.  The proxy handles TLS termination,
+HTTP/2 (and increasingly HTTP/3), static asset caching, and—importantly for
+ActivityPub—shielding your upstream from direct traffic so that the
+[canonical origin](#canonical-origin) guarantee holds.
+
+#### Nginx
+
+~~~~ nginx
+server {
+  listen 443 ssl http2;
+  listen [::]:443 ssl http2;
+  server_name example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+  # Fedify emits activity payloads that can exceed nginx's 1 MiB default,
+  # especially collections with many inline items.
+  client_max_body_size 10m;
+
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+
+    # Pass the original Host so Fedify (or x-forwarded-fetch) can reconstruct
+    # the public URL.  If you set `origin` explicitly, these are used only
+    # for logging, but they should still be correct.
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP         $remote_addr;
+
+    # Inbox deliveries from slow remote servers and long-running queue
+    # operations can exceed nginx's 60s default.
+    proxy_read_timeout  120s;
+    proxy_send_timeout  120s;
+  }
+}
+
+# Redirect plain HTTP to HTTPS; ActivityPub assumes HTTPS throughout.
+server {
+  listen 80;
+  listen [::]:80;
+  server_name example.com;
+  return 301 https://$host$request_uri;
+}
+~~~~
+
+#### Caddy
+
+Caddy's defaults suit Fedify well: automatic HTTPS from Let's Encrypt,
+HTTP/2 and HTTP/3 on by default, and forwarded headers set correctly out
+of the box.  A full configuration fits on one line:
+
+~~~~ caddy
+example.com {
+  reverse_proxy 127.0.0.1:3000
+}
+~~~~
+
+Caddy sends `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
+automatically, which means [x-forwarded-fetch] works without extra
+configuration.  For most new Fedify deployments where you don't already
+have an nginx footprint to fit into, Caddy is the path of least resistance.
+
+> [!TIP]
+> Whichever proxy you use, make sure it forwards `Accept` and
+> `Content-Type` verbatim and does not rewrite or strip them.  ActivityPub
+> content negotiation depends on these headers matching `application/ld+json`
+> or `application/activity+json` exactly.  A surprising number of default
+> proxy rules on CDNs rewrite or drop them and silently break federation.
