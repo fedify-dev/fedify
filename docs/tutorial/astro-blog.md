@@ -1388,7 +1388,7 @@ The fix is straightforward: persist everything in a SQLite database that
 survives restarts.  Bun ships with `bun:sqlite`, a zero-dependency, high-speed
 SQLite driver, so we don't need to install anything new.
 
-### Adding Bun-types
+### Adding bun-types
 
 `bun:sqlite` is a Bun built-in module.  Its TypeScript declarations are
 shipped in the `bun-types` package.  Install it as a dev dependency:
