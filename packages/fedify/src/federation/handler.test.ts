@@ -1466,6 +1466,10 @@ test("handleOutbox()", async () => {
   });
   assertEquals(onUnauthorizedCalled, null);
   assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(
+    response.headers.get("content-type"),
+    "text/plain; charset=utf-8",
+  );
   assertEquals(seen, [
     `someone:${activity.id?.href}`,
   ]);
@@ -1493,6 +1497,10 @@ test("handleOutbox()", async () => {
   });
   assertEquals(onUnauthorizedCalled, null);
   assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(
+    response.headers.get("content-type"),
+    "text/plain; charset=utf-8",
+  );
 
   onUnauthorizedCalled = null;
   ({ request, context } = createRequestContextPair());

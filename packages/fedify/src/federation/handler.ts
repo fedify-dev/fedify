@@ -674,7 +674,10 @@ export async function handleOutbox<TContextData>(
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
     });
-    return new Response(null, { status: 202 });
+    return new Response("", {
+      status: 202,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
   try {
     await dispatched.listener(outboxContext, activity);
@@ -728,7 +731,10 @@ export async function handleOutbox<TContextData>(
       identifier,
     },
   );
-  return new Response(null, { status: 202 });
+  return new Response("", {
+    status: 202,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 /**
