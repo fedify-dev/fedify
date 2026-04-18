@@ -109,6 +109,24 @@ test("hasSignatureLike()", () => {
       jws: "signature",
     },
   }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: {
+        id: "https://example.com/users/alice#main-key",
+      },
+      jws: "signature",
+    },
+  }));
+  assert(hasSignatureLike({
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: [{
+        id: "https://example.com/users/alice#main-key",
+      }],
+      jws: "signature",
+    },
+  }));
   assertFalse(hasSignatureLike({
     signature: {
       type: "Ed25519Signature2020",

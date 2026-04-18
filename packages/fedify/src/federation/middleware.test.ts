@@ -4274,7 +4274,9 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
       "actor": "https://example.com/person2",
       "signature": {
         "type": "Ed25519Signature2020",
-        "verificationMethod": "https://example.com/person2#main-key",
+        "verificationMethod": {
+          "id": "https://example.com/person2#main-key",
+        },
         "jws": "signature",
       },
     };

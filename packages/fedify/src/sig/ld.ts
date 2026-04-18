@@ -190,9 +190,17 @@ export function hasSignatureLike(jsonLd: unknown): boolean {
   const signature = record.signature;
   if (typeof signature !== "object" || signature == null) return false;
   const signatureRecord = signature as Record<string, unknown>;
+
+  const hasReference = (value: unknown): boolean => {
+    if (typeof value === "string") return true;
+    if (Array.isArray(value)) return value.some(hasReference);
+    return typeof value === "object" && value != null &&
+      "id" in value && typeof value.id === "string";
+  };
+
   return typeof signatureRecord.type === "string" &&
-    (typeof signatureRecord.creator === "string" ||
-      typeof signatureRecord.verificationMethod === "string") &&
+    (hasReference(signatureRecord.creator) ||
+      hasReference(signatureRecord.verificationMethod)) &&
     (typeof signatureRecord.signatureValue === "string" ||
       typeof signatureRecord.jws === "string");
 }
