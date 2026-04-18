@@ -2195,3 +2195,489 @@ description as `content`).
 
 To test updates, change the title or description of the new post and
 restart.  To test deletion, remove the file and restart.
+
+Receiving and displaying comments
+=================================
+
+Followers can now read our posts in their fediverse timelines.  In this chapter
+we'll make the conversation two-way: when someone replies to one of our posts
+from Mastodon or another fediverse server, we'll store the reply and display it
+below the post.
+
+### Adding the comments table
+
+Open *src/lib/db.ts* and append a `comments` table:
+
+~~~~ typescript twoslash [src/lib/db.ts]
+// @noErrors
+import { Database } from "bun:sqlite";
+
+const db = new Database("blog.db");
+
+db.run(`CREATE TABLE IF NOT EXISTS key_pairs (
+  identifier TEXT NOT NULL, algorithm TEXT NOT NULL,
+  private_key BLOB NOT NULL, public_key BLOB NOT NULL,
+  PRIMARY KEY (identifier, algorithm))`);
+db.run(`CREATE TABLE IF NOT EXISTS followers (
+  actor_id TEXT PRIMARY KEY, inbox_url TEXT NOT NULL)`);
+db.run(`CREATE TABLE IF NOT EXISTS posts (
+  id TEXT PRIMARY KEY, title TEXT NOT NULL, url TEXT NOT NULL,
+  content_hash TEXT NOT NULL, published_at TEXT NOT NULL)`);
+// ---cut-before---
+db.run(`
+  CREATE TABLE IF NOT EXISTS comments (
+    id           TEXT PRIMARY KEY,
+    post_id      TEXT NOT NULL,
+    author_url   TEXT NOT NULL,
+    author_name  TEXT NOT NULL,
+    content      TEXT NOT NULL,
+    published_at TEXT NOT NULL
+  )
+`);
+
+export default db;
+~~~~
+
+Each row represents one fediverse reply.  `id` is the ActivityPub object ID
+of the remote `Note`, and `post_id` is the slug of the local post it replies
+to.
+
+### Adding comment helpers to the store
+
+Extend *src/lib/store.ts* with the comment CRUD functions that the inbox
+handlers will call:
+
+~~~~ typescript twoslash [src/lib/store.ts]
+// @noErrors
+import db from "./db.ts";
+// ---cut-before---
+export interface Comment {
+  id: string;
+  postId: string;
+  authorUrl: string;
+  authorName: string;
+  content: string;
+  publishedAt: string;
+}
+
+export function addComment(comment: Comment): void {
+  db.run(
+    `INSERT OR REPLACE INTO comments
+     (id, post_id, author_url, author_name, content, published_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      comment.id,
+      comment.postId,
+      comment.authorUrl,
+      comment.authorName,
+      comment.content,
+      comment.publishedAt,
+    ],
+  );
+}
+
+export function updateComment(
+  id: string,
+  authorName: string,
+  content: string,
+): void {
+  db.run(
+    `UPDATE comments SET author_name = ?, content = ? WHERE id = ?`,
+    [authorName, content, id],
+  );
+}
+
+export function getCommentAuthorUrl(id: string): string | null {
+  return (
+    db
+      .query<{ author_url: string }, [string]>(
+        `SELECT author_url FROM comments WHERE id = ?`,
+      )
+      .get(id)?.author_url ?? null
+  );
+}
+
+export function deleteComment(id: string): void {
+  db.run(`DELETE FROM comments WHERE id = ?`, [id]);
+}
+
+export function getCommentsByPost(postId: string): Comment[] {
+  return db
+    .query<
+      {
+        id: string;
+        author_url: string;
+        author_name: string;
+        content: string;
+        published_at: string;
+      },
+      [string]
+    >(
+      `SELECT id, author_url, author_name, content, published_at
+       FROM comments WHERE post_id = ? ORDER BY published_at`,
+    )
+    .all(postId)
+    .map((r) => ({
+      id: r.id,
+      postId,
+      authorUrl: r.author_url,
+      authorName: r.author_name,
+      content: r.content,
+      publishedAt: r.published_at,
+    }));
+}
+~~~~
+
+`addComment` uses `INSERT OR REPLACE` so that receiving the same activity
+twice (e.g., retries) is idempotent.
+
+`getCommentAuthorUrl` is a small helper used by the `Update` and `Delete`
+handlers to verify that the actor performing the operation is the original
+author.
+
+### Handling inbox activities
+
+Open *src/federation.ts* and update the imports and inbox listeners to handle
+`Create(Note)`, `Update(Note)`, and `Delete(Note)`:
+
+~~~~ typescript twoslash [src/federation.ts]
+// @noErrors
+import { getCollection } from "astro:content";
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import {
+  Accept,
+  Article,
+  Create,
+  Delete,
+  Endpoints,
+  Follow,
+  Note,
+  Person,
+  Undo,
+  Update,
+} from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { getLogger } from "@logtape/logtape";
+import {
+  addComment,
+  addFollower,
+  deleteComment,
+  getCommentAuthorUrl,
+  getFollowers,
+  getKeyPairs,
+  removeFollower,
+  saveKeyPairs,
+  updateComment,
+} from "./lib/store.ts";
+
+const logger = getLogger("astro-blog");
+
+export const BLOG_IDENTIFIER = "blog";
+export const BLOG_NAME = "Fedify Blog Example";
+export const BLOG_SUMMARY =
+  "A sample federated blog powered by Fedify and Astro.";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) {
+      logger.debug("Unknown actor identifier: {identifier}", { identifier });
+      return null;
+    }
+    const kp = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: BLOG_NAME,
+      summary: BLOG_SUMMARY,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: kp[0].cryptographicKey,
+      assertionMethods: kp.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return [];
+    const stored = await getKeyPairs(identifier);
+    if (stored) return stored;
+    const [rsaKey, ed25519Key] = await Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]);
+    const kp = [rsaKey, ed25519Key];
+    await saveKeyPairs(identifier, kp);
+    return kp;
+  });
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.actorId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor" || parsed.identifier !== BLOG_IDENTIFIER) {
+      return;
+    }
+    const follower = await follow.getActor(ctx);
+    if (follower == null || follower.id == null || follower.inboxId == null) {
+      return;
+    }
+    addFollower(follower.id.href, follower.inboxId.href);
+    logger.info("New follower: {follower}", { follower: follower.id.href });
+    await ctx.sendActivity(
+      { identifier: BLOG_IDENTIFIER },
+      follower,
+      new Accept({
+        id: new URL(
+          `#accepts/${follower.id.href}`,
+          ctx.getActorUri(BLOG_IDENTIFIER),
+        ),
+        actor: ctx.getActorUri(BLOG_IDENTIFIER),
+        object: follow,
+      }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null) return;
+    removeFollower(undo.actorId.href);
+    logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  })
+  .on(Create, async (ctx, create) => {
+    const object = await create.getObject(ctx);
+    if (!(object instanceof Note)) return;
+    if (object.id == null || create.actorId == null) return;
+    const replyTargetId = object.replyTargetId;
+    if (replyTargetId == null) return;
+    const parsed = ctx.parseUri(replyTargetId);
+    if (parsed?.type !== "object" || parsed.class !== Article) return;
+    const { slug } = parsed.values;
+    const author = await create.getActor(ctx);
+    if (author == null || author.id == null) return;
+    const authorName =
+      author.name?.toString() ??
+      author.preferredUsername?.toString() ??
+      author.id.host;
+    addComment({
+      id: object.id.href,
+      postId: slug,
+      authorUrl: author.id.href,
+      authorName,
+      content: object.content?.toString() ?? "",
+      publishedAt: (
+        object.published ?? Temporal.Now.instant()
+      ).toString(),
+    });
+    logger.info("New comment on /{slug} by {author}", {
+      slug,
+      author: author.id.href,
+    });
+  })
+  .on(Update, async (ctx, update) => {
+    const object = await update.getObject(ctx);
+    if (!(object instanceof Note)) return;
+    if (object.id == null || update.actorId == null) return;
+    const existing = getCommentAuthorUrl(object.id.href);
+    if (existing == null || existing !== update.actorId.href) return;
+    const author = await update.getActor(ctx);
+    const authorName =
+      author?.name?.toString() ??
+      author?.preferredUsername?.toString() ??
+      update.actorId.host;
+    updateComment(
+      object.id.href,
+      authorName,
+      object.content?.toString() ?? "",
+    );
+  })
+  .on(Delete, async (_ctx, delete_) => {
+    if (delete_.actorId == null) return;
+    const objectId = delete_.objectId;
+    if (objectId == null) return;
+    const existing = getCommentAuthorUrl(objectId.href);
+    if (existing == null || existing !== delete_.actorId.href) return;
+    deleteComment(objectId.href);
+  });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return null;
+    return { items: getFollowers() };
+  },
+);
+
+federation.setObjectDispatcher(
+  Article,
+  "/posts/{slug}",
+  async (ctx, { slug }) => {
+    const allPosts = await getCollection("posts");
+    const post = allPosts.find((p) => p.id === slug && !p.data.draft);
+    if (!post) return null;
+    return new Article({
+      id: ctx.getObjectUri(Article, { slug }),
+      attribution: ctx.getActorUri(BLOG_IDENTIFIER),
+      name: post.data.title,
+      summary: post.data.description,
+      content: `<p>${post.data.description}</p>`,
+      url: new URL(`/posts/${slug}`, ctx.url),
+      published: Temporal.Instant.from(post.data.pubDate.toISOString()),
+    });
+  },
+);
+
+export default federation;
+~~~~
+
+Let's walk through the three new handlers:
+
+**`Create` handler** — called when someone sends a reply:
+
+1.  Fetch the activity's `object` and verify it's a `Note`.
+2.  Check `note.replyTargetId` (the `inReplyTo` URL) and parse it with
+    `ctx.parseUri`.  If it matches our Article dispatcher pattern, we get
+    back `{ type: "object", class: Article, values: { slug: "..." } }`.
+3.  Fetch the author actor to get their display name.
+4.  Store the comment with `addComment`.
+
+**`Update` handler** — called when the author edits their reply:
+
+1.  Verify the note exists in our database.
+2.  Verify the actor matches the stored `authorUrl` (no one else can edit
+    someone else's comment).
+3.  Update the name and content.
+
+**`Delete` handler** — called when the author deletes their reply:
+
+1.  Check that the actor matches the stored author.
+2.  Delete the row.
+
+The `Undo` handler ignores non-`Follow` objects, so it won't accidentally
+remove comments when a follower unfollows.
+
+> [!WARNING]
+> The `content` field on `Note` is HTML sent by a remote server.  Storing
+> and rendering it verbatim exposes your visitors to XSS attacks.  See
+> Chapter 10 for guidance on sanitization.
+
+### Displaying comments on the post page
+
+Replace *src/pages/posts/\[slug].astro* with the following:
+
+~~~~ astro
+---
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import { getCommentsByPost } from "../../lib/store.ts";
+
+const { slug } = Astro.params;
+const posts = await getCollection("posts");
+const post = posts.find((p) => p.id === slug);
+
+if (!post || post.data.draft) {
+  return Astro.redirect("/404");
+}
+
+const { Content } = await render(post);
+const comments = getCommentsByPost(slug);
+---
+
+<Layout title={post.data.title} description={post.data.description}>
+  <article>
+    <header class="post-header">
+      <h1>{post.data.title}</h1>
+      <time datetime={post.data.pubDate.toISOString()}>
+        {
+          post.data.pubDate.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        }
+      </time>
+    </header>
+    <div class="post-content">
+      <Content />
+    </div>
+    <footer class="post-footer">
+      <a href="/">&larr; Back to all posts</a>
+    </footer>
+  </article>
+
+  <section class="comments">
+    <h2>{comments.length} {comments.length === 1 ? "comment" : "comments"}</h2>
+    {
+      comments.length === 0 ? (
+        <p class="no-comments">No comments yet.</p>
+      ) : (
+        <ol class="comment-list">
+          {comments.map((comment) => (
+            <li class="comment">
+              <div class="comment-meta">
+                <a href={comment.authorUrl} rel="noopener noreferrer">
+                  {comment.authorName}
+                </a>
+                <time datetime={comment.publishedAt}>
+                  {new Date(comment.publishedAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </time>
+              </div>
+              {/* Note: comment.content is HTML from remote servers.
+                  Sanitize before rendering in production! */}
+              <div class="comment-content" set:html={comment.content} />
+            </li>
+          ))}
+        </ol>
+      )
+    }
+  </section>
+</Layout>
+~~~~
+
+`getCommentsByPost(slug)` fetches all comments for the current post, ordered
+by publication date.  Each comment is rendered with `set:html` so that
+Mastodon's HTML formatting (bold, links, mentions) is preserved.
+
+> [!CAUTION]
+> `set:html` renders raw HTML without escaping.  An adversary could craft a
+> `Note` containing `<script>` tags or event handlers that run in your
+> visitors' browsers.  Before shipping to production, pipe `comment.content`
+> through an HTML sanitizer that allows only safe tags (e.g., `<p>`, `<a>`,
+> `<strong>`, `<em>`) and strips everything else.
+
+### Testing with ActivityPub.Academy
+
+Ensure the dev server is running and the tunnel is active (see Chapter 5).
+Open one of your post pages in the browser, e.g.:
+
+~~~~ sh
+open http://localhost:4321/posts/hello-fediverse
+~~~~
+
+On ActivityPub.Academy, find the post in your timeline and reply to it.
+Within a second or two you should see:
+
+~~~~ console
+18:42:05.789 INF astro-blog New comment on /hello-fediverse by https://...
+~~~~
+
+Reload the post page—the comment should appear in the “Comments” section.
+
+To test deletion: delete the reply on ActivityPub.Academy and reload the
+page.  The comment should disappear.
