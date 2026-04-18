@@ -168,7 +168,7 @@ test("FederationBuilder", async (t) => {
     builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
 
     const builder2 = createFederationBuilder<void>();
-    builder2.setOutboxListeners("/users/{identifier}/outbox");
+    builder2.setOutboxListeners("/users{/identifier}/outbox");
 
     assertThrows(
       () =>
@@ -178,6 +178,9 @@ test("FederationBuilder", async (t) => {
         ),
       RouterError,
     );
+
+    const builder3 = createFederationBuilder<void>();
+    builder3.setOutboxListeners("/users{?identifier}/outbox");
   });
 
   await t.step("should pass build options correctly", async () => {

@@ -67,11 +67,8 @@ function validateSingleIdentifierVariablePath(
   path: string,
   errorMessage: string,
 ): void {
-  const variables = globalThis.Array.from(
-    path.matchAll(/{(\+?)([A-Za-z_][A-Za-z0-9_]*)}/g),
-    (match) => match[2],
-  );
-  if (variables.length !== 1 || variables[0] !== "identifier") {
+  const variables = new Router().add(path, "outbox");
+  if (variables.size !== 1 || !variables.has("identifier")) {
     throw new RouterError(errorMessage);
   }
 }
