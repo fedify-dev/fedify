@@ -84,7 +84,7 @@ function expandUriTemplate(
       case ".":
         return `.${encodeURIComponent(value)}`;
       case "/":
-        return `/${encodeURI(value)}`;
+        return `/${encodeURIComponent(value)}`;
       case ";":
         return `;${key}=${encodeURIComponent(value)}`;
       case "?":
