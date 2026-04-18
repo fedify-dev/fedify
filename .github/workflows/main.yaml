@@ -74,7 +74,7 @@ jobs:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
@@ -83,7 +83,7 @@ jobs:
         RUST_BACKTRACE: ${{ runner.debug }}
         LOG: ${{ runner.debug && 'always' || '' }}
         AMQP_ORDERING_TEST: "true"
-    - uses: dorny/test-reporter@v2
+    - uses: dorny/test-reporter@v3
       if: success() || failure()
       with:
         name: "Test Results (${{ matrix.os }})"
@@ -91,13 +91,14 @@ jobs:
         reporter: jest-junit
       continue-on-error: true
     - if: '!cancelled()'
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: .test-report.xml
+        report_type: test_results
     - run: deno coverage --lcov .cov > .cov.lcov
       continue-on-error: true
-    - uses: codecov/codecov-action@v5
+    - uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: .cov.lcov
@@ -158,7 +159,7 @@ jobs:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
@@ -221,7 +222,7 @@ jobs:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
       REDIS_URL: redis://localhost:6379
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
@@ -232,7 +233,7 @@ jobs:
   test-cfworkers:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
@@ -240,7 +241,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: mise run check
 
@@ -250,7 +251,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
@@ -267,14 +268,14 @@ jobs:
     needs: [release-test]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: mise run codegen
     - run: deno task pack
       working-directory: ${{ github.workspace }}/packages/cli/
       env:
         CONCURRENCY: "5"
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: cli-pr-${{ github.event.pull_request.number }}
         path: |
@@ -286,11 +287,11 @@ jobs:
     needs: [release-test]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: pnpm run build
       working-directory: ${{ github.workspace }}/docs/
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: docs-pr-${{ github.event.pull_request.number }}
         path: docs/.vitepress/dist
@@ -306,7 +307,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       short_version: ${{ steps.version.outputs.short_version }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - id: version
       uses: ./.github/actions/determine-version
@@ -326,7 +327,7 @@ jobs:
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
     - run: mise run codegen
@@ -334,7 +335,7 @@ jobs:
       working-directory: ${{ github.workspace }}/packages/cli/
       env:
         CONCURRENCY: "5"
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: cli
         path: |
@@ -346,7 +347,7 @@ jobs:
     needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
     - run: sudo npm install -g npm@latest && npm --version
@@ -363,7 +364,7 @@ jobs:
         if [[ "$GITHUB_REF_TYPE" != tag ]]; then
           rm fedify-cli-*.tgz
         fi
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: npm-packages
         path: fedify-*.tgz
@@ -376,7 +377,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/determine-version
     - run: |
@@ -406,12 +407,12 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v4
+    - uses: actions/checkout@v6
+    - uses: actions/download-artifact@v8
       with:
         name: cli
         path: cli-artifacts/
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: npm-packages
         path: npm-artifacts/
@@ -426,7 +427,7 @@ jobs:
     - run: 'cat "$CHANGES_FILE"'
       env:
         CHANGES_FILE: ${{ steps.extract-changelog.outputs.output-file }}
-    - uses: softprops/action-gh-release@v1
+    - uses: softprops/action-gh-release@v3
       with:
         body_path: ${{ steps.extract-changelog.outputs.output-file }}
         name: Fedify ${{ github.ref_name }}
@@ -453,7 +454,7 @@ jobs:
       actions: write
     steps:
     - name: Trigger build.yaml workflow
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           // Determine tag based on ref type
@@ -489,7 +490,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: |
         set -ex
@@ -512,12 +513,12 @@ jobs:
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}
       working-directory: ${{ github.workspace }}/docs/
-    - uses: actions/upload-pages-artifact@v3
+    - uses: actions/upload-pages-artifact@v5
       with:
         path: docs/.vitepress/dist
     - id: deployment
       if: github.ref_type == 'tag'
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@v5
     - if: github.ref == 'refs/heads/main'
       uses: cloudflare/wrangler-action@v3
       with:

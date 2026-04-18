@@ -4,7 +4,7 @@ description: Set up mise and install dependencies
 runs:
   using: composite
   steps:
-  - uses: jdx/mise-action@v2
+  - uses: jdx/mise-action@v4
     with:
       version: 2025.12.12
   - run: mise run install

@@ -31,7 +31,7 @@ jobs:
         -f test/smoke/sharkey/docker-compose.yml
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-mise
 

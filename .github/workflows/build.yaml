@@ -33,14 +33,14 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: npm-packages
         run-id: ${{ inputs.run_id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - run: ls -la
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: lts/*
         registry-url: https://registry.npmjs.org
