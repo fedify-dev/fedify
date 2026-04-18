@@ -2279,7 +2279,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
@@ -2404,6 +2404,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       preferSharedInbox: options.preferSharedInbox,
       excludeBaseUris: options.excludeBaseUris,
     });
+    if (globalThis.Object.keys(inboxes).length < 1) {
+      logger.debug("No inboxes found for activity {activityId}.", {
+        activityId: activity.id?.href,
+        activity,
+      });
+      return false;
+    }
     logger.debug("Sending activity {activityId} to inboxes:\n{inboxes}", {
       inboxes: globalThis.Object.keys(inboxes),
       activityId: activity.id?.href,
@@ -2415,7 +2422,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         globalThis.Object.keys(inboxes).length < FANOUT_THRESHOLD
     ) {
       await this.federation.sendActivity(keys, inboxes, activity, opts);
-      return;
+      return true;
     }
     const keyJwkPairs = await Promise.all(
       keys.map(async ({ keyId, privateKey }) => ({
@@ -2452,6 +2459,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       message,
       { orderingKey: options.orderingKey },
     );
+    return true;
   }
 
   async *getFollowers(identifier: string): AsyncIterable<Recipient> {
@@ -3246,9 +3254,45 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    return super.sendActivity(sender, recipients, activity, options).then(
-      () => {
-        this.#deliveryState.delivered = true;
+    const tracer = this.tracerProvider.getTracer(
+      metadata.name,
+      metadata.version,
+    );
+    return tracer.startActiveSpan(
+      this.federation.outboxQueue == null || options.immediate
+        ? "activitypub.outbox"
+        : "activitypub.fanout",
+      {
+        kind: this.federation.outboxQueue == null || options.immediate
+          ? SpanKind.CLIENT
+          : SpanKind.PRODUCER,
+        attributes: {
+          "activitypub.activity.type": getTypeId(activity).href,
+          "activitypub.activity.to": activity.toIds.map((to) => to.href),
+          "activitypub.activity.cc": activity.toIds.map((cc) => cc.href),
+          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
+          "activitypub.activity.bcc": activity.toIds.map((bcc) => bcc.href),
+        },
+      },
+      async (span) => {
+        try {
+          if (activity.id != null) {
+            span.setAttribute("activitypub.activity.id", activity.id.href);
+          }
+          const delivered = await this.sendActivityInternal(
+            sender,
+            recipients,
+            activity,
+            options,
+            span,
+          );
+          if (delivered) this.#deliveryState.delivered = true;
+        } catch (e) {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+          throw e;
+        } finally {
+          span.end();
+        }
       },
     );
   }

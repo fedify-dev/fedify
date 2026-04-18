@@ -188,21 +188,28 @@ export function hasSignatureLike(jsonLd: unknown): boolean {
   if (typeof jsonLd !== "object" || jsonLd == null) return false;
   const record = jsonLd as Record<string, unknown>;
   const signature = record.signature;
-  if (typeof signature !== "object" || signature == null) return false;
-  const signatureRecord = signature as Record<string, unknown>;
 
   const hasReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
     if (Array.isArray(value)) return value.some(hasReference);
     return typeof value === "object" && value != null &&
-      "id" in value && typeof value.id === "string";
+      (("id" in value && typeof value.id === "string") ||
+        ("@id" in value && typeof value["@id"] === "string"));
   };
 
-  return typeof signatureRecord.type === "string" &&
-    (hasReference(signatureRecord.creator) ||
-      hasReference(signatureRecord.verificationMethod)) &&
-    (typeof signatureRecord.signatureValue === "string" ||
-      typeof signatureRecord.jws === "string");
+  const hasSignatureObject = (value: unknown): boolean => {
+    if (typeof value !== "object" || value == null) return false;
+    const signatureRecord = value as Record<string, unknown>;
+    return typeof signatureRecord.type === "string" &&
+      (hasReference(signatureRecord.creator) ||
+        hasReference(signatureRecord.verificationMethod)) &&
+      (typeof signatureRecord.signatureValue === "string" ||
+        typeof signatureRecord.jws === "string");
+  };
+
+  return Array.isArray(signature)
+    ? signature.some(hasSignatureObject)
+    : hasSignatureObject(signature);
 }
 
 /**

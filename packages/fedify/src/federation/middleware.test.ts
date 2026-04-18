@@ -2420,6 +2420,84 @@ test("Federation.setOutboxListeners()", async (t) => {
   });
 
   await t.step(
+    "warns when listener calls sendActivity() with zero inboxes",
+    async () => {
+      await withLogtapeLock(async () => {
+        const postedFixture = {
+          ...createFixture,
+          actor: "https://example.com/users/john",
+        };
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation
+            .setActorDispatcher(
+              "/users/{identifier}",
+              (_ctx, identifier) =>
+                identifier === "john" ? new vocab.Person({}) : null,
+            )
+            .setKeyPairsDispatcher(() => [{
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            }]);
+
+          federation
+            .setOutboxListeners("/users/{identifier}/outbox")
+            .on(vocab.Activity, async (ctx, activity) => {
+              await ctx.sendActivity(
+                { identifier: ctx.identifier },
+                [],
+                activity,
+              );
+            })
+            .authorize((ctx, identifier) => {
+              return identifier === "john" &&
+                ctx.request.headers.get("authorization") === "Bearer token";
+            });
+
+          const response = await federation.fetch(
+            new Request("https://example.com/users/john/outbox", {
+              method: "POST",
+              body: JSON.stringify(postedFixture),
+              headers: {
+                authorization: "Bearer token",
+                "content-type": "application/activity+json",
+              },
+            }),
+            { contextData: undefined },
+          );
+
+          assertEquals(response.status, 202);
+          assertEquals(
+            records.some((record) =>
+              record.rawMessage ===
+                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
+              record.properties.identifier === "john"
+            ),
+            true,
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+
+  await t.step(
     "does not warn when listener calls forwardActivity()",
     async () => {
       await withLogtapeLock(async () => {
