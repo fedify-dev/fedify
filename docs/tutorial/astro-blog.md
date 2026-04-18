@@ -2793,7 +2793,8 @@ your readers to XSS.  Before shipping:
 1.  Install a sanitization library such as [sanitize-html] or
     [DOMPurify] (the latter runs in a Web Worker or via [jsdom] on the server).
 
-2.  Before calling `addComment`, strip the HTML down to a safe subset:
+2.  Before calling `addComment` or `updateComment`, strip the HTML down to a
+    safe subset:
 
     ~~~~ typescript
     import sanitizeHtml from "sanitize-html";
@@ -2878,8 +2879,16 @@ Make sure your *Dockerfile* runs `bun run build` and starts the server
 with `node dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
 output).
 
+For general guidance on running Fedify applications in production—key–value
+store choices, message queue setup, and runtime-specific tips—see the
+[*Deployment* manual].  For a full reference on the `@fedify/astro` package
+options used throughout this tutorial, see [*Astro*] in the *Framework
+integrations* manual.
+
 [Fly.io]: https://fly.io/
 [Fly Volumes]: https://fly.io/docs/volumes/
+[*Deployment* manual]: ../manual/deploy.md
+[*Astro*]: ../manual/integration.md#astro
 
 ### Congratulations
 
@@ -2888,7 +2897,7 @@ Proofs, actor/inbox/followers dispatchers, `Create`/`Update`/`Delete`
 activities, content negotiation, and SQLite persistence.  These are the
 building blocks of everything federated on the web today.
 
-The full source code for this tutorial is available at the [Fedify examples]
-repository.
+The full source code for this tutorial is available in the
+[astro-blog repository].
 
-[Fedify examples]: https://github.com/fedify-dev/fedify/tree/main/examples
+[astro-blog repository]: https://github.com/fedify-dev/astro-blog
