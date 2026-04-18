@@ -1,7 +1,12 @@
 import { Create, Note } from "@fedify/vocab";
-import { readBody, sendRedirect, toWebRequest } from "h3";
-import federation from "../federation";
-import { postStore } from "../store";
+import {
+  defineEventHandler,
+  readBody,
+  sendRedirect,
+  toWebRequest,
+} from "@nuxt/nitro-server/h3";
+import federation from "../federation.ts";
+import { postStore } from "../store.ts";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -29,7 +34,7 @@ export default defineEventHandler(async (event) => {
       { identifier },
       "followers",
       new Create({
-        id: new URL("#activity", attribution),
+        id: new URL(`#create/${id}`, attribution),
         object: note,
         actors: note?.attributionIds,
         tos: note?.toIds,

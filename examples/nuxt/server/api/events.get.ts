@@ -1,7 +1,7 @@
 import { setResponseHeader } from "h3";
 import { addClient, removeClient } from "../sse";
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler((event) => {
   setResponseHeader(event, "Content-Type", "text/event-stream");
   setResponseHeader(event, "Cache-Control", "no-cache");
   setResponseHeader(event, "Connection", "keep-alive");

@@ -15,8 +15,8 @@ import {
   type Recipient,
   Undo,
 } from "@fedify/vocab";
-import { broadcastEvent } from "./sse";
-import { keyPairsStore, postStore, relationStore } from "./store";
+import { broadcastEvent } from "./sse.ts";
+import { keyPairsStore, postStore, relationStore } from "./store.ts";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -96,18 +96,15 @@ federation
   })
   .on(Undo, async (context, undo) => {
     const activity = await undo.getObject(context);
-    if (activity instanceof Follow) {
-      if (activity.id == null) {
-        return;
-      }
-      if (undo.actorId == null) {
-        return;
-      }
-      relationStore.delete(undo.actorId.href);
-      broadcastEvent();
-    } else {
+    if (!(activity instanceof Follow)) {
       console.debug(undo);
+      return;
     }
+    if (activity.id == null || undo.actorId == null) return;
+    const demoActorUri = context.getActorUri(IDENTIFIER);
+    if (activity.objectId?.href !== demoActorUri.href) return;
+    relationStore.delete(undo.actorId.href);
+    broadcastEvent();
   });
 
 federation.setObjectDispatcher(
