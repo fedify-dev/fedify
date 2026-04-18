@@ -131,12 +131,13 @@ To be released.
     follower management, SQLite persistence, sending `Create`/`Update`/
     `Delete(Article)` activities on server startup, and receiving
     `Create`/`Update`/`Delete(Note)` inbox activities as comments.
-    [[#691]]
+    [[#691], [#695]]
 
 [*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog
 [Astro]: https://astro.build/
 [Bun]: https://bun.sh/
 [#691]: https://github.com/fedify-dev/fedify/issues/691
+[#695]: https://github.com/fedify-dev/fedify/pull/695
 
 
 Version 2.1.5
