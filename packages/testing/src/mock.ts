@@ -221,6 +221,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private featuredTagsDispatcher?: any;
   private inboxListeners: Map<string, any[]> = new Map();
   private outboxListeners: Map<ActivityConstructor, any> = new Map();
+  private outboxListenersInitialized = false;
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
 
@@ -379,6 +380,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setOutboxListeners(outboxPath: any): any {
+    if (this.outboxListenersInitialized) {
+      throw new TypeError("Outbox listeners already set.");
+    }
+    this.outboxListenersInitialized = true;
     this.outboxPath = outboxPath;
     // deno-lint-ignore no-this-alias
     const self = this;
@@ -511,7 +516,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     identifier: string,
     activity: Activity,
   ): Promise<void> {
-    if (this.outboxPath == null) {
+    if (!this.outboxListenersInitialized) {
       throw new Error(
         "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
       );

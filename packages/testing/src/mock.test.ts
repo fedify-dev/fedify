@@ -778,6 +778,26 @@ test("postOutboxActivity fails fast without outbox listeners", async () => {
   );
 });
 
+test("postOutboxActivity with only dispatcher still fails fast", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation
+    .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }));
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await assertRejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    Error,
+    "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+  );
+});
+
 test("postOutboxActivity without matching listener is a no-op", async () => {
   const mockFederation = createFederation<void>();
   mockFederation.setActorDispatcher(
@@ -883,6 +903,20 @@ test("setOutboxListeners rejects duplicate listeners for the same type", () => {
   assertThrows(
     () => listeners.on(Create, () => {}),
     TypeError,
+  );
+});
+
+test("setOutboxListeners rejects duplicate registration", () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setOutboxListeners("/users/{identifier}/outbox");
+
+  assertThrows(
+    () => mockFederation.setOutboxListeners("/users/{identifier}/outbox"),
+    TypeError,
+    "Outbox listeners already set.",
   );
 });
 
