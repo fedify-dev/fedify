@@ -952,3 +952,241 @@ Deno KV's built-in exponential-backoff mechanism.
 
 [Deno Deploy]: https://deno.com/deploy
 [`@fedify/denokv`]: https://jsr.io/@fedify/denokv
+
+
+Security
+--------
+
+Fedify servers face a different threat model than most web applications.
+Content arrives from strangers' servers, often as HTML, usually signed but
+not always usefully so.  URLs point at resources you must then fetch from
+the public internet.  Every user is potentially the target of an attacker
+on some other instance halfway around the world.  Three concerns matter
+far more in this setting than the generic web-security checklist suggests:
+cross-site scripting through federated HTML, server-side request forgery
+through follow-on fetches, and the safekeeping of the cryptographic
+material that identifies your instance and its actors.
+
+### Cross-site scripting (XSS)
+
+ActivityPub carries post content as HTML in fields like `content`,
+`summary`, and `name`.  Remote servers can and do put arbitrary markup in
+these fields—including, if they are malicious or compromised, `<script>`
+tags, `javascript:` URLs, `onerror` handlers, CSS expressions, and
+everything else in the usual XSS playbook.  Fedify does not sanitize this
+content for you, because what is safe depends on how and where you render
+it (rich timeline? plain text notification? microformats-annotated HTML?),
+so the obligation falls on your application.
+
+Always pass federated HTML through an allowlist-based sanitizer before
+rendering.  Never try to write your own regex-based sanitizer for this—
+HTML is not a regular language, and the failure modes of naive sanitizers
+are exactly the mutation XSS vectors attackers exploit in practice.
+
+::: code-group
+
+~~~~ typescript [Node.js]
+import sanitize from "sanitize-html";
+
+const safeHtml = sanitize(post.content, {
+  allowedTags: [
+    "a", "br", "p", "span", "strong", "em", "del", "blockquote",
+    "code", "pre", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
+  ],
+  allowedAttributes: {
+    a: ["href", "rel", "class"],
+    span: ["class"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  transformTags: {
+    // Force rel="nofollow noopener ugc" on every link.
+    a: sanitize.simpleTransform("a", {
+      rel: "nofollow noopener ugc",
+      target: "_blank",
+    }),
+  },
+});
+~~~~
+
+~~~~ typescript [Deno]
+import { FilterXSS } from "xss";
+
+const filter = new FilterXSS({
+  whiteList: {
+    a: ["href", "rel", "class"],
+    span: ["class"],
+    strong: [],
+    em: [],
+    del: [],
+    p: [],
+    br: [],
+    blockquote: [],
+    code: ["class"],
+    pre: [],
+    ul: [],
+    ol: [],
+    li: [],
+    h1: [],
+    h2: [],
+    h3: [],
+    h4: [],
+    h5: [],
+    h6: [],
+  },
+  stripIgnoreTagBody: ["script", "style"],
+});
+
+const safeHtml = filter.process(post.content);
+~~~~
+
+:::
+
+A [strong Content-Security-Policy] header on your frontend provides
+defense in depth—a missed sanitization bug becomes a rendering bug rather
+than a compromise.  At minimum, forbid inline scripts
+(`script-src 'self'`) and inline event handlers.
+
+> [!CAUTION]
+> Do not skip sanitization on “trusted” instances.  The ActivityPub trust
+> boundary is the HTTP signature on incoming activities, which only
+> proves the activity came from a given actor; it says nothing about
+> whether that actor's server is honest or whether the account has been
+> hijacked.  Sanitize every post, every summary, every actor bio, from
+> every server, always.
+
+[strong Content-Security-Policy]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+
+### Server-side request forgery (SSRF)
+
+ActivityPub forces your server to fetch URLs supplied by untrusted
+parties: when resolving remote actors, loading linked objects, dereferencing
+collections, verifying signatures against the signer's public-key
+document.  Without defenses, an attacker can supply URLs that resolve to
+your cloud metadata service, internal admin endpoints, or RFC 1918
+addresses, and your server will obediently make those requests on their
+behalf and return (or expose in error messages) the responses.
+
+Fedify's built-in document loaders defend against this by default:
+
+ -  `lookupObject()`, `~Context.getDocumentLoader()`, and
+    `~Context.getAuthenticatedDocumentLoader()` reject URLs that resolve to
+    loopback, link-local, private (RFC 1918), or ULA/IPv6-link-local
+    addresses, and they refuse the `localhost` hostname outright.  DNS is
+    resolved once and the resolved IP is checked, which defeats
+    DNS-rebinding attacks.
+ -  The protection is implemented in
+    [`validatePublicUrl()`], which you can call directly from application
+    code if you need the same checks for your own fetches.
+
+There is an escape hatch—`allowPrivateAddress: true` on
+`createFederation()`—that disables the check.  It exists to make tests
+runnable against localhost.
+
+> [!CAUTION]
+> Never set `allowPrivateAddress: true` in a production configuration.
+> It disables every SSRF defense Fedify provides.  Gate it behind an
+> environment variable that is set only in test environments, or omit it
+> entirely from your production code path.
+
+**Fedify's protection does not extend to fetches you make yourself.**
+Any time your application code calls `fetch()` (or any HTTP client) with
+a URL that originated from a remote server, you are on the hook for SSRF
+defense.  The common cases where this happens in Fedify apps:
+
+ -  Downloading remote actors' avatar or header images to your own storage
+    (to avoid hotlinking or to support media proxying).
+ -  Fetching attachment media (`icon`, `image`, `document.url`) for
+    thumbnailing or content-type detection.
+ -  Resolving link previews or OEmbed endpoints discovered in post content.
+ -  Sending outbound webhooks to user-configured URLs.
+
+For these, either wrap the fetch with a library like [ssrfcheck] or call
+`validatePublicUrl()` yourself before the fetch:
+
+~~~~ typescript
+import { validatePublicUrl } from "@fedify/vocab-runtime";
+
+async function fetchRemoteImage(url: URL): Promise<Response> {
+  await validatePublicUrl(url.href);  // throws if the URL is unsafe
+  return fetch(url);
+}
+~~~~
+
+Also disable following redirects by default, or constrain them: an
+attacker's URL might be public on its face but redirect to an internal
+address.  `fetch()` in the platform runtimes follows redirects automatically;
+either set `redirect: "manual"` and validate each hop, or cap the total
+number of hops with a wrapper library.
+
+[`validatePublicUrl()`]: https://jsr.io/@fedify/vocab-runtime/doc/~/validatePublicUrl
+[ssrfcheck]: https://www.npmjs.com/package/ssrfcheck
+
+### Secret and key management
+
+Fedify deployments have two distinct categories of cryptographic material
+to protect, and conflating them is a common cause of preventable
+incidents:
+
+Instance-wide secrets
+:   Session signing keys, OAuth client secrets, database passwords, S3
+    credentials, API tokens.  These belong in environment variables or a
+    secret manager, never in source control.  For systemd, use
+    `EnvironmentFile=/etc/fedify/env` with `chmod 600`.  For Docker, use
+    [Docker secrets] or supply them through the orchestrator's env facility
+    without committing them to *compose.yaml*.  For Kubernetes, use
+    `Secret` resources (and consider [External Secrets] to sync from a
+    backing store like Vault or AWS Secrets Manager).  For Cloudflare
+    Workers, use `wrangler secret put`—never `vars` in
+    *wrangler.jsonc*.
+
+Per-actor key pairs
+:   Generated once per actor at registration time and stored in your
+    database, one pair per row.  Back them up together with the rest of
+    your application data.  Do not encrypt them with a secret you will
+    forget to rotate to a new KMS when you migrate; losing these keys
+    means losing the ability to sign outgoing activities for those actors,
+    which for other fediverse servers looks indistinguishable from
+    identity theft.
+
+Two practical rules that are easy to forget:
+
+ -  Do not commit a *.env* file to the repository, even for development.
+    Development secrets leak into production habits.  Use *.env.sample*
+    with dummy values and a *.env* that is `.gitignore`d.
+ -  On deployment, the *.env* file (if you use one) should live on the
+    server only long enough to be read into the process environment.  The
+    most common mistake is making it world-readable or leaving it in a
+    web-accessible directory.
+
+[Docker secrets]: https://docs.docker.com/engine/swarm/secrets/
+[External Secrets]: https://external-secrets.io/
+
+### Other practices worth enforcing
+
+Require HTTPS everywhere
+:   ActivityPub assumes HTTPS.  Most fediverse servers refuse to federate
+    over HTTP, and those that accept it will reject the signatures on your
+    activities.  Redirect port 80 to 443 at the proxy and make sure your
+    `Federation.origin` starts with `https://`.
+
+Keep signature verification on
+:   `~FederationOptions.skipSignatureVerification` exists only for
+    controlled testing.  A server with signature verification disabled
+    will accept forged activities from any source, and there is no
+    recovery from the resulting trust-cache pollution short of wiping
+    state and refederating.
+
+Block abusive instances early
+:   Apply domain-level blocklists at the inbox listener so that incoming
+    activities from known-abusive instances are rejected before you spend
+    time parsing them.  The fediverse maintains several community blocklists
+    ([oliphant/blocklists] is one starting point); curate your own rather
+    than importing them wholesale.
+
+Keep the system clock in sync
+:   HTTP signatures are valid only within `~FederationOptions.signatureTimeWindow`
+    (one hour by default).  Run NTP on every web and worker node.  Clock
+    drift is the second-most-common “it worked in staging” production
+    issue after reverse-proxy misconfiguration.
+
+[oliphant/blocklists]: https://codeberg.org/oliphant/blocklists
