@@ -32,12 +32,19 @@ export function hasProofLike(jsonLd: unknown): boolean {
   const record = jsonLd as Record<string, unknown>;
   const proof = record.proof ?? record["https://w3id.org/security#proof"];
 
+  const getField = (
+    source: Record<string, unknown>,
+    compact: string,
+    expanded: string,
+  ): unknown => source[compact] ?? source[expanded];
+
   const isReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
     if (Array.isArray(value)) return value.some(isReference);
     return typeof value === "object" && value != null &&
       (("id" in value && typeof value.id === "string") ||
-        ("@id" in value && typeof value["@id"] === "string"));
+        ("@id" in value && typeof value["@id"] === "string") ||
+        ("@value" in value && typeof value["@value"] === "string"));
   };
 
   const hasType = (value: unknown): boolean => {
@@ -52,10 +59,22 @@ export function hasProofLike(jsonLd: unknown): boolean {
   const isProofLike = (value: unknown): boolean => {
     if (typeof value !== "object" || value == null) return false;
     const proofRecord = value as Record<string, unknown>;
-    return hasType(proofRecord.type) &&
-      isReference(proofRecord.verificationMethod) &&
-      isReference(proofRecord.proofPurpose) &&
-      typeof proofRecord.proofValue === "string";
+    return hasType(proofRecord.type ?? proofRecord["@type"]) &&
+      isReference(getField(
+        proofRecord,
+        "verificationMethod",
+        "https://w3id.org/security#verificationMethod",
+      )) &&
+      isReference(getField(
+        proofRecord,
+        "proofPurpose",
+        "https://w3id.org/security#proofPurpose",
+      )) &&
+      isReference(getField(
+        proofRecord,
+        "proofValue",
+        "https://w3id.org/security#proofValue",
+      ));
   };
 
   return Array.isArray(proof) ? proof.some(isProofLike) : isProofLike(proof);

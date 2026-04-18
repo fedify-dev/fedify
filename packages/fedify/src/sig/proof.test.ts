@@ -315,6 +315,18 @@ test("hasProofLike()", () => {
       proofValue: "signature",
     },
   }));
+  assert(hasProofLike({
+    "https://w3id.org/security#proof": [{
+      "@type": ["https://w3id.org/security#DataIntegrityProof"],
+      "https://w3id.org/security#verificationMethod": [{
+        "@id": "https://example.com/users/alice#main-key",
+      }],
+      "https://w3id.org/security#proofPurpose": [{
+        "@id": "https://w3id.org/security#assertionMethod",
+      }],
+      "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
+    }],
+  }));
   assertFalse(hasProofLike({
     proof: {
       type: "DataIntegrityProof",
