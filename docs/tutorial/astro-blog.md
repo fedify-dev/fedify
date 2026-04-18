@@ -180,10 +180,9 @@ Select *Bun*, *Astro*, *In-memory*, and *In-process* in order:
 > [!NOTE]
 > Fedify is not a full-stack web framework—it's a library specialized for
 > implementing [ActivityPub] servers.  You always use it alongside another
-> web framework.  In this tutorial we use [Astro], which is excellent for
-> content-focused sites because it compiles Markdown posts to static HTML at
-> build time while still supporting dynamic server routes for ActivityPub
-> endpoints.
+> web framework.  In this tutorial we use [Astro] with server-side rendering,
+> which lets us work with Markdown content collections and handle ActivityPub
+> endpoints all in the same application.
 
 After a moment, you'll have a working project with the following structure:
 
@@ -1279,6 +1278,7 @@ federation
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
+    if (object.objectId?.href !== ctx.getActorUri(BLOG_IDENTIFIER).href) return;
     if (undo.actorId == null) return;
     followers.delete(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
@@ -1709,6 +1709,7 @@ federation
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
+    if (object.objectId?.href !== ctx.getActorUri(BLOG_IDENTIFIER).href) return;
     if (undo.actorId == null) return;
     removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
@@ -1972,6 +1973,7 @@ federation
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
+    if (object.objectId?.href !== ctx.getActorUri(BLOG_IDENTIFIER).href) return;
     if (undo.actorId == null) return;
     removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
@@ -2528,6 +2530,7 @@ federation
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
+    if (object.objectId?.href !== ctx.getActorUri(BLOG_IDENTIFIER).href) return;
     if (undo.actorId == null) return;
     removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
