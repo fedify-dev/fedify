@@ -541,19 +541,24 @@ export async function handleOutbox<TContextData>(
     logger.error("Actor dispatcher is not set.", { identifier });
     return await onNotFound(request);
   }
+  if (authorizePredicate != null) {
+    const authorizeContext = ctx.clone(ctx.data) as
+      & RequestContext<TContextData>
+      & {
+        request: Request;
+      };
+    authorizeContext.request = request.clone() as Request;
+    const requestForUnauthorized = authorizeContext.request.clone() as Request;
+    if (!await authorizePredicate(authorizeContext, identifier)) {
+      return await onUnauthorized(requestForUnauthorized);
+    }
+  }
   const actor = await actorDispatcher(ctx, identifier);
   if (actor == null || actor instanceof Tombstone) {
     logger.error("Actor {identifier} not found.", { identifier });
     return await onNotFound(request);
   }
-  const requestForParsing = authorizePredicate == null
-    ? request
-    : request.clone();
-  if (authorizePredicate != null) {
-    if (!await authorizePredicate(ctx, identifier)) {
-      return await onUnauthorized(requestForParsing as Request);
-    }
-  }
+  const requestForParsing = request.clone();
   let json: unknown;
   try {
     json = await requestForParsing.json();

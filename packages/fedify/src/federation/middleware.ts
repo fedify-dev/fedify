@@ -3089,7 +3089,7 @@ async function forwardActivityInternal<TContextData>(
     });
   }
   const { outboxQueue } = ctx.federation;
-  if (outboxQueue.enqueueMany == null) {
+  if (outboxQueue.enqueueMany == null || orderingKey != null) {
     const promises: Promise<void>[] = messages.map((m) =>
       outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
     );
@@ -3111,39 +3111,14 @@ async function forwardActivityInternal<TContextData>(
       throw errors[0];
     }
   } else {
-    // Note: enqueueMany does not support per-message orderingKey,
-    // so we fall back to individual enqueues when orderingKey is specified
-    if (orderingKey != null) {
-      const promises: Promise<void>[] = messages.map((m) =>
-        outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+    try {
+      await outboxQueue.enqueueMany(messages.map((m) => m.message));
+    } catch (error) {
+      logger.error(
+        "Failed to enqueue activity {activityId} to forward later:\n{error}",
+        { activityId: ctx.activityId, error },
       );
-      const results = await Promise.allSettled(promises);
-      const errors = results
-        .filter((r) => r.status === "rejected")
-        .map((r) => (r as PromiseRejectedResult).reason);
-      if (errors.length > 0) {
-        logger.error(
-          "Failed to enqueue activity {activityId} to forward later:\n{errors}",
-          { activityId: ctx.activityId, errors },
-        );
-        if (errors.length > 1) {
-          throw new AggregateError(
-            errors,
-            `Failed to enqueue activity ${ctx.activityId} to forward later.`,
-          );
-        }
-        throw errors[0];
-      }
-    } else {
-      try {
-        await outboxQueue.enqueueMany(messages.map((m) => m.message));
-      } catch (error) {
-        logger.error(
-          "Failed to enqueue activity {activityId} to forward later:\n{error}",
-          { activityId: ctx.activityId, error },
-        );
-        throw error;
-      }
+      throw error;
     }
   }
   return true;

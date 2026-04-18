@@ -1446,6 +1446,29 @@ test("handleOutbox()", async () => {
   assertEquals(response.status, 401);
   assertEquals(seen, []);
 
+  onNotFoundCalled = null;
+  onUnauthorizedCalled = null;
+  ({ request, context } = createRequestContextPair());
+  response = await handleOutbox(request, {
+    identifier: "someone",
+    context,
+    outboxContextFactory(identifier) {
+      return createOutboxContext({
+        ...context,
+        clone: undefined,
+        identifier,
+      });
+    },
+    actorDispatcher: () => null,
+    outboxListeners: listeners,
+    authorizePredicate: () => false,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertInstanceOf(onUnauthorizedCalled, Request);
+  assertEquals(response.status, 401);
+
   onUnauthorizedCalled = null;
   ({ request, context } = createRequestContextPair());
   response = await handleOutbox(request, {
@@ -1501,6 +1524,10 @@ test("handleOutbox()", async () => {
     response.headers.get("content-type"),
     "text/plain; charset=utf-8",
   );
+  assertEquals(seen, [
+    `someone:${activity.id?.href}`,
+    `someone:${activity.id?.href}`,
+  ]);
 
   onUnauthorizedCalled = null;
   ({ request, context } = createRequestContextPair());
