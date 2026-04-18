@@ -1454,3 +1454,82 @@ Abusive remotes
     single poorly-behaved instance can flood your inbox with retries
     during its own outage, and per-IP limits won't distinguish that from
     a flood of independent users.
+
+
+Pre-launch checklist
+--------------------
+
+A condensed pass through everything above.  If you can tick all of these
+before taking real traffic, you have covered the pitfalls this guide was
+written to warn you about.
+
+**Configuration**
+
+ -  [ ] `~FederationOptions.origin` is pinned, or [x-forwarded-fetch] is
+    wired up behind a trusted reverse proxy and gated on `BEHIND_PROXY`.
+ -  [ ] `MemoryKvStore` and `InProcessMessageQueue` are not used outside
+    of tests; a persistent KV and MQ backend is configured.
+ -  [ ] Actor key pairs are generated once per actor at registration time
+    and stored in the database—not regenerated on each restart.
+ -  [ ] `allowPrivateAddress` is unset (or explicitly `false`) in
+    production.
+ -  [ ] `skipSignatureVerification` is unset (or explicitly `false`) in
+    production.
+
+**Scaling**
+
+ -  [ ] Web and worker roles are split with `manuallyStartQueue: true` and
+    `Federation.startQueue()`; workers are not reachable through the load
+    balancer.
+ -  [ ] No `sendActivity()` call sites use `immediate: true` outside of
+    tests.
+ -  [ ] `ParallelMessageQueue` parallelism, if used, is matched by a
+    database connection pool sized for `N + headroom`.
+
+**Runtime and infrastructure**
+
+ -  [ ] The process runs under a supervisor (systemd, Compose,
+    Kubernetes, or platform-equivalent) that restarts on crash and
+    respects SIGTERM for graceful shutdown.
+ -  [ ] A reverse proxy terminates TLS, forwards `Host`,
+    `X-Forwarded-Host`, and `X-Forwarded-Proto`, and preserves the
+    `Accept` and `Content-Type` headers verbatim.
+ -  [ ] Port 80 redirects to 443; no part of the federation surface is
+    reachable over plain HTTP.
+ -  [ ] NTP is running on every node; clock drift is monitored.
+
+**Security**
+
+ -  [ ] All federated HTML (post content, summaries, actor bios, display
+    names) is sanitized through an allowlist-based library before
+    rendering to browsers.
+ -  [ ] A Content-Security-Policy header is set and forbids inline
+    scripts and inline event handlers.
+ -  [ ] Application-code fetches of remote-supplied URLs (avatars,
+    attachments, link previews, webhooks) are guarded with
+    `validatePublicUrl()` or an equivalent SSRF defense, and redirects
+    are either disabled or validated per hop.
+ -  [ ] Secrets are managed via the environment or a secret manager, not
+    committed to source; actor private keys live in the database, backed
+    up alongside the rest of the application data.
+
+**Observability**
+
+ -  [ ] Structured logs are emitted to stderr at `info` or `warn` level
+    by default; sensitive fields are redacted at the sink.
+ -  [ ] OpenTelemetry exports traces to your backend of choice with a
+    realistic sampling rate.
+ -  [ ] Error aggregation (Sentry or equivalent) is wired up through a
+    LogTape sink.
+ -  [ ] Queue depth, inbox processing latency, outbox delivery success
+    rate, and remote 410/404 rate are all tracked and alert on sustained
+    anomalies.
+
+**ActivityPub**
+
+ -  [ ] The domain is the one you intend to keep forever, and the
+    WebFinger/web-origin split (if any) has the permanent host as
+    `webOrigin`.
+ -  [ ] A service-retirement runbook exists (freeze writes, broadcast
+    `Delete`, serve `Tombstone` and 410 Gone for an extended period)
+    before it is ever needed.
