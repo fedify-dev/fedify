@@ -618,3 +618,369 @@ Click any post title to see the individual post page:
 ![Individual blog post page](./astro-blog/blog-post.png)
 
 Stop the server with <kbd>Ctrl</kbd>+<kbd>C</kbd> when you're done.
+
+Implementing the ActivityPub actor
+==================================
+
+We now have a working blog, but it's not federated yet.  To make the blog
+discoverable by other ActivityPub servers (like Mastodon), we need to expose an
+*actor*—a machine-readable description of who or what is publishing content.
+
+In ActivityPub, an actor is a JSON-LD document that describes an entity (a
+person, bot, group, or service) and tells other servers how to interact with it.
+For our blog, the actor will describe the blog itself: its name, where to send
+activities, and which cryptographic keys to use when signing outgoing requests.
+
+*[JSON-LD]: JavaScript Object Notation for Linked Data
+
+### In-memory store
+
+Before we can implement the actor, we need somewhere to store key pairs.
+Cryptographic key pairs must be stable—if the keys change between requests,
+other servers will reject our signatures.  We'll start with an in-memory
+solution and migrate to SQLite in a later chapter.
+
+Create the file *src/lib/store.ts*:
+
+~~~~ typescript [src/lib/store.ts]
+// In-memory store for key pairs and followers.
+// Uses globalThis to persist across Astro module reloads in dev mode.
+// This data is lost when the server restarts — we'll fix that in a later
+// chapter when we introduce SQLite.
+
+declare global {
+  var _keyPairs: Map<string, CryptoKeyPair[]>; // eslint-disable-line no-var
+  var _followers: Map<string, string>; // eslint-disable-line no-var
+}
+
+if (globalThis._keyPairs == null) globalThis._keyPairs = new Map();
+if (globalThis._followers == null) globalThis._followers = new Map();
+
+export const keyPairs: Map<string, CryptoKeyPair[]> = globalThis._keyPairs;
+export const followers: Map<string, string> = globalThis._followers;
+~~~~
+
+The `_followers` map is also declared here even though we won't use it until
+Chapter 6—it's easier to keep both maps in the same place.
+
+> [!NOTE]
+> We use `globalThis` instead of module-level variables because Astro's
+> development server uses [Vite's Hot Module Replacement (HMR)], which
+> re-evaluates modules whenever you save a file.  If we stored key pairs in
+> a plain module variable, they'd be reset to `undefined` on every save,
+> causing authentication failures.  Storing them on `globalThis` keeps them
+> alive across HMR reloads.
+
+[Vite's Hot Module Replacement (HMR)]: https://vite.dev/guide/features.html#hot-module-replacement
+
+### Updating the federation module
+
+Now let's update *src/federation.ts* to implement the actor.  Replace the
+entire file with:
+
+~~~~ typescript [src/federation.ts]
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { keyPairs } from "./lib/store.ts";
+
+const logger = getLogger("astro-blog");
+
+export const BLOG_IDENTIFIER = "blog";
+export const BLOG_NAME = "Fedify Blog Example";
+export const BLOG_SUMMARY =
+  "A sample federated blog powered by Fedify and Astro.";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) {
+      logger.debug("Unknown actor identifier: {identifier}", { identifier });
+      return null;
+    }
+    const kp = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: BLOG_NAME,
+      summary: BLOG_SUMMARY,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: kp[0].cryptographicKey,
+      assertionMethods: kp.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return [];
+    const stored = keyPairs.get(identifier);
+    if (stored) return stored;
+    const [rsaKey, ed25519Key] = await Promise.all([
+      generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+      generateCryptoKeyPair("Ed25519"),
+    ]);
+    const kp = [rsaKey, ed25519Key];
+    keyPairs.set(identifier, kp);
+    return kp;
+  });
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== BLOG_IDENTIFIER) return null;
+    return { items: [] };
+  },
+);
+
+export default federation;
+~~~~
+
+Let's walk through the key changes:
+
+**`BLOG_IDENTIFIER`, `BLOG_NAME`, `BLOG_SUMMARY`** are exported constants that
+we'll reuse in the HTML profile page.
+
+**`setActorDispatcher`** registers a callback for the route
+`/users/{identifier}`. When an ActivityPub client fetches that URL, Fedify
+calls this callback and serializes the returned object to JSON-LD.  We return
+`null` for any identifier that isn't our blog, which causes Fedify to respond
+with `404 Not Found`.
+
+The `Person` object we return carries:
+
+ -  `id` — the canonical URL of the actor, obtained via
+    `ctx.getActorUri(identifier)`.
+ -  `preferredUsername` — the short handle that ActivityPub software displays
+    (e.g., `@blog@example.com`).
+ -  `name`, `summary` — display name and description.
+ -  `url` — the human-readable profile URL (the blog home page).
+ -  `inbox` — where other servers deliver activities (follows, replies, etc.).
+    We register the inbox path below.
+ -  `endpoints.sharedInbox` — a single inbox URL shared across all actors on
+    this server.  Most servers prefer to send bulk deliveries here.
+ -  `followers` — the URL of the followers collection.
+ -  `publicKey`, `assertionMethods` — cryptographic keys used to verify that
+    activities truly came from this actor.
+
+**`setKeyPairsDispatcher`** generates and caches two key pairs: one
+[RSA-PKCS1-v1.5] key (for compatibility with older ActivityPub software) and
+one [Ed25519] key (faster, modern).  Both are stored in the `keyPairs` map.
+
+**`setInboxListeners`** registers the inbox and shared inbox routes.  We need
+to call this even before we add any handlers because Fedify needs to know the
+inbox path to include it in the actor's JSON-LD.  We'll add actual handlers in
+Chapter 6 (Followers).
+
+**`setFollowersDispatcher`** registers the followers collection route.  For now
+it returns an empty list; we'll fill it in Chapter 6.
+
+[RSA-PKCS1-v1.5]: https://en.wikipedia.org/wiki/PKCS_1
+[Ed25519]: https://en.wikipedia.org/wiki/EdDSA#Ed25519
+
+### Updating the middleware
+
+Add an import for the logging module in *src/middleware.ts* so that LogTape is
+configured before any Fedify code runs:
+
+~~~~ typescript{3} [src/middleware.ts]
+import { fedifyMiddleware } from "@fedify/astro";
+import federation from "./federation.ts";
+import "./logging.ts";
+
+export const onRequest = fedifyMiddleware(federation, (_context) => undefined);
+~~~~
+
+The `import "./logging.ts"` side-effect import ensures that the LogTape
+configuration we defined in Chapter 2 is loaded before the first request
+arrives.  Without it, log messages from the federation layer would be silently
+discarded.
+
+### The actor profile page
+
+Right now if a browser visits `/users/blog`, Astro would respond with a 404
+because there is no page at that path.  We need to add an HTML page so that
+both browsers and ActivityPub clients get useful responses at the same URL.
+
+Create the directory *src/pages/users/blog/* and add *index.astro*:
+
+~~~~ astro [src/pages/users/blog/index.astro]
+---
+import { getCollection } from "astro:content";
+import {
+  BLOG_IDENTIFIER,
+  BLOG_NAME,
+  BLOG_SUMMARY,
+} from "../../../federation.ts";
+import Layout from "../../../layouts/Layout.astro";
+
+const posts = await getCollection("posts");
+const publishedPosts = posts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const handle = `@${BLOG_IDENTIFIER}@${Astro.url.host}`;
+---
+
+<Layout
+  title={`${BLOG_NAME} (@${BLOG_IDENTIFIER})`}
+  description={BLOG_SUMMARY}
+>
+  <section class="profile">
+    <h1>{BLOG_NAME}</h1>
+    <p class="handle">{handle}</p>
+    <p class="summary">{BLOG_SUMMARY}</p>
+    <p class="hint">
+      Follow this blog from your fediverse account to receive new posts
+      automatically.
+    </p>
+  </section>
+
+  <section class="posts">
+    <h2>Posts</h2>
+    <ul class="post-list">
+      {
+        publishedPosts.map((post) => (
+          <li class="post-item">
+            <time datetime={post.data.pubDate.toISOString()}>
+              {post.data.pubDate.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+            <h3>
+              <a href={`/posts/${post.id}`}>{post.data.title}</a>
+            </h3>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  .profile {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .handle {
+    color: #666;
+    font-family: monospace;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .summary { margin-bottom: 0.75rem; }
+
+  .hint {
+    font-size: 0.875rem;
+    color: #555;
+    background: #f5f5f5;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+  }
+
+  .posts h2 { margin-bottom: 1rem; }
+
+  .post-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .post-item time {
+    font-size: 0.875rem;
+    color: #666;
+    display: block;
+  }
+
+  .post-item h3 {
+    font-size: 1rem;
+    margin-top: 0.1rem;
+  }
+</style>
+~~~~
+
+This page imports the constants from *federation.ts* so the blog name and
+description stay in sync between the HTML and JSON-LD views.
+
+> [!TIP]
+> The URL `/users/blog` is served by both Fedify and Astro—they share the
+> route.  Which one responds depends on the `Accept` header of the request.
+> ActivityPub clients send `Accept: application/activity+json`, so Fedify
+> handles those and returns JSON-LD.  Browsers send `Accept: text/html`, so
+> Astro handles those and renders the HTML profile page.
+>
+> This HTTP [content negotiation] trick is what makes Fedify and Astro work
+> together on the same path.  Fedify's `@fedify/astro` middleware inspects the
+> `Accept` header and hands off non-ActivityPub requests to the Astro router.
+
+[content negotiation]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
+
+### Testing the actor
+
+Start the development server if it isn't running:
+
+~~~~ sh
+bun run dev
+~~~~
+
+Open <http://localhost:4321/users/blog> in your browser.  You should see the
+actor profile page with the blog name, handle, and post list:
+
+![Actor profile page showing blog name, fediverse handle, and post listings](./astro-blog/actor-profile.png)
+
+Now test the ActivityPub response.  Open a new terminal and run:
+
+~~~~ sh
+fedify lookup http://localhost:4321/users/blog
+~~~~
+
+You should see output like this:
+
+~~~~ console
+✔ Looking up the object...
+Person {
+  id: URL "http://localhost:4321/users/blog",
+  name: "Fedify Blog Example",
+  summary: "A sample federated blog powered by Fedify and Astro.",
+  url: URL "http://localhost:4321/",
+  preferredUsername: "blog",
+  publicKey: CryptographicKey {
+    id: URL "http://localhost:4321/users/blog#main-key",
+    owner: URL "http://localhost:4321/users/blog",
+    publicKey: CryptoKey { ... },
+  },
+  ...
+}
+~~~~
+
+> [!NOTE]
+> If `fedify lookup` returns an error about a private object, add the
+> `-a`/`--authorized-fetch` flag to sign the request:
+>
+> ~~~~ sh
+> fedify lookup -a http://localhost:4321/users/blog
+> ~~~~
+
+The blog now has a valid ActivityPub identity.  However, it can't receive
+follows or deliver posts to the fediverse yet—those features require a public
+URL, which we'll set up next.
