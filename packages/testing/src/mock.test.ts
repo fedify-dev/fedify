@@ -339,6 +339,64 @@ test(
 );
 
 test(
+  "postOutboxActivity forwardActivity treats expanded proof payloads as signed",
+  async () => {
+    const mockFederation = createFederation<{ test: string }>({
+      contextData: { test: "data" },
+    });
+
+    mockFederation.setActorDispatcher(
+      "/users/{identifier}",
+      (_ctx, identifier) => {
+        return new Person({
+          id: new URL(`https://example.com/users/${identifier}`),
+        });
+      },
+    );
+
+    mockFederation
+      .setOutboxListeners("/users/{identifier}/outbox")
+      .on(
+        Create,
+        async (ctx: OutboxContext<{ test: string }>) => {
+          await ctx.forwardActivity(
+            { identifier: ctx.identifier },
+            new Person({ id: new URL("https://example.com/users/bob") }),
+            { skipIfUnsigned: true },
+          );
+        },
+      );
+
+    const proofJson = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/activities/1",
+      type: "Create",
+      actor: "https://example.com/users/alice",
+      "https://w3id.org/security#proof": {
+        "@type": ["https://w3id.org/security#DataIntegrityProof"],
+        "https://w3id.org/security#verificationMethod": [{
+          "@id": "https://example.com/users/alice#main-key",
+        }],
+        "https://w3id.org/security#proofPurpose": [{
+          "@id": "https://w3id.org/security#assertionMethod",
+        }],
+        "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
+      },
+    };
+    const activity = await Activity.fromJsonLd(proofJson, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+
+    await mockFederation.postOutboxActivity("alice", activity);
+
+    assertEquals(mockFederation.sentActivities.length, 1);
+    assertEquals(mockFederation.sentActivities[0].activity, activity);
+    assertEquals(mockFederation.sentActivities[0].rawActivity, proofJson);
+  },
+);
+
+test(
   "postOutboxActivity forwardActivity skips malformed linked data signatures",
   async () => {
     const mockFederation = createFederation<{ test: string }>({

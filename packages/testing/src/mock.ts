@@ -10,7 +10,7 @@ import type {
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
-import { hasSignatureLike } from "@fedify/fedify/sig";
+import { hasProofLike, hasSignatureLike } from "@fedify/fedify/sig";
 import { Activity, CryptographicKey, Multikey } from "@fedify/vocab";
 import type {
   Collection,
@@ -639,7 +639,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           recipients: any,
           options?: any,
         ) => {
-          const hasProof = await activity.getProof() != null;
+          const hasProof = hasProofLike(rawActivity);
           const hasLds = hasSignatureLike(rawActivity);
           if (options?.skipIfUnsigned && !hasProof && !hasLds) {
             return;
