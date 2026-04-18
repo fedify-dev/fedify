@@ -71,6 +71,12 @@ function validateSingleIdentifierVariablePath(
     path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
   );
   if (
+    operatorMatches.length !== 1 ||
+    operatorMatches[0]?.[2] !== "identifier"
+  ) {
+    throw new RouterError(errorMessage);
+  }
+  if (
     operatorMatches.some((match) =>
       ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
     )
