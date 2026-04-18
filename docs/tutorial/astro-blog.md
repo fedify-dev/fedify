@@ -324,3 +324,297 @@ Throughout this tutorial we'll encounter a few more TypeScript features and
 explain them as they appear.  TypeScript knowledge isn't required—just pay
 attention to the red underlines in your editor and read the error messages.
 They're usually very helpful.
+
+
+Building the blog
+-----------------
+
+Now that the project is scaffolded, let's turn it into an actual blog.
+We'll use [Astro's content collections][content-collections] to manage blog
+posts as Markdown files, create a listing page, and add individual post pages.
+At the end of this chapter you'll have a working blog—no ActivityPub yet, just
+a clean static site.
+
+[content-collections]: https://docs.astro.build/en/guides/content-collections/
+
+### Defining the content collection
+
+Astro uses *content collections* to type-check and manage structured content
+like blog posts.  Create the file *src/content.config.ts*:
+
+~~~~ typescript
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
+
+const posts = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/content/posts" }),
+  schema: z.object({
+    title: z.string(),
+    pubDate: z.coerce.date(),
+    description: z.string(),
+    draft: z.boolean().optional(),
+  }),
+});
+
+export const collections = { posts };
+~~~~
+
+Let's walk through this:
+
+ -  `defineCollection()` declares a named collection of content files.
+ -  `glob(...)` tells Astro to find all _\*.md_ files in *src/content/posts/*.
+ -  `z.object(...)` is a [Zod] schema that validates and types the frontmatter
+    in each Markdown file.
+
+> [!NOTE]
+> *Frontmatter* is the YAML block at the top of a Markdown file, enclosed
+> in `---`.  It holds metadata like the title and publication date.
+
+The `z` object is a schema validation library called [Zod].  Each field in the
+schema corresponds to a frontmatter field in our Markdown posts.  TypeScript
+will enforce that all posts have a `title`, `pubDate`, and `description`.
+
+[Zod]: https://zod.dev/
+
+### Writing blog posts
+
+Create three sample posts.  First, *src/content/posts/hello-fediverse.md*:
+
+~~~~ markdown
+---
+title: "Hello, Fediverse!"
+pubDate: 2025-01-15
+description: >-
+  Welcome to this example federated blog built with Astro and Fedify.
+  You can follow it from Mastodon or any other fediverse platform.
+---
+
+Welcome to this federated blog example! ...
+~~~~
+
+Create two more posts—their exact content isn't important for the tutorial;
+what matters is that each post has valid frontmatter matching the schema.
+
+> [!TIP]
+> The `>-` syntax in YAML is a *block scalar*—it lets you write a long string
+> across multiple lines.  Trailing newlines are stripped.  This is handy for
+> `description` fields that would otherwise make the frontmatter too wide.
+
+### The layout component
+
+Replace *src/layouts/Layout.astro* with a minimal layout.  The key parts are
+the `Props` interface (which TypeScript uses to type-check component usage) and
+a `<slot />` where page content is injected:
+
+~~~~ astro
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const siteTitle = "Fedify Blog Example";
+const pageTitle = title ? `${title} — ${siteTitle}` : siteTitle;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>{pageTitle}</title>
+    {description && <meta name="description" content={description} />}
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/" class="site-title">{siteTitle}</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>
+        Built with <a href="https://astro.build/">Astro</a> and
+        <a href="https://fedify.dev/">Fedify</a>.
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+  }
+
+  body {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 1rem 1.25rem;
+  }
+
+  a { color: #0066cc; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .site-title { font-size: 1.25rem; font-weight: 600; color: #1a1a1a; }
+
+  main { min-height: 60vh; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e5e5;
+    font-size: 0.875rem;
+    color: #666;
+  }
+
+  h1 { font-size: 2rem; line-height: 1.2; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 0.5rem; }
+  p { margin-bottom: 1rem; }
+  ul, ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+</style>
+~~~~
+
+Notice that the layout uses `<style is:global>` rather than `<style>`.  This
+tells Astro to apply these styles globally instead of scoping them to just this
+component.
+
+> [!TIP]
+> The `{description && <meta .../>}` expression is JSX-style conditional
+> rendering.  It renders the `<meta>` tag only when `description` is truthy.
+
+### The blog listing page
+
+Replace *src/pages/index.astro* with the blog listing:
+
+~~~~ astro
+---
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+
+const allPosts = await getCollection("posts");
+const posts = allPosts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+---
+
+<Layout>
+  <h1>Blog</h1>
+  <p class="tagline">A federated blog powered by Astro and Fedify.</p>
+  <ul class="post-list">
+    {
+      posts.map((post) => (
+        <li class="post-item">
+          <time datetime={post.data.pubDate.toISOString()}>
+            {post.data.pubDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </time>
+          <h2>
+            <a href={`/posts/${post.id}`}>{post.data.title}</a>
+          </h2>
+          <p>{post.data.description}</p>
+        </li>
+      ))
+    }
+  </ul>
+</Layout>
+~~~~
+
+`getCollection("posts")` fetches all entries in the `posts` collection.
+The `post.data` object is typed according to the Zod schema we defined.
+For example, `post.data.pubDate` is a `Date` object, not a raw string,
+because `z.coerce.date()` converts it automatically.
+
+### The individual post page
+
+Create *src/pages/posts/* and add a file named *\[slug].astro*
+(note: the brackets are part of the filename—they tell Astro this is
+a dynamic route):
+
+~~~~ astro
+---
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+
+const { slug } = Astro.params;
+const posts = await getCollection("posts");
+const post = posts.find((p) => p.id === slug);
+
+if (!post || post.data.draft) {
+  return Astro.redirect("/404");
+}
+
+const { Content } = await render(post);
+---
+
+<Layout title={post.data.title} description={post.data.description}>
+  <article>
+    <header class="post-header">
+      <h1>{post.data.title}</h1>
+      <time datetime={post.data.pubDate.toISOString()}>
+        {post.data.pubDate.toLocaleDateString("en-US", { ... })}
+      </time>
+    </header>
+    <div class="post-content">
+      <Content />
+    </div>
+    <footer class="post-footer">
+      <a href="/">&larr; Back to all posts</a>
+    </footer>
+  </article>
+</Layout>
+~~~~
+
+The brackets in the filename tell Astro this is a [dynamic route]—the name
+inside the brackets becomes a URL parameter accessible via `Astro.params`.
+When a request comes in for `/posts/hello-fediverse`, Astro sets
+`Astro.params.slug` to `"hello-fediverse"` and runs this page.
+
+`render(post)` converts the Markdown content to HTML and returns a `Content`
+component.  When you write `<Content />` in the template, Astro renders the
+full post body.
+
+[dynamic route]: https://docs.astro.build/en/guides/routing/#dynamic-routes
+
+### Testing the blog
+
+Start the development server:
+
+~~~~ sh
+bun run dev
+~~~~
+
+Open <http://localhost:4321/> in your browser.  You should see a listing of
+all three posts, sorted newest-first:
+
+![Blog home page showing three post listings](./astro-blog/blog-home.png)
+
+Click any post title to see the individual post page:
+
+![Individual blog post page](./astro-blog/blog-post.png)
+
+Stop the server with <kbd>Ctrl</kbd>+<kbd>C</kbd> when you're done.
