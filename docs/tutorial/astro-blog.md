@@ -1027,7 +1027,7 @@ configuration, Fedify would generate `http://` actor IDs rather than
 `https://`, which other servers will reject.
 
 To fix this, update *src/middleware.ts* to rewrite the request URL based on
-the `X-Forwarded-Proto` header that the tunnel sets:
+the `X-Forwarded-Proto` and `X-Forwarded-Host` headers that the tunnel sets:
 
 ~~~~ typescript twoslash [src/middleware.ts]
 // @noErrors
@@ -1037,22 +1037,28 @@ import federation from "./federation.ts";
 import "./logging.ts";
 
 export const onRequest: MiddlewareHandler = (context, next) => {
-  // Rewrite the request URL scheme based on X-Forwarded-Proto when running
-  // behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
+  // Rewrite the request URL based on X-Forwarded-Proto / X-Forwarded-Host
+  // when running behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
   const proto = context.request.headers.get("x-forwarded-proto");
+  const host = context.request.headers.get("x-forwarded-host");
   const url = new URL(context.request.url);
-  if (proto != null && url.protocol !== `${proto}:`) {
-    url.protocol = proto;
+  if (proto != null && url.protocol !== `${proto}:`) url.protocol = proto;
+  if (host != null && url.host !== host) url.host = host;
+  if (proto != null || host != null) {
     context.request = new Request(url.toString(), context.request);
   }
   return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);
 };
 ~~~~
 
+The `X-Forwarded-Proto` header carries the original scheme (`https`), and
+`X-Forwarded-Host` carries the original hostname (your tunnel domain).
+Together they ensure Fedify generates fully correct actor and object URLs.
+
 Also update *astro.config.ts* to allow requests from external hostnames
 (the tunnel assigns a different hostname than `localhost`):
 
-~~~~ typescript{9-13} [astro.config.ts]
+~~~~ typescript{9-17} [astro.config.ts]
 import node from "@astrojs/node";
 import { fedifyIntegration } from "@fedify/astro";
 import { defineConfig } from "astro/config";
@@ -1061,6 +1067,11 @@ export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
   adapter: node({ mode: "standalone" }),
+  security: {
+    // Trust any forwarded host so the server works correctly behind a
+    // reverse proxy or tunnel (e.g. `fedify tunnel`, Cloudflare Tunnel).
+    allowedDomains: [{}],
+  },
   vite: {
     server: {
       allowedHosts: true,
@@ -1068,6 +1079,12 @@ export default defineConfig({
   },
 });
 ~~~~
+
+`security.allowedDomains` tells Astro's standalone server to trust
+`X-Forwarded-Host`.  Setting it to `[{}]` (an object with no properties)
+matches any domain.  Without this, the server ignores `X-Forwarded-Host`
+and Fedify falls back to `localhost` in all generated URLs, which other
+fediverse servers can't reach.
 
 > [!WARNING]
 > `allowedHosts: true` disables Vite's host checking.  This is fine for
@@ -2121,7 +2138,7 @@ table:
 ### Triggering the sync on startup
 
 Modify *src/middleware.ts* to call `syncPosts` once, on the first HTTP
-request, right after the X-Forwarded-Proto rewrite:
+request, right after the `X-Forwarded-Proto`/`X-Forwarded-Host` rewrite:
 
 ~~~~ typescript twoslash [src/middleware.ts]
 // @noErrors
@@ -2134,12 +2151,14 @@ import "./logging.ts";
 let synced = false;
 
 export const onRequest: MiddlewareHandler = (context, next) => {
-  // Rewrite the request URL scheme based on X-Forwarded-Proto when running
-  // behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
+  // Rewrite the request URL based on X-Forwarded-Proto / X-Forwarded-Host
+  // when running behind a reverse proxy or tunnel (e.g. `fedify tunnel`).
   const proto = context.request.headers.get("x-forwarded-proto");
+  const host = context.request.headers.get("x-forwarded-host");
   const url = new URL(context.request.url);
-  if (proto != null && url.protocol !== `${proto}:`) {
-    url.protocol = proto;
+  if (proto != null && url.protocol !== `${proto}:`) url.protocol = proto;
+  if (host != null && url.host !== host) url.host = host;
+  if (proto != null || host != null) {
     context.request = new Request(url.toString(), context.request);
   }
   if (!synced) {
@@ -2156,7 +2175,10 @@ export const onRequest: MiddlewareHandler = (context, next) => {
 `federation.createContext(request, contextData)` creates a Fedify
 [`RequestContext`] from the current HTTP request.  The context knows the
 server's public URL (including scheme and host), which it uses to generate
-correct ActivityPub IDs.
+correct ActivityPub IDs for the activities it sends.  Because the
+`X-Forwarded-Proto`/`X-Forwarded-Host` rewrite already runs before this
+point, `context.request` always carries the correct public URL when the
+request arrives through the tunnel.
 
 `syncPosts(ctx)` is fired and *not* awaited, so it runs in the background
 while the response is served immediately.  The `synced` flag ensures it only
@@ -2171,7 +2193,7 @@ runs once per server process.
 
 ### Testing
 
-Follow the blog from Mastodon or ActivityPub.Academy (tunnel still required).
+Follow the blog from ActivityPub.Academy (tunnel still required).
 Then add a new post file to *src/content/posts/*:
 
 ~~~~ markdown [src/content/posts/new-post.md]
@@ -2190,15 +2212,20 @@ Restart the dev server:
 bun run dev
 ~~~~
 
+Then open your tunnel URL in a browser (e.g.
+`https://your-tunnel-url.trycloudflare.com/`) so that the first request
+arrives with the correct `X-Forwarded-Host` header and Fedify generates
+the right public URLs for the activities it sends.
+
 Within seconds you should see a log line like:
 
 ~~~~ console
 18:42:02.456 INF @fedify/fedify Sent activity Create to ...
 ~~~~
 
-Check your Mastodon or ActivityPub.Academy timeline—the new post should
-appear there.  The blog title and description are shown (we include the
-description as `content`).
+Check your ActivityPub.Academy timeline—the new post should appear there.
+The blog title and description are shown (we include the description as
+`content`).
 
 To test updates, change the title or description of the new post and
 restart.  To test deletion, remove the file and restart.
@@ -2673,24 +2700,54 @@ Mastodon's HTML formatting (bold, links, mentions) is preserved.
 
 ### Testing with ActivityPub.Academy
 
-Ensure the dev server is running and the tunnel is active (see Chapter 5).
-Open one of your post pages in the browser, e.g.:
+Make sure the dev server is running and the tunnel is active, and that you
+have followed the blog from ActivityPub.Academy (see Chapter 5).  Open the
+tunnel URL in a browser to trigger `syncPosts` with the correct public URL:
+
+~~~~ sh
+open https://your-tunnel-url.trycloudflare.com/
+~~~~
+
+After a few seconds you should see log lines like:
+
+~~~~ console
+INF @fedify/fedify Sent activity Create to ...
+~~~~
+
+Switch to ActivityPub.Academy.  Your three blog posts should appear in
+the home timeline:
+
+![ActivityPub.Academy home timeline showing three blog posts from Fedify Blog Example](./astro-blog/activitypub-academy-timeline.png)
+
+Find the post you want to reply to and click the reply icon below it to
+open the compose box:
+
+![Reply compose box opened below the “Hello, Fediverse!” post](./astro-blog/activitypub-academy-reply-box.png)
+
+Type a comment and click *Reply* to send it:
+
+![Reply compose box with “Great post! Looking forward to more content from this federated blog.” typed](./astro-blog/activitypub-academy-reply-typed.png)
+
+ActivityPub.Academy delivers a `Create(Note)` activity to your blog's
+inbox.  Within a second or two you should see:
+
+~~~~ console
+INF astro-blog New comment on /hello-fediverse by https://...
+~~~~
+
+Now open the corresponding post in your browser:
 
 ~~~~ sh
 open http://localhost:4321/posts/hello-fediverse
 ~~~~
 
-On ActivityPub.Academy, find the post in your timeline and reply to it.
-Within a second or two you should see:
+The comment from ActivityPub.Academy appears in the “Comments” section
+below the post:
 
-~~~~ console
-18:42:05.789 INF astro-blog New comment on /hello-fediverse by https://...
-~~~~
-
-Reload the post page—the comment should appear in the “Comments” section.
+![Blog post page showing “1 comment” from a fediverse user](./astro-blog/post-with-comment.png)
 
 To test deletion: delete the reply on ActivityPub.Academy and reload the
-page.  The comment should disappear.
+post page.  The comment should disappear.
 
 What's next
 ===========
