@@ -1,16 +1,17 @@
 ---
 description: >-
-  In this tutorial, we will build a federated blog that uses Astro for static
-  content and Fedify for ActivityPub federation, allowing blog posts to be
-  delivered to followers across the fediverse.
+  In this tutorial, we will build a federated blog that uses Astro to serve
+  blog posts from Markdown content and Fedify for ActivityPub federation,
+  allowing blog posts to be delivered to followers across the fediverse.
 ---
 
 Building a federated blog
 =========================
 
 In this tutorial, we will build a [federated blog] using [Fedify] and [Astro].
-Blog posts are authored as [Markdown] files and compiled to static HTML at
-build time, while [ActivityPub] federation is handled by dynamic server routes.
+Blog posts are authored as [Markdown] files in Astro content collections and
+rendered on the server on request, while [ActivityPub] federation is handled
+by dynamic server routes.
 When you publish a new post (by deploying a new version of the site), your
 followers in the fediverse automatically receive it—no extra steps needed.
 Remote users can also reply to your posts from their own fediverse accounts,
@@ -1026,8 +1027,11 @@ You'll see output like this after a few seconds:
 > [!NOTE]
 > The tunnel uses one of several free tunneling services
 > (localhost.run, serveo.net, or pinggy.io).  The URL changes each
-> time you run the command, so you'll need to update any references
-> when you restart it.
+> time you run the command.  Once you've introduced SQLite persistence
+> (in a later chapter), delete *blog.db* whenever the tunnel URL
+> changes—otherwise the ActivityPub IDs stored in the database (actor
+> URL, post URLs) will reference the old origin and remote servers may
+> reject or deduplicate activities incorrectly.
 
 Keep the tunnel running in a separate terminal while you continue
 testing.
