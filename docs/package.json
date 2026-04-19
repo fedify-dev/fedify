@@ -25,6 +25,7 @@
     "@fedify/vocab": "workspace:^",
     "@fedify/vocab-runtime": "workspace:^",
     "@fedify/relay": "workspace:^",
+    "@hackmd/markdown-it-task-lists": "^2.1.4",
     "@hono/node-server": "^1.13.7",
     "@js-temporal/polyfill": "catalog:",
     "@logtape/file": "catalog:",

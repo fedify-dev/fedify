@@ -238,6 +238,9 @@ importers:
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../packages/vocab-runtime
+      '@hackmd/markdown-it-task-lists':
+        specifier: ^2.1.4
+        version: 2.1.4
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.14.4(hono@4.8.3)
@@ -2956,6 +2959,9 @@ packages:
     resolution: {integrity: sha512-tMXdRCfYVixjuFK+Hk0Q1s38gV9zDiDJfWL3h1rv4Qc39oILCu1TRTDt7+fGUI8K4G1Fj125Hx/ru3azECWTyQ==}
     engines: {node: '>=6'}
     hasBin: true
+
+  '@hackmd/markdown-it-task-lists@2.1.4':
+    resolution: {integrity: sha512-njMloWVihC7a7N4zxczv547bgNxPVG3GBzh6Z6f2xnO8/92JaxTmQuMV7YvaKKkOyhh2RW4RT84uSgax8u4qfQ==}
 
   '@hongminhee/localtunnel@0.3.0':
     resolution: {integrity: sha512-GRn02MyJIal6DjgDiaLDQhaiTvYlqTLq97bpTNqp2qGnwy4c77pHm6kWPBdSOjmLGPCf2bb/USFKQBgUhafbuA==}
@@ -13678,6 +13684,8 @@ snapshots:
       long: 5.3.2
       protobufjs: 7.5.3
       yargs: 17.7.2
+
+  '@hackmd/markdown-it-task-lists@2.1.4': {}
 
   '@hongminhee/localtunnel@0.3.0':
     dependencies:
