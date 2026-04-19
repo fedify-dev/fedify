@@ -84,8 +84,10 @@ const suppressErrorsOption = bindConfig(
 const allowPrivateAddressOption = bindConfig(
   flag("-p", "--allow-private-address", {
     description: message`Allow private IP addresses for URLs discovered \
-via traversal or recursion. URLs explicitly provided \
-on the command line always allow private addresses.`,
+via traversal or recursion. This option only has an effect \
+when used together with ${optionNames(["-t", "--traverse"])} \
+or ${optionNames(["--recurse"])}, since URLs explicitly \
+provided on the command line always allow private addresses.`,
   }),
   {
     context: configContext,
