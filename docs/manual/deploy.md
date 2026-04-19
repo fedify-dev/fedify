@@ -39,7 +39,7 @@ Node.js
 :   The default recommendation.  Mature, widely deployed, extensive package
     ecosystem, well-understood operational tooling.  Node.js does not provide
     a built-in HTTP server that accepts `fetch()`-style handlers, so you
-    will need [@hono/node-server] (or an equivalent adapter).
+    will need an HTTP adapter such as [@hono/node-server] or [srvx].
 
 Deno
 :   A strong choice if you prefer TypeScript-first tooling, a built-in HTTP
@@ -68,6 +68,7 @@ The rest of this guide assumes a traditional server environment (Node.js or
 Deno) unless noted otherwise.
 
 [@hono/node-server]: https://github.com/honojs/node-server
+[srvx]: https://srvx.h3.dev/
 [`@fedify/cfworkers`]: https://jsr.io/@fedify/cfworkers
 
 
@@ -227,9 +228,12 @@ details that matter specifically for Fedify.
 ### Running the process
 
 Node.js needs an adapter because it has no built-in `fetch()`-style HTTP
-server; [@hono/node-server] is the usual choice:
+server.  [@hono/node-server] is the most common choice; [srvx] is a
+universal alternative that also works unchanged on Deno and Bun:
 
-~~~~ typescript twoslash
+::: code-group
+
+~~~~ typescript twoslash [@hono/node-server]
 import { type KvStore } from "@fedify/fedify";
 // ---cut-before---
 import { serve } from "@hono/node-server";
@@ -247,6 +251,27 @@ serve({
   port: 3000,
 });
 ~~~~
+
+~~~~ typescript twoslash [srvx]
+import { type KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { serve } from "srvx";
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+  // Configuration...
+});
+
+serve({
+  fetch: (request) => federation.fetch(request, { contextData: undefined }),
+  port: 3000,
+});
+~~~~
+
+:::
 
 Deno ships a native server; export a default object with a `fetch` method
 and launch it with `deno serve`:
