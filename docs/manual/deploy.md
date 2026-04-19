@@ -201,7 +201,7 @@ and every outgoing activity you sign with the new key to be rejected.  The
 symptoms—silent federation breakage with no clear error—are among the most
 frustrating to diagnose after the fact.
 
-Keep two distinct categories of secret separate:
+Keep two distinct categories of secrets separate:
 
  -  *Instance-wide secrets* (session secret, instance actor private key,
     database credentials) live in environment variables or a secret manager.
