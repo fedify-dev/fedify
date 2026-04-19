@@ -2048,7 +2048,6 @@ import { Temporal } from "@js-temporal/polyfill";
 import { getCollection } from "astro:content";
 import { BLOG_IDENTIFIER } from "../federation.ts";
 import db from "./db.ts";
-import { getFollowers } from "./store.ts";
 
 async function hashPost(
   title: string,
@@ -2067,8 +2066,6 @@ const AS_PUBLIC = new URL("https://www.w3.org/ns/activitystreams#Public");
 export async function syncPosts(
   ctx: RequestContext<unknown>,
 ): Promise<void> {
-  const recipients = getFollowers();
-
   const allPosts = await getCollection("posts");
   const current = allPosts.filter((p) => !p.data.draft);
 
@@ -2103,18 +2100,16 @@ export async function syncPosts(
     });
 
     if (!stored.has(slug)) {
-      if (recipients.length > 0) {
-        await ctx.sendActivity(
-          { identifier: BLOG_IDENTIFIER },
-          recipients,
-          new Create({
-            id: new URL(`#create-${Date.now()}`, articleId),
-            actor: actorUri,
-            to: AS_PUBLIC,
-            object: article,
-          }),
-        );
-      }
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        "followers",
+        new Create({
+          id: new URL(`#create-${Date.now()}`, articleId),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: article,
+        }),
+      );
       db.run(
         `INSERT INTO posts (id, title, url, content_hash, published_at)
          VALUES (?, ?, ?, ?, ?)`,
@@ -2127,18 +2122,16 @@ export async function syncPosts(
         ],
       );
     } else if (stored.get(slug)?.content_hash !== contentHash) {
-      if (recipients.length > 0) {
-        await ctx.sendActivity(
-          { identifier: BLOG_IDENTIFIER },
-          recipients,
-          new Update({
-            id: new URL(`#update-${Date.now()}`, articleId),
-            actor: actorUri,
-            to: AS_PUBLIC,
-            object: article,
-          }),
-        );
-      }
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        "followers",
+        new Update({
+          id: new URL(`#update-${Date.now()}`, articleId),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: article,
+        }),
+      );
       db.run(
         `UPDATE posts SET title = ?, content_hash = ?, published_at = ?
          WHERE id = ?`,
@@ -2149,18 +2142,16 @@ export async function syncPosts(
 
   for (const [slug, row] of stored) {
     if (!currentIds.has(slug)) {
-      if (recipients.length > 0) {
-        await ctx.sendActivity(
-          { identifier: BLOG_IDENTIFIER },
-          recipients,
-          new Delete({
-            id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
-            actor: actorUri,
-            to: AS_PUBLIC,
-            object: new URL(row.url),
-          }),
-        );
-      }
+      await ctx.sendActivity(
+        { identifier: BLOG_IDENTIFIER },
+        "followers",
+        new Delete({
+          id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
+          actor: actorUri,
+          to: AS_PUBLIC,
+          object: new URL(row.url),
+        }),
+      );
       db.run("DELETE FROM posts WHERE id = ?", [slug]);
     }
   }
@@ -2176,10 +2167,11 @@ hash, triggering an `Update(Article)` activity.
 **`AS_PUBLIC`** is the ActivityPub [public addressing] URL.  Activities
 addressed `to` this URL are publicly visible on fediverse clients.
 
-**`getFollowers()`** returns the list of all followers from SQLite.  The DB
-reconciliation always runs regardless of whether there are any followers, so
-the `posts` table stays accurate even during follower-free periods.
-`sendActivity()` calls, however, are skipped when `recipients` is empty.
+**`"followers"`** passed as the recipients argument tells Fedify to look up
+the blog's followers collection and fan the activity out to all of them.
+Fedify calls the followers dispatcher you registered earlier, so you no
+longer need to call `getFollowers()` manually here.  When the followers list
+is empty, Fedify simply sends nothing.
 
 **The loop** iterates over current non-draft posts and checks the SQLite
 table:
@@ -2695,7 +2687,7 @@ if (!post || post.data.draft) {
 }
 
 const { Content } = await render(post);
-const comments = getCommentsByPost(slug);
+const comments = getCommentsByPost(post.id);
 ---
 
 <Layout title={post.data.title} description={post.data.description}>
