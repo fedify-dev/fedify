@@ -1022,7 +1022,7 @@ const safeHtml = sanitize(post.content, {
     "code", "pre", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
   ],
   allowedAttributes: {
-    a: ["href", "rel", "class"],
+    a: ["href", "rel", "class", "target"],
     span: ["class"],
   },
   allowedSchemes: ["http", "https", "mailto"],
