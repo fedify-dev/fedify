@@ -32,6 +32,11 @@ function expectResponse(response: void | Response): Response {
   return response;
 }
 
+function expectTarget(actual: unknown, expected: string, key: string): string {
+  strictEqual(actual, expected, `Expected ${key} to be ${expected}`);
+  return actual;
+}
+
 async function assertTargetExists(path: string): Promise<void> {
   await access(resolve(packageDir, path));
 }
@@ -105,14 +110,30 @@ test(
     );
     const exportMap = packageJson.exports["."];
     const targets = [
-      packageJson.main,
-      packageJson.module,
-      packageJson.types,
-      exportMap.require.types,
-      exportMap.require.default,
-      exportMap.import.types,
-      exportMap.import.default,
-    ] as string[];
+      expectTarget(packageJson.main, "./dist/mod.cjs", "package.json main"),
+      expectTarget(packageJson.module, "./dist/mod.js", "package.json module"),
+      expectTarget(packageJson.types, "./dist/mod.d.ts", "package.json types"),
+      expectTarget(
+        exportMap.require.types,
+        "./dist/mod.d.cts",
+        'package.json exports["."].require.types',
+      ),
+      expectTarget(
+        exportMap.require.default,
+        "./dist/mod.cjs",
+        'package.json exports["."].require.default',
+      ),
+      expectTarget(
+        exportMap.import.types,
+        "./dist/mod.d.ts",
+        'package.json exports["."].import.types',
+      ),
+      expectTarget(
+        exportMap.import.default,
+        "./dist/mod.js",
+        'package.json exports["."].import.default',
+      ),
+    ];
 
     for (const target of new Set(targets)) {
       await assertTargetExists(target);
