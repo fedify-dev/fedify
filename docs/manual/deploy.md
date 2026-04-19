@@ -248,6 +248,7 @@ const federation = createFederation<void>({
 
 serve({
   fetch: (request) => federation.fetch(request, { contextData: undefined }),
+  hostname: "127.0.0.1",
   port: 3000,
 });
 ~~~~
@@ -267,6 +268,7 @@ const federation = createFederation<void>({
 
 serve({
   fetch: (request) => federation.fetch(request, { contextData: undefined }),
+  hostname: "127.0.0.1",
   port: 3000,
 });
 ~~~~
@@ -296,7 +298,7 @@ export default {
 ~~~~
 
 ~~~~ bash
-deno serve index.ts
+deno serve --host 127.0.0.1 index.ts
 ~~~~
 
 For framework integration patterns (Hono, Express, Fresh, SvelteKit, and
@@ -612,7 +614,8 @@ applies—just spread across more objects.  The essentials:
     `Service` and `Ingress`) and one for worker pods (replicas tuned to
     queue depth, no `Service`).
  -  `ConfigMap` for non-sensitive environment variables and a
-    `Secret` for credentials and actor private keys.
+    `Secret` for instance-wide credentials.  Per-actor key pairs belong
+    in the application database, not in a `Secret`.
  -  `Ingress` terminating TLS with cert-manager.  Most Fedify apps don't
     need anything exotic here; a default nginx-ingress with
     `proxy-body-size: 10m` is a reasonable starting point.
@@ -1133,7 +1136,7 @@ import { validatePublicUrl } from "@fedify/vocab-runtime";
 
 async function fetchRemoteImage(url: URL): Promise<Response> {
   await validatePublicUrl(url.href);  // throws if the URL is unsafe
-  return fetch(url);
+  return fetch(url, { redirect: "manual" });
 }
 ~~~~
 
