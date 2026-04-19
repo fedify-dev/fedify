@@ -1,6 +1,9 @@
 import { deepStrictEqual, strictEqual } from "node:assert/strict";
+import { access, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import type {
   Federation,
   FederationFetchOptions,
@@ -8,6 +11,7 @@ import type {
 import type { APIContext } from "astro";
 
 const require = createRequire(import.meta.url);
+const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 type MockFederation<TContextData> = Pick<Federation<TContextData>, "fetch">;
 
@@ -26,6 +30,10 @@ function expectResponse(response: void | Response): Response {
     throw new TypeError("Expected middleware to return a Response");
   }
   return response;
+}
+
+async function assertTargetExists(path: string): Promise<void> {
+  await access(resolve(packageDir, path));
 }
 
 test("self-reference ESM import exposes working Astro integration API", async () => {
@@ -92,6 +100,24 @@ test(
   "self-reference CommonJS require exposes working Astro middleware API",
   { skip: "Deno" in globalThis },
   async () => {
+    const packageJson = JSON.parse(
+      await readFile(resolve(packageDir, "package.json"), "utf8"),
+    );
+    const exportMap = packageJson.exports["."];
+    const targets = [
+      packageJson.main,
+      packageJson.module,
+      packageJson.types,
+      exportMap.require.types,
+      exportMap.require.default,
+      exportMap.import.types,
+      exportMap.import.default,
+    ] as string[];
+
+    for (const target of new Set(targets)) {
+      await assertTargetExists(target);
+    }
+
     const mod = require("@fedify/astro") as typeof import("@fedify/astro");
 
     strictEqual(typeof mod.fedifyIntegration, "function");
