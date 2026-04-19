@@ -44,9 +44,9 @@ Node.js
 Deno
 :   A strong choice if you prefer TypeScript-first tooling, a built-in HTTP
     server (`Deno.serve()`), permission-based sandboxing, and native
-    OpenTelemetry support via the `--unstable-otel` flag.  If you are already
-    comfortable with Deno, there is no reason to switch to Node.js for
-    production.
+    OpenTelemetry support enabled with `OTEL_DENO=1` (stable since Deno 2.4).
+    If you are already comfortable with Deno, there is no reason to switch to
+    Node.js for production.
 
 Bun
 :   Bun runs Fedify, but has known memory-leak issues that make it a
@@ -502,7 +502,7 @@ command surface.  Deno's permissions flags belong in the `start` task in
 with the code:
 
 ~~~~ dockerfile [Deno]
-FROM denoland/deno:2.7.4
+FROM denoland/deno:2
 
 WORKDIR /app
 COPY deno.json deno.lock ./
@@ -948,8 +948,8 @@ writing, Deno Deploy offers two products:
     improved cold-start behavior, native HTTP/3, and first-class
     OpenTelemetry support.
  -  *Deno Deploy Classic* is the previous generation.  It is now
-    deprecated and in maintenance mode; existing applications continue to
-    run but new deployments should use EA.
+    deprecated and scheduled to shut down on July 20, 2026; existing
+    applications must migrate to Deno Deploy EA before that date.
 
 Fedify targets Deno Deploy (both EA and Classic) through the
 [`@fedify/denokv`] package, which exposes `DenoKvStore` and
@@ -1272,7 +1272,7 @@ operations across your infrastructure.  For production:
     staging and prohibitively expensive under real traffic; 1–10%
     head-based sampling with tail-based error sampling is a common
     compromise.
- -  On Deno, remember to pass `--unstable-otel` to enable the built-in
+ -  On Deno 2.4 and later, set `OTEL_DENO=1` to enable the built-in
     OpenTelemetry integration.
  -  On Cloudflare Workers, use Workers Observability (enable
     `observability.enabled: true` in *wrangler.jsonc*) or a Workers-native
