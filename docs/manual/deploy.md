@@ -176,8 +176,8 @@ backend before you take traffic:
 | ---------------------- | ----------------- | ---------------------- | ------------------------------------- |
 | PostgreSQL             | `PostgresKvStore` | `PostgresMessageQueue` | You already run Postgres for app data |
 | Redis                  | `RedisKvStore`    | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
-| MySQL / MariaDB        | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
-| SQLite                 | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node / embedded deployments    |
+| MySQL/MariaDB          | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
+| SQLite                 | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node/embedded deployments      |
 | RabbitMQ               | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
 | Deno KV                | `DenoKvStore`     | `DenoKvMessageQueue`   | Deno Deploy                           |
 | Cloudflare KV + Queues | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
@@ -522,7 +522,7 @@ CMD ["deno", "task", "start"]
 > cost), use `docker buildx` with `--platform=linux/amd64,linux/arm64`.
 > Avoid base images that only ship amd64.
 
-### Docker compose / Podman compose
+### Docker Compose/Podman Compose
 
 A single *compose.yaml* is usually enough to describe a Fedify deployment:
 the app itself, optionally a separate worker process from the same image,
@@ -643,7 +643,7 @@ Follow the links for setup details.
     Enable HTTP/2 in `[[services]]` and make sure the forwarded-headers
     behavior matches what [x-forwarded-fetch] expects.
 
-[AWS ECS] / [AWS EKS]
+[AWS ECS]/[AWS EKS]
 :   Standard container-orchestration on AWS.  If you use ALB as the
     ingress, its request/response byte limits and header handling behave
     like nginx with generous defaults; the [*Reverse proxy*](#reverse-proxy)
@@ -657,7 +657,7 @@ Follow the links for setup details.
     processes (Fly.io, Kubernetes) or move the queue backend to one with
     a native push consumer.
 
-[Render] / [Railway]
+[Render]/[Railway]
 :   Both treat Fedify apps as ordinary Node.js or Deno services and work
     well for small-to-medium deployments.  Define a separate “background
     worker” service for the queue processor.
