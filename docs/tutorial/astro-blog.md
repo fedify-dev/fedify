@@ -984,11 +984,11 @@ Person {
 ~~~~
 
 > [!NOTE]
-> If `fedify lookup` returns an error about a private object, add the
-> `-a`/`--authorized-fetch` flag to sign the request:
+> If `fedify lookup` returns an error about a private or localhost address,
+> add the `-p`/`--allow-private-address` flag:
 >
 > ~~~~ sh
-> fedify lookup -a http://localhost:4321/users/blog
+> fedify lookup -p http://localhost:4321/users/blog
 > ~~~~
 
 The blog now has a valid ActivityPub identity.  However, it can't receive
@@ -1512,14 +1512,14 @@ export async function getKeyPairs(
           "pkcs8",
           private_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          false,
+          true,
           ["sign"],
         ),
         crypto.subtle.importKey(
           "spki",
           public_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          false,
+          true,
           ["verify"],
         ),
       ]);
