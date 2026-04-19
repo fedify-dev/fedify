@@ -192,7 +192,7 @@ Single operational surface, one backup strategy, one set of metrics.
 
 ### Actor key lifecycle
 
-Actor key pairs must be generated **once** per actor and stored durably—
+Actor key pairs must be generated *once* per actor and stored durably—
 typically in the same row as the actor record itself.  Do not regenerate them
 on startup or during deploys.  Other fediverse servers cache your public keys
 (often for hours or days), and a key rotation they don't know about will
@@ -203,10 +203,10 @@ frustrating to diagnose after the fact.
 
 Keep two distinct categories of secret separate:
 
- -  **Instance-wide secrets** (session secret, instance actor private key,
+ -  *Instance-wide secrets* (session secret, instance actor private key,
     database credentials) live in environment variables or a secret manager.
     See [*Secret and key management*](#secret-and-key-management).
- -  **Per-actor key pairs** live in the database, one pair per actor, created
+ -  *Per-actor key pairs* live in the database, one pair per actor, created
     at registration time.
 
 If you need to rotate a compromised key, use the `Update` activity to
@@ -608,18 +608,18 @@ the [canonical origin](#canonical-origin) guarantee depends on.
 For deployments large enough to justify Kubernetes, the same pattern
 applies—just spread across more objects.  The essentials:
 
- -  **Two Deployments**: one for web pods (multiple replicas, behind a
+ -  *Two Deployments*: one for web pods (multiple replicas, behind a
     Service and Ingress) and one for worker pods (replicas tuned to queue
     depth, no Service).
- -  **ConfigMap** for non-sensitive environment variables and a
-    **Secret** for credentials and actor private keys.
- -  **Ingress** terminating TLS with cert-manager.  Most Fedify apps don't
+ -  *ConfigMap* for non-sensitive environment variables and a
+    *Secret* for credentials and actor private keys.
+ -  *Ingress* terminating TLS with cert-manager.  Most Fedify apps don't
     need anything exotic here; a default nginx-ingress with
     `proxy-body-size: 10m` is a reasonable starting point.
- -  **HorizontalPodAutoscaler** on the worker Deployment targeting queue
+ -  *HorizontalPodAutoscaler* on the worker Deployment targeting queue
     depth (via a custom metric from your MQ backend) or CPU.  Web pods
     usually scale on CPU or request count.
- -  **StatefulSet + PVC** for PostgreSQL if you self-host it, or an
+ -  *StatefulSet + PVC* for PostgreSQL if you self-host it, or an
     external managed database; Fedify is indifferent as long as the
     connection string works.
 
@@ -681,9 +681,9 @@ enough to care about tail latency—or for any server where a queue backlog
 during a federation spike would hurt web responsiveness—split these roles
 into separate processes:
 
- -  **Web nodes** serve HTTP, enqueue outgoing activities, and accept
+ -  *Web nodes* serve HTTP, enqueue outgoing activities, and accept
     incoming ones.  They do not consume the queue.
- -  **Worker nodes** consume the queue and process delivery.  They do not
+ -  *Worker nodes* consume the queue and process delivery.  They do not
     serve HTTP and should not be exposed through your load balancer.
 
 This is a Fedify-level concern implemented with two options:
@@ -943,11 +943,11 @@ deployed to Workers.
 distribution and built-in persistence through Deno KV.  At the time of
 writing, Deno Deploy offers two products:
 
- -  **Deno Deploy Early Access (EA)** is the current generation and the
+ -  *Deno Deploy Early Access (EA)* is the current generation and the
     one you should target for new deployments.  It runs on Deno 2 with
     improved cold-start behavior, native HTTP/3, and first-class
     OpenTelemetry support.
- -  **Deno Deploy Classic** is the previous generation.  It is now
+ -  *Deno Deploy Classic* is the previous generation.  It is now
     deprecated and in maintenance mode; existing applications continue to
     run but new deployments should use EA.
 
@@ -1113,7 +1113,7 @@ runnable against localhost.
 > environment variable that is set only in test environments, or omit it
 > entirely from your production code path.
 
-**Fedify's protection does not extend to fetches you make yourself.**
+*Fedify's protection does not extend to fetches you make yourself.*
 Any time your application code calls `fetch()` (or any HTTP client) with
 a URL that originated from a remote server, you are on the hook for SSRF
 defense.  The common cases where this happens in Fedify apps:
@@ -1314,8 +1314,8 @@ Outbox delivery success rate
     instances are blocking or rate-limiting you; a drop across the board
     means an outage at your end.
 
-Remote 410/404 rate
-:   The rate at which inbox deliveries hit 410 Gone or 404 Not Found
+Remote `410`/`404` rate
+:   The rate at which inbox deliveries hit `410 Gone` or `404 Not Found`
     responses.  Some baseline is normal (actors get deleted), but sudden
     spikes often mean a large remote instance shut down or changed paths;
     `permanentFailureStatusCodes` means Fedify will stop retrying these,
@@ -1338,7 +1338,7 @@ server that expects to stay federated over the long term.
 
 ### Domain name permanence
 
-**A Fedify server's domain name is effectively permanent.**  Once actors on
+*A Fedify server's domain name is effectively permanent.*  Once actors on
 your server have federated out—been followed, been mentioned, had their
 posts cached or boosted—remote servers store their URIs, which include
 your domain, in their local databases.  Those stored URIs don't renegotiate
@@ -1387,12 +1387,12 @@ certificate expires.
 
 The right procedure is:
 
-1.  **Freeze writes first.** Stop accepting new registrations, new posts,
+1.  *Freeze writes first.* Stop accepting new registrations, new posts,
     and new follow requests.  Your users should see an announcement
     explaining the shutdown and, if relevant, pointers to migration
     tools (`Move`, account exports).
 
-2.  **Broadcast `Delete` activities for every local actor** to its
+2.  *Broadcast `Delete` activities for every local actor* to its
     followers and to the inboxes of servers that have interacted with
     that actor.  Use `Context.sendActivity()` and pass `orderingKey` so
     that the `Delete` can't overtake earlier Creates/Updates for the
@@ -1400,9 +1400,9 @@ The right procedure is:
     the `Delete` will remove the actor from their local cache and stop
     delivering.
 
-3.  **Replace actor dispatchers with `Tombstone` responses.** Change your
+3.  *Replace actor dispatchers with `Tombstone` responses.* Change your
     actor dispatcher to return a `Tombstone` instead of the live actor
-    object.  Fedify will respond to actor fetches with HTTP 410 Gone and
+    object.  Fedify will respond to actor fetches with HTTP `410 Gone` and
     a Tombstone body.  Set `formerType` on the `Tombstone` to the original
     ActivityStreams type (`Person`, `Service`, etc.) so that remote servers
     can preserve the type information in their own logs.  See
@@ -1425,17 +1425,17 @@ The right procedure is:
     );
     ~~~~
 
-4.  **Keep the 410 Gone response online for weeks or months**, not hours.
+4.  *Keep the `410 Gone` response online for weeks or months*, not hours.
     Remote servers' caches expire on different schedules, and some will
     keep retrying for a long time.  Fedify's default
-    `~FederationOptions.permanentFailureStatusCodes` includes 410, so
+    `~FederationOptions.permanentFailureStatusCodes` includes `410`, so
     well-behaved remote servers will stop trying once they receive it—
     but only if they actually reach your server to receive it.  Serving
-    410 from a cheap static host for a year after shutdown is inexpensive
+    `410` from a cheap static host for a year after shutdown is inexpensive
     and dramatically reduces the long-term federation noise your domain
     generates.
 
-5.  **Only then** take down DNS, release the domain, or retire the
+5.  *Only then* take down DNS, release the domain, or retire the
     infrastructure.
 
 Skipping any of these steps is not a catastrophe—the fediverse is
@@ -1452,8 +1452,8 @@ them in production:
 Permanent failures vs. transient failures
 :   `~FederationOptions.permanentFailureStatusCodes` controls which HTTP
     status codes from remote inboxes mean “don't retry.”  The defaults
-    (404, 410) cover actor-gone cases; you may want to add others (for
-    example, codes specific to instances that return 403 for blocks) if
+    (`404`, `410`) cover actor-gone cases; you may want to add others (for
+    example, codes specific to instances that return `403` for blocks) if
     you observe a lot of useless retries against instances that have
     started refusing you.
 
@@ -1488,7 +1488,7 @@ A condensed pass through everything above.  If you can tick all of these
 before taking real traffic, you have covered the pitfalls this guide was
 written to warn you about.
 
-**Configuration**
+### Configuration
 
  -  [ ] `~FederationOptions.origin` is pinned, or [x-forwarded-fetch] is
     wired up behind a trusted reverse proxy and gated on `BEHIND_PROXY`.
@@ -1501,7 +1501,7 @@ written to warn you about.
  -  [ ] `skipSignatureVerification` is unset (or explicitly `false`) in
     production.
 
-**Scaling**
+### Scaling
 
  -  [ ] Web and worker roles are split with `manuallyStartQueue: true` and
     `Federation.startQueue()`; workers are not reachable through the load
@@ -1511,7 +1511,7 @@ written to warn you about.
  -  [ ] `ParallelMessageQueue` parallelism, if used, is matched by a
     database connection pool sized for `N + headroom`.
 
-**Runtime and infrastructure**
+### Runtime and infrastructure
 
  -  [ ] The process runs under a supervisor (systemd, Compose,
     Kubernetes, or platform-equivalent) that restarts on crash and
@@ -1523,7 +1523,7 @@ written to warn you about.
     reachable over plain HTTP.
  -  [ ] NTP is running on every node; clock drift is monitored.
 
-**Security**
+### Security
 
  -  [ ] All federated HTML (post content, summaries, actor bios, display
     names) is sanitized through an allowlist-based library before
@@ -1538,7 +1538,7 @@ written to warn you about.
     committed to source; actor private keys live in the database, backed
     up alongside the rest of the application data.
 
-**Observability**
+### Observability
 
  -  [ ] Structured logs are emitted to stderr at `info` or `warn` level
     by default; sensitive fields are redacted at the sink.
@@ -1547,14 +1547,14 @@ written to warn you about.
  -  [ ] Error aggregation (Sentry or equivalent) is wired up through a
     LogTape sink.
  -  [ ] Queue depth, inbox processing latency, outbox delivery success
-    rate, and remote 410/404 rate are all tracked and alert on sustained
+    rate, and remote `410`/`404` rate are all tracked and alert on sustained
     anomalies.
 
-**ActivityPub**
+### ActivityPub
 
  -  [ ] The domain is the one you intend to keep forever, and the
     WebFinger/web-origin split (if any) has the permanent host as
     `webOrigin`.
  -  [ ] A service-retirement runbook exists (freeze writes, broadcast
-    `Delete`, serve `Tombstone` and 410 Gone for an extended period)
+    `Delete`, serve `Tombstone` and `410 Gone` for an extended period)
     before it is ever needed.
