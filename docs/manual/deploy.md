@@ -906,7 +906,7 @@ section for a complete example.
 
 Cloudflare Queues provide native retry with exponential backoff and
 dead-letter queue support, which Fedify recognizes through
-[`~MessageQueue.nativeRetrial`].  When native retry is available, Fedify
+[`MessageQueue.nativeRetrial`].  When native retry is available, Fedify
 skips its own retry logic and relies on the backend.  Configure
 `max_retries` and a `dead_letter_queue` in your Queue definition in
 *wrangler.jsonc* rather than in application code.
@@ -934,7 +934,7 @@ deployed to Workers.
 
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Node.js compatibility]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
-[`~MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
+[`MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
 [Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
 
 ### Deno Deploy
@@ -972,7 +972,7 @@ Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
 ~~~~
 
 `DenoKvMessageQueue` exposes native retry via
-[`~MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
+[`MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
 Deno KV's built-in exponential-backoff mechanism.
 
 [Deno Deploy]: https://deno.com/deploy
