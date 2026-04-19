@@ -690,7 +690,7 @@ into separate processes:
     serve HTTP and should not be exposed through your load balancer.
 
 This is a Fedify-level concern implemented with two options:
-`~FederationOptions.manuallyStartQueue: true` tells Fedify not to start the
+`FederationOptions.manuallyStartQueue: true` tells Fedify not to start the
 queue consumer automatically, and `Federation.startQueue()` starts it only
 on nodes that should consume.
 
@@ -1096,8 +1096,8 @@ behalf and return (or expose in error messages) the responses.
 
 Fedify's built-in document loaders defend against this by default:
 
- -  `lookupObject()`, `~Context.getDocumentLoader()`, and
-    `~Context.getAuthenticatedDocumentLoader()` reject URLs that resolve to
+ -  `lookupObject()`, `Context.getDocumentLoader()`, and
+    `getAuthenticatedDocumentLoader()` reject URLs that resolve to
     loopback, link-local, private (RFC 1918), or ULA/IPv6-link-local
     addresses, and they refuse the `localhost` hostname outright.  At
     validation time, DNS is resolved and every returned IP is checked to
