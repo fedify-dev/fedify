@@ -1512,14 +1512,14 @@ export async function getKeyPairs(
           "pkcs8",
           private_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          true,
+          false,
           ["sign"],
         ),
         crypto.subtle.importKey(
           "spki",
           public_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          true,
+          false,
           ["verify"],
         ),
       ]);
@@ -1859,6 +1859,18 @@ The `id` column stores the Astro content collection slug (e.g.,
 as the HTML page URL since we'll share the path `/posts/{slug}` between Astro
 and Fedify via content negotiation.  `content_hash` is a SHA-256 digest of the
 title and body, used to detect edits.
+
+### Adding `@js-temporal/polyfill`
+
+The `Article` object uses `Temporal.Instant` from the [TC39 Temporal proposal]
+polyfill.  Although `@fedify/vocab` already depends on this package, you should
+list it directly in your project so the version stays under your control:
+
+~~~~ sh
+bun add @js-temporal/polyfill
+~~~~
+
+[TC39 Temporal proposal]: https://tc39.es/proposal-temporal/
 
 ### Adding an article object dispatcher
 
@@ -2895,7 +2907,7 @@ const db = new Database(process.env.DB_PATH ?? "blog.db");
 ~~~~
 
 Make sure your *Dockerfile* runs `bun run build` and starts the server
-with `node dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
+with `bun dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
 output).
 
 For general guidance on running Fedify applications in production—key–value
