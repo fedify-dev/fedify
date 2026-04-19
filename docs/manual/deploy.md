@@ -12,8 +12,8 @@ Deployment
 
 This document is a practical guide to putting a Fedify application into
 production.  It is written primarily for readers who have already built
-something with Fedify locally and are about to deploy it for the first time—
-and secondarily for readers who deploy web applications routinely but have not
+something with Fedify locally and are about to deploy it for the first time—and
+secondarily for readers who deploy web applications routinely but have not
 worked with Fedify or the fediverse before.
 
 It does *not* retread general web-application deployment advice that is
@@ -339,7 +339,7 @@ running on Deno).
 If you plan to split web traffic from background queue processing into
 separate processes, see [*Separating web and worker
 nodes*](#separating-web-and-worker-nodes) below; you will typically run two
-service units (or a templated `fedify@.service` instantiated twice) rather
+service units (or a templated *fedify@.service* instantiated twice) rather
 than one.
 
 [systemd]: https://systemd.io/
@@ -1152,7 +1152,7 @@ Two practical rules that are easy to forget:
 
  -  Do not commit a *.env* file to the repository, even for development.
     Development secrets leak into production habits.  Use *.env.sample*
-    with dummy values and a *.env* that is `.gitignore`d.
+    with dummy values and list *.env* in your *.gitignore*.
  -  On deployment, the *.env* file (if you use one) should live on the
     server only long enough to be read into the process environment.  The
     most common mistake is making it world-readable or leaving it in a
