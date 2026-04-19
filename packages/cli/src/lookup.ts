@@ -83,8 +83,12 @@ const suppressErrorsOption = bindConfig(
 
 const allowPrivateAddressOption = bindConfig(
   flag("-p", "--allow-private-address", {
-    description:
-      message`Allow private IP addresses for explicit lookup/traverse requests.`,
+    description: message`Allow private IP addresses for URLs discovered \
+during traversal. This option only has an effect when used together \
+with ${optionNames(["-t", "--traverse"])}, since URLs explicitly \
+provided on the command line always allow private addresses and \
+recursive fetches via ${optionNames(["--recurse"])} always disallow \
+them.`,
   }),
   {
     context: configContext,
@@ -716,6 +720,20 @@ export async function runLookup(
   }).start();
 
   let server: TemporaryServer | undefined = undefined;
+  // URLs explicitly provided by the user always allow private addresses,
+  // so that local servers can be looked up without -p/--allow-private-address.
+  // URLs discovered during traversal follow the option to mitigate SSRF
+  // against private addresses, while recursive fetches always disallow
+  // private addresses regardless of the option (see the --recurse branch
+  // below, which hardcodes `allowPrivateAddress: false`).
+  const initialBaseDocumentLoader = await getDocumentLoader({
+    userAgent: command.userAgent,
+    allowPrivateAddress: true,
+  });
+  const initialDocumentLoader = wrapDocumentLoaderWithTimeout(
+    initialBaseDocumentLoader,
+    command.timeout,
+  );
   const baseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: command.allowPrivateAddress,
@@ -734,6 +752,7 @@ export async function runLookup(
   );
 
   let authLoader: DocumentLoader | undefined = undefined;
+  let initialAuthLoader: DocumentLoader | undefined = undefined;
   let authIdentity:
     | { keyId: URL; privateKey: CryptoKey }
     | undefined = undefined;
@@ -836,6 +855,24 @@ export async function runLookup(
       baseAuthLoader,
       command.timeout,
     );
+    const initialBaseAuthLoader = getAuthenticatedDocumentLoader(
+      authIdentity,
+      {
+        allowPrivateAddress: true,
+        userAgent: command.userAgent,
+        specDeterminer: {
+          determineSpec() {
+            return command.firstKnock;
+          },
+          rememberSpec() {
+          },
+        },
+      },
+    );
+    initialAuthLoader = wrapDocumentLoaderWithTimeout(
+      initialBaseAuthLoader,
+      command.timeout,
+    );
   }
 
   spinner.text = `Looking up the ${
@@ -885,8 +922,8 @@ export async function runLookup(
         command.timeout,
       )
       : undefined;
-    const initialLookupDocumentLoader: DocumentLoader = authLoader ??
-      documentLoader;
+    const initialLookupDocumentLoader: DocumentLoader = initialAuthLoader ??
+      initialDocumentLoader;
     const recursiveLookupDocumentLoader: DocumentLoader = recursiveAuthLoader ??
       recursiveDocumentLoader;
     let totalObjects = 0;
@@ -1109,7 +1146,7 @@ export async function runLookup(
       let collection: APObject | null = null;
       try {
         collection = await effectiveDeps.lookupObject(url, {
-          documentLoader: authLoader ?? documentLoader,
+          documentLoader: initialAuthLoader ?? initialDocumentLoader,
           contextLoader,
           userAgent: command.userAgent,
         });
@@ -1248,7 +1285,7 @@ export async function runLookup(
   for (const url of command.urls) {
     promises.push(
       effectiveDeps.lookupObject(url, {
-        documentLoader: authLoader ?? documentLoader,
+        documentLoader: initialAuthLoader ?? initialDocumentLoader,
         contextLoader,
         userAgent: command.userAgent,
       }).catch((error) => {
