@@ -27,12 +27,6 @@ catalogs:
     '@nestjs/common':
       specifier: ^11.0.1
       version: 11.1.4
-    '@nuxt/kit':
-      specifier: ^4.4.2
-      version: 4.4.2
-    '@nuxt/schema':
-      specifier: ^4.4.2
-      version: 4.4.2
     '@opentelemetry/api':
       specifier: ^1.9.0
       version: 1.9.0
@@ -1451,10 +1445,10 @@ importers:
         specifier: workspace:^
         version: link:../fedify
       '@nuxt/kit':
-        specifier: 'catalog:'
+        specifier: ^4.4.2
         version: 4.4.2(magicast@0.5.2)
       '@nuxt/schema':
-        specifier: 'catalog:'
+        specifier: ^4.4.2
         version: 4.4.2
       h3:
         specifier: 'catalog:'
