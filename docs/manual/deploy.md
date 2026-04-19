@@ -463,13 +463,13 @@ Container deployments
 Running Fedify in a container does not change the application's architecture,
 but it changes how you supervise, scale, and secure it.  This section covers
 the container-specific pieces that matter for a Fedify app: the shape of a
-minimal Dockerfile for each runtime, a Compose file that wires up the
+minimal *Dockerfile* for each runtime, a Compose file that wires up the
 application, a worker, and the backing services it typically needs, and some
 notes on Kubernetes and managed container platforms.
 
 ### Dockerfile
 
-A minimal Node.js Dockerfile follows the familiar pattern: install
+A minimal Node.js *Dockerfile* follows the familiar pattern: install
 dependencies, copy the source, expose the port, run the server.  Keep the
 runtime image small (the `-alpine` or `-slim` variants are usually fine),
 run as a non-root user, and depend on process supervision from the
@@ -498,7 +498,7 @@ CMD ["pnpm", "run", "start"]
 
 For Deno, use an official Deno image and lean on `deno task` for the
 command surface.  Deno's permissions flags belong in the `start` task in
-*deno.json*, not in the Dockerfile, so that they are version-controlled
+*deno.json*, not in the *Dockerfile*, so that they are version-controlled
 with the code:
 
 ~~~~ dockerfile [Deno]
@@ -608,23 +608,23 @@ the [canonical origin](#canonical-origin) guarantee depends on.
 For deployments large enough to justify Kubernetes, the same pattern
 applies—just spread across more objects.  The essentials:
 
- -  *Two Deployments*: one for web pods (multiple replicas, behind a
-    Service and Ingress) and one for worker pods (replicas tuned to queue
-    depth, no Service).
- -  *ConfigMap* for non-sensitive environment variables and a
-    *Secret* for credentials and actor private keys.
- -  *Ingress* terminating TLS with cert-manager.  Most Fedify apps don't
+ -  Two `Deployment`s: one for web pods (multiple replicas, behind a
+    `Service` and `Ingress`) and one for worker pods (replicas tuned to
+    queue depth, no `Service`).
+ -  `ConfigMap` for non-sensitive environment variables and a
+    `Secret` for credentials and actor private keys.
+ -  `Ingress` terminating TLS with cert-manager.  Most Fedify apps don't
     need anything exotic here; a default nginx-ingress with
     `proxy-body-size: 10m` is a reasonable starting point.
- -  *HorizontalPodAutoscaler* on the worker Deployment targeting queue
+ -  `HorizontalPodAutoscaler` on the worker `Deployment` targeting queue
     depth (via a custom metric from your MQ backend) or CPU.  Web pods
     usually scale on CPU or request count.
- -  *StatefulSet + PVC* for PostgreSQL if you self-host it, or an
+ -  `StatefulSet` + `PVC` for PostgreSQL if you self-host it, or an
     external managed database; Fedify is indifferent as long as the
     connection string works.
 
 This document does not attempt to replace the upstream Kubernetes
-documentation—the mechanics of Deployments, Services, and Ingress are the
+documentation—the mechanics of `Deployment`s, `Service`s, and `Ingress` are the
 same as for any other HTTP service.  The Fedify-specific pieces are the
 ones covered throughout this guide: origin pinning, forwarded headers,
 worker separation, persistent KV/MQ, and actor key persistence.
@@ -735,7 +735,7 @@ systemd
     (`systemctl start fedify@web.service fedify@worker.service`).
 
 Kubernetes
-:   Two Deployments.  Only the web Deployment gets a Service and Ingress.
+:   Two `Deployment`s.  Only the web `Deployment` gets a `Service` and `Ingress`.
     Scale workers on queue depth (via a custom metric adapter reading from
     your MQ backend) rather than CPU—a queue that's falling behind is not
     necessarily CPU-bound.
