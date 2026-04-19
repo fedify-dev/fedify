@@ -1,8 +1,25 @@
 import { deepStrictEqual, strictEqual } from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
+import type {
+  Federation,
+  FederationFetchOptions,
+} from "@fedify/fedify/federation";
+import type { APIContext } from "astro";
 
 const require = createRequire(import.meta.url);
+
+type MockFederation<TContextData> = Pick<Federation<TContextData>, "fetch">;
+
+function toFederation<TContextData>(
+  federation: MockFederation<TContextData>,
+): Federation<TContextData> {
+  return federation as Federation<TContextData>;
+}
+
+function toApiContext(context: Pick<APIContext, "request">): APIContext {
+  return context as APIContext;
+}
 
 function expectResponse(response: void | Response): Response {
   if (!(response instanceof Response)) {
@@ -42,27 +59,29 @@ test("self-reference ESM import exposes working Astro integration API", async ()
   let capturedRequest: Request | undefined;
   let capturedContextData: unknown;
   const middleware = mod.fedifyMiddleware(
-    {
-      fetch(
+    toFederation<string>({
+      async fetch(
         request: Request,
-        options: {
-          contextData: string;
-          onNotAcceptable(request: Request): Promise<Response>;
-        },
+        options: FederationFetchOptions<string>,
       ) {
         capturedRequest = request;
         capturedContextData = options.contextData;
+        if (options.onNotAcceptable == null) {
+          throw new TypeError("Expected onNotAcceptable to be defined");
+        }
         return options.onNotAcceptable(request);
       },
-    } as never,
+    }),
     () => "test-context",
   );
 
   const request = new Request("https://example.com/");
-  const response = expectResponse(await middleware(
-    { request } as never,
-    () => Promise.resolve(new Response("Not found", { status: 404 })),
-  ));
+  const response = expectResponse(
+    await middleware(
+      toApiContext({ request }),
+      () => Promise.resolve(new Response("Not found", { status: 404 })),
+    ),
+  );
   strictEqual(capturedRequest, request);
   strictEqual(capturedContextData, "test-context");
   strictEqual(response.status, 406);
@@ -80,24 +99,29 @@ test(
 
     let nextCalled = false;
     const middleware = mod.fedifyMiddleware(
-      {
-        fetch(
+      toFederation<void>({
+        async fetch(
           _request: Request,
-          options: { onNotFound(request: Request): Promise<Response> },
+          options: FederationFetchOptions<void>,
         ) {
+          if (options.onNotFound == null) {
+            throw new TypeError("Expected onNotFound to be defined");
+          }
           return options.onNotFound(new Request("https://example.com/actor"));
         },
-      } as never,
+      }),
       () => undefined,
     );
 
-    const response = expectResponse(await middleware(
-      { request: new Request("https://example.com/inbox") } as never,
-      () => {
-        nextCalled = true;
-        return Promise.resolve(new Response("Handled by Astro"));
-      },
-    ));
+    const response = expectResponse(
+      await middleware(
+        toApiContext({ request: new Request("https://example.com/inbox") }),
+        () => {
+          nextCalled = true;
+          return Promise.resolve(new Response("Handled by Astro"));
+        },
+      ),
+    );
 
     strictEqual(nextCalled, true);
     strictEqual(response.status, 200);
