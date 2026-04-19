@@ -84,10 +84,11 @@ const suppressErrorsOption = bindConfig(
 const allowPrivateAddressOption = bindConfig(
   flag("-p", "--allow-private-address", {
     description: message`Allow private IP addresses for URLs discovered \
-via traversal or recursion. This option only has an effect \
-when used together with ${optionNames(["-t", "--traverse"])} \
-or ${optionNames(["--recurse"])}, since URLs explicitly \
-provided on the command line always allow private addresses.`,
+during traversal. This option only has an effect when used together \
+with ${optionNames(["-t", "--traverse"])}, since URLs explicitly \
+provided on the command line always allow private addresses and \
+recursive fetches via ${optionNames(["--recurse"])} always disallow \
+them.`,
   }),
   {
     context: configContext,
@@ -721,8 +722,10 @@ export async function runLookup(
   let server: TemporaryServer | undefined = undefined;
   // URLs explicitly provided by the user always allow private addresses,
   // so that local servers can be looked up without -p/--allow-private-address.
-  // URLs discovered via traversal or recursion follow the option, since they
-  // originate from remote responses and must be protected against SSRF.
+  // URLs discovered during traversal follow the option to mitigate SSRF
+  // against private addresses, while recursive fetches always disallow
+  // private addresses regardless of the option (see the --recurse branch
+  // below, which hardcodes `allowPrivateAddress: false`).
   const initialBaseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: true,

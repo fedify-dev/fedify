@@ -15,9 +15,10 @@ To be released.
     regression introduced in Fedify 2.1.0 when the CLI began forwarding
     the `allowPrivateAddress` option to the underlying document loader.
     URLs explicitly provided on the command line now always allow private
-    addresses, while URLs discovered via [`-t`/`--traverse`] or [`--recurse`]
-    still honor the option to mitigate SSRF attacks against private
-    addresses.  [[#696], [#698] by Chanhaeng Lee]
+    addresses, while URLs discovered during [`-t`/`--traverse`] honor the
+    option to mitigate SSRF attacks against private addresses.  Recursive
+    fetches via [`--recurse`] continue to always disallow private
+    addresses regardless of the option.  [[#696], [#698] by Chanhaeng Lee]
 
 [`-t`/`--traverse`]: https://fedify.dev/cli#t-traverse-traverse-the-collection
 [`--recurse`]: https://fedify.dev/cli#recurse-recurse-through-object-relationships

@@ -991,10 +991,9 @@ fedify lookup http://localhost:8000/users/alice
 ~~~~
 
 The `-p`/`--allow-private-address` option additionally allows private
-addresses for URLs discovered via traversal or recursion.  It only has an
-effect when used together with
-[`-t`/`--traverse`](#t-traverse-traverse-the-collection) or
-[`--recurse`](#recurse-recurse-through-object-relationships), since URLs
+addresses for URLs discovered during traversal.  It only has an effect
+when used together with
+[`-t`/`--traverse`](#t-traverse-traverse-the-collection), since URLs
 embedded in remote responses are otherwise rejected to mitigate SSRF
 attacks against private addresses.
 
@@ -1004,7 +1003,7 @@ fedify lookup --traverse --allow-private-address http://localhost:8000/users/ali
 
 > [!NOTE]
 > Recursive fetches enabled by
-> [`--recurse`](#recurse-recurse-through-object-relationships) continue to
+> [`--recurse`](#recurse-recurse-through-object-relationships) always
 > disallow private addresses regardless of this option.
 
 ### `-s`/`--separator`: Output separator
