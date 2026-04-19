@@ -1099,9 +1099,9 @@ Fedify's built-in document loaders defend against this by default:
  -  `lookupObject()`, `~Context.getDocumentLoader()`, and
     `~Context.getAuthenticatedDocumentLoader()` reject URLs that resolve to
     loopback, link-local, private (RFC 1918), or ULA/IPv6-link-local
-    addresses, and they refuse the `localhost` hostname outright.  DNS is
-    resolved once and the resolved IP is checked, which defeats
-    DNS-rebinding attacks.
+    addresses, and they refuse the `localhost` hostname outright.  At
+    validation time, DNS is resolved and every returned IP is checked to
+    be public, which helps mitigate DNS-rebinding-based SSRF.
  -  The protection is implemented in
     [`validatePublicUrl()`], which you can call directly from application
     code if you need the same checks for your own fetches.
@@ -1321,8 +1321,8 @@ Remote `410`/`404` rate
 :   The rate at which inbox deliveries hit `410 Gone` or `404 Not Found`
     responses.  Some baseline is normal (actors get deleted), but sudden
     spikes often mean a large remote instance shut down or changed paths;
-    `permanentFailureStatusCodes` means Fedify will stop retrying these,
-    but you may want to prune orphan follower records yourself.
+    `~FederationOptions.permanentFailureStatusCodes` means Fedify will stop
+    retrying these, but you may want to prune orphan follower records yourself.
 
 Any competent metrics backend will also want the usual process-level
 signals: CPU, RSS, event-loop lag, GC pauses, connection pool utilization
@@ -1469,9 +1469,9 @@ Signature time windows and clock drift
     and alert on clock drift.
 
 DNS rebinding during application fetches
-:   Fedify's built-in document loaders lock a URL to its initially
-    resolved IP before fetching, which defeats DNS-rebinding attacks on
-    actor lookups and document fetching.  Application code that calls
+:   Fedify's built-in document loaders resolve DNS at validation time and
+    check every returned IP, which helps mitigate DNS-rebinding-based
+    SSRF on actor lookups and document fetching.  Application code that calls
     `fetch()` directly on a URL derived from a remote actor (for example,
     to download an avatar) does not get this protection; see the
     [SSRF section](#server-side-request-forgery-ssrf) for the
