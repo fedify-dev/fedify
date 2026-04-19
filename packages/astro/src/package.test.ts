@@ -69,7 +69,7 @@ test("self-reference ESM import exposes working Astro integration API", async ()
         if (options.onNotAcceptable == null) {
           throw new TypeError("Expected onNotAcceptable to be defined");
         }
-        return options.onNotAcceptable(request);
+        return await options.onNotAcceptable(request);
       },
     }),
     () => "test-context",
@@ -107,7 +107,9 @@ test(
           if (options.onNotFound == null) {
             throw new TypeError("Expected onNotFound to be defined");
           }
-          return options.onNotFound(new Request("https://example.com/actor"));
+          return await options.onNotFound(
+            new Request("https://example.com/actor"),
+          );
         },
       }),
       () => undefined,
