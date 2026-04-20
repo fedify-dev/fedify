@@ -8,6 +8,13 @@ Version 2.1.7
 
 To be released.
 
+### @fedify/init
+
+ -  Fixed `fedify init` generating Astro projects for Bun with the Node.js
+    adapter and `astro preview`, which could fail to run correctly on Bun.
+    Astro + Bun projects now use *@nurodev/astro-bun* and run the built
+    Bun server entry point instead.
+
 
 Version 2.1.6
 -------------

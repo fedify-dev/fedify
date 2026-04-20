@@ -16,6 +16,11 @@ const astroDescription: WebFrameworkDescription = {
         "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
         "@fedify/astro": PACKAGE_VERSION,
       }
+      : pm === "bun"
+      ? {
+        "@fedify/astro": PACKAGE_VERSION,
+        "@nurodev/astro-bun": "^2.1.2",
+      }
       : {
         "@astrojs/node": "^9.5.4",
         "@fedify/astro": PACKAGE_VERSION,
@@ -30,7 +35,9 @@ const astroDescription: WebFrameworkDescription = {
     loggingFile: "src/logging.ts",
     files: {
       [`astro.config.ts`]: await readTemplate(
-        `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
+        `astro/astro.config.${
+          pm === "deno" ? "deno" : pm === "bun" ? "bun" : "node"
+        }.ts`,
       ),
       "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
       ...(pm !== "deno"
@@ -51,7 +58,7 @@ const astroDescription: WebFrameworkDescription = {
         ? {
           dev: "bunx astro dev",
           build: "bunx astro build",
-          preview: "bunx astro preview",
+          preview: "bun ./dist/server/entry.mjs",
         }
         : {
           dev: "astro dev",

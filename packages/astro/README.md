@@ -52,13 +52,12 @@ export const onRequest = fedifyMiddleware(
 For Deno users
 --------------
 
-If you are using Deno, you should import `@deno/vite-adapter` in
+If you are using Deno, you should import `@deno/astro-adapter` in
 *astro.config.mjs* and use it as the adapter:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
-import deno from "@deno/vite-adapter";
 import deno from "@deno/astro-adapter";
 
 export default defineConfig({
@@ -77,6 +76,38 @@ instead of `astro`:
     "dev": "deno run -A npm:astro dev",
     "build": "deno run -A npm:astro build",
     "preview": "deno run -A npm:astro preview"
+  }
+}
+~~~~
+
+
+For Bun users
+-------------
+
+If you are using Bun, install `@nurodev/astro-bun` and configure it as the
+Astro adapter:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import bun from "@nurodev/astro-bun";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: bun(),
+});
+~~~~
+
+Then use Bun to start Astro in development, and run the generated server entry
+point after building for preview or production:
+
+~~~~ json
+{
+  "scripts": {
+    "dev": "bunx astro dev",
+    "build": "bunx astro build",
+    "preview": "bun ./dist/server/entry.mjs"
   }
 }
 ~~~~
