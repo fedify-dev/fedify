@@ -320,6 +320,23 @@ writing, allowing users to focus purely on text without images or attachments:
 
 [Typo Blue]: https://typo.blue/
 
+### SiliconBeest: Serverless federation on Cloudflare Workers
+
+[SiliconBeest] is a serverless fediverse platform built on Cloudflare Workers,
+demonstrating how Fedify can power ActivityPub federation on edge-native
+infrastructure:
+
+ -  Built a Mastodon API-compatible social networking server on Cloudflare
+    Workers
+ -  Uses Fedify together with *@fedify/cfworkers* to handle federation,
+    message delivery, signatures, WebFinger, and related protocol concerns
+ -  Combines Fedify with platform-native services like KV and Queues to support
+    a serverless deployment model
+ -  Shows how Fedify can be adapted beyond conventional server environments for
+    ActivityPub applications
+
+[SiliconBeest]: https://github.com/SJang1/siliconbeest
+
 
 Conclusion
 ----------
