@@ -494,6 +494,7 @@ COPY . .
 # the official node images.
 USER node
 
+# Change this to the port number your Fedify app uses.
 EXPOSE 3000
 CMD ["pnpm", "run", "start"]
 ~~~~
@@ -514,6 +515,7 @@ COPY . .
 RUN deno task build
 
 USER deno
+# Change this to the port number your Fedify app uses.
 EXPOSE 8000
 CMD ["deno", "task", "start"]
 ~~~~
@@ -1082,7 +1084,7 @@ than a compromise.  At minimum, forbid inline scripts
 > hijacked.  Sanitize every post, every summary, every actor bio, from
 > every server, always.
 
-[strong Content-Security-Policy]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+[strong Content-Security-Policy]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP
 
 ### Server-side request forgery (SSRF)
 
@@ -1208,8 +1210,8 @@ Block abusive instances early
 :   Apply domain-level blocklists at the inbox listener so that incoming
     activities from known-abusive instances are rejected before you spend
     time parsing them.  The fediverse maintains several community blocklists
-    ([oliphant/blocklists] is one starting point); curate your own rather
-    than importing them wholesale.
+    ([Pelago] and [FIRES] are community-maintained starting points); curate
+    your own rather than importing them wholesale.
 
 Keep the system clock in sync
 :   HTTP signatures are valid only within `~FederationOptions.signatureTimeWindow`
@@ -1217,7 +1219,8 @@ Keep the system clock in sync
     drift is the second-most-common “it worked in staging” production
     issue after reverse-proxy misconfiguration.
 
-[oliphant/blocklists]: https://codeberg.org/oliphant/blocklists
+[Pelago]: https://pelago.1sland.social/blocklist
+[FIRES]: https://fires.fedimod.org/
 
 
 Observability in production
