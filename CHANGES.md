@@ -150,6 +150,40 @@ To be released.
 [#675]: https://github.com/fedify-dev/fedify/pull/675
 
 
+Version 2.1.6
+-------------
+
+Released on April 20, 2026.
+
+### @fedify/astro
+
+ -  Restored the npm entrypoint contract for `@fedify/astro` by making the
+    build emit _dist/\*.js_ and _dist/\*.d.ts_ files that match the published
+    package metadata again.  This fixes package resolution failures caused by
+    _package.json_ exporting files that did not exist in the npm tarball.
+    [[#699], [#701]]
+
+[#699]: https://github.com/fedify-dev/fedify/issues/699
+[#701]: https://github.com/fedify-dev/fedify/pull/701
+
+### @fedify/cli
+
+ -  Fixed `fedify lookup` failing to look up URLs on private or localhost
+    addresses unless `-p`/`--allow-private-address` was passed, which was a
+    regression introduced in Fedify 2.1.0 when the CLI began forwarding
+    the `allowPrivateAddress` option to the underlying document loader.
+    URLs explicitly provided on the command line now always allow private
+    addresses, while URLs discovered during [`-t`/`--traverse`] honor the
+    option to mitigate SSRF attacks against private addresses.  Recursive
+    fetches via [`--recurse`] continue to always disallow private
+    addresses regardless of the option.  [[#696], [#698] by Chanhaeng Lee]
+
+[`-t`/`--traverse`]: https://fedify.dev/cli#t-traverse-traverse-the-collection
+[`--recurse`]: https://fedify.dev/cli#recurse-recurse-through-object-relationships
+[#696]: https://github.com/fedify-dev/fedify/issues/696
+[#698]: https://github.com/fedify-dev/fedify/pull/698
+
+
 Version 2.1.5
 -------------
 

@@ -524,8 +524,10 @@ For short names, only Fedify property naming is accepted.  For example,
 > are mutually exclusive.
 >
 > Recursive fetches always disallow private/localhost addresses for safety.
-> `-p`/`--allow-private-address` only applies to explicit lookup/traverse
-> targets, not to recursive steps.
+> URLs explicitly provided on the command line always allow private
+> addresses, while
+> [`-p`/`--allow-private-address`](#p-allow-private-address-allow-private-ip-addresses)
+> has no effect on recursive steps.
 
 ### `--recurse-depth`: Set recursion depth limit
 
@@ -982,18 +984,29 @@ fedify lookup --user-agent MyApp/1.0 @fedify@hollo.social
 
 ### `-p`/`--allow-private-address`: Allow private IP addresses
 
-By default, `fedify lookup` does not fetch private or localhost addresses.
-The `-p`/`--allow-private-address` option allows explicit lookup/traverse
-requests to private addresses when needed for local development.
+URLs explicitly provided on the command line always allow private or
+localhost addresses, so local servers can be looked up without any extra
+flags:
 
 ~~~~ sh
-fedify lookup --allow-private-address http://localhost:8000/users/alice
+fedify lookup http://localhost:8000/users/alice
+~~~~
+
+The `-p`/`--allow-private-address` option additionally allows private
+addresses for URLs discovered during traversal.  It only has an effect
+when used together with
+[`-t`/`--traverse`](#t-traverse-traverse-the-collection), since URLs
+embedded in remote responses are otherwise rejected to mitigate SSRF
+attacks against private addresses.
+
+~~~~ sh
+fedify lookup --traverse --allow-private-address http://localhost:8000/users/alice/outbox
 ~~~~
 
 > [!NOTE]
 > Recursive fetches enabled by
-> [`--recurse`](#recurse-recurse-through-object-relationships) continue to
-> disallow private addresses.
+> [`--recurse`](#recurse-recurse-through-object-relationships) always
+> disallow private addresses regardless of this option.
 
 ### `-s`/`--separator`: Output separator
 

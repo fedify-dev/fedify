@@ -61,6 +61,7 @@
     "build": "pnpm --filter @fedify/astro... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
+    "pretest": "pnpm build",
     "test": "node --experimental-transform-types --test"
   }
 }
