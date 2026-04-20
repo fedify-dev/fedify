@@ -390,6 +390,23 @@ HTTP/2 (and increasingly HTTP/3), static asset caching, and—importantly for
 ActivityPub—shielding your upstream from direct traffic so that the
 [canonical origin](#canonical-origin) guarantee holds.
 
+#### Caddy
+
+Caddy's defaults suit Fedify well: automatic HTTPS from Let's Encrypt,
+HTTP/2 and HTTP/3 on by default, and forwarded headers set correctly out
+of the box.  A full configuration fits on one line:
+
+~~~~ caddy
+example.com {
+  reverse_proxy 127.0.0.1:3000
+}
+~~~~
+
+Caddy sends `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
+automatically, which means [x-forwarded-fetch] works without extra
+configuration.  For most new Fedify deployments where you don't already
+have an nginx footprint to fit into, Caddy is the path of least resistance.
+
 #### Nginx
 
 ~~~~ nginx
@@ -433,23 +450,6 @@ server {
   return 301 https://$host$request_uri;
 }
 ~~~~
-
-#### Caddy
-
-Caddy's defaults suit Fedify well: automatic HTTPS from Let's Encrypt,
-HTTP/2 and HTTP/3 on by default, and forwarded headers set correctly out
-of the box.  A full configuration fits on one line:
-
-~~~~ caddy
-example.com {
-  reverse_proxy 127.0.0.1:3000
-}
-~~~~
-
-Caddy sends `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
-automatically, which means [x-forwarded-fetch] works without extra
-configuration.  For most new Fedify deployments where you don't already
-have an nginx footprint to fit into, Caddy is the path of least resistance.
 
 > [!TIP]
 > Whichever proxy you use, make sure it forwards `Accept` and
@@ -786,13 +786,55 @@ Serverless and edge deployments
 -------------------------------
 
 Fedify runs on two classes of platform that don't fit the long-running
-process model: Cloudflare Workers and Deno Deploy.  Both can host a
+process model: Deno Deploy and Cloudflare Workers.  Both can host a
 Fedify application with zero self-managed infrastructure, at a cost that
 scales down to near-zero for low-traffic servers.  The trade-off is that
 each platform imposes architectural constraints that shape how the code is
 organized—so unlike the traditional- and container-based sections above,
 the choice here affects your *application code*, not just the deployment
 configuration.
+
+### Deno Deploy
+
+[Deno Deploy] is a serverless platform for Deno applications with global
+distribution and built-in persistence through Deno KV.  At the time of
+writing, Deno Deploy offers two products:
+
+ -  *Deno Deploy Early Access (EA)* is the current generation and the
+    one you should target for new deployments.  It runs on Deno 2 with
+    improved cold-start behavior, native HTTP/3, and first-class
+    OpenTelemetry support.
+ -  *Deno Deploy Classic* is the previous generation.  It is now
+    deprecated and scheduled to shut down on July 20, 2026; existing
+    applications must migrate to Deno Deploy EA before that date.
+
+Fedify targets Deno Deploy (both EA and Classic) through the
+[`@fedify/denokv`] package, which exposes `DenoKvStore` and
+`DenoKvMessageQueue`.  Deno Deploy EA's Deno KV is automatically
+available—no configuration required, no separate database to provision:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+
+const federation = createFederation<void>({
+  kv: new DenoKvStore(kv),
+  queue: new DenoKvMessageQueue(kv),
+  // Other configuration...
+});
+
+Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
+~~~~
+
+`DenoKvMessageQueue` exposes native retry via
+[`MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
+Deno KV's built-in exponential-backoff mechanism.
+
+[Deno Deploy]: https://deno.com/deploy
+[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
+[`MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
 
 ### Cloudflare Workers
 
@@ -937,49 +979,7 @@ deployed to Workers.
 
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Node.js compatibility]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
-[`MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
 [Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
-
-### Deno Deploy
-
-[Deno Deploy] is a serverless platform for Deno applications with global
-distribution and built-in persistence through Deno KV.  At the time of
-writing, Deno Deploy offers two products:
-
- -  *Deno Deploy Early Access (EA)* is the current generation and the
-    one you should target for new deployments.  It runs on Deno 2 with
-    improved cold-start behavior, native HTTP/3, and first-class
-    OpenTelemetry support.
- -  *Deno Deploy Classic* is the previous generation.  It is now
-    deprecated and scheduled to shut down on July 20, 2026; existing
-    applications must migrate to Deno Deploy EA before that date.
-
-Fedify targets Deno Deploy (both EA and Classic) through the
-[`@fedify/denokv`] package, which exposes `DenoKvStore` and
-`DenoKvMessageQueue`.  Deno Deploy EA's Deno KV is automatically
-available—no configuration required, no separate database to provision:
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-
-const federation = createFederation<void>({
-  kv: new DenoKvStore(kv),
-  queue: new DenoKvMessageQueue(kv),
-  // Other configuration...
-});
-
-Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
-~~~~
-
-`DenoKvMessageQueue` exposes native retry via
-[`MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
-Deno KV's built-in exponential-backoff mechanism.
-
-[Deno Deploy]: https://deno.com/deploy
-[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
 
 
 Security
