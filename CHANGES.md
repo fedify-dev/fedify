@@ -8,6 +8,17 @@ Version 2.1.6
 
 To be released.
 
+### @fedify/astro
+
+ -  Restored the npm entrypoint contract for `@fedify/astro` by making the
+    build emit _dist/\*.js_ and _dist/\*.d.ts_ files that match the published
+    package metadata again.  This fixes package resolution failures caused by
+    _package.json_ exporting files that did not exist in the npm tarball.
+    [[#699], [#701]]
+
+[#699]: https://github.com/fedify-dev/fedify/issues/699
+[#701]: https://github.com/fedify-dev/fedify/pull/701
+
 ### @fedify/cli
 
  -  Fixed `fedify lookup` failing to look up URLs on private or localhost
