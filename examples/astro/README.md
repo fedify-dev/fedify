@@ -245,7 +245,7 @@ the one you keep to *astro.config.ts*:
 ### For Deno
 
 ~~~~ command
-rm astro.config.node.ts
+rm astro.config.node.ts astro.config.bun.ts
 mv astro.config.deno.ts astro.config.ts
 ~~~~
 
@@ -264,7 +264,7 @@ Then remove the `--config` flags from *deno.json* tasks:
 ### For Node.js
 
 ~~~~ command
-rm astro.config.deno.ts
+rm astro.config.deno.ts astro.config.bun.ts
 mv astro.config.node.ts astro.config.ts
 ~~~~
 
