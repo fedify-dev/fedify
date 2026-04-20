@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.1.6
 -------------
 
-To be released.
+Released on April 20, 2026.
 
 ### @fedify/astro
 
