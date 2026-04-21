@@ -479,7 +479,7 @@ Mastodon:
 ![Screenshot: A note with an attached image in
 Mastodon](pragmatics/mastodon-note-body.png)
 
-### `Note.summary`: Content warnings
+### `summary`: Content warnings
 
 On `Note` objects, the `summary` property is commonly used as a content
 warning.  In Mastodon, it becomes the warning text shown above the collapsed
@@ -545,7 +545,7 @@ from `content`, the poll choices come from `exclusiveOptions` or
 `inclusiveOptions`, and metadata such as `voters` and `endTime` are displayed
 below the choices.
 
-### `Question.exclusiveOptions`: Single-choice polls
+### `exclusiveOptions`: Single-choice polls
 
 ~~~~ typescript twoslash
 import { Collection, Note, Question } from "@fedify/vocab";
@@ -581,7 +581,7 @@ Mastodon after opening the results view:
 ![Screenshot: A single-choice question object rendered as poll results in
 Mastodon](pragmatics/mastodon-question.png)
 
-### `Question.inclusiveOptions`: Multiple-choice polls
+### `inclusiveOptions`: Multiple-choice polls
 
 Use `inclusiveOptions` for polls where a voter may choose more than one option.
 
