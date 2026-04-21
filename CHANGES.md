@@ -171,11 +171,25 @@ To be released.
     `Create`/`Update`/`Delete(Note)` inbox activities as comments.
     [[#691], [#695]]
 
+ -  Added a new tutorial, [*Building a threadiverse community platform*], that walks
+    through building a Lemmy-style community server with Fedify and
+    Next.js.  Where the existing [*Creating your own federated microblog*]
+    tutorial is actor- and timeline-centric, this one is community-centric: it
+    models communities as `Group` actors, threads as `Page` objects wrapped in
+    `Create`, replies as `Note` objects, and the community-side `Announce`
+    redistribution that threadiverse software (Lemmy, Mbin, NodeBB) uses to fan
+    activity out to every subscriber.  Pairs with the
+    [`fedify-dev/threadiverse`] example repository. [[#704]]
+
 [*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog
 [Astro]: https://astro.build/
 [Bun]: https://bun.sh/
+[*Building a threadiverse community platform*]: https://fedify.dev/tutorial/threadiverse
+[*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
+[`fedify-dev/threadiverse`]: https://github.com/fedify-dev/threadiverse
 [#691]: https://github.com/fedify-dev/fedify/issues/691
 [#695]: https://github.com/fedify-dev/fedify/pull/695
+[#704]: https://github.com/fedify-dev/fedify/issues/704
 
 
 Version 2.1.9

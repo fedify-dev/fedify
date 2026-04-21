@@ -1357,8 +1357,8 @@ actor backed by our `users` table, so searching `@alice@<your-host>` in
 Mastodon or Lemmy actually finds the account we just created.
 
 
-Federating your user: the person actor
---------------------------------------
+Federating your user: the `Person` actor
+----------------------------------------
 
 All the pieces we've built so far have been local.  In this chapter we turn
 a local user into a *federated* `Person` actor: a server-side entity that
@@ -1772,8 +1772,8 @@ can actually subscribe.
 [ActivityPub.Academy]: https://activitypub.academy/
 
 
-Communities as group actors
----------------------------
+Communities as `Group` actors
+-----------------------------
 
 In the threadiverse, the unit of organisation is the *community*: a topic
 bucket that local and remote users can subscribe to, post threads into, and
@@ -3324,8 +3324,8 @@ pipeline carrying a `Create(Note)` → `Announce(Create(Note))` pair
 to every subscriber of the community.
 
 
-Votes (like and dislike)
-------------------------
+Votes (`Like` and `Dislike`)
+----------------------------
 
 Threadiverse platforms let users up-vote and down-vote threads and
 replies to sort them.  ActivityPub already has two activity types that
@@ -3671,8 +3671,8 @@ SQL `IN (…)` predicate, so fetching the feed is one roundtrip
 regardless of how many communities the user subscribes to.
 
 
-Unsubscribing with undo(follow)
--------------------------------
+Unsubscribing with `Undo(Follow)`
+---------------------------------
 
 The subscriptions list on the home page includes an *Unfollow* button
 per community.  Unsubscribing is essentially Ch. 14's follow flow
@@ -3790,3 +3790,80 @@ a local user, expand the *Subscriptions* section on the home page,
 and click *Unfollow* next to a remote community; the row disappears
 from your table and, once the remote server processes the Undo, from
 their member count too.
+
+
+Areas to improve
+----------------
+
+The tutorial stops here, but there's a long list of features you can
+add next.  Each of these is a small extension of the primitives already
+in place:
+
+ -  **Link threads.**  The feature checklist at the top of this
+    tutorial mentioned link posts as out of scope.  The shape is
+    small: give `threads` a nullable `link_url` column, render it in
+    the thread card, and set `Page.url` when federating.  No new
+    activity types are required.
+ -  **Editing and deletion.**  `Update(Page)` / `Update(Note)` and
+    `Delete(Page)` / `Delete(Note)` with `Tombstone` substitutes.
+    The handlers look just like the Create handler, differing only
+    in what DB row they mutate.
+ -  **Local community index.**  A `/communities` page that lists
+    every `communities` row.  A single select + paginate; no
+    federation touched.
+ -  **Ranking.**  Surface the
+    `SUM(CASE kind WHEN 'Like' THEN 1 ELSE -1 END)` tally from
+    [Votes (`Like` and `Dislike`)](#votes-like-and-dislike) as
+    `score`, and sort feeds by `score * decay(created_at)` for the
+    Lemmy *Active* / *Hot* formulas.
+ -  **Persistent federation state.**  `fedify init` set us up with
+    `MemoryKvStore` + `InProcessMessageQueue`.  In production you'll
+    want persistent versions so activity retries survive restarts;
+    swap both in *federation/index.ts* for `PostgresKvStore` /
+    `PostgresMessageQueue` from [`@fedify/postgres`], or
+    `SqliteKvStore` / `SqliteMessageQueue` from [`@fedify/sqlite`].
+ -  **PostgreSQL for application data.**  Drizzle's SQLite and
+    Postgres drivers share most of the schema vocabulary, so moving
+    from `drizzle-orm/better-sqlite3` to `drizzle-orm/node-postgres`
+    is largely a connection-string change plus a small column-type
+    pass.
+ -  **Lemmy-specific actor fields.**  If you want Lemmy (specifically)
+    to subscribe to your community without quirks, Lemmy's
+    `Group` actors carry `attributedTo` (creator), `moderators`
+    (collection of mod URIs), `featured` (pinned-post collection),
+    and `postingRestrictedToMods`.  Fedify exposes
+    `setFeaturedDispatcher` and lets you set `attributedTo` and
+    `moderators` on the Group you return from the actor dispatcher.
+    See [Lemmy's federation notes] for the full list.
+
+[`@fedify/postgres`]: https://jsr.io/@fedify/postgres
+[`@fedify/sqlite`]: https://jsr.io/@fedify/sqlite
+[Lemmy's federation notes]: https://join-lemmy.org/docs/contributors/05-federation.html
+
+
+Next steps
+----------
+
+If you're getting ready to put this (or a derived app) into production:
+
+ -  Read the [*Deployment*](../manual/deploy.md) chapter of the
+    Fedify manual end to end.  Run through its sections on
+    [canonical origin](../manual/deploy.md#canonical-origin),
+    [behind a reverse proxy](../manual/deploy.md#behind-a-reverse-proxy),
+    [persistent KV store and message queue](../manual/deploy.md#persistent-kv-store-and-message-queue),
+    [actor key lifecycle](../manual/deploy.md#actor-key-lifecycle), and
+    [running the process](../manual/deploy.md#running-the-process) first.  The
+    *running the process* section has a Node.js recipe that matches the runtime
+    of what we built here.
+ -  The [`@fedify/next` README][@fedify/next] covers the Next.js
+    middleware's runtime constraints and the Vercel
+    deployment caveats (Node.js runtime required; the middleware
+    does not run on the Edge).
+ -  Join the [Matrix chat] or [GitHub Discussions] if you get stuck.
+
+Congratulations — you've built a federated community platform from
+scratch using Fedify.  Go spin up a tunnel, share your community
+handle on the fediverse, and watch threads flow in.
+
+[@fedify/next]: https://www.npmjs.com/package/@fedify/next
+[Matrix chat]: https://matrix.to/#/#fedify:matrix.org
