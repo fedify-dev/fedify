@@ -611,3 +611,189 @@ will 404 for now; we'll build that page in the *Communities as Group actors*
 chapter.
 
 [Next.js App Router]: https://nextjs.org/docs/app
+
+
+User accounts
+-------------
+
+Before we start federating anything we need *local* user accounts.  A local
+user is just a row in our own database; we'll only turn those rows into
+federated `Person` actors in the next chapter.  Getting accounts working
+first gives us something concrete (a user, a username, a password) that the
+federation layer can then point at.
+
+### Drizzle ORM and SQLite
+
+We'll keep data in [SQLite], the single-file embedded database.  SQLite is
+ideal for a tutorial: the whole database lives in one *.sqlite3* file in your
+project directory, there's no server to set up, and it's plenty fast for a
+single-node app.  In production you would pick something like PostgreSQL, but
+the code we'll write is almost identical; swapping databases is a matter of
+changing the connection string.
+
+To talk to SQLite we'll use [Drizzle ORM].  An ORM (*Object–Relational
+Mapper*) lets you describe your tables as TypeScript values and then query
+them with chained function calls instead of writing raw SQL strings.  The
+benefit over raw SQL is that TypeScript understands your schema, so a typo
+like `users.usernaem` is a compile error rather than a runtime mystery.
+
+> [!NOTE]
+> If you already know SQL, you'll find that Drizzle barely hides it: a
+> Drizzle query reads almost word-for-word like the SQL it generates.  If
+> you don't know SQL yet, that's fine; we'll introduce each piece of syntax
+> the first time it appears.
+
+[SQLite]: https://sqlite.org/
+[Drizzle ORM]: https://orm.drizzle.team/
+
+### Installing dependencies
+
+Install Drizzle, the SQLite driver, and Drizzle's CLI:
+
+~~~~ sh
+npm install drizzle-orm better-sqlite3
+npm install -D drizzle-kit @types/better-sqlite3
+~~~~
+
+The first line adds the runtime pieces: *drizzle-orm* is the query builder,
+and [*better-sqlite3*] is a synchronous SQLite driver well-suited to
+server-side rendering.  The second line adds Drizzle's CLI for managing the
+schema, plus TypeScript types for *better-sqlite3*.
+
+[*better-sqlite3*]: https://github.com/WiseLibs/better-sqlite3
+
+### Declaring the `users` table
+
+Create *db/schema.ts* and describe the first table:
+
+~~~~ typescript [db/schema.ts]
+import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+~~~~
+
+Reading the file top to bottom:
+
+ -  `sqliteTable("users", { ... })` defines a table named `users` with four
+    columns.
+ -  `id` is an auto-incrementing integer primary key.
+ -  `username` is a required text column with a `UNIQUE` constraint; two
+    users can't share the same username.
+ -  `passwordHash` is a required text column; we'll store a *hash* of the
+    password, never the password itself.
+ -  `createdAt` is a Unix timestamp with a SQL default of `unixepoch()`, so
+    SQLite fills in the time on insert.
+
+The two `type` exports are a Drizzle convention.  `User` is the type of a
+row as it comes out of the database (every column populated).  `NewUser` is
+the shape of a row ready to *insert* (so `id` and `createdAt` are optional
+because they have defaults).  Using these types means you never write out
+column types by hand.
+
+> [!TIP]
+> The ``sql`(unixepoch())` `` bit is a *tagged template literal*: it embeds a
+> raw SQL snippet in a Drizzle schema definition.  We use it here because
+> Drizzle doesn't ship a helper for SQLite's `unixepoch()` function, and
+> `unixepoch()` is the simplest way to default a column to “now” in seconds.
+
+### Opening the database
+
+Create *db/index.ts* next.  This is the module every server-side file will
+import from when it needs to query the database:
+
+~~~~ typescript [db/index.ts]
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
+
+const sqlite = new Database("threadiverse.sqlite3");
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
+
+export const db = drizzle(sqlite, { schema });
+export * from "./schema";
+~~~~
+
+The file opens (or creates) *threadiverse.sqlite3* in the project root, sets
+two pragmas that every SQLite app should set (`journal_mode = WAL` for
+better concurrency, `foreign_keys = ON` so foreign-key constraints are
+actually enforced), and wraps the connection with Drizzle.  The
+`export * from "./schema"` re-exports every table and type so callers can
+`import { db, users, type User } from "@/db"` from a single path.
+
+### Wiring up drizzle kit
+
+[Drizzle Kit] is Drizzle's companion CLI.  It reads your schema and either
+generates migration SQL or pushes the schema directly to the database.
+Create *drizzle.config.ts* at the project root:
+
+~~~~ typescript [drizzle.config.ts]
+import type { Config } from "drizzle-kit";
+
+export default {
+  schema: "./db/schema.ts",
+  out: "./drizzle",
+  dialect: "sqlite",
+  dbCredentials: {
+    url: "threadiverse.sqlite3",
+  },
+} satisfies Config;
+~~~~
+
+Add two npm scripts to *package.json* so the CLI is a short command:
+
+~~~~ json [package.json]
+"scripts": {
+  ...
+  "db:push": "drizzle-kit push",
+  "db:studio": "drizzle-kit studio"
+}
+~~~~
+
+`db:push` synchronizes the database schema with *db/schema.ts* in one
+step.  `db:studio` opens a small web UI that lets you browse the database
+contents; you don't need it now, but it's handy later when debugging
+federation state.
+
+[Drizzle Kit]: https://orm.drizzle.team/docs/kit-overview
+
+### Creating the database
+
+Create the database file by running:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+Drizzle Kit prints a short summary and exits.  You should now have a
+*threadiverse.sqlite3* file in the project root with an empty `users` table
+inside.
+
+Finally, add the SQLite database file to *.gitignore* so every developer
+starts from their own empty copy:
+
+~~~~ [.gitignore]
+# sqlite database (regenerated locally)
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+~~~~
+
+> [!TIP]
+> Throughout the rest of the tutorial, whenever we add or change a table,
+> you'll re-run `npm run db:push` to sync the change to the database.  For
+> a real app you would switch to generated migration files
+> (`drizzle-kit generate` followed by `drizzle-kit migrate`) so deployments are
+> reproducible; push is fine for local development and for tutorials.
