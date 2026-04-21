@@ -100,6 +100,10 @@ const TUTORIAL = {
     { text: "Learning the basics", link: "/tutorial/basics.md" },
     { text: "Creating a microblog", link: "/tutorial/microblog.md" },
     { text: "Building a federated blog", link: "/tutorial/astro-blog.md" },
+    {
+      text: "Building a threadiverse community",
+      link: "/tutorial/threadiverse.md",
+    },
   ],
   activeMatch: "/tutorial",
 };
