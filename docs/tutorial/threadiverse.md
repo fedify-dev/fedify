@@ -268,3 +268,102 @@ If you ever see an `EMFILE: too many open files` error from Next.js on
 Linux, you've hit the default `fs.inotify.max_user_instances` limit.
 Restarting `npm run dev` with `WATCHPACK_POLLING=true` in front of it makes
 Next.js fall back to polling-based file watching and sidesteps the problem.
+
+### Swapping ESLint for biome
+
+The Next.js scaffold that `create-next-app` dropped into the project comes
+with [ESLint] for linting, while the Fedify side of the scaffold prefers
+[Biome].  `fedify init` tries to accommodate both by shipping them side by
+side, but that means you have to install two tools that disagree with each
+other on style.  Since Biome can do both the formatting *and* the linting we
+need, let's delete ESLint and let Biome run the whole show.
+
+Open *biome.json* and turn the linter on with the recommended rule set:
+
+~~~~ json [biome.json]
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true,
+    "rules": { "recommended": true }
+  },
+  "files": {
+    "includes": ["**", "!.next", "!node_modules", "!public"]
+  }
+}
+~~~~
+
+Delete the two ESLint configs:
+
+~~~~ sh
+rm eslint.config.mjs eslint.config.ts
+~~~~
+
+In *package.json*, drop the `eslint`, `eslint-config-next`, and `@fedify/lint`
+packages from `devDependencies`, and rewrite the `lint` and `format` scripts
+so they call Biome instead:
+
+~~~~ json [package.json]
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "biome check",
+  "format": "biome check --write"
+},
+~~~~
+
+Then reinstall dependencies so the lockfile reflects the smaller dep tree:
+
+~~~~ sh
+npm install
+~~~~
+
+From now on you can format and lint the whole project with a single command:
+
+~~~~ sh
+npm run format
+~~~~
+
+Running it once right now will flag one pre-existing issue:
+*federation/index.ts* imports `getLogger` from LogTape and assigns the result
+to a `logger` constant, but nothing ever reads that `logger`.  Biome's
+`noUnusedVariables` rule flags it.  Delete the unused import and declaration:
+
+~~~~ typescript{2,4} [federation/index.ts]
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (ctx, identifier) => {
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: identifier,
+    });
+  },
+);
+
+export default federation;
+~~~~
+
+We'll add logging back later when there's something worth logging.
+
+[ESLint]: https://eslint.org/
+[Biome]: https://biomejs.dev/
