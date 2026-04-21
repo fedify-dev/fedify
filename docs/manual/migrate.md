@@ -1,7 +1,7 @@
 ---
 description: >-
   How to migrate an existing federated service to Fedify from another
-  JavaScript ActivityPub library — activitypub-express, @activity-kit,
+  JavaScript ActivityPub library: activitypub-express, @activity-kit,
   hand-rolled Express code, and activitystrea.ms.
 ---
 
@@ -11,7 +11,7 @@ Migrating from other libraries
 If you already run a federated service on another JavaScript ActivityPub
 library, this guide helps you move it to Fedify without losing your existing
 followers.  The hard part of any such migration is not rewriting the
-handlers — it is preserving the bits of state that remote servers have cached
+handlers; it is preserving the bits of state that remote servers have cached
 about you.  A migration survives silently only when three things stay stable
 across the switch:
 
@@ -24,16 +24,16 @@ across the switch:
 
 Pick the section that matches your stack:
 
- -  [From `activitypub-express` (apex)](#apex) —
+ -  [From `activitypub-express` (apex)](#apex),
     the Express middleware backed by MongoDB.
- -  [From `@activity-kit/*` (ActivityKit)](#activity-kit) —
+ -  [From `@activity-kit/*` (ActivityKit)](#activity-kit),
     the TypeScript-first, spec-oriented framework on the `@activity-kit`
     npm scope.
- -  [From hand-rolled Express code](#hand-rolled) —
+ -  [From hand-rolled Express code](#hand-rolled),
     custom Express apps that sign outbound requests with the `node:crypto`
     module, typically descended from Darius Kazemi's `express-activitypub`
     reference.
- -  [From `activitystrea.ms`](#activity-streams) —
+ -  [From `activitystrea.ms`](#activity-streams),
     a vocabulary-only migration where federation is handled elsewhere.
 
 Each section follows the same shape: *When to migrate*, *Mental-model
@@ -154,7 +154,7 @@ await apex.store.setup();
 app.listen(8080);
 ~~~~
 
-Fedify keeps the routes implicit — registering the actor dispatcher enables
+Fedify keeps the routes implicit: registering the actor dispatcher enables
 WebFinger, and registering inbox listeners wires both the personal and shared
 inbox:
 
@@ -168,7 +168,7 @@ const federation = createFederation<void>({
   kv: new MemoryKvStore(), // Swap for PostgresKvStore in production.
 });
 
-// Register dispatchers and listeners on `federation` — see the sections below.
+// Register dispatchers and listeners on `federation`; see the sections below.
 
 const app = express();
 app.set("trust proxy", true);
@@ -177,7 +177,7 @@ app.listen(8080);
 ~~~~
 
 For production, replace `MemoryKvStore` with one of the database-backed
-stores — see the [*Key–value store*](./kv.md) section for options.
+stores; see the [*Key–value store*](./kv.md) section for options.
 
 #### Actor dispatcher
 
@@ -286,8 +286,8 @@ app.on("apex-inbox", async ({ actor, activity, recipient }) => {
 ~~~~
 
 Fedify splits one handler per activity type and turns the Accept into a
-`Context.sendActivity` call — signature verification, key dereferencing, and
-delivery scheduling happen automatically:
+`Context.sendActivity` call, with signature verification, key
+dereferencing, and delivery scheduling all handled automatically:
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -312,7 +312,7 @@ federation
 ~~~~
 
 The second argument to `setInboxListeners` (`"/inbox"`) also registers a
-shared inbox at that path — something apex never exposed.  Omit it if you
+shared inbox at that path, which apex never exposed.  Omit it if you
 want to preserve the old behaviour exactly; re-enable it later when you are
 ready to advertise `endpoints.sharedInbox` on your actor documents.
 
@@ -333,7 +333,7 @@ const create = await apex.buildActivity(
 await apex.addToOutbox(actor, create);
 ~~~~
 
-Fedify replaces both steps with one `Context.sendActivity` call — the queue
+Fedify replaces both steps with one `Context.sendActivity` call; the queue
 takes care of persistence, signing, retries, and fan-out:
 
 ~~~~ typescript twoslash
@@ -404,14 +404,14 @@ For production traffic you will usually want pagination, covered in the
 
 Three things need to move from Mongo to whatever storage your Fedify app
 uses: actor key pairs, followers, and anything else your application stored
-on the actor record (display name, summary, icon URL).  Everything else —
-the `deliveryQueue` collection, `contexts` cache, `streams` entries other
-than followers — does not need to be migrated and should not be.
+on the actor record (display name, summary, icon URL).  Everything else
+(the `deliveryQueue` collection, `contexts` cache, and `streams` entries
+other than followers) does not need to be migrated and should not be.
 
 The safest cutover procedure is:
 
 1.  Take the apex instance offline, or at least stop accepting new activities.
-2.  Let the in-flight `deliveryQueue` drain naturally — apex retries
+2.  Let the in-flight `deliveryQueue` drain naturally; apex retries
     deliveries on exponential backoff for up to about five months, so what
     matters is that you do not switch Fedify on over the same hostname while
     apex is still actively signing outbound requests, or remote servers will
@@ -514,7 +514,7 @@ actor IRI is identical, and the RSA public key matches what those remote
 servers already have cached.
 
 For long-term resilience, generate a second Ed25519 key pair per actor and
-return it alongside the RSA pair from `setKeyPairsDispatcher` — Ed25519 is
+return it alongside the RSA pair from `setKeyPairsDispatcher`.  Ed25519 is
 required for [Object Integrity Proofs](./send.md#object-integrity-proofs).
 
 ### Common pitfalls
@@ -530,12 +530,12 @@ required for [Object Integrity Proofs](./send.md#object-integrity-proofs).
     deploy and add it once you are happy with the rest of the rewrite.
  -  *Delivery-queue port.*  The `deliveryQueue` collection is tightly coupled
     to apex's in-process publisher.  Do not port it to Fedify's
-    [message queue](./mq.md) — let apex finish its retries on the old
+    [message queue](./mq.md); let apex finish its retries on the old
     instance and start Fedify with an empty queue.
  -  *Follower pagination.*  apex paginates followers via MongoDB `ObjectId`
     cursors; Fedify cursors are opaque strings you define.  Do not try to
-    preserve the cursor format — remote servers re-fetch the collection
-    from the start when the cursor does not validate.
+    preserve the cursor format, because remote servers re-fetch the
+    collection from the start when the cursor does not validate.
  -  *`Content-Type` defaults.*  apex distinguishes `application/activity+json`
     and the JSON-LD form via `apex.consts.jsonldTypes`; Fedify sets the
     appropriate `Content-Type` automatically on every outbound request.  Any
@@ -666,7 +666,7 @@ on Deno, Node.js, or Bun behind any of its framework integrations.
 | `adapters.crypto: CryptoAdapter`                               | built-in; keys returned from `setKeyPairsDispatcher`                           |
 | `adapters.auth: AuthAdapter` (email/password baked in)         | out of scope; plug in your own auth layer                                      |
 | `adapters.storage: StorageAdapter` (media uploads)             | out of scope; your existing upload route keeps working                         |
-| `Plugin.handleInboxSideEffect(activity, recipient)`            | `setInboxListeners(...).on(Follow, ...)` — one handler per type                |
+| `Plugin.handleInboxSideEffect(activity, recipient)`            | `setInboxListeners(...).on(Follow, ...)`, one handler per type                 |
 | `Plugin.handleOutboxSideEffect(activity, actor)`               | `setOutboxListeners(...)` or `setOutboxDispatcher()` depending on purpose      |
 | `Plugin.generateActorId(username)`                             | path parameter in `setActorDispatcher("/u/{identifier}", ...)`                 |
 | Plain `AP.Person` object literal with `publicKey.publicKeyPem` | `new Person({ ... })` with `setKeyPairsDispatcher` returning `CryptoKey` pairs |
@@ -732,7 +732,7 @@ const app = express();
 app.set("trust proxy", true);
 app.use(integrateFederation(federation, () => undefined));
 app.get("/u/:identifier", (req, res) => {
-  // Serve the HTML profile here — Fedify falls through to your handler
+  // Serve the HTML profile here; Fedify falls through to your handler
   // when the client is not asking for ActivityPub content negotiation.
 });
 app.listen(8080);
@@ -870,7 +870,7 @@ federation
 
 The `on(Follow, …)` registration is closed over the activity type, so
 there is no need to `isType(...)` on the way in and no need to hand-build
-the Accept as a plain object — Fedify's vocab classes enforce the shape.
+the Accept as a plain object; Fedify's vocab classes enforce the shape.
 
 #### Outbound activities
 
@@ -1127,7 +1127,7 @@ app.set("trust proxy", true);
 app.use(express.json());
 app.use(integrateFederation(federation, () => undefined));
 
-// Your own signup route — no AuthAdapter needed.
+// Your own signup route; no AuthAdapter needed.
 app.post("/signup", async (req, res) => {
   const { username, name } = req.body as { username: string; name: string };
   const pair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
@@ -1155,7 +1155,7 @@ From hand-rolled Express code {#hand-rolled}
 The de-facto starting point for hand-rolled Node.js ActivityPub bots is
 Darius Kazemi's [`express-activitypub`] reference implementation, and most
 small bots, blog-to-fediverse bridges, and single-actor services in the wild
-are direct descendants — [`rss-to-activitypub`] is the best-known sibling.
+are direct descendants; [`rss-to-activitypub`] is the best-known sibling.
 Kazemi himself describes the repo as “meant as a reference implementation”
 that is “not exactly hardened production code,” and that framing still
 applies: the descendants inherit the same gaps around signature
@@ -1189,15 +1189,15 @@ move.
 
 ### Mental-model mapping
 
-| Hand-rolled                                                  | Fedify                                                                   |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| `router.get("/:name", ...)` serving a JSON blob from SQLite  | `setActorDispatcher("/u/{identifier}", ...)` returning a `Person`        |
-| `router.get("/", ...)` on `/.well-known/webfinger`           | automatic — enabled by `setActorDispatcher`                              |
-| `router.post("/", ...)` on `/api/inbox` with no verification | `setInboxListeners(personalInbox, sharedInbox)` — verification built-in  |
-| `signAndSend()` helper with `crypto.createSign("sha256")`    | `Context.sendActivity(...)` with automatic draft-cavage signing          |
-| `crypto.generateKeyPair("rsa", { modulusLength: 4096 })`     | `generateCryptoKeyPair("RSASSA-PKCS1-v1_5")` plus Ed25519 for [FEP-8b32] |
-| `better-sqlite3` `accounts` table                            | `@fedify/sqlite` `SqliteKvStore` + your own app schema                   |
-| JSON `followers` column (array of actor IRIs)                | `setFollowersDispatcher("/u/{identifier}/followers", ...)`               |
+| Hand-rolled                                                  | Fedify                                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `router.get("/:name", ...)` serving a JSON blob from SQLite  | `setActorDispatcher("/u/{identifier}", ...)` returning a `Person`         |
+| `router.get("/", ...)` on `/.well-known/webfinger`           | automatic, enabled by `setActorDispatcher`                                |
+| `router.post("/", ...)` on `/api/inbox` with no verification | `setInboxListeners(personalInbox, sharedInbox)`; verification is built in |
+| `signAndSend()` helper with `crypto.createSign("sha256")`    | `Context.sendActivity(...)` with automatic draft-cavage signing           |
+| `crypto.generateKeyPair("rsa", { modulusLength: 4096 })`     | `generateCryptoKeyPair("RSASSA-PKCS1-v1_5")` plus Ed25519 for [FEP-8b32]  |
+| `better-sqlite3` `accounts` table                            | `@fedify/sqlite` `SqliteKvStore` + your own app schema                    |
+| JSON `followers` column (array of actor IRIs)                | `setFollowersDispatcher("/u/{identifier}/followers", ...)`                |
 
 [FEP-8b32]: https://w3id.org/fep/8b32
 
@@ -1260,7 +1260,7 @@ federation.setActorDispatcher("/u/{identifier}", async (ctx, identifier) => {
 });
 ~~~~
 
-#### WebFinger — drop the handler
+#### WebFinger: drop the handler
 
 Hand-rolled code stores a second blob and serves it from a custom route:
 
@@ -1282,7 +1282,7 @@ router.get("/", function (req, res) {
 In Fedify, registering an actor dispatcher enables WebFinger automatically.
 The WebFinger route, `/.well-known/webfinger`, answers every
 `acct:name@domain` handle your dispatcher can resolve.  There is no code to
-write on the Fedify side — just delete the handler.
+write on the Fedify side; just delete the handler.
 
 See the [*WebFinger*](./webfinger.md) section for details on customising the
 mapping between handles and identifiers.
@@ -1387,7 +1387,7 @@ function signAndSend(message, name, domain, req, res, targetDomain) {
 }
 ~~~~
 
-In Fedify, sending an activity is one call — the signature, digest, and
+In Fedify, sending an activity is one call; the signature, digest, and
 content-type are all handled inside
 [`Context.sendActivity`](./send.md#sending-an-activity):
 
@@ -1410,7 +1410,7 @@ await ctx.sendActivity(
 );
 ~~~~
 
-Fedify signs with the `#main-key` fragment of the actor IRI by default —
+Fedify signs with the `#main-key` fragment of the actor IRI by default,
 which matches what the hand-rolled actor already advertises in its
 `publicKey.id` field.  The hand-rolled *signer* used the bare actor IRI as
 the `keyId`, which remote implementations accepted only because they fetch
@@ -1484,7 +1484,7 @@ await saveAccount({
 });
 ~~~~
 
-The signup route does not live inside `federation` any more — it is just a
+The signup route does not live inside `federation` any more; it is just a
 normal POST handler on your Express, Hono, or Koa app that writes to the
 same DB the actor dispatcher reads from.
 
@@ -1500,8 +1500,8 @@ a drop-in script.  Four things need to move:
 4.  *Anything your bot remembers per follower* (last delivered message id,
     preferences).
 
-Example, for `better-sqlite3` with the Kazemi schema — adapt table and
-column names to your own:
+Example, for `better-sqlite3` with the Kazemi schema (adapt table and
+column names to your own):
 
 ~~~~ typescript twoslash
 // @noErrors: 2307 2305 2345 2322 7006
@@ -1586,19 +1586,19 @@ compatibility with receivers that only understand RSA HTTP Signatures.
  -  *`keyId` fragment vs bare IRI.*  The hand-rolled signer uses a bare
     actor IRI as the `keyId`, while the actor document advertises
     `id: "<actor>#main-key"`.  Fedify signs with the fragment form, which
-    matches what you are publishing — strictly an improvement, but any
+    matches what you are publishing (strictly an improvement), but any
     scripts you wrote that grep log lines for the bare IRI need to learn
     the new form.
  -  *`Undo(Follow)` coverage gap.*  Once you start verifying signatures,
     you will suddenly start seeing `Delete` and `Update(Actor)` activities
     that the old code dropped.  Handle at least `Undo(Follow)` and
-    `Delete` before advertising the migration — remote servers retry
+    `Delete` before advertising the migration; remote servers retry
     undelivered `Delete` activities, and leaving them pending causes
     remote inboxes to back up.
 
 ### Worked example
 
-The same Kazemi-style bot, rewritten in Fedify — replacing the custom
+The same Kazemi-style bot, rewritten in Fedify, replacing the custom
 signing, WebFinger blob, and trust-all inbox with verified listeners and
 automatic signing:
 
@@ -1699,7 +1699,7 @@ app.post("/create", async (req, res) => {
 app.listen(8080);
 ~~~~
 
-The reference code and this rewrite are close to the same size — the win
+The reference code and this rewrite are close to the same size; the win
 is that inbound signatures are verified, `Undo(Follow)` works, outbound
 deliveries are queued and retried, and you are no longer maintaining an
 in-tree copy of the HTTP Signatures spec.
