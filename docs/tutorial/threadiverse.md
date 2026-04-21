@@ -974,3 +974,304 @@ the login half, in the next section.
 
 [scrypt]: https://en.wikipedia.org/wiki/Scrypt
 [*server action*]: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+
+### Login and sessions
+
+A user who signed up last section ended up at a `/login` URL that doesn't
+exist yet.  Let's build login and cookie-based sessions so the account is
+usable.
+
+There are lots of ways to do session management in a web app.  We'll use the
+simplest one that's safe for our purposes: a server-side `sessions` table
+keyed by an opaque random token, and an HTTP-only cookie that stores just
+that token.  The browser never sees the user ID or any other data; when a
+request comes in, we look the token up in the database to find the user it
+belongs to.  This keeps the cookie cheap to invalidate (delete the row, the
+cookie becomes useless) and means we don't need to pick or rotate a cookie
+signing secret.
+
+Add the table to *db/schema.ts*:
+
+~~~~ typescript{16-27} [db/schema.ts]
+import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+export const sessions = sqliteTable("sessions", {
+  token: text("token").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Session = typeof sessions.$inferSelect;
+~~~~
+
+`onDelete: "cascade"` on the `userId` reference means that deleting a user
+automatically deletes their sessions too, so there are no dangling rows.
+
+Re-run the schema sync:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+Install the `server-only` package so that importing server-side code from a
+client component fails at build time instead of leaking secrets:
+
+~~~~ sh
+npm install -D server-only
+~~~~
+
+Now write the session helpers.  Create *lib/session.ts*:
+
+~~~~ typescript [lib/session.ts]
+import "server-only";
+
+import { randomBytes } from "node:crypto";
+import { and, eq, gt } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { db, sessions, type User, users } from "@/db";
+
+const COOKIE_NAME = "session";
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+export async function createSession(userId: number): Promise<void> {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + MAX_AGE_SECONDS * 1000);
+  db.insert(sessions).values({ token, userId, expiresAt }).run();
+  const store = await cookies();
+  store.set(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: MAX_AGE_SECONDS,
+  });
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const store = await cookies();
+  const token = store.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  const row = db
+    .select()
+    .from(sessions)
+    .innerJoin(users, eq(sessions.userId, users.id))
+    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
+    .get();
+  return row?.users ?? null;
+}
+
+export async function destroySession(): Promise<void> {
+  const store = await cookies();
+  const token = store.get(COOKIE_NAME)?.value;
+  if (token) {
+    db.delete(sessions).where(eq(sessions.token, token)).run();
+  }
+  store.delete(COOKIE_NAME);
+}
+~~~~
+
+A few notes:
+
+ -  `randomBytes(32).toString("base64url")` produces a 43-character
+    URL-safe random string.  That's our session token.
+ -  `httpOnly: true` hides the cookie from JavaScript running in the page
+    and rules out a whole class of cross-site scripting attacks.
+ -  `sameSite: "lax"` means the cookie is included on top-level cross-site
+    navigations but not on cross-site embeds, which keeps CSRF exposure
+    small for our purposes.
+ -  `secure: process.env.NODE_ENV === "production"` sets the `Secure` flag
+    in production (the browser will only send the cookie over HTTPS) but
+    leaves it off in development so you can log in over `http://localhost`.
+ -  The join in `getCurrentUser` does `sessions ⨝ users ON user_id`, and
+    the `where` filters out expired rows so we don't treat them as valid.
+
+Now the login page.  Create *app/login/page.tsx*:
+
+~~~~ tsx [app/login/page.tsx]
+import Link from "next/link";
+import { login } from "./actions";
+
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string; message?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { error, message } = await searchParams;
+  return (
+    <>
+      <h1>Log in</h1>
+      {message && <p className="muted">{message}</p>}
+      {error && <p className="muted">{error}</p>}
+      <form action={login}>
+        <label>
+          Username
+          <input type="text" name="username" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit">Log in</button>
+      </form>
+      <p className="muted">
+        Need an account? <Link href="/signup">Sign up</Link>.
+      </p>
+    </>
+  );
+}
+~~~~
+
+And the login and logout server actions in *app/login/actions.ts*:
+
+~~~~ typescript [app/login/actions.ts]
+"use server";
+
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db, users } from "@/db";
+import { verifyPassword } from "@/lib/auth";
+import { createSession, destroySession } from "@/lib/session";
+
+export async function login(formData: FormData): Promise<void> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  const user = db
+    .select()
+    .from(users)
+    .where(eq(users.username, username))
+    .get();
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    redirect("/login?error=Invalid+username+or+password");
+  }
+
+  await createSession(user.id);
+  redirect("/");
+}
+
+export async function logout(): Promise<void> {
+  await destroySession();
+  redirect("/");
+}
+~~~~
+
+Finally, change the root layout into an async server component so that
+every page knows whether a user is signed in.  Replace *app/layout.tsx*
+with:
+
+~~~~ tsx{3-4,15,16,35-47} [app/layout.tsx]
+import type { Metadata } from "next";
+import Link from "next/link";
+import { logout } from "./login/actions";
+import "./globals.css";
+import { getCurrentUser } from "@/lib/session";
+
+export const metadata: Metadata = {
+  title: "Threadiverse",
+  description: "A small federated community platform built with Fedify.",
+};
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const user = await getCurrentUser();
+  return (
+    <html lang="en">
+      <body>
+        <nav className="site-nav">
+          <div className="inner">
+            <Link href="/" className="brand">
+              Threadiverse
+            </Link>
+            <ul>
+              <li>
+                <Link href="/">Home</Link>
+              </li>
+              <li>
+                <Link href="/communities/new">New community</Link>
+              </li>
+            </ul>
+            {user ? (
+              <form action={logout} className="session-controls">
+                <span className="muted">@{user.username}</span>
+                <button type="submit" className="link-button">
+                  Log out
+                </button>
+              </form>
+            ) : (
+              <div className="session-controls">
+                <Link href="/login">Log in</Link>
+                <Link href="/signup">Sign up</Link>
+              </div>
+            )}
+          </div>
+        </nav>
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+~~~~
+
+Append a few more lines to *app/globals.css* for the new nav elements:
+
+~~~~ css [app/globals.css]
+nav.site-nav .session-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+nav.site-nav .link-button {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-accent);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+nav.site-nav .link-button:hover {
+  background: transparent;
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+~~~~
+
+Reload `/signup`, create an account, and you'll now land on a working
+login page.  Sign in with the same credentials and the nav bar flips over
+to show `@yourusername` and a *Log out* button:
+
+![Screenshot: the home page after logging in](./threadiverse/home-logged-in.png)
+
+Clicking *Log out* submits the logout action, which deletes the session
+row and clears the cookie, and the nav bar flips back to *Log in / Sign
+up*.
+
+> [!TIP]
+> You can inspect the cookie with your browser's developer tools (usually
+> under *Application → Cookies*).  You should see a `session` cookie whose
+> value is the same 43-character token as the `token` column of the
+> `sessions` table.
