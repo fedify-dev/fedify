@@ -3792,6 +3792,120 @@ from your table and, once the remote server processes the Undo, from
 their member count too.
 
 
+Making the community actor Lemmy-compatible
+-------------------------------------------
+
+The actor JSON we've built so far is enough for Mastodon-family
+software to find our community through WebFinger and show it as a
+Group, but [Lemmy] is stricter.  When a Lemmy user subscribes to
+`!pictures@host`, Lemmy's community parser checks for three fields
+that Mastodon doesn't require and rejects the actor silently if
+they're missing.  Adding them is a small edit to
+*federation/index.ts*, and doesn't need any schema change.
+
+### `attributedTo` pointing at a moderators collection
+
+Lemmy expects every `Group` to expose its moderator list via an
+`attributedTo` URL pointing at a collection of `Person` actors.  We
+model that with Fedify's `setCollectionDispatcher`.  Register a new
+collection named `moderators` at `/users/{identifier}/moderators`
+that returns the community's creator as the sole moderator:
+
+~~~~ typescript [federation/index.ts]
+federation.setCollectionDispatcher(
+  "moderators",
+  Person,
+  "/users/{identifier}/moderators",
+  async (ctx, { identifier }) => {
+    const row = db
+      .select({ username: users.username })
+      .from(communities)
+      .innerJoin(users, eq(users.id, communities.creatorId))
+      .where(eq(communities.slug, identifier))
+      .get();
+    if (!row) return null;
+    return {
+      items: [new Person({ id: ctx.getActorUri(row.username) })],
+    };
+  },
+);
+~~~~
+
+The callback's second argument destructures the `{identifier}`
+variable out of the route template.  `ctx.getActorUri(row.username)`
+reuses the user's existing actor URI so remote servers don't need a
+second WebFinger lookup to resolve the moderator.
+
+### `featured` for pinned posts
+
+Lemmy also demands a `featured` URL.  It's the equivalent of
+Mastodon's pinned posts but threadiverse servers rarely pin anything;
+an empty `OrderedCollection` is enough to pass Lemmy's check.  Use
+Fedify's built-in `setFeaturedDispatcher`:
+
+~~~~ typescript [federation/index.ts]
+federation.setFeaturedDispatcher(
+  "/users/{identifier}/featured",
+  async (_ctx, _identifier) => ({ items: [] }),
+);
+~~~~
+
+### Wiring the two into the `Group` actor
+
+Finally, add `attribution` (which serialises as `attributedTo`) and
+`featured` to the `Group` we return from `setActorDispatcher`:
+
+~~~~ typescript{11,12} [federation/index.ts]
+return new Group({
+  id: ctx.getActorUri(identifier),
+  preferredUsername: identifier,
+  name: community.name,
+  summary: community.description || undefined,
+  inbox: ctx.getInboxUri(identifier),
+  outbox: ctx.getOutboxUri(identifier),
+  endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+  followers: ctx.getFollowersUri(identifier),
+  featured: new URL(`/users/${identifier}/featured`, ctx.url),
+  attribution: ctx.getCollectionUri("moderators", { identifier }),
+  url: new URL(`/users/${identifier}`, ctx.url),
+  publicKey: keyPairs[0]?.cryptographicKey,
+  assertionMethods: keyPairs.map((k) => k.multikey),
+});
+~~~~
+
+### Testing against a real Lemmy instance
+
+Pick any Lemmy instance where you have an account and paste the
+community's URL straight into the address bar:
+
+~~~~
+https://lemmy.ml/c/<slug>@<your-tunnel>
+~~~~
+
+Lemmy fetches the actor, resolves the moderators collection, and
+shows a familiar-looking community sidebar with a *Subscribe*
+button.  Clicking it ships a `Follow` from the Lemmy user to our
+community's inbox; your follows table grows a row, and the
+`Announce(Create(Page))` you emit on your next local thread lands
+in that Lemmy user's feed.
+
+> [!NOTE]
+> Lemmy's federation queue runs on exponential backoff, so a
+> *Subscribe Pending* state can take a few minutes to resolve on
+> the Lemmy side even after our inbox has already stored and
+> accepted the Follow.  If it never clears, Lemmy usually retries
+> when the community page is reloaded.
+
+> [!TIP]
+> Lemmy additionally sends a boolean `postingRestrictedToMods` on
+> its own communities.  Fedify's `Group` vocab doesn't expose that
+> property, but Lemmy tolerates its absence in incoming actors.  If
+> you want to advertise it anyway — for example to mark your
+> community as announcement-only — you can add the field with a
+> custom JSON-LD context; see the
+> [Fedify vocab docs](../manual/vocab.md) for the escape hatch.
+
+
 Areas to improve
 ----------------
 
@@ -3827,18 +3941,8 @@ in place:
     from `drizzle-orm/better-sqlite3` to `drizzle-orm/node-postgres`
     is largely a connection-string change plus a small column-type
     pass.
- -  **Lemmy-specific actor fields.**  If you want Lemmy (specifically)
-    to subscribe to your community without quirks, Lemmy's
-    `Group` actors carry `attributedTo` (creator), `moderators`
-    (collection of mod URIs), `featured` (pinned-post collection),
-    and `postingRestrictedToMods`.  Fedify exposes
-    `setFeaturedDispatcher` and lets you set `attributedTo` and
-    `moderators` on the Group you return from the actor dispatcher.
-    See [Lemmy's federation notes] for the full list.
-
-[`@fedify/postgres`]: https://jsr.io/@fedify/postgres
-[`@fedify/sqlite`]: https://jsr.io/@fedify/sqlite
-[Lemmy's federation notes]: https://join-lemmy.org/docs/contributors/05-federation.html
+    [`@fedify/postgres`]: https://jsr.io/@fedify/postgres
+    [`@fedify/sqlite`]: https://jsr.io/@fedify/sqlite
 
 
 Next steps
