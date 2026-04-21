@@ -513,7 +513,7 @@ await mongo.close();
 Existing remote followers then keep working unchanged: apex's default route
 `/u/:actor` lines up with the Fedify dispatcher path `/u/{identifier}`, the
 actor IRI is identical, and the RSA public key matches what those remote
-servers already have cached.
+servers have already cached.
 
 For long-term resilience, generate a second Ed25519 key pair per actor and
 return it alongside the RSA pair from `setKeyPairsDispatcher`.  Ed25519 is
@@ -1486,7 +1486,7 @@ await saveAccount({
 });
 ~~~~
 
-The signup route does not live inside `federation` any more; it is just a
+The signup route does not live inside `federation` anymore; it is just a
 normal POST handler on your Express, Hono, or Koa app that writes to the
 same DB the actor dispatcher reads from.
 
