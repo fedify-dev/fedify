@@ -797,3 +797,180 @@ starts from their own empty copy:
 > a real app you would switch to generated migration files
 > (`drizzle-kit generate` followed by `drizzle-kit migrate`) so deployments are
 > reproducible; push is fine for local development and for tutorials.
+
+### Signup form and password hashing
+
+Now that we have a `users` table, let's give visitors a way to create a row
+in it.  We'll keep authentication minimal: a username and a password.  No
+email, no email verification, no social logins; you're welcome to add any
+of these as a follow-up project.
+
+Create a helper module for password hashing first.  Passwords must never be
+stored as plain text; instead, we store a one-way *hash* computed with a
+deliberately slow function, [scrypt], built into Node's standard library:
+
+~~~~ typescript [lib/auth.ts]
+import {
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from "node:crypto";
+import { promisify } from "node:util";
+
+const scrypt = promisify(scryptCallback) as (
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+) => Promise<Buffer>;
+
+const KEY_LEN = 64;
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const derived = await scrypt(password, salt, KEY_LEN);
+  return `${salt.toString("hex")}:${derived.toString("hex")}`;
+}
+
+export async function verifyPassword(
+  password: string,
+  stored: string,
+): Promise<boolean> {
+  const [saltHex, hashHex] = stored.split(":");
+  if (!saltHex || !hashHex) return false;
+  const salt = Buffer.from(saltHex, "hex");
+  const expected = Buffer.from(hashHex, "hex");
+  const actual = await scrypt(password, salt, expected.length);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+~~~~
+
+`hashPassword` generates a fresh 16-byte salt, runs scrypt, and returns
+`salt:hash` as a single hex-encoded string.  `verifyPassword` parses that
+string back out, re-runs scrypt with the same salt, and uses
+`timingSafeEqual` to compare the results (a constant-time comparison that
+doesn't leak timing information to attackers).  We'll call these two
+functions from the signup and login server actions.
+
+Now add the signup page itself.  In Next.js App Router a page is a React
+component exported from *app/some/route/page.tsx*; when you visit
+`/some/route` in the browser, Next.js renders that component on the server
+and sends the resulting HTML down:
+
+~~~~ tsx [app/signup/page.tsx]
+import Link from "next/link";
+import { signup } from "./actions";
+
+type SignupPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const { error } = await searchParams;
+  return (
+    <>
+      <h1>Sign up</h1>
+      {error && <p className="muted">{error}</p>}
+      <form action={signup}>
+        <label>
+          Username
+          <input
+            type="text"
+            name="username"
+            required
+            pattern="[a-zA-Z0-9_]{2,32}"
+            title="2–32 letters, digits, or underscores"
+          />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" required minLength={8} />
+        </label>
+        <button type="submit">Create account</button>
+      </form>
+      <p className="muted">
+        Already have an account? <Link href="/login">Log in</Link>.
+      </p>
+    </>
+  );
+}
+~~~~
+
+> [!NOTE]
+> The `searchParams` prop is how an App Router page reads the query string.
+> We use it to show a flash error message when something went wrong: the
+> server action redirects back to `/signup?error=...`, the page receives
+> `error="..."` via `searchParams`, and the template renders it above the
+> form.
+
+The `action={signup}` attribute is what turns an ordinary HTML form into a
+[*server action*].  When the user clicks *Create account*, Next.js
+serializes the form fields into a `FormData` object, ships it to the
+server, and invokes the `signup` function there.  No client-side fetch, no
+JSON endpoint, no API route, no `onSubmit` handler needed.
+
+Write that server action in a sibling file.  The `"use server"` directive
+at the top marks every exported function as a server action that's callable
+from client components and from `<form action>`:
+
+~~~~ typescript [app/signup/actions.ts]
+"use server";
+
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db, users } from "@/db";
+import { hashPassword } from "@/lib/auth";
+
+export async function signup(formData: FormData): Promise<void> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (!/^[a-zA-Z0-9_]{2,32}$/.test(username)) {
+    redirect("/signup?error=Invalid+username");
+  }
+  if (password.length < 8) {
+    redirect("/signup?error=Password+must+be+at+least+8+characters");
+  }
+
+  const existing = db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, username))
+    .get();
+  if (existing) {
+    redirect("/signup?error=Username+already+taken");
+  }
+
+  const passwordHash = await hashPassword(password);
+  db.insert(users).values({ username, passwordHash }).run();
+
+  redirect("/login?message=Account+created,+please+log+in");
+}
+~~~~
+
+The action re-validates the input server-side (browsers can skip HTML
+validation, so we can't trust `pattern="..."` alone), checks that the
+username isn't already taken by querying the table with
+`db.select(...).where(eq(users.username, username)).get()`, hashes the
+password, inserts the row with `db.insert(users).values({...}).run()`, and
+redirects to the login page with a success message.
+
+> [!TIP]
+> The `eq()` helper from `drizzle-orm` builds an SQL equality comparison.
+> Drizzle has a whole set of comparison helpers (`and`, `or`, `inArray`,
+> `gt`, `lt`, …).  They compose by nesting, so you can write something
+> like `and(eq(users.id, 42), gt(users.createdAt, lastWeek))` for more
+> complex `WHERE` clauses.
+
+Open `http://localhost:3000/signup` in the browser and you should see the
+form:
+
+![Screenshot: the signup form](./threadiverse/signup-form.png)
+
+Fill in a username and password and click *Create account*.  The browser
+will redirect to `/login?message=...`, which currently 404s because we
+haven't built the login page yet.  That's fine; the signup half of the
+flow worked, and the row is in the database.  We'll verify that, and build
+the login half, in the next section.
+
+[scrypt]: https://en.wikipedia.org/wiki/Scrypt
+[*server action*]: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
