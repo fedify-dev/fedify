@@ -1,3 +1,4 @@
+import taskLists from "@hackmd/markdown-it-task-lists";
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import abbr from "markdown-it-abbr";
 import deflist from "markdown-it-deflist";
@@ -288,6 +289,7 @@ export default withMermaid(defineConfig({
       md.use(abbr);
       md.use(deflist);
       md.use(footnote);
+      md.use(taskLists);
       md.use(groupIconMdPlugin);
       md.use(jsrRefPlugin);
     },
