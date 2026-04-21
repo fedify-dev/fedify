@@ -1894,7 +1894,7 @@ const doc = await as.note()
 ~~~~
 
 `@fedify/vocab` keeps the intent but flattens the API: pass a
-[`LanguageString`](./vocab.md#multilingual-properties) (or several) to
+[`LanguageString`](./vocab.md#scalar-types) (or several) to
 properties that accept multilingual content:
 
 ~~~~ typescript twoslash
