@@ -96,6 +96,12 @@ bunx @fedify/create your-project-dir
 This works the same way as `fedify init` and will guide you through the same
 project setup wizard.
 
+> [!TIP]
+> Already running a federated service on another JavaScript ActivityPub
+> library?  See [*Migrating from other libraries*](./manual/migrate.md) for
+> guides covering `activitypub-express`, `@activity-kit/*`, hand-rolled
+> Express code, and `activitystrea.ms`.
+
 
 Manual installation
 -------------------
