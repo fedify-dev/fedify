@@ -3322,3 +3322,281 @@ other replies to it.  Both reply forms (top-level and nested) should
 insert a row in `replies` and leave the dev server's Fedify
 pipeline carrying a `Create(Note)` → `Announce(Create(Note))` pair
 to every subscriber of the community.
+
+
+Votes (like and dislike)
+------------------------
+
+Threadiverse platforms let users up-vote and down-vote threads and
+replies to sort them.  ActivityPub already has two activity types that
+match exactly: [`Like`] and [`Dislike`].  We federate them the same way
+we federate threads and replies: voter → community → `Announce` to
+followers.
+
+[`Like`]: https://www.w3.org/ns/activitystreams#Like
+[`Dislike`]: https://www.w3.org/ns/activitystreams#Dislike
+
+### The `votes` table
+
+~~~~ typescript [db/schema.ts]
+export const votes = sqliteTable(
+  "votes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    uri: text("uri").notNull().unique(),
+    voterUri: text("voter_uri").notNull(),
+    targetUri: text("target_uri").notNull(),
+    kind: text("kind", { enum: ["Like", "Dislike"] }).notNull(),
+    communityUri: text("community_uri").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    uniqueIndex("votes_voter_target_idx").on(table.voterUri, table.targetUri),
+  ],
+);
+
+export type Vote = typeof votes.$inferSelect;
+~~~~
+
+The `(voter_uri, target_uri)` unique index gives each voter exactly one
+current vote per target.  Switching from Like to Dislike is an upsert
+that updates `kind` in place, so a voter's two activity URIs don't
+leave two vote rows behind.
+
+Run `npm run db:push` to create the table.
+
+### Vote buttons on the thread page
+
+Add ▲ and ▼ buttons to the thread page next to each thread and each
+reply.  Before rendering, query every vote for every target on the
+page in a single `inArray` query and fold the rows into a
+`Map<targetUri, { likes, dislikes, myVote }>`:
+
+~~~~ typescript [app/users/[username]/threads/[id]/page.tsx]
+const voteTargets = [threadUri, ...replyRows.map((r) => r.uri)];
+const voteRows = db
+  .select()
+  .from(votes)
+  .where(inArray(votes.targetUri, voteTargets))
+  .all();
+const myVoterUri = user
+  ? new URL(`/users/${user.username}`, origin).href
+  : null;
+const tallies = new Map<string, VoteTally>();
+for (const v of voteRows) {
+  const t = tallies.get(v.targetUri) ?? {
+    likes: 0, dislikes: 0, myVote: null,
+  };
+  if (v.kind === "Like") t.likes++;
+  else t.dislikes++;
+  if (v.voterUri === myVoterUri) t.myVote = v.kind;
+  tallies.set(v.targetUri, t);
+}
+~~~~
+
+Then a small `<VoteButtons>` component renders two forms, each a
+one-shot that POSTs to the server action we'll write next:
+
+~~~~ tsx [app/users/[username]/threads/[id]/page.tsx]
+<div style={{ display: "flex", gap: "0.5rem" }}>
+  <form action={castVote.bind(null, slug, threadId)}>
+    <input type="hidden" name="targetUri" value={targetUri} />
+    <input type="hidden" name="kind" value="Like" />
+    <button
+      type="submit"
+      className={mine === "Like" ? "" : "link-button"}
+    >
+      ▲ {likes}
+    </button>
+  </form>
+  <form action={castVote.bind(null, slug, threadId)}>
+    <input type="hidden" name="targetUri" value={targetUri} />
+    <input type="hidden" name="kind" value="Dislike" />
+    <button
+      type="submit"
+      className={mine === "Dislike" ? "" : "link-button"}
+    >
+      ▼ {dislikes}
+    </button>
+  </form>
+</div>
+~~~~
+
+The solid accent colour (`button` default) marks the user's active
+vote; the un-voted side renders with the `link-button` class so it
+looks like a muted link until the user commits to it.
+
+### Outbound: `castVote` action
+
+~~~~ typescript [app/users/[username]/threads/[id]/vote-actions.ts]
+"use server";
+
+import { Dislike, Like, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { communities, db, votes } from "@/db";
+import federation from "@/federation";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+export async function castVote(
+  slug: string,
+  threadId: string,
+  formData: FormData,
+): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+vote");
+
+  const targetUri = String(formData.get("targetUri") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "") as "Like" | "Dislike";
+  // (...validate)
+
+  const origin = await currentOrigin();
+  const ctx = federation.createContext(origin, undefined);
+  const voterUri = ctx.getActorUri(user.username);
+  const communityActorUri = ctx.getActorUri(slug);
+  const voteActivityUri = new URL(
+    `/users/${user.username}/votes/${Date.now()}`,
+    origin,
+  );
+
+  db.insert(votes)
+    .values({
+      uri: voteActivityUri.href,
+      voterUri: voterUri.href,
+      targetUri,
+      kind,
+      communityUri: communityActorUri.href,
+    })
+    .onConflictDoUpdate({
+      target: [votes.voterUri, votes.targetUri],
+      set: { kind, uri: voteActivityUri.href },
+    })
+    .run();
+
+  const VoteClass = kind === "Like" ? Like : Dislike;
+  await ctx.sendActivity(
+    { identifier: user.username },
+    { id: communityActorUri, inboxId: ctx.getInboxUri(slug),
+      endpoints: { sharedInbox: ctx.getInboxUri() } },
+    new VoteClass({
+      id: voteActivityUri,
+      actor: voterUri,
+      object: new URL(targetUri),
+      audience: communityActorUri,
+      tos: [communityActorUri],
+      ccs: [PUBLIC_COLLECTION, ctx.getFollowersUri(slug)],
+    }),
+  );
+
+  redirect(`/users/${slug}/threads/${threadId}`);
+}
+~~~~
+
+Two important bits:
+
+ -  `const VoteClass = kind === "Like" ? Like : Dislike;` +
+    `new VoteClass(...)` — both activity classes have the same field
+    shape, so constructing them generically is just a conditional.
+ -  `ccs: [PUBLIC_COLLECTION, ctx.getFollowersUri(slug)]` — even
+    though a vote is sent to a specific community, adding the
+    followers collection as a `cc` keeps the activity's audience
+    consistent with how we addressed threads and replies.
+
+### Inbox: Like / dislike handlers with re-announce
+
+The community side does the same pattern as threads and replies: upsert
+the vote, then re-Announce if the community is local.  Both Like and
+Dislike go through one shared function:
+
+~~~~ typescript [federation/index.ts]
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  // ...Follow, Accept, Create, Announce listeners from before...
+  .on(Like, async (ctx, like) => {
+    await handleVote(ctx, like, "Like");
+  })
+  .on(Dislike, async (ctx, dislike) => {
+    await handleVote(ctx, dislike, "Dislike");
+  });
+
+async function handleVote(
+  ctx: InboxContext<unknown>,
+  activity: Like | Dislike,
+  kind: "Like" | "Dislike",
+): Promise<void> {
+  if (!activity.id || !activity.actorId || !activity.objectId) return;
+  const targetUri = activity.objectId.href;
+  const communityUri = activity.audienceId ?? activity.toIds[0] ?? null;
+  if (!communityUri) return;
+
+  // Only accept votes on known threads or replies.
+  const targetThread = db
+    .select({ uri: threads.uri })
+    .from(threads)
+    .where(eq(threads.uri, targetUri))
+    .get();
+  const targetReply = targetThread
+    ? null
+    : db
+        .select({ uri: replies.uri })
+        .from(replies)
+        .where(eq(replies.uri, targetUri))
+        .get();
+  if (!targetThread && !targetReply) return;
+
+  db.insert(votes)
+    .values({
+      uri: activity.id.href,
+      voterUri: activity.actorId.href,
+      targetUri,
+      kind,
+      communityUri: communityUri.href,
+    })
+    .onConflictDoUpdate({
+      target: [votes.voterUri, votes.targetUri],
+      set: { kind, uri: activity.id.href },
+    })
+    .run();
+
+  const parsed = ctx.parseUri(communityUri);
+  if (parsed?.type !== "actor") return;
+  const localCommunity = db
+    .select({ slug: communities.slug })
+    .from(communities)
+    .where(eq(communities.slug, parsed.identifier))
+    .get();
+  if (!localCommunity) return;
+
+  await ctx.sendActivity(
+    { identifier: parsed.identifier },
+    "followers",
+    new Announce({
+      id: new URL(
+        `#announce/${encodeURIComponent(activity.id.href)}`,
+        communityUri,
+      ),
+      actor: communityUri,
+      object: activity,
+      tos: [ctx.getFollowersUri(parsed.identifier)],
+      ccs: [PUBLIC_COLLECTION],
+    }),
+    { preferSharedInbox: true },
+  );
+}
+~~~~
+
+There's no new inbox plumbing for subscribers: the `Announce` listener
+we already have `routeActivity`s the inner `Like` / `Dislike` right
+back through this same handler, and `handleVote` short-circuits the
+re-Announce branch when the community is remote.  One function, two
+directions.
+
+> [!TIP]
+> Threadiverse servers score threads with signed integer sums like
+> `likes - dislikes`.  A ranking query is just
+> `SELECT target_uri, SUM(CASE kind WHEN 'Like' THEN 1 ELSE -1 END) AS score FROM votes GROUP BY target_uri`.
+> We keep the vote rows rather than a pre-aggregated counter so ranking
+> algorithms can be added later without a schema migration.
