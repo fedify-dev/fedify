@@ -438,8 +438,8 @@ share a number of de facto conventions.
 ### `Note`: Short posts
 
 The `Note` type is the most common object type for short posts.  In Mastodon,
-the `content` property becomes the post body, the `summary` property becomes a
-content warning, and `attachments` are rendered below the body.
+the `content` property becomes the post body, and `attachments` are rendered
+below the body.
 
 ~~~~ typescript twoslash
 import { Hashtag, Image, Mention, Note } from "@fedify/vocab";
@@ -449,7 +449,6 @@ new Note({
     '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
     '@friend@example.com</a>! This note demonstrates ' +
     '<a href="https://example.com/tags/fedify">#fedify</a>.</p>',
-  summary: "CW: Rendering pragmatics demo",  // [!code highlight]
   attachments: [  // [!code highlight]
     new Image({
       url: new URL("https://picsum.photos/id/237/1200/800"),
@@ -471,13 +470,36 @@ new Note({
 ~~~~
 
 > [!NOTE]
-> The `content` and `summary` properties expect HTML strings.  If they contain
-> characters like `<`, `>`, and `&`, you should escape HTML entities.
+> The `content` property expects an HTML string.  If it contains characters
+> like `<`, `>`, and `&`, you should escape HTML entities.
 
 For example, the above `Note` object is displayed like the following in
 Mastodon:
 
-![Screenshot: A note with a content warning and an attached image in
+![Screenshot: A note with an attached image in
+Mastodon](pragmatics/mastodon-note-body.png)
+
+### `Note.summary`: Content warnings
+
+On `Note` objects, the `summary` property is commonly used as a content
+warning.  In Mastodon, it becomes the warning text shown above the collapsed
+post body.
+
+~~~~ typescript twoslash
+import { Note } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  summary: "CW: Rendering pragmatics demo",  // [!code highlight]
+  content: "<p>Hello @friend@example.com! This note demonstrates #fedify.</p>",
+})
+~~~~
+
+> [!NOTE]
+> The `summary` property also expects an HTML string.
+
+For example, the above `summary` is displayed like the following in Mastodon:
+
+![Screenshot: A note with a content warning in
 Mastodon](pragmatics/mastodon-note.png)
 
 ### `Article`: Long-form posts
@@ -523,6 +545,8 @@ from `content`, the poll choices come from `exclusiveOptions` or
 `inclusiveOptions`, and metadata such as `voters` and `endTime` are displayed
 below the choices.
 
+### `Question.exclusiveOptions`: Single-choice polls
+
 ~~~~ typescript twoslash
 import { Collection, Note, Question } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
@@ -543,11 +567,153 @@ new Question({
 ~~~~
 
 > [!NOTE]
-> Use `exclusiveOptions` for single-choice polls and `inclusiveOptions` for
-> multiple-choice polls.  A `Question` object should not contain both.
+> Use `exclusiveOptions` for single-choice polls.  A `Question` object should
+> not contain both `exclusiveOptions` and `inclusiveOptions`.
+
+When Mastodon shows poll results, each option's `replies.totalItems` value is
+used as that option's vote count.  In the above example, the values 4, 2, and 7
+add up to 13, which matches `voters` and yields the percentages shown in the
+results view.
 
 For example, the above `Question` object is displayed like the following in
+Mastodon after opening the results view:
+
+![Screenshot: A single-choice question object rendered as poll results in
+Mastodon](pragmatics/mastodon-question.png)
+
+### `Question.inclusiveOptions`: Multiple-choice polls
+
+Use `inclusiveOptions` for polls where a voter may choose more than one option.
+
+~~~~ typescript twoslash
+import { Collection, Note, Question } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+// ---cut-before---
+new Question({
+  content: "<p>Which pragmatics details should the manual cover next?</p>",  // [!code highlight]
+  inclusiveOptions: [  // [!code highlight]
+    new Note({
+      name: "Content warnings",
+      replies: new Collection({ totalItems: 6 }),
+    }),
+    new Note({
+      name: "Custom emoji",
+      replies: new Collection({ totalItems: 8 }),
+    }),
+    new Note({
+      name: "Poll results",
+      replies: new Collection({ totalItems: 3 }),
+    }),
+  ],
+  voters: 13,  // [!code highlight]
+  endTime: Temporal.Instant.from("2026-04-20T12:00:00Z"),  // [!code highlight]
+})
+~~~~
+
+In Mastodon, the `replies.totalItems` values on `inclusiveOptions` still become
+the per-option counts in the results view, but unlike a single-choice poll they
+do not need to add up to `voters`, because each voter may select more than one
+option.
+
+For example, the above multiple-choice `Question` object is initially displayed
+like the following in Mastodon:
+
+![Screenshot: A multiple-choice question object before opening poll results in
+Mastodon](pragmatics/mastodon-question-multi-choices.png)
+
+After opening the results view, Mastodon shows the per-option counts derived
+from `replies.totalItems`:
+
+![Screenshot: A multiple-choice question object rendered as poll results in
+Mastodon](pragmatics/mastodon-question-multi.png)
+
+### `Mention`: Mentioned accounts
+
+The `Mention` type is usually placed in an object's `tags` property to indicate
+that a link in `content` points to another actor.  In Mastodon, this makes the
+linked handle render as a mention of the remote account.
+
+~~~~ typescript twoslash
+import { Mention, Note } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content:  // [!code highlight]
+    '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
+    '@friend@example.com</a>!</p>',
+  tags: [  // [!code highlight]
+    new Mention({
+      href: new URL("https://example.com/users/friend"),  // [!code highlight]
+      name: "@friend@example.com",  // [!code highlight]
+    }),
+  ],
+})
+~~~~
+
+> [!NOTE]
+> In practice, you should keep the anchor in `content` and the `Mention` object
+> in `tags` aligned with each other.  If they point to different actors,
+> ActivityPub implementations may render or notify inconsistently.
+
+For example, the above `Mention` object is displayed like the following in
 Mastodon:
 
-![Screenshot: A question object rendered as a poll in
-Mastodon](pragmatics/mastodon-question.png)
+![Screenshot: A rendered mention in Mastodon](pragmatics/mastodon-mention.png)
+
+### `Hashtag`: Clickable hashtags
+
+The `Hashtag` type is also commonly placed in `tags`.  In Mastodon, it turns a
+matching hashtag in `content` into a clickable tag link.
+
+~~~~ typescript twoslash
+import { Hashtag, Note } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content:  // [!code highlight]
+    '<p>This note demonstrates <a href="https://example.com/tags/fedify">' +
+    '#fedify</a>.</p>',
+  tags: [  // [!code highlight]
+    new Hashtag({
+      href: new URL("https://example.com/tags/fedify"),  // [!code highlight]
+      name: "#fedify",  // [!code highlight]
+    }),
+  ],
+})
+~~~~
+
+For example, the above `Hashtag` object is displayed like the following in
+Mastodon:
+
+![Screenshot: A rendered hashtag in Mastodon](pragmatics/mastodon-hashtag.png)
+
+### `Emoji`: Custom emoji
+
+The `Emoji` type represents a custom emoji.  In Mastodon, the shortcode in
+`content` is replaced with the image from `icon` when a matching `Emoji`
+object is present in `tags`.
+
+~~~~ typescript twoslash
+import { Emoji, Image, Note } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content: "<p>Let us celebrate with :fedify_party:.</p>",  // [!code highlight]
+  tags: [  // [!code highlight]
+    new Emoji({
+      name: ":fedify_party:",  // [!code highlight]
+      icon: new Image({
+        url: new URL("https://example.com/emojis/fedify-party.png"),  // [!code highlight]
+        mediaType: "image/png",  // [!code highlight]
+      }),
+    }),
+  ],
+})
+~~~~
+
+> [!NOTE]
+> The shortcode in `content` should match `Emoji.name` exactly, usually in the
+> `:shortcode:` form.  If there is no matching `Emoji` object in `tags`, the
+> shortcode is displayed as plain text.
+
+For example, the above `Emoji` object is displayed like the following in
+Mastodon:
+
+![Screenshot: A rendered custom emoji in Mastodon](pragmatics/mastodon-emoji.png)
