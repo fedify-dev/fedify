@@ -4002,16 +4002,18 @@ https://lemmy.ml/u/<your-username>|1
 ![Screenshot: the Lemmy community page says “Joined” after the round-trip](./threadiverse/lemmy-subscribed.png)
 
 > [!WARNING]
-> Inbound `Follow` → `Accept(Follow)` works reliably through
-> Cloudflare quick tunnels (`cloudflared tunnel --url …`).  Outbound
-> `Announce(Create(Page))` — the redistribution half — is,
-> at the time of writing, sometimes rejected by Lemmy's
-> HTTP-signature digest check with
-> `"Incoming activity has invalid digest for body"` when the tunnel re-frames
-> the HTTP/2 body in transit.  Switching to a named Cloudflare tunnel or to
-> [`serveo`] / [`ngrok`] sidesteps this.  For production, put the app behind a
-> normal reverse proxy (Caddy, nginx); `Announce` fan-out there works
-> identically to `Follow` / `Accept`.
+> `Follow` / `Accept(Follow)` / `Undo(Follow)` round-trip cleanly
+> through both [ngrok] and a named Cloudflare tunnel in both
+> directions, and a local user can follow a remote Lemmy community
+> too.  Outbound `Announce(Create(Page))` — the fan-out a community
+> does when a new thread arrives — is currently rejected by Lemmy's
+> inbox with `{"error":"object_is_not_public"}` because Lemmy
+> insists on a very specific audience shape on the nested
+> `Create`/`Page`.  Mastodon, Mbin, and Peertube accept the same
+> activity as is; full-mesh Lemmy Announce compatibility needs
+> more serialization tuning and is tracked in the
+> [example repository]
+> rather than in the tutorial.
 
 > [!TIP]
 > Lemmy additionally sends a boolean `postingRestrictedToMods` on
@@ -4022,8 +4024,7 @@ https://lemmy.ml/u/<your-username>|1
 > custom JSON-LD context; see the
 > [Fedify vocab docs](../manual/vocab.md) for the escape hatch.
 
-[`serveo`]: https://serveo.net/
-[`ngrok`]: https://ngrok.com/
+[example repository]: https://github.com/fedify-dev/threadiverse
 
 
 Areas to improve
