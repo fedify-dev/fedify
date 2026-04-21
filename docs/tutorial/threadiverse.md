@@ -269,7 +269,7 @@ Linux, you've hit the default `fs.inotify.max_user_instances` limit.
 Restarting `npm run dev` with `WATCHPACK_POLLING=true` in front of it makes
 Next.js fall back to polling-based file watching and sidesteps the problem.
 
-### Swapping ESLint for biome
+### Swapping ESLint for Biome
 
 The Next.js scaffold that `create-next-app` dropped into the project comes
 with [ESLint] for linting, while the Fedify side of the scaffold prefers
@@ -732,7 +732,7 @@ actually enforced), and wraps the connection with Drizzle.  The
 `export * from "./schema"` re-exports every table and type so callers can
 `import { db, users, type User } from "@/db"` from a single path.
 
-### Wiring up drizzle kit
+### Wiring up Drizzle Kit
 
 [Drizzle Kit] is Drizzle's companion CLI.  It reads your schema and either
 generates migration SQL or pushes the schema directly to the database.
@@ -1366,7 +1366,7 @@ other fediverse software can look up by handle, send follow requests to,
 and verify signatures from.  This is the first chapter where ActivityPub
 itself shows up.
 
-### The keys table
+### The `keys` table
 
 Every federated actor needs a pair of cryptographic keys.  HTTP Signatures,
 the scheme that authenticates server-to-server requests, uses an RSA key.
@@ -2201,7 +2201,7 @@ export default federation;
 
 Two dispatchers, one URL template, two actor types.
 
-### Testing the group federation
+### Testing the `Group` federation
 
 Bring up `fedify tunnel 3000` again if you stopped it, and with the
 tunnel URL fresh, fetch the community actor:
@@ -2328,7 +2328,7 @@ actor JSON is what makes a threadiverse server (Lemmy, Mbin) willing
 to call this community “real” — without it they won't trust there's
 a collection to paginate.
 
-### Handling an inbound follow
+### Handling an inbound `Follow`
 
 Most of the Follow flow is inbox work.  The community inbox needs to:
 
@@ -2408,7 +2408,7 @@ A few important details:
     delivery happens asynchronously from the request that triggered
     it, which is important for keeping the inbox responsive.
 
-### Handling an inbound accept(follow)
+### Handling an inbound `Accept(Follow)`
 
 The mirror image: when a remote community accepts one of *our*
 Follow requests, the Accept lands in the local user's inbox.  Add a
@@ -2435,7 +2435,7 @@ listener:
 that object is a `Follow` do we flip the corresponding row's
 `accepted` flag.
 
-### Sending an outbound follow
+### Sending an outbound `Follow`
 
 Give users a UI for following remote communities.  Create
 *app/follow/page.tsx*:
@@ -2815,7 +2815,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 }
 ~~~~
 
-### Publishing a create(page)
+### Publishing a `Create(Page)`
 
 The server action does two things: insert the row locally, and federate
 a `Create(Page)` to the community.  Write
@@ -2920,7 +2920,7 @@ A few things to notice:
     For the local case we already know the URIs, and skipping the
     extra HTTP lookup avoids a pointless loopback.
 
-### Community-side: Create handler and announce fan-out
+### Community-side: `Create` handler and `Announce` fan-out
 
 Now the inbox side.  When the Create lands in the community inbox, the
 community persists the thread and re-announces it to all its followers.
@@ -2994,7 +2994,7 @@ Important details:
     delivery to each host's shared inbox instead of per-actor inboxes
     when possible.
 
-### Follower-side: Announce router
+### Follower-side: `Announce` router
 
 The mirror half: when a follower receives `Announce(Create(Page))` from
 a community, we unwrap the Announce and let the same Create handler
@@ -3505,7 +3505,7 @@ Two important bits:
     followers collection as a `cc` keeps the activity's audience
     consistent with how we addressed threads and replies.
 
-### Inbox: Like / dislike handlers with re-announce
+### Inbox: `Like` / `Dislike` handlers with re-`Announce`
 
 The community side does the same pattern as threads and replies: upsert
 the vote, then re-Announce if the community is local.  Both Like and
@@ -3600,3 +3600,193 @@ directions.
 > `SELECT target_uri, SUM(CASE kind WHEN 'Like' THEN 1 ELSE -1 END) AS score FROM votes GROUP BY target_uri`.
 > We keep the vote rows rather than a pre-aggregated counter so ranking
 > algorithms can be added later without a schema migration.
+
+
+Putting it together: the subscribed feed
+----------------------------------------
+
+Every feature so far — Person/Group actors, Follow/Accept/Undo,
+Create(Page), Create(Note), Like, Dislike — has moved a row into or
+out of one of our tables.  The home page is where those rows become
+something the reader actually sees: a chronological feed of every
+thread from every community they subscribe to.
+
+Rewrite *app/page.tsx* to branch on the viewer:
+
+~~~~ tsx [app/page.tsx]
+import { desc, eq, inArray } from "drizzle-orm";
+import Link from "next/link";
+import { db, follows, threads } from "@/db";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+import { unfollowCommunity } from "./unfollow/actions";
+
+export default async function Home() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <>
+        <h1>Welcome to Threadiverse</h1>
+        <p>A small federated community platform built with Fedify and Next.js.</p>
+        <p>
+          <Link href="/signup" className="button">Sign up</Link>{" "}
+          <Link href="/login">or log in</Link>.
+        </p>
+      </>
+    );
+  }
+
+  const origin = await currentOrigin();
+  const viewerUri = new URL(`/users/${user.username}`, origin).href;
+
+  const subscribed = db
+    .select({ followedUri: follows.followedUri, accepted: follows.accepted })
+    .from(follows)
+    .where(eq(follows.followerUri, viewerUri))
+    .all();
+  const subscribedUris = subscribed
+    .filter((r) => r.accepted)
+    .map((r) => r.followedUri);
+
+  const feed = subscribedUris.length === 0 ? [] : db
+    .select()
+    .from(threads)
+    .where(inArray(threads.communityUri, subscribedUris))
+    .orderBy(desc(threads.createdAt))
+    .limit(30)
+    .all();
+
+  return (
+    <>
+      <h1>Your feed</h1>
+      {/* subscriptions list + feed rendering: see the paired commit */}
+    </>
+  );
+}
+~~~~
+
+The `inArray(threads.communityUri, subscribedUris)` query is the
+important bit: it turns the list of accepted follow rows into a single
+SQL `IN (…)` predicate, so fetching the feed is one roundtrip
+regardless of how many communities the user subscribes to.
+
+
+Unsubscribing with undo(follow)
+-------------------------------
+
+The subscriptions list on the home page includes an *Unfollow* button
+per community.  Unsubscribing is essentially Ch. 14's follow flow
+played backwards.
+
+### Outbound: `unfollowCommunity`
+
+~~~~ typescript [app/unfollow/actions.ts]
+"use server";
+
+import { Follow, Undo } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db, follows } from "@/db";
+import federation from "@/federation";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+export async function unfollowCommunity(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const followedUri = String(formData.get("followedUri") ?? "").trim();
+  if (!followedUri) redirect("/");
+
+  const origin = await currentOrigin();
+  const ctx = federation.createContext(origin, undefined);
+  const followerUri = ctx.getActorUri(user.username);
+
+  const row = db
+    .select()
+    .from(follows)
+    .where(and(
+      eq(follows.followerUri, followerUri.href),
+      eq(follows.followedUri, followedUri),
+    ))
+    .get();
+  if (!row) redirect("/");
+
+  const undoActivityUri = new URL(
+    `/users/${user.username}/undoes/${Date.now()}`, origin,
+  );
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    { id: new URL(followedUri), inboxId: new URL(row.followerInbox) },
+    new Undo({
+      id: undoActivityUri,
+      actor: followerUri,
+      object: new Follow({
+        id: new URL(`#follow-undo/${row.id}`, followerUri),
+        actor: followerUri,
+        object: new URL(followedUri),
+      }),
+    }),
+  );
+
+  db.delete(follows).where(and(
+    eq(follows.followerUri, followerUri.href),
+    eq(follows.followedUri, followedUri),
+  )).run();
+
+  redirect("/");
+}
+~~~~
+
+A few subtle bits:
+
+ -  The enclosed `Follow` inside the `Undo` doesn't have to be the
+    exact original Follow (we don't necessarily remember its URI);
+    it only needs to have the same `actor` + `object` so the
+    receiving server can match it against its own record.
+ -  The recipient is built by hand with the followee's URI as `id`
+    and the follower's inbox URL (which we stored when the follow
+    was first inserted).  That's sufficient for `sendActivity`
+    without another network lookup.
+ -  We ship the Undo *before* deleting the local row.  If delivery
+    fails, the follow stays in the table and the user can try again.
+
+### Inbound: `Undo` handler
+
+When a remote actor Undoes a Follow directed at one of our communities,
+we need to remove the row:
+
+~~~~ typescript [federation/index.ts]
+  .on(Undo, async (ctx, undo) => {
+    const enclosed = await undo.getObject(ctx);
+    if (!(enclosed instanceof Follow)) return;
+    if (!enclosed.actorId || !enclosed.objectId) return;
+    if (undo.actorId?.href !== enclosed.actorId.href) return;
+    db.delete(follows)
+      .where(
+        and(
+          eq(follows.followerUri, enclosed.actorId.href),
+          eq(follows.followedUri, enclosed.objectId.href),
+        ),
+      )
+      .run();
+  })
+~~~~
+
+The `undo.actorId?.href !== enclosed.actorId.href` check is the
+authorization: you can only Undo your own Follow, not someone else's.
+Fedify already verifies the Undo's HTTP signature, so `undo.actorId`
+is trustworthy; we rely on that plus an explicit actor-equality check
+to defend the row.
+
+### Testing
+
+Follow your local community from ActivityPub.Academy (same as Ch. 14),
+open the Academy community profile, and hit *Unfollow*.  A few seconds
+later your `follows` table has zero rows for the
+`@enulius_dorvorglan@activitypub.academy` actor.  Inversely, log in as
+a local user, expand the *Subscriptions* section on the home page,
+and click *Unfollow* next to a remote community; the row disappears
+from your table and, once the remote server processes the Undo, from
+their member count too.
