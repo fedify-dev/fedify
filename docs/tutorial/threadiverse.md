@@ -1355,3 +1355,418 @@ the request and returns the default placeholder `Person` actor we saw
 earlier.  In the next chapter we'll swap that placeholder for a proper
 actor backed by our `users` table, so searching `@alice@<your-host>` in
 Mastodon or Lemmy actually finds the account we just created.
+
+
+Federating your user: the person actor
+--------------------------------------
+
+All the pieces we've built so far have been local.  In this chapter we turn
+a local user into a *federated* `Person` actor: a server-side entity that
+other fediverse software can look up by handle, send follow requests to,
+and verify signatures from.  This is the first chapter where ActivityPub
+itself shows up.
+
+### The keys table
+
+Every federated actor needs a pair of cryptographic keys.  HTTP Signatures,
+the scheme that authenticates server-to-server requests, uses an RSA key.
+[Object Integrity Proofs] (sometimes called *LD Signatures* or *FEP-8b32*)
+use an Ed25519 key.  We'll generate one of each per actor and store both.
+
+Open *db/schema.ts* and add a `keys` table:
+
+~~~~ typescript{3-8,30-48} [db/schema.ts]
+import { sql } from "drizzle-orm";
+import {
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+export const sessions = sqliteTable("sessions", {
+  token: text("token").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Session = typeof sessions.$inferSelect;
+
+export const keys = sqliteTable(
+  "keys",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorIdentifier: text("actor_identifier").notNull(),
+    type: text("type", { enum: ["RSASSA-PKCS1-v1_5", "Ed25519"] }).notNull(),
+    privateKey: text("private_key").notNull(),
+    publicKey: text("public_key").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    uniqueIndex("keys_actor_type_idx").on(table.actorIdentifier, table.type),
+  ],
+);
+
+export type Key = typeof keys.$inferSelect;
+~~~~
+
+A couple of things about this schema worth calling out:
+
+ -  `actorIdentifier` is a plain string rather than a foreign key to a
+    specific table.  That's deliberate: in the next chapter we'll add a
+    second kind of actor (communities, i.e. `Group` actors).  Keeping
+    keys keyed by identifier lets the same table serve both user and
+    community keys without a schema change.
+ -  The `type` column uses Drizzle's `enum` option, which in Drizzle +
+    SQLite produces a `CHECK` constraint that rejects rows whose `type`
+    isn't one of the two values we listed.
+ -  The composite unique index `(actor_identifier, type)` makes sure
+    each actor has at most one key of each algorithm.
+
+Apply the schema change:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+[Object Integrity Proofs]: https://www.w3.org/TR/vc-data-integrity/
+
+### Actor dispatcher and key pairs dispatcher
+
+Now rewrite *federation/index.ts* to replace the placeholder `Person` that
+`fedify init` left behind with a real one backed by the database:
+
+~~~~ typescript [federation/index.ts]
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { db, keys, users } from "@/db";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const user = db
+      .select()
+      .from(users)
+      .where(eq(users.username, identifier))
+      .get();
+    if (!user) return null;
+
+    const keyPairs = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: identifier,
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+      url: new URL(`/users/${identifier}`, ctx.url),
+      publicKey: keyPairs[0]?.cryptographicKey,
+      assertionMethods: keyPairs.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const user = db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, identifier))
+      .get();
+    if (!user) return [];
+
+    const pairs: CryptoKeyPair[] = [];
+    for (const keyType of ["RSASSA-PKCS1-v1_5", "Ed25519"] as const) {
+      const existing = db
+        .select()
+        .from(keys)
+        .where(
+          and(eq(keys.actorIdentifier, identifier), eq(keys.type, keyType)),
+        )
+        .get();
+      if (existing) {
+        pairs.push({
+          privateKey: await importJwk(
+            JSON.parse(existing.privateKey),
+            "private",
+          ),
+          publicKey: await importJwk(JSON.parse(existing.publicKey), "public"),
+        });
+      } else {
+        const pair = await generateCryptoKeyPair(keyType);
+        db.insert(keys)
+          .values({
+            actorIdentifier: identifier,
+            type: keyType,
+            privateKey: JSON.stringify(await exportJwk(pair.privateKey)),
+            publicKey: JSON.stringify(await exportJwk(pair.publicKey)),
+          })
+          .run();
+        pairs.push(pair);
+      }
+    }
+    return pairs;
+  });
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+export default federation;
+~~~~
+
+A walk-through of what changed:
+
+ -  `setActorDispatcher` is the hook Fedify calls whenever an
+    ActivityPub client wants a specific actor.  The `path` argument is
+    the URL template the actor lives at (`/users/{identifier}`), and
+    the callback returns an actor object or `null` for “no such actor”.
+    Returning `null` makes Fedify respond with an HTTP 404.
+ -  `ctx.getActorKeyPairs(identifier)` is how the dispatcher gets the
+    actor's keys in the right format.  It calls our
+    `setKeyPairsDispatcher` internally, wraps each pair with metadata
+    that Fedify needs, and caches the result.  The returned
+    `keyPairs[0]` is always the RSA pair, which is what `publicKey`
+    wants; `keyPairs.map((k) => k.multikey)` produces the `Multikey`
+    array that goes into `assertionMethods` for FEP-8b32 verification.
+ -  `new Endpoints({ sharedInbox: ctx.getInboxUri() })` advertises a
+    single *shared inbox* URL the actor is reachable through.  Large
+    fediverse servers use the shared inbox to deliver one copy of an
+    activity to many followers on the same host.
+ -  `setKeyPairsDispatcher` is the hook that reads (or lazily creates)
+    the two key pairs for an actor.  The first time you look up an
+    actor, both keys are missing and we generate them; every subsequent
+    lookup returns the stored pair.
+ -  `setInboxListeners` registers the URL template Fedify should use
+    for the per-actor inbox and the path for the shared inbox.  We
+    haven't attached any `on(Activity, ...)` handlers yet, so the
+    inbox accepts no activities for now; we'll add those in later
+    chapters.  But registering the paths is what lets
+    `ctx.getInboxUri()` resolve in the actor dispatcher above.
+
+> [!TIP]
+> Fedify's inbox and actor URLs are derived from the templates you pass
+> to `setActorDispatcher` and `setInboxListeners`.  If you later want to
+> change the URL scheme (for example from `/users/{identifier}` to
+> `/u/{identifier}`), you only have to change the template; everything
+> that calls `ctx.getActorUri(identifier)` or `ctx.getInboxUri(identifier)`
+> follows along.
+
+### Verifying locally
+
+Start (or restart) the dev server with `npm run dev` and sign up if you
+haven't already.  Then in a second terminal, ask Fedify to look up the
+actor:
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice
+~~~~
+
+You should see output that starts like this:
+
+~~~~ console
+Person {
+  id: URL 'http://localhost:3000/users/alice',
+  preferredUsername: 'alice',
+  name: 'alice',
+  inbox: URL 'http://localhost:3000/users/alice/inbox',
+  ...
+  publicKey: CryptographicKey { ... },
+  assertionMethods: [ Multikey { ... }, Multikey { ... } ],
+}
+~~~~
+
+Check the WebFinger endpoint directly too:
+
+~~~~ sh
+curl -H 'Accept: application/jrd+json' \
+  "http://localhost:3000/.well-known/webfinger?resource=acct:alice@localhost:3000"
+~~~~
+
+The response is a JRD document pointing `rel="self"` at the actor URL:
+
+~~~~ json
+{
+  "subject": "acct:alice@localhost:3000",
+  "aliases": ["http://localhost:3000/users/alice"],
+  "links": [
+    { "rel": "self", "href": "http://localhost:3000/users/alice",
+      "type": "application/activity+json" },
+    { "rel": "http://webfinger.net/rel/profile-page",
+      "href": "http://localhost:3000/users/alice" }
+  ]
+}
+~~~~
+
+Peek at the database too: every time the dispatcher runs for a user
+with no stored keys, two rows appear in the `keys` table, one with
+`type = "RSASSA-PKCS1-v1_5"` and one with `type = "Ed25519"`.
+
+### Letting the wider fediverse see your actor
+
+Right now the actor is reachable only at `http://localhost:3000`, and no
+remote server can verify a connection to `localhost`.  To let an outside
+server discover this actor we need two things: a reverse proxy, and a
+bit of code that tells Fedify to trust the `Host` and `Proto` that the
+proxy forwards in.
+
+#### Running the tunnel
+
+Fedify ships a convenience command, `fedify tunnel`, that wraps [Serveo]
+to give you a free public HTTPS URL pointing at a local port.  In a new
+terminal, run:
+
+~~~~ sh
+fedify tunnel 3000
+~~~~
+
+After a few seconds the command prints a line like:
+
+~~~~ console
+✔ Your local server is now publicly accessible:
+
+  https://<random-subdomain>.serveo.net
+
+Press ^C to stop the server.
+~~~~
+
+Leave that terminal running as long as you want the public URL to exist.
+
+> [!WARNING]
+> Tunnel services come and go, and occasionally a given provider is
+> unavailable or drops your session silently after a few minutes of
+> idle traffic.  If `fedify tunnel` hangs on *Creating a secure tunnel*
+> or your tunnel URL stops responding, the easiest workaround is to
+> restart the command (or fall back to [cloudflared] or [ngrok]).  The
+> URL usually changes on restart, so expect to re-paste it anywhere
+> you typed it in.
+
+#### Honouring X-forwarded-\* headers
+
+When a request comes in through a tunnel, Next.js sees the tunnel as a
+reverse proxy.  The real public host is in the `X-Forwarded-Host` and
+`X-Forwarded-Proto` headers; the `Host` header itself says `localhost:3000`.
+Without any changes Fedify builds its actor URLs from `Host`, so remote
+servers see `https://localhost:3000/users/alice` and can't fetch it.
+
+Fix this by wrapping the request with [*x-forwarded-fetch*] inside the
+middleware.  Install the package first:
+
+~~~~ sh
+npm install x-forwarded-fetch
+~~~~
+
+Then rewrite *middleware.ts*:
+
+~~~~ typescript [middleware.ts]
+import { integrateFederation, isFederationRequest } from "@fedify/next";
+import { NextResponse } from "next/server";
+import { getXForwardedRequest } from "x-forwarded-fetch";
+import federation from "./federation";
+
+const federationHandler = integrateFederation(federation);
+
+export default async function middleware(request: Request) {
+  const forwarded = await getXForwardedRequest(request);
+  if (isFederationRequest(forwarded)) {
+    return await federationHandler(forwarded);
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  runtime: "nodejs",
+  matcher: [
+    {
+      source: "/:path*",
+      has: [
+        {
+          type: "header",
+          key: "Accept",
+          value: ".*application\\/((jrd|activity|ld)\\+json|xrd\\+xml).*",
+        },
+      ],
+    },
+    {
+      source: "/:path*",
+      has: [
+        {
+          type: "header",
+          key: "content-type",
+          value: ".*application\\/((jrd|activity|ld)\\+json|xrd\\+xml).*",
+        },
+      ],
+    },
+    { source: "/.well-known/nodeinfo" },
+    { source: "/.well-known/x-nodeinfo2" },
+  ],
+};
+~~~~
+
+`getXForwardedRequest()` returns a new `Request` whose `url`, `protocol`,
+and `host` reflect `X-Forwarded-*` headers when they're present.  We then
+pass that rewritten request through to either Fedify (if it's an ActivityPub
+or NodeInfo request) or the normal Next.js pipeline.
+
+> [!WARNING]
+> Only call `getXForwardedRequest()` when you know that every HTTP request
+> reaches your app through a trusted proxy.  If your server also serves
+> requests directly from the public internet, a malicious client can
+> set its own `X-Forwarded-Host` and impersonate any domain.
+
+#### Searching from the academy
+
+With the tunnel running and the middleware fixed, fetch your actor
+through the public URL to confirm the IDs now match the tunnel host:
+
+~~~~ sh
+curl -H 'Accept: application/activity+json' \
+  https://<your-tunnel>.serveo.net/users/alice
+~~~~
+
+The JSON's `id`, `inbox`, and `endpoints.sharedInbox` should all say
+`https://<your-tunnel>.serveo.net/...`, not `http://localhost:3000/...`.
+
+Next, open [ActivityPub.Academy] — a throwaway Mastodon instance the
+fediverse community runs for exactly this kind of testing — in a browser.
+Sign up for a temporary account, then paste `@alice@<your-tunnel>.serveo.net`
+into the search box:
+
+![Screenshot: the academy found @alice via WebFinger](./threadiverse/academy-search-alice.png)
+
+Academy looks your account up via WebFinger, fetches the actor JSON, and
+shows it as a result.  That's all we need from Ch. 8: the wider
+fediverse can now *see* the user we created.  In the Community chapters
+we'll pair this with a Follow handler so the academy (and other servers)
+can actually subscribe.
+
+[Serveo]: https://serveo.net/
+[cloudflared]: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+[ngrok]: https://ngrok.com/
+[*x-forwarded-fetch*]: https://github.com/dahlia/x-forwarded-fetch
+[ActivityPub.Academy]: https://activitypub.academy/
