@@ -427,8 +427,8 @@ The following types of objects are commonly used to represent posts and other
 public-facing content in the fediverse:
 
  -  `Article` represents a multi-paragraph written work.
- -  `Note` represents a short post.
- -  `Question` represents a poll.
+ -  `Note` is a short post.
+ -  `Question` is a poll.
 
 Link-like objects such as `Mention`, `Hashtag`, and `Emoji` are usually attached
 to these objects through their `tags` property.  The exact way ActivityPub
