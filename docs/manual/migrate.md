@@ -1723,8 +1723,8 @@ section](#hand-rolled)) covers that part.
 ### When to migrate
 
 `activitystrea.ms` is *not* dormant.  Evan Prodromou revived it in 2024
-under the Social Web Foundation and continues to publish releases
-(v3.3.2, 2026-04-03).  The reasons to migrate are not maintenance-driven:
+under the Social Web Foundation and continues to publish releases.  The
+reasons to migrate are not maintenance-driven:
 
  -  *Type safety.*  [`@fedify/vocab`] is TypeScript-first with generated
     classes, so every property has a type; `activitystrea.ms` is a fluent
