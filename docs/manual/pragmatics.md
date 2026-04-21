@@ -543,7 +543,7 @@ Mastodon](pragmatics/mastodon-article.png)
 
 The `Question` type is used for polls.  In Mastodon, the question body comes
 from `content`, the poll choices come from `exclusiveOptions` or
-`inclusiveOptions`, and metadata such as `voters` and `endTime` are displayed
+`inclusiveOptions`, and metadata such as `voters` and `closed` are displayed
 below the choices.
 
 ### `exclusiveOptions`: Single-choice polls
@@ -563,7 +563,7 @@ new Question({
     }),
   ],
   voters: 13,  // [!code highlight]
-  endTime: Temporal.Instant.from("2026-04-28T12:00:00Z"),  // [!code highlight]
+  closed: Temporal.Instant.from("2026-04-28T12:00:00Z"),  // [!code highlight]
 })
 ~~~~
 
@@ -607,7 +607,7 @@ new Question({
     }),
   ],
   voters: 13,  // [!code highlight]
-  endTime: Temporal.Instant.from("2026-04-20T12:00:00Z"),  // [!code highlight]
+  closed: Temporal.Instant.from("2026-04-20T12:00:00Z"),  // [!code highlight]
 })
 ~~~~
 
