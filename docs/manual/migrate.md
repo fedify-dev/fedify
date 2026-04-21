@@ -48,7 +48,10 @@ From `activitypub-express` (apex) {#apex}
 
 [`activitypub-express`] (apex) is Express middleware backed by MongoDB and is
 the most common non-Fedify stack in the Node.js fediverse today, powering
-[Immers Space] and [Guppe Groups] among others.
+[Immers Space] and [Guppe Groups] among others.  Both projects have gone
+quiet: the Guppe repository is archived on GitHub and its site now just
+advertises the hosted service, so apex itself is effectively maintained
+by a single person for their own apps.
 
 [`activitypub-express`]: https://github.com/immers-space/activitypub-express
 [Immers Space]: https://github.com/immers-space/immers
@@ -638,7 +641,7 @@ dormant bucket for production planning.
 
 ### When to migrate
 
- -  No commits in over two years; the README itself still says “this project
+ -  No commits in several years; the README itself still says “this project
     is still incomplete.”
  -  There are no shipped example apps in the monorepo and no public
     production users, so community knowledge for debugging is thin.
