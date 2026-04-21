@@ -67,7 +67,7 @@ Some concrete reasons to switch:
     inboxes for large-fanout activities, serving one yourself becomes a
     scaling requirement.
  -  JSON-LD validation rejects some legitimate Akkoma/LitePub and Mastodon
-    posts (bare `Note` announces, Litepub vocabulary), so parts of the
+    posts (bare `Note` announces, LitePub vocabulary), so parts of the
     fediverse silently stop delivering to you.
  -  Delivery runs in-process via `setTimeout` with no worker model.  Graceful
     shutdown can drop in-flight activities; there is no way to scale delivery
