@@ -418,3 +418,64 @@ Mastodon](pragmatics/mastodon-followers.png)
 > [!NOTE]
 > Mastodon does not display the followers collection of a remote actor,
 > but other ActivityPub implementations may display it.
+
+
+Objects
+-------
+
+The following types of objects are commonly used to represent posts and other
+public-facing content in the fediverse:
+
+ -  `Article` represents a multi-paragraph written work.
+ -  `Note` represents a short post.
+ -  `Question` represents a poll.
+
+Link-like objects such as `Mention`, `Hashtag`, and `Emoji` are usually attached
+to these objects through their `tags` property.  The exact way ActivityPub
+implementations render these objects differs, but Mastodon and Misskey already
+share a number of de facto conventions.
+
+### `Note`: Short posts
+
+The `Note` type is the most common object type for short posts.  In Mastodon,
+the `content` property becomes the post body, the `summary` property becomes a
+content warning, and `attachments` are rendered below the body.
+
+~~~~ typescript{8-27} twoslash
+import { Hashtag, Image, Mention, Note } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content:
+    '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
+    '@friend@example.com</a>! This note demonstrates ' +
+    '<a href="https://example.com/tags/fedify">#fedify</a>.</p>',
+  summary: "CW: Rendering pragmatics demo",
+  attachments: [
+    new Image({
+      url: new URL("https://picsum.photos/id/237/1200/800"),
+      mediaType: "image/jpeg",
+      name: "A placeholder dog photo",
+    }),
+  ],
+  tags: [
+    new Mention({
+      href: new URL("https://example.com/users/friend"),
+      name: "@friend@example.com",
+    }),
+    new Hashtag({
+      href: new URL("https://example.com/tags/fedify"),
+      name: "#fedify",
+    }),
+  ],
+})
+~~~~
+
+> [!NOTE]
+> The `content` and `summary` properties expect HTML strings.  If they contain
+> characters like `<`, `>`, and `&`, you should escape HTML entities.
+
+For example, the above `Note` object is displayed like the following in
+Mastodon:
+
+![Screenshot: A note with a content warning and an attached image in
+Mastodon](pragmatics/mastodon-note.png)
