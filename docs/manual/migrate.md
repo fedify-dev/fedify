@@ -1152,7 +1152,557 @@ that is not federation.
 From hand-rolled Express code {#hand-rolled}
 --------------------------------------------
 
-*To be written.*
+The de-facto starting point for hand-rolled Node.js ActivityPub bots is
+Darius Kazemi's [`express-activitypub`] reference implementation, and most
+small bots, blog-to-fediverse bridges, and single-actor services in the wild
+are direct descendants — [`rss-to-activitypub`] is the best-known sibling.
+Kazemi himself describes the repo as “meant as a reference implementation”
+that is “not exactly hardened production code,” and that framing still
+applies: the descendants inherit the same gaps around signature
+verification, activity coverage, and delivery reliability.
+
+[`express-activitypub`]: https://github.com/dariusk/express-activitypub
+[`rss-to-activitypub`]: https://github.com/dariusk/rss-to-activitypub
+
+### When to migrate
+
+ -  *No inbound signature verification.*  Incoming `Follow` activities are
+    trusted as-is; anyone can POST a forged `Follow` and add themselves as a
+    follower.  Fedify verifies HTTP Signatures, HTTP Message Signatures,
+    Linked Data Signatures, and Object Integrity Proofs automatically.
+ -  *Only `Follow` is handled.*  `Undo(Follow)`, `Delete`, `Update(Actor)`,
+    and `Block` are silently dropped, so remote actors that leave cannot
+    actually leave.
+ -  *No delivery queue.*  Outbound POSTs run serially inside the request
+    handler; if the Node process crashes mid-fan-out, the remaining
+    recipients never hear from you.  Fedify routes every send through a
+    durable [message queue](./mq.md).
+ -  *Deprecated `request` dependency.*  The hand-rolled snippet uses the
+    `request` npm package, which has been deprecated since 2020.
+ -  *No JSON-LD processing.*  Actors and activities are hand-built object
+    literals; extensions (Mastodon's `featured`, `discoverable`,
+    `manuallyApprovesFollowers`) require manual JSON surgery.
+
+A typical hand-rolled bot compresses to roughly the same line count under
+Fedify, and shedding the custom signing helper alone is usually worth the
+move.
+
+### Mental-model mapping
+
+| Hand-rolled                                                  | Fedify                                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `router.get("/:name", ...)` serving a JSON blob from SQLite  | `setActorDispatcher("/u/{identifier}", ...)` returning a `Person`        |
+| `router.get("/", ...)` on `/.well-known/webfinger`           | automatic — enabled by `setActorDispatcher`                              |
+| `router.post("/", ...)` on `/api/inbox` with no verification | `setInboxListeners(personalInbox, sharedInbox)` — verification built-in  |
+| `signAndSend()` helper with `crypto.createSign("sha256")`    | `Context.sendActivity(...)` with automatic draft-cavage signing          |
+| `crypto.generateKeyPair("rsa", { modulusLength: 4096 })`     | `generateCryptoKeyPair("RSASSA-PKCS1-v1_5")` plus Ed25519 for [FEP-8b32] |
+| `better-sqlite3` `accounts` table                            | `@fedify/sqlite` `SqliteKvStore` + your own app schema                   |
+| JSON `followers` column (array of actor IRIs)                | `setFollowersDispatcher("/u/{identifier}/followers", ...)`               |
+
+[FEP-8b32]: https://w3id.org/fep/8b32
+
+### Code migration
+
+Below, each *before* snippet is trimmed from the Kazemi reference
+(`dariusk/express-activitypub`, commit `41f98af3`).  Your own code is
+probably shaped similarly.
+
+#### Actor handler
+
+The hand-rolled actor is stored as a pre-serialised JSON blob in SQLite and
+served verbatim:
+
+~~~~ javascript
+router.get("/:name", function (req, res) {
+  const name = req.params.name;
+  const db = req.app.get("db");
+  const domain = req.app.get("domain");
+  const row = db
+    .prepare("select actor from accounts where name = ?")
+    .get(`${name}@${domain}`);
+  if (row === undefined) return res.status(404).send(`No record found.`);
+  const actor = JSON.parse(row.actor);
+  res.set("Content-Type", "application/activity+json");
+  res.json(actor);
+});
+~~~~
+
+Fedify builds the actor on each request, which means the `publicKey` and
+other fields can be regenerated without rewriting the DB blob:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface Account {
+  name: string;
+  preferredUsername: string;
+}
+async function getAccount(_: string): Promise<Account | null> {
+  return null;
+}
+// ---cut-before---
+federation.setActorDispatcher("/u/{identifier}", async (ctx, identifier) => {
+  const account = await getAccount(identifier);
+  if (account == null) return null;
+  const keys = await ctx.getActorKeyPairs(identifier);
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    preferredUsername: account.preferredUsername,
+    name: account.name,
+    inbox: ctx.getInboxUri(identifier),
+    outbox: ctx.getOutboxUri(identifier),
+    followers: ctx.getFollowersUri(identifier),
+    publicKey: keys[0]?.cryptographicKey,
+    assertionMethods: keys.map((k) => k.multikey),
+  });
+});
+~~~~
+
+#### WebFinger — drop the handler
+
+Hand-rolled code stores a second blob and serves it from a custom route:
+
+~~~~ javascript
+router.get("/", function (req, res) {
+  const resource = req.query.resource;
+  if (!resource || !resource.includes("acct:")) {
+    return res.status(400).send("Bad request.");
+  }
+  const name = resource.replace("acct:", "");
+  const row = req.app.get("db")
+    .prepare("select webfinger from accounts where name = ?")
+    .get(name);
+  if (row === undefined) return res.status(404).send("Not found.");
+  res.json(JSON.parse(row.webfinger));
+});
+~~~~
+
+In Fedify, registering an actor dispatcher enables WebFinger automatically.
+The WebFinger route, `/.well-known/webfinger`, answers every
+`acct:name@domain` handle your dispatcher can resolve.  There is no code to
+write on the Fedify side — just delete the handler.
+
+See the [*WebFinger*](./webfinger.md) section for details on customising the
+mapping between handles and identifiers.
+
+#### Inbox handler
+
+The reference inbox handler trusts the incoming POST without verifying its
+signature and covers only the `Follow` case:
+
+~~~~ javascript
+router.post("/", function (req, res) {
+  const domain = req.app.get("domain");
+  if (typeof req.body.object === "string" && req.body.type === "Follow") {
+    const name = req.body.object.replace(`https://${domain}/u/`, "");
+    sendAcceptMessage(req.body, name, domain, req, res, /* targetDomain */);
+    // Append req.body.actor to the stored followers JSON.
+  }
+  // TODO: add "Undo" follow event
+});
+~~~~
+
+Fedify verifies the signature automatically, dispatches per-activity-type
+handlers, and auto-signs the Accept reply.  Handling `Undo(Follow)` is one
+extra `.on(Undo, ...)` instead of a parallel hand-written branch:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Federation } from "@fedify/fedify";
+import { Accept, Follow, Undo } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+async function removeFollower(_: {
+  identifier: string;
+  followerUri: URL;
+}): Promise<void> {}
+// ---cut-before---
+federation
+  .setInboxListeners("/u/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.objectId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor") return;
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      follower,
+      new Accept({ actor: follow.objectId, object: follow }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow) || object.objectId == null) return;
+    const parsed = ctx.parseUri(object.objectId);
+    if (parsed?.type !== "actor" || undo.actorId == null) return;
+    await removeFollower({
+      identifier: parsed.identifier,
+      followerUri: undo.actorId,
+    });
+  });
+~~~~
+
+#### Outbound signing
+
+The hand-rolled signer builds the HTTP Signature header byte by byte:
+
+~~~~ javascript
+function signAndSend(message, name, domain, req, res, targetDomain) {
+  const inbox = `${message.object.actor}/inbox`;
+  const inboxFragment = inbox.replace(`https://${targetDomain}`, "");
+  const privkey = req.app.get("db")
+    .prepare("select privkey from accounts where name = ?")
+    .get(`${name}@${domain}`).privkey;
+  const digest = crypto.createHash("sha256")
+    .update(JSON.stringify(message)).digest("base64");
+  const signer = crypto.createSign("sha256");
+  const date = new Date().toUTCString();
+  const stringToSign =
+    `(request-target): post ${inboxFragment}\n` +
+    `host: ${targetDomain}\n` +
+    `date: ${date}\n` +
+    `digest: SHA-256=${digest}`;
+  signer.update(stringToSign);
+  signer.end();
+  const signature = signer.sign(privkey).toString("base64");
+  const header = `keyId="https://${domain}/u/${name}",` +
+    `headers="(request-target) host date digest",` +
+    `signature="${signature}"`;
+  request({
+    url: inbox,
+    method: "POST",
+    headers: {
+      Host: targetDomain,
+      Date: date,
+      Digest: `SHA-256=${digest}`,
+      Signature: header,
+    },
+    json: true,
+    body: message,
+  }, function (err) {
+    if (err) console.log("Error:", err);
+  });
+}
+~~~~
+
+In Fedify, sending an activity is one call — the signature, digest, and
+content-type are all handled inside
+[`Context.sendActivity`](./send.md#sending-an-activity):
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Context } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const identifier = "alice";
+const follow = null as unknown as Follow;
+const follower = null as unknown as import("@fedify/vocab").Actor;
+// ---cut-before---
+await ctx.sendActivity(
+  { identifier },
+  follower,
+  new Accept({
+    actor: ctx.getActorUri(identifier),
+    object: follow,
+  }),
+);
+~~~~
+
+Fedify signs with the `#main-key` fragment of the actor IRI by default —
+which matches what the hand-rolled actor already advertises in its
+`publicKey.id` field.  The hand-rolled *signer* used the bare actor IRI as
+the `keyId`, which remote implementations accepted only because they fetch
+the actor document and re-resolve the key.  The Fedify default is the more
+correct form and does not change behaviour for existing followers.
+
+#### Account creation
+
+The reference generates a 4096-bit RSA key pair with the async form of
+`crypto.generateKeyPair` and stores both PEM halves in the `accounts` row:
+
+~~~~ javascript
+router.post("/create", function (req, res) {
+  const account = req.body.account;
+  const db = req.app.get("db");
+  const domain = req.app.get("domain");
+  crypto.generateKeyPair("rsa", {
+    modulusLength: 4096,
+    publicKeyEncoding:  { type: "spki",  format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  }, (err, publicKey, privateKey) => {
+    const actorRecord = createActor(account, domain, publicKey);
+    const webfingerRecord = createWebfinger(account, domain);
+    const apikey = crypto.randomBytes(16).toString("hex");
+    db.prepare(
+      "insert into accounts" +
+      "(name, actor, apikey, pubkey, privkey, webfinger)" +
+      " values(?, ?, ?, ?, ?, ?)",
+    ).run(
+      `${account}@${domain}`,
+      JSON.stringify(actorRecord),
+      apikey,
+      publicKey,
+      privateKey,
+      JSON.stringify(webfingerRecord),
+    );
+    res.status(200).json({ msg: "ok", apikey });
+  });
+});
+~~~~
+
+The Fedify equivalent generates RSA for HTTP Signatures plus Ed25519 for
+Object Integrity Proofs, exports each pair as JWK, and stores them in your
+application DB rather than inside the federation layer:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import {
+  exportJwk,
+  generateCryptoKeyPair,
+} from "@fedify/fedify";
+async function saveAccount(_: {
+  username: string;
+  rsa: { privateKey: JsonWebKey; publicKey: JsonWebKey };
+  ed25519: { privateKey: JsonWebKey; publicKey: JsonWebKey };
+}) {}
+// ---cut-before---
+const username = "alice";
+const rsa = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+const ed25519 = await generateCryptoKeyPair("Ed25519");
+await saveAccount({
+  username,
+  rsa: {
+    privateKey: await exportJwk(rsa.privateKey),
+    publicKey: await exportJwk(rsa.publicKey),
+  },
+  ed25519: {
+    privateKey: await exportJwk(ed25519.privateKey),
+    publicKey: await exportJwk(ed25519.publicKey),
+  },
+});
+~~~~
+
+The signup route does not live inside `federation` any more — it is just a
+normal POST handler on your Express, Hono, or Koa app that writes to the
+same DB the actor dispatcher reads from.
+
+### Data migration
+
+Because every hand-rolled schema is bespoke, this is a pattern rather than
+a drop-in script.  Four things need to move:
+
+1.  *Actor private keys.*  Read `accounts.privkey` (PEM), parse with
+    `createPrivateKey`, export as JWK.
+2.  *Actor public keys.*  Read `accounts.pubkey` (PEM) the same way.
+3.  *Followers.*  Parse `accounts.followers` (a JSON array of actor IRIs).
+4.  *Anything your bot remembers per follower* (last delivered message id,
+    preferences).
+
+Example, for `better-sqlite3` with the Kazemi schema — adapt table and
+column names to your own:
+
+~~~~ typescript twoslash
+// @noErrors: 2307 2305 2345 2322 7006
+import { createPrivateKey, createPublicKey } from "node:crypto";
+import Database from "better-sqlite3";
+
+interface Row {
+  name: string;
+  pubkey: string;
+  privkey: string;
+  followers: string | null;
+}
+
+async function saveAccount(_: {
+  username: string;
+  rsaPrivateKey: JsonWebKey;
+  rsaPublicKey: JsonWebKey;
+}) {}
+async function saveFollower(_: {
+  username: string;
+  followerActorUri: string;
+}) {}
+
+const db = new Database("bot-node.db", { readonly: true });
+const rows = db.prepare(
+  "select name, pubkey, privkey, followers from accounts",
+).all() as Row[];
+
+for (const row of rows) {
+  const [username] = row.name.split("@"); // name is `user@domain`
+  const privJwk = createPrivateKey({ key: row.privkey, format: "pem" })
+    .export({ format: "jwk" });
+  const pubJwk = createPublicKey({ key: row.pubkey, format: "pem" })
+    .export({ format: "jwk" });
+  privJwk.alg = "RS256";
+  pubJwk.alg = "RS256";
+
+  await saveAccount({
+    username,
+    rsaPrivateKey: privJwk,
+    rsaPublicKey: pubJwk,
+  });
+
+  const followers: string[] = row.followers ? JSON.parse(row.followers) : [];
+  for (const followerActorUri of followers) {
+    await saveFollower({ username, followerActorUri });
+  }
+}
+~~~~
+
+The critical preservation step is the *path scheme*.  If your actor is
+served at `https://example.com/u/alice`, keep using
+`setActorDispatcher("/u/{identifier}", ...)` so that the identical actor
+IRI keeps resolving.  Remote servers who already have your RSA public key
+cached will keep verifying your outbound activities without re-fetching.
+
+Optionally, but recommended: generate an Ed25519 key pair for each account
+while you are rewriting, and return it alongside the RSA pair from
+`setKeyPairsDispatcher`.  This unlocks
+[Object Integrity Proofs](./send.md#object-integrity-proofs) without breaking
+compatibility with receivers that only understand RSA HTTP Signatures.
+
+### Common pitfalls
+
+ -  *Forged followers from the old inbox.*  Because the hand-rolled inbox
+    never verified signatures, your existing followers list may contain
+    rows added by someone else's `Follow`.  Before the cutover, cross-check
+    each follower IRI by fetching the actor document and confirming it
+    still exists.  Skip the rows that 404 or `410 Gone`.
+ -  *`Content-Type` sloppiness.*  The reference sets
+    `application/activity+json` on the actor GET but the hand-rolled
+    outbound `request({ json: true })` sends `application/json`.  Mastodon
+    is increasingly strict about this.  Fedify always sends the correct
+    content type; no configuration is needed.
+ -  *Single-inbox path (`/api/inbox`).*  The reference implementation uses
+    one shared inbox for all accounts, which is technically a shared inbox
+    without advertising itself as one.  Either keep `"/api/inbox"` as the
+    second argument to `setInboxListeners` so existing deliveries land at
+    the same URL, or advertise the new Fedify shared inbox
+    (`endpoints.sharedInbox`) on the actor and accept some stragglers on
+    the old path.
+ -  *`keyId` fragment vs bare IRI.*  The hand-rolled signer uses a bare
+    actor IRI as the `keyId`, while the actor document advertises
+    `id: "<actor>#main-key"`.  Fedify signs with the fragment form, which
+    matches what you are publishing — strictly an improvement, but any
+    scripts you wrote that grep log lines for the bare IRI need to learn
+    the new form.
+ -  *`Undo(Follow)` coverage gap.*  Once you start verifying signatures,
+    you will suddenly start seeing `Delete` and `Update(Actor)` activities
+    that the old code dropped.  Handle at least `Undo(Follow)` and
+    `Delete` before advertising the migration — remote servers retry
+    undelivered `Delete` activities, and leaving them pending causes
+    remote inboxes to back up.
+
+### Worked example
+
+The same Kazemi-style bot, rewritten in Fedify — replacing the custom
+signing, WebFinger blob, and trust-all inbox with verified listeners and
+automatic signing:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import express from "express";
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { integrateFederation } from "@fedify/express";
+import { Accept, Follow, Person, Undo } from "@fedify/vocab";
+
+interface Account {
+  username: string;
+  privateJwk: JsonWebKey;
+  publicJwk: JsonWebKey;
+  followers: Set<string>;
+}
+const accounts = new Map<string, Account>();
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/u/{identifier}", async (ctx, identifier) => {
+    const account = accounts.get(identifier);
+    if (account == null) return null;
+    const keys = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      inbox: ctx.getInboxUri(identifier),
+      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: keys[0]?.cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const account = accounts.get(identifier);
+    if (account == null) return [];
+    return [{
+      privateKey: await importJwk(account.privateJwk, "private"),
+      publicKey: await importJwk(account.publicJwk, "public"),
+    }];
+  });
+
+federation
+  .setInboxListeners("/u/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    const parsed = follow.objectId == null
+      ? null
+      : ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor") return;
+    const account = accounts.get(parsed.identifier);
+    if (account == null || follow.actorId == null) return;
+    account.followers.add(follow.actorId.href);
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      follower,
+      new Accept({ actor: follow.objectId!, object: follow }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const inner = await undo.getObject(ctx);
+    if (!(inner instanceof Follow) || inner.objectId == null) return;
+    const parsed = ctx.parseUri(inner.objectId);
+    if (parsed?.type !== "actor" || undo.actorId == null) return;
+    accounts.get(parsed.identifier)?.followers.delete(undo.actorId.href);
+  });
+
+const app = express();
+app.set("trust proxy", true);
+app.use(express.json());
+app.use(integrateFederation(federation, () => undefined));
+
+app.post("/create", async (req, res) => {
+  const { account } = req.body as { account: string };
+  const rsa = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  accounts.set(account, {
+    username: account,
+    privateJwk: await exportJwk(rsa.privateKey),
+    publicJwk: await exportJwk(rsa.publicKey),
+    followers: new Set(),
+  });
+  res.status(201).json({ ok: true });
+});
+
+app.listen(8080);
+~~~~
+
+The reference code and this rewrite are close to the same size — the win
+is that inbound signatures are verified, `Undo(Follow)` works, outbound
+deliveries are queued and retried, and you are no longer maintaining an
+in-tree copy of the HTTP Signatures spec.
 
 
 From `activitystrea.ms` {#activity-streams}
