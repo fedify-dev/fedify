@@ -170,7 +170,7 @@ import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { integrateFederation } from "@fedify/express";
 
 const federation = createFederation<void>({
-  kv: new MemoryKvStore(), // Swap for PostgresKvStore in production.
+  kv: new MemoryKvStore(), // Swap for a production KvStore (PostgresKvStore, etc.).
 });
 
 // Register dispatchers and listeners on `federation`; see the sections below.
