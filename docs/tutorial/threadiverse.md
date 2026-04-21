@@ -2598,3 +2598,456 @@ Outbound follows work the same way.  Log in as a local user, open
 instance you like), submit the form, and wait a moment — the follow
 row is inserted immediately, and flips to `accepted = 1` once the
 remote server's `Accept(Follow)` reaches our inbox.
+
+
+Threads
+-------
+
+With users and communities wired up on both sides, we can start carrying
+the actual content: discussion threads.  In threadiverse federation a
+thread is a `Page` object wrapped in a `Create` activity sent from the
+author to the community.  The community inbox stores the thread and
+redistributes it to its subscribers as an `Announce(Create(Page))`.  The
+subscribers' inboxes then unwrap the Announce and route the inner Create
+to their own Create handler, which persists the thread.  One pattern,
+two directions.
+
+### The `threads` table
+
+Add a `threads` table to *db/schema.ts*.  Like `keys` and `follows`, it
+uses ActivityPub URIs instead of local foreign keys so the same row
+shape works for threads posted locally and threads we receive via
+federation:
+
+~~~~ typescript [db/schema.ts]
+export const threads = sqliteTable("threads", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  uri: text("uri").notNull().unique(),
+  communityUri: text("community_uri").notNull(),
+  authorUri: text("author_uri").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Thread = typeof threads.$inferSelect;
+export type NewThread = typeof threads.$inferInsert;
+~~~~
+
+The `uri` column has a `UNIQUE` constraint so `onConflictDoNothing()`
+can be used everywhere threads get persisted.  Re-run
+`npm run db:push`.
+
+### Creation form
+
+Create a form at *app/users/\[username]/new-thread/page.tsx* that's
+scoped to a single community:
+
+~~~~ tsx [app/users/[username]/new-thread/page.tsx]
+import { eq } from "drizzle-orm";
+import { notFound, redirect } from "next/navigation";
+import { communities, db } from "@/db";
+import { getCurrentUser } from "@/lib/session";
+import { createThread } from "./actions";
+
+type NewThreadPageProps = {
+  params: Promise<{ username: string }>;
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function NewThreadPage({
+  params,
+  searchParams,
+}: NewThreadPageProps) {
+  const { username: slug } = await params;
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+start+a+thread");
+
+  const community = db
+    .select()
+    .from(communities)
+    .where(eq(communities.slug, slug))
+    .get();
+  if (!community) notFound();
+
+  const { error } = await searchParams;
+  return (
+    <>
+      <h1>New thread in !{community.slug}</h1>
+      {error && <p className="muted">{error}</p>}
+      <form action={createThread.bind(null, slug)}>
+        <label>
+          Title
+          <input type="text" name="title" required maxLength={200} />
+        </label>
+        <label>
+          Body
+          <textarea name="content" rows={8} />
+        </label>
+        <button type="submit">Post thread</button>
+      </form>
+    </>
+  );
+}
+~~~~
+
+> [!NOTE]
+> `createThread.bind(null, slug)` is JavaScript's standard way of
+> partially applying a function.  It produces a new function whose
+> first argument (the slug) is fixed; the `<form action>` handler
+> supplies the remaining `formData`.  Server actions are ordinary
+> functions, so `bind` works on them like any other.
+
+And wire up the list of threads on the community page so new rows show
+up after redirect.  Extend the existing *app/users/\[username]/page.tsx*
+to query `threads` for the community URI and render them in a simple
+card list, plus a *Start a thread* CTA visible to logged-in users:
+
+~~~~ tsx{1,4,5,47-82} [app/users/[username]/page.tsx]
+import { desc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { communities, db, threads, users } from "@/db";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+type ProfilePageProps = {
+  params: Promise<{ username: string }>;
+};
+
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const { username: identifier } = await params;
+
+  const user = db
+    .select({
+      id: users.id,
+      username: users.username,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.username, identifier))
+    .get();
+  if (user) {
+    return (
+      <>
+        <h1>@{user.username}</h1>
+        <p className="muted">
+          Joined{" "}
+          {user.createdAt.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <p>Threads and replies by this user will appear here.</p>
+      </>
+    );
+  }
+
+  const community = db
+    .select()
+    .from(communities)
+    .where(eq(communities.slug, identifier))
+    .get();
+  if (community) {
+    const currentUser = await getCurrentUser();
+    const origin = await currentOrigin();
+    const communityUri = new URL(`/users/${identifier}`, origin).href;
+    const threadRows = db
+      .select({
+        id: threads.id,
+        uri: threads.uri,
+        title: threads.title,
+        authorUri: threads.authorUri,
+        createdAt: threads.createdAt,
+      })
+      .from(threads)
+      .where(eq(threads.communityUri, communityUri))
+      .orderBy(desc(threads.createdAt))
+      .all();
+
+    return (
+      <>
+        <h1>!{community.slug}</h1>
+        <h2 style={{ fontWeight: "normal", marginTop: 0 }}>{community.name}</h2>
+        {community.description && <p>{community.description}</p>}
+        <p className="muted">
+          Created{" "}
+          {community.createdAt.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        {currentUser && (
+          <p>
+            <Link
+              href={`/users/${community.slug}/new-thread`}
+              className="button"
+            >
+              Start a thread
+            </Link>
+          </p>
+        )}
+        <h3>Threads</h3>
+        {threadRows.length === 0 ? (
+          <p className="muted">No threads yet. Be the first.</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {threadRows.map((t) => (
+              <li key={t.id} className="card">
+                <h4 style={{ margin: 0 }}>{t.title}</h4>
+                <p className="muted">
+                  Posted {t.createdAt.toLocaleDateString("en-US")} by{" "}
+                  <code>{t.authorUri}</code>
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
+  }
+
+  notFound();
+}
+~~~~
+
+### Publishing a create(page)
+
+The server action does two things: insert the row locally, and federate
+a `Create(Page)` to the community.  Write
+*app/users/\[username]/new-thread/actions.ts*:
+
+~~~~ typescript [app/users/[username]/new-thread/actions.ts]
+"use server";
+
+import { Create, Page, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { communities, db, threads } from "@/db";
+import federation from "@/federation";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+export async function createThread(
+  slug: string,
+  formData: FormData,
+): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+start+a+thread");
+
+  const community = db
+    .select()
+    .from(communities)
+    .where(eq(communities.slug, slug))
+    .get();
+  if (!community) redirect(`/users/${slug}?error=No+such+community`);
+
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  if (!title) redirect(`/users/${slug}/new-thread?error=Title+is+required`);
+
+  const origin = await currentOrigin();
+  const ctx = federation.createContext(origin, undefined);
+  const communityActorUri = ctx.getActorUri(slug);
+  const communityFollowersUri = ctx.getFollowersUri(slug);
+  const authorUri = ctx.getActorUri(user.username);
+  const published = new Date();
+
+  const inserted = db
+    .insert(threads)
+    .values({
+      uri: `urn:threadiverse:pending:${Date.now()}`,
+      communityUri: communityActorUri.href,
+      authorUri: authorUri.href,
+      title,
+      content,
+      createdAt: published,
+    })
+    .returning({ id: threads.id })
+    .get();
+
+  const threadUri = new URL(`/users/${slug}/threads/${inserted.id}`, origin);
+  db.update(threads)
+    .set({ uri: threadUri.href })
+    .where(eq(threads.id, inserted.id))
+    .run();
+
+  const page = new Page({
+    id: threadUri,
+    name: title,
+    content: content || undefined,
+    attribution: authorUri,
+    audience: communityActorUri,
+    tos: [communityActorUri],
+    ccs: [PUBLIC_COLLECTION, communityFollowersUri],
+  });
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    {
+      id: communityActorUri,
+      inboxId: ctx.getInboxUri(slug),
+      endpoints: { sharedInbox: ctx.getInboxUri() },
+    },
+    new Create({
+      id: new URL("#create", threadUri),
+      actor: authorUri,
+      object: page,
+      tos: [communityActorUri],
+      ccs: [PUBLIC_COLLECTION, communityFollowersUri],
+    }),
+  );
+
+  redirect(`/users/${slug}`);
+}
+~~~~
+
+A few things to notice:
+
+ -  The thread is inserted with a placeholder `urn:threadiverse:pending:*`
+    URI so we can get the row's `id` back from `returning`; then we build
+    the canonical `threadUri` from that id and update the row.  We can't
+    compute the URI before inserting because we don't know the id yet.
+ -  The `Page` object declares the thread: `attribution` (author),
+    `audience` (community), `to` (community), `cc` (public + community
+    followers).  That's the conventional threadiverse audience pattern.
+ -  We pass a plain recipient object (`{ id, inboxId, endpoints }`) to
+    `sendActivity` instead of looking up the community actor again.
+    For the local case we already know the URIs, and skipping the
+    extra HTTP lookup avoids a pointless loopback.
+
+### Community-side: Create handler and announce fan-out
+
+Now the inbox side.  When the Create lands in the community inbox, the
+community persists the thread and re-announces it to all its followers.
+Extend *federation/index.ts* `setInboxListeners()`:
+
+~~~~ typescript [federation/index.ts]
+  .on(Create, async (ctx, create) => {
+    if (!create.actorId) return;
+    const object = await create.getObject(ctx);
+    if (!(object instanceof Page)) return;
+    if (!object.id) return;
+
+    const communityUri = object.audienceId ?? create.toIds[0];
+    if (!communityUri) return;
+
+    db.insert(threads)
+      .values({
+        uri: object.id.href,
+        communityUri: communityUri.href,
+        authorUri: create.actorId.href,
+        title: object.name?.toString() ?? "(untitled)",
+        content: object.content?.toString() ?? "",
+        createdAt: object.published
+          ? new Date(object.published.epochMilliseconds)
+          : new Date(),
+      })
+      .onConflictDoNothing()
+      .run();
+
+    const parsed = ctx.parseUri(communityUri);
+    if (parsed?.type !== "actor") return;
+    const localCommunity = db
+      .select({ slug: communities.slug })
+      .from(communities)
+      .where(eq(communities.slug, parsed.identifier))
+      .get();
+    if (!localCommunity) return;
+
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      "followers",
+      new Announce({
+        id: new URL(
+          `#announce/${encodeURIComponent(object.id.href)}`,
+          communityUri,
+        ),
+        actor: communityUri,
+        object: create,
+        tos: [ctx.getFollowersUri(parsed.identifier)],
+        ccs: [PUBLIC_COLLECTION],
+      }),
+      { preferSharedInbox: true },
+    );
+  })
+~~~~
+
+Important details:
+
+ -  The handler works both for directly-delivered Creates (our own user
+    posted) and for Creates pulled out of an Announce (a follower of a
+    remote community).  In the first case the community is local, so
+    we Announce.  In the second case `localCommunity` is null, the
+    handler returns early, and the thread is just stored.
+ -  `onConflictDoNothing()` on the insert is what keeps optimistic
+    local inserts (from the Create action above) and the inbox insert
+    from stepping on each other: the URI is the same, so the second
+    insert is a no-op.
+ -  `sendActivity(..., "followers", ...)` resolves to the
+    `setFollowersDispatcher` we wrote in Ch. 14, giving Fedify the
+    list of recipient inboxes.  `preferSharedInbox: true` collapses
+    delivery to each host's shared inbox instead of per-actor inboxes
+    when possible.
+
+### Follower-side: Announce router
+
+The mirror half: when a follower receives `Announce(Create(Page))` from
+a community, we unwrap the Announce and let the same Create handler
+store the thread.  `ctx.routeActivity` is the right tool: it verifies
+the enclosed activity's signature (it must either be signed by its
+actor or come from its actor's origin) before routing, so a malicious
+Announce can't smuggle in a fake thread:
+
+~~~~ typescript [federation/index.ts]
+  .on(Announce, async (ctx, announce) => {
+    const object = await announce.getObject(ctx);
+    if (object instanceof Activity) {
+      await ctx.routeActivity(ctx.recipient, object);
+    }
+  });
+~~~~
+
+That's it.  With the Announce listener in place, the same Create
+handler that stored a locally-originated thread now also stores threads
+that flow in via federation.
+
+### Testing
+
+There are three useful end-to-end tests for this chapter:
+
+1.  **Local only.**  In one browser tab, log in as `alice`, create a
+    community and post a thread in it.  Refresh the community page;
+    the thread appears in the list.  The `threads` table has one row
+    whose `uri` is a full absolute URL, whose `community_uri` matches
+    the actor URI of the community, and whose `author_uri` matches
+    the actor URI of the logged-in user.
+
+2.  **Local community federates outbound.**  Have ActivityPub.Academy
+    follow your local community (repeating the Ch. 14 test), then
+    create another thread.  Mastodon-family servers (Academy
+    included) don't render `Page` objects in their timelines — that's
+    a Mastodon limitation, not a bug — but your community's outbound
+    Announce is still enqueued and delivered.  You can see the
+    outbound HTTP signatures in your dev server logs.
+
+3.  **Remote community federates inbound.**  Find a real Lemmy
+    community (for example `!fediverse@lemmy.ml`), open the `/follow`
+    page, and subscribe.  Once Lemmy accepts the follow, any post
+    that community makes from that point on appears in your
+    `threads` table within a few seconds of the poster hitting
+    publish on the Lemmy side.
+
+![Screenshot: Pictures community page with one federated thread listed](./threadiverse/community-with-thread.png)
+
+> [!TIP]
+> To test case 3, paste a Lemmy community handle into the `/follow`
+> form, then watch the dev server logs for an inbound
+> `Announce(Create(Page))`.  If nothing arrives, check that your
+> tunnel is still up (Cloudflare Tunnel in particular will keep
+> `cloudflared` running after the connection drops silently) and
+> that the Lemmy community actually has new posts.
