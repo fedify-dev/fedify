@@ -441,7 +441,7 @@ The `Note` type is the most common object type for short posts.  In Mastodon,
 the `content` property becomes the post body, the `summary` property becomes a
 content warning, and `attachments` are rendered below the body.
 
-~~~~ typescript{8-27} twoslash
+~~~~ typescript{4-23} twoslash
 import { Hashtag, Image, Mention, Note } from "@fedify/vocab";
 // ---cut-before---
 new Note({
@@ -479,3 +479,39 @@ Mastodon:
 
 ![Screenshot: A note with a content warning and an attached image in
 Mastodon](pragmatics/mastodon-note.png)
+
+### `Article`: Long-form posts
+
+The `Article` type is commonly used for long-form posts such as blog entries.
+In Mastodon, the `name` property is displayed as the title, the `url` property
+is shown as the canonical link, and `tags` can still surface hashtags below the
+post body.
+
+~~~~ typescript{4-13} twoslash
+import { Article, Hashtag } from "@fedify/vocab";
+// ---cut-before---
+new Article({
+  name: "Pragmatics of `Article` objects",
+  url: new URL("https://example.com/blog/pragmatics-article"),
+  content:
+    "<p>This article demonstrates how a long-form object can expose a title " +
+    "and a canonical permalink.</p>",
+  tags: [
+    new Hashtag({
+      href: new URL("https://example.com/tags/activitypub"),
+      name: "#activitypub",
+    }),
+  ],
+})
+~~~~
+
+> [!NOTE]
+> Many ActivityPub implementations render `Article` objects more compactly than
+> `Note` objects.  If you want a title-like presentation, populate the `name`
+> property instead of relying on the body alone.
+
+For example, the above `Article` object is displayed like the following in
+Mastodon:
+
+![Screenshot: An article object with a title, canonical link, and hashtag in
+Mastodon](pragmatics/mastodon-article.png)
