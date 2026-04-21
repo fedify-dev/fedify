@@ -138,7 +138,7 @@ fedify init astro-blog
 ~~~~
 
 When `fedify init` runs, it asks a series of questions.
-Select *Bun*, *Astro*, *In-memory*, and *In-process* in order:
+Select *Astro*, *bun*, *in-process*, and *in-memory* in order:
 
 ~~~~ console
              ___      _____        _ _  __
@@ -148,33 +148,34 @@ Select *Bun*, *Astro*, *In-memory*, and *In-process* in order:
   <__.|_|-|_|        |_|  \___|\__,_|_|_|  \__, |
                                            |___/
 
-? Choose the JavaScript runtime to use
-  Deno
-❯ Bun
-  Node.js
-
-? Choose the package manager to use
-❯ bun
-
-? Choose the web framework to integrate Fedify with
+? Choose the web framework to use
   Bare-bones
   Hono
   Nitro
-  Next
-  Elysia
+  Next.js
+  ElysiaJS
 ❯ Astro
   Express
 
-? Choose the key–value store to use for caching
-❯ In-memory
-  Redis
-  PostgreSQL
+? Choose the package manager to use
+  deno
+  pnpm
+❯ bun
+  yarn
+  npm
 
-? Choose the message queue to use for background jobs
-❯ In-process
-  Redis
-  PostgreSQL
-  AMQP (e.g., RabbitMQ)
+? Choose the message queue to use
+❯ in-process
+  redis
+  postgres
+  mysql
+  amqp
+
+? Choose the key-value store to use
+❯ in-memory
+  redis
+  postgres
+  mysql
 ~~~~
 
 > [!NOTE]
@@ -204,6 +205,19 @@ After a moment, you'll have a working project with the following structure:
 Because we're using TypeScript instead of plain JavaScript, source files have
 *.ts* or *.astro* extensions.  We'll cover the TypeScript-specific syntax you
 need as we go along.
+
+### Visual Studio Code
+
+We recommend using [Visual Studio Code] while following this tutorial.
+TypeScript tooling works best in VS Code, and the generated project already
+includes settings for it.
+
+After [installing VS Code], open the project folder: *File* → *Open Folder…*.
+
+If a popup asks you to install the recommended extensions, click *Install
+All*.  This installs the [Biome extension] (formats and lints your code on
+save) and the [Astro extension] (syntax highlighting and IntelliSense for
+*.astro* files).
 
 Let's verify the project works.  First, install the dependencies:
 
@@ -267,22 +281,11 @@ the fediverse.
 
 Stop the dev server with <kbd>Ctrl</kbd>+<kbd>C</kbd> for now.
 
-[actor]: https://www.w3.org/TR/activitypub/#actors
-
-### Visual Studio Code
-
-We recommend using [Visual Studio Code] while following this tutorial.
-TypeScript tooling works best in VS Code, and the generated project already
-includes settings for it.
-
-After [installing VS Code], open the project folder: *File* → *Open Folder…*.
-
-If a popup asks you to install the recommended Biome extension, click
-*Install*.  Biome will automatically format your code on save, so you don't
-need to worry about indentation or code style.
-
 [Visual Studio Code]: https://code.visualstudio.com/
 [installing VS Code]: https://code.visualstudio.com/docs/setup/setup-overview
+[Biome extension]: https://marketplace.visualstudio.com/items?itemName=biomejs.biome
+[Astro extension]: https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode
+[actor]: https://www.w3.org/TR/activitypub/#actors
 
 
 Prerequisites
@@ -1073,7 +1076,7 @@ Together they ensure Fedify generates fully correct actor and object URLs.
 Also update *astro.config.ts* to allow requests from external hostnames
 (the tunnel assigns a different hostname than `localhost`):
 
-~~~~ typescript{9-17} [astro.config.ts]
+~~~~ typescript{9-18} [astro.config.ts]
 import node from "@astrojs/node";
 import { fedifyIntegration } from "@fedify/astro";
 import { defineConfig } from "astro/config";
@@ -1910,7 +1913,25 @@ When a remote server receives a `Create(Article)` activity, it will
 dereference the `Article.id` URL to fetch the full object.  Without an object
 dispatcher, Fedify would return 404.
 
-Add the following dispatcher to *src/federation.ts* (just before
+First, add two new imports to the top of *src/federation.ts*:
+
+ -  `getCollection` from `astro:content` (to read the post collection)
+ -  `Article` added to the existing `@fedify/vocab` import
+
+~~~~ typescript twoslash
+// @noErrors
+import { getCollection } from "astro:content";
+import {
+  Accept,
+  Article,
+  Endpoints,
+  Follow,
+  Person,
+  Undo,
+} from "@fedify/vocab";
+~~~~
+
+Then add the following dispatcher to *src/federation.ts* (just before
 `export default federation`):
 
 ~~~~ typescript twoslash [src/federation.ts]
