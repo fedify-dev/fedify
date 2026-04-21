@@ -640,7 +640,7 @@ dormant bucket for production planning.
 
 ### When to migrate
 
- -  No commits in several years; the README itself still says “this project
+ -  No updates in several years; the README itself still says “this project
     is still incomplete.”
  -  There are no shipped example apps in the monorepo and no public
     production users, so community knowledge for debugging is thin.
