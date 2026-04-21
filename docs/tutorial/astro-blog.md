@@ -1434,6 +1434,37 @@ Then tell TypeScript to include those declarations by adding a
 }
 ~~~~
 
+Vite's dev server—used by `bun run dev`—doesn't automatically recognize `bun:`
+protocol imports as Bun built-ins.  Tell it to treat `bun:sqlite` as an
+external (i.e., don't try to bundle it) by updating *astro.config.ts*:
+
+~~~~ typescript{13-15} [astro.config.ts]
+import node from "@astrojs/node";
+import { fedifyIntegration } from "@fedify/astro";
+import { defineConfig } from "astro/config";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: node({ mode: "standalone" }),
+  security: {
+    allowedDomains: [{}],
+  },
+  vite: {
+    ssr: {
+      external: ["bun:sqlite"],
+    },
+    server: {
+      allowedHosts: true,
+    },
+  },
+});
+~~~~
+
+Without this, `bun run dev` would fail to resolve `bun:sqlite` and throw a
+module-not-found error when a request first hits server-side code that imports
+*src/lib/db.ts*.
+
 ### Creating the database module
 
 Create a new file *src/lib/db.ts* that opens the database and defines the
