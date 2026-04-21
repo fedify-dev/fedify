@@ -441,16 +441,16 @@ The `Note` type is the most common object type for short posts.  In Mastodon,
 the `content` property becomes the post body, the `summary` property becomes a
 content warning, and `attachments` are rendered below the body.
 
-~~~~ typescript{4-23} twoslash
+~~~~ typescript twoslash
 import { Hashtag, Image, Mention, Note } from "@fedify/vocab";
 // ---cut-before---
 new Note({
-  content:
+  content:  // [!code highlight]
     '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
     '@friend@example.com</a>! This note demonstrates ' +
     '<a href="https://example.com/tags/fedify">#fedify</a>.</p>',
-  summary: "CW: Rendering pragmatics demo",
-  attachments: [
+  summary: "CW: Rendering pragmatics demo",  // [!code highlight]
+  attachments: [  // [!code highlight]
     new Image({
       url: new URL("https://picsum.photos/id/237/1200/800"),
       mediaType: "image/jpeg",
@@ -487,16 +487,16 @@ In Mastodon, the `name` property is displayed as the title, the `url` property
 is shown as the canonical link, and `tags` can still surface hashtags below the
 post body.
 
-~~~~ typescript{4-13} twoslash
+~~~~ typescript twoslash
 import { Article, Hashtag } from "@fedify/vocab";
 // ---cut-before---
 new Article({
-  name: "Pragmatics of `Article` objects",
-  url: new URL("https://example.com/blog/pragmatics-article"),
-  content:
+  name: "Pragmatics of `Article` objects",  // [!code highlight]
+  url: new URL("https://example.com/blog/pragmatics-article"),  // [!code highlight]
+  content:  // [!code highlight]
     "<p>This article demonstrates how a long-form object can expose a title " +
     "and a canonical permalink.</p>",
-  tags: [
+  tags: [  // [!code highlight]
     new Hashtag({
       href: new URL("https://example.com/tags/activitypub"),
       name: "#activitypub",
@@ -523,13 +523,13 @@ from `content`, the poll choices come from `exclusiveOptions` or
 `inclusiveOptions`, and metadata such as `voters` and `endTime` are displayed
 below the choices.
 
-~~~~ typescript{4-20} twoslash
+~~~~ typescript twoslash
 import { Collection, Note, Question } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 new Question({
-  content: "<p>Which pragmatics example should the manual explain first?</p>",
-  exclusiveOptions: [
+  content: "<p>Which pragmatics example should the manual explain first?</p>",  // [!code highlight]
+  exclusiveOptions: [  // [!code highlight]
     new Note({ name: "A short note", replies: new Collection({ totalItems: 4 }) }),
     new Note({ name: "A long article", replies: new Collection({ totalItems: 2 }) }),
     new Note({
@@ -537,8 +537,8 @@ new Question({
       replies: new Collection({ totalItems: 7 }),
     }),
   ],
-  voters: 13,
-  endTime: Temporal.Instant.from("2026-04-28T12:00:00Z"),
+  voters: 13,  // [!code highlight]
+  endTime: Temporal.Instant.from("2026-04-28T12:00:00Z"),  // [!code highlight]
 })
 ~~~~
 

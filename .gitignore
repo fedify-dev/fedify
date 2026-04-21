@@ -1,5 +1,6 @@
 .claude/settings.local.json
 .DS_Store
+.playwright-mcp/
 .pnpm-store/
 .vocab-codegen.lock/
 dist/
@@ -12,6 +13,7 @@ test/smoke/mastodon/.certs/
 test/smoke/mastodon/mastodon.env
 test/smoke/sharkey/.certs/
 test/smoke/sharkey/sharkey.env
+tmp/
 smoke.log
 t.ts
 t2.ts
