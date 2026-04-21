@@ -1770,3 +1770,457 @@ can actually subscribe.
 [ngrok]: https://ngrok.com/
 [*x-forwarded-fetch*]: https://github.com/dahlia/x-forwarded-fetch
 [ActivityPub.Academy]: https://activitypub.academy/
+
+
+Communities as group actors
+---------------------------
+
+In the threadiverse, the unit of organisation is the *community*: a topic
+bucket that local and remote users can subscribe to, post threads into, and
+reply inside.  Every community is itself an actor, just like a user, but
+represented as a [`Group`] in ActivityPub.  This chapter adds communities
+to the local database, gives them a UI, and teaches Fedify to serve them
+as `Group` actors alongside the `Person` actors we already have.
+
+[`Group`]: ../manual/pragmatics.md#group
+
+### The `communities` table
+
+Add a new table to *db/schema.ts*:
+
+~~~~ typescript [db/schema.ts]
+export const communities = sqliteTable("communities", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  creatorId: integer("creator_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Community = typeof communities.$inferSelect;
+export type NewCommunity = typeof communities.$inferInsert;
+~~~~
+
+`slug` is the machine-readable identifier, the part that appears in URLs
+and in the federated handle `!slug@host`.  `name` is the human-readable
+title, displayed to users.  `creator_id` is a foreign key to the local
+user who opened the community.
+
+Apply it:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+### Shared identifier namespace
+
+Fedify's `setActorDispatcher` registers exactly one URL template per
+`Federation` instance.  The scaffold uses `/users/{identifier}` for
+`Person` actors, and we'll reuse the same template for `Group` actors
+too, because Fedify routes every actor through the same dispatcher.
+
+That means a username like `alice` and a community slug like `alice`
+can't both exist: when someone fetches `/users/alice`, the dispatcher
+has to pick *one* interpretation.  Put the uniqueness check in a
+helper so signup and community creation can share it.  Create
+*lib/identifiers.ts*:
+
+~~~~ typescript [lib/identifiers.ts]
+import "server-only";
+
+import { eq } from "drizzle-orm";
+import { communities, db, users } from "@/db";
+
+export const IDENTIFIER_PATTERN = /^[a-zA-Z0-9_]{2,32}$/;
+
+export function isValidIdentifier(identifier: string): boolean {
+  return IDENTIFIER_PATTERN.test(identifier);
+}
+
+export function isIdentifierTaken(identifier: string): boolean {
+  const user = db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, identifier))
+    .get();
+  if (user) return true;
+  const community = db
+    .select({ id: communities.id })
+    .from(communities)
+    .where(eq(communities.slug, identifier))
+    .get();
+  return community != null;
+}
+~~~~
+
+Then rewrite the signup action to consult it (replace the hand-rolled
+regex and the direct user lookup):
+
+~~~~ typescript{5,10,13} [app/signup/actions.ts]
+"use server";
+
+import { redirect } from "next/navigation";
+import { db, users } from "@/db";
+import { hashPassword } from "@/lib/auth";
+import { isIdentifierTaken, isValidIdentifier } from "@/lib/identifiers";
+
+export async function signup(formData: FormData): Promise<void> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (!isValidIdentifier(username)) {
+    redirect("/signup?error=Invalid+username");
+  }
+  if (password.length < 8) {
+    redirect("/signup?error=Password+must+be+at+least+8+characters");
+  }
+  if (isIdentifierTaken(username)) {
+    redirect("/signup?error=Username+already+taken");
+  }
+
+  const passwordHash = await hashPassword(password);
+  db.insert(users).values({ username, passwordHash }).run();
+
+  redirect("/login?message=Account+created,+please+log+in");
+}
+~~~~
+
+### Community creation form
+
+Create *app/communities/new/page.tsx*.  It's an async server component
+that redirects anonymous visitors to `/login` and otherwise renders a
+slug + name + description form:
+
+~~~~ tsx [app/communities/new/page.tsx]
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
+import { createCommunity } from "./actions";
+
+type NewCommunityPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function NewCommunityPage({
+  searchParams,
+}: NewCommunityPageProps) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+create+a+community");
+  const { error } = await searchParams;
+  return (
+    <>
+      <h1>Create a community</h1>
+      <p className="muted">
+        You are opening this community as <strong>@{user.username}</strong>.
+      </p>
+      {error && <p className="muted">{error}</p>}
+      <form action={createCommunity}>
+        <label>
+          Slug
+          <input
+            type="text"
+            name="slug"
+            required
+            pattern="[a-zA-Z0-9_]{2,32}"
+            title="2–32 letters, digits, or underscores"
+          />
+        </label>
+        <label>
+          Name
+          <input type="text" name="name" required maxLength={64} />
+        </label>
+        <label>
+          Description
+          <textarea name="description" maxLength={500} />
+        </label>
+        <button type="submit">Create community</button>
+      </form>
+      <p className="muted">
+        The slug becomes the community's federated handle, e.g.{" "}
+        <code>!slug@your-host</code>.
+      </p>
+    </>
+  );
+}
+~~~~
+
+And the server action in *app/communities/new/actions.ts*:
+
+~~~~ typescript [app/communities/new/actions.ts]
+"use server";
+
+import { redirect } from "next/navigation";
+import { communities, db } from "@/db";
+import { isIdentifierTaken, isValidIdentifier } from "@/lib/identifiers";
+import { getCurrentUser } from "@/lib/session";
+
+export async function createCommunity(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+create+a+community");
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+
+  if (!isValidIdentifier(slug)) {
+    redirect("/communities/new?error=Invalid+slug");
+  }
+  if (!name) {
+    redirect("/communities/new?error=Name+is+required");
+  }
+  if (isIdentifierTaken(slug)) {
+    redirect(
+      `/communities/new?error=${encodeURIComponent(
+        "Slug is already taken by a user or another community",
+      )}`,
+    );
+  }
+
+  db.insert(communities)
+    .values({ slug, name, description, creatorId: user.id })
+    .run();
+
+  redirect(`/users/${slug}`);
+}
+~~~~
+
+The action re-checks the session (never trust that a client-side
+redirect ran), validates the slug and name, ensures the slug doesn't
+collide with a username or another community, inserts the row, and
+redirects to the community's URL.
+
+Log in, open `http://localhost:3000/communities/new`, and fill the
+form:
+
+![Screenshot: the new-community form](./threadiverse/new-community-form.png)
+
+Submitting redirects to `/users/<slug>`, which 404s for now; the
+profile page only knows about users.  The next section fixes that.
+
+### Rendering the community page
+
+Teach the profile page to fall through to `communities` when the
+identifier doesn't match a user.  Rewrite *app/users/\[username]/page.tsx*:
+
+~~~~ tsx [app/users/[username]/page.tsx]
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { communities, db, users } from "@/db";
+
+type ProfilePageProps = {
+  params: Promise<{ username: string }>;
+};
+
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const { username: identifier } = await params;
+
+  const user = db
+    .select({
+      id: users.id,
+      username: users.username,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.username, identifier))
+    .get();
+  if (user) {
+    return (
+      <>
+        <h1>@{user.username}</h1>
+        <p className="muted">
+          Joined{" "}
+          {user.createdAt.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <p>Threads and replies by this user will appear here.</p>
+      </>
+    );
+  }
+
+  const community = db
+    .select()
+    .from(communities)
+    .where(eq(communities.slug, identifier))
+    .get();
+  if (community) {
+    return (
+      <>
+        <h1>!{community.slug}</h1>
+        <h2 style={{ fontWeight: "normal", marginTop: 0 }}>{community.name}</h2>
+        {community.description && <p>{community.description}</p>}
+        <p className="muted">
+          Created{" "}
+          {community.createdAt.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <p>Threads posted in this community will appear here.</p>
+      </>
+    );
+  }
+
+  notFound();
+}
+~~~~
+
+Reload `/users/<slug>` after creating a community and the page now
+renders the community's slug, name, description, and a placeholder
+for future threads:
+
+![Screenshot: the community page](./threadiverse/community-page.png)
+
+### The `Group` actor dispatcher
+
+Now the federation side.  Teach the actor dispatcher to return a
+`Group` when the identifier belongs to a community, and extend the
+key pairs dispatcher so community slugs also get lazily generated
+keys.  Replace the body of *federation/index.ts* with:
+
+~~~~ typescript [federation/index.ts]
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Endpoints, Group, Person } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { communities, db, keys, users } from "@/db";
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const user = db
+      .select()
+      .from(users)
+      .where(eq(users.username, identifier))
+      .get();
+    if (user) {
+      const keyPairs = await ctx.getActorKeyPairs(identifier);
+      return new Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+        name: identifier,
+        inbox: ctx.getInboxUri(identifier),
+        endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+        url: new URL(`/users/${identifier}`, ctx.url),
+        publicKey: keyPairs[0]?.cryptographicKey,
+        assertionMethods: keyPairs.map((k) => k.multikey),
+      });
+    }
+
+    const community = db
+      .select()
+      .from(communities)
+      .where(eq(communities.slug, identifier))
+      .get();
+    if (community) {
+      const keyPairs = await ctx.getActorKeyPairs(identifier);
+      return new Group({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+        name: community.name,
+        summary: community.description || undefined,
+        inbox: ctx.getInboxUri(identifier),
+        endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+        url: new URL(`/users/${identifier}`, ctx.url),
+        publicKey: keyPairs[0]?.cryptographicKey,
+        assertionMethods: keyPairs.map((k) => k.multikey),
+      });
+    }
+
+    return null;
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const user = db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, identifier))
+      .get();
+    const community = user
+      ? null
+      : db
+          .select({ id: communities.id })
+          .from(communities)
+          .where(eq(communities.slug, identifier))
+          .get();
+    if (!user && !community) return [];
+
+    const pairs: CryptoKeyPair[] = [];
+    for (const keyType of ["RSASSA-PKCS1-v1_5", "Ed25519"] as const) {
+      const existing = db
+        .select()
+        .from(keys)
+        .where(
+          and(eq(keys.actorIdentifier, identifier), eq(keys.type, keyType)),
+        )
+        .get();
+      if (existing) {
+        pairs.push({
+          privateKey: await importJwk(
+            JSON.parse(existing.privateKey),
+            "private",
+          ),
+          publicKey: await importJwk(JSON.parse(existing.publicKey), "public"),
+        });
+      } else {
+        const pair = await generateCryptoKeyPair(keyType);
+        db.insert(keys)
+          .values({
+            actorIdentifier: identifier,
+            type: keyType,
+            privateKey: JSON.stringify(await exportJwk(pair.privateKey)),
+            publicKey: JSON.stringify(await exportJwk(pair.publicKey)),
+          })
+          .run();
+        pairs.push(pair);
+      }
+    }
+    return pairs;
+  });
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+export default federation;
+~~~~
+
+Two dispatchers, one URL template, two actor types.
+
+### Testing the group federation
+
+Bring up `fedify tunnel 3000` again if you stopped it, and with the
+tunnel URL fresh, fetch the community actor:
+
+~~~~ sh
+curl -H 'Accept: application/activity+json' \
+  https://<your-tunnel>/users/pictures | jq '.type, .name, .preferredUsername'
+~~~~
+
+The response says `"type": "Group"`, `"name": "Pictures"`,
+`"preferredUsername": "pictures"`.
+
+Paste `@pictures@<your-tunnel>` into ActivityPub.Academy's search box
+and the community shows up, just like a user did in the last chapter:
+
+![Screenshot: the academy found @pictures via WebFinger](./threadiverse/academy-search-community.png)
+
+Academy, like Mastodon, calls this a *group* in its UI.  Threadiverse
+software that speaks the same protocol (Lemmy, Mbin, NodeBB) will
+recognise it as a community they can subscribe to.  In the next two
+sections we'll add the follow half of the story: receiving and
+accepting Follow requests.
