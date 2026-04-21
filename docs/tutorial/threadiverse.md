@@ -367,3 +367,247 @@ We'll add logging back later when there's something worth logging.
 
 [ESLint]: https://eslint.org/
 [Biome]: https://biomejs.dev/
+
+
+Layout and navigation
+---------------------
+
+Every page we build in the rest of the tutorial shares the same shell: a top
+navigation bar with a brand link, a centered content area underneath it, and
+a single colour palette.  We'll set that up once now so later chapters don't
+have to re-specify it on every page.
+
+Open *app/layout.tsx* and replace the `create-next-app` boilerplate with a
+minimal root layout:
+
+~~~~ tsx [app/layout.tsx]
+import type { Metadata } from "next";
+import Link from "next/link";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Threadiverse",
+  description: "A small federated community platform built with Fedify.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <nav className="site-nav">
+          <div className="inner">
+            <Link href="/" className="brand">
+              Threadiverse
+            </Link>
+            <ul>
+              <li>
+                <Link href="/">Home</Link>
+              </li>
+              <li>
+                <Link href="/communities/new">New community</Link>
+              </li>
+            </ul>
+          </div>
+        </nav>
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+~~~~
+
+> [!NOTE]
+> A *root layout* in the [Next.js App Router] is the top-most React tree that
+> wraps every page under *app/*.  Whatever it renders shows up on every
+> route.  The `children` prop is the page for the current URL, rendered in
+> place.  We haven't written any pages yet besides the home page, but as soon
+> as we do they'll all inherit this nav bar.
+
+Replace *app/page.tsx* with a temporary welcome blurb.  This is the page
+rendered at the root URL (`/`).  We'll revisit it in a later chapter and turn
+it into the *subscribed feed* once users can follow communities:
+
+~~~~ tsx [app/page.tsx]
+export default function Home() {
+  return (
+    <>
+      <h1>Welcome to Threadiverse</h1>
+      <p>
+        This is a small federated community platform built with Fedify and
+        Next.js.  In the next chapters of the tutorial we'll add user
+        accounts, communities, threads, replies, and votes.
+      </p>
+    </>
+  );
+}
+~~~~
+
+Next, replace the whole contents of *app/globals.css* with the small
+stylesheet below.  You can copy and paste it verbatim; we won't touch CSS
+again for the rest of the tutorial:
+
+~~~~ css [app/globals.css]
+:root {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: #e5e5e5;
+  --color-text: #1a1a1a;
+  --color-muted: #666;
+  --color-accent: #4a6cf7;
+  --color-accent-hover: #3453d8;
+  --radius: 6px;
+  --space: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+nav.site-nav {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem var(--space);
+}
+
+nav.site-nav .inner {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+nav.site-nav .brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+nav.site-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+}
+
+main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space);
+}
+
+h1,
+h2,
+h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space);
+  margin-bottom: var(--space);
+}
+
+.muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+label {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+input,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--color-surface);
+}
+
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+button,
+.button {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover,
+.button:hover {
+  background: var(--color-accent-hover);
+  text-decoration: none;
+  color: #fff;
+}
+
+.reply-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reply-tree .reply-tree {
+  margin-left: 1.5rem;
+  border-left: 2px solid var(--color-border);
+  padding-left: 1rem;
+}
+~~~~
+
+Finally, delete the four leftover files that `create-next-app` shipped but
+we're no longer using:
+
+~~~~ sh
+rm app/page.module.css
+rm public/file.svg public/globe.svg public/next.svg public/vercel.svg public/window.svg
+~~~~
+
+Reload `http://localhost:3000` in your browser.  You should see a nav bar
+with a *Threadiverse* brand on the left, two links (*Home* and
+*New community*), and the welcome blurb below it.  Clicking *New community*
+will 404 for now; we'll build that page in the *Communities as Group actors*
+chapter.
+
+[Next.js App Router]: https://nextjs.org/docs/app
