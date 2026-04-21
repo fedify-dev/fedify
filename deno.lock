@@ -78,6 +78,7 @@
     "npm:@mjackson/node-fetch-server@0.7": "0.7.0",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.17_reflect-metadata@0.2.2_rxjs@7.8.2",
+    "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.2__yaml@2.8.3",
     "npm:@nuxt/kit@4": "4.4.2",
     "npm:@nuxt/schema@4": "4.4.2",
     "npm:@nuxt/schema@^4.4.0": "4.4.2",
@@ -2426,6 +2427,14 @@
         "fastq"
       ]
     },
+    "@nurodev/astro-bun@2.1.2_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.2__yaml@2.8.3": {
+      "integrity": "sha512-CXzh0q+jOodmqtZ/YMyS7DTqmFC2zafv4C7GQMBDoBDRcx7CONzxCk/rK2uaKHoh3+AvSPo3hXnTp6oLfIpl5g==",
+      "dependencies": [
+        "astro",
+        "astro-integration-kit",
+        "zod@4.3.6"
+      ]
+    },
     "@nuxt/kit@4.4.2": {
       "integrity": "sha512-5+IPRNX2CjkBhuWUwz0hBuLqiaJPRoKzQ+SvcdrQDbAyE+VDeFt74VpSFr5/R0ujrK4b+XnSHUJWdS72w6hsog==",
       "dependencies": [
@@ -3770,6 +3779,14 @@
     "astring@1.9.0": {
       "integrity": "sha512-LElXdjswlqjWrPpJFg1Fx4wpkOCxj1TDHlSV4PlaRxHGWko024xICaa97ZkMfs6DRKlCguiAI+rbXv5GWwXIkg==",
       "bin": true
+    },
+    "astro-integration-kit@0.18.0_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.2__yaml@2.8.3": {
+      "integrity": "sha512-Z0QW5IQjosuKQDEGYYkvUX6EhEtrmE4/oViqWz23QveV8U7AuyFsTdg00WRNPevWZl/5a4lLUeDpv4bCRynRRg==",
+      "dependencies": [
+        "astro",
+        "pathe@1.1.2",
+        "recast"
+      ]
     },
     "astro@5.18.1_@types+node@24.12.0_ioredis@5.10.1_tsx@4.21.0_typescript@6.0.2_yaml@2.8.3": {
       "integrity": "sha512-m4VWilWZ+Xt6NPoYzC4CgGZim/zQUO7WFL0RHCH0AiEavF1153iC3+me2atDvXpf/yX4PyGUeD8wZLq1cirT3g==",
@@ -9301,7 +9318,8 @@
         "packageJson": {
           "dependencies": [
             "npm:@astrojs/node@^10.0.3",
-            "npm:@deno/astro-adapter@~0.3.2"
+            "npm:@deno/astro-adapter@~0.3.2",
+            "npm:@nurodev/astro-bun@^2.1.2"
           ]
         }
       },

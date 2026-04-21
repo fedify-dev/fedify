@@ -9,9 +9,8 @@ const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
-  init: async ({ packageManager: pm }) => ({
-    command: Array.from(getAstroInitCommand(pm)),
-    dependencies: pm === "deno"
+  init: async ({ packageManager: pm }) => {
+    const dependencies: Record<string, string> = pm === "deno"
       ? {
         ...defaultDenoDependencies,
         "@deno/astro-adapter": `npm:@deno/astro-adapter@${
@@ -19,35 +18,44 @@ const astroDescription: WebFrameworkDescription = {
         }`,
         "@fedify/astro": PACKAGE_VERSION,
       }
+      : pm === "bun"
+      ? {
+        "@fedify/astro": PACKAGE_VERSION,
+        "@nurodev/astro-bun": deps["npm:@nurodev/astro-bun"],
+      }
       : {
         "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
-        ...(pm !== "bun" &&
-          { "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"] }),
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+      };
+
+    return {
+      command: Array.from(getAstroInitCommand(pm)),
+      dependencies,
+      devDependencies: {
+        ...defaultDevDependencies,
+        ...(pm !== "deno"
+          ? {
+            typescript: deps["npm:typescript"],
+            "@types/node": deps["npm:@types/node@22"],
+          }
+          : {}),
       },
-    devDependencies: {
-      ...defaultDevDependencies,
-      ...(pm !== "deno"
-        ? {
-          typescript: deps["npm:typescript"],
-          "@types/node": deps["npm:@types/node@22"],
-        }
-        : {}),
-    },
-    federationFile: "src/federation.ts",
-    loggingFile: "src/logging.ts",
-    files: {
-      "astro.config.ts": await readTemplate(
-        `astro/astro.config.${pm === "deno" ? "deno" : "node"}.ts`,
-      ),
-      "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
-    },
-    tasks: TASKS[pmToRt(pm)],
-    instruction: getInstruction(pm, 4321),
-  }),
+      federationFile: "src/federation.ts",
+      loggingFile: "src/logging.ts",
+      files: {
+        "astro.config.ts": await readTemplate(
+          `astro/astro.config.${pmToRt(pm)}.ts`,
+        ),
+        "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
+        ...(pm !== "deno" && {
+          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+        }),
+      },
+      tasks: TASKS[pmToRt(pm)],
+      instruction: getInstruction(pm, 4321),
+    };
+  },
 };
 
 export default astroDescription;
@@ -87,7 +95,7 @@ const TASKS = {
   "bun": {
     dev: "bunx astro dev",
     build: "bunx astro build",
-    preview: "bunx astro preview",
+    preview: "bun ./dist/server/entry.mjs",
     lint: "eslint .",
   },
   "node": {

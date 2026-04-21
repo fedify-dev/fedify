@@ -10,6 +10,7 @@
   "npm:@elysiajs/node": "^1.4.5",
   "npm:@hono/node-server": "^1.19.12",
   "npm:@nuxt/kit": "^4.4.2",
+  "npm:@nurodev/astro-bun": "^2.1.2",
   "npm:@sinclair/typebox": "^0.34.49",
   "npm:@solidjs/router": "^0.16.1",
   "npm:@solidjs/start": "^1.3.2",
