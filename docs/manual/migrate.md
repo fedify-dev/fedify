@@ -1708,4 +1708,266 @@ in-tree copy of the HTTP Signatures spec.
 From `activitystrea.ms` {#activity-streams}
 -------------------------------------------
 
-*To be written.*
+[`activitystrea.ms`] by James Snell and Evan Prodromou is the long-standing
+JavaScript builder for ActivityStreams 2 JSON-LD documents.  Unlike the
+other entries in this guide, this migration is pure code: the library does
+nothing beyond constructing and parsing AS2 objects.  There is no
+federation layer to swap out, no data to move, and no external state that
+remote servers have cached about you.  If your code already runs its own
+HTTP signing, inbox dispatch, or delivery loop around `activitystrea.ms`,
+the rest of this guide (especially the [hand-rolled Express
+section](#hand-rolled)) covers that part.
+
+[`activitystrea.ms`]: https://www.npmjs.com/package/activitystrea.ms
+
+### When to migrate
+
+`activitystrea.ms` is *not* dormant.  Evan Prodromou revived it in 2024
+under the Social Web Foundation and continues to publish releases
+(v3.3.2, 2026-04-03).  The reasons to migrate are not maintenance-driven:
+
+ -  *Type safety.*  [`@fedify/vocab`] is TypeScript-first with generated
+    classes, so every property has a type; `activitystrea.ms` is a fluent
+    JavaScript builder with only hand-written typings.
+ -  *Immutability.*  Fedify vocab objects cannot be mutated after
+    construction, which matches how ActivityPub servers tend to think of
+    activities (an activity is what it is once published).
+ -  *Tooling alignment.*  If the rest of your codebase moves to Fedify,
+    keeping two vocabulary libraries is friction; `@fedify/vocab` has
+    feature parity for the common cases and can be used without importing
+    any of the federation machinery.
+
+If you are happy with `activitystrea.ms` and are not moving anything else
+to Fedify, there is no urgent need to switch.  Think of this section as a
+reference for when the rest of your stack is already Fedify.
+
+[`@fedify/vocab`]: https://jsr.io/@fedify/vocab
+
+### Mental-model mapping
+
+| `activitystrea.ms`                                  | `@fedify/vocab`                                               |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| `as.create()`, `as.note()`, `as.person()` factories | `new Create({...})`, `new Note({...})`, `new Person({...})`   |
+| Fluent setters (`.actor(a).object(o)`)              | constructor options object: `{ actor, object }`               |
+| `.publishedNow()`                                   | `published: Temporal.Now.instant()`                           |
+| Mutable builder, `.get()` to freeze                 | immutable classes, `.clone({ ... })` to derive                |
+| `await builder.prettyWrite()`, JSON string          | `JSON.stringify(await obj.toJsonLd(), null, 2)`               |
+| `await builder.export()`, plain object              | `await obj.toJsonLd()`                                        |
+| `as.import(json)`                                   | `await Create.fromJsonLd(json)` (static method on each class) |
+| `as.langmap().set("en", "hi")`                      | `new LanguageString("hi", "en")` from `@fedify/vocab-runtime` |
+| Strings for IRI fields                              | `URL` instances                                               |
+
+### Code migration
+
+#### Constructing a `Create(Note)` activity
+
+With `activitystrea.ms`:
+
+~~~~ javascript
+const as = require("activitystrea.ms");
+
+const doc = await as.create()
+  .id("https://example.com/s/123")
+  .actor("https://example.com/u/alice")
+  .object(
+    as.note()
+      .id("https://example.com/o/456")
+      .content("Hello, world!")
+      .publishedNow(),
+  )
+  .prettyWrite();
+
+console.log(doc);
+~~~~
+
+With `@fedify/vocab`:
+
+~~~~ typescript twoslash
+import { Create, Note } from "@fedify/vocab";
+
+const create = new Create({
+  id: new URL("https://example.com/s/123"),
+  actor: new URL("https://example.com/u/alice"),
+  object: new Note({
+    id: new URL("https://example.com/o/456"),
+    content: "Hello, world!",
+    published: Temporal.Now.instant(),
+  }),
+});
+
+console.log(JSON.stringify(await create.toJsonLd(), null, 2));
+~~~~
+
+Two things change on the vocab side.  IRI fields take `URL` instances, not
+strings; and timestamps use
+[`Temporal.Instant`]
+rather than `Date`, which preserves nanosecond precision and matches the
+JSON-LD serialisation.
+
+#### Serialising to JSON
+
+`activitystrea.ms` has three terminators: `.write()` for a compact JSON
+string, `.prettyWrite()` for pretty-printed JSON, and `.export()` for a
+plain JavaScript object:
+
+~~~~ javascript
+const compact = await builder.write();
+const pretty = await builder.prettyWrite();
+const plainObject = await builder.export();
+~~~~
+
+`@fedify/vocab` returns the plain object from
+[`toJsonLd()`](./vocab.md#json-ld) and leaves JSON stringification to you:
+
+~~~~ typescript twoslash
+import { Create } from "@fedify/vocab";
+const create = new Create({});
+// ---cut-before---
+const plainObject = await create.toJsonLd();
+const compact = JSON.stringify(plainObject);
+const pretty = JSON.stringify(plainObject, null, 2);
+~~~~
+
+`toJsonLd()` takes options for compaction, the JSON-LD context, and
+serialisation mode; see the [*Vocabulary*](./vocab.md#json-ld) section for
+the full list.
+
+#### Parsing an incoming document
+
+`activitystrea.ms` parses with `as.import(jsonld)`:
+
+~~~~ javascript
+const as = require("activitystrea.ms");
+
+const imported = await as.import({
+  "@context": "https://www.w3.org/ns/activitystreams",
+  type: "Create",
+  actor: "https://example.com/u/alice",
+  object: { type: "Note", content: "Hello, world!" },
+});
+console.log(imported.type); // "Create"
+console.log(imported.actor.id); // "https://example.com/u/alice"
+~~~~
+
+`@fedify/vocab` exposes a static `fromJsonLd()` on each class.  Using the
+most specific class you expect gives you the strongest typings, and falling
+back to a parent class still works:
+
+~~~~ typescript twoslash
+import { Activity, Create } from "@fedify/vocab";
+
+const specific = await Create.fromJsonLd({
+  "@context": "https://www.w3.org/ns/activitystreams",
+  type: "Create",
+  actor: "https://example.com/u/alice",
+  object: { type: "Note", content: "Hello, world!" },
+});
+console.log(specific.actorId?.href); // "https://example.com/u/alice"
+
+// If you do not know the exact subtype, parse as a parent:
+const any = await Activity.fromJsonLd({
+  "@context": "https://www.w3.org/ns/activitystreams",
+  type: "Follow",
+  actor: "https://example.com/u/alice",
+});
+if (any instanceof Create) {
+  // Narrowed at runtime.
+}
+~~~~
+
+#### Language maps and multi-language strings
+
+`activitystrea.ms` uses a dedicated `langmap` helper:
+
+~~~~ javascript
+const as = require("activitystrea.ms");
+
+const doc = await as.note()
+  .content(
+    as.langmap()
+      .set("en", "Hello, world!")
+      .set("ko", "안녕, 세상!"),
+  )
+  .prettyWrite();
+~~~~
+
+`@fedify/vocab` keeps the intent but flattens the API: pass a
+[`LanguageString`](./vocab.md#multilingual-properties) (or several) to
+properties that accept multilingual content:
+
+~~~~ typescript twoslash
+import { Note } from "@fedify/vocab";
+import { LanguageString } from "@fedify/vocab-runtime";
+
+const note = new Note({
+  contents: [
+    new LanguageString("Hello, world!", "en"),
+    new LanguageString("안녕, 세상!", "ko"),
+  ],
+});
+~~~~
+
+[`Temporal.Instant`]: https://tc39.es/proposal-temporal/docs/instant.html
+
+### Common pitfalls
+
+ -  *IRI fields want `URL` instances.*  `activitystrea.ms` accepts bare
+    strings for every IRI property.  `@fedify/vocab` constructors take
+    `URL` objects, and passing a string is a compile-time type error.
+    Wrap with `new URL(...)` at the boundary and you are done.
+ -  *Immutability breaks fluent mutation.*  Code that was built around
+    `builder.name(x).name(y)` (overriding the previous value) does not
+    translate directly.  Construct with the right value the first time, or
+    use `obj.clone({ name: y })` to derive a modified copy.
+ -  *No streams parser equivalent.*  `activitystrea.ms` can consume JSON
+    from a Node `Readable` via `new as.Stream()`.  `@fedify/vocab` only
+    parses complete JSON objects; decode the stream into a `Buffer` or
+    parsed JSON first, then call `fromJsonLd`.
+ -  *Timestamps are `Temporal.Instant`, not `Date`.*  If your application
+    stores timestamps as `Date`, convert with
+    `Temporal.Instant.fromEpochMilliseconds(date.getTime())` on the way
+    in and `new Date(instant.epochMilliseconds)` on the way out.
+
+### Worked example
+
+A small function that wraps a plain Note into a Create activity,
+serialises it for an outbound HTTP request body, and accepts an incoming
+AS2 document for processing.  Drop-in replacement for the idiomatic
+`activitystrea.ms` usage in most JSON-LD bridges:
+
+~~~~ typescript twoslash
+import { Activity, Create, Note } from "@fedify/vocab";
+
+async function buildOutbound(
+  actorIri: string,
+  noteIri: string,
+  content: string,
+): Promise<string> {
+  const create = new Create({
+    id: new URL(`${noteIri}#create`),
+    actor: new URL(actorIri),
+    object: new Note({
+      id: new URL(noteIri),
+      attribution: new URL(actorIri),
+      content,
+      published: Temporal.Now.instant(),
+    }),
+  });
+  return JSON.stringify(await create.toJsonLd());
+}
+
+async function parseIncoming(body: unknown): Promise<void> {
+  const activity = await Activity.fromJsonLd(body);
+  if (activity instanceof Create) {
+    // The static class match narrows `activity.object` to AS2 object types.
+    console.log(`Create from ${activity.actorId?.href}`);
+  }
+}
+~~~~
+
+Because `@fedify/vocab` ships independently of the rest of Fedify, you can
+adopt it as a drop-in replacement for `activitystrea.ms` without pulling
+in the federation layer.  If you later decide to replace your
+hand-written signing and delivery with Fedify proper, the vocab objects
+you have already built pass straight into
+[`Context.sendActivity`](./send.md#sending-an-activity).
