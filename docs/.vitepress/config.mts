@@ -63,7 +63,10 @@ function getReferenceItems(): { text: string; link: string }[] {
   const names = new Set<string>();
   for (const workspaceEntry of rootDenoConfig.workspace ?? []) {
     if (!workspaceEntry.startsWith("./packages/")) continue;
-    const packageDenoJsonUrl = new URL(`${workspaceEntry}/deno.json`, repoRootUrl);
+    const packageDenoJsonUrl = new URL(
+      `${workspaceEntry}/deno.json`,
+      repoRootUrl,
+    );
     const packageDenoConfig = JSON.parse(
       readFileSync(packageDenoJsonUrl, "utf-8"),
     ) as PackageDenoConfig;
@@ -121,10 +124,7 @@ const MANUAL = {
     { text: "Key–value store", link: "/manual/kv.md" },
     { text: "Message queue", link: "/manual/mq.md" },
     { text: "Integration", link: "/manual/integration.md" },
-    {
-      text: "Migrating from other libraries",
-      link: "/manual/migrate.md",
-    },
+    { text: "Migration", link: "/manual/migrate.md" },
     { text: "Relay", link: "/manual/relay.md" },
     { text: "Testing", link: "/manual/test.md" },
     { text: "Debugging", link: "/manual/debug.md" },

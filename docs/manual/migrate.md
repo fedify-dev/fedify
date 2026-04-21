@@ -625,7 +625,528 @@ what the migration buys you.
 From `@activity-kit/*` (ActivityKit) {#activity-kit}
 ----------------------------------------------------
 
-*To be written.*
+[ActivityKit] is a suite of npm packages under the `@activity-kit/*` scope
+by Michael Puckett.  It is spec-oriented and TypeScript-first, and the
+README advertises it as “aimed to be as versatile and non-opinionated as
+possible.”  In practice, every package has been pinned at v0.4.57 or
+v0.4.58 since 2023-11-01 with no further commits, which puts it in the
+dormant bucket for production planning.
+
+[ActivityKit]: https://github.com/michaelcpuckett/activity-kit
+
+### When to migrate
+
+ -  No commits in over two years; the README itself still says “this project
+    is still incomplete.”
+ -  There are no shipped example apps in the monorepo and no public
+    production users, so community knowledge for debugging is thin.
+ -  The `DbAdapter` interface assumes document-store semantics
+    (`findOne(collection, match)`); changing the underlying database means
+    implementing the whole 11-method interface against a new backend.
+ -  The `AuthAdapter` bakes email/password user accounts into the
+    federation layer.  If you want to reuse your existing auth system you
+    fight the framework.
+ -  HTTP signature verification lives inside the private `InboxPostEndpoint`
+    class; there is no exported verification helper you can call from
+    application code.
+ -  Page HTML renderers (`pages.home`, `pages.login`, `pages.entity`) are
+    part of the plugin config, so presentation and federation end up in the
+    same module.
+
+Fedify keeps federation and presentation separate, ships `signRequest`,
+`verifyRequest`, and `verifyObject` as public functions, and lets you run
+on Deno, Node.js, or Bun behind any of its framework integrations.
+
+### Mental-model mapping
+
+| ActivityKit                                                    | Fedify                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `activityKitPlugin({ adapters, plugins, pages })`              | `createFederation({ kv, queue })` plus the integration of your choice          |
+| `adapters.db: DbAdapter` (document-store)                      | `KvStore` (key–value); keys and collections are your schema to own             |
+| `adapters.crypto: CryptoAdapter`                               | built-in; keys returned from `setKeyPairsDispatcher`                           |
+| `adapters.auth: AuthAdapter` (email/password baked in)         | out of scope; plug in your own auth layer                                      |
+| `adapters.storage: StorageAdapter` (media uploads)             | out of scope; your existing upload route keeps working                         |
+| `Plugin.handleInboxSideEffect(activity, recipient)`            | `setInboxListeners(...).on(Follow, ...)` — one handler per type                |
+| `Plugin.handleOutboxSideEffect(activity, actor)`               | `setOutboxListeners(...)` or `setOutboxDispatcher()` depending on purpose      |
+| `Plugin.generateActorId(username)`                             | path parameter in `setActorDispatcher("/u/{identifier}", ...)`                 |
+| Plain `AP.Person` object literal with `publicKey.publicKeyPem` | `new Person({ ... })` with `setKeyPairsDispatcher` returning `CryptoKey` pairs |
+| `pages.home`, `pages.login`, `pages.entity`                    | your web framework's own routes                                                |
+
+### Code migration
+
+The four sections below cover the mandatory rewrites.  Auth, pages, and
+media uploads are left out because they are no longer federation concerns
+once you move to Fedify.
+
+#### App bootstrap
+
+ActivityKit drives the whole federation stack from one plugin registration
+on the Express app.  The canonical example from the root README:
+
+~~~~ javascript
+import * as express from "express";
+import { MongoClient } from "mongodb";
+import { activityKitPlugin } from "@activity-kit/express-middleware";
+import { MongoDbAdapter } from "@activity-kit/db-mongo";
+import { TokenAuthAdapter } from "@activity-kit/auth-token";
+import { NodeCryptoAdapter } from "@activity-kit/crypto-node";
+
+const app = express.default();
+const mongo = new MongoClient("mongodb://localhost:27017");
+await mongo.connect();
+
+app.use(activityKitPlugin({
+  adapters: {
+    auth: new TokenAuthAdapter(/* ... */),
+    crypto: new NodeCryptoAdapter(),
+    db: new MongoDbAdapter({ db: mongo.db("example") }),
+    storage: /* ... */,
+  },
+  plugins: [/* Plugin instances */],
+  routes: {},
+  pages: {
+    login: async () => "<html>login form</html>",
+    home: async ({ actor }) => `<html>home for ${actor.preferredUsername}</html>`,
+    entity: async ({ entity }) => `<html>${JSON.stringify(entity)}</html>`,
+  },
+}));
+app.listen(8080);
+~~~~
+
+The Fedify equivalent keeps HTML rendering in your regular Express routes
+and routes only federation through `integrateFederation`:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import express from "express";
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+import { integrateFederation } from "@fedify/express";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(), // Swap for a production KvStore (PostgresKvStore, etc.).
+});
+
+// Dispatchers and inbox listeners are registered on `federation` below.
+
+const app = express();
+app.set("trust proxy", true);
+app.use(integrateFederation(federation, () => undefined));
+app.get("/u/:identifier", (req, res) => {
+  // Serve the HTML profile here — Fedify falls through to your handler
+  // when the client is not asking for ActivityPub content negotiation.
+});
+app.listen(8080);
+~~~~
+
+#### Actor records
+
+ActivityKit's `createUserActor` builds a plain object with PEM public keys
+embedded on the actor, and stores the private PEM separately via
+`core.saveString("privateKey", uid, pem)`:
+
+~~~~ javascript
+const { publicKey, privateKey } = await this.core.generateKeyPair();
+
+const userActor = {
+  id: userId,
+  type: "Person",
+  preferredUsername: user.preferredUsername,
+  name: user.name,
+  inbox: inboxId,
+  outbox: outboxId,
+  followers: followersId,
+  publicKey: {
+    id: `${userId}#main-key`,
+    owner: userId,
+    publicKeyPem: publicKey,
+  },
+  published: new Date(),
+};
+
+await this.core.saveEntity(userActor);
+await this.core.saveString("privateKey", uid, privateKey);
+~~~~
+
+Fedify never asks you to build the object literal directly; you return a
+`Person` instance from the dispatcher and provide key pairs through
+`setKeyPairsDispatcher`:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Federation } from "@fedify/fedify";
+import { importJwk } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface User {
+  username: string;
+  name: string;
+  privateJwk: JsonWebKey;
+  publicJwk: JsonWebKey;
+}
+async function getUserByUsername(_: string): Promise<User | null> {
+  return null;
+}
+// ---cut-before---
+federation
+  .setActorDispatcher("/u/{identifier}", async (ctx, identifier) => {
+    const user = await getUserByUsername(identifier);
+    if (user == null) return null;
+    const keys = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: user.username,
+      name: user.name,
+      inbox: ctx.getInboxUri(identifier),
+      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: keys[0]?.cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const user = await getUserByUsername(identifier);
+    if (user == null) return [];
+    return [{
+      privateKey: await importJwk(user.privateJwk, "private"),
+      publicKey: await importJwk(user.publicJwk, "public"),
+    }];
+  });
+~~~~
+
+#### Inbox side-effects
+
+ActivityKit users extend behaviour by writing a `Plugin` whose
+`handleInboxSideEffect` fires for every incoming activity, with a
+hand-written switch on `activity.type`:
+
+~~~~ javascript
+import { AP, ActivityTypes } from "@activity-kit/types";
+import { isType, getId } from "@activity-kit/utilities";
+
+export function FollowPlugin() {
+  const plugin = {
+    async handleInboxSideEffect(activity, recipient) {
+      if (!isType(activity, ActivityTypes.FOLLOW)) return;
+      const followerId = getId(activity.actor);
+      if (followerId == null) return;
+      // Hand-build the Accept, then publish it.
+      const accept = {
+        type: "Accept",
+        actor: recipient.id,
+        object: activity.id,
+        to: [followerId.toString()],
+      };
+      await this.core.publishActivity(recipient, accept);
+    },
+  };
+  return plugin;
+}
+~~~~
+
+In Fedify the same logic is one `on(Follow, ...)` handler, with signature
+verification, key dereferencing, and delivery scheduling handled for you:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Federation } from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/u/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.objectId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor") return;
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      follower,
+      new Accept({ actor: follow.objectId, object: follow }),
+    );
+  });
+~~~~
+
+The `on(Follow, …)` registration is closed over the activity type, so
+there is no need to `isType(...)` on the way in and no need to hand-build
+the Accept as a plain object — Fedify's vocab classes enforce the shape.
+
+#### Outbound activities
+
+ActivityKit exposes `core.publishActivity(actor, activity)` from inside a
+plugin, and the delivery loop is driven by the middleware.  There is no
+durable queue: if the Node process is restarted during fan-out, remaining
+deliveries are lost.
+
+~~~~ javascript
+await this.core.publishActivity(recipient, {
+  type: "Create",
+  actor: recipient.id,
+  object: note,
+  to: [recipient.followers],
+});
+~~~~
+
+Fedify routes every outbound send through
+[`Context.sendActivity`](./send.md#sending-an-activity), which writes to
+the `MessageQueue` first and only signs and delivers as the queue worker
+drains.  Pointing the `queue` option at [`@fedify/postgres`],
+[`@fedify/redis`], or [`@fedify/amqp`] gives you durable retries with
+exponential backoff:
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { Context } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const identifier = "alice";
+// ---cut-before---
+const note = new Note({
+  id: new URL(`https://example.com/o/${crypto.randomUUID()}`),
+  attribution: ctx.getActorUri(identifier),
+  content: "Hello, fediverse!",
+  to: ctx.getFollowersUri(identifier),
+});
+await ctx.sendActivity(
+  { identifier },
+  "followers",
+  new Create({
+    id: new URL(`https://example.com/s/${crypto.randomUUID()}`),
+    actor: ctx.getActorUri(identifier),
+    object: note,
+    to: ctx.getFollowersUri(identifier),
+  }),
+  { preferSharedInbox: true },
+);
+~~~~
+
+### Data migration
+
+ActivityKit's MongoDB layout is thinner than apex's: actor documents live
+in the `entity` collection and the private PEM is stored separately via
+`saveString("privateKey", uid, pem)`.  The `uid` is the internal user
+identifier assigned by `createUser`, and the `username` mapping sits in
+`saveString("username", uid, preferredUsername)`.
+
+A one-shot export script stitches those strings back onto each actor,
+converts the PEM keys into JWKs that `importJwk` accepts, and writes the
+result into whatever storage your Fedify app uses.  Adapt the destination
+writes to your own schema:
+
+~~~~ typescript twoslash
+// @noErrors: 2307 2305 2345 2322 7006
+import { createPrivateKey, createPublicKey } from "node:crypto";
+import { MongoClient } from "mongodb";
+
+interface ActivityKitActor {
+  _id: string;
+  type: "Person" | string;
+  preferredUsername: string;
+  name?: string;
+  publicKey?: { publicKeyPem: string };
+}
+
+async function saveActor(_: {
+  username: string;
+  name?: string;
+  rsaPrivateKey: JsonWebKey;
+  rsaPublicKey: JsonWebKey;
+}) {}
+async function saveFollower(_: {
+  username: string;
+  followerActorUri: string;
+}) {}
+
+const mongo = new MongoClient("mongodb://localhost:27017");
+await mongo.connect();
+const db = mongo.db("example");
+
+// ActivityKit stores `saveString("username", uid, username)` so we can
+// walk the uid → username mapping.
+const usernames = db.collection<{ _id: string; value: string }>(
+  "username",
+);
+const privateKeys = db.collection<{ _id: string; value: string }>(
+  "privateKey",
+);
+const actors = db.collection<ActivityKitActor>("entity");
+
+for await (const mapping of usernames.find()) {
+  const uid = mapping._id;
+  const username = mapping.value;
+
+  const actor = await actors.findOne({
+    type: "Person",
+    preferredUsername: username,
+  });
+  if (actor?.publicKey == null) continue;
+
+  const priv = await privateKeys.findOne({ _id: uid });
+  if (priv == null) continue;
+
+  const privJwk = createPrivateKey({
+    key: priv.value,
+    format: "pem",
+  }).export({ format: "jwk" });
+  const pubJwk = createPublicKey({
+    key: actor.publicKey.publicKeyPem,
+    format: "pem",
+  }).export({ format: "jwk" });
+  privJwk.alg = "RS256";
+  pubJwk.alg = "RS256";
+
+  await saveActor({
+    username,
+    name: actor.name,
+    rsaPrivateKey: privJwk,
+    rsaPublicKey: pubJwk,
+  });
+}
+
+// Followers are `Follow` entities in the same `entity` collection,
+// linked from the actor's `followers` URL.
+const follows = db.collection<{ type: string; actor: string; object: string }>(
+  "entity",
+).find({ type: "Follow" });
+for await (const follow of follows) {
+  // Map `follow.object` back to your local actor identifier via the
+  // path scheme you chose.
+  await saveFollower({
+    username: follow.object.split("/").at(-1) ?? "",
+    followerActorUri: follow.actor,
+  });
+}
+
+await mongo.close();
+~~~~
+
+Because ActivityKit's actor IRIs include `preferredUsername`, you can keep
+the same path pattern (`/u/{identifier}`) in `setActorDispatcher` and remote
+followers stay resolved.
+
+### Common pitfalls
+
+ -  *Keys are PEM, not JWK, on disk.*  ActivityKit's `generateKeyPair`
+    returns PEM strings and stores them as-is, whereas Fedify's
+    `importJwk` only consumes JWK.  The conversion is lossless but must
+    happen during the export (see the data-migration script above); do not
+    try to pass a PEM straight into `importJwk` at runtime.
+ -  *`AuthAdapter` has no Fedify equivalent.*  Email/password signup,
+    token issuance, and session handling move into your own routes.
+    The migration often means pulling out an external auth library
+    (Passport, Auth.js, Lucia) rather than writing auth from scratch.
+ -  *Page renderers disappear from federation config.*  `pages.home`,
+    `pages.login`, and `pages.entity` become ordinary Express/Hono/Koa
+    routes.  Fedify's integration middleware falls through to the next
+    handler when a request is not an ActivityPub content-type, so your
+    HTML routes serve the browser case without any changes.
+ -  *No `declareUserActorStreams` equivalent.*  If you relied on the
+    plugin hook to advertise custom `streams` on the actor document,
+    populate the `streams` property directly in your
+    `setActorDispatcher` return value.
+ -  *Shared inbox was already exposed by ActivityKit.*  Unlike apex, the
+    `/inbox` shared endpoint was live on ActivityKit servers; keep it
+    on in Fedify by passing the second argument to `setInboxListeners`.
+
+### Worked example
+
+A minimal signup + follow-accept flow in Fedify, replacing the parts that
+ActivityKit previously bundled into the middleware plus a plugin:
+
+~~~~ typescript twoslash
+// @noErrors: 2345 2322
+import express from "express";
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { integrateFederation } from "@fedify/express";
+import { Accept, Follow, Person } from "@fedify/vocab";
+
+interface UserRecord {
+  username: string;
+  name: string;
+  privateJwk: JsonWebKey;
+  publicJwk: JsonWebKey;
+}
+const users = new Map<string, UserRecord>();
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/u/{identifier}", async (ctx, identifier) => {
+    const user = users.get(identifier);
+    if (user == null) return null;
+    const keys = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: user.username,
+      name: user.name,
+      inbox: ctx.getInboxUri(identifier),
+      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      publicKey: keys[0]?.cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const user = users.get(identifier);
+    if (user == null) return [];
+    return [{
+      privateKey: await importJwk(user.privateJwk, "private"),
+      publicKey: await importJwk(user.publicJwk, "public"),
+    }];
+  });
+
+federation
+  .setInboxListeners("/u/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    const parsed = follow.objectId == null
+      ? null
+      : ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor") return;
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      follower,
+      new Accept({ actor: follow.objectId!, object: follow }),
+    );
+  });
+
+const app = express();
+app.set("trust proxy", true);
+app.use(express.json());
+app.use(integrateFederation(federation, () => undefined));
+
+// Your own signup route — no AuthAdapter needed.
+app.post("/signup", async (req, res) => {
+  const { username, name } = req.body as { username: string; name: string };
+  const pair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  users.set(username, {
+    username,
+    name,
+    privateJwk: await exportJwk(pair.privateKey),
+    publicJwk: await exportJwk(pair.publicKey),
+  });
+  res.status(201).end();
+});
+
+app.listen(8080);
+~~~~
+
+The same logic in ActivityKit would require writing an `AuthAdapter` (or
+using `@activity-kit/auth-token`), a `FollowPlugin`, and a set of HTML
+page renderers.  Fedify lets your existing web framework own everything
+that is not federation.
 
 
 From hand-rolled Express code {#hand-rolled}
