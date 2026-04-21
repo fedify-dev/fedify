@@ -18,9 +18,11 @@ across the switch:
  -  The actor IRIs that remote servers already follow (e.g.
     `https://example.com/u/alice`).
  -  The public keys those remote servers have cached alongside each actor.
- -  The HTTP Signature format on outbound deliveries (Fedify defaults to
-    draft-cavage for backward compatibility, which matches every library in
-    this guide).
+ -  The HTTP Signature format on outbound deliveries.  Fedify speaks both
+    RFC 9421 HTTP Message Signatures and draft-cavage HTTP Signatures, and
+    negotiates between them automatically through
+    [double-knocking](./send.md#double-knocking-http-signatures), so a
+    cutover does not disrupt remote servers that only know one revision.
 
 Pick the section that matches your stack:
 
@@ -1194,7 +1196,7 @@ move.
 | `router.get("/:name", ...)` serving a JSON blob from SQLite  | `setActorDispatcher("/u/{identifier}", ...)` returning a `Person`         |
 | `router.get("/", ...)` on `/.well-known/webfinger`           | automatic, enabled by `setActorDispatcher`                                |
 | `router.post("/", ...)` on `/api/inbox` with no verification | `setInboxListeners(personalInbox, sharedInbox)`; verification is built in |
-| `signAndSend()` helper with `crypto.createSign("sha256")`    | `Context.sendActivity(...)` with automatic draft-cavage signing           |
+| `signAndSend()` helper with `crypto.createSign("sha256")`    | `Context.sendActivity(...)` with automatic HTTP Signatures                |
 | `crypto.generateKeyPair("rsa", { modulusLength: 4096 })`     | `generateCryptoKeyPair("RSASSA-PKCS1-v1_5")` plus Ed25519 for [FEP-8b32]  |
 | `better-sqlite3` `accounts` table                            | `@fedify/sqlite` `SqliteKvStore` + your own app schema                    |
 | JSON `followers` column (array of actor IRIs)                | `setFollowersDispatcher("/u/{identifier}/followers", ...)`                |
