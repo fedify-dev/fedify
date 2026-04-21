@@ -3051,3 +3051,274 @@ There are three useful end-to-end tests for this chapter:
 > tunnel is still up (Cloudflare Tunnel in particular will keep
 > `cloudflared` running after the connection drops silently) and
 > that the Lemmy community actually has new posts.
+
+
+Replies
+-------
+
+A thread without replies is just an announcement.  In this chapter we
+add nested replies, federated as `Create(Note)` activities with an
+`inReplyTo` pointing at either the thread itself or another reply.
+The community re-announces them exactly like it does threads, and the
+same `Announce → routeActivity → Create` machinery we already have
+will fan replies out to subscribers without any new plumbing.
+
+### Thread page
+
+Before we can reply to a thread, the thread needs a dedicated page of
+its own.  Create *app/users/\[username]/threads/\[id]/page.tsx*:
+
+~~~~ tsx [app/users/[username]/threads/[id]/page.tsx]
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { communities, db, threads } from "@/db";
+import { currentOrigin } from "@/lib/origin";
+
+type ThreadPageProps = {
+  params: Promise<{ username: string; id: string }>;
+};
+
+export default async function ThreadPage({ params }: ThreadPageProps) {
+  const { username: slug, id: idParam } = await params;
+  const community = db
+    .select()
+    .from(communities)
+    .where(eq(communities.slug, slug))
+    .get();
+  if (!community) notFound();
+
+  const origin = await currentOrigin();
+  const threadUri = new URL(`/users/${slug}/threads/${idParam}`, origin).href;
+
+  const thread = db
+    .select()
+    .from(threads)
+    .where(eq(threads.uri, threadUri))
+    .get();
+  if (!thread) notFound();
+
+  return (
+    <>
+      <p className="muted">
+        In <a href={`/users/${slug}`}>!{slug}</a>
+      </p>
+      <h1>{thread.title}</h1>
+      <p className="muted">
+        Posted {thread.createdAt.toLocaleString("en-US")} by{" "}
+        <code>{thread.authorUri}</code>
+      </p>
+      {thread.content && (
+        <div className="card">
+          <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{thread.content}</p>
+        </div>
+      )}
+      <p className="muted">Replies will appear here in the next commit.</p>
+    </>
+  );
+}
+~~~~
+
+Also turn the thread titles on the community page into `<Link>`s
+pointing at the new route.
+
+### The `replies` table
+
+Add the table to *db/schema.ts*:
+
+~~~~ typescript [db/schema.ts]
+export const replies = sqliteTable("replies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  uri: text("uri").notNull().unique(),
+  threadUri: text("thread_uri").notNull(),
+  parentUri: text("parent_uri"),
+  communityUri: text("community_uri").notNull(),
+  authorUri: text("author_uri").notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Reply = typeof replies.$inferSelect;
+export type NewReply = typeof replies.$inferInsert;
+~~~~
+
+`thread_uri` is always set; `parent_uri` is `null` for direct
+replies to a thread or set to another reply's URI for nested
+replies.  `community_uri` is denormalised into the reply so
+community-side Announce delivery doesn't need to walk back through
+`threads`.
+
+`npm run db:push`.
+
+### Reply form and tree rendering
+
+Flesh out the thread page to render the reply tree and offer inline
+reply forms.  Replace *app/users/\[username]/threads/\[id]/page.tsx*
+with the full version (links, reply tree, nested reply forms).  See
+the matching example commit for the complete source; the two
+interesting bits are the recursive render and the `buildReplyTree`
+helper that turns a flat list of rows into a nested tree using
+`parent_uri`.
+
+Recursive render:
+
+~~~~ tsx{1,9,11-15} [app/users/[username]/threads/[id]/page.tsx]
+function ReplyList({ nodes, slug, threadId, user }) {
+  return (
+    <ul className="reply-tree">
+      {nodes.map((node) => (
+        <li key={node.id}>
+          <div className="card">
+            {/* author, timestamp, content */}
+            {user && (
+              <details>
+                <summary className="muted">Reply</summary>
+                <form action={createReply.bind(null, slug, threadId)}>
+                  <input type="hidden" name="parentUri" value={node.uri} />
+                  <textarea name="content" rows={3} required />
+                  <button type="submit">Post reply</button>
+                </form>
+              </details>
+            )}
+          </div>
+          {node.children.length > 0 && (
+            <ReplyList nodes={node.children} slug={slug} threadId={threadId} user={user} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+~~~~
+
+`buildReplyTree`:
+
+~~~~ typescript [app/users/[username]/threads/[id]/page.tsx]
+function buildReplyTree(rows: ReplyRow[], threadUri: string): ReplyNode[] {
+  const byUri = new Map<string, ReplyNode>();
+  const roots: ReplyNode[] = [];
+  for (const row of rows) {
+    byUri.set(row.uri, { ...row, children: [] });
+  }
+  for (const node of byUri.values()) {
+    const parent = node.parentUri ? byUri.get(node.parentUri) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+  return roots;
+}
+~~~~
+
+The `reply-tree` CSS class (already in the stylesheet you copied in
+the layout chapter) gives nested lists a 1.5rem indent and a left
+border so the tree reads visually.
+
+### Server action for replies
+
+Write *app/users/\[username]/threads/\[id]/actions.ts*:
+
+~~~~ typescript [app/users/[username]/threads/[id]/actions.ts]
+"use server";
+
+import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { communities, db, replies, threads } from "@/db";
+import federation from "@/federation";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+export async function createReply(
+  slug: string,
+  threadId: string,
+  formData: FormData,
+): Promise<void> {
+  // 1. Authenticate and resolve the thread.
+  // 2. Insert the reply optimistically with a placeholder URI,
+  //    then update the row with the canonical reply URL.
+  // 3. Build and send a Create(Note) addressed to the community,
+  //    with `replyTarget` set to either the parent reply URI
+  //    (nested reply) or the thread URI (top-level reply).
+}
+~~~~
+
+(The microblog-style full listing is in the paired commit.)
+
+The important structural detail is that **the reply URI uses
+`/users/<slug>/threads/<threadId>/replies/<replyId>`** — keeping
+replies namespaced under their thread is just a convention, but it
+means the URI already encodes enough to find the reply's context
+without a separate index.
+
+### Community-side: `Create(Note)` handler
+
+Teach the existing `Create` handler in *federation/index.ts* to also
+accept `Note` objects.  The inline diff against the previous version:
+
+~~~~ typescript [federation/index.ts]
+.on(Create, async (ctx, create) => {
+  if (!create.actorId) return;
+  const object = await create.getObject(ctx);
+  if (!object?.id) return;
+
+  let communityUri: URL | null = null;
+
+  if (object instanceof Page) {
+    // (existing thread branch)
+  } else if (object instanceof Note) {
+    communityUri = object.audienceId ?? create.toIds[0] ?? null;
+    const inReplyTo = object.replyTargetId;
+    if (!communityUri || !inReplyTo) return;
+    // Look the parent up in `threads` first, then in `replies`,
+    // to derive the top-level `thread_uri` for the row.
+    const parentThread = db
+      .select({ uri: threads.uri })
+      .from(threads)
+      .where(eq(threads.uri, inReplyTo.href))
+      .get();
+    const parentReply = parentThread
+      ? null
+      : db
+          .select({ uri: replies.uri, threadUri: replies.threadUri })
+          .from(replies)
+          .where(eq(replies.uri, inReplyTo.href))
+          .get();
+    const threadUri = parentThread?.uri ?? parentReply?.threadUri;
+    if (!threadUri) return;
+    db.insert(replies)
+      .values({
+        uri: object.id.href,
+        threadUri,
+        parentUri: parentReply ? inReplyTo.href : null,
+        communityUri: communityUri.href,
+        authorUri: create.actorId.href,
+        content: object.content?.toString() ?? "",
+        createdAt: object.published
+          ? new Date(object.published.epochMilliseconds)
+          : new Date(),
+      })
+      .onConflictDoNothing()
+      .run();
+  } else {
+    return;
+  }
+
+  // ...then the same "is this community local?" + Announce branch
+  // as the thread handler, unchanged.
+});
+~~~~
+
+The rest of the handler — the local-community check and the
+`sendActivity(..., "followers", Announce(Create))` fan-out — is
+shared between threads and replies, so the community Announces
+threads and replies exactly the same way.
+
+### Testing
+
+Log in as two different local users in different browser sessions
+(or use private-window isolation).  One user posts a thread, the
+other replies to it.  Both reply forms (top-level and nested) should
+insert a row in `replies` and leave the dev server's Fedify
+pipeline carrying a `Create(Note)` → `Announce(Create(Note))` pair
+to every subscriber of the community.
