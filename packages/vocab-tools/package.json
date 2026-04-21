@@ -1,6 +1,6 @@
 {
   "name": "@fedify/vocab-tools",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Code generator for Activity Vocabulary APIs",
   "homepage": "https://fedify.dev/",
   "repository": {
