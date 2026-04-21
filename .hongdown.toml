@@ -37,6 +37,7 @@ proper_nouns = [
   "@fedify/webfinger",
   "Activity Streams",
   "Activity Vocabulary",
+  "ActivityKit",
   "ActivityPub",
   "ActivityStreams",
   "Akkoma",

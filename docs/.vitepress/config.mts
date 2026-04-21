@@ -121,6 +121,10 @@ const MANUAL = {
     { text: "Key–value store", link: "/manual/kv.md" },
     { text: "Message queue", link: "/manual/mq.md" },
     { text: "Integration", link: "/manual/integration.md" },
+    {
+      text: "Migrating from other libraries",
+      link: "/manual/migrate.md",
+    },
     { text: "Relay", link: "/manual/relay.md" },
     { text: "Testing", link: "/manual/test.md" },
     { text: "Debugging", link: "/manual/debug.md" },
