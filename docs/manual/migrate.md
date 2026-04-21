@@ -368,8 +368,7 @@ await ctx.sendActivity(
 ~~~~
 
 The recipient form `"followers"` asks Fedify to dereference the actor's
-followers collection (see
-[*`"followers"`*](./send.md#followers)).
+followers collection; see [*`"followers"`*](./send.md#followers).
 
 #### Followers collection
 
