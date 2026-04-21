@@ -2224,3 +2224,377 @@ software that speaks the same protocol (Lemmy, Mbin, NodeBB) will
 recognise it as a community they can subscribe to.  In the next two
 sections we'll add the follow half of the story: receiving and
 accepting Follow requests.
+
+
+Subscribing to communities
+--------------------------
+
+Having communities is only half of the threadiverse.  The other half is
+letting users (local and remote) *subscribe* to communities, and making
+sure those communities see every new subscriber and acknowledge it with
+an `Accept(Follow)` activity.  This chapter builds that flow in both
+directions.
+
+### The `follows` table and the followers collection
+
+Add a `follows` table to *db/schema.ts*:
+
+~~~~ typescript [db/schema.ts]
+export const follows = sqliteTable(
+  "follows",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    followerUri: text("follower_uri").notNull(),
+    followerInbox: text("follower_inbox").notNull(),
+    followerSharedInbox: text("follower_shared_inbox"),
+    followedUri: text("followed_uri").notNull(),
+    accepted: integer("accepted", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    uniqueIndex("follows_pair_idx").on(table.followerUri, table.followedUri),
+  ],
+);
+
+export type Follow = typeof follows.$inferSelect;
+~~~~
+
+A row holds both sides of a subscription as plain ActivityPub URIs,
+plus the follower's inbox and optional shared inbox (denormalised so
+fan-out doesn't have to re-fetch the actor).  `accepted` starts false
+and flips to true once we've seen (or sent) the corresponding
+`Accept(Follow)`.  The unique index on `(followerUri, followedUri)`
+keeps the table from sprouting duplicate subscriptions.
+
+Re-run `npm run db:push`.
+
+Then extend *federation/index.ts* to expose the followers collection.
+This is the endpoint a remote server paginates when it wants to know
+who subscribes to one of our communities.  It's also what
+`ctx.sendActivity(sender, "followers", activity)` resolves to when we
+fan out later:
+
+~~~~ typescript{9,13-43} [federation/index.ts]
+// ...
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    // ...
+    if (community) {
+      const keyPairs = await ctx.getActorKeyPairs(identifier);
+      return new Group({
+        // ...existing fields...
+        followers: ctx.getFollowersUri(identifier),
+      });
+    }
+    // ...
+  });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  async (ctx, identifier) => {
+    const community = db
+      .select()
+      .from(communities)
+      .where(eq(communities.slug, identifier))
+      .get();
+    if (!community) return null;
+    const rows = db
+      .select()
+      .from(follows)
+      .where(
+        and(
+          eq(follows.followedUri, ctx.getActorUri(identifier).href),
+          eq(follows.accepted, true),
+        ),
+      )
+      .all();
+    return {
+      items: rows.map((r) => ({
+        id: new URL(r.followerUri),
+        inboxId: new URL(r.followerInbox),
+        endpoints: r.followerSharedInbox
+          ? { sharedInbox: new URL(r.followerSharedInbox) }
+          : null,
+      })),
+    };
+  },
+);
+~~~~
+
+Adding `followers: ctx.getFollowersUri(identifier)` to the `Group`
+actor JSON is what makes a threadiverse server (Lemmy, Mbin) willing
+to call this community “real” — without it they won't trust there's
+a collection to paginate.
+
+### Handling an inbound follow
+
+Most of the Follow flow is inbox work.  The community inbox needs to:
+
+1.  Recognise a `Follow` whose `object` is one of our communities.
+2.  Resolve the follower's actor so we can read its `inbox` and
+    `endpoints.sharedInbox`.
+3.  Upsert the follows row (accepted = true for local communities,
+    which auto-accept).
+4.  Ship an `Accept(Follow)` back to the follower.
+
+Extend *federation/index.ts*:
+
+~~~~ typescript [federation/index.ts]
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (!follow.id || !follow.actorId || !follow.objectId) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor") return;
+    const identifier = parsed.identifier;
+
+    const community = db
+      .select()
+      .from(communities)
+      .where(eq(communities.slug, identifier))
+      .get();
+    if (!community) return;
+
+    const actor = await follow.getActor(ctx);
+    if (!actor?.id || !actor.inboxId) return;
+
+    db.insert(follows)
+      .values({
+        followerUri: actor.id.href,
+        followerInbox: actor.inboxId.href,
+        followerSharedInbox: actor.endpoints?.sharedInbox?.href ?? null,
+        followedUri: follow.objectId.href,
+        accepted: true,
+      })
+      .onConflictDoUpdate({
+        target: [follows.followerUri, follows.followedUri],
+        set: {
+          followerInbox: actor.inboxId.href,
+          followerSharedInbox: actor.endpoints?.sharedInbox?.href ?? null,
+          accepted: true,
+        },
+      })
+      .run();
+
+    await ctx.sendActivity(
+      { identifier },
+      actor,
+      new Accept({
+        id: new URL(
+          `#accepts/${encodeURIComponent(follow.id.href)}`,
+          follow.objectId,
+        ),
+        actor: follow.objectId,
+        object: follow,
+      }),
+    );
+  });
+~~~~
+
+A few important details:
+
+ -  `ctx.parseUri(follow.objectId)` turns the URI into a `{ type, identifier }`
+    tuple we can branch on.  If the object isn't a local actor, or the
+    identifier isn't a community, we bail out silently.
+ -  `follow.getActor(ctx)` fetches the remote actor over HTTP
+    (Fedify caches it) so we know their inbox URL.
+ -  `onConflictDoUpdate` makes the upsert idempotent: if the same
+    remote user sends us a Follow twice (say, after a transient
+    failure), we don't crash on the unique constraint.
+ -  `ctx.sendActivity(sender, recipient, activity)` enqueues the
+    `Accept` on Fedify's in-process message queue.  The HTTP
+    delivery happens asynchronously from the request that triggered
+    it, which is important for keeping the inbox responsive.
+
+### Handling an inbound accept(follow)
+
+The mirror image: when a remote community accepts one of *our*
+Follow requests, the Accept lands in the local user's inbox.  Add a
+listener:
+
+~~~~ typescript [federation/index.ts]
+  .on(Accept, async (ctx, accept) => {
+    const enclosed = await accept.getObject(ctx);
+    if (!(enclosed instanceof Follow)) return;
+    if (!enclosed.actorId || !enclosed.objectId) return;
+    db.update(follows)
+      .set({ accepted: true })
+      .where(
+        and(
+          eq(follows.followerUri, enclosed.actorId.href),
+          eq(follows.followedUri, enclosed.objectId.href),
+        ),
+      )
+      .run();
+  });
+~~~~
+
+`accept.getObject` returns the object the Accept wraps.  Only when
+that object is a `Follow` do we flip the corresponding row's
+`accepted` flag.
+
+### Sending an outbound follow
+
+Give users a UI for following remote communities.  Create
+*app/follow/page.tsx*:
+
+~~~~ tsx [app/follow/page.tsx]
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
+import { followCommunity } from "./actions";
+
+type FollowPageProps = {
+  searchParams: Promise<{ error?: string; message?: string }>;
+};
+
+export default async function FollowPage({ searchParams }: FollowPageProps) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+follow+a+community");
+  const { error, message } = await searchParams;
+  return (
+    <>
+      <h1>Follow a community</h1>
+      <p className="muted">
+        Paste a community handle in the form <code>@slug@host</code> (for
+        example <code>@fediverse@lemmy.ml</code>) or a direct URL to a
+        community on any threadiverse-compatible server.
+      </p>
+      {message && <p className="muted">{message}</p>}
+      {error && <p className="muted">{error}</p>}
+      <form action={followCommunity}>
+        <label>
+          Handle or URL
+          <input type="text" name="handle" required />
+        </label>
+        <button type="submit">Send follow request</button>
+      </form>
+    </>
+  );
+}
+~~~~
+
+The action needs a `Context` so it can lookup remote actors, build
+URIs, and send activities.  Fedify's
+`federation.createContext(url, contextData)` takes an origin URL.  When the app
+is behind a reverse proxy, that origin must match whatever is in
+`X-Forwarded-Host` — otherwise the URIs Fedify generates would disagree with
+the URIs the actor dispatcher serves.  Put the URL-reconstruction in a helper
+so every server action shares the same logic.  Create *lib/origin.ts*:
+
+~~~~ typescript [lib/origin.ts]
+import "server-only";
+
+import { headers } from "next/headers";
+
+export async function currentOrigin(): Promise<URL> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  return new URL(`${proto}://${host}`);
+}
+~~~~
+
+Now write the follow action in *app/follow/actions.ts*:
+
+~~~~ typescript [app/follow/actions.ts]
+"use server";
+
+import { Follow, Group, isActor } from "@fedify/vocab";
+import { redirect } from "next/navigation";
+import { db, follows } from "@/db";
+import federation from "@/federation";
+import { currentOrigin } from "@/lib/origin";
+import { getCurrentUser } from "@/lib/session";
+
+export async function followCommunity(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?message=Log+in+to+follow+a+community");
+
+  const handle = String(formData.get("handle") ?? "").trim();
+  if (!handle) {
+    redirect("/follow?error=Handle+is+required");
+  }
+
+  const origin = await currentOrigin();
+  const ctx = federation.createContext(origin, undefined);
+
+  const actor = await ctx.lookupObject(handle);
+  if (!isActor(actor) || !actor.id || !actor.inboxId) {
+    redirect("/follow?error=Could+not+resolve+that+handle");
+  }
+  if (!(actor instanceof Group)) {
+    redirect(
+      `/follow?error=${encodeURIComponent(
+        "That actor isn't a community; only Group actors can be followed here.",
+      )}`,
+    );
+  }
+
+  const followerUri = ctx.getActorUri(user.username);
+  const followerInbox = ctx.getInboxUri(user.username);
+  const sharedInbox = ctx.getInboxUri();
+
+  db.insert(follows)
+    .values({
+      followerUri: followerUri.href,
+      followerInbox: followerInbox.href,
+      followerSharedInbox: sharedInbox.href,
+      followedUri: actor.id.href,
+      accepted: false,
+    })
+    .onConflictDoNothing()
+    .run();
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Follow({
+      id: new URL(`#follow/${Date.now()}`, followerUri),
+      actor: followerUri,
+      object: actor.id,
+    }),
+  );
+
+  redirect(
+    `/follow?message=${encodeURIComponent(
+      `Follow request sent to ${handle}. It will show as accepted once the remote server confirms.`,
+    )}`,
+  );
+}
+~~~~
+
+`ctx.lookupObject(handle)` does a WebFinger lookup on the handle,
+then fetches the actor JSON the handle points at.  `isActor(actor)`
+and `actor instanceof Group` narrow the result to the type we want
+to follow.  We record the follow row as `accepted: false` up front so
+the UI could, if we wanted, show a “pending” badge; when the remote
+server sends back `Accept(Follow)`, the inbox listener we wrote above
+flips it to true.
+
+### Verifying with ActivityPub.Academy
+
+With the dev server and `fedify tunnel` both running, search
+`@pictures@<your-tunnel>` in ActivityPub.Academy and click the
+*Follow* button on the result card.  A few seconds later, the
+community profile on Academy looks like this:
+
+![Screenshot: Academy sees the community as followed, with 1 follower and a Group badge](./threadiverse/academy-following-community.png)
+
+The “Group” badge, the *Unfollow* button (Academy has decided our
+Accept came back), and the *1 Follower* count prove that the round
+trip worked: Academy sent a Follow, the community inbox accepted and
+recorded it, the Accept shipped back, and Academy trusts the
+relationship.  A direct peek at the local database confirms it:
+
+~~~~ sh
+echo 'SELECT follower_uri, accepted FROM follows;' \
+  | sqlite3 threadiverse.sqlite3 -header -box
+~~~~
+
+Outbound follows work the same way.  Log in as a local user, open
+`/follow`, paste `@fediverse@lemmy.ml` (or any community on an
+instance you like), submit the form, and wait a moment — the follow
+row is inserted immediately, and flips to `accepted = 1` once the
+remote server's `Accept(Follow)` reaches our inbox.
