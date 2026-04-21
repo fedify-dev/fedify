@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "astro dev --config astro.config.node.ts",
     "build": "astro build --config astro.config.node.ts",
-    "preview": "astro preview --config astro.config.node.ts"
+    "preview": "astro preview --config astro.config.node.ts",
+    "dev:bun": "bunx astro dev --config astro.config.bun.ts",
+    "build:bun": "bunx astro build --config astro.config.bun.ts",
+    "preview:bun": "bun ./dist/server/entry.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
@@ -14,6 +17,7 @@
     "@fedify/astro": "workspace:^",
     "@fedify/fedify": "workspace:^",
     "@fedify/vocab": "workspace:^",
+    "@nurodev/astro-bun": "^2.1.2",
     "astro": "catalog:"
   }
 }

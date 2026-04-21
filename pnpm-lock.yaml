@@ -373,6 +373,9 @@ importers:
       '@fedify/vocab':
         specifier: workspace:^
         version: link:../../packages/vocab
+      '@nurodev/astro-bun':
+        specifier: ^2.1.2
+        version: 2.1.2(astro@5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1))
       astro:
         specifier: 'catalog:'
         version: 5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1)
@@ -3583,6 +3586,11 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
+  '@nurodev/astro-bun@2.1.2':
+    resolution: {integrity: sha512-CXzh0q+jOodmqtZ/YMyS7DTqmFC2zafv4C7GQMBDoBDRcx7CONzxCk/rK2uaKHoh3+AvSPo3hXnTp6oLfIpl5g==}
+    peerDependencies:
+      astro: ^5.1.1
+
   '@opentelemetry/api-logs@0.211.0':
     resolution: {integrity: sha512-swFdZq8MCdmdR22jTVGQDhwqDzcI4M10nhjXkLr1EsIzXgZBqm4ZlmmcWsg3TSNf+3mzgOiqveXmBLZuDi2Lgg==}
     engines: {node: '>=8.0.0'}
@@ -5508,6 +5516,15 @@ packages:
 
   ast-types-flow@0.0.8:
     resolution: {integrity: sha512-OH/2E5Fg20h2aPrbe+QL8JZQFko0YZaF+j4mnQ7BGhfavO7OpSLa8a0y9sBwomHdSbkhTS8TQNayBfnW5DwbvQ==}
+
+  ast-types@0.16.1:
+    resolution: {integrity: sha512-6t10qk83GOG8p0vKmaCr8eiilZwO171AvbROMtvvNiwrTly62t+7XkA8RdIIVbpMhCASAsxgAzdRSwh6nw/5Dg==}
+    engines: {node: '>=4'}
+
+  astro-integration-kit@0.18.0:
+    resolution: {integrity: sha512-Z0QW5IQjosuKQDEGYYkvUX6EhEtrmE4/oViqWz23QveV8U7AuyFsTdg00WRNPevWZl/5a4lLUeDpv4bCRynRRg==}
+    peerDependencies:
+      astro: ^4.12.0 || ^5.0.0
 
   astro@5.17.3:
     resolution: {integrity: sha512-69dcfPe8LsHzklwj+hl+vunWUbpMB6pmg35mACjetxbJeUNNys90JaBM8ZiwsPK689SAj/4Zqb1ayaANls9/MA==}
@@ -8247,6 +8264,9 @@ packages:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
 
+  pathe@1.1.2:
+    resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
+
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
@@ -8662,6 +8682,10 @@ packages:
   real-require@0.2.0:
     resolution: {integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==}
     engines: {node: '>= 12.13.0'}
+
+  recast@0.23.11:
+    resolution: {integrity: sha512-YTUo+Flmw4ZXiWfQKGcwwc11KnoRAYgzAE2E7mXKCjSviTKShtxBsN6YUUBB2gtaBzKzeKunxhUwNHQuRryhWA==}
+    engines: {node: '>= 4'}
 
   redis-errors@1.2.0:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
@@ -9296,6 +9320,9 @@ packages:
 
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
+
+  tiny-invariant@1.3.3:
+    resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -10193,6 +10220,9 @@ packages:
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -11847,6 +11877,12 @@ snapshots:
       fastq: 1.19.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@nurodev/astro-bun@2.1.2(astro@5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1))':
+    dependencies:
+      astro: 5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1)
+      astro-integration-kit: 0.18.0(astro@5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1))
+      zod: 4.3.6
 
   '@opentelemetry/api-logs@0.211.0':
     dependencies:
@@ -14202,6 +14238,16 @@ snapshots:
       pathe: 2.0.3
 
   ast-types-flow@0.0.8: {}
+
+  ast-types@0.16.1:
+    dependencies:
+      tslib: 2.8.1
+
+  astro-integration-kit@0.18.0(astro@5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1)):
+    dependencies:
+      astro: 5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1)
+      pathe: 1.1.2
+      recast: 0.23.11
 
   astro@5.17.3(@types/node@24.3.0)(ioredis@5.8.2)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.44.1)(tsx@4.20.3)(typescript@5.9.3)(yaml@2.8.1):
     dependencies:
@@ -17813,6 +17859,8 @@ snapshots:
 
   path-type@4.0.0: {}
 
+  pathe@1.1.2: {}
+
   pathe@2.0.3: {}
 
   pathval@2.0.1: {}
@@ -18145,6 +18193,14 @@ snapshots:
   readdirp@5.0.0: {}
 
   real-require@0.2.0: {}
+
+  recast@0.23.11:
+    dependencies:
+      ast-types: 0.16.1
+      esprima: 4.0.1
+      source-map: 0.6.1
+      tiny-invariant: 1.3.3
+      tslib: 2.8.1
 
   redis-errors@1.2.0: {}
 
@@ -19023,6 +19079,8 @@ snapshots:
       real-require: 0.2.0
 
   tiny-inflate@1.0.3: {}
+
+  tiny-invariant@1.3.3: {}
 
   tinybench@2.9.0: {}
 
@@ -19950,5 +20008,7 @@ snapshots:
   zod@3.22.3: {}
 
   zod@3.25.76: {}
+
+  zod@4.3.6: {}
 
   zwitch@2.0.4: {}
