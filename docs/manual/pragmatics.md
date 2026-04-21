@@ -446,9 +446,10 @@ import { Hashtag, Image, Mention, Note } from "@fedify/vocab";
 // ---cut-before---
 new Note({
   content:  // [!code highlight]
-    '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
+    '<p>Hello <a class="mention u-url" href="https://example.com/users/friend">' +
     '@friend@example.com</a>! This note demonstrates ' +
-    '<a href="https://example.com/tags/fedify">#fedify</a>.</p>',
+    '<a class="mention hashtag" rel="tag" ' +
+    'href="https://example.com/tags/fedify">#fedify</a>.</p>',
   attachments: [  // [!code highlight]
     new Image({
       url: new URL("https://picsum.photos/id/237/1200/800"),
@@ -638,7 +639,7 @@ import { Mention, Note } from "@fedify/vocab";
 // ---cut-before---
 new Note({
   content:  // [!code highlight]
-    '<p>Hello <a class="mention" href="https://example.com/users/friend">' +
+    '<p>Hello <a class="mention u-url" href="https://example.com/users/friend">' +
     '@friend@example.com</a>!</p>',
   tags: [  // [!code highlight]
     new Mention({
@@ -653,6 +654,9 @@ new Note({
 > In practice, you should keep the anchor in `content` and the `Mention` object
 > in `tags` aligned with each other.  If they point to different actors,
 > ActivityPub implementations may render or notify inconsistently.
+> For Mastodon-compatible mention rendering, the anchor in `content` should use
+> `class="mention u-url"` so the link is treated as a mention instead of a
+> generic profile URL.
 
 For example, the above `Mention` object is displayed like the following in
 Mastodon:
@@ -669,7 +673,8 @@ import { Hashtag, Note } from "@fedify/vocab";
 // ---cut-before---
 new Note({
   content:  // [!code highlight]
-    '<p>This note demonstrates <a href="https://example.com/tags/fedify">' +
+    '<p>This note demonstrates <a class="mention hashtag" rel="tag" ' +  // [!code highlight]
+    'href="https://example.com/tags/fedify">' +
     '#fedify</a>.</p>',
   tags: [  // [!code highlight]
     new Hashtag({
@@ -680,10 +685,20 @@ new Note({
 })
 ~~~~
 
+> [!NOTE]
+> For Mastodon-compatible hashtag rendering, the anchor in `content` should use
+> `class="mention hashtag"` and `rel="tag"`.  Without those attributes,
+> Mastodon is more likely to treat it as a plain link instead of a hashtag.
+
 For example, the above `Hashtag` object is displayed like the following in
 Mastodon:
 
 ![Screenshot: A rendered hashtag in Mastodon](pragmatics/mastodon-hashtag.png)
+
+If you click the hashtag in Mastodon, it opens a hashtag-specific menu instead
+of behaving like a plain external link:
+
+![Screenshot: A Mastodon hashtag menu opened from a rendered hashtag](pragmatics/mastodon-hashtag-dropdown.png)
 
 ### `Emoji`: Custom emoji
 
