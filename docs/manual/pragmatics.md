@@ -515,3 +515,39 @@ Mastodon:
 
 ![Screenshot: An article object with a title, canonical link, and hashtag in
 Mastodon](pragmatics/mastodon-article.png)
+
+### `Question`: Polls
+
+The `Question` type is used for polls.  In Mastodon, the question body comes
+from `content`, the poll choices come from `exclusiveOptions` or
+`inclusiveOptions`, and metadata such as `voters` and `endTime` are displayed
+below the choices.
+
+~~~~ typescript{4-20} twoslash
+import { Collection, Note, Question } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+// ---cut-before---
+new Question({
+  content: "<p>Which pragmatics example should the manual explain first?</p>",
+  exclusiveOptions: [
+    new Note({ name: "A short note", replies: new Collection({ totalItems: 4 }) }),
+    new Note({ name: "A long article", replies: new Collection({ totalItems: 2 }) }),
+    new Note({
+      name: "A poll question",
+      replies: new Collection({ totalItems: 7 }),
+    }),
+  ],
+  voters: 13,
+  endTime: Temporal.Instant.from("2026-04-28T12:00:00Z"),
+})
+~~~~
+
+> [!NOTE]
+> Use `exclusiveOptions` for single-choice polls and `inclusiveOptions` for
+> multiple-choice polls.  A `Question` object should not contain both.
+
+For example, the above `Question` object is displayed like the following in
+Mastodon:
+
+![Screenshot: A question object rendered as a poll in
+Mastodon](pragmatics/mastodon-question.png)
