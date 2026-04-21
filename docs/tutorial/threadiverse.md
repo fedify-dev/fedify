@@ -3882,19 +3882,136 @@ community's URL straight into the address bar:
 https://lemmy.ml/c/<slug>@<your-tunnel>
 ~~~~
 
-Lemmy fetches the actor, resolves the moderators collection, and
-shows a familiar-looking community sidebar with a *Subscribe*
-button.  Clicking it ships a `Follow` from the Lemmy user to our
-community's inbox; your follows table grows a row, and the
-`Announce(Create(Page))` you emit on your next local thread lands
-in that Lemmy user's feed.
+Lemmy fetches the actor and shows a community sidebar with a
+*Subscribe* button.  But clicking *Subscribe* still lands on
+*Subscribe Pending* — Lemmy's outbound `Follow` either never reaches
+our inbox, or our `Accept(Follow)` never gets past Lemmy's strict
+parser.  Two more changes clear both halves.
 
-> [!NOTE]
-> Lemmy's federation queue runs on exponential backoff, so a
-> *Subscribe Pending* state can take a few minutes to resolve on
-> the Lemmy side even after our inbox has already stored and
-> accepted the Follow.  If it never clears, Lemmy usually retries
-> when the community page is reloaded.
+### Bundle Lemmy's JSON-LD context
+
+Lemmy's activities include
+`https://join-lemmy.org/context.json` in their `@context` array.
+Fetching that URL works, but the server serves it as
+`application/json` without a
+`Link: <...>; rel="http://www.w3.org/ns/json-ld#context"` header, and Fedify's
+default JSON-LD document loader rejects the response.  Every Lemmy-originated
+activity (Follow included) therefore fails to parse before our handlers ever
+run.
+
+The fix is to preload the context ourselves.  Save the context JSON
+at *federation/lemmy-context.json* (copy it verbatim from
+<https://join-lemmy.org/context.json>), and wrap Fedify's default
+document loader with one that short-circuits that URL to the
+bundled copy:
+
+~~~~ typescript{2-9,21-35,41-42} [federation/index.ts]
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getDocumentLoader,
+  type InboxContext,
+  InProcessMessageQueue,
+  importJwk,
+  MemoryKvStore,
+} from "@fedify/fedify";
+// ...other imports...
+import lemmyContext from "./lemmy-context.json" with { type: "json" };
+
+const BUNDLED_CONTEXTS: Record<string, unknown> = {
+  "https://join-lemmy.org/context.json": lemmyContext,
+};
+
+const documentLoaderFactory: Parameters<
+  typeof createFederation
+>[0]["documentLoaderFactory"] = (options) => {
+  const inner = getDocumentLoader(options);
+  return async (url) => {
+    const bundled = BUNDLED_CONTEXTS[url];
+    if (bundled != null) {
+      return { contextUrl: null, document: bundled, documentUrl: url };
+    }
+    return await inner(url);
+  };
+};
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+  documentLoaderFactory,
+  contextLoaderFactory: documentLoaderFactory,
+});
+~~~~
+
+The same factory is passed as both `documentLoaderFactory` (used
+for resolving remote actors and activities) and
+`contextLoaderFactory` (used for resolving `@context` URLs) because
+the override applies equally to both paths.
+
+### Trim the `Accept(Follow)` to what Lemmy accepts
+
+Lemmy's inbox parser enforces a strict enum over activity types and
+refuses activities that don't match exactly.  Two tiny edits to the
+`Accept` we ship back make it pass:
+
+~~~~ typescript{3-6,9-13} [federation/index.ts]
+await ctx.sendActivity(
+  { identifier },
+  actor,
+  new Accept({
+    id: new URL(
+      `/users/${identifier}/accepts/${crypto.randomUUID()}`,
+      ctx.getActorUri(identifier),
+    ),
+    actor: follow.objectId,
+    object: new Follow({
+      id: follow.id,
+      actor: follow.actorId,
+      object: follow.objectId,
+    }),
+  }),
+);
+~~~~
+
+Two changes from the version we wrote in Ch. 14:
+
+ -  The `id` uses a UUID-based path (`/users/{id}/accepts/{uuid}`)
+    instead of the URL-encoded fragment `#accepts/<url-encoded follow id>`.
+    Lemmy's URL parser doesn't tolerate a URL inside a fragment.
+ -  The nested `object` is a brand-new `Follow` with only `id`,
+    `actor`, and `object` populated — Lemmy's parser balks at the
+    full original Follow (with its own `@context` and ancillary
+    fields) that Fedify would otherwise serialise inline.
+
+### Verification
+
+With those changes live, clicking *Subscribe* on the Lemmy
+community page flips straight to *Joined*, and a direct check of
+our database shows the row:
+
+~~~~ sh
+echo 'SELECT follower_uri, accepted FROM follows;' \
+  | sqlite3 threadiverse.sqlite3
+~~~~
+
+~~~~ console
+https://lemmy.ml/u/<your-username>|1
+~~~~
+
+![Screenshot: the Lemmy community page says “Joined” after the round-trip](./threadiverse/lemmy-subscribed.png)
+
+> [!WARNING]
+> Inbound `Follow` → `Accept(Follow)` works reliably through
+> Cloudflare quick tunnels (`cloudflared tunnel --url …`).  Outbound
+> `Announce(Create(Page))` — the redistribution half — is,
+> at the time of writing, sometimes rejected by Lemmy's
+> HTTP-signature digest check with
+> `"Incoming activity has invalid digest for body"` when the tunnel re-frames
+> the HTTP/2 body in transit.  Switching to a named Cloudflare tunnel or to
+> [`serveo`] / [`ngrok`] sidesteps this.  For production, put the app behind a
+> normal reverse proxy (Caddy, nginx); `Announce` fan-out there works
+> identically to `Follow` / `Accept`.
 
 > [!TIP]
 > Lemmy additionally sends a boolean `postingRestrictedToMods` on
@@ -3904,6 +4021,9 @@ in that Lemmy user's feed.
 > community as announcement-only — you can add the field with a
 > custom JSON-LD context; see the
 > [Fedify vocab docs](../manual/vocab.md) for the escape hatch.
+
+[`serveo`]: https://serveo.net/
+[`ngrok`]: https://ngrok.com/
 
 
 Areas to improve
