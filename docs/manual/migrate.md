@@ -251,7 +251,7 @@ import { importJwk } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 async function getJwksByUsername(
   _: string,
-): Promise<{ rsa: { privateKey: JsonWebKey; publicKey: JsonWebKey } }> {
+): Promise<{ rsa: { privateKey: JsonWebKey; publicKey: JsonWebKey } } | null> {
   return { rsa: { privateKey: {}, publicKey: {} } };
 }
 // ---cut-before---
