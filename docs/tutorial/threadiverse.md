@@ -1275,3 +1275,83 @@ up*.
 > under *Application → Cookies*).  You should see a `session` cookie whose
 > value is the same 43-character token as the `token` column of the
 > `sessions` table.
+
+### Profile page
+
+Every user needs a page to call their own.  For now we'll keep it simple:
+URL path, display name, join date.  Create *app/users/\[username]/page.tsx*:
+
+~~~~ tsx [app/users/[username]/page.tsx]
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { db, users } from "@/db";
+
+type ProfilePageProps = {
+  params: Promise<{ username: string }>;
+};
+
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const { username } = await params;
+  const user = db
+    .select({
+      id: users.id,
+      username: users.username,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.username, username))
+    .get();
+  if (!user) notFound();
+  return (
+    <>
+      <h1>@{user.username}</h1>
+      <p className="muted">
+        Joined{" "}
+        {user.createdAt.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+      </p>
+      <p>Threads and replies by this user will appear here.</p>
+    </>
+  );
+}
+~~~~
+
+A few things to notice:
+
+ -  The square brackets in the folder name `[username]` make `username`
+    a *dynamic segment*.  The Next.js router will match any path of the
+    form `/users/<something>` and pass that `something` as
+    `params.username`.
+ -  `params` is a Promise in recent versions of Next.js, so we `await` it
+    before destructuring.
+ -  `notFound()` aborts rendering and shows the nearest `not-found.tsx`
+    (or, if there isn't one, the default 404 page).
+
+While we're here, turn the `@username` label in the nav bar into a link
+that points to the current user's profile.  In *app/layout.tsx*, replace
+the `<span>` with a `<Link>`:
+
+~~~~ tsx{2} [app/layout.tsx]
+<form action={logout} className="session-controls">
+  <Link href={`/users/${user.username}`}>@{user.username}</Link>
+  <button type="submit" className="link-button">
+    Log out
+  </button>
+</form>
+~~~~
+
+Reload and visit `/users/alice` (or whatever username you signed up with).
+You should see something like this:
+
+![Screenshot: the user profile page](./threadiverse/profile-page.png)
+
+The same URL right now, when you open it with a browser, renders the HTML
+page above.  But if a fediverse server asks for it with an
+`Accept: application/activity+json` header, Fedify's middleware intercepts
+the request and returns the default placeholder `Person` actor we saw
+earlier.  In the next chapter we'll swap that placeholder for a proper
+actor backed by our `users` table, so searching `@alice@<your-host>` in
+Mastodon or Lemmy actually finds the account we just created.
