@@ -169,6 +169,38 @@ test("normalizePublicAudience() does not traverse prototype-polluted keys", asyn
   assertEquals(Object.hasOwn(output, "to"), false);
 });
 
+test("normalizePublicAudience() bails out on nested @context that redefines as:", async () => {
+  // The top-level @context is the standard ActivityStreams URL, so the
+  // fast-path would previously have rewritten every `to` under the
+  // document.  The nested object's inline @context, however, remaps the
+  // `as:` prefix to a different namespace, which means `as:Public` inside
+  // that subtree refers to a different IRI than the one we would expand
+  // it to.  The rewrite must bail out rather than silently change the
+  // nested value.
+  const input = {
+    "@context": AS_CONTEXT,
+    type: "Create",
+    id: "https://example.com/activities/nested",
+    actor: "https://example.com/alice",
+    to: "as:Public",
+    object: {
+      "@context": {
+        "as": "https://not-activitystreams.example/",
+      },
+      type: "https://www.w3.org/ns/activitystreams#Note",
+      id: "https://example.com/objects/nested",
+      to: "as:Public",
+    },
+  };
+  const output = await normalizePublicAudience(input) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(output.to, "as:Public");
+  const nested = output.object as Record<string, unknown>;
+  assertEquals(nested.to, "as:Public");
+});
+
 test("normalizePublicAudience() bails out when the rewrite changes semantics", async () => {
   const input = {
     "@context": {

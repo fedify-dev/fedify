@@ -87,14 +87,34 @@ function rewritePublicAudience(value: unknown, parentKey?: string): unknown {
 }
 
 /**
+ * Reports whether `value` carries an `@context` property anywhere inside
+ * its subtree (not counting the value itself).  A nested `@context` can
+ * introduce a local term-definition scope that redefines `as:` or `Public`
+ * even when the top-level `@context` is safe, so the fast path must defer
+ * to the URDNA2015 equivalence check whenever one is present.
+ */
+function hasNestedContext(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasNestedContext);
+  if (typeof value !== "object" || value == null) return false;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (key === "@context") return true;
+    if (hasNestedContext(record[key])) return true;
+  }
+  return false;
+}
+
+/**
  * Checks whether the `@context` of a JSON-LD document is guaranteed not
  * to redefine the `as:` prefix or the bare `Public` term.  Only documents
  * whose `@context` is a string, or an array of strings, drawn from Fedify's
- * preloaded context set AND including the ActivityStreams URL qualify:
- * in that case the rewrite is provably semantics-preserving and the
- * URDNA2015 equivalence check can be skipped.  Unknown external URLs are
- * treated as potentially unsafe because their content could redefine
- * those names.
+ * preloaded context set AND including the ActivityStreams URL qualify,
+ * AND no nested subtree carries its own `@context` that might redefine
+ * those terms within a local scope.  When all of that holds the rewrite
+ * is provably semantics-preserving and the URDNA2015 equivalence check
+ * can be skipped.  Any other shape (unknown external URLs, inline
+ * objects at the top level, nested `@context` blocks) is treated as
+ * potentially unsafe.
  */
 function hasKnownSafeContext(jsonLd: unknown): boolean {
   if (typeof jsonLd !== "object" || jsonLd == null) return false;
@@ -113,7 +133,12 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
     if (!KNOWN_SAFE_CONTEXT_URLS.has(entry)) return false;
     if (entry === AS_CONTEXT_URL) hasAs = true;
   }
-  return hasAs;
+  if (!hasAs) return false;
+  for (const key of Object.keys(record)) {
+    if (key === "@context") continue;
+    if (hasNestedContext(record[key])) return false;
+  }
+  return true;
 }
 
 /**
