@@ -1329,6 +1329,15 @@ empty array.  Each item needs both an `id` (the actor's URL) and an `inboxId`
 (where to deliver activities)—Fedify uses these when sending activities to all
 followers.
 
+> [!WARNING]
+> After saving *src/federation.ts*, stop the dev server
+> (<kbd>Ctrl</kbd>+<kbd>C</kbd>) and start it again with `bun run dev`.
+> Astro's hot-module reload does not always re-register Fedify's inbox
+> listeners, and an incoming `Follow` against a stale federation object
+> may be rejected with `Unsupported activity type: Follow`.  Every time
+> you edit *src/federation.ts* (now or in later chapters), do a clean
+> restart before sending activities to the inbox.
+
 ### Showing follower count on the home page
 
 Update *src/pages/index.astro* to display the follower count and a link to
@@ -1366,7 +1375,12 @@ To test the follow flow, we need a real ActivityPub server to send `Follow`
 activities to our blog.  [ActivityPub.Academy] is a sandbox Mastodon instance
 designed specifically for this purpose.
 
-Make sure the dev server is running and the tunnel is active:
+> [!IMPORTANT]
+> If you haven't already, stop the dev server
+> (<kbd>Ctrl</kbd>+<kbd>C</kbd>) and start it again before running this
+> test—see the warning above about HMR and inbox listeners.
+
+Restart the dev server and open the tunnel in a separate terminal:
 
 ~~~~ sh
 bun run dev
