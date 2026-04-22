@@ -1077,14 +1077,14 @@ Also update *astro.config.ts* to allow requests from external hostnames
 (the tunnel assigns a different hostname than `localhost`):
 
 ~~~~ typescript{9-18} [astro.config.ts]
-import node from "@astrojs/node";
 import { fedifyIntegration } from "@fedify/astro";
+import bun from "@nurodev/astro-bun";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: node({ mode: "standalone" }),
+  adapter: bun(),
   security: {
     // Trust any forwarded host so the server works correctly behind a
     // reverse proxy or tunnel (e.g. `fedify tunnel`, Cloudflare Tunnel).
@@ -1098,7 +1098,7 @@ export default defineConfig({
 });
 ~~~~
 
-`security.allowedDomains` tells Astro's standalone server to trust
+`security.allowedDomains` tells Astro to trust
 `X-Forwarded-Host`.  Setting it to `[{}]` (an object with no properties)
 matches any domain.  Without this, the server ignores `X-Forwarded-Host`
 and Fedify falls back to `localhost` in all generated URLs, which other
@@ -1436,37 +1436,6 @@ Then tell TypeScript to include those declarations by adding a
   "exclude": ["dist"]
 }
 ~~~~
-
-Vite's dev server—used by `bun run dev`—doesn't automatically recognize `bun:`
-protocol imports as Bun built-ins.  Tell it to treat `bun:sqlite` as an
-external (i.e., don't try to bundle it) by updating *astro.config.ts*:
-
-~~~~ typescript{13-15} [astro.config.ts]
-import node from "@astrojs/node";
-import { fedifyIntegration } from "@fedify/astro";
-import { defineConfig } from "astro/config";
-
-export default defineConfig({
-  integrations: [fedifyIntegration()],
-  output: "server",
-  adapter: node({ mode: "standalone" }),
-  security: {
-    allowedDomains: [{}],
-  },
-  vite: {
-    ssr: {
-      external: ["bun:sqlite"],
-    },
-    server: {
-      allowedHosts: true,
-    },
-  },
-});
-~~~~
-
-Without this, `bun run dev` would fail to resolve `bun:sqlite` and throw a
-module-not-found error when a request first hits server-side code that imports
-*src/lib/db.ts*.
 
 ### Creating the database module
 
@@ -2952,7 +2921,7 @@ const db = new Database(process.env.DB_PATH ?? "blog.db");
 ~~~~
 
 Make sure your *Dockerfile* runs `bun run build` and starts the server
-with `bun dist/server/entry.mjs` (Astro's `@astrojs/node` standalone
+with `bun dist/server/entry.mjs` (the `@nurodev/astro-bun` adapter's
 output).
 
 For general guidance on running Fedify applications in production—key–value
