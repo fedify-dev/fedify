@@ -54,7 +54,7 @@ Misskey.  This way you'll have a feel for what we're trying to build.
 Goals
 -----
 
-In this tutorial, we'll use Fedify and Astro to create a single-author
+In this tutorial, we'll use Fedify and [Astro] to create a single-author
 federated blog that communicates with other fediverse software via ActivityPub.
 The blog will include the following features:
 
