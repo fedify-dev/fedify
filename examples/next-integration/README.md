@@ -1,5 +1,5 @@
-Fedify–Next.js integration example
-==================================
+Fedify–Next.js 16 integration example
+=====================================
 
 `create-next-app`
 -----------------

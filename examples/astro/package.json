@@ -7,8 +7,8 @@
     "dev": "astro dev --config astro.config.node.ts",
     "build": "astro build --config astro.config.node.ts",
     "preview": "astro preview --config astro.config.node.ts",
-    "dev:bun": "bunx astro dev --config astro.config.bun.ts",
-    "build:bun": "bunx astro build --config astro.config.bun.ts",
+    "dev:bun": "bunx --bun astro dev --config astro.config.bun.ts",
+    "build:bun": "bunx --bun astro build --config astro.config.bun.ts",
     "preview:bun": "bun ./dist/server/entry.mjs"
   },
   "dependencies": {

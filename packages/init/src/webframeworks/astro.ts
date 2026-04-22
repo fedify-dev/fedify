@@ -93,8 +93,8 @@ const TASKS = {
     preview: "deno run -A npm:astro preview",
   },
   "bun": {
-    dev: "bunx astro dev",
-    build: "bunx astro build",
+    dev: "bunx --bun astro dev",
+    build: "bunx --bun astro build",
     preview: "bun ./dist/server/entry.mjs",
     lint: "eslint .",
   },

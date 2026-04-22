@@ -105,8 +105,8 @@ point after building for preview or production:
 ~~~~ json
 {
   "scripts": {
-    "dev": "bunx astro dev",
-    "build": "bunx astro build",
+    "dev": "bunx --bun astro dev",
+    "build": "bunx --bun astro build",
     "preview": "bun ./dist/server/entry.mjs"
   }
 }
