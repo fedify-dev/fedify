@@ -13,11 +13,10 @@ export default replaceHost(
   ),
 );
 
-// This config makes middleware process only requests with the
+// This config makes proxy process only requests with the
 // "Accept" header matching the federation accept regex.
-// More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional.
+// More details: https://nextjs.org/docs/app/api-reference/file-conventions/proxy#matcher.
 export const config = {
-  runtime: "nodejs",
   matcher: [
     {
       source: "/:path*",

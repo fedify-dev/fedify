@@ -708,10 +708,14 @@ fedify init my-next-app
 
 Then you can see the Next.js boilerplate code in the `my-next-app` directory.
 If you have created a Next.js app with `create-next-app` before, you'll see
-some differences in the code. There is a `middleware.ts` file in the
+some differences in the code. There is a *middleware.ts* file in the
 `my-next-app` directory, which is the entry point to the Fedify middleware
-from the Next.js framework. Or, if you just install *@fedify/next* manually,
-put the following code in your `middleware.ts` file:
+from the Next.js framework.  On Next.js 16, *proxy.ts* is the preferred file
+convention, but *middleware.ts* remains supported for backward compatibility.
+If you rename the file to *proxy.ts*, remove `runtime: "nodejs"` from the
+exported `config` because Proxy always runs on the Node.js runtime.
+Or, if you just install *@fedify/next* manually, put the following code in
+your *middleware.ts* file:
 
 ~~~~ typescript
 import { fedifyWith } from "@fedify/next";
@@ -768,11 +772,11 @@ The `config` object is necessary to let Next.js know that the middleware
 should process requests with the [`Accept`] header matching the federation
 accept regex.  This is because Next.js middleware processes only requests
 with the [`Accept`] header matching the regex by default.  More details can be
-found in the Next.js official documentation [`config` in `middleware.js`].
+found in the Next.js official documentation [`config` in *middleware.js*].
 
 [Fedify repository]: https://github.com/fedify-dev/fedify
 [Next.js]: https://nextjs.org/
-[`config` in `middleware.js`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
+[`config` in *middleware.js*]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 
 
 Astro
