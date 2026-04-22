@@ -146,8 +146,10 @@ Check that it works:
 fedify --version
 ~~~~
 
-Make sure the version number is 2.1.0 or higher.  Older versions of the CLI
-don't know how to scaffold a Next.js project.
+Make sure the version number is 2.2.0 or higher.  Older versions of the CLI
+don't know how to scaffold a Next.js project, and the `@fedify/fedify`
+release we depend on for outbound interop with Lemmy was cut alongside
+CLI 2.2.
 
 ### `fedify init` to initialize the project
 
@@ -4001,19 +4003,22 @@ https://lemmy.ml/u/<your-username>|1
 
 ![Screenshot: the Lemmy community page says “Joined” after the round-trip](./threadiverse/lemmy-subscribed.png)
 
-> [!WARNING]
-> `Follow` / `Accept(Follow)` / `Undo(Follow)` round-trip cleanly
-> through both [ngrok] and a named Cloudflare tunnel in both
-> directions, and a local user can follow a remote Lemmy community
-> too.  Outbound `Announce(Create(Page))` — the fan-out a community
-> does when a new thread arrives — is currently rejected by Lemmy's
-> inbox with `{"error":"object_is_not_public"}` because Lemmy
-> insists on a very specific audience shape on the nested
-> `Create`/`Page`.  Mastodon, Mbin, and Peertube accept the same
-> activity as is; full-mesh Lemmy Announce compatibility needs
-> more serialization tuning and is tracked in the
-> [example repository]
-> rather than in the tutorial.
+> [!NOTE]
+> Earlier drafts of this tutorial warned that outbound
+> `Announce(Create(Page))` — the fan-out a community does when a new
+> thread arrives — was silently rejected by Lemmy with
+> `{"error":"object_is_not_public"}`.  The underlying cause was
+> JSON-LD compaction: Fedify was emitting `"to": "as:Public"` in
+> outgoing activities, and Lemmy's inbox parser compares that field
+> against the full `https://www.w3.org/ns/activitystreams#Public`
+> URI by string equality, without expanding the CURIE.  Lemmy's
+> behaviour is tracked upstream in [LemmyNet/lemmy#6465] and patched
+> in [LemmyNet/lemmy#6466].  Fedify 2.2 also ships the full URI form
+> on the sender side as a broader interop workaround, since several
+> other fediverse implementations exhibit the same gap.  With both
+> halves in place, posting a thread in a local community that a
+> Lemmy user is subscribed to now lands in their feed, and the same
+> path carries replies and votes back and forth.
 
 > [!TIP]
 > Lemmy additionally sends a boolean `postingRestrictedToMods` on
@@ -4024,7 +4029,8 @@ https://lemmy.ml/u/<your-username>|1
 > custom JSON-LD context; see the
 > [Fedify vocab docs](../manual/vocab.md) for the escape hatch.
 
-[example repository]: https://github.com/fedify-dev/threadiverse
+[LemmyNet/lemmy#6465]: https://github.com/LemmyNet/lemmy/issues/6465
+[LemmyNet/lemmy#6466]: https://github.com/LemmyNet/lemmy/pull/6466
 
 
 Areas to improve
