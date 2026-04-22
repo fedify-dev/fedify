@@ -1,5 +1,9 @@
 import { PUBLIC_COLLECTION } from "@fedify/vocab";
-import { type DocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  getDocumentLoader,
+  preloadedContexts,
+} from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 
@@ -188,13 +192,17 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
  * returned unchanged.  Canonicalization failures also fall back to the
  * original document.
  *
- * The canonicalization fallback requires an explicit `contextLoader`.
- * Because `normalizePublicAudience()` runs on potentially untrusted
- * JSON-LD (for example, inside `verifyProof()` on inbound payloads),
- * falling back to a default loader would let an attacker force
- * outbound HTTP requests to arbitrary `@context` URLs.  When no
- * `contextLoader` is supplied, non-standard contexts skip
- * canonicalization and the document is returned unchanged.
+ * When no `contextLoader` is supplied the helper falls back to the
+ * default document loader from `@fedify/vocab-runtime`, which only
+ * resolves URLs in the preloaded-contexts set.  That default is safe
+ * for signing paths that produce their own local JSON-LD, but it is
+ * *not* safe for verification paths that operate on adversarial input,
+ * because an attacker-supplied `@context` URL could steer the loader
+ * into an unbounded network fetch.  Callers that pass untrusted
+ * input (`verifyProof()` / `verifyObject()` are the canonical
+ * examples) must therefore gate the call on an explicit
+ * `contextLoader`, and a missing loader should translate into "skip
+ * the normalization attempt" rather than "use a default loader".
  *
  * Must be called before any signing step that canonicalizes the
  * compact form byte-for-byte (for example, Object Integrity Proofs
@@ -208,25 +216,16 @@ export async function normalizePublicAudience(
   if (!hasPublicCurieInAddressing(jsonLd)) return jsonLd;
   const normalized = rewritePublicAudience(jsonLd);
   if (hasKnownSafeContext(jsonLd)) return normalized;
-  if (contextLoader == null) {
-    logger.debug(
-      "Skipping public audience normalization for a non-standard " +
-        "`@context`: no `contextLoader` was supplied, so the URDNA2015 " +
-        "equivalence check would have to fall back to a default loader " +
-        "that could fetch arbitrary remote URLs.  Returning the document " +
-        "unchanged.",
-    );
-    return jsonLd;
-  }
+  const loader = contextLoader ?? getDocumentLoader();
   try {
     const [before, after] = await Promise.all([
       jsonld.canonize(jsonLd, {
         format: "application/n-quads",
-        documentLoader: contextLoader,
+        documentLoader: loader,
       }),
       jsonld.canonize(normalized, {
         format: "application/n-quads",
-        documentLoader: contextLoader,
+        documentLoader: loader,
       }),
     ]);
     if (before === after) return normalized;

@@ -505,6 +505,38 @@ test("verifyProof()", async () => {
     await verifyProof([jsonLd] as unknown, proof, options),
     null,
   );
+
+  // verifyProof() runs on inbound, potentially adversarial JSON-LD, so
+  // it must not hand an attacker-controlled `@context` URL to a default
+  // document loader.  The attacker input below would take the
+  // canonicalization path inside normalizePublicAudience (non-standard
+  // @context + CURIE in an addressing field), but because the options
+  // object here omits `contextLoader` the normalization attempt is
+  // suppressed entirely: no URDNA2015 fetch runs, and verify returns
+  // null cleanly (the proof was not signed over this activity anyway).
+  const attackerInput = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://attacker.example/ctx",
+    ],
+    id: "https://server.example/activities/attacker",
+    type: "Create",
+    actor: "https://server.example/users/alice",
+    object: {
+      id: "https://server.example/objects/attacker",
+      type: "Note",
+      attributedTo: "https://server.example/users/alice",
+      content: "n/a",
+      to: "as:Public",
+    },
+  };
+  assertEquals(
+    await verifyProof(attackerInput, proof, {
+      documentLoader: mockDocumentLoader,
+      keyCache: options.keyCache,
+    }),
+    null,
+  );
 });
 
 test("verifyObject()", async () => {

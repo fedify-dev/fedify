@@ -173,38 +173,11 @@ test("normalizePublicAudience() does not traverse prototype-polluted keys", asyn
   assertEquals(Object.hasOwn(output, "to"), false);
 });
 
-test("normalizePublicAudience() refuses to fetch contexts without an explicit loader", async () => {
-  // Untrusted inputs (for example, inbound payloads passed to verifyProof)
-  // must not trigger a default document loader that could fetch
-  // attacker-controlled `@context` URLs.  When the caller omits
-  // `contextLoader` and the document is not drawn from the known-safe
-  // set, the helper returns the document unchanged.
-  const input = {
-    "@context": [
-      AS_CONTEXT,
-      "https://attacker.example/ctx",
-    ],
-    type: "Note",
-    id: "https://example.com/notes/untrusted",
-    to: "as:Public",
-  };
-  const output = await normalizePublicAudience(input) as Record<
-    string,
-    unknown
-  >;
-  assertEquals(output.to, "as:Public");
-});
-
 test("normalizePublicAudience() stops before blowing the stack on pathological nesting", async () => {
   // Build a linear chain of nested objects deeper than the traversal
   // guard.  Without the depth limit the recursive walkers would bottom
   // out in a `RangeError: Maximum call stack size exceeded`; with it,
-  // the call must return.  The exact rewritten shape is an implementation
-  // detail of where the guard fires (once `hasNestedContext` hits the
-  // limit it reports a conservative "unsafe" result, so the fast path
-  // defers to the canonicalization path which without an explicit
-  // loader leaves the document unchanged), so we only assert that the
-  // call completes and returns an object.
+  // the call must return without throwing.
   let deep: Record<string, unknown> = { to: "as:Public" };
   for (let i = 0; i < 256; i++) deep = { nested: deep };
   const input = {
