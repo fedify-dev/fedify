@@ -133,9 +133,10 @@ Inbox listeners
  -  `.withIdempotency(strategy)`.
 
 > [!WARNING]
-> Activities of a type that is not registered via `.on()` are silently
-> ignored.  To catch everything, register a listener for the base
-> `Activity` class.
+> Activities of a type that is not registered via `.on()` are answered
+> with HTTP 202 and logged at error level as an unsupported activity,
+> but never reach a listener.  To catch everything, register a listener
+> for the base `Activity` class.
 
 See <https://fedify.dev/manual/inbox>.
 
