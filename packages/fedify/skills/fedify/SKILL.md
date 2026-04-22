@@ -435,7 +435,9 @@ Common mistakes to avoid
     actually trusted.
  -  Registering inbox handlers only for specific activity types and
     expecting delivery-level error handling; unregistered types are
-    silently dropped.  Add a catch-all on `Activity` if needed.
+    answered with HTTP 202 and logged at error level as unsupported,
+    but never reach a listener.  Add a catch-all on `Activity` if you
+    need to observe them.
  -  Wiring Fedify into a web framework by writing custom routes instead
     of importing the matching `@fedify/<framework>` package.
  -  Load-balancing queue worker nodes; each worker must take traffic
