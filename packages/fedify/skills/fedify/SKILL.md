@@ -25,12 +25,19 @@ parts of the fediverse (HTTP Signatures, Object Integrity Proofs,
 WebFinger, NodeInfo, JSON-LD, delivery queues) so application code can
 stay focused on dispatchers and activity handlers.
 
-Always link into the full documentation at <https://fedify.dev/> instead
-of guessing.  When the user asks about a specific API, treat
-<https://fedify.dev/llms.txt> and <https://fedify.dev/llms-full.txt> as
-authoritative; this skill only points the way.  Do not invent APIs;
-verify names against those docs or against the installed
-`@fedify/fedify` types.
+Always link into the full documentation at <https://fedify.dev/>
+instead of guessing.  Every docs page is also served as raw Markdown
+by appending `.md` to its path, so
+<https://fedify.dev/manual/federation.md> returns `text/markdown`.
+This skill uses the `.md` form in every fedify.dev link below so you
+can read the source directly without HTML rendering; when you present
+a link *to the user*, strip the `.md` suffix so browsers render the
+HTML page (so `https://fedify.dev/manual/federation.md` becomes
+`https://fedify.dev/manual/federation`).  The index at
+<https://fedify.dev/llms.txt> and the full bundle at
+<https://fedify.dev/llms-full.txt> are authoritative; this skill only
+points the way.  Do not invent APIs; verify names against those docs
+or against the installed `@fedify/fedify` types.
 
 
 Builder pattern
@@ -54,7 +61,7 @@ Two entry points reach a `Federation<TContextData>` object:
     fits in one module.
 
 `.build()` is asynchronous; always `await` it.  See
-<https://fedify.dev/manual/federation>.
+<https://fedify.dev/manual/federation.md>.
 
 ~~~~ typescript
 import { createFederationBuilder, MemoryKvStore } from "@fedify/fedify";
@@ -70,13 +77,13 @@ export const federation = await builder.build({
 > Production deployments *must* provide a real `queue` implementation.
 > Without one, outgoing activities are sent synchronously and delivery
 > becomes unreliable under load.  See
-> <https://fedify.dev/manual/federation>.
+> <https://fedify.dev/manual/federation.md>.
 
 > [!WARNING]
 > Never set `allowPrivateAddress: true` outside tests.  It disables the
 > SSRF guard that blocks Fedify from fetching private or loopback
-> addresses.  See <https://fedify.dev/manual/federation> and
-> <https://fedify.dev/manual/deploy>.
+> addresses.  See <https://fedify.dev/manual/federation.md> and
+> <https://fedify.dev/manual/deploy.md>.
 
 
 Dispatchers
@@ -107,16 +114,16 @@ template guarantees.
 
 Paths use URI templates.  If an identifier can contain URI characters,
 switch the template variable from `{identifier}` to `{+identifier}` to
-avoid double-encoding.  See <https://fedify.dev/manual/uri-template>.
+avoid double-encoding.  See <https://fedify.dev/manual/uri-template.md>.
 
 > [!WARNING]
 > Simple expansion (`{identifier}`) percent-encodes reserved characters a
 > second time.  If actors or objects are keyed by URIs, use reserved
 > expansion (`{+identifier}`).
 
-See <https://fedify.dev/manual/actor>,
-<https://fedify.dev/manual/object>, and
-<https://fedify.dev/manual/collections>.
+See <https://fedify.dev/manual/actor.md>,
+<https://fedify.dev/manual/object.md>, and
+<https://fedify.dev/manual/collections.md>.
 
 
 Inbox listeners
@@ -138,7 +145,7 @@ Inbox listeners
 > but never reach a listener.  To catch everything, register a listener
 > for the base `Activity` class.
 
-See <https://fedify.dev/manual/inbox>.
+See <https://fedify.dev/manual/inbox.md>.
 
 
 Context and `TContextData`
@@ -162,8 +169,8 @@ to build canonical URIs instead of string-concatenating paths.
 > remote document is known to be trustworthy; it was the source of
 > prior interop bugs.
 
-See <https://fedify.dev/manual/context> and
-<https://fedify.dev/manual/context-advanced>.
+See <https://fedify.dev/manual/context.md> and
+<https://fedify.dev/manual/context-advanced.md>.
 
 
 Framework integrations
@@ -193,7 +200,7 @@ content negotiation, signature verification, and response streaming.
 Two more packages are frequently useful: *@fedify/debugger* for a local
 ActivityPub dashboard, and *@fedify/relay* for relay implementations.
 
-See <https://fedify.dev/manual/integration>.
+See <https://fedify.dev/manual/integration.md>.
 
 
 Built-in protocol endpoints
@@ -204,10 +211,10 @@ handler is mounted; do not reimplement them.
 
  -  `/.well-known/webfinger` (WebFinger).  Customize link output with
     `setWebFingerLinksDispatcher()`.  See
-    <https://fedify.dev/manual/webfinger>.
+    <https://fedify.dev/manual/webfinger.md>.
  -  `/.well-known/nodeinfo` and the versioned NodeInfo document.
     Customize with `setNodeInfoDispatcher()`.  See
-    <https://fedify.dev/manual/nodeinfo>.
+    <https://fedify.dev/manual/nodeinfo.md>.
 
 
 Outgoing activities
@@ -237,7 +244,7 @@ deliveries have no retry.
 > those must be distinct activities.  Use a fresh UUID or counter in the
 > fragment.
 
-See <https://fedify.dev/manual/send>.
+See <https://fedify.dev/manual/send.md>.
 
 
 Vocabulary imports
@@ -263,7 +270,7 @@ in-tree *src/webfinger*.
 > objects without re-fetching.  Treat it as you would
 > `dangerouslySetInnerHTML`.
 
-See <https://fedify.dev/manual/vocab>.
+See <https://fedify.dev/manual/vocab.md>.
 
 
 Key pair management
@@ -283,7 +290,7 @@ interop with the widest set of peers, provide both.
 > do not check them into repositories, embed them in container images,
 > or expose them via admin endpoints.
 
-See <https://fedify.dev/manual/actor>.
+See <https://fedify.dev/manual/actor.md>.
 
 
 Persistent storage
@@ -308,14 +315,14 @@ in development or tests.
 > `PostgresMessageQueue` and similar implementations require connection
 > pooling sized for parallel consumers; a single shared connection will
 > deadlock under `ParallelMessageQueue`.  See
-> <https://fedify.dev/manual/mq>.
+> <https://fedify.dev/manual/mq.md>.
 
 > [!WARNING]
 > Do not load-balance worker nodes that drain the queue.  Each worker
 > should take traffic independently; putting them behind a load balancer
-> breaks idempotency tracking.  See <https://fedify.dev/manual/deploy>.
+> breaks idempotency tracking.  See <https://fedify.dev/manual/deploy.md>.
 
-See <https://fedify.dev/manual/kv> and <https://fedify.dev/manual/mq>.
+See <https://fedify.dev/manual/kv.md> and <https://fedify.dev/manual/mq.md>.
 
 
 Observability
@@ -342,7 +349,7 @@ generic setup):
 
 > [!CAUTION]
 > Since LogTape 0.7.0, implicit contexts require explicit configuration.
-> See <https://fedify.dev/manual/log>.
+> See <https://fedify.dev/manual/log.md>.
 
 [LogTape]: https://logtape.org/
 
@@ -357,8 +364,8 @@ its internals.  For trace persistence, `@fedify/fedify/otel` exports
 > Initialize the OpenTelemetry SDK *before* importing Fedify.  Later
 > registration leaves earlier spans untraced.
 
-See <https://fedify.dev/manual/log> and
-<https://fedify.dev/manual/opentelemetry>.
+See <https://fedify.dev/manual/log.md> and
+<https://fedify.dev/manual/opentelemetry.md>.
 
 
 Looking up FEPs
@@ -400,7 +407,7 @@ debugging:
 > public tunnel to your local process; do not run them against
 > production data.
 
-See <https://fedify.dev/cli>.
+See <https://fedify.dev/cli.md>.
 
 
 Common mistakes to avoid
@@ -428,7 +435,7 @@ Common mistakes to avoid
     `FederationOptions.origin` to the canonical URL, or pipe requests
     through [x-forwarded-fetch] before they reach Fedify (gated on a
     `BEHIND_PROXY` flag, since `X-Forwarded-Host` is spoofable from the
-    open internet).  See <https://fedify.dev/manual/deploy>.
+    open internet).  See <https://fedify.dev/manual/deploy.md>.
  -  Enabling `allowPrivateAddress: true` outside tests; that disables the
     SSRF guard.
  -  Using `crossOrigin: "trust"` without verifying the remote is
@@ -448,7 +455,7 @@ Common mistakes to avoid
     can legitimately produce multiple activities of the same shape.
  -  Returning `Tombstone` from an actor dispatcher without checking
     `RequestContext.getActor({ tombstone: "passthrough" })` semantics;
-    see <https://fedify.dev/manual/actor>.
+    see <https://fedify.dev/manual/actor.md>.
  -  Committing private keys, embedding them in bundles, or exposing them
     through admin endpoints.
 
