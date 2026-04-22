@@ -292,8 +292,8 @@ Then update *package.json* scripts to use Bun's SSR entry point after build:
 ~~~~ json
 {
   "scripts": {
-    "dev": "bunx astro dev",
-    "build": "bunx astro build",
+    "dev": "bunx --bun astro dev",
+    "build": "bunx --bun astro build",
     "preview": "bun ./dist/server/entry.mjs"
   }
 }

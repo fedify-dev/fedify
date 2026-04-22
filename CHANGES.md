@@ -8,6 +8,13 @@ Version 2.1.8
 
 To be released.
 
+### @fedify/init
+
+ -  Fixed `fedify init -w astro -p bun` generating *package.json* `scripts`
+    that invoked Astro through Node.js.  Bun + Astro projects now use
+    `bunx --bun astro dev` and `bunx --bun astro build`, so the generated
+    development workflow runs on systems that only have Bun installed.
+
 ### @fedify/next
 
  -  Widened `@fedify/next`'s supported Next.js peer dependency range to

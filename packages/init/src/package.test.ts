@@ -62,8 +62,8 @@ test(
 
     strictEqual(dependencies["@nurodev/astro-bun"], "^2.1.2");
     strictEqual(dependencies["@fedify/astro"], packageJson.version);
-    strictEqual(tasks.dev, "bunx astro dev");
-    strictEqual(tasks.build, "bunx astro build");
+    strictEqual(tasks.dev, "bunx --bun astro dev");
+    strictEqual(tasks.build, "bunx --bun astro build");
     strictEqual(tasks.preview, "bun ./dist/server/entry.mjs");
     match(
       files["astro.config.ts"],
