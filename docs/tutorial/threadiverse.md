@@ -338,7 +338,7 @@ Running it once right now will flag one pre-existing issue:
 to a `logger` constant, but nothing ever reads that `logger`.  Biome's
 `noUnusedVariables` rule flags it.  Delete the unused import and declaration:
 
-~~~~ typescript{2,4} [federation/index.ts]
+~~~~ typescript [federation/index.ts]
 import {
   createFederation,
   InProcessMessageQueue,
@@ -609,8 +609,8 @@ rm public/file.svg public/globe.svg public/next.svg public/vercel.svg public/win
 Reload `http://localhost:3000` in your browser.  You should see a nav bar
 with a *Threadiverse* brand on the left, two links (*Home* and
 *New community*), and the welcome blurb below it.  Clicking *New community*
-will 404 for now; we'll build that page in the *Communities as Group actors*
-chapter.
+will respond with `404 Not Found` for now; we'll build that page in the
+[*Communities as `Group` actors*](#communities-as-group-actors) chapter.
 
 [Next.js App Router]: https://nextjs.org/docs/app
 
@@ -620,9 +620,10 @@ User accounts
 
 Before we start federating anything we need *local* user accounts.  A local
 user is just a row in our own database; we'll only turn those rows into
-federated `Person` actors in the next chapter.  Getting accounts working
-first gives us something concrete (a user, a username, a password) that the
-federation layer can then point at.
+federated `Person` actors in
+[*Federating your user: the `Person` actor*](#federating-your-user-the-person-actor).
+Getting accounts working first gives us something concrete (a user, a username,
+a password) that the federation layer can then point at.
 
 ### Drizzle ORM and SQLite
 
@@ -640,17 +641,17 @@ benefit over raw SQL is that TypeScript understands your schema, so a typo
 like `users.usernaem` is a compile error rather than a runtime mystery.
 
 > [!NOTE]
-> If you already know SQL, you'll find that Drizzle barely hides it: a
-> Drizzle query reads almost word-for-word like the SQL it generates.  If
-> you don't know SQL yet, that's fine; we'll introduce each piece of syntax
-> the first time it appears.
+> If you already know SQL, you'll find that Drizzle ORM barely hides it: a
+> Drizzle ORM query reads almost word-for-word like the SQL it generates.
+> If you don't know SQL yet, that's fine; we'll introduce each piece of
+> syntax the first time it appears.
 
 [SQLite]: https://sqlite.org/
 [Drizzle ORM]: https://orm.drizzle.team/
 
 ### Installing dependencies
 
-Install Drizzle, the SQLite driver, and Drizzle's CLI:
+Install Drizzle ORM, the SQLite driver, and Drizzle Kit:
 
 ~~~~ sh
 npm install drizzle-orm better-sqlite3
@@ -659,7 +660,7 @@ npm install -D drizzle-kit @types/better-sqlite3
 
 The first line adds the runtime pieces: *drizzle-orm* is the query builder,
 and [*better-sqlite3*] is a synchronous SQLite driver well-suited to
-server-side rendering.  The second line adds Drizzle's CLI for managing the
+server-side rendering.  The second line adds Drizzle Kit for managing the
 schema, plus TypeScript types for *better-sqlite3*.
 
 [*better-sqlite3*]: https://github.com/WiseLibs/better-sqlite3
@@ -697,17 +698,18 @@ Reading the file top to bottom:
  -  `createdAt` is a Unix timestamp with a SQL default of `unixepoch()`, so
     SQLite fills in the time on insert.
 
-The two `type` exports are a Drizzle convention.  `User` is the type of a
+The two `type` exports are a Drizzle ORM convention.  `User` is the type of a
 row as it comes out of the database (every column populated).  `NewUser` is
 the shape of a row ready to *insert* (so `id` and `createdAt` are optional
 because they have defaults).  Using these types means you never write out
 column types by hand.
 
 > [!TIP]
-> The ``sql`(unixepoch())` `` bit is a *tagged template literal*: it embeds a
-> raw SQL snippet in a Drizzle schema definition.  We use it here because
-> Drizzle doesn't ship a helper for SQLite's `unixepoch()` function, and
-> `unixepoch()` is the simplest way to default a column to “now” in seconds.
+> The ``sql`(unixepoch())` `` bit is a *tagged template literal*: it embeds
+> a raw SQL snippet in a Drizzle ORM schema definition.  We use it here
+> because Drizzle ORM doesn't ship a helper for SQLite's `unixepoch()`
+> function, and `unixepoch()` is the simplest way to default a column to
+> “now” in seconds.
 
 ### Opening the database
 
@@ -730,13 +732,13 @@ export * from "./schema";
 The file opens (or creates) *threadiverse.sqlite3* in the project root, sets
 two pragmas that every SQLite app should set (`journal_mode = WAL` for
 better concurrency, `foreign_keys = ON` so foreign-key constraints are
-actually enforced), and wraps the connection with Drizzle.  The
+actually enforced), and wraps the connection with Drizzle ORM.  The
 `export * from "./schema"` re-exports every table and type so callers can
 `import { db, users, type User } from "@/db"` from a single path.
 
 ### Wiring up Drizzle Kit
 
-[Drizzle Kit] is Drizzle's companion CLI.  It reads your schema and either
+[Drizzle Kit] is Drizzle ORM's companion CLI.  It reads your schema and either
 generates migration SQL or pushes the schema directly to the database.
 Create *drizzle.config.ts* at the project root:
 
@@ -958,7 +960,7 @@ redirects to the login page with a success message.
 
 > [!TIP]
 > The `eq()` helper from `drizzle-orm` builds an SQL equality comparison.
-> Drizzle has a whole set of comparison helpers (`and`, `or`, `inArray`,
+> Drizzle ORM has a whole set of comparison helpers (`and`, `or`, `inArray`,
 > `gt`, `lt`, …).  They compose by nesting, so you can write something
 > like `and(eq(users.id, 42), gt(users.createdAt, lastWeek))` for more
 > complex `WHERE` clauses.
@@ -1179,7 +1181,7 @@ Finally, change the root layout into an async server component so that
 every page knows whether a user is signed in.  Replace *app/layout.tsx*
 with:
 
-~~~~ tsx{3-4,15,16,35-47} [app/layout.tsx]
+~~~~ tsx{3,5,12,17,34-46} [app/layout.tsx]
 import type { Metadata } from "next";
 import Link from "next/link";
 import { logout } from "./login/actions";
@@ -1330,7 +1332,7 @@ A few things to notice:
  -  `params` is a Promise in recent versions of Next.js, so we `await` it
     before destructuring.
  -  `notFound()` aborts rendering and shows the nearest `not-found.tsx`
-    (or, if there isn't one, the default 404 page).
+    (or, if there isn't one, the default `404 Not Found` page).
 
 While we're here, turn the `@username` label in the nav bar into a link
 that points to the current user's profile.  In *app/layout.tsx*, replace
@@ -1354,9 +1356,11 @@ The same URL right now, when you open it with a browser, renders the HTML
 page above.  But if a fediverse server asks for it with an
 `Accept: application/activity+json` header, Fedify's middleware intercepts
 the request and returns the default placeholder `Person` actor we saw
-earlier.  In the next chapter we'll swap that placeholder for a proper
-actor backed by our `users` table, so searching `@alice@<your-host>` in
-Mastodon or Lemmy actually finds the account we just created.
+earlier.  In
+[*Federating your user: the `Person` actor*](#federating-your-user-the-person-actor)
+we'll swap that placeholder for a proper actor backed by our `users` table, so
+searching `@alice@<your-host>` in Mastodon or Lemmy actually finds the account
+we just created.
 
 
 Federating your user: the `Person` actor
@@ -1372,12 +1376,13 @@ itself shows up.
 
 Every federated actor needs a pair of cryptographic keys.  HTTP Signatures,
 the scheme that authenticates server-to-server requests, uses an RSA key.
-[Object Integrity Proofs] (sometimes called *LD Signatures* or *FEP-8b32*)
-use an Ed25519 key.  We'll generate one of each per actor and store both.
+[Object Integrity Proofs] (sometimes called *Linked Data Signatures* or
+[FEP-8b32]) use an Ed25519 key.  We'll generate
+one of each per actor and store both.
 
 Open *db/schema.ts* and add a `keys` table:
 
-~~~~ typescript{3-8,30-48} [db/schema.ts]
+~~~~ typescript{6,34-51} [db/schema.ts]
 import { sql } from "drizzle-orm";
 import {
   integer,
@@ -1434,13 +1439,15 @@ export type Key = typeof keys.$inferSelect;
 A couple of things about this schema worth calling out:
 
  -  `actorIdentifier` is a plain string rather than a foreign key to a
-    specific table.  That's deliberate: in the next chapter we'll add a
-    second kind of actor (communities, i.e. `Group` actors).  Keeping
+    specific table.  That's deliberate: in
+    [*Communities as `Group` actors*](#communities-as-group-actors)
+    we'll add a second kind of actor (communities, i.e. `Group` actors).
+    Keeping
     keys keyed by identifier lets the same table serve both user and
     community keys without a schema change.
- -  The `type` column uses Drizzle's `enum` option, which in Drizzle +
-    SQLite produces a `CHECK` constraint that rejects rows whose `type`
-    isn't one of the two values we listed.
+ -  The `type` column uses Drizzle ORM's `enum` option, which in Drizzle
+    ORM plus SQLite produces a `CHECK` constraint that rejects rows whose
+    `type` isn't one of the two values we listed.
  -  The composite unique index `(actor_identifier, type)` makes sure
     each actor has at most one key of each algorithm.
 
@@ -1451,6 +1458,7 @@ npm run db:push
 ~~~~
 
 [Object Integrity Proofs]: https://www.w3.org/TR/vc-data-integrity/
+[FEP-8b32]: https://w3id.org/fep/8b32
 
 ### Actor dispatcher and key pairs dispatcher
 
@@ -1548,14 +1556,15 @@ A walk-through of what changed:
     ActivityPub client wants a specific actor.  The `path` argument is
     the URL template the actor lives at (`/users/{identifier}`), and
     the callback returns an actor object or `null` for “no such actor”.
-    Returning `null` makes Fedify respond with an HTTP 404.
+    Returning `null` makes Fedify respond with `404 Not Found`.
  -  `ctx.getActorKeyPairs(identifier)` is how the dispatcher gets the
     actor's keys in the right format.  It calls our
     `setKeyPairsDispatcher` internally, wraps each pair with metadata
     that Fedify needs, and caches the result.  The returned
     `keyPairs[0]` is always the RSA pair, which is what `publicKey`
     wants; `keyPairs.map((k) => k.multikey)` produces the `Multikey`
-    array that goes into `assertionMethods` for FEP-8b32 verification.
+    array that goes into `assertionMethods` for
+    [FEP-8b32] verification.
  -  `new Endpoints({ sharedInbox: ctx.getInboxUri() })` advertises a
     single *shared inbox* URL the actor is reachable through.  Large
     fediverse servers use the shared inbox to deliver one copy of an
@@ -1754,18 +1763,20 @@ curl -H 'Accept: application/activity+json' \
 The JSON's `id`, `inbox`, and `endpoints.sharedInbox` should all say
 `https://<your-tunnel>.serveo.net/...`, not `http://localhost:3000/...`.
 
-Next, open [ActivityPub.Academy] — a throwaway Mastodon instance the
-fediverse community runs for exactly this kind of testing — in a browser.
+Next, open [ActivityPub.Academy]—a throwaway Mastodon instance the
+fediverse community runs for exactly this kind of testing—in a browser.
 Sign up for a temporary account, then paste `@alice@<your-tunnel>.serveo.net`
 into the search box:
 
 ![Screenshot: the academy found @alice via WebFinger](./threadiverse/academy-search-alice.png)
 
 Academy looks your account up via WebFinger, fetches the actor JSON, and
-shows it as a result.  That's all we need from Ch. 8: the wider
-fediverse can now *see* the user we created.  In the Community chapters
-we'll pair this with a Follow handler so the academy (and other servers)
-can actually subscribe.
+shows it as a result.  That's all we need for now: the wider fediverse
+can now *see* the user we created.  In
+[*Communities as `Group` actors*](#communities-as-group-actors) and
+[*Subscribing to communities*](#subscribing-to-communities) we'll pair
+this with a Follow handler so the academy (and other servers) can
+actually subscribe.
 
 [Serveo]: https://serveo.net/
 [cloudflared]: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
@@ -1863,7 +1874,7 @@ export function isIdentifierTaken(identifier: string): boolean {
 Then rewrite the signup action to consult it (replace the hand-rolled
 regex and the direct user lookup):
 
-~~~~ typescript{5,10,13} [app/signup/actions.ts]
+~~~~ typescript{6,12-14,18-20} [app/signup/actions.ts]
 "use server";
 
 import { redirect } from "next/navigation";
@@ -2278,7 +2289,7 @@ who subscribes to one of our communities.  It's also what
 `ctx.sendActivity(sender, "followers", activity)` resolves to when we
 fan out later:
 
-~~~~ typescript{9,13-43} [federation/index.ts]
+~~~~ typescript{9,15-45} [federation/index.ts]
 // ...
 federation
   .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -2327,7 +2338,7 @@ federation.setFollowersDispatcher(
 
 Adding `followers: ctx.getFollowersUri(identifier)` to the `Group`
 actor JSON is what makes a threadiverse server (Lemmy, Mbin) willing
-to call this community “real” — without it they won't trust there's
+to call this community “real”; without it they won't trust there's
 a collection to paginate.
 
 ### Handling an inbound `Follow`
@@ -2481,7 +2492,7 @@ The action needs a `Context` so it can lookup remote actors, build
 URIs, and send activities.  Fedify's
 `federation.createContext(url, contextData)` takes an origin URL.  When the app
 is behind a reverse proxy, that origin must match whatever is in
-`X-Forwarded-Host` — otherwise the URIs Fedify generates would disagree with
+`X-Forwarded-Host`; otherwise the URIs Fedify generates would disagree with
 the URIs the actor dispatcher serves.  Put the URL-reconstruction in a helper
 so every server action shares the same logic.  Create *lib/origin.ts*:
 
@@ -2597,7 +2608,7 @@ echo 'SELECT follower_uri, accepted FROM follows;' \
 
 Outbound follows work the same way.  Log in as a local user, open
 `/follow`, paste `@fediverse@lemmy.ml` (or any community on an
-instance you like), submit the form, and wait a moment — the follow
+instance you like), submit the form, and wait a moment: the follow
 row is inserted immediately, and flips to `accepted = 1` once the
 remote server's `Accept(Follow)` reaches our inbox.
 
@@ -2707,7 +2718,7 @@ up after redirect.  Extend the existing *app/users/\[username]/page.tsx*
 to query `threads` for the community URI and render them in a simple
 card list, plus a *Start a thread* CTA visible to logged-in users:
 
-~~~~ tsx{1,4,5,47-82} [app/users/[username]/page.tsx]
+~~~~ tsx{1,2,4-6,47-62,76-101} [app/users/[username]/page.tsx]
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2991,10 +3002,11 @@ Important details:
     from stepping on each other: the URI is the same, so the second
     insert is a no-op.
  -  `sendActivity(..., "followers", ...)` resolves to the
-    `setFollowersDispatcher` we wrote in Ch. 14, giving Fedify the
-    list of recipient inboxes.  `preferSharedInbox: true` collapses
-    delivery to each host's shared inbox instead of per-actor inboxes
-    when possible.
+    `setFollowersDispatcher` we wrote in
+    [*Subscribing to communities*](#subscribing-to-communities),
+    giving Fedify the list of recipient inboxes.
+    `preferSharedInbox: true` collapses delivery to each host's shared
+    inbox instead of per-actor inboxes when possible.
 
 ### Follower-side: `Announce` router
 
@@ -3022,22 +3034,23 @@ that flow in via federation.
 
 There are three useful end-to-end tests for this chapter:
 
-1.  **Local only.**  In one browser tab, log in as `alice`, create a
+1.  *Local only.*  In one browser tab, log in as `alice`, create a
     community and post a thread in it.  Refresh the community page;
     the thread appears in the list.  The `threads` table has one row
     whose `uri` is a full absolute URL, whose `community_uri` matches
     the actor URI of the community, and whose `author_uri` matches
     the actor URI of the logged-in user.
 
-2.  **Local community federates outbound.**  Have ActivityPub.Academy
-    follow your local community (repeating the Ch. 14 test), then
-    create another thread.  Mastodon-family servers (Academy
-    included) don't render `Page` objects in their timelines — that's
-    a Mastodon limitation, not a bug — but your community's outbound
+2.  *Local community federates outbound.*  Have ActivityPub.Academy
+    follow your local community (repeating the
+    [*Subscribing to communities*](#subscribing-to-communities) test),
+    then create another thread.  Mastodon-family servers (Academy
+    included) don't render `Page` objects in their timelines (that's
+    a Mastodon limitation, not a bug), but your community's outbound
     Announce is still enqueued and delivered.  You can see the
     outbound HTTP signatures in your dev server logs.
 
-3.  **Remote community federates inbound.**  Find a real Lemmy
+3.  *Remote community federates inbound.*  Find a real Lemmy
     community (for example `!fediverse@lemmy.ml`), open the `/follow`
     page, and subscribe.  Once Lemmy accepts the follow, any post
     that community makes from that point on appears in your
@@ -3165,7 +3178,7 @@ helper that turns a flat list of rows into a nested tree using
 
 Recursive render:
 
-~~~~ tsx{1,9,11-15} [app/users/[username]/threads/[id]/page.tsx]
+~~~~ tsx{1,19-21} [app/users/[username]/threads/[id]/page.tsx]
 function ReplyList({ nodes, slug, threadId, user }) {
   return (
     <ul className="reply-tree">
@@ -3247,8 +3260,8 @@ export async function createReply(
 
 (The microblog-style full listing is in the paired commit.)
 
-The important structural detail is that **the reply URI uses
-`/users/<slug>/threads/<threadId>/replies/<replyId>`** — keeping
+The important structural detail is that *the reply URI uses
+`/users/<slug>/threads/<threadId>/replies/<replyId>`*; keeping
 replies namespaced under their thread is just a convention, but it
 means the URI already encodes enough to find the reply's context
 without a separate index.
@@ -3311,8 +3324,8 @@ accept `Note` objects.  The inline diff against the previous version:
 });
 ~~~~
 
-The rest of the handler — the local-community check and the
-`sendActivity(..., "followers", Announce(Create))` fan-out — is
+The rest of the handler (the local-community check and the
+`sendActivity(..., "followers", Announce(Create))` fan-out) is
 shared between threads and replies, so the community Announces
 threads and replies exactly the same way.
 
@@ -3607,8 +3620,8 @@ directions.
 Putting it together: the subscribed feed
 ----------------------------------------
 
-Every feature so far — Person/Group actors, Follow/Accept/Undo,
-Create(Page), Create(Note), Like, Dislike — has moved a row into or
+Every feature so far (Person/Group actors, Follow/Accept/Undo,
+Create(Page), Create(Note), Like, Dislike) has moved a row into or
 out of one of our tables.  The home page is where those rows become
 something the reader actually sees: a chronological feed of every
 thread from every community they subscribe to.
@@ -3677,7 +3690,8 @@ Unsubscribing with `Undo(Follow)`
 ---------------------------------
 
 The subscriptions list on the home page includes an *Unfollow* button
-per community.  Unsubscribing is essentially Ch. 14's follow flow
+per community.  Unsubscribing is essentially the
+[*Subscribing to communities*](#subscribing-to-communities) follow flow
 played backwards.
 
 ### Outbound: `unfollowCommunity`
@@ -3784,8 +3798,9 @@ to defend the row.
 
 ### Testing
 
-Follow your local community from ActivityPub.Academy (same as Ch. 14),
-open the Academy community profile, and hit *Unfollow*.  A few seconds
+Follow your local community from ActivityPub.Academy (same as in
+[*Subscribing to communities*](#subscribing-to-communities)), open the
+Academy community profile, and hit *Unfollow*.  A few seconds
 later your `follows` table has zero rows for the
 `@enulius_dorvorglan@activitypub.academy` actor.  Inversely, log in as
 a local user, expand the *Subscriptions* section on the home page,
@@ -3857,7 +3872,7 @@ federation.setFeaturedDispatcher(
 Finally, add `attribution` (which serialises as `attributedTo`) and
 `featured` to the `Group` we return from `setActorDispatcher`:
 
-~~~~ typescript{11,12} [federation/index.ts]
+~~~~ typescript{10,11} [federation/index.ts]
 return new Group({
   id: ctx.getActorUri(identifier),
   preferredUsername: identifier,
@@ -3886,7 +3901,7 @@ https://lemmy.ml/c/<slug>@<your-tunnel>
 
 Lemmy fetches the actor and shows a community sidebar with a
 *Subscribe* button.  But clicking *Subscribe* still lands on
-*Subscribe Pending* — Lemmy's outbound `Follow` either never reaches
+*Subscribe Pending*: Lemmy's outbound `Follow` either never reaches
 our inbox, or our `Accept(Follow)` never gets past Lemmy's strict
 parser.  Two more changes clear both halves.
 
@@ -3907,7 +3922,7 @@ at *federation/lemmy-context.json* (copy it verbatim from
 document loader with one that short-circuits that URL to the
 bundled copy:
 
-~~~~ typescript{2-9,21-35,41-42} [federation/index.ts]
+~~~~ typescript{5,12,14-16,18-29,34-35} [federation/index.ts]
 import {
   createFederation,
   exportJwk,
@@ -3957,7 +3972,7 @@ Lemmy's inbox parser enforces a strict enum over activity types and
 refuses activities that don't match exactly.  Two tiny edits to the
 `Accept` we ship back make it pass:
 
-~~~~ typescript{3-6,9-13} [federation/index.ts]
+~~~~ typescript{6,10-13} [federation/index.ts]
 await ctx.sendActivity(
   { identifier },
   actor,
@@ -3976,13 +3991,14 @@ await ctx.sendActivity(
 );
 ~~~~
 
-Two changes from the version we wrote in Ch. 14:
+Two changes from the version we wrote in
+[*Subscribing to communities*](#subscribing-to-communities):
 
  -  The `id` uses a UUID-based path (`/users/{id}/accepts/{uuid}`)
     instead of the URL-encoded fragment `#accepts/<url-encoded follow id>`.
     Lemmy's URL parser doesn't tolerate a URL inside a fragment.
  -  The nested `object` is a brand-new `Follow` with only `id`,
-    `actor`, and `object` populated — Lemmy's parser balks at the
+    `actor`, and `object` populated; Lemmy's parser balks at the
     full original Follow (with its own `@context` and ancillary
     fields) that Fedify would otherwise serialise inline.
 
@@ -4005,8 +4021,8 @@ https://lemmy.ml/u/<your-username>|1
 
 > [!NOTE]
 > Earlier drafts of this tutorial warned that outbound
-> `Announce(Create(Page))` — the fan-out a community does when a new
-> thread arrives — was silently rejected by Lemmy with
+> `Announce(Create(Page))` (the fan-out a community does when a new
+> thread arrives) was silently rejected by Lemmy with
 > `{"error":"object_is_not_public"}`.  The underlying cause was
 > JSON-LD compaction: Fedify was emitting `"to": "as:Public"` in
 > outgoing activities, and Lemmy's inbox parser compares that field
@@ -4024,10 +4040,13 @@ https://lemmy.ml/u/<your-username>|1
 > Lemmy additionally sends a boolean `postingRestrictedToMods` on
 > its own communities.  Fedify's `Group` vocab doesn't expose that
 > property, but Lemmy tolerates its absence in incoming actors.  If
-> you want to advertise it anyway — for example to mark your
-> community as announcement-only — you can add the field with a
+> you want to advertise it anyway (for example to mark your
+> community as announcement-only) you can add the field with a
 > custom JSON-LD context; see the
 > [Fedify vocab docs](../manual/vocab.md) for the escape hatch.
+
+*[CURIE]: Compact URI
+*[FEP]: Fediverse Enhancement Proposal
 
 [LemmyNet/lemmy#6465]: https://github.com/LemmyNet/lemmy/issues/6465
 [LemmyNet/lemmy#6466]: https://github.com/LemmyNet/lemmy/pull/6466
@@ -4040,36 +4059,37 @@ The tutorial stops here, but there's a long list of features you can
 add next.  Each of these is a small extension of the primitives already
 in place:
 
- -  **Link threads.**  The feature checklist at the top of this
+ -  *Link threads.*  The feature checklist at the top of this
     tutorial mentioned link posts as out of scope.  The shape is
     small: give `threads` a nullable `link_url` column, render it in
     the thread card, and set `Page.url` when federating.  No new
     activity types are required.
- -  **Editing and deletion.**  `Update(Page)` / `Update(Note)` and
+ -  *Editing and deletion.*  `Update(Page)` / `Update(Note)` and
     `Delete(Page)` / `Delete(Note)` with `Tombstone` substitutes.
     The handlers look just like the Create handler, differing only
     in what DB row they mutate.
- -  **Local community index.**  A `/communities` page that lists
+ -  *Local community index.*  A `/communities` page that lists
     every `communities` row.  A single select + paginate; no
     federation touched.
- -  **Ranking.**  Surface the
+ -  *Ranking.*  Surface the
     `SUM(CASE kind WHEN 'Like' THEN 1 ELSE -1 END)` tally from
     [Votes (`Like` and `Dislike`)](#votes-like-and-dislike) as
     `score`, and sort feeds by `score * decay(created_at)` for the
     Lemmy *Active* / *Hot* formulas.
- -  **Persistent federation state.**  `fedify init` set us up with
+ -  *Persistent federation state.*  `fedify init` set us up with
     `MemoryKvStore` + `InProcessMessageQueue`.  In production you'll
     want persistent versions so activity retries survive restarts;
     swap both in *federation/index.ts* for `PostgresKvStore` /
     `PostgresMessageQueue` from [`@fedify/postgres`], or
     `SqliteKvStore` / `SqliteMessageQueue` from [`@fedify/sqlite`].
- -  **PostgreSQL for application data.**  Drizzle's SQLite and
-    Postgres drivers share most of the schema vocabulary, so moving
-    from `drizzle-orm/better-sqlite3` to `drizzle-orm/node-postgres`
-    is largely a connection-string change plus a small column-type
-    pass.
-    [`@fedify/postgres`]: https://jsr.io/@fedify/postgres
-    [`@fedify/sqlite`]: https://jsr.io/@fedify/sqlite
+ -  *PostgreSQL for application data.*  Drizzle ORM's SQLite and
+    PostgreSQL drivers share most of the schema vocabulary, so
+    moving from `drizzle-orm/better-sqlite3` to
+    `drizzle-orm/node-postgres` is largely a connection-string
+    change plus a small column-type pass.
+
+[`@fedify/postgres`]: https://jsr.io/@fedify/postgres
+[`@fedify/sqlite`]: https://jsr.io/@fedify/sqlite
 
 
 Next steps
@@ -4092,7 +4112,7 @@ If you're getting ready to put this (or a derived app) into production:
     does not run on the Edge).
  -  Join the [Matrix chat] or [GitHub Discussions] if you get stuck.
 
-Congratulations — you've built a federated community platform from
+Congratulations, you've built a federated community platform from
 scratch using Fedify.  Go spin up a tunnel, share your community
 handle on the fediverse, and watch threads flow in.
 
