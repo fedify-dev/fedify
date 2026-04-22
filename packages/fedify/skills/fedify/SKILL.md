@@ -403,10 +403,10 @@ Common mistakes to avoid
     Both are asynchronous.
  -  Hand-rolling `/.well-known/webfinger` or `/.well-known/nodeinfo`
     routes; Fedify already serves them.
- -  Importing from the deprecated shims `@fedify/fedify/vocab`,
-    `@fedify/fedify/runtime`, or `@fedify/fedify/webfinger` instead of
-    the dedicated packages `@fedify/vocab`, `@fedify/vocab-runtime`, and
-    `@fedify/webfinger`.
+ -  Importing from the deprecated shims `@fedify/fedify/vocab` or
+    `@fedify/fedify/runtime`, or from the old in-tree `src/webfinger`
+    path, instead of the dedicated packages `@fedify/vocab`,
+    `@fedify/vocab-runtime`, and `@fedify/webfinger`.
  -  Omitting the `queue` option in production; outgoing delivery becomes
     synchronous and unreliable.
  -  Running with `MemoryKvStore` in production; it evaporates on every
