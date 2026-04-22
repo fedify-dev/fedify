@@ -215,9 +215,14 @@ Outgoing activities
 `ctx.sendActivity(sender, recipients, activity, options?)` is the single
 entry point for outbound delivery.  Two overloads:
 
- -  Explicit recipients: pass a single `Recipient` or an array.
+ -  Explicit recipients: pass a single `Recipient` or an array.  The
+    `sender` may be a `SenderKeyPair`, a `SenderKeyPair[]`, or
+    `{ identifier }` / `{ username }`.
  -  Fan-out: pass the literal `"followers"` to deliver to the sender's
-    `Followers` collection.
+    `Followers` collection.  In this overload the `sender` must be
+    `{ identifier }` or `{ username }`; a raw `SenderKeyPair` or
+    `SenderKeyPair[]` is rejected because Fedify needs the actor
+    identifier to resolve the followers collection.
 
 Always route outbound activities through the queue in production; this is
 the same `queue` provided to `createFederation()` or `.build()`.  Without
