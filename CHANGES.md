@@ -8,6 +8,17 @@ Version 2.0.13
 
 To be released.
 
+### @fedify/next
+
+ -  Widened `@fedify/next`'s supported Next.js peer dependency range to
+    `>=15.4.6 <17`, so installing it into a fresh `create-next-app` 16.x
+    project no longer fails with an `ERESOLVE` peer dependency conflict.
+    This restores the default `fedify init -w next` flow against the current
+    Next.js stable release and updates the integration example to track
+    Next.js 16.  [[#713]]
+
+[#713]: https://github.com/fedify-dev/fedify/issues/713
+
 
 Version 2.0.12
 --------------

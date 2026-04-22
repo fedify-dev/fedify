@@ -17,7 +17,7 @@ added in the future.[^1]
  -  [Hono integration sample](./hono-sample/)
  -  [Fastify integration example](./fastify/)
  -  [Fedify–Express integration example](./express/)
- -  [Fedify–Next.js integration example using `@fedify/next`](./next-integration/)
+ -  [Fedify–Next.js 16 integration example using `@fedify/next`](./next-integration/)
  -  [Fedify–Next.js 14 integration example](./next14-app-router/)
  -  [Fedify–Next.js 15 integration example](./next15-app-router/)
  -  [Fedify on Cloudflare Workers example](./cloudflare-workers/)

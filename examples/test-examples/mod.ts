@@ -216,7 +216,7 @@ const SERVER_EXAMPLES: ServerExample[] = [
     readyTimeout: 30_000,
   },
   {
-    // Next.js integration example using @fedify/next middleware.
+    // Next.js 16 integration example using @fedify/next proxy.
     // Requires a build step before starting.
     name: "next-integration",
     dir: "next-integration",

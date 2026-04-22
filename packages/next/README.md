@@ -12,16 +12,19 @@ This package provides a simple way to integrate [Fedify] with [Next.js].
 > [Fedify CLI] rather than installing this package directly.
 
 > [!IMPORTANT]
-> This package runs Next.js middleware on the Node.js runtime.
-> Therefore, you must use version 15.5 or later, or at least 15.4 canary.
-> For more details, refer to the [official documentation of `middleware`].
+> This package relies on Next.js request interception on the Node.js runtime.
+> Therefore, you must use Next.js 15.4.6 or later.
+> On Next.js 16, `proxy.ts` is preferred and `middleware.ts` is deprecated but
+> still supported.  If you switch to `proxy.ts`, omit `runtime: "nodejs"` from
+> the exported `config`, because Proxy always runs on the Node.js runtime.
+> For more details, refer to the [official documentation of `proxy`].
 
 [@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Next.js]: https://nextjs.org/
 [Fedify CLI]: https://www.npmjs.com/package/@fedify/cli
-[official documentation of `middleware`]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#runtime
+[official documentation of `proxy`]: https://nextjs.org/docs/app/api-reference/file-conventions/proxy
 
 
 Usage
@@ -34,7 +37,7 @@ import { federation } from "./federation";
 
 export default fedifyWith(federation)();
 
-// This config must be defined on `middleware.ts`.
+// This config must be defined in the same file.
 export const config = {
   runtime: "nodejs",
   matcher: [
