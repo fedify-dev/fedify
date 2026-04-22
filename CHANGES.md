@@ -49,7 +49,12 @@ To be released.
     JSON-LD compaction would otherwise produce.  Some ActivityPub
     implementations, [Lemmy] included, match those fields as plain URLs
     without JSON-LD expansion and would silently drop activities carrying
-    the CURIE form; see [LemmyNet/lemmy#6465].
+    the CURIE form; see [LemmyNet/lemmy#6465].  The rewrite is gated on a
+    URDNA2015 canonical-form equivalence check, so an application-defined
+    `@context` that redefines the `as:` prefix or the bare `Public` term
+    is preserved as is.  The rewrite is also applied before
+    `eddsa-jcs-2022` Object Integrity Proof signing so the signed bytes
+    match what is sent on the wire.
 
 [Agent Skills]: https://agentskills.io/
 [skills-npm]: https://github.com/antfu/skills-npm

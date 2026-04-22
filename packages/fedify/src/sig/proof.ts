@@ -11,6 +11,7 @@ import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
+import { normalizePublicAudience } from "../compat/public-audience.ts";
 import {
   fetchKey,
   type FetchKeyResult,
@@ -126,11 +127,12 @@ export async function createProof(
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
   const objectWithoutProofs = object.clone({ proofs: [] });
-  const compactMsg = await objectWithoutProofs.toJsonLd({
+  let compactMsg = await objectWithoutProofs.toJsonLd({
     format: "compact",
     contextLoader,
     context,
   });
+  compactMsg = await normalizePublicAudience(compactMsg, contextLoader);
   const msgCanon = serialize(compactMsg);
   const encoder = new TextEncoder();
   const msgBytes = encoder.encode(msgCanon);

@@ -1,4 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import { normalizePublicAudience } from "../compat/public-audience.ts";
 import {
   Create,
   type CryptographicKey,
@@ -6,6 +7,7 @@ import {
   Multikey,
   Note,
   Place,
+  PUBLIC_COLLECTION,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import {
@@ -270,6 +272,48 @@ test("signObject()", async () => {
     TypeError,
     "Unsupported algorithm",
   );
+
+  // The proof hashed during signObject() must cover the same JSON-LD bytes
+  // that the activity serializes to on the wire — otherwise the public
+  // audience normalization applied before sending would break verifyProof()
+  // for the eddsa-jcs-2022 cryptosuite, which canonicalises the JCS form
+  // byte-for-byte rather than running URDNA2015.
+  const publicActivity = new Create({
+    id: new URL("https://server.example/activities/2"),
+    actor: new URL("https://server.example/users/alice"),
+    object: new Note({
+      id: new URL("https://server.example/objects/2"),
+      attribution: new URL("https://server.example/users/alice"),
+      content: "Hello public",
+    }),
+    tos: [PUBLIC_COLLECTION],
+  });
+  const signed = await signObject(
+    publicActivity,
+    fep8b32TestVectorPrivateKey,
+    fep8b32TestVectorKeyId,
+    { ...options, created },
+  );
+  const [proof] = await Array.fromAsync(signed.getProofs(options));
+  assertInstanceOf(proof, DataIntegrityProof);
+  const signedJson = await normalizePublicAudience(
+    await signed.toJsonLd(options),
+    mockDocumentLoader,
+  ) as Record<string, unknown>;
+  assertEquals(signedJson.to, PUBLIC_COLLECTION.href);
+  const verifyCache: Record<string, CryptographicKey | Multikey | null> = {};
+  const verifyingKey = await verifyProof(signedJson, proof, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    keyCache: {
+      get: (keyId) => Promise.resolve(verifyCache[keyId.href]),
+      set: (keyId, key) => {
+        verifyCache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    },
+  });
+  assertInstanceOf(verifyingKey, Multikey);
 });
 
 test("hasProofLike()", () => {
