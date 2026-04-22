@@ -288,14 +288,15 @@ idempotence) and `MessageQueue` (delivery plus inbox processing), both
 re-exported from `@fedify/fedify`.  Use the built-in `MemoryKvStore` only
 in development or tests.
 
-| Package            | `KvStore` | `MessageQueue` |
-| ------------------ | --------- | -------------- |
-| *@fedify/sqlite*   | yes       | yes            |
-| *@fedify/postgres* | yes       | yes            |
-| *@fedify/mysql*    | yes       | yes            |
-| *@fedify/redis*    | yes       | yes            |
-| *@fedify/amqp*     | no        | yes            |
-| *@fedify/denokv*   | yes       | yes            |
+| Package             | `KvStore` | `MessageQueue` |
+| ------------------- | --------- | -------------- |
+| *@fedify/sqlite*    | yes       | yes            |
+| *@fedify/postgres*  | yes       | yes            |
+| *@fedify/mysql*     | yes       | yes            |
+| *@fedify/redis*     | yes       | yes            |
+| *@fedify/amqp*      | no        | yes            |
+| *@fedify/denokv*    | yes       | yes            |
+| *@fedify/cfworkers* | yes       | yes            |
 
 > [!WARNING]
 > `PostgresMessageQueue` and similar implementations require connection
