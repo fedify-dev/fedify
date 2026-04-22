@@ -399,7 +399,11 @@ async function verifyProofInternal(
       return await verifyProof(jsonLd, proof, {
         ...options,
         keyCache: {
-          get: () => Promise.resolve(null),
+          // Returning `undefined` signals "nothing cached" and forces
+          // `fetchKey()` to refetch from the network; returning `null`
+          // would instead be interpreted as a cached-unavailable result
+          // and short-circuit the retry.
+          get: () => Promise.resolve(undefined),
           set: async (keyId, key) => await options.keyCache?.set(keyId, key),
         },
       });
