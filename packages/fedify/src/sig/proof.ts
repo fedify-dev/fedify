@@ -363,7 +363,7 @@ async function verifyProofInternal(
   const encoder = new TextEncoder();
   const proofBytes = encoder.encode(serialize(proofConfig));
   const proofDigest = await crypto.subtle.digest("SHA-256", proofBytes);
-  const msg = { ...jsonLd } as Record<string, unknown>;
+  const msg = { ...(jsonLd as Record<string, unknown>) };
   // `verifyProof()` promises to ignore existing proofs on the input;
   // strip both the compact (`proof`) and the expanded
   // (`https://w3id.org/security#proof`) forms so callers passing JSON-LD
@@ -429,17 +429,22 @@ async function verifyProofInternal(
     );
     return null;
   }
+  // SHA-256 always produces 32 bytes; `proofDigest` is constant across
+  // candidates, so allocate the combined digest buffer once and only
+  // rewrite the message-digest tail per iteration.
+  const SHA256_LENGTH = 32;
+  const digest = new Uint8Array(proofDigest.byteLength + SHA256_LENGTH);
+  digest.set(new Uint8Array(proofDigest), 0);
   for (const candidate of candidates) {
     const msgBytes = encoder.encode(serialize(candidate));
     const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
-    const digest = new Uint8Array(
-      proofDigest.byteLength + msgDigest.byteLength,
-    );
-    digest.set(new Uint8Array(proofDigest), 0);
     digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
     const verified = await crypto.subtle.verify(
       "Ed25519",
       publicKey.publicKey,
+      // `.slice()` narrows `Uint8Array<ArrayBufferLike>` (which can be
+      // backed by a `SharedArrayBuffer`) to `Uint8Array<ArrayBuffer>`,
+      // which is what `crypto.subtle.verify` expects.
       proof.proofValue.slice(),
       digest,
     );
