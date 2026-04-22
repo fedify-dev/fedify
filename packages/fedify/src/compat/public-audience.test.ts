@@ -1,6 +1,6 @@
 import { test } from "@fedify/fixture";
 import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
-import { preloadedContexts } from "@fedify/vocab-runtime";
+import { getDocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertNotEquals } from "@std/assert/assert-not-equals";
 import { normalizePublicAudience } from "./public-audience.ts";
@@ -41,10 +41,13 @@ test("normalizePublicAudience() normalises activities serialized by @fedify/voca
     unknown
   >;
   assertEquals(compact.to, "as:Public");
-  const normalized = await normalizePublicAudience(compact) as Record<
-    string,
-    unknown
-  >;
+  // The default compact @context Fedify emits includes an inline object
+  // of namespace prefixes, so the rewrite takes the URDNA2015 equivalence
+  // path rather than the fast path; supply an explicit loader.
+  const normalized = await normalizePublicAudience(
+    compact,
+    getDocumentLoader(),
+  ) as Record<string, unknown>;
   assertEquals(normalized.to, PUBLIC_URI);
   const nestedObject = normalized.object as Record<string, unknown>;
   assertEquals(nestedObject.to, PUBLIC_URI);
@@ -168,6 +171,51 @@ test("normalizePublicAudience() does not traverse prototype-polluted keys", asyn
   // stays inherited from the prototype with its original CURIE value and
   // is not a rewritten own property.
   assertEquals(Object.hasOwn(output, "to"), false);
+});
+
+test("normalizePublicAudience() refuses to fetch contexts without an explicit loader", async () => {
+  // Untrusted inputs (for example, inbound payloads passed to verifyProof)
+  // must not trigger a default document loader that could fetch
+  // attacker-controlled `@context` URLs.  When the caller omits
+  // `contextLoader` and the document is not drawn from the known-safe
+  // set, the helper returns the document unchanged.
+  const input = {
+    "@context": [
+      AS_CONTEXT,
+      "https://attacker.example/ctx",
+    ],
+    type: "Note",
+    id: "https://example.com/notes/untrusted",
+    to: "as:Public",
+  };
+  const output = await normalizePublicAudience(input) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(output.to, "as:Public");
+});
+
+test("normalizePublicAudience() stops before blowing the stack on pathological nesting", async () => {
+  // Build a linear chain of nested objects deeper than the traversal
+  // guard.  Without the depth limit the recursive walkers would bottom
+  // out in a `RangeError: Maximum call stack size exceeded`; with it,
+  // the call must return.  The exact rewritten shape is an implementation
+  // detail of where the guard fires (once `hasNestedContext` hits the
+  // limit it reports a conservative "unsafe" result, so the fast path
+  // defers to the canonicalization path which without an explicit
+  // loader leaves the document unchanged), so we only assert that the
+  // call completes and returns an object.
+  let deep: Record<string, unknown> = { to: "as:Public" };
+  for (let i = 0; i < 256; i++) deep = { nested: deep };
+  const input = {
+    "@context": AS_CONTEXT,
+    type: "Note",
+    id: "https://example.com/notes/deep",
+    to: "as:Public",
+    object: deep,
+  };
+  const output = await normalizePublicAudience(input);
+  assertEquals(typeof output, "object");
 });
 
 test("normalizePublicAudience() bails out on nested @context that redefines as:", async () => {
