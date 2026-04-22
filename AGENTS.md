@@ -317,27 +317,24 @@ See *CONTRIBUTING.md* for complete dependency management guide.
 Build and distribution
 ----------------------
 
-The monorepo uses different build processes for different packages:
+All packages in the monorepo are built with [tsdown] for TypeScript
+compilation, producing output for Node.js and Bun.  Each package has a
+*tsdown.config.ts* file.  Distribution targets:
 
-1.  **@fedify/fedify**: Uses a custom build process to support multiple
-    environments:
-     -  Deno-native modules
-     -  npm package via dnt (Deno to Node Transform)
-     -  JSR package distribution
+1.  **@fedify/fedify**: Distributed via both npm and JSR.  Sources are
+    authored in TypeScript and tested against Deno, Node.js, and Bun.
 
-2.  **@fedify/cli**: Built with Deno, tested with Deno, Node.js, and Bun.
-    Uses `deno compile` to create standalone executables.  Distributed via
-    JSR and npm
+2.  **@fedify/cli**: Distributed via both npm and JSR.  Uses `deno compile`
+    in addition to tsdown to produce standalone executables.  Tested with
+    Deno, Node.js, and Bun.
 
-3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
-     -  *packages/amqp/*, *packages/astro/*, *packages/elysia*,
-        *packages/express/*, *packages/h3/*,
-        *packages/mysql/*, *packages/nuxt/*, *packages/sqlite/*,
-        *packages/postgres/*,
-        *packages/redis/*, *packages/nestjs/*
-     -  Built to support Node.js and Bun environments
+3.  **All other packages** (database adapters, framework integrations,
+    vocabulary tooling, etc.): Distributed via npm and tested with Node.js
+    and Bun.
 
 Ensure changes work across all distribution formats and target environments.
+
+[tsdown]: https://tsdown.dev/
 
 
 Markdown conventions
