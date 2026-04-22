@@ -4,7 +4,7 @@ import type {
   MessageQueueListenOptions,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket } from "mysql2/promise";
 
 const logger = getLogger(["fedify", "mysql", "mq"]);
 const INITIALIZE_MAX_ATTEMPTS = 5;
@@ -13,6 +13,24 @@ const INITIALIZE_BACKOFF_MS = 10;
 // Raising this reduces the chance of missing a key under high contention, at
 // the cost of a slightly larger result set from the GROUP BY query.
 const ORDERING_KEY_CANDIDATE_LIMIT = 10;
+
+interface MysqlQueryable {
+  query<TRows = unknown>(
+    sql: string,
+    values?: unknown,
+  ): Promise<[TRows, unknown]>;
+}
+
+interface MysqlPoolConnection extends MysqlQueryable {
+  beginTransaction(): Promise<void>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+  release(): void;
+}
+
+interface MysqlPool extends MysqlQueryable {
+  getConnection(): Promise<MysqlPoolConnection>;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -144,7 +162,7 @@ export class MysqlMessageQueue implements MessageQueue {
    */
   readonly nativeRetrial = false;
 
-  readonly #pool: Pool;
+  readonly #pool: MysqlPool;
   readonly #tableName: string;
   readonly #pollIntervalMs: number;
   readonly #handlerTimeoutMs: number;
@@ -157,7 +175,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * @param options Options for the message queue.
    * @since 2.1.0
    */
-  constructor(pool: Pool, options: MysqlMessageQueueOptions = {}) {
+  constructor(pool: MysqlPool, options: MysqlMessageQueueOptions = {}) {
     this.#pool = pool;
     const tableName = options.tableName ?? "fedify_mq";
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
@@ -264,7 +282,7 @@ export class MysqlMessageQueue implements MessageQueue {
       delayMs * 1000 + index,
       orderingKey,
     ]);
-    let conn: PoolConnection | undefined;
+    let conn: MysqlPoolConnection | undefined;
     try {
       conn = await this.#pool.getConnection();
       await conn.beginTransaction();
@@ -333,7 +351,7 @@ export class MysqlMessageQueue implements MessageQueue {
           if (signal?.aborted) break;
           const lockName = getMysqlLockName(this.#tableName, orderingKey);
 
-          let conn: PoolConnection | undefined;
+          let conn: MysqlPoolConnection | undefined;
           try {
             conn = await this.#pool.getConnection();
             const [lockResult] = await conn.query<RowDataPacket[]>(
@@ -416,7 +434,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * Returns `undefined` when no such message is available.
    */
   async #dequeueWithoutOrderingKey(): Promise<unknown> {
-    let conn: PoolConnection | undefined;
+    let conn: MysqlPoolConnection | undefined;
     try {
       conn = await this.#pool.getConnection();
       await conn.beginTransaction();
@@ -474,7 +492,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * Returns `undefined` when no ready message exists for the ordering key.
    */
   async #dequeueOrderedMessage(
-    conn: PoolConnection,
+    conn: MysqlPoolConnection,
     orderingKey: string,
   ): Promise<unknown> {
     await conn.beginTransaction();
