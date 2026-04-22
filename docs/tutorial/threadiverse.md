@@ -146,10 +146,9 @@ Check that it works:
 fedify --version
 ~~~~
 
-Make sure the version number is 2.2.0 or higher.  Older versions of the CLI
-don't know how to scaffold a Next.js project, and the `@fedify/fedify`
-release we depend on for outbound interop with Lemmy was cut alongside
-CLI 2.2.
+Make sure the version number is 2.1.8 or higher.  Older versions of the
+CLI don't know how to scaffold a Next.js 16 project, and this tutorial
+was written against the shape that CLI 2.1.8+ produces.
 
 ### `fedify init` to initialize the project
 
@@ -172,31 +171,6 @@ serve ActivityPub.  The options mean:
     chapter.
  -  `-m in-process`: run Fedify's background message queue in-process instead
     of on an external broker (Redis, RabbitMQ, and so on).
-
-> [!WARNING]
-> At the time of writing, `create-next-app` (which `fedify init` runs under
-> the hood) defaults to Next.js 16, but `@fedify/next` 2.1.x still requires
-> Next.js 15.4 or later in the 15.x line.  After `fedify init` finishes it
-> will try to run `npm install` and fail with an `ERESOLVE` error.  Open
-> *package.json*, change the `next`, `react`, `react-dom`, and
-> `eslint-config-next` versions so they point at Next.js 15.5.x, then run
-> `npm install` again:
->
-> ~~~~ json
-> "dependencies": {
->   "next": "^15.5.15",
->   "react": "^19.2.4",
->   "react-dom": "^19.2.4",
->   ...
-> },
-> "devDependencies": {
->   ...
->   "eslint-config-next": "^15.5.15",
->   ...
-> }
-> ~~~~
->
-> This workaround will go away once Fedify ships support for Next.js 16.
 
 After a moment your working directory will contain something like this:
 
@@ -239,7 +213,7 @@ The dev server will keep running until you press
 <kbd>Ctrl</kbd>+<kbd>C</kbd>:
 
 ~~~~ console
-  ▲ Next.js 15.5.15
+  ▲ Next.js 16.2.4
   - Local:        http://localhost:3000
   - Network:      http://192.168.x.x:3000
 
