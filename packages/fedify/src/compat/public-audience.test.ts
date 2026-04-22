@@ -1,5 +1,6 @@
 import { test } from "@fedify/fixture";
 import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { preloadedContexts } from "@fedify/vocab-runtime";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertNotEquals } from "@std/assert/assert-not-equals";
 import { normalizePublicAudience } from "./public-audience.ts";
@@ -105,19 +106,19 @@ test("normalizePublicAudience() falls back to canonicalization for unknown-URL c
   // theory redefine `as:` or `Public`, so the fast path must not apply.
   // We count contextLoader invocations and assert the slow path runs.
   let loaderCalls = 0;
-  const loader: Parameters<typeof normalizePublicAudience>[1] = async (
+  const loader: Parameters<typeof normalizePublicAudience>[1] = (
     url: string,
   ) => {
     loaderCalls++;
-    // Resolve every URL to the standard ActivityStreams context so that
+    // Resolve every URL to the bundled ActivityStreams context so that
     // the equivalence check succeeds and the rewrite goes through.  In a
     // real document the unknown URL might bring its own term definitions;
     // here we just need the two canonical forms to match.
-    const { default: asContext } = await import(
-      "../../../vocab-runtime/src/contexts/activitystreams.json",
-      { with: { type: "json" } }
-    );
-    return { contextUrl: null, documentUrl: url, document: asContext };
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: preloadedContexts[AS_CONTEXT],
+    });
   };
   const output = await normalizePublicAudience({
     "@context": [AS_CONTEXT, "https://custom.example/ctx"],
