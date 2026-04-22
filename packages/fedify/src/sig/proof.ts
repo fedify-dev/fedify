@@ -338,6 +338,8 @@ async function verifyProofInternal(
 ): Promise<Multikey | null> {
   if (
     typeof jsonLd !== "object" ||
+    jsonLd == null ||
+    Array.isArray(jsonLd) ||
     proof.cryptosuite !== "eddsa-jcs-2022" ||
     proof.verificationMethodId == null ||
     proof.proofPurpose !== "assertionMethod" ||

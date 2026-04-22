@@ -496,6 +496,15 @@ test("verifyProof()", async () => {
     await verifyProof(jsonLdWithExpandedProof, proof, options),
     expectedKey,
   );
+
+  // A top-level array is not a valid FEP-8b32 signed document: the
+  // spread-into-object trick we use to drop the proof key before JCS
+  // hashing would turn `[x, y]` into `{ "0": x, "1": y }`, which would
+  // produce a misleading canonical form.  Reject the input outright.
+  assertEquals(
+    await verifyProof([jsonLd] as unknown, proof, options),
+    null,
+  );
 });
 
 test("verifyObject()", async () => {
