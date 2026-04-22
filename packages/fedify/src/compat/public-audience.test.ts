@@ -76,6 +76,45 @@ test("normalizePublicAudience() leaves non-addressing fields untouched", async (
   assertEquals(output.to, PUBLIC_URI);
 });
 
+test("normalizePublicAudience() rewrites without canonicalization for string-only contexts", async () => {
+  // A contextLoader that always throws ensures the canonicalization path
+  // is not taken: if the implementation hit URDNA2015, it would fail.
+  const rejecting: Parameters<typeof normalizePublicAudience>[1] = () => {
+    throw new Error(
+      "contextLoader should not be called for a string-only @context",
+    );
+  };
+  const singleString = await normalizePublicAudience({
+    "@context": AS_CONTEXT,
+    type: "Note",
+    id: "https://example.com/notes/fast1",
+    to: "as:Public",
+  }, rejecting) as Record<string, unknown>;
+  assertEquals(singleString.to, PUBLIC_URI);
+  const arrayOfStrings = await normalizePublicAudience({
+    "@context": [AS_CONTEXT, "https://w3id.org/security/data-integrity/v1"],
+    type: "Note",
+    id: "https://example.com/notes/fast2",
+    to: "as:Public",
+  }, rejecting) as Record<string, unknown>;
+  assertEquals(arrayOfStrings.to, PUBLIC_URI);
+});
+
+test("normalizePublicAudience() does not traverse prototype-polluted keys", async () => {
+  const polluted = Object.create({ to: "as:Public" });
+  polluted["@context"] = AS_CONTEXT;
+  polluted.type = "Note";
+  polluted.id = "https://example.com/notes/proto";
+  const output = await normalizePublicAudience(polluted) as Record<
+    string,
+    unknown
+  >;
+  // The inherited `to` is not copied into the normalized record, so `to`
+  // stays inherited from the prototype with its original CURIE value and
+  // is not a rewritten own property.
+  assertEquals(Object.hasOwn(output, "to"), false);
+});
+
 test("normalizePublicAudience() bails out when the rewrite changes semantics", async () => {
   const input = {
     "@context": {

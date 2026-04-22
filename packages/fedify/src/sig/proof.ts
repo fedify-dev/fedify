@@ -358,18 +358,19 @@ async function verifyProofInternal(
     proofPurpose: proof.proofPurpose,
     created: proof.created.toString(),
   };
-  const proofCanon = serialize(proofConfig);
   const encoder = new TextEncoder();
-  const proofBytes = encoder.encode(proofCanon);
+  const proofBytes = encoder.encode(serialize(proofConfig));
   const proofDigest = await crypto.subtle.digest("SHA-256", proofBytes);
   const msg = { ...jsonLd };
   if ("proof" in msg) delete msg.proof;
-  const msgCanon = serialize(msg);
-  const msgBytes = encoder.encode(msgCanon);
-  const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
-  const digest = new Uint8Array(proofDigest.byteLength + msgDigest.byteLength);
-  digest.set(new Uint8Array(proofDigest), 0);
-  digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+  // Try the on-wire form first, then fall back to the public-audience
+  // normalized form so that signatures created by `createProof` (which
+  // signs the normalized bytes) still verify when the caller passes the
+  // default `toJsonLd({ format: "compact" })` output that still carries
+  // the `as:Public` CURIE.
+  const candidates: unknown[] = [msg];
+  const normalized = await normalizePublicAudience(msg, options.contextLoader);
+  if (normalized !== msg) candidates.push(normalized);
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
@@ -410,34 +411,41 @@ async function verifyProofInternal(
     );
     return null;
   }
-  const verified = await crypto.subtle.verify(
-    "Ed25519",
-    publicKey.publicKey,
-    proof.proofValue.slice(),
-    digest,
-  );
-  if (!verified) {
-    if (fetchedKey.cached) {
-      logger.debug(
-        "Failed to verify the proof with the cached key {keyId}; retrying " +
-          "with the freshly fetched key...",
-        { keyId: proof.verificationMethodId.href, proof },
-      );
-      return await verifyProof(jsonLd, proof, {
-        ...options,
-        keyCache: {
-          get: () => Promise.resolve(undefined),
-          set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-        },
-      });
-    }
+  for (const candidate of candidates) {
+    const msgBytes = encoder.encode(serialize(candidate));
+    const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
+    const digest = new Uint8Array(
+      proofDigest.byteLength + msgDigest.byteLength,
+    );
+    digest.set(new Uint8Array(proofDigest), 0);
+    digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+    const verified = await crypto.subtle.verify(
+      "Ed25519",
+      publicKey.publicKey,
+      proof.proofValue.slice(),
+      digest,
+    );
+    if (verified) return publicKey;
+  }
+  if (fetchedKey.cached) {
     logger.debug(
-      "Failed to verify the proof with the fetched key {keyId}:\n{proof}",
+      "Failed to verify the proof with the cached key {keyId}; retrying " +
+        "with the freshly fetched key...",
       { keyId: proof.verificationMethodId.href, proof },
     );
-    return null;
+    return await verifyProof(jsonLd, proof, {
+      ...options,
+      keyCache: {
+        get: () => Promise.resolve(undefined),
+        set: async (keyId, key) => await options.keyCache?.set(keyId, key),
+      },
+    });
   }
-  return publicKey;
+  logger.debug(
+    "Failed to verify the proof with the fetched key {keyId}:\n{proof}",
+    { keyId: proof.verificationMethodId.href, proof },
+  );
+  return null;
 }
 
 /**

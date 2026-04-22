@@ -302,7 +302,7 @@ test("signObject()", async () => {
   ) as Record<string, unknown>;
   assertEquals(signedJson.to, PUBLIC_COLLECTION.href);
   const verifyCache: Record<string, CryptographicKey | Multikey | null> = {};
-  const verifyingKey = await verifyProof(signedJson, proof, {
+  const verifyOptions: VerifyProofOptions = {
     contextLoader: mockDocumentLoader,
     documentLoader: mockDocumentLoader,
     keyCache: {
@@ -312,8 +312,28 @@ test("signObject()", async () => {
         return Promise.resolve();
       },
     },
-  });
+  };
+  const verifyingKey = await verifyProof(signedJson, proof, verifyOptions);
   assertInstanceOf(verifyingKey, Multikey);
+
+  // Round-trip regression guard: `signObject()` returns a vocab object
+  // whose default `toJsonLd({ format: "compact" })` output still compacts
+  // the public audience to the `as:Public` CURIE, even though the bytes
+  // signed by `createProof()` were first normalized to the expanded URI.
+  // `verifyProof()` must accept either form so the in-memory pipeline
+  // (sign, reserialize, verify) continues to work without every caller
+  // having to know about the public-audience compat helper.
+  const signedJsonWithCurie = await signed.toJsonLd(options) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(signedJsonWithCurie.to, "as:Public");
+  const verifyingKeyFromCurie = await verifyProof(
+    signedJsonWithCurie,
+    proof,
+    verifyOptions,
+  );
+  assertInstanceOf(verifyingKeyFromCurie, Multikey);
 });
 
 test("hasProofLike()", () => {
