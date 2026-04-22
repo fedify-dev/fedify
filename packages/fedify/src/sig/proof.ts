@@ -361,8 +361,16 @@ async function verifyProofInternal(
   const encoder = new TextEncoder();
   const proofBytes = encoder.encode(serialize(proofConfig));
   const proofDigest = await crypto.subtle.digest("SHA-256", proofBytes);
-  const msg = { ...jsonLd };
+  const msg = { ...jsonLd } as Record<string, unknown>;
+  // `verifyProof()` promises to ignore existing proofs on the input;
+  // strip both the compact (`proof`) and the expanded
+  // (`https://w3id.org/security#proof`) forms so callers passing JSON-LD
+  // in either shape do not have the proof bytes folded into the JCS
+  // message digest.
   if ("proof" in msg) delete msg.proof;
+  if ("https://w3id.org/security#proof" in msg) {
+    delete msg["https://w3id.org/security#proof"];
+  }
   // Try the on-wire form first, then fall back to the public-audience
   // normalized form so that signatures created by `createProof` (which
   // signs the normalized bytes) still verify when the caller passes the

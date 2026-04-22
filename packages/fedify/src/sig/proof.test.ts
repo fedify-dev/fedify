@@ -479,6 +479,23 @@ test("verifyProof()", async () => {
 
   const wrongProof = proof.clone({ created: Temporal.Now.instant() });
   assertEquals(await verifyProof(jsonLd, wrongProof, options), null);
+
+  // verifyProof() promises to ignore any proof already present on the
+  // input; make sure the expanded JSON-LD form of that key
+  // (`https://w3id.org/security#proof`) is stripped before JCS, not just
+  // the compact `proof` alias, so callers passing JSON-LD in either
+  // shape get the same message digest as the signer computed.
+  const jsonLdWithExpandedProof: Record<string, unknown> = {
+    ...jsonLd,
+    "https://w3id.org/security#proof": {
+      "@type": ["https://w3id.org/security#DataIntegrityProof"],
+      "https://w3id.org/security#proofValue": [{ "@value": "stale" }],
+    },
+  };
+  assertEquals(
+    await verifyProof(jsonLdWithExpandedProof, proof, options),
+    expectedKey,
+  );
 });
 
 test("verifyObject()", async () => {
