@@ -10,6 +10,15 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Shipped an [Agent Skills] bundle at *skills/fedify/* and declared it in
+    *package.json* through the `agents.skills` field.  The skill teaches AI
+    coding agents how to *use* Fedify inside a consumer's project (builder
+    pattern, dispatchers, framework integrations, vocabulary, keys, queues
+    and storage, observability, CLI, and common pitfalls).  Projects that
+    run a tool implementing the Agent Skills spec, such as [skills-npm],
+    will pick up the skill automatically from *node\_modules*, keeping the
+    guidance in sync with the installed Fedify version.  [[#711], [#712]]
+
  -  Added `setOutboxListeners()` and `OutboxContext` for handling
     client-to-server `POST` requests to actor outboxes.  Outbox listeners use
     application-defined authorization through `.authorize()`, catch activity
@@ -33,10 +42,14 @@ To be released.
     `getAuthenticatedDocumentLoader()` now also respects
     `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
 
+[Agent Skills]: https://agentskills.io/
+[skills-npm]: https://github.com/antfu/skills-npm
 [#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680
 [#688]: https://github.com/fedify-dev/fedify/pull/688
+[#711]: https://github.com/fedify-dev/fedify/issues/711
+[#712]: https://github.com/fedify-dev/fedify/pull/712
 
 ### @fedify/lint
 

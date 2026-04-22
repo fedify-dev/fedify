@@ -32,8 +32,14 @@
   },
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
+  "agents": {
+    "skills": [
+      { "name": "fedify", "path": "./skills/fedify" }
+    ]
+  },
   "module": "./dist/mod.js",
   "main": "./dist/mod.cjs",
   "types": "./dist/mod.d.ts",
