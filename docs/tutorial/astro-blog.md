@@ -818,10 +818,10 @@ export const onRequest = fedifyMiddleware(federation, (_context) => undefined);
 ~~~~
 
 The `import "./logging.ts"` side-effect import ensures that the LogTape
-configuration we defined in
-[*Setting up the development environment*](#setting-up-the-development-environment)
-is loaded before the first request arrives.  Without it, log messages from the
-federation layer would be silently discarded.
+configuration in *src/logging.ts*—which `fedify init` generated with sane
+defaults when we set up the project—is loaded before the first request
+arrives.  Without it, log messages from the federation layer would be
+silently discarded.
 
 ### The actor profile page
 
