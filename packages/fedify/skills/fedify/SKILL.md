@@ -248,7 +248,7 @@ Import ActivityStreams and ActivityPub vocabulary types from
 deprecated shim kept for backwards compatibility; new code should not use
 it.  Likewise, `@fedify/vocab-runtime` replaces the old
 `@fedify/fedify/runtime` path, and `@fedify/webfinger` replaces the old
-in-tree `src/webfinger`.
+in-tree *src/webfinger*.
 
 > [!CAUTION]
 > Several vocabulary classes collide with JavaScript globals (notably
@@ -411,7 +411,7 @@ Common mistakes to avoid
  -  Hand-rolling `/.well-known/webfinger` or `/.well-known/nodeinfo`
     routes; Fedify already serves them.
  -  Importing from the deprecated shims `@fedify/fedify/vocab` or
-    `@fedify/fedify/runtime`, or from the old in-tree `src/webfinger`
+    `@fedify/fedify/runtime`, or from the old in-tree *src/webfinger*
     path, instead of the dedicated packages `@fedify/vocab`,
     `@fedify/vocab-runtime`, and `@fedify/webfinger`.
  -  Omitting the `queue` option in production; outgoing delivery becomes
