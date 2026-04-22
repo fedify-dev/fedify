@@ -13,6 +13,7 @@ import {
   getTypeId,
   lookupObject,
   Multikey,
+  PUBLIC_COLLECTION,
   Tombstone,
   traverseCollection,
 } from "@fedify/vocab";
@@ -217,6 +218,35 @@ export function createFederation<TContextData>(
   options: FederationOptions<TContextData>,
 ): Federation<TContextData> {
   return new FederationImpl<TContextData>(options);
+}
+
+const PUBLIC_ADDRESSING_FIELDS = new Set([
+  "to",
+  "cc",
+  "bto",
+  "bcc",
+  "audience",
+]);
+
+function normalizePublicAudience(value: unknown, parentKey?: string): unknown {
+  if (
+    typeof value === "string" &&
+    parentKey != null &&
+    PUBLIC_ADDRESSING_FIELDS.has(parentKey) &&
+    (value === "as:Public" || value === "Public")
+  ) {
+    return PUBLIC_COLLECTION.href;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizePublicAudience(item, parentKey));
+  }
+  if (typeof value !== "object" || value == null) return value;
+  const record = value as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+  for (const key in record) {
+    normalized[key] = normalizePublicAudience(record[key], key);
+  }
+  return normalized;
 }
 
 export class FederationImpl<TContextData>
@@ -1112,6 +1142,7 @@ export class FederationImpl<TContextData>
       format: "compact",
       contextLoader,
     });
+    jsonLd = normalizePublicAudience(jsonLd);
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +

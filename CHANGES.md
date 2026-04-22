@@ -42,8 +42,19 @@ To be released.
     `getAuthenticatedDocumentLoader()` now also respects
     `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
 
+ -  Improved interoperability with threadiverse software by serializing the
+    public audience as the full `https://www.w3.org/ns/activitystreams#Public`
+    URI in outgoing activities' `to`, `cc`, `bto`, `bcc`, and `audience`
+    fields, instead of the compacted `as:Public` or `Public` CURIEs that
+    JSON-LD compaction would otherwise produce.  Some ActivityPub
+    implementations, [Lemmy] included, match those fields as plain URLs
+    without JSON-LD expansion and would silently drop activities carrying
+    the CURIE form; see [LemmyNet/lemmy#6465].
+
 [Agent Skills]: https://agentskills.io/
 [skills-npm]: https://github.com/antfu/skills-npm
+[Lemmy]: https://join-lemmy.org/
+[LemmyNet/lemmy#6465]: https://github.com/LemmyNet/lemmy/issues/6465
 [#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680

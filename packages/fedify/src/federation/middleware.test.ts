@@ -2884,6 +2884,23 @@ test("FederationImpl.sendActivity()", async (t) => {
       inboxes,
       activity.clone({
         actor: new URL("https://example.com/person2"),
+        tos: [vocab.PUBLIC_COLLECTION],
+      }),
+      { context },
+    );
+    assertEquals(verified, ["ld", "http"]);
+    const posted = await request?.json() as Record<string, unknown>;
+    assertEquals(
+      posted?.to,
+      vocab.PUBLIC_COLLECTION.href,
+    );
+
+    verified = null;
+    await federation.sendActivity(
+      [{ privateKey: rsaPrivateKey3, keyId: rsaPublicKey3.id! }],
+      inboxes,
+      activity.clone({
+        actor: new URL("https://example.com/person2"),
       }),
       { context },
     );
