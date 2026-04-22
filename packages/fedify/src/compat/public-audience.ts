@@ -1,9 +1,5 @@
 import { PUBLIC_COLLECTION } from "@fedify/vocab";
-import {
-  type DocumentLoader,
-  getDocumentLoader,
-  preloadedContexts,
-} from "@fedify/vocab-runtime";
+import { type DocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 
@@ -16,6 +12,31 @@ const PUBLIC_ADDRESSING_FIELDS = new Set([
   "bcc",
   "audience",
 ]);
+
+// Default fallback document loader for `normalizePublicAudience()` when the
+// caller omits `contextLoader`.  It resolves only URLs that Fedify already
+// ships as preloaded contexts; any other URL is rejected rather than
+// fetched.  `@fedify/vocab-runtime`'s full `getDocumentLoader()` would
+// happily issue network requests for non-preloaded URLs after its
+// `validatePublicUrl()` check, which is the SSRF vector raised in the
+// review thread when the helper runs on adversarial input.  Rejecting
+// here turns that path into a canonicalization failure, which
+// `normalizePublicAudience()` catches and handles by returning the
+// document unchanged.
+const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
+  if (url in preloadedContexts) {
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: preloadedContexts[url],
+    });
+  }
+  return Promise.reject(
+    new Error(
+      "Refusing to fetch a non-preloaded JSON-LD context: " + url,
+    ),
+  );
+};
 
 const AS_CONTEXT_URL = "https://www.w3.org/ns/activitystreams";
 
@@ -192,17 +213,21 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
  * returned unchanged.  Canonicalization failures also fall back to the
  * original document.
  *
- * When no `contextLoader` is supplied the helper falls back to the
- * default document loader from `@fedify/vocab-runtime`, which only
- * resolves URLs in the preloaded-contexts set.  That default is safe
- * for signing paths that produce their own local JSON-LD, but it is
- * *not* safe for verification paths that operate on adversarial input,
- * because an attacker-supplied `@context` URL could steer the loader
- * into an unbounded network fetch.  Callers that pass untrusted
- * input (`verifyProof()` / `verifyObject()` are the canonical
- * examples) must therefore gate the call on an explicit
- * `contextLoader`, and a missing loader should translate into "skip
- * the normalization attempt" rather than "use a default loader".
+ * When no `contextLoader` is supplied the helper falls back to an
+ * internal loader that resolves only the URLs in Fedify's
+ * preloaded-contexts set and rejects every other URL without issuing a
+ * network request.  That behaviour is deliberately narrower than
+ * `@fedify/vocab-runtime`'s `getDocumentLoader()`, which after its
+ * `validatePublicUrl` check will happily fetch non-preloaded URLs: the
+ * helper is reached from verification paths (`verifyProof()` /
+ * `verifyObject()`) that operate on inbound, potentially adversarial
+ * JSON-LD, and a default loader that fetches attacker-supplied
+ * `@context` URLs on the caller's behalf would be an SSRF vector.
+ * Canonicalization failures against the restricted loader fall back to
+ * the original document, same as any other canonicalization error.
+ * Callers that genuinely need the remote-fetch loader (for example
+ * applications that sign local JSON-LD against a custom vocabulary)
+ * should pass a `contextLoader` explicitly.
  *
  * Must be called before any signing step that canonicalizes the
  * compact form byte-for-byte (for example, Object Integrity Proofs
@@ -216,7 +241,7 @@ export async function normalizePublicAudience(
   if (!hasPublicCurieInAddressing(jsonLd)) return jsonLd;
   const normalized = rewritePublicAudience(jsonLd);
   if (hasKnownSafeContext(jsonLd)) return normalized;
-  const loader = contextLoader ?? getDocumentLoader();
+  const loader = contextLoader ?? preloadedOnlyDocumentLoader;
   try {
     const [before, after] = await Promise.all([
       jsonld.canonize(jsonLd, {

@@ -507,13 +507,16 @@ test("verifyProof()", async () => {
   );
 
   // verifyProof() runs on inbound, potentially adversarial JSON-LD, so
-  // it must not hand an attacker-controlled `@context` URL to a default
-  // document loader.  The attacker input below would take the
-  // canonicalization path inside normalizePublicAudience (non-standard
-  // @context + CURIE in an addressing field), but because the options
-  // object here omits `contextLoader` the normalization attempt is
-  // suppressed entirely: no URDNA2015 fetch runs, and verify returns
-  // null cleanly (the proof was not signed over this activity anyway).
+  // normalizePublicAudience() must not hand an attacker-controlled
+  // `@context` URL to a network-capable document loader.  The attacker
+  // input below would otherwise take the canonicalization path (its
+  // `@context` is not drawn entirely from Fedify's preloaded set), but
+  // because we do not pass `contextLoader`, normalizePublicAudience()
+  // falls back to the internal preloaded-only loader, which rejects
+  // the attacker URL; canonicalization errors out and the normalized
+  // candidate is dropped.  verify then tries the on-wire form against
+  // a proof that was signed over a different activity and returns
+  // null cleanly without any network request.
   const attackerInput = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",

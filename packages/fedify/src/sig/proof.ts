@@ -377,19 +377,14 @@ async function verifyProofInternal(
   // normalized form so that signatures created by `createProof` (which
   // signs the normalized bytes) still verify when the caller passes the
   // default `toJsonLd({ format: "compact" })` output that still carries
-  // the `as:Public` CURIE.  The normalization path is only attempted when
-  // the caller explicitly supplied a `contextLoader`: `verifyProof()`
-  // frequently runs on inbound, potentially adversarial JSON-LD, and we
-  // must not use a default loader that could fetch attacker-supplied
-  // `@context` URLs on the caller's behalf.
+  // the `as:Public` CURIE.  `normalizePublicAudience()` defaults to a
+  // preloaded-only document loader when `options.contextLoader` is
+  // omitted, so the normalization attempt is safe to run on inbound,
+  // potentially adversarial JSON-LD: an attacker-supplied `@context`
+  // URL cannot steer canonicalization into a network fetch.
   const candidates: unknown[] = [msg];
-  if (options.contextLoader != null) {
-    const normalized = await normalizePublicAudience(
-      msg,
-      options.contextLoader,
-    );
-    if (normalized !== msg) candidates.push(normalized);
-  }
+  const normalized = await normalizePublicAudience(msg, options.contextLoader);
+  if (normalized !== msg) candidates.push(normalized);
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
