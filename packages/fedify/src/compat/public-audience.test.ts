@@ -76,12 +76,12 @@ test("normalizePublicAudience() leaves non-addressing fields untouched", async (
   assertEquals(output.to, PUBLIC_URI);
 });
 
-test("normalizePublicAudience() rewrites without canonicalization for string-only contexts", async () => {
+test("normalizePublicAudience() rewrites without canonicalization for known-safe contexts", async () => {
   // A contextLoader that always throws ensures the canonicalization path
   // is not taken: if the implementation hit URDNA2015, it would fail.
   const rejecting: Parameters<typeof normalizePublicAudience>[1] = () => {
     throw new Error(
-      "contextLoader should not be called for a string-only @context",
+      "contextLoader should not be called for a known-safe @context",
     );
   };
   const singleString = await normalizePublicAudience({
@@ -98,6 +98,60 @@ test("normalizePublicAudience() rewrites without canonicalization for string-onl
     to: "as:Public",
   }, rejecting) as Record<string, unknown>;
   assertEquals(arrayOfStrings.to, PUBLIC_URI);
+});
+
+test("normalizePublicAudience() falls back to canonicalization for unknown-URL contexts", async () => {
+  // A remote string context URL not in Fedify's preloaded set might in
+  // theory redefine `as:` or `Public`, so the fast path must not apply.
+  // We count contextLoader invocations and assert the slow path runs.
+  let loaderCalls = 0;
+  const loader: Parameters<typeof normalizePublicAudience>[1] = async (
+    url: string,
+  ) => {
+    loaderCalls++;
+    // Resolve every URL to the standard ActivityStreams context so that
+    // the equivalence check succeeds and the rewrite goes through.  In a
+    // real document the unknown URL might bring its own term definitions;
+    // here we just need the two canonical forms to match.
+    const { default: asContext } = await import(
+      "../../../vocab-runtime/src/contexts/activitystreams.json",
+      { with: { type: "json" } }
+    );
+    return { contextUrl: null, documentUrl: url, document: asContext };
+  };
+  const output = await normalizePublicAudience({
+    "@context": [AS_CONTEXT, "https://custom.example/ctx"],
+    type: "Note",
+    id: "https://example.com/notes/unknown",
+    to: "as:Public",
+  }, loader) as Record<string, unknown>;
+  assertEquals(output.to, PUBLIC_URI);
+  // canonicalization on both sides of the equivalence check exercises the
+  // loader at least once.
+  assertEquals(loaderCalls > 0, true);
+});
+
+test("normalizePublicAudience() leaves @context subtrees untouched", async () => {
+  // A user-supplied inline @context could happen to contain a string value
+  // that looks like `as:Public`; the helper must not rewrite inside term
+  // definitions because addressing fields do not live there, and the
+  // rewrite would change term semantics rather than addressing semantics.
+  const input = {
+    "@context": [
+      AS_CONTEXT,
+      { "customTerm": "as:Public" },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/context",
+    to: PUBLIC_URI,
+  };
+  const output = await normalizePublicAudience(input) as Record<
+    string,
+    unknown
+  >;
+  const ctx = output["@context"] as unknown[];
+  const inlineCtx = ctx[1] as Record<string, unknown>;
+  assertEquals(inlineCtx.customTerm, "as:Public");
 });
 
 test("normalizePublicAudience() does not traverse prototype-polluted keys", async () => {
