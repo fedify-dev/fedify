@@ -36,18 +36,22 @@ verify names against those docs or against the installed
 Builder pattern
 ---------------
 
-Two entry points return a `Federation<TContextData>` object:
+Two entry points reach a `Federation<TContextData>` object:
 
  -  `createFederationBuilder<TContextData>()` returns a
-    `FederationBuilder`; register dispatchers and listeners, then
-    `await builder.build(options)` to get the `Federation`.  Prefer this
-    in larger apps, especially when you need to split configuration
-    across files or avoid circular imports.  Serverless runtimes such as
-    Cloudflare Workers *require* the builder: bindings are only available
-    per-request, so the `Federation` must be constructed inside the
-    request handler.
- -  `createFederation<TContextData>(options)` constructs the object
-    directly.  Appropriate when everything fits in one module.
+    `FederationBuilder<TContextData>`.  Register dispatchers and
+    listeners on it, then `await builder.build(options)` to obtain the
+    `Federation<TContextData>`.  Prefer this in larger apps, especially
+    when you need to split configuration across files or avoid circular
+    imports.  In serverless runtimes such as Cloudflare Workers,
+    bindings are only available per-request, so the `Federation` must be
+    constructed inside the request handler; the builder pattern is the
+    documented approach there because dispatcher registration can happen
+    at module load time and only the asynchronous `.build(options)` call
+    runs per request.
+ -  `createFederation<TContextData>(options)` returns a
+    `Federation<TContextData>` directly.  Appropriate when everything
+    fits in one module.
 
 `.build()` is asynchronous; always `await` it.  See
 <https://fedify.dev/manual/federation>.
