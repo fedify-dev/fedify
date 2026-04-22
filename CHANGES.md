@@ -150,6 +150,21 @@ To be released.
 [#675]: https://github.com/fedify-dev/fedify/pull/675
 
 
+Version 2.1.9
+-------------
+
+Released on April 22, 2026.
+
+### @fedify/mysql
+
+ -  Fixed a TypeScript type mismatch in `MysqlKvStore` and
+    `MysqlMessageQueue` that could reject valid `mysql2` pools when an
+    application resolved `mysql2` through multiple type sources or different
+    package versions.  The constructors now accept the structural pool shape
+    they actually use, so mixed Deno/npm setups and monorepos no longer need
+    casts or `@ts-expect-error` workarounds.
+
+
 Version 2.1.8
 -------------
 

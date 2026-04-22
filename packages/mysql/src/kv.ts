@@ -6,9 +6,27 @@ import type {
 } from "@fedify/fedify";
 import { isEqual } from "es-toolkit";
 import { getLogger } from "@logtape/logtape";
-import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket } from "mysql2/promise";
 
 const logger = getLogger(["fedify", "mysql", "kv"]);
+
+interface MysqlQueryable {
+  query<TRows = unknown>(
+    sql: string,
+    values?: unknown,
+  ): Promise<[TRows, unknown]>;
+}
+
+interface MysqlPoolConnection extends MysqlQueryable {
+  beginTransaction(): Promise<void>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+  release(): void;
+}
+
+interface MysqlPool extends MysqlQueryable {
+  getConnection(): Promise<MysqlPoolConnection>;
+}
 
 /**
  * Options for the MySQL key-value store.
@@ -61,7 +79,7 @@ export interface MysqlKvStoreOptions {
  * @since 2.1.0
  */
 export class MysqlKvStore implements KvStore {
-  readonly #pool: Pool;
+  readonly #pool: MysqlPool;
   readonly #tableName: string;
   readonly #expireCleanupRate: number;
   #initialized: boolean;
@@ -72,7 +90,7 @@ export class MysqlKvStore implements KvStore {
    * @param options The options for the key-value store.
    * @since 2.1.0
    */
-  constructor(pool: Pool, options: MysqlKvStoreOptions = {}) {
+  constructor(pool: MysqlPool, options: MysqlKvStoreOptions = {}) {
     this.#pool = pool;
     const tableName = options.tableName ?? "fedify_kv";
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
@@ -198,7 +216,7 @@ export class MysqlKvStore implements KvStore {
   ): Promise<boolean> {
     await this.initialize();
     const serializedKey = JSON.stringify([...key]);
-    let conn: PoolConnection | undefined;
+    let conn: MysqlPoolConnection | undefined;
     try {
       conn = await this.#pool.getConnection();
       await conn.beginTransaction();
