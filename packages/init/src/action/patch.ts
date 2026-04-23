@@ -1,6 +1,7 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { join as joinPath } from "node:path";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import { formatJson, merge, replaceAll, set } from "../utils.ts";
@@ -42,6 +43,27 @@ export const recommendPatchFiles = (data: InitCommandData) =>
     set("jsons", getJsons),
     recommendFiles,
   );
+
+/**
+ * Verifies that `--allow-non-empty` will not modify files that already
+ * existed before any framework scaffolding command runs.
+ */
+export async function assertNoGeneratedFileConflicts(
+  data: InitCommandData,
+): Promise<void> {
+  if (!data.allowNonEmpty) return;
+  const conflicts = await getExistingGeneratedFiles(data);
+  if (conflicts.length > 0) {
+    throw new GeneratedFileConflictError(conflicts);
+  }
+}
+
+export class GeneratedFileConflictError extends Error {
+  constructor(public readonly conflicts: readonly string[]) {
+    super(formatConflictMessage(conflicts));
+    this.name = "GeneratedFileConflictError";
+  }
+}
 
 /**
  * Generates text-based files (TypeScript, environment files) for the project.
@@ -91,6 +113,44 @@ const getJsons = <
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
+
+const getGeneratedFilePaths = (data: InitCommandData): string[] => [
+  data.initializer.federationFile,
+  data.initializer.loggingFile,
+  ".env",
+  ...Object.keys(data.initializer.files ?? {}),
+  ...Object.keys(getJsons(data)),
+];
+
+const getExistingGeneratedFiles = async (
+  data: InitCommandData,
+): Promise<string[]> => {
+  const conflicts: string[] = [];
+  for (const path of new Set(getGeneratedFilePaths(data))) {
+    if (await pathExists(joinPath(data.dir, ...path.split("/")))) {
+      conflicts.push(path);
+    }
+  }
+  return conflicts;
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await access(path);
+    return true;
+  } catch (e) {
+    throwUnlessNotExists(e);
+    return false;
+  }
+};
+
+const formatConflictMessage = (conflicts: readonly string[]): string =>
+  [
+    "Cannot initialize in a non-empty directory because these generated files",
+    "already exist:",
+    ...conflicts.map((path) => ` - ${path}`),
+    "Remove the conflicting files or choose another directory.",
+  ].join("\n");
 
 /**
  * Handles dry-run mode by recommending files to be created without actually

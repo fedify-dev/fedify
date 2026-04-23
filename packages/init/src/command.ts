@@ -59,7 +59,7 @@ const messageQueue = optional(option(
 /**
  * The `@optique/core` option schema for the `fedify init` command.
  * Defines `dir`, `webFramework`, `packageManager`, `kvStore`, `messageQueue`,
- * and `dryRun` options that the CLI parser will accept.
+ * `dryRun`, and `allowNonEmpty` options that the CLI parser will accept.
  */
 export const initOptions = object("Initialization options", {
   dir: optional(argument(path({ metavar: "DIR" }), {
@@ -72,6 +72,10 @@ export const initOptions = object("Initialization options", {
   messageQueue,
   dryRun: option("--dry-run", {
     description: message`Perform a trial run with no changes made.`,
+  }),
+  allowNonEmpty: option("--allow-non-empty", {
+    description:
+      message`Allow initializing in a non-empty directory, failing if any generated file already exists.`,
   }),
 });
 

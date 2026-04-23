@@ -19,6 +19,7 @@ function createInitData(): InitCommandData {
     kvStore: "denokv",
     messageQueue: "denokv",
     dryRun: false,
+    allowNonEmpty: false,
     testMode: false,
     dir: "/tmp/example",
     initializer: {
@@ -141,6 +142,7 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     kvStore: "in-memory",
     messageQueue: "in-process",
     dryRun: false,
+    allowNonEmpty: false,
     testMode: false,
     dir,
   });
@@ -153,6 +155,7 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     kvStore: "in-memory",
     messageQueue: "in-process",
     dryRun: false,
+    allowNonEmpty: false,
     testMode: false,
     dir,
     initializer,

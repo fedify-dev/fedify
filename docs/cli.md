@@ -339,6 +339,25 @@ When using `--dry-run`, the command will:
 This option works with all other initialization options, allowing you to preview
 different configurations before making a decision.
 
+### `--allow-non-empty`: Initialize in a non-empty directory
+
+*This option is available since Fedify 2.2.0.*
+
+By default, `fedify init` asks for confirmation before using a directory that
+already contains files.  This prompt protects you from accidentally
+initializing a project in the wrong directory.  In non-interactive scripts or
+CI jobs, use the `--allow-non-empty` option to allow a non-empty target
+directory:
+
+~~~~ sh
+fedify init . --allow-non-empty
+~~~~
+
+This option does not overwrite existing project files.  Before making changes,
+`fedify init` checks the files it would generate and fails if any of them
+already exist.  Unrelated files, such as *README.md* or a freshly initialized
+*.git* directory, can remain in the target directory.
+
 
 `fedify lookup`: Looking up an ActivityPub object
 -------------------------------------------------

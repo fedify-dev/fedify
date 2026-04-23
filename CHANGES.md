@@ -148,6 +148,11 @@ To be released.
 
 ### @fedify/init
 
+ -  Added a `--allow-non-empty` option to `fedify init` for automated
+    scaffolding in directories that already contain unrelated files.  The
+    command still fails before making changes if any file that Fedify would
+    generate already exists, avoiding accidental merges or appends.  [[#716]]
+
  -  Fixed `fedify init` so that a directory containing only a freshly
     initialized Git repository is treated as empty.  Directories whose Git
     `HEAD` already resolves to a commit, or that contain any files besides
