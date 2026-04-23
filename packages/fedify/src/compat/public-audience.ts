@@ -24,7 +24,11 @@ const PUBLIC_ADDRESSING_FIELDS = new Set([
 // `normalizePublicAudience()` catches and handles by returning the
 // document unchanged.
 const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
-  if (url in preloadedContexts) {
+  // `Object.hasOwn()` rather than `url in preloadedContexts`: the loader
+  // runs on attacker-controlled URLs, and `in` would happily treat
+  // inherited `Object.prototype` names like `toString` as "preloaded"
+  // and then hand `Object.prototype.toString` to `jsonld.canonize`.
+  if (Object.hasOwn(preloadedContexts, url)) {
     return Promise.resolve({
       contextUrl: null,
       documentUrl: url,
@@ -117,7 +121,12 @@ function rewritePublicAudience(
   if (typeof value !== "object" || value == null) return value;
   const record = value as Record<string, unknown>;
   let changed = false;
-  const normalized: Record<string, unknown> = {};
+  // Clone into a null-prototype object so that writing back a key called
+  // `__proto__` (possible when the source came through `JSON.parse()`,
+  // which stores the literal `"__proto__"` as an own enumerable data
+  // property) assigns a regular own property here instead of going
+  // through the prototype setter and poisoning the chain.
+  const normalized: Record<string, unknown> = Object.create(null);
   for (const key of Object.keys(record)) {
     // `@context` is never an addressing field, so skip the recursion and
     // keep the reference intact.

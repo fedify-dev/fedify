@@ -8,13 +8,16 @@ import { normalizePublicAudience } from "./public-audience.ts";
 const PUBLIC_URI = PUBLIC_COLLECTION.href;
 const AS_CONTEXT = "https://www.w3.org/ns/activitystreams";
 
-test("normalizePublicAudience() rewrites as:Public in addressing fields", async () => {
+test("normalizePublicAudience() rewrites every addressing field and both CURIE forms", async () => {
   const input = {
     "@context": AS_CONTEXT,
     type: "Note",
     id: "https://example.com/notes/1",
     to: "as:Public",
     cc: ["as:Public", "https://example.com/bob"],
+    bto: "Public",
+    bcc: ["Public"],
+    audience: ["as:Public", "Public"],
   };
   const output = await normalizePublicAudience(input) as Record<
     string,
@@ -22,6 +25,9 @@ test("normalizePublicAudience() rewrites as:Public in addressing fields", async 
   >;
   assertEquals(output.to, PUBLIC_URI);
   assertEquals(output.cc, [PUBLIC_URI, "https://example.com/bob"]);
+  assertEquals(output.bto, PUBLIC_URI);
+  assertEquals(output.bcc, [PUBLIC_URI]);
+  assertEquals(output.audience, [PUBLIC_URI, PUBLIC_URI]);
 });
 
 test("normalizePublicAudience() normalises activities serialized by @fedify/vocab", async () => {
@@ -189,6 +195,30 @@ test("normalizePublicAudience() stops before blowing the stack on pathological n
   };
   const output = await normalizePublicAudience(input);
   assertEquals(typeof output, "object");
+});
+
+test("normalizePublicAudience() does not poison the global prototype via a __proto__ key", async () => {
+  // `JSON.parse()` stores `__proto__` as an own enumerable data property
+  // rather than going through the prototype setter, so an attacker can
+  // craft an inbound activity whose body has `__proto__` as a first-class
+  // key.  If the rewriter cloned into a plain `{}` and then did
+  // `normalized[key] = value` for that key, the assignment would go
+  // through the `__proto__` setter and mutate `Object.prototype`.  The
+  // helper clones into a null-prototype object instead; this test
+  // hand-crafts the same shape and asserts nothing ends up on
+  // `Object.prototype`.
+  const input = JSON.parse(`{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "https://example.com/notes/proto-pollution",
+    "to": "as:Public",
+    "__proto__": { "polluted": true }
+  }`);
+  await normalizePublicAudience(input);
+  assertEquals(
+    (Object.prototype as Record<string, unknown>).polluted,
+    undefined,
+  );
 });
 
 test("normalizePublicAudience() bails out on nested @context that redefines as:", async () => {
