@@ -91,6 +91,8 @@ function waitForHeading(maxFrames = 8): Promise<Element | null> {
 async function updateTarget(): Promise<void> {
   const version = ++targetUpdateVersion;
   targetReady.value = false;
+  copied.value = false;
+  copyFailed.value = null;
   cleanupTarget();
   await nextTick();
   const heading = await waitForHeading();
@@ -141,6 +143,7 @@ async function getMarkdown(): Promise<string> {
 }
 
 async function copyMarkdown(event: MouseEvent): Promise<void> {
+  const version = targetUpdateVersion;
   if (isDev) {
     closeMenu(event);
     window.alert(devMessage);
@@ -151,6 +154,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
+      if (version !== targetUpdateVersion) return;
       copied.value = false;
       copyFailed.value = "clipboard";
       if (copiedResetTimeout != null) {
@@ -160,6 +164,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
       resetCopyFailedState(2500);
       return;
     }
+    if (version !== targetUpdateVersion) return;
     copied.value = true;
     copyFailed.value = null;
     if (copyFailedResetTimeout != null) {
@@ -169,6 +174,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
     resetCopiedState(2000);
     closeMenu(event);
   } catch {
+    if (version !== targetUpdateVersion) return;
     copied.value = false;
     copyFailed.value = "load";
     if (copiedResetTimeout != null) {
