@@ -39,6 +39,21 @@ test("isDirectoryEmpty rejects a Git repository with a branch ref", async () => 
   });
 });
 
+test("isDirectoryEmpty rejects a Git repository with another ref", async () => {
+  await withTempDir(async (dir) => {
+    await createUnbornGitRepository(dir);
+    await mkdir(join(dir, ".git", "refs", "remotes", "origin"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(dir, ".git", "refs", "remotes", "origin", "main"),
+      "0000000000000000000000000000000000000000\n",
+    );
+
+    strictEqual(await isDirectoryEmpty(dir), false);
+  });
+});
+
 test("isDirectoryEmpty rejects a Git repository with a HEAD commit", async (t) => {
   if (!await isGitAvailable()) {
     t.skip("git is not installed");
@@ -69,7 +84,7 @@ test("isDirectoryEmpty rejects a Git repository with a packed ref", async () => 
     await createUnbornGitRepository(dir);
     await writeFile(
       join(dir, ".git", "packed-refs"),
-      "0000000000000000000000000000000000000000 refs/heads/main\n",
+      "0000000000000000000000000000000000000000 refs/tags/v1.0.0\n",
     );
 
     strictEqual(await isDirectoryEmpty(dir), false);

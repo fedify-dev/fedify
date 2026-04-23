@@ -125,13 +125,14 @@ const getGeneratedFilePaths = (data: InitCommandData): string[] => [
 const getExistingGeneratedFiles = async (
   data: InitCommandData,
 ): Promise<string[]> => {
-  const conflicts: string[] = [];
-  for (const path of new Set(getGeneratedFilePaths(data))) {
-    if (await pathExists(joinPath(data.dir, ...path.split("/")))) {
-      conflicts.push(path);
-    }
-  }
-  return conflicts;
+  const paths = [...new Set(getGeneratedFilePaths(data))];
+  const results = await Promise.all(
+    paths.map(async (path) => {
+      const exists = await pathExists(joinPath(data.dir, ...path.split("/")));
+      return exists ? path : null;
+    }),
+  );
+  return results.filter((path): path is string => path != null);
 };
 
 const pathExists = async (path: string): Promise<boolean> => {

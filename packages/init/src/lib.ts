@@ -11,15 +11,8 @@ import {
 } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import { toMerged } from "es-toolkit";
-import { readFileSync } from "node:fs";
-import {
-  access,
-  mkdir,
-  readdir,
-  readFile,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { type Dirent, readFileSync } from "node:fs";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import process from "node:process";
 import metadata from "../deno.json" with { type: "json" };
@@ -256,8 +249,8 @@ const looksLikeUnbornGitRepository = async (
   if (head == null) return false;
   const ref = parseHeadRef(head);
   if (ref == null) return false;
-  if (await pathExists(joinPath(gitDir, ...ref.split("/")))) return false;
-  if (await hasPackedRef(gitDir, ref)) return false;
+  if (await hasAnyLooseRef(gitDir)) return false;
+  if (await hasAnyPackedRef(gitDir)) return false;
   return true;
 };
 
@@ -268,9 +261,35 @@ const parseHeadRef = (head: string): string | null => {
   return ref.includes("..") ? null : ref;
 };
 
-const hasPackedRef = async (
+const hasAnyLooseRef = async (gitDir: string): Promise<boolean> =>
+  await hasAnyRefFile(joinPath(gitDir, "refs"));
+
+const hasAnyRefFile = async (dir: string): Promise<boolean> => {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to read Git refs in {path}: {error}",
+      { path: dir, error: e },
+    );
+    return true;
+  }
+
+  for (const entry of entries) {
+    const path = joinPath(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (await hasAnyRefFile(path)) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
+};
+
+const hasAnyPackedRef = async (
   gitDir: string,
-  ref: string,
 ): Promise<boolean> => {
   let packedRefs: string;
   try {
@@ -289,7 +308,7 @@ const hasPackedRef = async (
     if (trimmed === "" || trimmed.startsWith("#") || trimmed.startsWith("^")) {
       return false;
     }
-    return trimmed.split(/\s+/)[1] === ref;
+    return true;
   });
 };
 
@@ -304,15 +323,6 @@ const readGitFile = async (path: string): Promise<string | null> => {
       );
     }
     return null;
-  }
-};
-
-const pathExists = async (path: string): Promise<boolean> => {
-  try {
-    await access(path);
-    return true;
-  } catch (e) {
-    return !isNotFoundError(e);
   }
 };
 
