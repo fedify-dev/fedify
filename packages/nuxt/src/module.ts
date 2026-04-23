@@ -54,6 +54,17 @@ export function resolveModulePath(
   return resolved;
 }
 
+interface RuntimeResolver {
+  resolve(path: string): string;
+}
+
+export function resolveRuntimeServerPath(
+  resolver: RuntimeResolver,
+  fileName: "middleware.js" | "plugin.js",
+): string {
+  return resolver.resolve(`../dist/runtime/server/${fileName}`);
+}
+
 export function buildContextFactoryResolver(
   contextDataFactoryModule: string | null,
 ): string {
@@ -106,6 +117,11 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
         );
 
       const middlewareFilename = "fedify-nuxt-options.mjs";
+      const middlewareModule = resolveRuntimeServerPath(
+        resolver,
+        "middleware.js",
+      );
+      const pluginModule = resolveRuntimeServerPath(resolver, "plugin.js");
 
       addServerTemplate({
         filename: middlewareFilename,
@@ -115,9 +131,7 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
               JSON.stringify(federationModule)
             };`,
             `import { createFedifyMiddleware } from ${
-              JSON.stringify(
-                resolver.resolve("../src/runtime/server/middleware.ts"),
-              )
+              JSON.stringify(middlewareModule)
             };`,
           ];
 
@@ -145,7 +159,7 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
         handler: middlewareFilename,
       });
 
-      addServerPlugin(resolver.resolve("../src/runtime/server/plugin.ts"));
+      addServerPlugin(pluginModule);
     },
   });
 

@@ -46,7 +46,6 @@
   },
   "files": [
     "dist/",
-    "src/runtime/",
     "package.json"
   ],
   "peerDependencies": {
@@ -67,6 +66,7 @@
     "build": "pnpm --filter @fedify/nuxt... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
+    "pretest": "pnpm build",
     "test": "node --experimental-transform-types --test"
   }
 }
