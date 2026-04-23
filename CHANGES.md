@@ -8,6 +8,15 @@ Version 2.0.14
 
 To be released.
 
+### @fedify/vocab-runtime
+
+ -  Added <https://join-lemmy.org/context.json> to preloaded JSON-LD contexts.
+    Lemmy serves this context as `application/json` without a JSON-LD context
+    `Link` header, which caused the default document loader to reject
+    Lemmy-originated activities before application handlers could run.  [[#714]]
+
+[#714]: https://github.com/fedify-dev/fedify/issues/714
+
 
 Version 2.0.13
 --------------

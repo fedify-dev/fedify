@@ -2,6 +2,8 @@
 // https://github.com/fedify-dev/fedify/issues/74
 // cSpell: disable
 
+import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
+
 const preloadedContexts: Record<string, unknown> = {
   "https://www.w3.org/ns/activitystreams": {
     "@context": {
@@ -4314,6 +4316,15 @@ const preloadedContexts: Record<string, unknown> = {
       },
     },
   },
+
+  // Lemmy's context document is served as application/json without the JSON-LD
+  // context Link header.  The default document loader treats that as a regular
+  // JSON response instead of a JSON-LD context, so every Lemmy activity that
+  // references this URL fails before application handlers run.  We ship a
+  // built-in copy here so Fedify can parse Lemmy-originated activities without
+  // application-level document loader workarounds.
+  // See: https://github.com/fedify-dev/fedify/issues/714
+  "https://join-lemmy.org/context.json": joinLemmyContext,
 
   // Mastodon's "toot:" namespace.  The URL http://joinmastodon.org/ns has
   // *never* served a real JSON-LD context document—Mastodon has always inlined
