@@ -247,18 +247,16 @@ const looksLikeUnbornGitRepository = async (
 
   const head = await readGitFile(joinPath(gitDir, "HEAD"));
   if (head == null) return false;
-  const ref = parseHeadRef(head);
-  if (ref == null) return false;
+  if (!isValidHeadRef(head)) return false;
   if (await hasAnyLooseRef(gitDir)) return false;
   if (await hasAnyPackedRef(gitDir)) return false;
   return true;
 };
 
-const parseHeadRef = (head: string): string | null => {
+const isValidHeadRef = (head: string): boolean => {
   const match = head.trim().match(/^ref: (refs\/heads\/\S+)$/);
-  if (match == null) return null;
-  const ref = match[1];
-  return ref.includes("..") ? null : ref;
+  if (match == null) return false;
+  return !match[1].includes("..");
 };
 
 const hasAnyLooseRef = async (gitDir: string): Promise<boolean> =>

@@ -128,7 +128,7 @@ const getExistingGeneratedFiles = async (
   const paths = [...new Set(getGeneratedFilePaths(data))];
   const results = await Promise.all(
     paths.map(async (path) => {
-      const exists = await pathExists(joinPath(data.dir, ...path.split("/")));
+      const exists = await pathExists(joinPath(data.dir, path));
       return exists ? path : null;
     }),
   );

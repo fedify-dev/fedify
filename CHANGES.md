@@ -156,9 +156,9 @@ To be released.
 
  -  Fixed `fedify init` so that a directory containing only a freshly
     initialized Git repository is treated as empty.  Directories whose Git
-    `HEAD` already resolves to a commit, or that contain any files besides
-    *.git*, still require the existing non-empty-directory confirmation.
-    [[#716], [#717]]
+    `HEAD` already resolves to a commit, whose Git metadata contains loose or
+    packed refs, or that contain any files besides *.git*, still require the
+    existing non-empty-directory confirmation.  [[#716], [#717]]
 
  -  Fixed generated *biome.json* files to use Biome 2 configuration syntax,
     matching the `@biomejs/biome` version that `fedify init` installs.
