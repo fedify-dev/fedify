@@ -207,7 +207,7 @@ To be released.
     generated `*.md` path or starting from *llms.txt*.  The action is now
     available directly from each documentation page while *llms.txt* and
     *llms-full.txt* continue to exclude high-noise pages such as the changelog,
-    contribution guide, README, and sponsors page.  [[#706], [#715]]
+    contribution guide, *README.md*, and sponsors page.  [[#706], [#715]]
 
  -  Added [*Building a federated blog* tutorial] showing how to layer
     ActivityPub federation onto an [Astro] + [Bun] blog: actor setup,
