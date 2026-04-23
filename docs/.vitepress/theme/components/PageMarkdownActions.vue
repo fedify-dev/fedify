@@ -173,7 +173,6 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
       copyFailedResetTimeout = null;
     }
     resetCopiedState(2000);
-    closeMenu(trigger);
   } catch {
     if (version !== targetUpdateVersion) return;
     copied.value = false;
