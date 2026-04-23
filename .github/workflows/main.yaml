@@ -361,9 +361,6 @@ jobs:
             rm "$pkg"
           fi
         done
-        if [[ "$GITHUB_REF_TYPE" != tag ]]; then
-          rm fedify-cli-*.tgz
-        fi
     - uses: actions/upload-artifact@v7
       with:
         name: npm-packages
