@@ -91,6 +91,35 @@ test("isDirectoryEmpty rejects a Git repository with a packed ref", async () => 
   });
 });
 
+test("isDirectoryEmpty rejects a Git repository with stored objects", async () => {
+  await withTempDir(async (dir) => {
+    await createUnbornGitRepository(dir);
+    await mkdir(join(dir, ".git", "objects", "01"), { recursive: true });
+    await writeFile(join(dir, ".git", "objects", "01", "2345"), "object");
+
+    strictEqual(await isDirectoryEmpty(dir), false);
+  });
+});
+
+test("isDirectoryEmpty rejects a Git repository with an index", async () => {
+  await withTempDir(async (dir) => {
+    await createUnbornGitRepository(dir);
+    await writeFile(join(dir, ".git", "index"), "");
+
+    strictEqual(await isDirectoryEmpty(dir), false);
+  });
+});
+
+test("isDirectoryEmpty rejects a Git repository with reflogs", async () => {
+  await withTempDir(async (dir) => {
+    await createUnbornGitRepository(dir);
+    await mkdir(join(dir, ".git", "logs"), { recursive: true });
+    await writeFile(join(dir, ".git", "logs", "HEAD"), "");
+
+    strictEqual(await isDirectoryEmpty(dir), false);
+  });
+});
+
 test("isDirectoryEmpty rejects a detached Git HEAD", async () => {
   await withTempDir(async (dir) => {
     await createUnbornGitRepository(dir);

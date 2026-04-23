@@ -250,6 +250,8 @@ const looksLikeUnbornGitRepository = async (
   if (!isValidHeadRef(head)) return false;
   if (await hasAnyLooseRef(gitDir)) return false;
   if (await hasAnyPackedRef(gitDir)) return false;
+  if (await hasAnyObjectFile(gitDir)) return false;
+  if (await hasAnyGitStatePath(gitDir)) return false;
   return true;
 };
 
@@ -260,17 +262,23 @@ const isValidHeadRef = (head: string): boolean => {
 };
 
 const hasAnyLooseRef = async (gitDir: string): Promise<boolean> =>
-  await hasAnyRefFile(joinPath(gitDir, "refs"));
+  await hasAnyFile(joinPath(gitDir, "refs"), "Git refs");
 
-const hasAnyRefFile = async (dir: string): Promise<boolean> => {
+const hasAnyObjectFile = async (gitDir: string): Promise<boolean> =>
+  await hasAnyFile(joinPath(gitDir, "objects"), "Git objects");
+
+const hasAnyFile = async (
+  dir: string,
+  description: string,
+): Promise<boolean> => {
   let entries: Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch (e) {
     if (isNotFoundError(e)) return false;
     logger.debug(
-      "Failed to read Git refs in {path}: {error}",
-      { path: dir, error: e },
+      "Failed to read {description} in {path}: {error}",
+      { description, path: dir, error: e },
     );
     return true;
   }
@@ -278,12 +286,55 @@ const hasAnyRefFile = async (dir: string): Promise<boolean> => {
   for (const entry of entries) {
     const path = joinPath(dir, entry.name);
     if (entry.isDirectory()) {
-      if (await hasAnyRefFile(path)) return true;
+      if (await hasAnyFile(path, description)) return true;
     } else {
       return true;
     }
   }
   return false;
+};
+
+const GIT_STATE_PATHS = [
+  "AUTO_MERGE",
+  "BISECT_LOG",
+  "CHERRY_PICK_HEAD",
+  "FETCH_HEAD",
+  "MERGE_HEAD",
+  "MERGE_MODE",
+  "MERGE_MSG",
+  "ORIG_HEAD",
+  "REBASE_HEAD",
+  "REVERT_HEAD",
+  "SQUASH_MSG",
+  "index",
+  "logs",
+  "modules",
+  "rebase-apply",
+  "rebase-merge",
+  "sequencer",
+  "shallow",
+  "worktrees",
+] as const;
+
+const hasAnyGitStatePath = async (gitDir: string): Promise<boolean> => {
+  for (const path of GIT_STATE_PATHS) {
+    if (await pathExists(joinPath(gitDir, path))) return true;
+  }
+  return false;
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path);
+    return true;
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to stat Git state path {path}: {error}",
+      { path, error: e },
+    );
+    return true;
+  }
 };
 
 const hasAnyPackedRef = async (
