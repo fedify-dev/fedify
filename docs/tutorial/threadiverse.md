@@ -146,9 +146,11 @@ Check that it works:
 fedify --version
 ~~~~
 
-Make sure the version number is 2.1.8 or higher.  Older versions of the
-CLI don't know how to scaffold a Next.js 16 project, and this tutorial
-was written against the shape that CLI 2.1.8+ produces.
+Make sure the version number is 2.1.10 or higher.  Older versions of
+the CLI don't know how to scaffold a Next.js 16 project, and 2.1.10
+is the first release that ships Lemmy's JSON-LD context as a
+preloaded document, which this tutorial's Lemmy-interop chapter
+relies on.
 
 ### `fedify init` to initialize the project
 
@@ -3877,68 +3879,18 @@ Lemmy fetches the actor and shows a community sidebar with a
 *Subscribe* button.  But clicking *Subscribe* still lands on
 *Subscribe Pending*: Lemmy's outbound `Follow` either never reaches
 our inbox, or our `Accept(Follow)` never gets past Lemmy's strict
-parser.  Two more changes clear both halves.
+parser.  One more change clears the rest.
 
-### Bundle Lemmy's JSON-LD context
-
-Lemmy's activities include
-`https://join-lemmy.org/context.json` in their `@context` array.
-Fetching that URL works, but the server serves it as
-`application/json` without a
-`Link: <...>; rel="http://www.w3.org/ns/json-ld#context"` header, and Fedify's
-default JSON-LD document loader rejects the response.  Every Lemmy-originated
-activity (Follow included) therefore fails to parse before our handlers ever
-run.
-
-The fix is to preload the context ourselves.  Save the context JSON
-at *federation/lemmy-context.json* (copy it verbatim from
-<https://join-lemmy.org/context.json>), and wrap Fedify's default
-document loader with one that short-circuits that URL to the
-bundled copy:
-
-~~~~ typescript{5,12,14-16,18-29,34-35} [federation/index.ts]
-import {
-  createFederation,
-  exportJwk,
-  generateCryptoKeyPair,
-  getDocumentLoader,
-  type InboxContext,
-  InProcessMessageQueue,
-  importJwk,
-  MemoryKvStore,
-} from "@fedify/fedify";
-// ...other imports...
-import lemmyContext from "./lemmy-context.json" with { type: "json" };
-
-const BUNDLED_CONTEXTS: Record<string, unknown> = {
-  "https://join-lemmy.org/context.json": lemmyContext,
-};
-
-const documentLoaderFactory: Parameters<
-  typeof createFederation
->[0]["documentLoaderFactory"] = (options) => {
-  const inner = getDocumentLoader(options);
-  return async (url) => {
-    const bundled = BUNDLED_CONTEXTS[url];
-    if (bundled != null) {
-      return { contextUrl: null, document: bundled, documentUrl: url };
-    }
-    return await inner(url);
-  };
-};
-
-const federation = createFederation({
-  kv: new MemoryKvStore(),
-  queue: new InProcessMessageQueue(),
-  documentLoaderFactory,
-  contextLoaderFactory: documentLoaderFactory,
-});
-~~~~
-
-The same factory is passed as both `documentLoaderFactory` (used
-for resolving remote actors and activities) and
-`contextLoaderFactory` (used for resolving `@context` URLs) because
-the override applies equally to both paths.
+> [!NOTE]
+> There used to be a second change in this chapter: Lemmy's activities
+> include `https://join-lemmy.org/context.json` in their `@context`
+> array, but the server returns that document as `application/json`
+> without the `Link: <...>; rel="http://www.w3.org/ns/json-ld#context"`
+> header Fedify's default JSON-LD loader requires, so earlier drafts
+> of the tutorial had to ship a bundled copy of the context and wrap
+> `createFederation` with a custom `documentLoaderFactory`.  Fedify
+> 2.1.10 preloads the Lemmy context for us, so Lemmy activities now
+> parse without any extra configuration on the application side.
 
 ### Trim the `Accept(Follow)` to what Lemmy accepts
 
