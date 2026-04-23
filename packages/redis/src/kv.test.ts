@@ -21,7 +21,7 @@ test("RedisKvStore.get()", { ignore }, async () => {
     await redis.set(`${keyPrefix}foo::bar`, '"foobar"');
     assert.strictEqual(await store.get(["foo", "bar"]), "foobar");
   } finally {
-    redis.disconnect();
+    await redis.quit();
   }
 });
 
@@ -32,7 +32,7 @@ test("RedisKvStore.set()", { ignore }, async () => {
     await store.set(["foo", "baz"], "baz");
     assert.strictEqual(await redis.get(`${keyPrefix}foo::baz`), '"baz"');
   } finally {
-    redis.disconnect();
+    await redis.quit();
   }
 });
 
@@ -44,7 +44,7 @@ test("RedisKvStore.delete()", { ignore }, async () => {
     await store.delete(["foo", "baz"]);
     assert.equal(await redis.exists(`${keyPrefix}foo::baz`), 0);
   } finally {
-    redis.disconnect();
+    await redis.quit();
   }
 });
 
@@ -68,7 +68,7 @@ test("RedisKvStore.list()", { ignore }, async () => {
     assert(entries.some((e) => e.key[1] === "nested"));
   } finally {
     await redis.flushdb();
-    redis.disconnect();
+    await redis.quit();
   }
 });
 
@@ -88,7 +88,7 @@ test("RedisKvStore.list() - single element key", { ignore }, async () => {
     assert.strictEqual(entries[0].value, "value-a");
   } finally {
     await redis.flushdb();
-    redis.disconnect();
+    await redis.quit();
   }
 });
 
@@ -108,6 +108,6 @@ test("RedisKvStore.list() - empty prefix", { ignore }, async () => {
     assert.strictEqual(entries.length, 3);
   } finally {
     await redis.flushdb();
-    redis.disconnect();
+    await redis.quit();
   }
 });
