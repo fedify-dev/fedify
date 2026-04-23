@@ -100,7 +100,8 @@
     "exclude": [
       "**/*.html",
       "**/*.md",
-      "**/*.svg"
+      "**/*.svg",
+      ".playwright-mcp/**"
     ]
   },
   "nodeModulesDir": "auto",

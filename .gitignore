@@ -19,3 +19,4 @@ t.ts
 t2.ts
 plan.md
 plans/
+.playwright-mcp/

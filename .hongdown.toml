@@ -41,6 +41,7 @@ proper_nouns = [
   "ActivityPub",
   "ActivityStreams",
   "Akkoma",
+  "bun-types",
   "BotKit",
   "BrowserPub",
   "Cloudflare Workers",

@@ -162,6 +162,21 @@ To be released.
 [#656]: https://github.com/fedify-dev/fedify/pull/656
 [#675]: https://github.com/fedify-dev/fedify/pull/675
 
+### Docs
+
+ -  Added [*Building a federated blog* tutorial] showing how to layer
+    ActivityPub federation onto an [Astro] + [Bun] blog: actor setup,
+    follower management, SQLite persistence, sending `Create`/`Update`/
+    `Delete(Article)` activities on server startup, and receiving
+    `Create`/`Update`/`Delete(Note)` inbox activities as comments.
+    [[#691], [#695]]
+
+[*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog
+[Astro]: https://astro.build/
+[Bun]: https://bun.sh/
+[#691]: https://github.com/fedify-dev/fedify/issues/691
+[#695]: https://github.com/fedify-dev/fedify/pull/695
+
 
 Version 2.1.9
 -------------
@@ -546,7 +561,6 @@ Released on March 24, 2026.
     runtime-specific templates for Deno, Bun, and Node.js environments.
     [[#50] by ChanHaeng Lee]
 
-[Astro]: https://astro.build/
 [#50]: https://github.com/fedify-dev/fedify/issues/50
 
 ### @fedify/astro
