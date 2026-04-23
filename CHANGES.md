@@ -148,6 +148,12 @@ To be released.
 
 ### @fedify/init
 
+ -  Fixed `fedify init` so that a directory containing only a freshly
+    initialized Git repository is treated as empty.  Directories whose Git
+    `HEAD` already resolves to a commit, or that contain any files besides
+    *.git*, still require the existing non-empty-directory confirmation.
+    [[#716]]
+
  -  Fixed generated *biome.json* files to use Biome 2 configuration syntax,
     matching the `@biomejs/biome` version that `fedify init` installs.
     Generated projects now enable import organization through Biome's

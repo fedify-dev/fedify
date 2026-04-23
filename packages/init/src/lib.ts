@@ -12,7 +12,14 @@ import {
 import { getLogger } from "@logtape/logtape";
 import { toMerged } from "es-toolkit";
 import { readFileSync } from "node:fs";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readdir,
+  readFile,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import process from "node:process";
 import metadata from "../deno.json" with { type: "json" };
@@ -27,7 +34,7 @@ import type {
   PackageManagers,
   Runtimes,
 } from "./types.ts";
-import { isNotFoundError } from "./utils.ts";
+import { CommandError, isNotFoundError, runSubCommand } from "./utils.ts";
 
 /** The current `@fedify/init` package version, read from *deno.json*. */
 export const PACKAGE_VERSION = metadata.version;
@@ -191,18 +198,129 @@ const isNotExistsError = (e: unknown) =>
 export const throwUnlessNotExists = throwIf(negate(isNotExistsError));
 
 /**
- * Checks whether a directory is empty or does not exist.
- * Returns `true` if the directory has no entries or does not exist yet.
+ * Checks whether a directory is safe to initialize as an empty project.
+ * Returns `true` if the directory does not exist, has no entries, or only
+ * contains an unborn Git repository created by `git init`.
  */
 export const isDirectoryEmpty = async (
   path: string,
 ): Promise<boolean> => {
   try {
     const files = await readdir(path);
-    return files.length === 0;
+    if (files.length === 0) return true;
+    if (files.length === 1 && files[0] === ".git") {
+      return await isUnbornGitRepository(path);
+    }
+    return false;
   } catch (e) {
     throwUnlessNotExists(e);
     return true;
+  }
+};
+
+const isUnbornGitRepository = async (path: string): Promise<boolean> => {
+  if (await hasGitHeadCommit(path)) return false;
+  return await looksLikeUnbornGitRepository(path);
+};
+
+const hasGitHeadCommit = async (path: string): Promise<boolean> => {
+  try {
+    await runSubCommand([
+      "git",
+      "-C",
+      path,
+      "rev-parse",
+      "--verify",
+      "HEAD^{commit}",
+    ], {});
+    return true;
+  } catch (e) {
+    if (isNotFoundError(e) || e instanceof CommandError) return false;
+    logger.debug(
+      "Failed to resolve Git HEAD in {path}: {error}",
+      { path, error: e },
+    );
+    return false;
+  }
+};
+
+const looksLikeUnbornGitRepository = async (
+  path: string,
+): Promise<boolean> => {
+  const gitDir = joinPath(path, ".git");
+  if (!await isDirectory(gitDir)) return false;
+  if (!await isDirectory(joinPath(gitDir, "objects"))) return false;
+  if (!await isDirectory(joinPath(gitDir, "refs"))) return false;
+
+  const head = await readGitFile(joinPath(gitDir, "HEAD"));
+  if (head == null) return false;
+  const ref = parseHeadRef(head);
+  if (ref == null) return false;
+  if (await pathExists(joinPath(gitDir, ...ref.split("/")))) return false;
+  if (await hasPackedRef(gitDir, ref)) return false;
+  return true;
+};
+
+const parseHeadRef = (head: string): string | null => {
+  const match = head.trim().match(/^ref: (refs\/heads\/\S+)$/);
+  if (match == null) return null;
+  const ref = match[1];
+  return ref.includes("..") ? null : ref;
+};
+
+const hasPackedRef = async (
+  gitDir: string,
+  ref: string,
+): Promise<boolean> => {
+  let packedRefs: string;
+  try {
+    packedRefs = await readFile(joinPath(gitDir, "packed-refs"), "utf8");
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to read Git packed refs in {path}: {error}",
+      { path: gitDir, error: e },
+    );
+    return true;
+  }
+
+  return packedRefs.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#") || trimmed.startsWith("^")) {
+      return false;
+    }
+    return trimmed.split(/\s+/)[1] === ref;
+  });
+};
+
+const readGitFile = async (path: string): Promise<string | null> => {
+  try {
+    return await readFile(path, "utf8");
+  } catch (e) {
+    if (!isNotFoundError(e)) {
+      logger.debug(
+        "Failed to read Git file {path}: {error}",
+        { path, error: e },
+      );
+    }
+    return null;
+  }
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await access(path);
+    return true;
+  } catch (e) {
+    return !isNotFoundError(e);
+  }
+};
+
+const isDirectory = async (path: string): Promise<boolean> => {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
   }
 };
 
