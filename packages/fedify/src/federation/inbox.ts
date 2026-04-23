@@ -85,6 +85,34 @@ export class InboxListenerSet<TContextData> {
 export interface RouteActivityParameters<TContextData> {
   context: Context<TContextData>;
   json: unknown;
+  /**
+   * The original activity payload to keep for queueing or for internal inbox
+   * contexts that must preserve the sender's exact document.
+   * @internal
+   */
+  originalJson?: unknown;
+  /**
+   * The normalized JSON-LD form of a signed inbox payload that Fedify already
+   * compacted successfully while accepting it.  Queue workers can reuse this
+   * producer-side parse cache later under stricter loader or network rules
+   * without re-dereferencing remote custom contexts.
+   *
+   * When inbox work is queued, Fedify keeps this on the queued message itself
+   * so workers can reuse the normalized representation without relying on
+   * external sidecar lifecycles.  This cache is intentionally orthogonal to
+   * {@link ldSignatureVerified}: fallback-authenticated signed traffic and
+   * backlog messages from older producers may still need the normalized form
+   * even though Linked Data Signatures were not the authentication path.
+   */
+  normalizedActivity?: unknown;
+  /**
+   * Whether the Linked Data Signature was actually verified before queueing.
+   * This records authentication provenance separately from the optional
+   * normalizedActivity parse cache so workers can distinguish verified LDS
+   * replay from fallback-authenticated or legacy queued traffic.
+   * @internal
+   */
+  ldSignatureVerified?: boolean;
   activity: Activity;
   recipient: string | null;
   inboxListeners?: InboxListenerSet<TContextData>;
@@ -94,6 +122,17 @@ export interface RouteActivityParameters<TContextData> {
     activityId: string | undefined,
     activityType: string,
   ): InboxContext<TContextData>;
+  /**
+   * An internal context factory for dispatching inbox listeners when Fedify
+   * needs a different payload than the public low-level hook should see.
+   * @internal
+   */
+  listenerInboxContextFactory?: (
+    recipient: string | null,
+    activity: unknown,
+    activityId: string | undefined,
+    activityType: string,
+  ) => InboxContext<TContextData>;
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   kv: KvStore;
   kvPrefixes: { activityIdempotence: KvKey };
@@ -119,10 +158,14 @@ export async function routeActivity<TContextData>(
   {
     context: ctx,
     json,
+    originalJson,
+    normalizedActivity,
+    ldSignatureVerified,
     activity,
     recipient,
     inboxListeners,
     inboxContextFactory,
+    listenerInboxContextFactory,
     inboxErrorHandler,
     kv,
     kvPrefixes,
@@ -222,7 +265,12 @@ export async function routeActivity<TContextData>(
           type: "inbox",
           id: crypto.randomUUID(),
           baseUrl: ctx.origin,
-          activity: json,
+          activity: originalJson ?? json,
+          // Keep queued LDS inbox work self-contained.  This avoids depending
+          // on external sidecar lifecycles across retries and redeliveries
+          // while preserving the original payload for forwarding.
+          ...(normalizedActivity == null ? {} : { normalizedActivity }),
+          ...(ldSignatureVerified == null ? {} : { ldSignatureVerified }),
           identifier: recipient,
           attempt: 0,
           started: new Date().toISOString(),
@@ -269,10 +317,14 @@ export async function routeActivity<TContextData>(
       const { class: cls, listener } = dispatched;
       span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
       try {
+        const contextFactory = listenerInboxContextFactory ??
+          inboxContextFactory;
         await listener(
-          inboxContextFactory(
+          contextFactory(
             recipient,
-            json,
+            contextFactory === inboxContextFactory
+              ? json
+              : originalJson ?? json,
             activity?.id?.href,
             getTypeId(activity!).href,
           ),
