@@ -3,7 +3,7 @@ import { useRoute } from "vitepress";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const copied = ref(false);
-const copyFailed = ref(false);
+const copyFailed = ref<"load" | "clipboard" | null>(null);
 const targetReady = ref(false);
 const isDev = import.meta.env.DEV;
 const devMessage =
@@ -13,6 +13,7 @@ let copiedResetTimeout: number | null = null;
 let copyFailedResetTimeout: number | null = null;
 let currentWrapper: HTMLElement | null = null;
 let currentTarget: HTMLElement | null = null;
+let targetUpdateVersion = 0;
 
 const markdownPath = computed(() => {
   let path = route.path.replace(/\.html$/, "");
@@ -88,9 +89,12 @@ function waitForHeading(maxFrames = 8): Promise<Element | null> {
 }
 
 async function updateTarget(): Promise<void> {
+  const version = ++targetUpdateVersion;
   targetReady.value = false;
+  cleanupTarget();
   await nextTick();
   const heading = await waitForHeading();
+  if (version !== targetUpdateVersion) return;
   ensureTarget(heading);
 }
 
@@ -100,6 +104,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  targetUpdateVersion++;
+  targetReady.value = false;
   cleanupTarget();
   if (copiedResetTimeout != null) window.clearTimeout(copiedResetTimeout);
   if (copyFailedResetTimeout != null) window.clearTimeout(copyFailedResetTimeout);
@@ -121,7 +127,7 @@ function resetCopiedState(delay: number): void {
 function resetCopyFailedState(delay: number): void {
   if (copyFailedResetTimeout != null) window.clearTimeout(copyFailedResetTimeout);
   copyFailedResetTimeout = window.setTimeout(() => {
-    copyFailed.value = false;
+    copyFailed.value = null;
     copyFailedResetTimeout = null;
   }, delay);
 }
@@ -142,9 +148,20 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
   }
   try {
     const text = await getMarkdown();
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      copied.value = false;
+      copyFailed.value = "clipboard";
+      if (copiedResetTimeout != null) {
+        window.clearTimeout(copiedResetTimeout);
+        copiedResetTimeout = null;
+      }
+      resetCopyFailedState(2500);
+      return;
+    }
     copied.value = true;
-    copyFailed.value = false;
+    copyFailed.value = null;
     if (copyFailedResetTimeout != null) {
       window.clearTimeout(copyFailedResetTimeout);
       copyFailedResetTimeout = null;
@@ -153,7 +170,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
     closeMenu(event);
   } catch {
     copied.value = false;
-    copyFailed.value = true;
+    copyFailed.value = "load";
     if (copiedResetTimeout != null) {
       window.clearTimeout(copiedResetTimeout);
       copiedResetTimeout = null;
@@ -201,7 +218,15 @@ function viewMarkdown(event: MouseEvent): void {
           View as Markdown
         </a>
         <button class="page-markdown-actions__item" type="button" @click="copyMarkdown">
-          {{ copied ? "Copied" : copyFailed ? "Copy failed" : "Copy Markdown" }}
+          {{
+            copied
+              ? "Copied"
+              : copyFailed === "load"
+              ? "Could not load Markdown"
+              : copyFailed === "clipboard"
+              ? "Clipboard blocked"
+              : "Copy Markdown"
+          }}
         </button>
       </div>
     </details>
