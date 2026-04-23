@@ -113,8 +113,8 @@ onBeforeUnmount(() => {
   if (copyFailedResetTimeout != null) window.clearTimeout(copyFailedResetTimeout);
 });
 
-function closeMenu(event: Event): void {
-  const details = (event.currentTarget as HTMLElement | null)?.closest("details");
+function closeMenu(target: EventTarget | HTMLElement | null): void {
+  const details = (target as HTMLElement | null)?.closest("details");
   if (details instanceof HTMLDetailsElement) details.open = false;
 }
 
@@ -143,9 +143,10 @@ async function getMarkdown(): Promise<string> {
 }
 
 async function copyMarkdown(event: MouseEvent): Promise<void> {
+  const trigger = event.currentTarget as HTMLElement | null;
   const version = targetUpdateVersion;
   if (isDev) {
-    closeMenu(event);
+    closeMenu(trigger);
     window.alert(devMessage);
     return;
   }
@@ -172,7 +173,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
       copyFailedResetTimeout = null;
     }
     resetCopiedState(2000);
-    closeMenu(event);
+    closeMenu(trigger);
   } catch {
     if (version !== targetUpdateVersion) return;
     copied.value = false;
@@ -186,7 +187,7 @@ async function copyMarkdown(event: MouseEvent): Promise<void> {
 }
 
 function viewMarkdown(event: MouseEvent): void {
-  closeMenu(event);
+  closeMenu(event.currentTarget);
   if (!isDev) return;
   event.preventDefault();
   window.alert(devMessage);
