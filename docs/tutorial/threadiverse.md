@@ -309,10 +309,19 @@ From now on you can format and lint the whole project with a single command:
 npm run format
 ~~~~
 
-Running it once right now will flag one pre-existing issue:
-*federation/index.ts* imports `getLogger` from LogTape and assigns the result
-to a `logger` constant, but nothing ever reads that `logger`.  Biome's
-`noUnusedVariables` rule flags it.  Delete the unused import and declaration:
+Running it once right now flags two pre-existing issues in the
+*fedify init* output:
+
+ -  *app/globals.css* uses Tailwind CSS directives (`@theme inline`, a
+    dark-mode media query) that Biome's CSS parser does not recognise
+    out of the box, so it emits a parse error and aborts formatting
+    for that file.  Ignore it for now; we replace *app/globals.css*
+    wholesale in the next chapter, which removes every Tailwind-specific
+    line, and the error goes away on its own.
+ -  *federation/index.ts* imports `getLogger` from LogTape and assigns
+    the result to a `logger` constant, but nothing ever reads that
+    `logger`.  Biome's `noUnusedVariables` rule flags it.  Delete the
+    unused import and declaration:
 
 ~~~~ typescript [federation/index.ts]
 import {
