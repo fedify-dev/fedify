@@ -1057,6 +1057,32 @@ async function runLookupAndCaptureExitCode(
   }
 }
 
+async function captureStderr<T>(
+  callback: () => Promise<T>,
+): Promise<{ result: T; stderr: string }> {
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((
+    chunk: string | Uint8Array,
+    encodingOrCallback?: unknown,
+    callback?: () => void,
+  ) => {
+    stderr += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+    if (typeof encodingOrCallback === "function") {
+      encodingOrCallback();
+    } else {
+      callback?.();
+    }
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const result = await callback();
+    return { result, stderr };
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+}
+
 function extractIdsFromRawOutput(content: string): string[] {
   return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>
     match[1]
@@ -1152,26 +1178,8 @@ test("runLookup - rejects recursive private targets by default", async () => {
     await withRecursiveLookupServer(
       {},
       async ({ rootUrl, requestedPaths }) => {
-        const originalWrite = process.stderr.write;
-        let stderr = "";
-        process.stderr.write = ((
-          chunk: string | Uint8Array,
-          encodingOrCallback?: unknown,
-          callback?: () => void,
-        ) => {
-          stderr += typeof chunk === "string"
-            ? chunk
-            : Buffer.from(chunk).toString();
-          if (typeof encodingOrCallback === "function") {
-            encodingOrCallback();
-          } else {
-            callback?.();
-          }
-          return true;
-        }) as typeof process.stderr.write;
-        let exitCode: number | null;
-        try {
-          exitCode = await runLookupAndCaptureExitCode(
+        const { result: exitCode, stderr } = await captureStderr(() =>
+          runLookupAndCaptureExitCode(
             createLookupRunCommand({
               urls: [rootUrl.href],
               recurse: "replyTarget",
@@ -1179,10 +1187,8 @@ test("runLookup - rejects recursive private targets by default", async () => {
               allowPrivateAddress: false,
               output: testFile,
             }),
-          );
-        } finally {
-          process.stderr.write = originalWrite;
-        }
+          )
+        );
         assert.equal(exitCode, 1);
         assert.deepEqual(requestedPaths, ["/notes/1"]);
         assert.match(
@@ -1239,26 +1245,8 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
     await withRecursiveLookupServer(
       { replyContextPath: "/contexts/reply" },
       async ({ rootUrl, requestedPaths }) => {
-        const originalWrite = process.stderr.write;
-        let stderr = "";
-        process.stderr.write = ((
-          chunk: string | Uint8Array,
-          encodingOrCallback?: unknown,
-          callback?: () => void,
-        ) => {
-          stderr += typeof chunk === "string"
-            ? chunk
-            : Buffer.from(chunk).toString();
-          if (typeof encodingOrCallback === "function") {
-            encodingOrCallback();
-          } else {
-            callback?.();
-          }
-          return true;
-        }) as typeof process.stderr.write;
-        let exitCode: number | null;
-        try {
-          exitCode = await runLookupAndCaptureExitCode(
+        const { result: exitCode, stderr } = await captureStderr(() =>
+          runLookupAndCaptureExitCode(
             createLookupRunCommand({
               urls: [rootUrl.href],
               recurse: "replyTarget",
@@ -1266,10 +1254,8 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
               allowPrivateAddress: true,
               output: testFile,
             }),
-          );
-        } finally {
-          process.stderr.write = originalWrite;
-        }
+          )
+        );
         assert.equal(exitCode, 1);
         assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
         assert.match(
