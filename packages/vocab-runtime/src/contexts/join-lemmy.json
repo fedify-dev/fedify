@@ -1,0 +1,33 @@
+{
+  "@context": [
+    "https://w3id.org/security/v1",
+    {
+      "as": "https://www.w3.org/ns/activitystreams#",
+      "lemmy": "https://join-lemmy.org/ns#",
+      "litepub": "http://litepub.social/ns#",
+      "pt": "https://joinpeertube.org/ns#",
+      "sc": "http://schema.org/",
+      "mastodon": "http://joinmastodon.org/ns#",
+      "ChatMessage": "litepub:ChatMessage",
+      "commentsEnabled": "pt:commentsEnabled",
+      "sensitive": "as:sensitive",
+      "matrixUserId": "lemmy:matrixUserId",
+      "postingRestrictedToMods": "lemmy:postingRestrictedToMods",
+      "removeData": "lemmy:removeData",
+      "stickied": "lemmy:stickied",
+      "moderators": {
+        "@type": "@id",
+        "@id": "lemmy:moderators"
+      },
+      "expires": "as:endTime",
+      "distinguished": "lemmy:distinguished",
+      "language": "sc:inLanguage",
+      "identifier": "sc:identifier",
+      "Hashtag": "as:Hashtag",
+      "featured": {
+        "@type": "@id",
+        "@id": "mastodon:featured"
+      }
+    }
+  ]
+}
