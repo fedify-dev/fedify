@@ -564,13 +564,14 @@ async function isPrivateAddressTarget(target: string): Promise<boolean> {
 async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
   // This detection intentionally depends on jsonld's current error shape:
   // name === "jsonld.InvalidUrl", the "valid JSON-LD object" substring, and
-  // a trailing `URL: "..."` segment. If jsonld changes those details, this
-  // helper and the related lookup tests need to be updated together.
+  // a trailing `URL: "..."` segment all at once. If jsonld changes those
+  // details, this helper and the related lookup tests need to be updated
+  // together.
   const errorMessage = error instanceof Error ? error.message : String(error);
   if (
     !(error instanceof Error) ||
-    (error.name !== "jsonld.InvalidUrl" &&
-      !errorMessage.includes("valid JSON-LD object"))
+    error.name !== "jsonld.InvalidUrl" ||
+    !errorMessage.includes("valid JSON-LD object")
   ) {
     return null;
   }
