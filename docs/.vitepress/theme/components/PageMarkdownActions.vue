@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from "vitepress";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const copied = ref(false);
 const copyFailed = ref(false);
@@ -11,6 +11,8 @@ const devMessage =
 const route = useRoute();
 let copiedResetTimeout: number | null = null;
 let copyFailedResetTimeout: number | null = null;
+let currentWrapper: HTMLElement | null = null;
+let currentTarget: HTMLElement | null = null;
 
 const markdownPath = computed(() => {
   let path = route.path.replace(/\.html$/, "");
@@ -19,8 +21,28 @@ const markdownPath = computed(() => {
   return `${path.replace(/\/+$/, "")}.md`;
 });
 
-function ensureTarget(): void {
-  const h1 = document.querySelector(".vp-doc h1");
+function cleanupTarget(): void {
+  if (
+    currentWrapper == null ||
+    currentTarget == null ||
+    currentWrapper.parentNode == null
+  ) {
+    currentWrapper = null;
+    currentTarget = null;
+    return;
+  }
+
+  const heading = currentWrapper.querySelector(":scope > h1");
+  if (heading instanceof HTMLElement) {
+    currentWrapper.parentNode.insertBefore(heading, currentWrapper);
+  }
+  currentWrapper.remove();
+  currentWrapper = null;
+  currentTarget = null;
+}
+
+function ensureTarget(heading: Element | null): void {
+  const h1 = heading;
   if (!(h1 instanceof HTMLElement)) {
     targetReady.value = false;
     return;
@@ -28,7 +50,9 @@ function ensureTarget(): void {
 
   const existingWrapper = h1.parentElement;
   if (existingWrapper?.classList.contains("page-title-row")) {
-    targetReady.value = existingWrapper.querySelector(".page-title-actions-target") != null;
+    currentWrapper = existingWrapper;
+    currentTarget = existingWrapper.querySelector(".page-title-actions-target");
+    targetReady.value = currentTarget != null;
     return;
   }
 
@@ -40,19 +64,51 @@ function ensureTarget(): void {
   h1.parentNode?.insertBefore(wrapper, h1);
   wrapper.appendChild(h1);
   wrapper.appendChild(target);
+  currentWrapper = wrapper;
+  currentTarget = target;
   targetReady.value = true;
+}
+
+function waitForHeading(maxFrames = 8): Promise<Element | null> {
+  return new Promise((resolve) => {
+    let frame = 0;
+
+    const check = () => {
+      const heading = document.querySelector(".vp-doc h1");
+      if (heading != null || frame >= maxFrames) {
+        resolve(heading);
+        return;
+      }
+      frame++;
+      window.requestAnimationFrame(check);
+    };
+
+    check();
+  });
 }
 
 async function updateTarget(): Promise<void> {
   targetReady.value = false;
   await nextTick();
-  ensureTarget();
+  const heading = await waitForHeading();
+  ensureTarget(heading);
 }
 
 onMounted(() => {
   void updateTarget();
   watch(() => route.path, updateTarget);
 });
+
+onBeforeUnmount(() => {
+  cleanupTarget();
+  if (copiedResetTimeout != null) window.clearTimeout(copiedResetTimeout);
+  if (copyFailedResetTimeout != null) window.clearTimeout(copyFailedResetTimeout);
+});
+
+function closeMenu(event: Event): void {
+  const details = (event.currentTarget as HTMLElement | null)?.closest("details");
+  if (details instanceof HTMLDetailsElement) details.open = false;
+}
 
 function resetCopiedState(delay: number): void {
   if (copiedResetTimeout != null) window.clearTimeout(copiedResetTimeout);
@@ -78,8 +134,9 @@ async function getMarkdown(): Promise<string> {
   return await response.text();
 }
 
-async function copyMarkdown(): Promise<void> {
+async function copyMarkdown(event: MouseEvent): Promise<void> {
   if (isDev) {
+    closeMenu(event);
     window.alert(devMessage);
     return;
   }
@@ -93,6 +150,7 @@ async function copyMarkdown(): Promise<void> {
       copyFailedResetTimeout = null;
     }
     resetCopiedState(2000);
+    closeMenu(event);
   } catch {
     copied.value = false;
     copyFailed.value = true;
@@ -105,6 +163,7 @@ async function copyMarkdown(): Promise<void> {
 }
 
 function viewMarkdown(event: MouseEvent): void {
+  closeMenu(event);
   if (!isDev) return;
   event.preventDefault();
   window.alert(devMessage);
@@ -112,7 +171,7 @@ function viewMarkdown(event: MouseEvent): void {
 </script>
 
 <template>
-  <Teleport v-if="markdownPath != null && targetReady" to=".page-title-actions-target">
+  <Teleport v-if="targetReady" to=".page-title-actions-target">
     <details class="page-markdown-actions__menu">
       <summary class="page-markdown-actions__trigger">
         <span>Markdown</span>
