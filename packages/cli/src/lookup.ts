@@ -916,7 +916,14 @@ export async function runLookup(
       initialDocumentLoader;
     const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
       documentLoader;
-    const recursiveContextLoader = contextLoader;
+    const recursiveBaseContextLoader = await getContextLoader({
+      userAgent: command.userAgent,
+      allowPrivateAddress: false,
+    });
+    const recursiveContextLoader = wrapDocumentLoaderWithTimeout(
+      recursiveBaseContextLoader,
+      command.timeout,
+    );
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
 

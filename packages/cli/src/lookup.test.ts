@@ -1064,6 +1064,9 @@ function extractIdsFromRawOutput(content: string): string[] {
 }
 
 async function withRecursiveLookupServer<T>(
+  options: {
+    replyContextPath?: string;
+  },
   callback: (server: {
     rootUrl: URL;
     replyUrl: URL;
@@ -1079,6 +1082,9 @@ async function withRecursiveLookupServer<T>(
       const requestUrl = new URL(request.url);
       const rootUrl = new URL("/notes/1", requestUrl.origin);
       const replyUrl = new URL("/notes/0", requestUrl.origin);
+      const replyContextUrl = options.replyContextPath == null
+        ? undefined
+        : new URL(options.replyContextPath, requestUrl.origin);
       requestedPaths.push(requestUrl.pathname);
 
       let body: unknown;
@@ -1092,10 +1098,25 @@ async function withRecursiveLookupServer<T>(
         };
       } else if (requestUrl.pathname === replyUrl.pathname) {
         body = {
-          "@context": "https://www.w3.org/ns/activitystreams",
+          "@context": replyContextUrl == null
+            ? "https://www.w3.org/ns/activitystreams"
+            : [
+              "https://www.w3.org/ns/activitystreams",
+              replyContextUrl.href,
+            ],
           id: replyUrl.href,
           type: "Note",
           content: "reply",
+          ...(replyContextUrl == null ? {} : { fedifyTest: "value" }),
+        };
+      } else if (
+        replyContextUrl != null &&
+        requestUrl.pathname === replyContextUrl.pathname
+      ) {
+        body = {
+          "@context": {
+            fedifyTest: "https://fedify.dev/ns/test#fedifyTest",
+          },
         };
       } else {
         return new Response(null, { status: 404 });
@@ -1128,48 +1149,51 @@ test("runLookup - rejects recursive private targets by default", async () => {
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
-    await withRecursiveLookupServer(async ({ rootUrl, requestedPaths }) => {
-      const originalWrite = process.stderr.write;
-      let stderr = "";
-      process.stderr.write = ((
-        chunk: string | Uint8Array,
-        encodingOrCallback?: unknown,
-        callback?: () => void,
-      ) => {
-        stderr += typeof chunk === "string"
-          ? chunk
-          : Buffer.from(chunk).toString();
-        if (typeof encodingOrCallback === "function") {
-          encodingOrCallback();
-        } else {
-          callback?.();
+    await withRecursiveLookupServer(
+      {},
+      async ({ rootUrl, requestedPaths }) => {
+        const originalWrite = process.stderr.write;
+        let stderr = "";
+        process.stderr.write = ((
+          chunk: string | Uint8Array,
+          encodingOrCallback?: unknown,
+          callback?: () => void,
+        ) => {
+          stderr += typeof chunk === "string"
+            ? chunk
+            : Buffer.from(chunk).toString();
+          if (typeof encodingOrCallback === "function") {
+            encodingOrCallback();
+          } else {
+            callback?.();
+          }
+          return true;
+        }) as typeof process.stderr.write;
+        let exitCode: number | null;
+        try {
+          exitCode = await runLookupAndCaptureExitCode(
+            createLookupRunCommand({
+              urls: [rootUrl.href],
+              recurse: "replyTarget",
+              recurseDepth: 20,
+              allowPrivateAddress: false,
+              output: testFile,
+            }),
+          );
+        } finally {
+          process.stderr.write = originalWrite;
         }
-        return true;
-      }) as typeof process.stderr.write;
-      let exitCode: number | null;
-      try {
-        exitCode = await runLookupAndCaptureExitCode(
-          createLookupRunCommand({
-            urls: [rootUrl.href],
-            recurse: "replyTarget",
-            recurseDepth: 20,
-            allowPrivateAddress: false,
-            output: testFile,
-          }),
+        assert.equal(exitCode, 1);
+        assert.deepEqual(requestedPaths, ["/notes/1"]);
+        assert.match(
+          stderr,
+          /Try with `-p`\/`--allow-private-address`/,
         );
-      } finally {
-        process.stderr.write = originalWrite;
-      }
-      assert.equal(exitCode, 1);
-      assert.deepEqual(requestedPaths, ["/notes/1"]);
-      assert.match(
-        stderr,
-        /Try with `-p`\/`--allow-private-address`/,
-      );
 
-      const content = await readFile(testFile, "utf8");
-      assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
-    });
+        const content = await readFile(testFile, "utf8");
+        assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
+      },
+    );
   } finally {
     await rm(testDir, { recursive: true });
   }
@@ -1181,6 +1205,7 @@ test("runLookup - allows recursive private targets with allowPrivateAddress", as
   await mkdir(testDir, { recursive: true });
   try {
     await withRecursiveLookupServer(
+      {},
       async ({ rootUrl, replyUrl, requestedPaths }) => {
         const exitCode = await runLookupAndCaptureExitCode(
           createLookupRunCommand({
@@ -1199,6 +1224,35 @@ test("runLookup - allows recursive private targets with allowPrivateAddress", as
           rootUrl.href,
           replyUrl.href,
         ]);
+      },
+    );
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - keeps recursive private contexts blocked", async () => {
+  const testDir = "./test_output_runlookup_recurse_private_context";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    await withRecursiveLookupServer(
+      { replyContextPath: "/contexts/reply" },
+      async ({ rootUrl, requestedPaths }) => {
+        const exitCode = await runLookupAndCaptureExitCode(
+          createLookupRunCommand({
+            urls: [rootUrl.href],
+            recurse: "replyTarget",
+            recurseDepth: 20,
+            allowPrivateAddress: true,
+            output: testFile,
+          }),
+        );
+        assert.equal(exitCode, 1);
+        assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
+
+        const content = await readFile(testFile, "utf8");
+        assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
       },
     );
   } finally {
