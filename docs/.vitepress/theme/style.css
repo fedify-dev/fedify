@@ -34,3 +34,35 @@ main dl dd {
   margin-top: .25rem;
   margin-bottom: 1rem;
 }
+
+@media (min-width: 960px) {
+  .VPDoc .content-container .page-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .VPDoc .content-container .page-title-row > h1 {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .VPDoc .content-container .page-title-actions-target {
+    flex: none;
+    margin-top: -.8rem;
+  }
+}
+
+@media (max-width: 959px) {
+  .VPDoc .content-container .page-title-row {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .VPDoc .content-container .page-title-actions-target {
+    align-self: flex-end;
+  }
+}

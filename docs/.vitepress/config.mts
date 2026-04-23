@@ -311,14 +311,20 @@ export default withMermaid(defineConfig({
     plugins: [
       groupIconVitePlugin(),
       llmstxt({
-        ignoreFiles: [
-          "changelog.md",
-          "contribute.md",
-          "README.md",
-          "security.md",
-          "sponsors.md",
-          "tutorial.md",
-        ],
+        ignoreFilesPerOutput: {
+          llmsTxt: [
+            "changelog.md",
+            "contribute.md",
+            "README.md",
+            "sponsors.md",
+          ],
+          llmsFullTxt: [
+            "changelog.md",
+            "contribute.md",
+            "README.md",
+            "sponsors.md",
+          ],
+        },
       }),
     ],
   },

@@ -202,6 +202,13 @@ To be released.
 
 ### Docs
 
+ -  Added a per-page Markdown action to the docs site so readers can open or
+    copy the LLM-friendly Markdown for the current page without guessing the
+    generated `*.md` path or starting from *llms.txt*.  The action is now
+    available directly from each documentation page while *llms.txt* and
+    *llms-full.txt* continue to exclude high-noise pages such as the changelog,
+    contribution guide, README, and sponsors page.  [[#706], [#715]]
+
  -  Added [*Building a federated blog* tutorial] showing how to layer
     ActivityPub federation onto an [Astro] + [Bun] blog: actor setup,
     follower management, SQLite persistence, sending `Create`/`Update`/
@@ -226,6 +233,8 @@ To be released.
 [#691]: https://github.com/fedify-dev/fedify/issues/691
 [#695]: https://github.com/fedify-dev/fedify/pull/695
 [#704]: https://github.com/fedify-dev/fedify/issues/704
+[#706]: https://github.com/fedify-dev/fedify/issues/706
+[#715]: https://github.com/fedify-dev/fedify/pull/715
 
 
 Version 2.1.10
