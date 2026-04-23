@@ -41,6 +41,7 @@ import {
   string,
   withDefault,
 } from "@optique/core";
+import { url as messageUrl } from "@optique/core/message";
 import { path, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
 import process from "node:process";
@@ -552,13 +553,24 @@ function isPrivateAddressError(error: unknown): boolean {
   );
 }
 
-async function isPrivateAddressTarget(target: string): Promise<boolean> {
+async function getPrivateUrlCandidate(candidate: unknown): Promise<URL | null> {
+  if (typeof candidate !== "string" && !(candidate instanceof URL)) return null;
+
   try {
-    await validatePublicUrl(target);
-  } catch (error) {
-    return isPrivateAddressError(error);
+    const url = new URL(candidate);
+    try {
+      await validatePublicUrl(url.href);
+      return null;
+    } catch (validationError) {
+      return isPrivateAddressError(validationError) ? url : null;
+    }
+  } catch {
+    return null;
   }
-  return false;
+}
+
+async function isPrivateAddressTarget(target: string): Promise<boolean> {
+  return await getPrivateUrlCandidate(target) != null;
 }
 
 async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
@@ -575,20 +587,39 @@ async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
   ) {
     return null;
   }
+
+  const structuredError = error as {
+    details?: { url?: unknown };
+    url?: unknown;
+  };
+  const structuredUrl =
+    await getPrivateUrlCandidate(structuredError.details?.url) ??
+      await getPrivateUrlCandidate(structuredError.url);
+  if (structuredUrl != null) return structuredUrl;
+
   const match = errorMessage.match(/URL:\s*"([^"]+)"/);
   if (match == null) return null;
+  return await getPrivateUrlCandidate(match[1]);
+}
 
-  try {
-    const url = new URL(match[1]);
-    try {
-      await validatePublicUrl(url.href);
-      return null;
-    } catch (validationError) {
-      return isPrivateAddressError(validationError) ? url : null;
-    }
-  } catch {
-    return null;
-  }
+function printRecursivePrivateAddressHint(): void {
+  printError(
+    message`The recursive target appears to be private or localhost.  Try with ${
+      optionNames(["-p", "--allow-private-address"])
+    }, or use ${
+      optionNames(["-S", "--suppress-errors"])
+    } to skip blocked steps.`,
+  );
+}
+
+function printRecursivePrivateContextHint(privateContextUrl: URL): void {
+  printError(
+    message`Recursive JSON-LD context URL ${
+      messageUrl(privateContextUrl)
+    } is always blocked, even with ${
+      optionNames(["-p", "--allow-private-address"])
+    }.  Use ${optionNames(["-S", "--suppress-errors"])} to skip blocked steps.`,
+  );
 }
 
 export function getLookupFailureHint(
@@ -631,13 +662,7 @@ function printLookupFailureHint(
       );
       return;
     case "recursive-private-address":
-      printError(
-        message`The recursive target appears to be private or localhost.  Try with ${
-          optionNames(["-p", "--allow-private-address"])
-        }, or use ${
-          optionNames(["-S", "--suppress-errors"])
-        } to skip blocked steps.`,
-      );
+      printRecursivePrivateAddressHint();
       return;
     case "authorized-fetch":
       printError(
@@ -1075,11 +1100,7 @@ export async function runLookup(
             !command.allowPrivateAddress &&
             await isPrivateAddressTarget(error.target)
           ) {
-            printLookupFailureHint(
-              authLoader,
-              new UrlError("Invalid or private address"),
-              { recursive: true },
-            );
+            printRecursivePrivateAddressHint();
           } else if (authLoader == null) {
             printError(
               message`It may be a private object.  Try with ${
@@ -1091,13 +1112,7 @@ export async function runLookup(
           spinner.fail("Failed to recursively fetch object.");
           const privateContextUrl = await getPrivateContextUrl(error);
           if (privateContextUrl != null) {
-            printError(
-              message`Recursive JSON-LD context URLs are always blocked, even with ${
-                optionNames(["-p", "--allow-private-address"])
-              }.  Use ${
-                optionNames(["-S", "--suppress-errors"])
-              } to skip blocked steps.`,
-            );
+            printRecursivePrivateContextHint(privateContextUrl);
             await finalizeAndExit(1);
             return;
           }

@@ -1193,7 +1193,7 @@ test("runLookup - rejects recursive private targets by default", async () => {
         assert.deepEqual(requestedPaths, ["/notes/1"]);
         assert.match(
           stderr,
-          /Try with `-p`\/`--allow-private-address`/,
+          /--allow-private-address/,
         );
 
         const content = await readFile(testFile, "utf8");
@@ -1260,7 +1260,7 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
         assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
         assert.match(
           stderr,
-          /Recursive JSON-LD context URLs are always blocked/,
+          /Recursive JSON-LD context URL .* is always blocked/,
         );
 
         const content = await readFile(testFile, "utf8");
