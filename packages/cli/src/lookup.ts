@@ -560,6 +560,31 @@ async function isPrivateAddressTarget(target: string): Promise<boolean> {
   return false;
 }
 
+async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  if (
+    !(error instanceof Error) ||
+    (error.name !== "jsonld.InvalidUrl" &&
+      !errorMessage.includes("valid JSON-LD object"))
+  ) {
+    return null;
+  }
+  const match = errorMessage.match(/URL:\s*"([^"]+)"/);
+  if (match == null) return null;
+
+  try {
+    const url = new URL(match[1]);
+    try {
+      await validatePublicUrl(url.href);
+      return null;
+    } catch (validationError) {
+      return isPrivateAddressError(validationError) ? url : null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 export function getLookupFailureHint(
   error: unknown,
   options: { recursive?: boolean } = {},
@@ -1058,6 +1083,18 @@ export async function runLookup(
           }
         } else {
           spinner.fail("Failed to recursively fetch object.");
+          const privateContextUrl = await getPrivateContextUrl(error);
+          if (privateContextUrl != null) {
+            printError(
+              message`Recursive JSON-LD context URLs are always blocked, even with ${
+                optionNames(["-p", "--allow-private-address"])
+              }.  Use ${
+                optionNames(["-S", "--suppress-errors"])
+              } to skip blocked steps.`,
+            );
+            await finalizeAndExit(1);
+            return;
+          }
           const hint = getLookupFailureHint(error, { recursive: true });
           if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(

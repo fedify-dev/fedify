@@ -1239,17 +1239,43 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
     await withRecursiveLookupServer(
       { replyContextPath: "/contexts/reply" },
       async ({ rootUrl, requestedPaths }) => {
-        const exitCode = await runLookupAndCaptureExitCode(
-          createLookupRunCommand({
-            urls: [rootUrl.href],
-            recurse: "replyTarget",
-            recurseDepth: 20,
-            allowPrivateAddress: true,
-            output: testFile,
-          }),
-        );
+        const originalWrite = process.stderr.write;
+        let stderr = "";
+        process.stderr.write = ((
+          chunk: string | Uint8Array,
+          encodingOrCallback?: unknown,
+          callback?: () => void,
+        ) => {
+          stderr += typeof chunk === "string"
+            ? chunk
+            : Buffer.from(chunk).toString();
+          if (typeof encodingOrCallback === "function") {
+            encodingOrCallback();
+          } else {
+            callback?.();
+          }
+          return true;
+        }) as typeof process.stderr.write;
+        let exitCode: number | null;
+        try {
+          exitCode = await runLookupAndCaptureExitCode(
+            createLookupRunCommand({
+              urls: [rootUrl.href],
+              recurse: "replyTarget",
+              recurseDepth: 20,
+              allowPrivateAddress: true,
+              output: testFile,
+            }),
+          );
+        } finally {
+          process.stderr.write = originalWrite;
+        }
         assert.equal(exitCode, 1);
         assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
+        assert.match(
+          stderr,
+          /Recursive JSON-LD context URLs are always blocked/,
+        );
 
         const content = await readFile(testFile, "utf8");
         assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
