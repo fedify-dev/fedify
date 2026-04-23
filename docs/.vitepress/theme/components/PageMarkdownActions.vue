@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { useRoute } from "vitepress";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { Teleport } from "vue";
 
 const copied = ref(false);
 const copyFailed = ref(false);
-const path = ref<string | null>(null);
 const targetReady = ref(false);
 const isDev = import.meta.env.DEV;
 const devMessage =
   "Markdown actions are not available in the VitePress dev server. Please use the built docs instead.";
 const route = useRoute();
+let copiedResetTimeout: number | null = null;
+let copyFailedResetTimeout: number | null = null;
 
-onMounted(() => {
-  const { pathname } = window.location;
-  path.value = pathname === "/"
-    ? "/index.md"
-    : `${pathname.replace(/\/+$/, "").replace(/\.html$/, "")}.md`;
+const markdownPath = computed(() => {
+  let path = route.path.replace(/\.html$/, "");
+  if (path === "/") return "/index.md";
+  if (path.endsWith("/")) return `${path}index.md`;
+  return `${path.replace(/\/+$/, "")}.md`;
 });
 
 function ensureTarget(): void {
@@ -43,22 +43,34 @@ function ensureTarget(): void {
   targetReady.value = true;
 }
 
-watch(
-  () => route.path,
-  async () => {
-    targetReady.value = false;
-    await nextTick();
-    ensureTarget();
-  },
-  { immediate: true },
-);
+async function updateTarget(): Promise<void> {
+  targetReady.value = false;
+  await nextTick();
+  ensureTarget();
+}
 
-const markdownPath = computed(() => path.value);
+onMounted(() => {
+  void updateTarget();
+  watch(() => route.path, updateTarget);
+});
+
+function resetCopiedState(delay: number): void {
+  if (copiedResetTimeout != null) window.clearTimeout(copiedResetTimeout);
+  copiedResetTimeout = window.setTimeout(() => {
+    copied.value = false;
+    copiedResetTimeout = null;
+  }, delay);
+}
+
+function resetCopyFailedState(delay: number): void {
+  if (copyFailedResetTimeout != null) window.clearTimeout(copyFailedResetTimeout);
+  copyFailedResetTimeout = window.setTimeout(() => {
+    copyFailed.value = false;
+    copyFailedResetTimeout = null;
+  }, delay);
+}
 
 async function getMarkdown(): Promise<string> {
-  if (markdownPath.value == null) {
-    throw new Error("Markdown path is not available yet.");
-  }
   const response = await fetch(markdownPath.value);
   if (!response.ok) {
     throw new Error(`Failed to load ${markdownPath.value}: ${response.status}`);
@@ -76,14 +88,19 @@ async function copyMarkdown(): Promise<void> {
     await navigator.clipboard.writeText(text);
     copied.value = true;
     copyFailed.value = false;
-    window.setTimeout(() => {
-      copied.value = false;
-    }, 2000);
+    if (copyFailedResetTimeout != null) {
+      window.clearTimeout(copyFailedResetTimeout);
+      copyFailedResetTimeout = null;
+    }
+    resetCopiedState(2000);
   } catch {
+    copied.value = false;
     copyFailed.value = true;
-    window.setTimeout(() => {
-      copyFailed.value = false;
-    }, 2500);
+    if (copiedResetTimeout != null) {
+      window.clearTimeout(copiedResetTimeout);
+      copiedResetTimeout = null;
+    }
+    resetCopyFailedState(2500);
   }
 }
 
