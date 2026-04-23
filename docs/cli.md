@@ -547,9 +547,10 @@ For short names, only Fedify property naming is accepted.  For example,
 >
 > Recursive fetches disallow private/localhost addresses by default for
 > safety.  URLs explicitly provided on the command line always allow private
-> addresses, while recursive steps honor
+> addresses, while recursive object fetches honor
 > [`-p`/`--allow-private-address`](#p-allow-private-address-allow-private-ip-addresses)
-> when you explicitly opt in.
+> when you explicitly opt in.  Recursive JSON-LD `@context` URLs still remain
+> blocked.
 
 ### `--recurse-depth`: Set recursion depth limit
 
@@ -1015,12 +1016,13 @@ fedify lookup http://localhost:8000/users/alice
 ~~~~
 
 The `-p`/`--allow-private-address` option additionally allows private
-addresses for URLs discovered during traversal or recursion.  It only
-affects discovered URLs used by
+addresses for URLs discovered during traversal or recursive object fetches.
+It only affects discovered URLs used by
 [`-t`/`--traverse`](#t-traverse-traverse-the-collection) and
 [`--recurse`](#recurse-recurse-through-object-relationships), since URLs
 embedded in remote responses are otherwise rejected to mitigate SSRF
-attacks against private addresses.
+attacks against private addresses.  Recursive JSON-LD `@context` URLs are
+still blocked even when this option is enabled.
 
 ~~~~ sh
 fedify lookup --traverse --allow-private-address http://localhost:8000/users/alice/outbox

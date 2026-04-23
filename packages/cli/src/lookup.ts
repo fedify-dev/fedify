@@ -91,7 +91,8 @@ const suppressErrorsOption = bindConfig(
 const allowPrivateAddressOption = bindConfig(
   flag("-p", "--allow-private-address", {
     description: message`Allow private IP addresses for URLs discovered \
-during traversal or recursion. URLs explicitly provided on the \
+during traversal or recursive object fetches. Recursive JSON-LD \
+context URLs always remain blocked. URLs explicitly provided on the \
 command line always allow private addresses.`,
   }),
   {
@@ -561,6 +562,10 @@ async function isPrivateAddressTarget(target: string): Promise<boolean> {
 }
 
 async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
+  // This detection intentionally depends on jsonld's current error shape:
+  // name === "jsonld.InvalidUrl", the "valid JSON-LD object" substring, and
+  // a trailing `URL: "..."` segment. If jsonld changes those details, this
+  // helper and the related lookup tests need to be updated together.
   const errorMessage = error instanceof Error ? error.message : String(error);
   if (
     !(error instanceof Error) ||
