@@ -75,6 +75,30 @@ test("normalizeAttachmentArrays() does not wrap JSON-LD list objects", async () 
   assertEquals(output.attachment, attachment);
 });
 
+test("normalizeAttachmentArrays() does not traverse JSON-LD value payloads", async () => {
+  const input = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    attachment: { type: "Document" },
+    content: {
+      "@type": "@json",
+      "@value": {
+        attachment: "https://example.com/metadata",
+      },
+    },
+  };
+  const output = await normalizeAttachmentArrays(input, () => {
+    throw new Error("context loader should not be called");
+  }) as Record<string, unknown>;
+  assertEquals(output.attachment, [{ type: "Document" }]);
+  assertEquals(output.content, {
+    "@type": "@json",
+    "@value": {
+      attachment: "https://example.com/metadata",
+    },
+  });
+});
+
 test("normalizeAttachmentArrays() leaves attachment arrays unchanged", async () => {
   const attachment = [
     {

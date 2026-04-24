@@ -39,6 +39,11 @@ function isJsonLdListObject(value: unknown): boolean {
     Object.hasOwn(value, "@list");
 }
 
+function isJsonLdValueObject(value: unknown): boolean {
+  return typeof value === "object" && value != null &&
+    Object.hasOwn(value, "@value");
+}
+
 /**
  * Wraps scalar ActivityStreams attachment properties in arrays.
  */
@@ -66,7 +71,8 @@ function wrapScalarAttachments(
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     const value = record[key];
-    const next = key === "@context"
+    const next = key === "@context" ||
+        (key === "@value" && isJsonLdValueObject(jsonLd))
       ? value
       : wrapScalarAttachments(value, depth + 1);
     const shouldWrap = ATTACHMENT_FIELDS.has(key) &&
