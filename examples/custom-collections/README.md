@@ -12,7 +12,7 @@ The script demonstrates three patterns:
     cursor-based pages, `setCounter()`, `setFirstCursor()`, and
     `setLastCursor()`.
  -  `/users/alice/collections/tags/{tag}`: a parameterized collection that
-    filters bookmarks using a URI template value.
+    filters public bookmarks using a URI template value.
  -  `/users/alice/collections/followers-only`: a collection whose result
     depends on the signed requester.  It calls `ctx.getSignedKeyOwner()` and
     returns an empty collection to unsigned or non-follower requests.

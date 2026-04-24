@@ -122,9 +122,8 @@ federation
     "/users/{identifier}/collections/public",
     (ctx, values, cursor) => {
       if (values.identifier !== OWNER) return null;
-      if (cursor == null) return null;
 
-      return pageBookmarks(
+      return collectionBookmarks(
         ctx,
         publicBookmarks(),
         cursor,
@@ -151,9 +150,8 @@ federation
     "/users/{identifier}/collections/tags/{tag}",
     (ctx, values, cursor) => {
       if (values.identifier !== OWNER) return null;
-      if (cursor == null) return null;
 
-      return pageBookmarks(
+      return collectionBookmarks(
         ctx,
         taggedBookmarks(values.tag),
         cursor,
@@ -183,9 +181,8 @@ federation
       if (!await isFollowerRequest(ctx)) {
         return { items: [], nextCursor: null, prevCursor: null };
       }
-      if (cursor == null) return null;
 
-      return pageBookmarks(
+      return collectionBookmarks(
         ctx,
         followersOnlyBookmarks(),
         cursor,
@@ -233,6 +230,7 @@ function taggedBookmarks(tag: string): Bookmark[] {
   const normalizedTag = normalizeTag(tag);
   return sortBookmarks(
     bookmarks.filter((bookmark) =>
+      bookmark.visibility === "public" &&
       bookmark.tags.some((itemTag) => normalizeTag(itemTag) === normalizedTag)
     ),
   );
@@ -242,6 +240,24 @@ function sortBookmarks(items: Bookmark[]): Bookmark[] {
   return items.toSorted((a, b) =>
     Temporal.Instant.compare(b.savedAt, a.savedAt)
   );
+}
+
+function collectionBookmarks(
+  ctx: RequestContext<void>,
+  items: Bookmark[],
+  cursor: string | null,
+): {
+  items: Article[];
+  nextCursor: string | null;
+  prevCursor: string | null;
+} {
+  return cursor == null
+    ? {
+      items: items.map((bookmark) => toArticle(ctx, bookmark)),
+      nextCursor: null,
+      prevCursor: null,
+    }
+    : pageBookmarks(ctx, items, cursor);
 }
 
 function pageBookmarks(
@@ -266,13 +282,16 @@ function pageBookmarks(
 }
 
 function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
+  const bookmarkUrl = new URL(bookmark.href);
   return new Article({
     id: new URL(`/users/${OWNER}/bookmarks/${bookmark.id}`, ctx.url),
     attribution: ctx.getActorUri(OWNER),
     name: bookmark.title,
-    summary: bookmark.note,
-    content: `<p><a href="${bookmark.href}">${bookmark.title}</a></p>`,
-    url: new URL(bookmark.href),
+    summary: escapeHtml(bookmark.note),
+    content: `<p><a href="${escapeHtml(bookmarkUrl.href)}">${
+      escapeHtml(bookmark.title)
+    }</a></p>`,
+    url: bookmarkUrl,
     published: bookmark.savedAt,
     to: bookmark.visibility === "public" ? PUBLIC_COLLECTION : undefined,
     tags: bookmark.tags.map((tag) =>
@@ -285,6 +304,15 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
       })
     ),
   });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function isFollowerRequest(ctx: RequestContext<void>): Promise<boolean> {
