@@ -19,6 +19,8 @@ import {
 import { getImports, loadFederation, loadLogging } from "./templates.ts";
 import { joinDir, stringifyEnvs } from "./utils.ts";
 
+const jsonsCache = new WeakMap<InitCommandData, Record<string, object>>();
+
 /**
  * Main function that initializes the project by creating necessary files and configurations.
  * Handles both dry-run mode (recommending files) and actual file creation.
@@ -99,8 +101,11 @@ const getFiles = async <
  */
 const getJsons = <
   T extends InitCommandData,
->(data: T): Record<string, object> =>
-  data.packageManager === "deno"
+>(data: T): Record<string, object> => {
+  const cached = jsonsCache.get(data);
+  if (cached != null) return cached;
+
+  const jsons: Record<string, object> = data.packageManager === "deno"
     ? {
       "deno.json": loadDenoConfig(data).data,
       [devToolConfigs["vscSetDeno"].path]: devToolConfigs["vscSetDeno"].data,
@@ -115,6 +120,9 @@ const getJsons = <
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
+  jsonsCache.set(data, jsons);
+  return jsons;
+};
 
 /**
  * Returns only the file paths written directly by Fedify after any framework
