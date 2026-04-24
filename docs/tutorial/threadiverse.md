@@ -1270,7 +1270,7 @@ up*.
 Every user needs a page to call their own.  For now we'll keep it simple:
 URL path, display name, join date.  Create *app/users/\[username]/page.tsx*:
 
-~~~~ tsx [app/users/[username]/page.tsx]
+~~~~ tsx
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, users } from "@/db";
@@ -2004,7 +2004,7 @@ profile page only knows about users.  The next section fixes that.
 Teach the profile page to fall through to `communities` when the
 identifier doesn't match a user.  Rewrite *app/users/\[username]/page.tsx*:
 
-~~~~ tsx [app/users/[username]/page.tsx]
+~~~~ tsx
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { communities, db, users } from "@/db";
@@ -2643,7 +2643,7 @@ can be used everywhere threads get persisted.  Re-run
 Create a form at *app/users/\[username]/new-thread/page.tsx* that's
 scoped to a single community:
 
-~~~~ tsx [app/users/[username]/new-thread/page.tsx]
+~~~~ tsx
 import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { communities, db } from "@/db";
@@ -2703,7 +2703,7 @@ up after redirect.  Extend the existing *app/users/\[username]/page.tsx*
 to query `threads` for the community URI and render them in a simple
 card list, plus a *Start a thread* CTA visible to logged-in users:
 
-~~~~ tsx{1,2,4-6,47-62,76-101} [app/users/[username]/page.tsx]
+~~~~ tsx{1,2,4-6,47-62,76-101}
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2819,7 +2819,7 @@ The server action does two things: insert the row locally, and federate
 a `Create(Page)` to the community.  Write
 *app/users/\[username]/new-thread/actions.ts*:
 
-~~~~ typescript [app/users/[username]/new-thread/actions.ts]
+~~~~ typescript
 "use server";
 
 import { Create, Page, PUBLIC_COLLECTION } from "@fedify/vocab";
@@ -3068,7 +3068,7 @@ will fan replies out to subscribers without any new plumbing.
 Before we can reply to a thread, the thread needs a dedicated page of
 its own.  Create *app/users/\[username]/threads/\[id]/page.tsx*:
 
-~~~~ tsx [app/users/[username]/threads/[id]/page.tsx]
+~~~~ tsx
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { communities, db, threads } from "@/db";
@@ -3163,7 +3163,7 @@ helper that turns a flat list of rows into a nested tree using
 
 Recursive render:
 
-~~~~ tsx{1,19-21} [app/users/[username]/threads/[id]/page.tsx]
+~~~~ tsx{1,19-21}
 function ReplyList({ nodes, slug, threadId, user }) {
   return (
     <ul className="reply-tree">
@@ -3194,7 +3194,7 @@ function ReplyList({ nodes, slug, threadId, user }) {
 
 `buildReplyTree`:
 
-~~~~ typescript [app/users/[username]/threads/[id]/page.tsx]
+~~~~ typescript
 function buildReplyTree(rows: ReplyRow[], threadUri: string): ReplyNode[] {
   const byUri = new Map<string, ReplyNode>();
   const roots: ReplyNode[] = [];
@@ -3218,7 +3218,7 @@ border so the tree reads visually.
 
 Write *app/users/\[username]/threads/\[id]/actions.ts*:
 
-~~~~ typescript [app/users/[username]/threads/[id]/actions.ts]
+~~~~ typescript
 "use server";
 
 import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
@@ -3374,7 +3374,7 @@ reply.  Before rendering, query every vote for every target on the
 page in a single `inArray` query and fold the rows into a
 `Map<targetUri, { likes, dislikes, myVote }>`:
 
-~~~~ typescript [app/users/[username]/threads/[id]/page.tsx]
+~~~~ typescript
 const voteTargets = [threadUri, ...replyRows.map((r) => r.uri)];
 const voteRows = db
   .select()
@@ -3399,7 +3399,7 @@ for (const v of voteRows) {
 Then a small `<VoteButtons>` component renders two forms, each a
 one-shot that POSTs to the server action we'll write next:
 
-~~~~ tsx [app/users/[username]/threads/[id]/page.tsx]
+~~~~ tsx
 <div style={{ display: "flex", gap: "0.5rem" }}>
   <form action={castVote.bind(null, slug, threadId)}>
     <input type="hidden" name="targetUri" value={targetUri} />
@@ -3430,7 +3430,7 @@ looks like a muted link until the user commits to it.
 
 ### Outbound: `castVote` action
 
-~~~~ typescript [app/users/[username]/threads/[id]/vote-actions.ts]
+~~~~ typescript
 "use server";
 
 import { Dislike, Like, PUBLIC_COLLECTION } from "@fedify/vocab";
