@@ -1116,9 +1116,10 @@ Fedify also applies a small set of internal JSON-LD wire-format compatibility
 fixes after serializing the transformed activity.  Unlike activity transformers,
 these fixes operate on the compact JSON-LD document rather than the `Activity`
 object, so they can preserve representation details such as array-valued
-properties that JSON-LD compaction would otherwise collapse.
+properties that JSON-LD compaction would otherwise collapse.  These internal
+fixes are applied automatically after serialization.
 
-It can be configured by setting
+Activity transformers can be configured by setting
 the [`activityTransformers`](./federation.md#activitytransformers) option.
 By default, the following activity transformers are enabled:
 
