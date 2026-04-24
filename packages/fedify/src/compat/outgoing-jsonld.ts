@@ -10,6 +10,8 @@ const ATTACHMENT_FIELDS = new Set([
   "https://www.w3.org/ns/activitystreams#attachment",
 ]);
 
+const AS_CONTEXT_URL = "https://www.w3.org/ns/activitystreams";
+
 // Keep the traversal bounded for adversarial JSON-LD passed through proof
 // verification fallback paths.
 const MAX_TRAVERSAL_DEPTH = 64;
@@ -74,6 +76,39 @@ function wrapScalarAttachments(
   return changed ? normalized : jsonLd;
 }
 
+function hasNestedContext(value: unknown, depth: number = 0): boolean {
+  if (depth >= MAX_TRAVERSAL_DEPTH) return true;
+  if (Array.isArray(value)) {
+    return value.some((item) => hasNestedContext(item, depth + 1));
+  }
+  if (typeof value !== "object" || value == null) return false;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (key === "@context") return true;
+    if (hasNestedContext(record[key], depth + 1)) return true;
+  }
+  return false;
+}
+
+function hasActivityStreamsOnlyContext(jsonLd: unknown): boolean {
+  if (typeof jsonLd !== "object" || jsonLd == null) return false;
+  const record = jsonLd as Record<string, unknown>;
+  if (!Object.hasOwn(record, "@context")) return false;
+  const context = record["@context"];
+  const entries = typeof context === "string"
+    ? [context]
+    : Array.isArray(context)
+    ? context
+    : null;
+  if (entries == null || entries.length < 1) return false;
+  if (!entries.every((entry) => entry === AS_CONTEXT_URL)) return false;
+  for (const key of Object.keys(record)) {
+    if (key === "@context") continue;
+    if (hasNestedContext(record[key])) return false;
+  }
+  return true;
+}
+
 /**
  * Ensures ActivityStreams attachment properties are represented as arrays
  * when doing so preserves the JSON-LD semantics.
@@ -89,6 +124,7 @@ export async function normalizeAttachmentArrays(
 ): Promise<unknown> {
   const normalized = wrapScalarAttachments(jsonLd);
   if (normalized === jsonLd) return jsonLd;
+  if (hasActivityStreamsOnlyContext(jsonLd)) return normalized;
   const loader = contextLoader ?? preloadedOnlyDocumentLoader;
   try {
     const [before, after] = await Promise.all([
@@ -104,14 +140,15 @@ export async function normalizeAttachmentArrays(
     if (before === after) return normalized;
     logger.warn(
       "Wrapping scalar attachment values in arrays would change the " +
-        "canonical form of the activity; sending the activity as is.  " +
+        "canonical form of the JSON-LD document; leaving it unchanged.  " +
         "This usually means the active JSON-LD context redefines the " +
         "`attachment` term.",
     );
   } catch (error) {
     logger.debug(
       "Failed to verify attachment array normalization equivalence via " +
-        "JSON-LD canonicalization; sending the activity as is.\n{error}",
+        "JSON-LD canonicalization; leaving the JSON-LD document " +
+        "unchanged.\n{error}",
       { error },
     );
   }

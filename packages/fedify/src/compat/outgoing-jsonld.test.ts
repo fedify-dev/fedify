@@ -33,6 +33,28 @@ test("normalizeAttachmentArrays() wraps scalar attachments", async () => {
   ]);
 });
 
+test("normalizeAttachmentArrays() skips canonicalization for ActivityStreams-only context", async () => {
+  const input = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    attachment: {
+      type: "Document",
+      mediaType: "image/png",
+      url: "https://example.com/image.png",
+    },
+  };
+  const output = await normalizeAttachmentArrays(input, () => {
+    throw new Error("context loader should not be called");
+  }) as Record<string, unknown>;
+  assertEquals(output.attachment, [
+    {
+      type: "Document",
+      mediaType: "image/png",
+      url: "https://example.com/image.png",
+    },
+  ]);
+});
+
 test("normalizeAttachmentArrays() leaves attachment arrays unchanged", async () => {
   const attachment = [
     {
