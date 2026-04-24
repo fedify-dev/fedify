@@ -13,6 +13,20 @@ import {
   ParallelMessageQueue,
 } from "./mq.ts";
 
+async function disposeMessageQueue(mq: object): Promise<void> {
+  if (Symbol.asyncDispose in mq) {
+    const dispose = mq[Symbol.asyncDispose];
+    if (typeof dispose === "function") {
+      await dispose.call(mq);
+      return;
+    }
+  }
+  if (Symbol.dispose in mq) {
+    const dispose = mq[Symbol.dispose];
+    if (typeof dispose === "function") dispose.call(mq);
+  }
+}
+
 test("InProcessMessageQueue", async (t) => {
   const mq = new InProcessMessageQueue();
 
@@ -189,10 +203,7 @@ test("MessageQueue.nativeRetrial", async (t) => {
         await globalThis.Deno.openKv(":memory:"),
       );
       assert(mq.nativeRetrial);
-      if (Symbol.dispose in mq) {
-        const dispose = mq[Symbol.dispose];
-        if (typeof dispose === "function") dispose.call(mq);
-      }
+      await disposeMessageQueue(mq);
     });
   }
 
@@ -321,10 +332,7 @@ for (const mqName in queues) {
       controller.abort();
       await listening;
 
-      if (Symbol.dispose in mq) {
-        const dispose = mq[Symbol.dispose];
-        if (typeof dispose === "function") dispose.call(mq);
-      }
+      await disposeMessageQueue(mq);
     },
   });
 }

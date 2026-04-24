@@ -50,6 +50,12 @@ function isInitializationRaceError(error: unknown): boolean {
     );
 }
 
+function isConnectionDestroyedError(error: unknown): boolean {
+  if (typeof error !== "object" || error == null) return false;
+  return ("code" in error && error.code === "CONNECTION_DESTROYED") ||
+    ("errno" in error && error.errno === "CONNECTION_DESTROYED");
+}
+
 function getCreatedIndexName(tableName: string): string {
   // Keep identifier short and deterministic to avoid PostgreSQL's 63-byte
   // identifier truncation collisions for long/UUID-based table names.
@@ -401,28 +407,36 @@ export class PostgresMessageQueue implements MessageQueue {
       },
       () => safeSerializedPoll("subscribe"),
     );
-    signal?.addEventListener("abort", () => {
-      listen.unlisten();
+    const clearTimeouts = () => {
       for (const timeout of timeouts) clearTimeout(timeout);
       timeouts.clear();
-    });
-    while (!signal?.aborted) {
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      await new Promise<unknown>((resolve) => {
-        signal?.addEventListener("abort", resolve);
-        timeout = setTimeout(() => {
-          signal?.removeEventListener("abort", resolve);
-          resolve(0);
-        }, this.#pollIntervalMs);
-        timeouts.add(timeout);
-      });
-      if (timeout != null) timeouts.delete(timeout);
-      await safeSerializedPoll("interval");
+    };
+    signal?.addEventListener("abort", clearTimeouts, { once: true });
+    let unlistenError: unknown;
+    try {
+      while (!signal?.aborted) {
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        await new Promise<unknown>((resolve) => {
+          signal?.addEventListener("abort", resolve, { once: true });
+          timeout = setTimeout(() => {
+            signal?.removeEventListener("abort", resolve);
+            resolve(0);
+          }, this.#pollIntervalMs);
+          timeouts.add(timeout);
+        });
+        if (timeout != null) timeouts.delete(timeout);
+        await safeSerializedPoll("interval");
+      }
+    } finally {
+      signal?.removeEventListener("abort", clearTimeouts);
+      clearTimeouts();
+      try {
+        await listen.unlisten();
+      } catch (error) {
+        if (!isConnectionDestroyedError(error)) unlistenError = error;
+      }
     }
-    await new Promise<void>((resolve) => {
-      signal?.addEventListener("abort", () => resolve());
-      if (signal?.aborted) return resolve();
-    });
+    if (unlistenError != null) throw unlistenError;
   }
 
   /**
