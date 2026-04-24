@@ -559,6 +559,9 @@ function isPrivateAddressError(error: unknown): boolean {
 export function getPrivateUrlCandidate(
   candidate: unknown,
 ): URL | null {
+  // This helper is only for post-failure hinting. It intentionally does a
+  // cheap hostname/IP check so we can recognize obvious private targets
+  // without re-running the full document-loader validation path.
   if (typeof candidate !== "string" && !(candidate instanceof URL)) return null;
 
   try {
@@ -588,6 +591,12 @@ function isPrivateAddressTarget(target: string): boolean {
 }
 
 function getPrivateContextUrl(error: unknown): URL | null {
+  // Recursive object fetches and recursive JSON-LD context fetches use
+  // different loader policies. When the strict context loader rejects a
+  // private @context URL, the underlying UrlError is often surfaced as a
+  // jsonld parsing error instead of the original loader error. This helper
+  // reconstructs the blocked private context URL so the CLI can show a
+  // recurse-specific hint instead of the generic authorized-fetch hint.
   // This detection intentionally depends on jsonld's current error shape:
   // name === "jsonld.InvalidUrl", the "valid JSON-LD object" substring, and
   // a trailing `URL: "..."` segment all at once. If jsonld changes those
@@ -985,6 +994,10 @@ export async function runLookup(
       initialDocumentLoader;
     const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
       documentLoader;
+    // `-p/--allow-private-address` only changes the follow-up object fetches
+    // that recurse explicitly performs. JSON-LD context loads stay on the
+    // strict loader so a remote object cannot implicitly expand the trust
+    // boundary via private @context URLs.
     const recursiveBaseContextLoader = await getContextLoader({
       userAgent: command.userAgent,
       allowPrivateAddress: false,
