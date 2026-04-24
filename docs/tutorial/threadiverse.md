@@ -3377,11 +3377,18 @@ Run `npm run db:push` to create the table.
 ### Vote buttons on the thread page
 
 Add ▲ and ▼ buttons to the thread page next to each thread and each
-reply.  Before rendering, query every vote for every target on the
-page in a single `inArray` query and fold the rows into a
-`Map<targetUri, { likes, dislikes, myVote }>`:
+reply.  Inside *app/users/\[username]/threads/\[id]/page.tsx*, declare
+a small `VoteTally` type and, before rendering, query every vote for
+every target on the page in a single `inArray` query and fold the rows
+into a `Map<targetUri, VoteTally>`:
 
 ~~~~ typescript
+type VoteTally = {
+  likes: number;
+  dislikes: number;
+  myVote: "Like" | "Dislike" | null;
+};
+
 const voteTargets = [threadUri, ...replyRows.map((r) => r.uri)];
 const voteRows = db
   .select()
@@ -3403,7 +3410,8 @@ for (const v of voteRows) {
 }
 ~~~~
 
-Then a small `<VoteButtons>` component renders two forms, each a
+Still in *app/users/\[username]/threads/\[id]/page.tsx*, define a
+small `<VoteButtons>` component that renders two forms, each a
 one-shot that POSTs to the server action we'll write next:
 
 ~~~~ tsx
@@ -3436,6 +3444,10 @@ vote; the un-voted side renders with the `link-button` class so it
 looks like a muted link until the user commits to it.
 
 ### Outbound: `castVote` action
+
+Create *app/users/\[username]/threads/\[id]/vote-actions.ts* with the
+server action that publishes a `Like` or `Dislike` activity and
+optimistically records the vote locally:
 
 ~~~~ typescript
 "use server";
