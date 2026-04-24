@@ -50,8 +50,8 @@
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "@nuxt/kit": "^4.4.2",
-    "@nuxt/schema": "^4.4.2",
+    "@nuxt/kit": "catalog:",
+    "@nuxt/schema": "catalog:",
     "h3": "catalog:",
     "nuxt": "catalog:"
   },
@@ -66,7 +66,7 @@
     "build": "pnpm --filter @fedify/nuxt... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "pretest": "pnpm build",
+    "pretest": "pnpm build:self",
     "test": "node --experimental-transform-types --test"
   }
 }

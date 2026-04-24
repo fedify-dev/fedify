@@ -1405,10 +1405,10 @@ importers:
         specifier: workspace:^
         version: link:../fedify
       '@nuxt/kit':
-        specifier: ^4.4.2
+        specifier: 'catalog:'
         version: 4.4.2(magicast@0.5.2)
       '@nuxt/schema':
-        specifier: ^4.4.2
+        specifier: 'catalog:'
         version: 4.4.2
       h3:
         specifier: 'catalog:'
