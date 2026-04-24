@@ -193,6 +193,24 @@ test("normalizeAttachmentArrays() stops before blowing the stack on pathological
   assertEquals(typeof output, "object");
 });
 
+test("normalizeAttachmentArrays() skips canonicalization for pathological nesting", async () => {
+  let deep: Record<string, unknown> = { type: "Note" };
+  for (let i = 0; i < 256; i++) deep = { object: deep };
+  const input = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://example.com/context",
+    ],
+    type: "Note",
+    attachment: { type: "Document" },
+    object: deep,
+  };
+  const output = await normalizeAttachmentArrays(input, () => {
+    throw new Error("context loader should not be called");
+  }) as Record<string, unknown>;
+  assertEquals(output.attachment, { type: "Document" });
+});
+
 test("normalizeOutgoingActivityJsonLd() applies outgoing JSON-LD workarounds", async () => {
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),

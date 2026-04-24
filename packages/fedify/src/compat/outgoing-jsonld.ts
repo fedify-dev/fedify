@@ -116,6 +116,24 @@ function hasNestedContext(value: unknown, depth: number = 0): boolean {
   return false;
 }
 
+function exceedsTraversalDepth(value: unknown, depth: number = 0): boolean {
+  if (depth >= MAX_TRAVERSAL_DEPTH) return true;
+  if (Array.isArray(value)) {
+    return value.some((item) => exceedsTraversalDepth(item, depth + 1));
+  }
+  if (typeof value !== "object" || value == null) return false;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (
+      key === "@context" || (key === "@value" && isJsonLdValueObject(value))
+    ) {
+      continue;
+    }
+    if (exceedsTraversalDepth(record[key], depth + 1)) return true;
+  }
+  return false;
+}
+
 function hasKnownSafeContext(jsonLd: unknown): boolean {
   if (typeof jsonLd !== "object" || jsonLd == null) return false;
   const record = jsonLd as Record<string, unknown>;
@@ -156,6 +174,13 @@ export async function normalizeAttachmentArrays(
 ): Promise<unknown> {
   const normalized = wrapScalarAttachments(jsonLd);
   if (normalized === jsonLd) return jsonLd;
+  if (exceedsTraversalDepth(jsonLd)) {
+    logger.debug(
+      "Skipping attachment array normalization because the JSON-LD document " +
+        "exceeds the safe traversal depth; leaving it unchanged.",
+    );
+    return jsonLd;
+  }
   if (hasKnownSafeContext(jsonLd)) return normalized;
   const loader = contextLoader ?? preloadedOnlyDocumentLoader;
   try {

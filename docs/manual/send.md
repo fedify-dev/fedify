@@ -1119,6 +1119,11 @@ object, so they can preserve representation details such as array-valued
 properties that JSON-LD compaction would otherwise collapse.  These internal
 fixes are applied automatically after serialization.
 
+When an outgoing document uses custom or inline JSON-LD contexts, Fedify may
+canonicalize the document before and after a representation fix to confirm
+that the fix preserves JSON-LD semantics.  Documents that are too deeply
+nested for safe traversal are sent unchanged instead.
+
 Activity transformers can be configured by setting
 the [`activityTransformers`](./federation.md#activitytransformers) option.
 By default, the following activity transformers are enabled:
