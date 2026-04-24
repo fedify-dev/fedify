@@ -54,13 +54,18 @@ function wrapScalarAttachments(
   if (depth >= MAX_TRAVERSAL_DEPTH) return jsonLd;
 
   if (Array.isArray(jsonLd)) {
-    let changed = false;
-    const normalized = jsonLd.map((item) => {
+    let normalized: unknown[] | null = null;
+    for (let i = 0; i < jsonLd.length; i++) {
+      const item = jsonLd[i];
       const next = wrapScalarAttachments(item, depth + 1);
-      if (next !== item) changed = true;
-      return next;
-    });
-    return changed ? normalized : jsonLd;
+      if (normalized == null && next !== item) {
+        normalized = jsonLd.slice(0, i);
+      }
+      if (normalized != null) {
+        normalized[i] = next;
+      }
+    }
+    return normalized ?? jsonLd;
   }
 
   if (typeof jsonLd !== "object" || jsonLd == null) return jsonLd;
