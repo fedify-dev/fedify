@@ -376,21 +376,15 @@ async function verifyProofInternal(
   if ("https://w3id.org/security#proof" in msg) {
     delete msg["https://w3id.org/security#proof"];
   }
-  // Try the on-wire form first, then fall back to Fedify's outgoing JSON-LD
-  // compatibility form so that signatures created by `createProof` (which
-  // signs the normalized bytes) still verify when the caller passes the
-  // default `toJsonLd({ format: "compact" })` output.  The public-audience
-  // workaround inside `normalizeOutgoingActivityJsonLd()` defaults to a
-  // preloaded-only document loader when `options.contextLoader` is omitted,
-  // so the normalization attempt is safe to run on inbound, potentially
+  // Try the on-wire form first.  Only if that fails do we fall back to
+  // Fedify's outgoing JSON-LD compatibility form so that signatures created
+  // by `createProof` (which signs the normalized bytes) still verify when the
+  // caller passes the default `toJsonLd({ format: "compact" })` output.  The
+  // public-audience workaround inside `normalizeOutgoingActivityJsonLd()`
+  // defaults to a preloaded-only document loader when `options.contextLoader`
+  // is omitted, so the fallback is safe to run on inbound, potentially
   // adversarial JSON-LD: an attacker-supplied `@context` URL cannot steer
   // canonicalization into a network fetch.
-  const candidates: unknown[] = [msg];
-  const normalized = await normalizeOutgoingActivityJsonLd(
-    msg,
-    options.contextLoader,
-  );
-  if (normalized !== msg) candidates.push(normalized);
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
@@ -441,20 +435,28 @@ async function verifyProofInternal(
   const SHA256_LENGTH = 32;
   const digest = new Uint8Array(proofDigest.byteLength + SHA256_LENGTH);
   digest.set(new Uint8Array(proofDigest), 0);
-  for (const candidate of candidates) {
+  const proofValue = proof.proofValue;
+  const verifyCandidate = async (candidate: unknown): Promise<boolean> => {
     const msgBytes = encoder.encode(serialize(candidate));
     const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
     digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
-    const verified = await crypto.subtle.verify(
+    return await crypto.subtle.verify(
       "Ed25519",
       publicKey.publicKey,
       // `.slice()` narrows `Uint8Array<ArrayBufferLike>` (which can be
       // backed by a `SharedArrayBuffer`) to `Uint8Array<ArrayBuffer>`,
       // which is what `crypto.subtle.verify` expects.
-      proof.proofValue.slice(),
+      proofValue.slice(),
       digest,
     );
-    if (verified) return publicKey;
+  };
+  if (await verifyCandidate(msg)) return publicKey;
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    msg,
+    options.contextLoader,
+  );
+  if (normalized !== msg && await verifyCandidate(normalized)) {
+    return publicKey;
   }
   if (fetchedKey.cached) {
     logger.debug(
