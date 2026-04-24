@@ -1,118 +1,360 @@
-import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { Note } from "@fedify/vocab";
+import {
+  createFederation,
+  MemoryKvStore,
+  type RequestContext,
+} from "@fedify/fedify";
+import {
+  Article,
+  Hashtag,
+  Link,
+  Person,
+  PUBLIC_COLLECTION,
+} from "@fedify/vocab";
 
-// Mock data - in a real application, this would query your database
-const POSTS = [
-  new Note({
-    id: new URL("https://example.com/posts/post-1"),
-    content: "ActivityPub is a decentralized social networking protocol...",
-    tags: [
-      new URL("https://example.com/tags/ActivityPub"),
-      new URL("https://example.com/tags/Decentralization"),
-    ],
-  }),
+const OWNER = "alice";
+const PAGE_SIZE = 2;
 
-  new Note({
-    id: new URL("https://example.com/posts/post-2"),
-    content: "Fedify makes it easy to build federated applications...",
-  }),
+const PUBLIC_BOOKMARKS = "public-bookmarks";
+const TAGGED_BOOKMARKS = "tagged-bookmarks";
+const FOLLOWERS_ONLY_BOOKMARKS = "followers-only-bookmarks";
 
-  new Note({
-    id: new URL("https://example.com/posts/post-3"),
-    content: "WebFinger is a protocol for discovering information...",
-    tags: [new URL("https://example.com/tags/ActivityPub")],
-  }),
+interface Bookmark {
+  id: string;
+  title: string;
+  href: string;
+  note: string;
+  tags: string[];
+  visibility: "public" | "followers";
+  savedAt: Temporal.Instant;
+}
 
-  new Note({
-    id: new URL("https://example.com/posts/post-4"),
-    content: "HTTP Signatures provide authentication for ActivityPub...",
-  }),
-
-  new Note({
-    id: new URL("https://example.com/posts/post-5"),
-    content: "Understanding ActivityPub's data model is crucial...",
-  }),
+const bookmarks: Bookmark[] = [
+  {
+    id: "fedify-manual",
+    title: "Fedify manual",
+    href: "https://fedify.dev/manual/",
+    note: "Reference material for building ActivityPub servers with Fedify.",
+    tags: ["fedify", "activitypub"],
+    visibility: "public",
+    savedAt: Temporal.Instant.from("2026-04-20T09:00:00Z"),
+  },
+  {
+    id: "activitypub-spec",
+    title: "ActivityPub specification",
+    href: "https://www.w3.org/TR/activitypub/",
+    note: "The W3C ActivityPub recommendation.",
+    tags: ["activitypub", "spec"],
+    visibility: "public",
+    savedAt: Temporal.Instant.from("2026-04-19T12:00:00Z"),
+  },
+  {
+    id: "uri-template",
+    title: "URI Template",
+    href: "https://www.rfc-editor.org/rfc/rfc6570",
+    note: "How Fedify dispatcher path parameters are expanded.",
+    tags: ["spec", "routing"],
+    visibility: "public",
+    savedAt: Temporal.Instant.from("2026-04-18T16:30:00Z"),
+  },
+  {
+    id: "private-reading-list",
+    title: "Private reading list",
+    href: "https://example.net/reading-list",
+    note: "A bookmark visible only to accepted followers.",
+    tags: ["fedify", "reading"],
+    visibility: "followers",
+    savedAt: Temporal.Instant.from("2026-04-17T08:15:00Z"),
+  },
+  {
+    id: "moderation-notes",
+    title: "Moderation notes",
+    href: "https://example.net/moderation",
+    note: "Follower-facing notes for a small community server.",
+    tags: ["activitypub", "moderation"],
+    visibility: "followers",
+    savedAt: Temporal.Instant.from("2026-04-16T10:45:00Z"),
+  },
 ];
 
-function getTagFromUrl(url: string): string {
-  const parts = url.split("/");
-  return parts[parts.length - 1];
-}
+export const followerIds = new Set([
+  "https://remote.example/users/bob",
+  "https://social.example/users/carol",
+]);
 
-function getTaggedPostsByTag(tag: string): Note[] {
-  return POSTS
-    .filter((post) => {
-      if (!post.tagIds) {
-        return false;
-      }
-      return post.tagIds.some((tagId) => {
-        return getTagFromUrl(tagId.toString()) === tag;
-      });
+export const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+    if (identifier !== OWNER) return null;
+
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: "Alice's bookmarks",
+      summary: "A single-user bookmark log with custom collection examples.",
+      url: new URL(`/users/${identifier}`, ctx.url),
+      attachments: [
+        collectionLink(
+          ctx.getCollectionUri(PUBLIC_BOOKMARKS, { identifier }),
+          "Public bookmarks",
+        ),
+        collectionLink(
+          ctx.getCollectionUri(TAGGED_BOOKMARKS, {
+            identifier,
+            tag: "activitypub",
+          }),
+          "ActivityPub bookmarks",
+        ),
+        collectionLink(
+          ctx.getCollectionUri(FOLLOWERS_ONLY_BOOKMARKS, { identifier }),
+          "Followers-only bookmarks",
+        ),
+      ],
     });
-}
-
-async function demonstrateCustomCollection(): Promise<Response> {
-  // Federation instance created for demonstration
-  const federation = createFederation<void>({ kv: new MemoryKvStore() });
-
-  federation.setCollectionDispatcher(
-    "TaggedPosts",
-    Note,
-    "/users/{userId}/tags/{tag}",
-    (
-      _ctx: { url: URL },
-      values: Record<string, string>,
-      cursor: string | null,
-    ) => {
-      if (!values.tag) {
-        throw new Error("Missing userId or tag in values");
-      }
-
-      // Normally here you would look up posts from a database by user ID and tag name:
-      const posts = getTaggedPostsByTag(values.tag);
-
-      if (cursor != null) {
-        const idx = Number.parseInt(cursor, 10);
-        if (Number.isNaN(idx) || idx > posts.length || idx < 0) {
-          return { items: [], nextCursor: null, prevCursor: null };
-        }
-        return {
-          items: idx < posts.length ? [posts[idx]] : [],
-          nextCursor: idx < posts.length - 1 ? (idx + 1).toString() : null,
-          prevCursor: idx > 0 ? (idx - 1).toString() : null,
-        };
-      }
-      return { items: posts, nextCursor: null, prevCursor: null };
-    },
-  ).setCounter((_ctx, values) => {
-    // Return the total count of tagged posts
-    const count = getTaggedPostsByTag(values.tag).length;
-    return count;
   });
 
-  return await federation.fetch(
-    new Request(
-      "https://example.com/users/123/tags/ActivityPub",
-      {
-        headers: {
-          Accept: "application/activity+json",
-        },
-      },
-    ),
-    {
-      contextData: undefined,
+federation
+  .setOrderedCollectionDispatcher(
+    PUBLIC_BOOKMARKS,
+    Article,
+    "/users/{identifier}/collections/public",
+    (ctx, values, cursor) => {
+      if (values.identifier !== OWNER) return null;
+      if (cursor == null) return null;
+
+      return pageBookmarks(
+        ctx,
+        publicBookmarks(),
+        cursor,
+      );
     },
+  )
+  .setCounter((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return publicBookmarks().length;
+  })
+  .setFirstCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return firstCursor(publicBookmarks());
+  })
+  .setLastCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return lastCursor(publicBookmarks());
+  });
+
+federation
+  .setOrderedCollectionDispatcher(
+    TAGGED_BOOKMARKS,
+    Article,
+    "/users/{identifier}/collections/tags/{tag}",
+    (ctx, values, cursor) => {
+      if (values.identifier !== OWNER) return null;
+      if (cursor == null) return null;
+
+      return pageBookmarks(
+        ctx,
+        taggedBookmarks(values.tag),
+        cursor,
+      );
+    },
+  )
+  .setCounter((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return taggedBookmarks(values.tag).length;
+  })
+  .setFirstCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return firstCursor(taggedBookmarks(values.tag));
+  })
+  .setLastCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return lastCursor(taggedBookmarks(values.tag));
+  });
+
+federation
+  .setOrderedCollectionDispatcher(
+    FOLLOWERS_ONLY_BOOKMARKS,
+    Article,
+    "/users/{identifier}/collections/followers-only",
+    async (ctx, values, cursor) => {
+      if (values.identifier !== OWNER) return null;
+      if (!await isFollowerRequest(ctx)) {
+        return { items: [], nextCursor: null, prevCursor: null };
+      }
+      if (cursor == null) return null;
+
+      return pageBookmarks(
+        ctx,
+        followersOnlyBookmarks(),
+        cursor,
+      );
+    },
+  )
+  .setCounter(async (ctx, values) => {
+    if (values.identifier !== OWNER) return null;
+    return await isFollowerRequest(ctx) ? followersOnlyBookmarks().length : 0;
+  })
+  .setFirstCursor(async (ctx, values) => {
+    if (values.identifier !== OWNER || !await isFollowerRequest(ctx)) {
+      return null;
+    }
+    return firstCursor(followersOnlyBookmarks());
+  })
+  .setLastCursor(async (ctx, values) => {
+    if (values.identifier !== OWNER || !await isFollowerRequest(ctx)) {
+      return null;
+    }
+    return lastCursor(followersOnlyBookmarks());
+  });
+
+function collectionLink(href: URL, name: string): Link {
+  return new Link({
+    href,
+    rel: "collection",
+    name,
+  });
+}
+
+function publicBookmarks(): Bookmark[] {
+  return sortBookmarks(
+    bookmarks.filter((bookmark) => bookmark.visibility === "public"),
   );
 }
 
-if (import.meta.main) {
-  const response = await demonstrateCustomCollection();
+function followersOnlyBookmarks(): Bookmark[] {
+  return sortBookmarks(
+    bookmarks.filter((bookmark) => bookmark.visibility === "followers"),
+  );
+}
 
-  if (response.ok) {
-    const jsonResponse = await response.json();
-    console.log("Custom collection data:", jsonResponse);
-  } else {
-    const errorText = await response.text();
-    console.log("Error response:", errorText);
+function taggedBookmarks(tag: string): Bookmark[] {
+  const normalizedTag = normalizeTag(tag);
+  return sortBookmarks(
+    bookmarks.filter((bookmark) =>
+      bookmark.tags.some((itemTag) => normalizeTag(itemTag) === normalizedTag)
+    ),
+  );
+}
+
+function sortBookmarks(items: Bookmark[]): Bookmark[] {
+  return items.toSorted((a, b) =>
+    Temporal.Instant.compare(b.savedAt, a.savedAt)
+  );
+}
+
+function pageBookmarks(
+  ctx: RequestContext<void>,
+  items: Bookmark[],
+  cursor: string,
+): {
+  items: Article[];
+  nextCursor: string | null;
+  prevCursor: string | null;
+} {
+  const offset = parseCursor(cursor);
+  return {
+    items: items
+      .slice(offset, offset + PAGE_SIZE)
+      .map((bookmark) => toArticle(ctx, bookmark)),
+    nextCursor: offset + PAGE_SIZE < items.length
+      ? String(offset + PAGE_SIZE)
+      : null,
+    prevCursor: offset > 0 ? String(Math.max(0, offset - PAGE_SIZE)) : null,
+  };
+}
+
+function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
+  return new Article({
+    id: new URL(`/users/${OWNER}/bookmarks/${bookmark.id}`, ctx.url),
+    attribution: ctx.getActorUri(OWNER),
+    name: bookmark.title,
+    summary: bookmark.note,
+    content: `<p><a href="${bookmark.href}">${bookmark.title}</a></p>`,
+    url: new URL(bookmark.href),
+    published: bookmark.savedAt,
+    to: bookmark.visibility === "public" ? PUBLIC_COLLECTION : undefined,
+    tags: bookmark.tags.map((tag) =>
+      new Hashtag({
+        href: new URL(
+          `/tags/${encodeURIComponent(normalizeTag(tag))}`,
+          ctx.url,
+        ),
+        name: `#${tag}`,
+      })
+    ),
+  });
+}
+
+async function isFollowerRequest(ctx: RequestContext<void>): Promise<boolean> {
+  const signedKeyOwner = await ctx.getSignedKeyOwner();
+  return signedKeyOwner?.id == null
+    ? false
+    : followerIds.has(signedKeyOwner.id.href);
+}
+
+function firstCursor(items: Bookmark[]): string | null {
+  return items.length < 1 ? null : "0";
+}
+
+function lastCursor(items: Bookmark[]): string | null {
+  if (items.length < 1) return null;
+  return String(Math.floor((items.length - 1) / PAGE_SIZE) * PAGE_SIZE);
+}
+
+function parseCursor(cursor: string): number {
+  const offset = Number.parseInt(cursor, 10);
+  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
+}
+
+function normalizeTag(tag: string): string {
+  return tag.trim().toLowerCase();
+}
+
+async function fetchActivityJson(path: string): Promise<unknown> {
+  const response = await federation.fetch(
+    new Request(new URL(path, "https://example.com"), {
+      headers: { Accept: "application/activity+json" },
+    }),
+    { contextData: undefined },
+  );
+
+  if (!response.ok) {
+    throw new Error(`${path}: ${response.status} ${await response.text()}`);
   }
+  return await response.json();
+}
+
+async function printActivityJson(label: string, path: string): Promise<void> {
+  console.log(`\n## ${label}`);
+  console.log(JSON.stringify(await fetchActivityJson(path), null, 2));
+}
+
+if (import.meta.main) {
+  await printActivityJson("Actor with custom collection links", "/users/alice");
+  await printActivityJson(
+    "Public bookmarks collection",
+    "/users/alice/collections/public",
+  );
+  await printActivityJson(
+    "Public bookmarks first page",
+    "/users/alice/collections/public?cursor=0",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks collection",
+    "/users/alice/collections/tags/activitypub",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks first page",
+    "/users/alice/collections/tags/activitypub?cursor=0",
+  );
+  await printActivityJson(
+    "Followers-only collection requested without a signature",
+    "/users/alice/collections/followers-only",
+  );
+  await printActivityJson(
+    "Followers-only first page requested without a signature",
+    "/users/alice/collections/followers-only?cursor=0",
+  );
 }

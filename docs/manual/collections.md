@@ -1396,11 +1396,16 @@ followers, Fedify allows you to create custom collections for your specific
 needs.  Custom collections can be used to expose any type of ActivityPub
 objects in a paginated manner.
 
+For runnable code that compares several custom collection patterns, see the
+[custom collections example].
+
 There are two types of custom collections you can create:
 
  -  **Collection**: An unordered collection of objects
  -  **Ordered Collection**: An ordered collection of objects where the order
     matters
+
+[custom collections example]: https://github.com/fedify-dev/fedify/tree/main/examples/custom-collections
 
 ### Setting up a custom collection
 
