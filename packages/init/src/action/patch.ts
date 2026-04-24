@@ -19,7 +19,44 @@ import {
 import { getImports, loadFederation, loadLogging } from "./templates.ts";
 import { joinDir, stringifyEnvs } from "./utils.ts";
 
-const jsonsCache = new WeakMap<InitCommandData, Record<string, object>>();
+const jsonsCache = new Map<string, Record<string, object>>();
+
+type JsonConfigData = Pick<
+  InitCommandData,
+  | "dir"
+  | "dryRun"
+  | "env"
+  | "initializer"
+  | "kv"
+  | "mq"
+  | "packageManager"
+  | "testMode"
+>;
+
+export const getJsonsCacheKey = (data: JsonConfigData): string =>
+  JSON.stringify({
+    dir: data.dir,
+    packageManager: data.packageManager,
+    dryRun: data.dryRun,
+    testMode: data.testMode,
+    env: data.env,
+    initializer: {
+      compilerOptions: data.initializer.compilerOptions ?? {},
+      dependencies: data.initializer.dependencies ?? {},
+      devDependencies: data.initializer.devDependencies ?? {},
+      tasks: data.initializer.tasks ?? {},
+    },
+    kv: {
+      dependencies: data.kv.dependencies ?? {},
+      denoUnstable: data.kv.denoUnstable ?? [],
+      devDependencies: data.kv.devDependencies ?? {},
+    },
+    mq: {
+      dependencies: data.mq.dependencies ?? {},
+      denoUnstable: data.mq.denoUnstable ?? [],
+      devDependencies: data.mq.devDependencies ?? {},
+    },
+  });
 
 /**
  * Main function that initializes the project by creating necessary files and configurations.
@@ -102,7 +139,8 @@ const getFiles = async <
 const getJsons = <
   T extends InitCommandData,
 >(data: T): Record<string, object> => {
-  const cached = jsonsCache.get(data);
+  const cacheKey = getJsonsCacheKey(data);
+  const cached = jsonsCache.get(cacheKey);
   if (cached != null) return cached;
 
   const jsons: Record<string, object> = data.packageManager === "deno"
@@ -120,7 +158,7 @@ const getJsons = <
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
-  jsonsCache.set(data, jsons);
+  jsonsCache.set(cacheKey, jsons);
   return jsons;
 };
 

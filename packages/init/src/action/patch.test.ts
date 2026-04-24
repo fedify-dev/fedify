@@ -8,6 +8,7 @@ import type { InitCommandData } from "../types.ts";
 import {
   assertNoGeneratedFileConflicts,
   GeneratedFileConflictError,
+  getJsonsCacheKey,
 } from "./patch.ts";
 
 test("assertNoGeneratedFileConflicts allows unrelated files", async () => {
@@ -47,6 +48,17 @@ test("assertNoGeneratedFileConflicts skips checks without allowNonEmpty", async 
       assertNoGeneratedFileConflicts(createInitData(dir, false))
     );
   });
+});
+
+test("getJsonsCacheKey stays stable across pipeline clones", () => {
+  const data = createInitData("/tmp/example", true);
+  const cloned = {
+    ...data,
+    files: { "src/main.ts": "" },
+    jsons: { "package.json": {} },
+  };
+
+  assert.equal(getJsonsCacheKey(cloned), getJsonsCacheKey(data));
 });
 
 function createInitData(
