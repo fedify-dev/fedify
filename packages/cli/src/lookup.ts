@@ -46,6 +46,7 @@ import {
 import { url as messageUrl } from "@optique/core/message";
 import { path, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
+import { isIP } from "node:net";
 import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
@@ -565,14 +566,14 @@ export function getPrivateUrlCandidate(
     const hostname = url.hostname;
     if (hostname === "localhost") return url;
 
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-      return isValidPublicIPv4Address(hostname) ? null : url;
-    }
-
     const normalized = hostname.startsWith("[") && hostname.endsWith("]")
       ? hostname.slice(1, -1)
       : hostname;
-    if (normalized.includes(":")) {
+    const ipVersion = isIP(normalized);
+    if (ipVersion === 4) {
+      return isValidPublicIPv4Address(normalized) ? null : url;
+    }
+    if (ipVersion === 6) {
       const expanded = expandIPv6Address(normalized);
       return isValidPublicIPv6Address(expanded) ? null : url;
     }
