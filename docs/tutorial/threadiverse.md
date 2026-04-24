@@ -2233,6 +2233,13 @@ sure those communities see every new subscriber and acknowledge it with
 an `Accept(Follow)` activity.  This chapter builds that flow in both
 directions.
 
+> [!TIP]
+> The code blocks in this chapter use a handful of identifiers that are
+> not yet imported in *federation/index.ts*: the `follows` table from
+> `@/db`, and the `Follow` and `Accept` activity classes from
+> `@fedify/vocab`.  Extend the existing import blocks at the top of the
+> file as each new name first shows up, so TypeScript stays happy.
+
 ### The `follows` table and the followers collection
 
 Add a `follows` table to *db/schema.ts*:
