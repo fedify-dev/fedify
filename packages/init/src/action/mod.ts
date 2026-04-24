@@ -12,7 +12,11 @@ import {
   noticeOptions,
   noticePrecommand,
 } from "./notice.ts";
-import { patchFiles, recommendPatchFiles } from "./patch.ts";
+import {
+  assertNoGeneratedFileConflicts,
+  patchFiles,
+  recommendPatchFiles,
+} from "./patch.ts";
 import recommendDependencies from "./recommend.ts";
 import setData from "./set.ts";
 import {
@@ -69,6 +73,7 @@ const handleHydRun = (data: InitCommandData) =>
   pipe(
     data,
     tap(makeDirIfHyd),
+    tap(assertNoGeneratedFileConflicts),
     tap(when(hasCommand, runPrecommand)),
     tap(patchFiles),
     tap(installDependencies),

@@ -1405,8 +1405,11 @@ importers:
         specifier: workspace:^
         version: link:../fedify
       '@nuxt/kit':
-        specifier: ^4.4.0
+        specifier: 'catalog:'
         version: 4.4.2(magicast@0.5.2)
+      '@nuxt/schema':
+        specifier: 'catalog:'
+        version: 4.4.2
       h3:
         specifier: 'catalog:'
         version: 1.15.3
@@ -1417,9 +1420,6 @@ importers:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
-      '@nuxt/schema':
-        specifier: ^4.4.0
-        version: 4.4.2
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1

@@ -7,6 +7,20 @@ import { Redis } from "ioredis";
 
 const dbUrl = process.env.REDIS_URL;
 
+async function disposeMessageQueue(mq: object): Promise<void> {
+  if (Symbol.asyncDispose in mq) {
+    const dispose = mq[Symbol.asyncDispose];
+    if (typeof dispose === "function") {
+      await dispose.call(mq);
+      return;
+    }
+  }
+  if (Symbol.dispose in mq) {
+    const dispose = mq[Symbol.dispose];
+    if (typeof dispose === "function") dispose.call(mq);
+  }
+}
+
 test("RedisMessageQueue", { ignore: dbUrl == null }, () => {
   const channelKey = getRandomKey("channel");
   const queueKey = getRandomKey("queue");
@@ -19,10 +33,10 @@ test("RedisMessageQueue", { ignore: dbUrl == null }, () => {
         queueKey,
         lockKey,
       }),
-    ({ mq1, mq2, controller }) => {
+    async ({ mq1, mq2, controller }) => {
       controller.abort();
-      mq1[Symbol.dispose]();
-      mq2[Symbol.dispose]();
+      await disposeMessageQueue(mq1);
+      await disposeMessageQueue(mq2);
     },
     { testOrderingKey: true },
   );

@@ -10,6 +10,31 @@ import { type Codec, JsonCodec } from "./codec.ts";
 
 const logger = getLogger(["fedify", "redis", "mq"]);
 
+function isRedisClosedError(error: unknown): boolean {
+  return error instanceof Error &&
+    /connection is (already )?closed/i.test(error.message);
+}
+
+async function quitRedisGracefully(redis: Redis | Cluster): Promise<void> {
+  const client = redis as Redis & {
+    readonly status?: string;
+    quit?: () => Promise<unknown>;
+  };
+  if (client.status === "wait" || client.status === "end") {
+    client.disconnect();
+    return;
+  }
+  if (typeof client.quit !== "function") {
+    client.disconnect();
+    return;
+  }
+  try {
+    await client.quit();
+  } catch (error) {
+    if (!isRedisClosedError(error)) throw error;
+  }
+}
+
 /**
  * Options for {@link RedisMessageQueue} class.
  */
@@ -331,7 +356,17 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
 
   [Symbol.dispose](): void {
     clearInterval(this.#loopHandle);
+    this.#loopHandle = undefined;
     this.#redis.disconnect();
     this.#subRedis.disconnect();
+  }
+
+  async [Symbol.asyncDispose](): Promise<void> {
+    clearInterval(this.#loopHandle);
+    this.#loopHandle = undefined;
+    await Promise.all([
+      quitRedisGracefully(this.#redis),
+      quitRedisGracefully(this.#subRedis),
+    ]);
   }
 }

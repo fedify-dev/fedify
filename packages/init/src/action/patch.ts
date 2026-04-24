@@ -1,6 +1,7 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { join as joinPath } from "node:path";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import { formatJson, merge, replaceAll, set } from "../utils.ts";
@@ -17,6 +18,45 @@ import {
 } from "./notice.ts";
 import { getImports, loadFederation, loadLogging } from "./templates.ts";
 import { joinDir, stringifyEnvs } from "./utils.ts";
+
+const jsonsCache = new Map<string, Record<string, object>>();
+
+type JsonConfigData = Pick<
+  InitCommandData,
+  | "dir"
+  | "dryRun"
+  | "env"
+  | "initializer"
+  | "kv"
+  | "mq"
+  | "packageManager"
+  | "testMode"
+>;
+
+export const getJsonsCacheKey = (data: JsonConfigData): string =>
+  JSON.stringify({
+    dir: data.dir,
+    packageManager: data.packageManager,
+    dryRun: data.dryRun,
+    testMode: data.testMode,
+    env: data.env,
+    initializer: {
+      compilerOptions: data.initializer.compilerOptions ?? {},
+      dependencies: data.initializer.dependencies ?? {},
+      devDependencies: data.initializer.devDependencies ?? {},
+      tasks: data.initializer.tasks ?? {},
+    },
+    kv: {
+      dependencies: data.kv.dependencies ?? {},
+      denoUnstable: data.kv.denoUnstable ?? [],
+      devDependencies: data.kv.devDependencies ?? {},
+    },
+    mq: {
+      dependencies: data.mq.dependencies ?? {},
+      denoUnstable: data.mq.denoUnstable ?? [],
+      devDependencies: data.mq.devDependencies ?? {},
+    },
+  });
 
 /**
  * Main function that initializes the project by creating necessary files and configurations.
@@ -42,6 +82,29 @@ export const recommendPatchFiles = (data: InitCommandData) =>
     set("jsons", getJsons),
     recommendFiles,
   );
+
+/**
+ * Verifies that `--allow-non-empty` will not modify files that already
+ * existed before any framework scaffolding command runs.  This only covers
+ * files that Fedify writes itself; framework scaffolders may still reject
+ * unrelated pre-existing files independently.
+ */
+export async function assertNoGeneratedFileConflicts(
+  data: InitCommandData,
+): Promise<void> {
+  if (!data.allowNonEmpty) return;
+  const conflicts = await getExistingGeneratedFiles(data);
+  if (conflicts.length > 0) {
+    throw new GeneratedFileConflictError(conflicts);
+  }
+}
+
+export class GeneratedFileConflictError extends Error {
+  constructor(public readonly conflicts: readonly string[]) {
+    super(formatConflictMessage(conflicts));
+    this.name = "GeneratedFileConflictError";
+  }
+}
 
 /**
  * Generates text-based files (TypeScript, environment files) for the project.
@@ -75,8 +138,12 @@ const getFiles = async <
  */
 const getJsons = <
   T extends InitCommandData,
->(data: T): Record<string, object> =>
-  data.packageManager === "deno"
+>(data: T): Record<string, object> => {
+  const cacheKey = getJsonsCacheKey(data);
+  const cached = jsonsCache.get(cacheKey);
+  if (cached != null) return cached;
+
+  const jsons: Record<string, object> = data.packageManager === "deno"
     ? {
       "deno.json": loadDenoConfig(data).data,
       [devToolConfigs["vscSetDeno"].path]: devToolConfigs["vscSetDeno"].data,
@@ -91,6 +158,53 @@ const getJsons = <
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
+  jsonsCache.set(cacheKey, jsons);
+  return jsons;
+};
+
+/**
+ * Returns only the file paths written directly by Fedify after any framework
+ * scaffolding command finishes.  Files created by
+ * `WebFrameworkInitializer.command` are intentionally excluded.
+ */
+const getGeneratedFilePaths = (data: InitCommandData): string[] => [
+  data.initializer.federationFile,
+  data.initializer.loggingFile,
+  ".env",
+  ...Object.keys(data.initializer.files ?? {}),
+  ...Object.keys(getJsons(data)),
+];
+
+const getExistingGeneratedFiles = async (
+  data: InitCommandData,
+): Promise<string[]> => {
+  const paths = [...new Set(getGeneratedFilePaths(data))];
+  const results = await Promise.all(
+    paths.map(async (path) => {
+      const exists = await pathExists(joinPath(data.dir, path));
+      return exists ? path : null;
+    }),
+  );
+  return results.filter((path): path is string => path != null);
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await access(path);
+    return true;
+  } catch (e) {
+    throwUnlessNotExists(e);
+    return false;
+  }
+};
+
+const formatConflictMessage = (conflicts: readonly string[]): string =>
+  [
+    "Cannot initialize in a non-empty directory because these generated files",
+    "already exist:",
+    ...conflicts.map((path) => ` - ${path}`),
+    "Remove the conflicting files or choose another directory.",
+  ].join("\n");
 
 /**
  * Handles dry-run mode by recommending files to be created without actually

@@ -1,7 +1,11 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/mod.ts"],
+  entry: [
+    "src/mod.ts",
+    "src/runtime/server/middleware.ts",
+    "src/runtime/server/plugin.ts",
+  ],
   dts: true,
   format: ["esm", "cjs"],
   platform: "node",

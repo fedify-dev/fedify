@@ -46,19 +46,18 @@
   },
   "files": [
     "dist/",
-    "src/runtime/",
     "package.json"
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "@nuxt/kit": "^4.4.0",
+    "@nuxt/kit": "catalog:",
+    "@nuxt/schema": "catalog:",
     "h3": "catalog:",
     "nuxt": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
     "@types/node": "catalog:",
-    "@nuxt/schema": "^4.4.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
@@ -67,6 +66,7 @@
     "build": "pnpm --filter @fedify/nuxt... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
+    "pretest": "pnpm build:self",
     "test": "node --experimental-transform-types --test"
   }
 }

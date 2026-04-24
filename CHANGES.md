@@ -148,6 +148,25 @@ To be released.
 
 ### @fedify/init
 
+ -  Added a `--allow-non-empty` option to `fedify init` for automated
+    scaffolding in directories that already contain unrelated files.  The
+    command still fails before making changes if any file that Fedify would
+    generate already exists, avoiding accidental merges or appends.
+    [[#716], [#717]]
+
+ -  Fixed `fedify init` so that a directory containing only a freshly
+    initialized Git repository is treated as empty.  Directories whose Git
+    `HEAD` already resolves to a commit, whose Git metadata contains loose or
+    packed refs, stored objects, an index, or reflogs, or that contain any
+    files besides *.git*, still require the existing non-empty-directory
+    confirmation.  [[#716], [#717]]
+
+ -  Fixed generated *biome.json* files to use Biome 2 configuration syntax,
+    matching the `@biomejs/biome` version that `fedify init` installs.
+    Generated projects now enable import organization through Biome's
+    `assist.actions.source.organizeImports` setting instead of the removed
+    top-level `organizeImports` option.  [[#716], [#717]]
+
  -  Fixed errors when using `fedify init` with certain web framework
     integration packages (Astro, ElysiaJS, Nitro) alongside `@fedify/mysql`.
     Environment variables are now properly loaded at runtime, resolving the
@@ -161,6 +180,8 @@ To be released.
 [#649]: https://github.com/fedify-dev/fedify/issues/649
 [#656]: https://github.com/fedify-dev/fedify/pull/656
 [#675]: https://github.com/fedify-dev/fedify/pull/675
+[#716]: https://github.com/fedify-dev/fedify/issues/716
+[#717]: https://github.com/fedify-dev/fedify/pull/717
 
 ### Docs
 

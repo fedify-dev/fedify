@@ -16,10 +16,11 @@ import { getCwd, getOsType } from "../utils.ts";
  * @param options - Initialization options possibly containing a directory
  * @returns A promise resolving to options with a guaranteed directory
  */
-const fillDir: <T extends { dir?: string }>(
+const fillDir: <T extends { allowNonEmpty: boolean; dir?: string }>(
   options: T,
 ) => Promise<T & { dir: string }> = async (options) => {
   const dir = options.dir ?? await askDir(getCwd());
+  if (options.allowNonEmpty) return { ...options, dir };
   return await askIfNonEmpty(dir)
     ? { ...options, dir }
     : await fillDir(options);

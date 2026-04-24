@@ -11,8 +11,8 @@ import {
 } from "@fxts/core";
 import { getLogger } from "@logtape/logtape";
 import { toMerged } from "es-toolkit";
-import { readFileSync } from "node:fs";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { type Dirent, readFileSync } from "node:fs";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import process from "node:process";
 import metadata from "../deno.json" with { type: "json" };
@@ -27,7 +27,7 @@ import type {
   PackageManagers,
   Runtimes,
 } from "./types.ts";
-import { isNotFoundError } from "./utils.ts";
+import { CommandError, isNotFoundError, runSubCommand } from "./utils.ts";
 
 /** The current `@fedify/init` package version, read from *deno.json*. */
 export const PACKAGE_VERSION = metadata.version;
@@ -191,18 +191,195 @@ const isNotExistsError = (e: unknown) =>
 export const throwUnlessNotExists = throwIf(negate(isNotExistsError));
 
 /**
- * Checks whether a directory is empty or does not exist.
- * Returns `true` if the directory has no entries or does not exist yet.
+ * Checks whether a directory is safe to initialize as an empty project.
+ * Returns `true` if the directory does not exist, has no entries, or only
+ * contains an unborn Git repository created by `git init`.
  */
 export const isDirectoryEmpty = async (
   path: string,
 ): Promise<boolean> => {
   try {
     const files = await readdir(path);
-    return files.length === 0;
+    if (files.length === 0) return true;
+    if (files.length === 1 && files[0] === ".git") {
+      return await isUnbornGitRepository(path);
+    }
+    return false;
   } catch (e) {
     throwUnlessNotExists(e);
     return true;
+  }
+};
+
+const isUnbornGitRepository = async (path: string): Promise<boolean> => {
+  if (await hasGitHeadCommit(path)) return false;
+  return await looksLikeUnbornGitRepository(path);
+};
+
+const hasGitHeadCommit = async (path: string): Promise<boolean> => {
+  try {
+    await runSubCommand([
+      "git",
+      "-C",
+      path,
+      "rev-parse",
+      "--verify",
+      "HEAD^{commit}",
+    ], {});
+    return true;
+  } catch (e) {
+    if (isNotFoundError(e) || e instanceof CommandError) return false;
+    logger.debug(
+      "Failed to resolve Git HEAD in {path}: {error}",
+      { path, error: e },
+    );
+    return false;
+  }
+};
+
+const looksLikeUnbornGitRepository = async (
+  path: string,
+): Promise<boolean> => {
+  const gitDir = joinPath(path, ".git");
+  if (!await isDirectory(gitDir)) return false;
+  if (!await isDirectory(joinPath(gitDir, "objects"))) return false;
+  if (!await isDirectory(joinPath(gitDir, "refs"))) return false;
+
+  const head = await readGitFile(joinPath(gitDir, "HEAD"));
+  if (head == null) return false;
+  if (!isValidHeadRef(head)) return false;
+  if (await hasAnyLooseRef(gitDir)) return false;
+  if (await hasAnyPackedRef(gitDir)) return false;
+  if (await hasAnyObjectFile(gitDir)) return false;
+  if (await hasAnyGitStatePath(gitDir)) return false;
+  return true;
+};
+
+const isValidHeadRef = (head: string): boolean => {
+  const match = head.trim().match(/^ref: (refs\/heads\/\S+)$/);
+  if (match == null) return false;
+  return !match[1].includes("..");
+};
+
+const hasAnyLooseRef = async (gitDir: string): Promise<boolean> =>
+  await hasAnyFile(joinPath(gitDir, "refs"), "Git refs");
+
+const hasAnyObjectFile = async (gitDir: string): Promise<boolean> =>
+  await hasAnyFile(joinPath(gitDir, "objects"), "Git objects");
+
+const hasAnyFile = async (
+  dir: string,
+  description: string,
+): Promise<boolean> => {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to read {description} in {path}: {error}",
+      { description, path: dir, error: e },
+    );
+    return true;
+  }
+
+  for (const entry of entries) {
+    const path = joinPath(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (await hasAnyFile(path, description)) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
+};
+
+const GIT_STATE_PATHS = [
+  "AUTO_MERGE",
+  "BISECT_LOG",
+  "CHERRY_PICK_HEAD",
+  "FETCH_HEAD",
+  "MERGE_HEAD",
+  "MERGE_MODE",
+  "MERGE_MSG",
+  "ORIG_HEAD",
+  "REBASE_HEAD",
+  "REVERT_HEAD",
+  "SQUASH_MSG",
+  "index",
+  "logs",
+  "modules",
+  "rebase-apply",
+  "rebase-merge",
+  "sequencer",
+  "shallow",
+  "worktrees",
+] as const;
+
+const hasAnyGitStatePath = async (gitDir: string): Promise<boolean> => {
+  for (const path of GIT_STATE_PATHS) {
+    if (await pathExists(joinPath(gitDir, path))) return true;
+  }
+  return false;
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path);
+    return true;
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to stat Git state path {path}: {error}",
+      { path, error: e },
+    );
+    return true;
+  }
+};
+
+const hasAnyPackedRef = async (
+  gitDir: string,
+): Promise<boolean> => {
+  let packedRefs: string;
+  try {
+    packedRefs = await readFile(joinPath(gitDir, "packed-refs"), "utf8");
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    logger.debug(
+      "Failed to read Git packed refs in {path}: {error}",
+      { path: gitDir, error: e },
+    );
+    return true;
+  }
+
+  return packedRefs.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#") || trimmed.startsWith("^")) {
+      return false;
+    }
+    return true;
+  });
+};
+
+const readGitFile = async (path: string): Promise<string | null> => {
+  try {
+    return await readFile(path, "utf8");
+  } catch (e) {
+    if (!isNotFoundError(e)) {
+      logger.debug(
+        "Failed to read Git file {path}: {error}",
+        { path, error: e },
+      );
+    }
+    return null;
+  }
+};
+
+const isDirectory = async (path: string): Promise<boolean> => {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
   }
 };
 

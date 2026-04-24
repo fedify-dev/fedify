@@ -1,7 +1,11 @@
 import { test } from "@fedify/fixture";
-import { equal, ok, throws } from "node:assert/strict";
+import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { isAbsolute } from "node:path";
-import { buildContextFactoryResolver, resolveModulePath } from "./module.ts";
+import {
+  buildContextFactoryResolver,
+  resolveModulePath,
+  resolveRuntimeServerPath,
+} from "./module.ts";
 
 test(
   "relative module path must resolve to absolute path",
@@ -44,6 +48,32 @@ test(
       resolveModulePath("my-federation-pkg", aliases, rootDir),
       "my-federation-pkg",
     );
+  },
+);
+
+test(
+  "runtime server files must resolve to compiled JavaScript output",
+  () => {
+    const requestedPaths: string[] = [];
+    const resolver = {
+      resolve(path: string): string {
+        requestedPaths.push(path);
+        return `/package/${path}`;
+      },
+    };
+
+    equal(
+      resolveRuntimeServerPath(resolver, "middleware.js"),
+      "/package/../dist/runtime/server/middleware.js",
+    );
+    equal(
+      resolveRuntimeServerPath(resolver, "plugin.js"),
+      "/package/../dist/runtime/server/plugin.js",
+    );
+    deepEqual(requestedPaths, [
+      "../dist/runtime/server/middleware.js",
+      "../dist/runtime/server/plugin.js",
+    ]);
   },
 );
 

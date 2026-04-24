@@ -5,6 +5,20 @@ import { Buffer } from "node:buffer";
 import { EventEmitter } from "node:events";
 import { RedisMessageQueue } from "@fedify/redis/mq";
 
+async function disposeMessageQueue(mq: object): Promise<void> {
+  if (Symbol.asyncDispose in mq) {
+    const dispose = mq[Symbol.asyncDispose];
+    if (typeof dispose === "function") {
+      await dispose.call(mq);
+      return;
+    }
+  }
+  if (Symbol.dispose in mq) {
+    const dispose = mq[Symbol.dispose];
+    if (typeof dispose === "function") dispose.call(mq);
+  }
+}
+
 /**
  * Mock Redis client that allows manual control of subscribe callback timing.
  *
@@ -277,6 +291,6 @@ test("Regression: RedisMessageQueue handler attached before yield", async () => 
     controller.abort();
     await listening;
   } finally {
-    mq[Symbol.dispose]();
+    await disposeMessageQueue(mq);
   }
 });
