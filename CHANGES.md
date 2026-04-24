@@ -227,7 +227,7 @@ To be released.
 
  -  Added a custom collections cookbook example for bookmark-like data,
     demonstrating cursor pagination, URI-template filtering, collection
-    counters, actor collection links, and requester-aware collections using
+    counters, actor stream links, and requester-aware collections using
     `ctx.getSignedKeyOwner()`.  [[#694], [#722]]
 
 [*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog

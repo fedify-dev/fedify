@@ -14,8 +14,8 @@ The script demonstrates three patterns:
  -  `/users/alice/collections/tags/{tag}`: a parameterized collection that
     filters public bookmarks using a URI template value.
  -  `/users/alice/collections/followers-only`: a collection whose result
-    depends on the signed requester.  It calls `ctx.getSignedKeyOwner()` and
-    returns an empty collection to unsigned or non-follower requests.
+    depends on the signed requester.  It uses `.authorize()` with
+    `ctx.getSignedKeyOwner()` so unsigned or non-follower requests are rejected.
 
 Run it from this directory:
 

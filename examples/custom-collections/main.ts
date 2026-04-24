@@ -6,9 +6,9 @@ import {
 import {
   Article,
   Hashtag,
-  Link,
   Person,
   PUBLIC_COLLECTION,
+  type Recipient,
 } from "@fedify/vocab";
 
 const OWNER = "alice";
@@ -95,25 +95,33 @@ federation
       name: "Alice's bookmarks",
       summary: "A single-user bookmark log with custom collection examples.",
       url: new URL(`/users/${identifier}`, ctx.url),
-      attachments: [
-        collectionLink(
-          ctx.getCollectionUri(PUBLIC_BOOKMARKS, { identifier }),
-          "Public bookmarks",
-        ),
-        collectionLink(
-          ctx.getCollectionUri(TAGGED_BOOKMARKS, {
-            identifier,
-            tag: "activitypub",
-          }),
-          "ActivityPub bookmarks",
-        ),
-        collectionLink(
-          ctx.getCollectionUri(FOLLOWERS_ONLY_BOOKMARKS, { identifier }),
-          "Followers-only bookmarks",
-        ),
+      followers: ctx.getFollowersUri(identifier),
+      streams: [
+        ctx.getCollectionUri(PUBLIC_BOOKMARKS, { identifier }),
+        ctx.getCollectionUri(TAGGED_BOOKMARKS, {
+          identifier,
+          tag: "activitypub",
+        }),
+        ctx.getCollectionUri(FOLLOWERS_ONLY_BOOKMARKS, { identifier }),
       ],
     });
   });
+
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== OWNER) return null;
+
+    const items: Recipient[] = Array.from(followerIds, (id) => {
+      const actorId = new URL(id);
+      return {
+        id: actorId,
+        inboxId: new URL(`${actorId.pathname}/inbox`, actorId),
+      };
+    });
+    return { items };
+  },
+);
 
 federation
   .setOrderedCollectionDispatcher(
@@ -176,12 +184,7 @@ federation
     FOLLOWERS_ONLY_BOOKMARKS,
     Article,
     "/users/{identifier}/collections/followers-only",
-    async (ctx, values, cursor) => {
-      if (values.identifier !== OWNER) return null;
-      if (!await isFollowerRequest(ctx)) {
-        return { items: [], nextCursor: null, prevCursor: null };
-      }
-
+    (ctx, _values, cursor) => {
       return collectionBookmarks(
         ctx,
         followersOnlyBookmarks(),
@@ -189,30 +192,21 @@ federation
       );
     },
   )
-  .setCounter(async (ctx, values) => {
+  .setCounter((_ctx, values) => {
     if (values.identifier !== OWNER) return null;
-    return await isFollowerRequest(ctx) ? followersOnlyBookmarks().length : 0;
+    return followersOnlyBookmarks().length;
   })
-  .setFirstCursor(async (ctx, values) => {
-    if (values.identifier !== OWNER || !await isFollowerRequest(ctx)) {
-      return null;
-    }
+  .setFirstCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
     return firstCursor(followersOnlyBookmarks());
   })
-  .setLastCursor(async (ctx, values) => {
-    if (values.identifier !== OWNER || !await isFollowerRequest(ctx)) {
-      return null;
-    }
+  .setLastCursor((_ctx, values) => {
+    if (values.identifier !== OWNER) return null;
     return lastCursor(followersOnlyBookmarks());
+  })
+  .authorize(async (ctx, values) => {
+    return values.identifier === OWNER && await isFollowerRequest(ctx);
   });
-
-function collectionLink(href: URL, name: string): Link {
-  return new Link({
-    href,
-    rel: "collection",
-    name,
-  });
-}
 
 function publicBookmarks(): Bookmark[] {
   return sortBookmarks(
@@ -270,6 +264,10 @@ function pageBookmarks(
   prevCursor: string | null;
 } {
   const offset = parseCursor(cursor);
+  if (offset == null || offset >= Math.max(items.length, 1)) {
+    return { items: [], nextCursor: null, prevCursor: null };
+  }
+
   return {
     items: items
       .slice(offset, offset + PAGE_SIZE)
@@ -293,13 +291,15 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
     }</a></p>`,
     url: bookmarkUrl,
     published: bookmark.savedAt,
-    to: bookmark.visibility === "public" ? PUBLIC_COLLECTION : undefined,
+    to: bookmark.visibility === "public"
+      ? PUBLIC_COLLECTION
+      : ctx.getFollowersUri(OWNER),
     tags: bookmark.tags.map((tag) =>
       new Hashtag({
-        href: new URL(
-          `/tags/${encodeURIComponent(normalizeTag(tag))}`,
-          ctx.url,
-        ),
+        href: ctx.getCollectionUri(TAGGED_BOOKMARKS, {
+          identifier: OWNER,
+          tag: normalizeTag(tag),
+        }),
         name: `#${tag}`,
       })
     ),
@@ -331,9 +331,11 @@ function lastCursor(items: Bookmark[]): string | null {
   return String(Math.floor((items.length - 1) / PAGE_SIZE) * PAGE_SIZE);
 }
 
-function parseCursor(cursor: string): number {
-  const offset = Number.parseInt(cursor, 10);
-  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
+function parseCursor(cursor: string): number | null {
+  const offset = Number(cursor);
+  return Number.isSafeInteger(offset) && offset >= 0 && offset % PAGE_SIZE === 0
+    ? offset
+    : null;
 }
 
 function normalizeTag(tag: string): string {
@@ -354,9 +356,28 @@ async function fetchActivityJson(path: string): Promise<unknown> {
   return await response.json();
 }
 
+async function fetchStatus(path: string): Promise<number> {
+  const response = await federation.fetch(
+    new Request(new URL(path, "https://example.com"), {
+      headers: { Accept: "application/activity+json" },
+    }),
+    { contextData: undefined },
+  );
+
+  return response.status;
+}
+
 async function printActivityJson(label: string, path: string): Promise<void> {
   console.log(`\n## ${label}`);
   console.log(JSON.stringify(await fetchActivityJson(path), null, 2));
+}
+
+async function printActivityStatus(
+  label: string,
+  path: string,
+): Promise<void> {
+  console.log(`\n## ${label}`);
+  console.log(await fetchStatus(path));
 }
 
 if (import.meta.main) {
@@ -377,11 +398,11 @@ if (import.meta.main) {
     "Tag-filtered ActivityPub bookmarks first page",
     "/users/alice/collections/tags/activitypub?cursor=0",
   );
-  await printActivityJson(
+  await printActivityStatus(
     "Followers-only collection requested without a signature",
     "/users/alice/collections/followers-only",
   );
-  await printActivityJson(
+  await printActivityStatus(
     "Followers-only first page requested without a signature",
     "/users/alice/collections/followers-only?cursor=0",
   );
