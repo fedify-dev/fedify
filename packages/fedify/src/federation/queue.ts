@@ -30,6 +30,7 @@ export interface FanoutMessage {
   readonly activityType: string;
   readonly collectionSync?: string;
   readonly orderingKey?: string;
+  readonly normalizeExistingProofs?: boolean;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 
