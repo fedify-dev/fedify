@@ -16,6 +16,8 @@ const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = new Set(
   Object.keys(preloadedContexts),
 );
 
+assertPreloadedAttachmentContextInvariant();
+
 // Keep the traversal bounded for adversarial JSON-LD passed through proof
 // verification fallback paths.
 const MAX_TRAVERSAL_DEPTH = 64;
@@ -28,6 +30,37 @@ function isJsonLdListObject(value: unknown): boolean {
 function isJsonLdValueObject(value: unknown): boolean {
   return typeof value === "object" && value != null &&
     Object.hasOwn(value, "@value");
+}
+
+function* getContextObjects(value: unknown): Iterable<Record<string, unknown>> {
+  if (Array.isArray(value)) {
+    for (const item of value) yield* getContextObjects(item);
+    return;
+  }
+  if (typeof value === "object" && value != null) {
+    yield value as Record<string, unknown>;
+  }
+}
+
+function isActivityStreamsAttachmentTerm(value: unknown): boolean {
+  return typeof value === "object" && value != null &&
+    (value as Record<string, unknown>)["@id"] === "as:attachment" &&
+    (value as Record<string, unknown>)["@type"] === "@id";
+}
+
+function assertPreloadedAttachmentContextInvariant(): void {
+  for (const [url, document] of Object.entries(preloadedContexts)) {
+    if (typeof document !== "object" || document == null) continue;
+    const context = (document as Record<string, unknown>)["@context"];
+    for (const contextObject of getContextObjects(context)) {
+      if (!Object.hasOwn(contextObject, "attachment")) continue;
+      if (isActivityStreamsAttachmentTerm(contextObject.attachment)) continue;
+      throw new TypeError(
+        "Preloaded JSON-LD context " + url +
+          " redefines the `attachment` term incompatibly.",
+      );
+    }
+  }
 }
 
 /**
@@ -97,6 +130,7 @@ function hasNestedContext(value: unknown, depth: number = 0): boolean {
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record)) {
     if (key === "@context") return true;
+    if (key === "@value" && isJsonLdValueObject(value)) continue;
     if (hasNestedContext(record[key], depth + 1)) return true;
   }
   return false;

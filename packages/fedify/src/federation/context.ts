@@ -911,7 +911,7 @@ export interface SendActivityOptions {
    * locally with `signObject()` or `createProof()`, so the emitted
    * compact JSON-LD matches the bytes covered by the proof.
    *
-   * @since 2.0.0
+   * @since 2.2.0
    */
   readonly normalizeExistingProofs?: boolean;
 

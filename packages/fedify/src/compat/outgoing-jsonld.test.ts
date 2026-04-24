@@ -84,6 +84,9 @@ test("normalizeAttachmentArrays() does not traverse JSON-LD value payloads", asy
     content: {
       "@type": "@json",
       "@value": {
+        "@context": {
+          attachment: "https://example.com/custom-attachment",
+        },
         attachment: "https://example.com/metadata",
       },
     },
@@ -95,6 +98,9 @@ test("normalizeAttachmentArrays() does not traverse JSON-LD value payloads", asy
   assertEquals(output.content, {
     "@type": "@json",
     "@value": {
+      "@context": {
+        attachment: "https://example.com/custom-attachment",
+      },
       attachment: "https://example.com/metadata",
     },
   });

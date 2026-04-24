@@ -3946,6 +3946,70 @@ test("ContextImpl.sendActivity()", async (t) => {
 
   queue.clear();
 
+  await t.step(
+    'fanout: "force" preserves pre-signed proof normalization',
+    async () => {
+      const ctxForProof = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
+      });
+      const actorEdKey = (await ctxForProof.getActorKeyPairs("1")).find((key) =>
+        key.privateKey.algorithm.name === "Ed25519"
+      );
+      assert(actorEdKey != null);
+      assert(actorEdKey.multikey.id != null);
+      const signedWithNormalizedProof = await signObject(
+        new vocab.Create({
+          id: new URL("https://example.com/activity/signed-attachment-fanout"),
+          actor: ctxForProof.getActorUri("1"),
+          object: new vocab.Note({
+            id: new URL("https://example.com/note/signed-attachment-fanout"),
+            attachments: [
+              new vocab.Document({
+                mediaType: "image/png",
+                url: new URL("https://example.com/signed-fanout-image.png"),
+              }),
+            ],
+          }),
+        }),
+        actorEdKey.privateKey,
+        actorEdKey.multikey.id,
+        { contextLoader: documentLoader },
+      );
+      await ctx2.sendActivity(
+        [{ privateKey: actorEdKey.privateKey, keyId: actorEdKey.multikey.id }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        signedWithNormalizedProof,
+        { fanout: "force", normalizeExistingProofs: true },
+      );
+      assertEquals(queue.messages.length, 1);
+      assert(queue.messages[0].type === "fanout");
+      const fanoutMsg = queue.messages[0];
+      assertEquals(fanoutMsg.normalizeExistingProofs, true);
+
+      queue.clear();
+      await federation2.processQueuedTask(undefined, fanoutMsg);
+      assertEquals(queue.messages.length, 1);
+      const outboxMsg = queue.messages[0] as Message;
+      assert(outboxMsg.type === "outbox");
+
+      verified = null;
+      await federation2.processQueuedTask(undefined, outboxMsg);
+      assertEquals(verified, ["proof"]);
+      const postedSigned = await request?.json() as Record<string, unknown>;
+      const postedSignedObject = postedSigned.object as Record<string, unknown>;
+      assertEquals(Array.isArray(postedSignedObject.attachment), true);
+    },
+  );
+
+  queue.clear();
+
   await t.step('fanout: "skip"', async () => {
     const activity = new vocab.Create({
       id: new URL("https://example.com/activity/1"),
