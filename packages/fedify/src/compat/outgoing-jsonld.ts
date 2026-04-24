@@ -1,6 +1,7 @@
 import { type DocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
+import { preloadedOnlyDocumentLoader } from "./preloaded-context-loader.ts";
 import { normalizePublicAudience } from "./public-audience.ts";
 
 const logger = getLogger(["fedify", "compat", "outgoing-jsonld"]);
@@ -18,21 +19,6 @@ const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = new Set(
 // Keep the traversal bounded for adversarial JSON-LD passed through proof
 // verification fallback paths.
 const MAX_TRAVERSAL_DEPTH = 64;
-
-const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
-  if (Object.hasOwn(preloadedContexts, url)) {
-    return Promise.resolve({
-      contextUrl: null,
-      documentUrl: url,
-      document: preloadedContexts[url],
-    });
-  }
-  return Promise.reject(
-    new Error(
-      "Refusing to fetch a non-preloaded JSON-LD context: " + url,
-    ),
-  );
-};
 
 function isJsonLdListObject(value: unknown): boolean {
   return typeof value === "object" && value != null &&
@@ -159,6 +145,31 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
   return true;
 }
 
+function getLogSafeJsonLdMetadata(jsonLd: unknown): Record<string, unknown> {
+  if (typeof jsonLd !== "object" || jsonLd == null) return {};
+  const record = jsonLd as Record<string, unknown>;
+  const context = record["@context"];
+  return {
+    id: typeof record.id === "string"
+      ? record.id
+      : typeof record["@id"] === "string"
+      ? record["@id"]
+      : undefined,
+    type: typeof record.type === "string"
+      ? record.type
+      : typeof record["@type"] === "string"
+      ? record["@type"]
+      : undefined,
+    context: typeof context === "string"
+      ? context
+      : Array.isArray(context)
+      ? context.filter((entry) => typeof entry === "string").slice(0, 4)
+      : context == null
+      ? undefined
+      : "[inline context]",
+  };
+}
+
 /**
  * Ensures ActivityStreams attachment properties are represented as arrays
  * when doing so preserves the JSON-LD semantics.
@@ -167,6 +178,13 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
  * default.  Some ActivityPub implementations, Pixelfed among them, parse
  * `attachment` as a plain JSON array rather than a JSON-LD property and reject
  * otherwise valid objects whose single attachment is emitted as a scalar.
+ *
+ * When no `contextLoader` is supplied, the helper falls back to a restricted
+ * loader that resolves only Fedify's preloaded JSON-LD contexts and rejects
+ * every other URL without network access.  Documents with custom, inline, or
+ * otherwise uncached contexts should pass a real `contextLoader` if they need
+ * the semantic-preservation check to succeed; otherwise canonicalization
+ * failures leave the original document unchanged.
  */
 export async function normalizeAttachmentArrays(
   jsonLd: unknown,
@@ -199,7 +217,9 @@ export async function normalizeAttachmentArrays(
       "Wrapping scalar attachment values in arrays would change the " +
         "canonical form of the JSON-LD document; leaving it unchanged.  " +
         "This usually means the active JSON-LD context redefines the " +
-        "`attachment` term.",
+        "`attachment` term.  Document: {id}; type: {type}; context: " +
+        "{context}.",
+      getLogSafeJsonLdMetadata(jsonLd),
     );
   } catch (error) {
     logger.debug(

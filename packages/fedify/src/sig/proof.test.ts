@@ -525,13 +525,13 @@ test("verifyProof()", async () => {
   // normalizeOutgoingActivityJsonLd() must not hand an attacker-controlled
   // `@context` URL to a network-capable document loader.  The attacker
   // input below would otherwise take the canonicalization path (its
-  // `@context` is not drawn entirely from Fedify's preloaded set), but
-  // because we do not pass `contextLoader`, normalizeOutgoingActivityJsonLd()
-  // falls back to the internal preloaded-only loader, which rejects
-  // the attacker URL; canonicalization errors out and the normalized
-  // candidate is dropped.  verify then tries the on-wire form against
-  // a proof that was signed over a different activity and returns
-  // null cleanly without any network request.
+  // `@context` is not drawn entirely from Fedify's preloaded set).
+  // verifyProof() deliberately does not pass its own `contextLoader` to
+  // normalizeOutgoingActivityJsonLd(), so that helper falls back to the
+  // internal preloaded-only loader, rejects the attacker URL, and drops
+  // the normalized candidate.  verify then tries the on-wire form against
+  // a proof that was signed over a different activity and returns null
+  // cleanly without any network request.
   const attackerInput = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
@@ -548,13 +548,19 @@ test("verifyProof()", async () => {
       to: "as:Public",
     },
   };
+  const contextLoaderCalls: string[] = [];
   assertEquals(
     await verifyProof(attackerInput, proof, {
+      contextLoader: async (url) => {
+        contextLoaderCalls.push(url);
+        return await mockDocumentLoader(url);
+      },
       documentLoader: mockDocumentLoader,
       keyCache: options.keyCache,
     }),
     null,
   );
+  assertFalse(contextLoaderCalls.includes("https://attacker.example/ctx"));
 });
 
 test("verifyObject()", async () => {

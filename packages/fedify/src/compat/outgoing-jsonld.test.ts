@@ -1,6 +1,7 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Create, Document, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
+import { assertStrictEquals } from "@std/assert/assert-strict-equals";
 import {
   normalizeAttachmentArrays,
   normalizeOutgoingActivityJsonLd,
@@ -190,7 +191,7 @@ test("normalizeAttachmentArrays() stops before blowing the stack on pathological
     object: deep,
   };
   const output = await normalizeAttachmentArrays(input);
-  assertEquals(typeof output, "object");
+  assertStrictEquals(output, input);
 });
 
 test("normalizeAttachmentArrays() skips canonicalization for pathological nesting", async () => {

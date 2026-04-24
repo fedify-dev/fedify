@@ -379,12 +379,12 @@ async function verifyProofInternal(
   // Try the on-wire form first.  Only if that fails do we fall back to
   // Fedify's outgoing JSON-LD compatibility form so that signatures created
   // by `createProof` (which signs the normalized bytes) still verify when the
-  // caller passes the default `toJsonLd({ format: "compact" })` output.  The
-  // public-audience workaround inside `normalizeOutgoingActivityJsonLd()`
-  // defaults to a preloaded-only document loader when `options.contextLoader`
-  // is omitted, so the fallback is safe to run on inbound, potentially
-  // adversarial JSON-LD: an attacker-supplied `@context` URL cannot steer
-  // canonicalization into a network fetch.
+  // caller passes the default `toJsonLd({ format: "compact" })` output.
+  //
+  // This fallback must stay on normalizeOutgoingActivityJsonLd()'s
+  // preloaded-only default loader: it runs on inbound, potentially adversarial
+  // JSON-LD, and must not let attacker-supplied `@context` URLs steer
+  // canonicalization into a network fetch through `options.contextLoader`.
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
@@ -451,10 +451,10 @@ async function verifyProofInternal(
     );
   };
   if (await verifyCandidate(msg)) return publicKey;
-  const normalized = await normalizeOutgoingActivityJsonLd(
-    msg,
-    options.contextLoader,
-  );
+  // This fallback runs on inbound, attacker-controlled JSON-LD.  Keep it on
+  // normalizeOutgoingActivityJsonLd()'s restricted fallback loader so custom
+  // `@context` values cannot trigger network fetches here.
+  const normalized = await normalizeOutgoingActivityJsonLd(msg);
   if (normalized !== msg && await verifyCandidate(normalized)) {
     return publicKey;
   }
