@@ -11,7 +11,7 @@ import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
-import { normalizePublicAudience } from "../compat/public-audience.ts";
+import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import {
   fetchKey,
   type FetchKeyResult,
@@ -132,7 +132,10 @@ export async function createProof(
     contextLoader,
     context,
   });
-  compactMsg = await normalizePublicAudience(compactMsg, contextLoader);
+  compactMsg = await normalizeOutgoingActivityJsonLd(
+    compactMsg,
+    contextLoader,
+  );
   const msgCanon = serialize(compactMsg);
   const encoder = new TextEncoder();
   const msgBytes = encoder.encode(msgCanon);
@@ -373,17 +376,20 @@ async function verifyProofInternal(
   if ("https://w3id.org/security#proof" in msg) {
     delete msg["https://w3id.org/security#proof"];
   }
-  // Try the on-wire form first, then fall back to the public-audience
-  // normalized form so that signatures created by `createProof` (which
+  // Try the on-wire form first, then fall back to Fedify's outgoing JSON-LD
+  // compatibility form so that signatures created by `createProof` (which
   // signs the normalized bytes) still verify when the caller passes the
-  // default `toJsonLd({ format: "compact" })` output that still carries
-  // the `as:Public` CURIE.  `normalizePublicAudience()` defaults to a
-  // preloaded-only document loader when `options.contextLoader` is
-  // omitted, so the normalization attempt is safe to run on inbound,
-  // potentially adversarial JSON-LD: an attacker-supplied `@context`
-  // URL cannot steer canonicalization into a network fetch.
+  // default `toJsonLd({ format: "compact" })` output.  The public-audience
+  // workaround inside `normalizeOutgoingActivityJsonLd()` defaults to a
+  // preloaded-only document loader when `options.contextLoader` is omitted,
+  // so the normalization attempt is safe to run on inbound, potentially
+  // adversarial JSON-LD: an attacker-supplied `@context` URL cannot steer
+  // canonicalization into a network fetch.
   const candidates: unknown[] = [msg];
-  const normalized = await normalizePublicAudience(msg, options.contextLoader);
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    msg,
+    options.contextLoader,
+  );
   if (normalized !== msg) candidates.push(normalized);
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {

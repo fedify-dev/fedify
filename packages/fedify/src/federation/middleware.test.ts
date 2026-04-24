@@ -2899,6 +2899,36 @@ test("FederationImpl.sendActivity()", async (t) => {
     await federation.sendActivity(
       [{ privateKey: rsaPrivateKey3, keyId: rsaPublicKey3.id! }],
       inboxes,
+      new vocab.Create({
+        id: new URL("https://example.com/activity/attachment"),
+        actor: new URL("https://example.com/person2"),
+        object: new vocab.Note({
+          id: new URL("https://example.com/note/attachment"),
+          attachments: [
+            new vocab.Document({
+              mediaType: "image/png",
+              url: new URL("https://example.com/image.png"),
+            }),
+          ],
+        }),
+      }),
+      { context },
+    );
+    assertEquals(verified, ["ld", "http"]);
+    const postedWithAttachment = await request?.json() as Record<
+      string,
+      unknown
+    >;
+    const postedObject = postedWithAttachment.object as Record<
+      string,
+      unknown
+    >;
+    assertEquals(Array.isArray(postedObject.attachment), true);
+
+    verified = null;
+    await federation.sendActivity(
+      [{ privateKey: rsaPrivateKey3, keyId: rsaPublicKey3.id! }],
+      inboxes,
       activity.clone({
         actor: new URL("https://example.com/person2"),
       }),
