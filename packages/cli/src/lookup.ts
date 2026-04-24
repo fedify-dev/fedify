@@ -14,8 +14,10 @@ import {
 } from "@fedify/vocab";
 import {
   type DocumentLoader,
+  expandIPv6Address,
+  isValidPublicIPv4Address,
+  isValidPublicIPv6Address,
   UrlError,
-  validatePublicUrl,
 } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
@@ -553,27 +555,38 @@ function isPrivateAddressError(error: unknown): boolean {
   );
 }
 
-async function getPrivateUrlCandidate(candidate: unknown): Promise<URL | null> {
+export function getPrivateUrlCandidate(
+  candidate: unknown,
+): URL | null {
   if (typeof candidate !== "string" && !(candidate instanceof URL)) return null;
 
   try {
     const url = new URL(candidate);
-    try {
-      await validatePublicUrl(url.href);
-      return null;
-    } catch (validationError) {
-      return isPrivateAddressError(validationError) ? url : null;
+    const hostname = url.hostname;
+    if (hostname === "localhost") return url;
+
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return isValidPublicIPv4Address(hostname) ? null : url;
     }
+
+    const normalized = hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
+    if (normalized.includes(":")) {
+      const expanded = expandIPv6Address(normalized);
+      return isValidPublicIPv6Address(expanded) ? null : url;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-async function isPrivateAddressTarget(target: string): Promise<boolean> {
-  return await getPrivateUrlCandidate(target) != null;
+function isPrivateAddressTarget(target: string): boolean {
+  return getPrivateUrlCandidate(target) != null;
 }
 
-async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
+function getPrivateContextUrl(error: unknown): URL | null {
   // This detection intentionally depends on jsonld's current error shape:
   // name === "jsonld.InvalidUrl", the "valid JSON-LD object" substring, and
   // a trailing `URL: "..."` segment all at once. If jsonld changes those
@@ -592,14 +605,13 @@ async function getPrivateContextUrl(error: unknown): Promise<URL | null> {
     details?: { url?: unknown };
     url?: unknown;
   };
-  const structuredUrl =
-    await getPrivateUrlCandidate(structuredError.details?.url) ??
-      await getPrivateUrlCandidate(structuredError.url);
+  const structuredUrl = getPrivateUrlCandidate(structuredError.details?.url) ??
+    getPrivateUrlCandidate(structuredError.url);
   if (structuredUrl != null) return structuredUrl;
 
   const match = errorMessage.match(/URL:\s*"([^"]+)"/);
   if (match == null) return null;
-  return await getPrivateUrlCandidate(match[1]);
+  return getPrivateUrlCandidate(match[1]);
 }
 
 function printRecursivePrivateAddressHint(): void {
@@ -1098,7 +1110,7 @@ export async function runLookup(
           );
           if (
             !command.allowPrivateAddress &&
-            await isPrivateAddressTarget(error.target)
+            isPrivateAddressTarget(error.target)
           ) {
             printRecursivePrivateAddressHint();
           } else if (authLoader == null) {
@@ -1110,7 +1122,7 @@ export async function runLookup(
           }
         } else {
           spinner.fail("Failed to recursively fetch object.");
-          const privateContextUrl = await getPrivateContextUrl(error);
+          const privateContextUrl = getPrivateContextUrl(error);
           if (privateContextUrl != null) {
             printRecursivePrivateContextHint(privateContextUrl);
             await finalizeAndExit(1);

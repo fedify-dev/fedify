@@ -22,6 +22,7 @@ import {
   collectRecursiveObjects,
   createTimeoutSignal,
   getLookupFailureHint,
+  getPrivateUrlCandidate,
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
@@ -766,6 +767,25 @@ test("getLookupFailureHint - suggests authorized-fetch for non-URL errors", () =
   assert.equal(
     getLookupFailureHint(new Error("401 Unauthorized")),
     "authorized-fetch",
+  );
+});
+
+test("getPrivateUrlCandidate - detects obvious private hosts without DNS", () => {
+  assert.equal(
+    getPrivateUrlCandidate("http://localhost:8080/object")?.href,
+    "http://localhost:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("http://127.0.0.1:8080/object")?.href,
+    "http://127.0.0.1:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("http://[::1]:8080/object")?.href,
+    "http://[::1]:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("https://example.com/object"),
+    null,
   );
 });
 
