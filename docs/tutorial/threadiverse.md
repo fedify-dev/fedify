@@ -1256,7 +1256,7 @@ to show `@yourusername` and a *Log out* button:
 ![Screenshot: the home page after logging in](./threadiverse/home-logged-in.png)
 
 Clicking *Log out* submits the logout action, which deletes the session
-row and clears the cookie, and the nav bar flips back to *Log in / Sign
+row and clears the cookie, and the nav bar flips back to *Log in/Sign
 up*.
 
 > [!TIP]
@@ -3524,7 +3524,7 @@ Two important bits:
     followers collection as a `cc` keeps the activity's audience
     consistent with how we addressed threads and replies.
 
-### Inbox: `Like` / `Dislike` handlers with re-`Announce`
+### Inbox: `Like`/`Dislike` handlers with re-`Announce`
 
 The community side does the same pattern as threads and replies: upsert
 the vote, then re-Announce if the community is local.  Both Like and
@@ -3608,7 +3608,7 @@ async function handleVote(
 ~~~~
 
 There's no new inbox plumbing for subscribers: the `Announce` listener
-we already have `routeActivity`s the inner `Like` / `Dislike` right
+we already have `routeActivity`s the inner `Like`/`Dislike` right
 back through this same handler, and `handleVote` short-circuits the
 re-Announce branch when the community is remote.  One function, two
 directions.
@@ -4018,8 +4018,8 @@ in place:
     small: give `threads` a nullable `link_url` column, render it in
     the thread card, and set `Page.url` when federating.  No new
     activity types are required.
- -  *Editing and deletion.*  `Update(Page)` / `Update(Note)` and
-    `Delete(Page)` / `Delete(Note)` with `Tombstone` substitutes.
+ -  *Editing and deletion.*  `Update(Page)`/`Update(Note)` and
+    `Delete(Page)`/`Delete(Note)` with `Tombstone` substitutes.
     The handlers look just like the Create handler, differing only
     in what DB row they mutate.
  -  *Local community index.*  A `/communities` page that lists
@@ -4029,13 +4029,13 @@ in place:
     `SUM(CASE kind WHEN 'Like' THEN 1 ELSE -1 END)` tally from
     [Votes (`Like` and `Dislike`)](#votes-like-and-dislike) as
     `score`, and sort feeds by `score * decay(created_at)` for the
-    Lemmy *Active* / *Hot* formulas.
+    Lemmy *Active*/*Hot* formulas.
  -  *Persistent federation state.*  `fedify init` set us up with
     `MemoryKvStore` + `InProcessMessageQueue`.  In production you'll
     want persistent versions so activity retries survive restarts;
     swap both in *federation/index.ts* for `PostgresKvStore` /
     `PostgresMessageQueue` from [`@fedify/postgres`], or
-    `SqliteKvStore` / `SqliteMessageQueue` from [`@fedify/sqlite`].
+    `SqliteKvStore`/`SqliteMessageQueue` from [`@fedify/sqlite`].
  -  *PostgreSQL for application data.*  Drizzle ORM's SQLite and
     PostgreSQL drivers share most of the schema vocabulary, so
     moving from `drizzle-orm/better-sqlite3` to
