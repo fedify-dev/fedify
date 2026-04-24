@@ -42,12 +42,29 @@ To be released.
     `getAuthenticatedDocumentLoader()` now also respects
     `GetAuthenticatedDocumentLoaderOptions.maxRedirection`.
 
+ -  Improved interoperability with threadiverse software by serializing the
+    public audience as the full `https://www.w3.org/ns/activitystreams#Public`
+    URI in outgoing activities' `to`, `cc`, `bto`, `bcc`, and `audience`
+    fields, instead of the compacted `as:Public` or `Public` CURIEs that
+    JSON-LD compaction would otherwise produce.  Some ActivityPub
+    implementations, [Lemmy] included, match those fields as plain URLs
+    without JSON-LD expansion and would silently drop activities carrying
+    the CURIE form; see [LemmyNet/lemmy#6465].  The rewrite is gated on a
+    URDNA2015 canonical-form equivalence check, so an application-defined
+    `@context` that redefines the `as:` prefix or the bare `Public` term
+    is preserved as is.  The rewrite is also applied before
+    `eddsa-jcs-2022` Object Integrity Proof signing so the signed bytes
+    match what is sent on the wire.  [[#710]]
+
 [Agent Skills]: https://agentskills.io/
 [skills-npm]: https://github.com/antfu/skills-npm
+[Lemmy]: https://join-lemmy.org/
+[LemmyNet/lemmy#6465]: https://github.com/LemmyNet/lemmy/issues/6465
 [#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680
 [#688]: https://github.com/fedify-dev/fedify/pull/688
+[#710]: https://github.com/fedify-dev/fedify/pull/710
 [#711]: https://github.com/fedify-dev/fedify/issues/711
 [#712]: https://github.com/fedify-dev/fedify/pull/712
 
@@ -192,11 +209,23 @@ To be released.
     `Create`/`Update`/`Delete(Note)` inbox activities as comments.
     [[#691], [#695]]
 
+ -  Added a new tutorial, [*Building a threadiverse community platform*], that
+    walks through building a Lemmy-style community server with Fedify and
+    Next.js.  Where the existing [*Creating your own federated microblog*]
+    tutorial is actor- and timeline-centric, this one is community-centric: it
+    models communities as `Group` actors, threads as `Page` objects wrapped in
+    `Create`, replies as `Note` objects, and the community-side `Announce`
+    redistribution that threadiverse software (Lemmy, Mbin, NodeBB) uses to fan
+    activity out to every subscriber.  [[#704], [#710]]
+
 [*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog
 [Astro]: https://astro.build/
 [Bun]: https://bun.sh/
+[*Building a threadiverse community platform*]: https://fedify.dev/tutorial/threadiverse
+[*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
 [#691]: https://github.com/fedify-dev/fedify/issues/691
 [#695]: https://github.com/fedify-dev/fedify/pull/695
+[#704]: https://github.com/fedify-dev/fedify/issues/704
 
 
 Version 2.1.10

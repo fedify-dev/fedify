@@ -48,6 +48,7 @@ import {
   ATTR_URL_FULL,
 } from "@opentelemetry/semantic-conventions";
 import metadata from "../../deno.json" with { type: "json" };
+import { normalizePublicAudience } from "../compat/public-audience.ts";
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
@@ -1112,6 +1113,7 @@ export class FederationImpl<TContextData>
       format: "compact",
       contextLoader,
     });
+    jsonLd = await normalizePublicAudience(jsonLd, contextLoader);
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +

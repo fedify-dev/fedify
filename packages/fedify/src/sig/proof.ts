@@ -11,6 +11,7 @@ import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
+import { normalizePublicAudience } from "../compat/public-audience.ts";
 import {
   fetchKey,
   type FetchKeyResult,
@@ -126,11 +127,12 @@ export async function createProof(
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
   const objectWithoutProofs = object.clone({ proofs: [] });
-  const compactMsg = await objectWithoutProofs.toJsonLd({
+  let compactMsg = await objectWithoutProofs.toJsonLd({
     format: "compact",
     contextLoader,
     context,
   });
+  compactMsg = await normalizePublicAudience(compactMsg, contextLoader);
   const msgCanon = serialize(compactMsg);
   const encoder = new TextEncoder();
   const msgBytes = encoder.encode(msgCanon);
@@ -336,6 +338,8 @@ async function verifyProofInternal(
 ): Promise<Multikey | null> {
   if (
     typeof jsonLd !== "object" ||
+    jsonLd == null ||
+    Array.isArray(jsonLd) ||
     proof.cryptosuite !== "eddsa-jcs-2022" ||
     proof.verificationMethodId == null ||
     proof.proofPurpose !== "assertionMethod" ||
@@ -356,18 +360,31 @@ async function verifyProofInternal(
     proofPurpose: proof.proofPurpose,
     created: proof.created.toString(),
   };
-  const proofCanon = serialize(proofConfig);
   const encoder = new TextEncoder();
-  const proofBytes = encoder.encode(proofCanon);
+  const proofBytes = encoder.encode(serialize(proofConfig));
   const proofDigest = await crypto.subtle.digest("SHA-256", proofBytes);
-  const msg = { ...jsonLd };
+  const msg = { ...(jsonLd as Record<string, unknown>) };
+  // `verifyProof()` promises to ignore existing proofs on the input;
+  // strip both the compact (`proof`) and the expanded
+  // (`https://w3id.org/security#proof`) forms so callers passing JSON-LD
+  // in either shape do not have the proof bytes folded into the JCS
+  // message digest.
   if ("proof" in msg) delete msg.proof;
-  const msgCanon = serialize(msg);
-  const msgBytes = encoder.encode(msgCanon);
-  const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
-  const digest = new Uint8Array(proofDigest.byteLength + msgDigest.byteLength);
-  digest.set(new Uint8Array(proofDigest), 0);
-  digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+  if ("https://w3id.org/security#proof" in msg) {
+    delete msg["https://w3id.org/security#proof"];
+  }
+  // Try the on-wire form first, then fall back to the public-audience
+  // normalized form so that signatures created by `createProof` (which
+  // signs the normalized bytes) still verify when the caller passes the
+  // default `toJsonLd({ format: "compact" })` output that still carries
+  // the `as:Public` CURIE.  `normalizePublicAudience()` defaults to a
+  // preloaded-only document loader when `options.contextLoader` is
+  // omitted, so the normalization attempt is safe to run on inbound,
+  // potentially adversarial JSON-LD: an attacker-supplied `@context`
+  // URL cannot steer canonicalization into a network fetch.
+  const candidates: unknown[] = [msg];
+  const normalized = await normalizePublicAudience(msg, options.contextLoader);
+  if (normalized !== msg) candidates.push(normalized);
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
@@ -396,7 +413,11 @@ async function verifyProofInternal(
       return await verifyProof(jsonLd, proof, {
         ...options,
         keyCache: {
-          get: () => Promise.resolve(null),
+          // Returning `undefined` signals "nothing cached" and forces
+          // `fetchKey()` to refetch from the network; returning `null`
+          // would instead be interpreted as a cached-unavailable result
+          // and short-circuit the retry.
+          get: () => Promise.resolve(undefined),
           set: async (keyId, key) => await options.keyCache?.set(keyId, key),
         },
       });
@@ -408,34 +429,46 @@ async function verifyProofInternal(
     );
     return null;
   }
-  const verified = await crypto.subtle.verify(
-    "Ed25519",
-    publicKey.publicKey,
-    proof.proofValue.slice(),
-    digest,
-  );
-  if (!verified) {
-    if (fetchedKey.cached) {
-      logger.debug(
-        "Failed to verify the proof with the cached key {keyId}; retrying " +
-          "with the freshly fetched key...",
-        { keyId: proof.verificationMethodId.href, proof },
-      );
-      return await verifyProof(jsonLd, proof, {
-        ...options,
-        keyCache: {
-          get: () => Promise.resolve(undefined),
-          set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-        },
-      });
-    }
+  // SHA-256 always produces 32 bytes; `proofDigest` is constant across
+  // candidates, so allocate the combined digest buffer once and only
+  // rewrite the message-digest tail per iteration.
+  const SHA256_LENGTH = 32;
+  const digest = new Uint8Array(proofDigest.byteLength + SHA256_LENGTH);
+  digest.set(new Uint8Array(proofDigest), 0);
+  for (const candidate of candidates) {
+    const msgBytes = encoder.encode(serialize(candidate));
+    const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
+    digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+    const verified = await crypto.subtle.verify(
+      "Ed25519",
+      publicKey.publicKey,
+      // `.slice()` narrows `Uint8Array<ArrayBufferLike>` (which can be
+      // backed by a `SharedArrayBuffer`) to `Uint8Array<ArrayBuffer>`,
+      // which is what `crypto.subtle.verify` expects.
+      proof.proofValue.slice(),
+      digest,
+    );
+    if (verified) return publicKey;
+  }
+  if (fetchedKey.cached) {
     logger.debug(
-      "Failed to verify the proof with the fetched key {keyId}:\n{proof}",
+      "Failed to verify the proof with the cached key {keyId}; retrying " +
+        "with the freshly fetched key...",
       { keyId: proof.verificationMethodId.href, proof },
     );
-    return null;
+    return await verifyProof(jsonLd, proof, {
+      ...options,
+      keyCache: {
+        get: () => Promise.resolve(undefined),
+        set: async (keyId, key) => await options.keyCache?.set(keyId, key),
+      },
+    });
   }
-  return publicKey;
+  logger.debug(
+    "Failed to verify the proof with the fetched key {keyId}:\n{proof}",
+    { keyId: proof.verificationMethodId.href, proof },
+  );
+  return null;
 }
 
 /**

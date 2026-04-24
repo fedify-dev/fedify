@@ -1,4 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
+import { normalizePublicAudience } from "../compat/public-audience.ts";
 import {
   Create,
   type CryptographicKey,
@@ -6,6 +7,7 @@ import {
   Multikey,
   Note,
   Place,
+  PUBLIC_COLLECTION,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import {
@@ -270,6 +272,68 @@ test("signObject()", async () => {
     TypeError,
     "Unsupported algorithm",
   );
+
+  // The proof hashed during signObject() must cover the same JSON-LD bytes
+  // that the activity serializes to on the wire — otherwise the public
+  // audience normalization applied before sending would break verifyProof()
+  // for the eddsa-jcs-2022 cryptosuite, which canonicalises the JCS form
+  // byte-for-byte rather than running URDNA2015.
+  const publicActivity = new Create({
+    id: new URL("https://server.example/activities/2"),
+    actor: new URL("https://server.example/users/alice"),
+    object: new Note({
+      id: new URL("https://server.example/objects/2"),
+      attribution: new URL("https://server.example/users/alice"),
+      content: "Hello public",
+    }),
+    tos: [PUBLIC_COLLECTION],
+  });
+  const signed = await signObject(
+    publicActivity,
+    fep8b32TestVectorPrivateKey,
+    fep8b32TestVectorKeyId,
+    { ...options, created },
+  );
+  const [proof] = await Array.fromAsync(signed.getProofs(options));
+  assertInstanceOf(proof, DataIntegrityProof);
+  const signedJson = await normalizePublicAudience(
+    await signed.toJsonLd(options),
+    mockDocumentLoader,
+  ) as Record<string, unknown>;
+  assertEquals(signedJson.to, PUBLIC_COLLECTION.href);
+  const verifyCache: Record<string, CryptographicKey | Multikey | null> = {};
+  const verifyOptions: VerifyProofOptions = {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    keyCache: {
+      get: (keyId) => Promise.resolve(verifyCache[keyId.href]),
+      set: (keyId, key) => {
+        verifyCache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    },
+  };
+  const verifyingKey = await verifyProof(signedJson, proof, verifyOptions);
+  assertInstanceOf(verifyingKey, Multikey);
+
+  // Round-trip regression guard: `signObject()` returns a vocab object
+  // whose default `toJsonLd({ format: "compact" })` output still compacts
+  // the public audience to the `as:Public` CURIE, even though the bytes
+  // signed by `createProof()` were first normalized to the expanded URI.
+  // `verifyProof()` must accept either form so the in-memory pipeline
+  // (sign, reserialize, verify) continues to work without every caller
+  // having to know about the public-audience compat helper.
+  const signedJsonWithCurie = await signed.toJsonLd(options) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(signedJsonWithCurie.to, "as:Public");
+  const verifyingKeyFromCurie = await verifyProof(
+    signedJsonWithCurie,
+    proof,
+    verifyOptions,
+  );
+  assertInstanceOf(verifyingKeyFromCurie, Multikey);
 });
 
 test("hasProofLike()", () => {
@@ -415,6 +479,67 @@ test("verifyProof()", async () => {
 
   const wrongProof = proof.clone({ created: Temporal.Now.instant() });
   assertEquals(await verifyProof(jsonLd, wrongProof, options), null);
+
+  // verifyProof() promises to ignore any proof already present on the
+  // input; make sure the expanded JSON-LD form of that key
+  // (`https://w3id.org/security#proof`) is stripped before JCS, not just
+  // the compact `proof` alias, so callers passing JSON-LD in either
+  // shape get the same message digest as the signer computed.
+  const jsonLdWithExpandedProof: Record<string, unknown> = {
+    ...jsonLd,
+    "https://w3id.org/security#proof": {
+      "@type": ["https://w3id.org/security#DataIntegrityProof"],
+      "https://w3id.org/security#proofValue": [{ "@value": "stale" }],
+    },
+  };
+  assertEquals(
+    await verifyProof(jsonLdWithExpandedProof, proof, options),
+    expectedKey,
+  );
+
+  // A top-level array is not a valid FEP-8b32 signed document: the
+  // spread-into-object trick we use to drop the proof key before JCS
+  // hashing would turn `[x, y]` into `{ "0": x, "1": y }`, which would
+  // produce a misleading canonical form.  Reject the input outright.
+  assertEquals(
+    await verifyProof([jsonLd] as unknown, proof, options),
+    null,
+  );
+
+  // verifyProof() runs on inbound, potentially adversarial JSON-LD, so
+  // normalizePublicAudience() must not hand an attacker-controlled
+  // `@context` URL to a network-capable document loader.  The attacker
+  // input below would otherwise take the canonicalization path (its
+  // `@context` is not drawn entirely from Fedify's preloaded set), but
+  // because we do not pass `contextLoader`, normalizePublicAudience()
+  // falls back to the internal preloaded-only loader, which rejects
+  // the attacker URL; canonicalization errors out and the normalized
+  // candidate is dropped.  verify then tries the on-wire form against
+  // a proof that was signed over a different activity and returns
+  // null cleanly without any network request.
+  const attackerInput = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://attacker.example/ctx",
+    ],
+    id: "https://server.example/activities/attacker",
+    type: "Create",
+    actor: "https://server.example/users/alice",
+    object: {
+      id: "https://server.example/objects/attacker",
+      type: "Note",
+      attributedTo: "https://server.example/users/alice",
+      content: "n/a",
+      to: "as:Public",
+    },
+  };
+  assertEquals(
+    await verifyProof(attackerInput, proof, {
+      documentLoader: mockDocumentLoader,
+      keyCache: options.keyCache,
+    }),
+    null,
+  );
 });
 
 test("verifyObject()", async () => {
