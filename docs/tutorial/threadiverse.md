@@ -54,6 +54,7 @@ If you are looking for a tutorial that builds a Mastodon-style microblog
 
 *[JSX]: JavaScript XML
 *[ORM]: Object–Relational Mapping
+*[ORMs]: Object–Relational Mappings
 
 [Piefed]: https://piefed.social/
 
