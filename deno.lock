@@ -81,7 +81,6 @@
     "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__@types+node@24.12.0__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.2__yaml@2.8.3",
     "npm:@nuxt/kit@4": "4.4.2",
     "npm:@nuxt/schema@4": "4.4.2",
-    "npm:@nuxt/schema@^4.4.0": "4.4.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
     "npm:@opentelemetry/context-async-hooks@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
     "npm:@opentelemetry/core@^2.5.0": "2.6.1_@opentelemetry+api@1.9.1",
@@ -9503,12 +9502,7 @@
           "npm:@nuxt/kit@4",
           "npm:@nuxt/schema@4",
           "npm:h3@^1.15.0"
-        ],
-        "packageJson": {
-          "dependencies": [
-            "npm:@nuxt/schema@^4.4.0"
-          ]
-        }
+        ]
       },
       "packages/relay": {
         "dependencies": [
