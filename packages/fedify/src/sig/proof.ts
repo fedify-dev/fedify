@@ -11,7 +11,8 @@ import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
-import { normalizePublicAudience } from "../compat/public-audience.ts";
+import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
+import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import {
   fetchKey,
   type FetchKeyResult,
@@ -132,7 +133,10 @@ export async function createProof(
     contextLoader,
     context,
   });
-  compactMsg = await normalizePublicAudience(compactMsg, contextLoader);
+  compactMsg = await normalizeOutgoingActivityJsonLd(
+    compactMsg,
+    contextLoader,
+  );
   const msgCanon = serialize(compactMsg);
   const encoder = new TextEncoder();
   const msgBytes = encoder.encode(msgCanon);
@@ -373,18 +377,15 @@ async function verifyProofInternal(
   if ("https://w3id.org/security#proof" in msg) {
     delete msg["https://w3id.org/security#proof"];
   }
-  // Try the on-wire form first, then fall back to the public-audience
-  // normalized form so that signatures created by `createProof` (which
-  // signs the normalized bytes) still verify when the caller passes the
-  // default `toJsonLd({ format: "compact" })` output that still carries
-  // the `as:Public` CURIE.  `normalizePublicAudience()` defaults to a
-  // preloaded-only document loader when `options.contextLoader` is
-  // omitted, so the normalization attempt is safe to run on inbound,
-  // potentially adversarial JSON-LD: an attacker-supplied `@context`
-  // URL cannot steer canonicalization into a network fetch.
-  const candidates: unknown[] = [msg];
-  const normalized = await normalizePublicAudience(msg, options.contextLoader);
-  if (normalized !== msg) candidates.push(normalized);
+  // Try the on-wire form first.  Only if that fails do we fall back to
+  // Fedify's outgoing JSON-LD compatibility form so that signatures created
+  // by `createProof` (which signs the normalized bytes) still verify when the
+  // caller passes the default `toJsonLd({ format: "compact" })` output.
+  //
+  // This fallback must stay on normalizeOutgoingActivityJsonLd()'s
+  // preloaded-only default loader: it runs on inbound, potentially adversarial
+  // JSON-LD, and must not let attacker-supplied `@context` URLs steer
+  // canonicalization into a network fetch through `options.contextLoader`.
   let fetchedKey: FetchKeyResult<Multikey> | null;
   try {
     fetchedKey = await publicKeyPromise;
@@ -435,20 +436,30 @@ async function verifyProofInternal(
   const SHA256_LENGTH = 32;
   const digest = new Uint8Array(proofDigest.byteLength + SHA256_LENGTH);
   digest.set(new Uint8Array(proofDigest), 0);
-  for (const candidate of candidates) {
+  const proofValue = proof.proofValue;
+  const verifyCandidate = async (candidate: unknown): Promise<boolean> => {
     const msgBytes = encoder.encode(serialize(candidate));
     const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
     digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
-    const verified = await crypto.subtle.verify(
+    return await crypto.subtle.verify(
       "Ed25519",
       publicKey.publicKey,
       // `.slice()` narrows `Uint8Array<ArrayBufferLike>` (which can be
       // backed by a `SharedArrayBuffer`) to `Uint8Array<ArrayBuffer>`,
       // which is what `crypto.subtle.verify` expects.
-      proof.proofValue.slice(),
+      proofValue.slice(),
       digest,
     );
-    if (verified) return publicKey;
+  };
+  if (await verifyCandidate(msg)) return publicKey;
+  // This fallback runs on inbound, attacker-controlled JSON-LD, so the loader
+  // must not fetch custom `@context` URLs from the network.
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    msg,
+    preloadedOnlyDocumentLoader,
+  );
+  if (normalized !== msg && await verifyCandidate(normalized)) {
+    return publicKey;
   }
   if (fetchedKey.cached) {
     logger.debug(

@@ -48,7 +48,7 @@ import {
   ATTR_URL_FULL,
 } from "@opentelemetry/semantic-conventions";
 import metadata from "../../deno.json" with { type: "json" };
-import { normalizePublicAudience } from "../compat/public-audience.ts";
+import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
@@ -623,6 +623,7 @@ export class FederationImpl<TContextData>
     await this.sendActivity(keys, message.inboxes, activity, {
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
+      normalizeExistingProofs: message.normalizeExistingProofs,
       context,
     });
   }
@@ -1084,6 +1085,7 @@ export class FederationImpl<TContextData>
       this.#getLoaderOptions(ctx.origin),
     );
     const activityId = activity.id.href;
+    let hasProof = false;
     let proofCreated = false;
     let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
     for (const { keyId, privateKey } of keys) {
@@ -1095,16 +1097,17 @@ export class FederationImpl<TContextData>
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
     for await (const _ of activity.getProofs({ contextLoader })) {
-      proofCreated = true;
+      hasProof = true;
       break;
     }
-    if (!proofCreated) {
+    if (!hasProof) {
       for (const { keyId, privateKey } of keys) {
         if (privateKey.algorithm.name === "Ed25519") {
           activity = await signObject(activity, privateKey, keyId, {
             contextLoader,
             tracerProvider: this.tracerProvider,
           });
+          hasProof = true;
           proofCreated = true;
         }
       }
@@ -1113,7 +1116,13 @@ export class FederationImpl<TContextData>
       format: "compact",
       contextLoader,
     });
-    jsonLd = await normalizePublicAudience(jsonLd, contextLoader);
+    // Existing proofs are preserved by default because they may have been
+    // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
+    // safely normalize unsigned activities, proofs it just created, or
+    // locally pre-signed activities when callers opt in.
+    if (proofCreated || !hasProof || options.normalizeExistingProofs) {
+      jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader);
+    }
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -1134,7 +1143,7 @@ export class FederationImpl<TContextData>
         tracerProvider: this.tracerProvider,
       });
     }
-    if (!proofCreated) {
+    if (!hasProof) {
       logger.warn(
         "No supported key found to create a proof for the activity {activityId}.  " +
           "The activity will be sent without a proof.  " +
@@ -2370,6 +2379,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       orderingKey: options.orderingKey,
       collectionSync,
       immediate: options.immediate,
+      normalizeExistingProofs: options.normalizeExistingProofs,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
@@ -2388,6 +2398,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // Pre-sign with Object Integrity Proofs before fanout so that all
     // recipients receive the same signed activity.  Uses Multikey IDs so that
     // verifiers can look up the correct key type in the actor document.
+    let proofCreated = false;
     if (actorKeyPairs != null) {
       const contextLoader = this.contextLoader;
       for (const kp of actorKeyPairs) {
@@ -2399,6 +2410,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           contextLoader,
           tracerProvider: this.tracerProvider,
         });
+        proofCreated = true;
       }
     }
     const inboxes = extractInboxes({
@@ -2423,7 +2435,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       options.fanout === "skip" || (options.fanout ?? "auto") === "auto" &&
         globalThis.Object.keys(inboxes).length < FANOUT_THRESHOLD
     ) {
-      await this.federation.sendActivity(keys, inboxes, activity, opts);
+      await this.federation.sendActivity(keys, inboxes, activity, {
+        ...opts,
+        normalizeExistingProofs: proofCreated ||
+          options.normalizeExistingProofs,
+      });
       return true;
     }
     const keyJwkPairs = await Promise.all(
@@ -2452,6 +2468,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
       orderingKey: options.orderingKey,
+      normalizeExistingProofs: proofCreated || options.normalizeExistingProofs,
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {
@@ -3331,6 +3348,7 @@ interface SendActivityInternalOptions<TContextData> {
   readonly immediate?: boolean;
   readonly collectionSync?: string;
   readonly orderingKey?: string;
+  readonly normalizeExistingProofs?: boolean;
   readonly context: Context<TContextData>;
 }
 

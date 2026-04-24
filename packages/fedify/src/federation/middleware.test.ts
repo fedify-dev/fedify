@@ -17,6 +17,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import fetchMock from "fetch-mock";
+import serialize from "json-canon";
 import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
   type: "json",
 };
@@ -2899,6 +2900,36 @@ test("FederationImpl.sendActivity()", async (t) => {
     await federation.sendActivity(
       [{ privateKey: rsaPrivateKey3, keyId: rsaPublicKey3.id! }],
       inboxes,
+      new vocab.Create({
+        id: new URL("https://example.com/activity/attachment"),
+        actor: new URL("https://example.com/person2"),
+        object: new vocab.Note({
+          id: new URL("https://example.com/note/attachment"),
+          attachments: [
+            new vocab.Document({
+              mediaType: "image/png",
+              url: new URL("https://example.com/image.png"),
+            }),
+          ],
+        }),
+      }),
+      { context },
+    );
+    assertEquals(verified, ["ld", "http"]);
+    const postedWithAttachment = await request?.json() as Record<
+      string,
+      unknown
+    >;
+    const postedObject = postedWithAttachment.object as Record<
+      string,
+      unknown
+    >;
+    assertEquals(Array.isArray(postedObject.attachment), true);
+
+    verified = null;
+    await federation.sendActivity(
+      [{ privateKey: rsaPrivateKey3, keyId: rsaPublicKey3.id! }],
+      inboxes,
       activity.clone({
         actor: new URL("https://example.com/person2"),
       }),
@@ -2932,6 +2963,78 @@ test("FederationImpl.sendActivity()", async (t) => {
       request?.headers.get("Content-Type"),
       "application/activity+json",
     );
+
+    const preSignedActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/pre-signed-attachment"),
+      actor: new URL("https://example.com/person2"),
+      object: new vocab.Note({
+        id: new URL("https://example.com/note/pre-signed-attachment"),
+        attachments: [
+          new vocab.Document({
+            mediaType: "image/png",
+            url: new URL("https://example.com/pre-signed-image.png"),
+          }),
+        ],
+      }),
+    });
+    const preSignedJson = await preSignedActivity.toJsonLd({
+      format: "compact",
+      contextLoader: mockDocumentLoader,
+    }) as Record<string, unknown>;
+    const preSignedObject = preSignedJson.object as Record<string, unknown>;
+    assertEquals(Array.isArray(preSignedObject.attachment), false);
+    const created = Temporal.Now.instant();
+    const proofConfig = {
+      "@context": preSignedJson["@context"],
+      type: "DataIntegrityProof",
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: ed25519Multikey.id!.href,
+      proofPurpose: "assertionMethod",
+      created: created.toString(),
+    };
+    const encoder = new TextEncoder();
+    const proofDigest = await crypto.subtle.digest(
+      "SHA-256",
+      encoder.encode(serialize(proofConfig)),
+    );
+    const msgDigest = await crypto.subtle.digest(
+      "SHA-256",
+      encoder.encode(serialize(preSignedJson)),
+    );
+    const digest = new Uint8Array(
+      proofDigest.byteLength + msgDigest.byteLength,
+    );
+    digest.set(new Uint8Array(proofDigest), 0);
+    digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+    const proofValue = new Uint8Array(
+      await crypto.subtle.sign("Ed25519", ed25519PrivateKey, digest),
+    );
+    verified = null;
+    await federation.sendActivity(
+      [
+        { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
+      ],
+      inboxes,
+      preSignedActivity.clone({
+        proofs: [
+          new vocab.DataIntegrityProof({
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: ed25519Multikey.id!,
+            proofPurpose: "assertionMethod",
+            proofValue,
+            created,
+          }),
+        ],
+      }),
+      { context },
+    );
+    assertEquals(verified, ["proof"]);
+    const postedPreSigned = await request?.json() as Record<string, unknown>;
+    const postedPreSignedObject = postedPreSigned.object as Record<
+      string,
+      unknown
+    >;
+    assertEquals(Array.isArray(postedPreSignedObject.attachment), false);
 
     verified = null;
     await federation.sendActivity(
@@ -3638,6 +3741,44 @@ test("ContextImpl.sendActivity()", async (t) => {
       "application/activity+json",
     );
 
+    const actorEdKey = (await ctx.getActorKeyPairs("1")).find((key) =>
+      key.privateKey.algorithm.name === "Ed25519"
+    );
+    assert(actorEdKey != null);
+    assert(actorEdKey.multikey.id != null);
+    const signedWithNormalizedProof = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/activity/signed-attachment"),
+        actor: ctx.getActorUri("1"),
+        object: new vocab.Note({
+          id: new URL("https://example.com/note/signed-attachment"),
+          attachments: [
+            new vocab.Document({
+              mediaType: "image/png",
+              url: new URL("https://example.com/signed-image.png"),
+            }),
+          ],
+        }),
+      }),
+      actorEdKey.privateKey,
+      actorEdKey.multikey.id,
+      { contextLoader: documentLoader },
+    );
+    verified = null;
+    await ctx.sendActivity(
+      [{ privateKey: actorEdKey.privateKey, keyId: actorEdKey.multikey.id }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      signedWithNormalizedProof,
+      { normalizeExistingProofs: true },
+    );
+    assertEquals(verified, ["proof"]);
+    const postedSigned = await request?.json() as Record<string, unknown>;
+    const postedSignedObject = postedSigned.object as Record<string, unknown>;
+    assertEquals(Array.isArray(postedSignedObject.attachment), true);
+
     await assertRejects(() =>
       ctx.sendActivity(
         { identifier: "not-found" },
@@ -3802,6 +3943,70 @@ test("ContextImpl.sendActivity()", async (t) => {
     }
     assertEquals(proofCount, 1);
   });
+
+  queue.clear();
+
+  await t.step(
+    'fanout: "force" preserves pre-signed proof normalization',
+    async () => {
+      const ctxForProof = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: documentLoader,
+        contextLoader: documentLoader,
+      });
+      const actorEdKey = (await ctxForProof.getActorKeyPairs("1")).find((key) =>
+        key.privateKey.algorithm.name === "Ed25519"
+      );
+      assert(actorEdKey != null);
+      assert(actorEdKey.multikey.id != null);
+      const signedWithNormalizedProof = await signObject(
+        new vocab.Create({
+          id: new URL("https://example.com/activity/signed-attachment-fanout"),
+          actor: ctxForProof.getActorUri("1"),
+          object: new vocab.Note({
+            id: new URL("https://example.com/note/signed-attachment-fanout"),
+            attachments: [
+              new vocab.Document({
+                mediaType: "image/png",
+                url: new URL("https://example.com/signed-fanout-image.png"),
+              }),
+            ],
+          }),
+        }),
+        actorEdKey.privateKey,
+        actorEdKey.multikey.id,
+        { contextLoader: documentLoader },
+      );
+      await ctx2.sendActivity(
+        [{ privateKey: actorEdKey.privateKey, keyId: actorEdKey.multikey.id }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        signedWithNormalizedProof,
+        { fanout: "force", normalizeExistingProofs: true },
+      );
+      assertEquals(queue.messages.length, 1);
+      assert(queue.messages[0].type === "fanout");
+      const fanoutMsg = queue.messages[0];
+      assertEquals(fanoutMsg.normalizeExistingProofs, true);
+
+      queue.clear();
+      await federation2.processQueuedTask(undefined, fanoutMsg);
+      assertEquals(queue.messages.length, 1);
+      const outboxMsg = queue.messages[0] as Message;
+      assert(outboxMsg.type === "outbox");
+
+      verified = null;
+      await federation2.processQueuedTask(undefined, outboxMsg);
+      assertEquals(verified, ["proof"]);
+      const postedSigned = await request?.json() as Record<string, unknown>;
+      const postedSignedObject = postedSigned.object as Record<string, unknown>;
+      assertEquals(Array.isArray(postedSignedObject.attachment), true);
+    },
+  );
 
   queue.clear();
 

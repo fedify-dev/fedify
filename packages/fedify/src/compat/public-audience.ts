@@ -2,6 +2,7 @@ import { PUBLIC_COLLECTION } from "@fedify/vocab";
 import { type DocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
+import { preloadedOnlyDocumentLoader } from "./preloaded-context-loader.ts";
 
 const logger = getLogger(["fedify", "compat", "public-audience"]);
 
@@ -12,35 +13,6 @@ const PUBLIC_ADDRESSING_FIELDS = new Set([
   "bcc",
   "audience",
 ]);
-
-// Default fallback document loader for `normalizePublicAudience()` when the
-// caller omits `contextLoader`.  It resolves only URLs that Fedify already
-// ships as preloaded contexts; any other URL is rejected rather than
-// fetched.  `@fedify/vocab-runtime`'s full `getDocumentLoader()` would
-// happily issue network requests for non-preloaded URLs after its
-// `validatePublicUrl()` check, which is the SSRF vector raised in the
-// review thread when the helper runs on adversarial input.  Rejecting
-// here turns that path into a canonicalization failure, which
-// `normalizePublicAudience()` catches and handles by returning the
-// document unchanged.
-const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
-  // `Object.hasOwn()` rather than `url in preloadedContexts`: the loader
-  // runs on attacker-controlled URLs, and `in` would happily treat
-  // inherited `Object.prototype` names like `toString` as "preloaded"
-  // and then hand `Object.prototype.toString` to `jsonld.canonize`.
-  if (Object.hasOwn(preloadedContexts, url)) {
-    return Promise.resolve({
-      contextUrl: null,
-      documentUrl: url,
-      document: preloadedContexts[url],
-    });
-  }
-  return Promise.reject(
-    new Error(
-      "Refusing to fetch a non-preloaded JSON-LD context: " + url,
-    ),
-  );
-};
 
 const AS_CONTEXT_URL = "https://www.w3.org/ns/activitystreams";
 

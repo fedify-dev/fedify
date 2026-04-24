@@ -54,12 +54,20 @@ To be released.
     `@context` that redefines the `as:` prefix or the bare `Public` term
     is preserved as is.  The rewrite is also applied before
     `eddsa-jcs-2022` Object Integrity Proof signing so the signed bytes
-    match what is sent on the wire.  [[#710]]
+    match what is sent on the wire.  [[#710], [#721]]
+
+ -  Improved interoperability with [Pixelfed] by serializing outgoing
+    activities' `attachment` fields as arrays even when there is only one
+    attachment.  JSON-LD compaction would otherwise emit a scalar value for
+    single attachments, but Pixelfed currently expects an array and may reject
+    incoming posts; see [pixelfed/pixelfed#6588].  [[#721]]
 
 [Agent Skills]: https://agentskills.io/
 [skills-npm]: https://github.com/antfu/skills-npm
 [Lemmy]: https://join-lemmy.org/
 [LemmyNet/lemmy#6465]: https://github.com/LemmyNet/lemmy/issues/6465
+[Pixelfed]: https://pixelfed.org/
+[pixelfed/pixelfed#6588]: https://github.com/pixelfed/pixelfed/issues/6588
 [#430]: https://github.com/fedify-dev/fedify/issues/430
 [#644]: https://github.com/fedify-dev/fedify/issues/644
 [#680]: https://github.com/fedify-dev/fedify/pull/680
@@ -67,6 +75,7 @@ To be released.
 [#710]: https://github.com/fedify-dev/fedify/pull/710
 [#711]: https://github.com/fedify-dev/fedify/issues/711
 [#712]: https://github.com/fedify-dev/fedify/pull/712
+[#721]: https://github.com/fedify-dev/fedify/pull/721
 
 ### @fedify/lint
 

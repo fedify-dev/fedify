@@ -902,6 +902,20 @@ export interface SendActivityOptions {
   readonly fanout?: "auto" | "skip" | "force";
 
   /**
+   * Whether to apply Fedify's outgoing JSON-LD wire-format compatibility fixes
+   * to activities that already carry Object Integrity Proofs.
+   *
+   * By default, Fedify preserves existing proofs byte-for-byte because it
+   * cannot know whether they were created for the normalized outgoing wire
+   * form.  Set this to `true` when sending an activity that was pre-signed
+   * locally with `signObject()` or `createProof()`, so the emitted
+   * compact JSON-LD matches the bytes covered by the proof.
+   *
+   * @since 2.2.0
+   */
+  readonly normalizeExistingProofs?: boolean;
+
+  /**
    * The base URIs to exclude from the recipients' inboxes.  It is useful
    * for excluding the recipients having the same shared inbox with the sender.
    *

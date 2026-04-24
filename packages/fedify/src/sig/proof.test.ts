@@ -1,9 +1,10 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { normalizePublicAudience } from "../compat/public-audience.ts";
+import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import {
   Create,
   type CryptographicKey,
   DataIntegrityProof,
+  Document,
   Multikey,
   Note,
   Place,
@@ -274,8 +275,8 @@ test("signObject()", async () => {
   );
 
   // The proof hashed during signObject() must cover the same JSON-LD bytes
-  // that the activity serializes to on the wire — otherwise the public
-  // audience normalization applied before sending would break verifyProof()
+  // that the activity serializes to on the wire — otherwise the outgoing
+  // JSON-LD normalization applied before sending would break verifyProof()
   // for the eddsa-jcs-2022 cryptosuite, which canonicalises the JCS form
   // byte-for-byte rather than running URDNA2015.
   const publicActivity = new Create({
@@ -285,6 +286,12 @@ test("signObject()", async () => {
       id: new URL("https://server.example/objects/2"),
       attribution: new URL("https://server.example/users/alice"),
       content: "Hello public",
+      attachments: [
+        new Document({
+          mediaType: "image/png",
+          url: new URL("https://server.example/objects/2/image.png"),
+        }),
+      ],
     }),
     tos: [PUBLIC_COLLECTION],
   });
@@ -296,11 +303,13 @@ test("signObject()", async () => {
   );
   const [proof] = await Array.fromAsync(signed.getProofs(options));
   assertInstanceOf(proof, DataIntegrityProof);
-  const signedJson = await normalizePublicAudience(
+  const signedJson = await normalizeOutgoingActivityJsonLd(
     await signed.toJsonLd(options),
     mockDocumentLoader,
   ) as Record<string, unknown>;
   assertEquals(signedJson.to, PUBLIC_COLLECTION.href);
+  const signedJsonObject = signedJson.object as Record<string, unknown>;
+  assertEquals(Array.isArray(signedJsonObject.attachment), true);
   const verifyCache: Record<string, CryptographicKey | Multikey | null> = {};
   const verifyOptions: VerifyProofOptions = {
     contextLoader: mockDocumentLoader,
@@ -318,16 +327,22 @@ test("signObject()", async () => {
 
   // Round-trip regression guard: `signObject()` returns a vocab object
   // whose default `toJsonLd({ format: "compact" })` output still compacts
-  // the public audience to the `as:Public` CURIE, even though the bytes
-  // signed by `createProof()` were first normalized to the expanded URI.
+  // the public audience to the `as:Public` CURIE and single attachments to
+  // scalars, even though the bytes signed by `createProof()` were first
+  // normalized to the outgoing wire form.
   // `verifyProof()` must accept either form so the in-memory pipeline
   // (sign, reserialize, verify) continues to work without every caller
-  // having to know about the public-audience compat helper.
+  // having to know about the outgoing JSON-LD compat helper.
   const signedJsonWithCurie = await signed.toJsonLd(options) as Record<
     string,
     unknown
   >;
   assertEquals(signedJsonWithCurie.to, "as:Public");
+  const signedJsonWithCurieObject = signedJsonWithCurie.object as Record<
+    string,
+    unknown
+  >;
+  assertEquals(Array.isArray(signedJsonWithCurieObject.attachment), false);
   const verifyingKeyFromCurie = await verifyProof(
     signedJsonWithCurie,
     proof,
@@ -507,16 +522,16 @@ test("verifyProof()", async () => {
   );
 
   // verifyProof() runs on inbound, potentially adversarial JSON-LD, so
-  // normalizePublicAudience() must not hand an attacker-controlled
+  // normalizeOutgoingActivityJsonLd() must not hand an attacker-controlled
   // `@context` URL to a network-capable document loader.  The attacker
   // input below would otherwise take the canonicalization path (its
-  // `@context` is not drawn entirely from Fedify's preloaded set), but
-  // because we do not pass `contextLoader`, normalizePublicAudience()
-  // falls back to the internal preloaded-only loader, which rejects
-  // the attacker URL; canonicalization errors out and the normalized
-  // candidate is dropped.  verify then tries the on-wire form against
-  // a proof that was signed over a different activity and returns
-  // null cleanly without any network request.
+  // `@context` is not drawn entirely from Fedify's preloaded set).
+  // verifyProof() deliberately does not pass its own `contextLoader` to
+  // normalizeOutgoingActivityJsonLd(), so that helper falls back to the
+  // internal preloaded-only loader, rejects the attacker URL, and drops
+  // the normalized candidate.  verify then tries the on-wire form against
+  // a proof that was signed over a different activity and returns null
+  // cleanly without any network request.
   const attackerInput = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
@@ -533,13 +548,19 @@ test("verifyProof()", async () => {
       to: "as:Public",
     },
   };
+  const contextLoaderCalls: string[] = [];
   assertEquals(
     await verifyProof(attackerInput, proof, {
+      contextLoader: async (url) => {
+        contextLoaderCalls.push(url);
+        return await mockDocumentLoader(url);
+      },
       documentLoader: mockDocumentLoader,
       keyCache: options.keyCache,
     }),
     null,
   );
+  assertFalse(contextLoaderCalls.includes("https://attacker.example/ctx"));
 });
 
 test("verifyObject()", async () => {
