@@ -1116,6 +1116,10 @@ export class FederationImpl<TContextData>
       format: "compact",
       contextLoader,
     });
+    // Existing proofs are preserved by default because they may have been
+    // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
+    // safely normalize unsigned activities, proofs it just created, or
+    // locally pre-signed activities when callers opt in.
     if (proofCreated || !hasProof || options.normalizeExistingProofs) {
       jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader);
     }
@@ -2375,6 +2379,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       orderingKey: options.orderingKey,
       collectionSync,
       immediate: options.immediate,
+      normalizeExistingProofs: options.normalizeExistingProofs,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
@@ -2432,7 +2437,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     ) {
       await this.federation.sendActivity(keys, inboxes, activity, {
         ...opts,
-        normalizeExistingProofs: proofCreated,
+        normalizeExistingProofs: proofCreated ||
+          options.normalizeExistingProofs,
       });
       return true;
     }
@@ -2462,7 +2468,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
       orderingKey: options.orderingKey,
-      normalizeExistingProofs: proofCreated,
+      normalizeExistingProofs: proofCreated || options.normalizeExistingProofs,
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {

@@ -3741,6 +3741,44 @@ test("ContextImpl.sendActivity()", async (t) => {
       "application/activity+json",
     );
 
+    const actorEdKey = (await ctx.getActorKeyPairs("1")).find((key) =>
+      key.privateKey.algorithm.name === "Ed25519"
+    );
+    assert(actorEdKey != null);
+    assert(actorEdKey.multikey.id != null);
+    const signedWithNormalizedProof = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/activity/signed-attachment"),
+        actor: ctx.getActorUri("1"),
+        object: new vocab.Note({
+          id: new URL("https://example.com/note/signed-attachment"),
+          attachments: [
+            new vocab.Document({
+              mediaType: "image/png",
+              url: new URL("https://example.com/signed-image.png"),
+            }),
+          ],
+        }),
+      }),
+      actorEdKey.privateKey,
+      actorEdKey.multikey.id,
+      { contextLoader: documentLoader },
+    );
+    verified = null;
+    await ctx.sendActivity(
+      [{ privateKey: actorEdKey.privateKey, keyId: actorEdKey.multikey.id }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      signedWithNormalizedProof,
+      { normalizeExistingProofs: true },
+    );
+    assertEquals(verified, ["proof"]);
+    const postedSigned = await request?.json() as Record<string, unknown>;
+    const postedSignedObject = postedSigned.object as Record<string, unknown>;
+    assertEquals(Array.isArray(postedSignedObject.attachment), true);
+
     await assertRejects(() =>
       ctx.sendActivity(
         { identifier: "not-found" },

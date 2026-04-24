@@ -1117,7 +1117,15 @@ fixes after serializing the transformed activity.  Unlike activity transformers,
 these fixes operate on the compact JSON-LD document rather than the `Activity`
 object, so they can preserve representation details such as array-valued
 properties that JSON-LD compaction would otherwise collapse.  These internal
-fixes are applied automatically after serialization.
+fixes are applied automatically after serialization for unsigned activities and
+for proofs Fedify creates while sending.
+
+Activities that already carry cryptographic proofs are sent unchanged by
+default, so the compact JSON-LD bytes stay consistent with the existing
+signature.  If you pre-sign an activity locally with `signObject()` or
+`createProof()` and then pass it to `Context.sendActivity()`, set
+`normalizeExistingProofs: true` so the outgoing wire form matches the
+normalized bytes covered by the proof.
 
 When an outgoing document uses custom or inline JSON-LD contexts, Fedify may
 canonicalize the document before and after a representation fix to confirm

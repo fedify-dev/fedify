@@ -30,6 +30,14 @@ export interface FanoutMessage {
   readonly activityType: string;
   readonly collectionSync?: string;
   readonly orderingKey?: string;
+  /**
+   * Whether to apply outgoing JSON-LD wire-format normalization to queued
+   * activities that already carry Object Integrity Proofs.
+   *
+   * `true` is used for proofs Fedify created before fanout, or when callers
+   * explicitly request normalization for locally pre-signed activities.
+   * `false`/`undefined` preserves existing proofs as-is.
+   */
   readonly normalizeExistingProofs?: boolean;
   readonly traceContext: Readonly<Record<string, string>>;
 }
