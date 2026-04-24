@@ -355,8 +355,11 @@ fedify init . --allow-non-empty
 
 This option does not overwrite existing project files.  Before making changes,
 `fedify init` checks the files it would generate and fails if any of them
-already exist.  Unrelated files, such as *README.md* or a freshly initialized
-*.git* directory, can remain in the target directory.
+already exist.  Unrelated files can remain in the target directory only when
+the selected framework scaffolder accepts them.  Some scaffolders, such as
+*create-next-app*, still reject unrelated files even if `fedify init` skips its
+own confirmation prompt, while a freshly initialized *.git* directory remains
+acceptable.
 
 
 `fedify lookup`: Looking up an ActivityPub object

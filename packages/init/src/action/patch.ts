@@ -46,7 +46,9 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 
 /**
  * Verifies that `--allow-non-empty` will not modify files that already
- * existed before any framework scaffolding command runs.
+ * existed before any framework scaffolding command runs.  This only covers
+ * files that Fedify writes itself; framework scaffolders may still reject
+ * unrelated pre-existing files independently.
  */
 export async function assertNoGeneratedFileConflicts(
   data: InitCommandData,
@@ -114,6 +116,11 @@ const getJsons = <
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
 
+/**
+ * Returns only the file paths written directly by Fedify after any framework
+ * scaffolding command finishes.  Files created by
+ * `WebFrameworkInitializer.command` are intentionally excluded.
+ */
 const getGeneratedFilePaths = (data: InitCommandData): string[] => [
   data.initializer.federationFile,
   data.initializer.loggingFile,

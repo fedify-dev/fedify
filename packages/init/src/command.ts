@@ -75,7 +75,7 @@ export const initOptions = object("Initialization options", {
   }),
   allowNonEmpty: option("--allow-non-empty", {
     description:
-      message`Allow initializing in a non-empty directory, failing if any generated file already exists.`,
+      message`Allow initializing in a non-empty directory when the selected framework scaffolder supports it, failing if any generated file already exists.`,
   }),
 });
 
