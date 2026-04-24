@@ -12,11 +12,7 @@ const ATTACHMENT_FIELDS = new Set([
 ]);
 
 const AS_CONTEXT_URL = "https://www.w3.org/ns/activitystreams";
-const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = new Set(
-  Object.keys(preloadedContexts),
-);
-
-assertPreloadedAttachmentContextInvariant();
+const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = getKnownSafeContextUrls();
 
 // Keep the traversal bounded for adversarial JSON-LD passed through proof
 // verification fallback paths.
@@ -32,13 +28,27 @@ function isJsonLdValueObject(value: unknown): boolean {
     Object.hasOwn(value, "@value");
 }
 
-function* getContextObjects(value: unknown): Iterable<Record<string, unknown>> {
+function* getContextObjects(
+  value: unknown,
+  seen: WeakSet<object> = new WeakSet(),
+): Iterable<Record<string, unknown>> {
   if (Array.isArray(value)) {
-    for (const item of value) yield* getContextObjects(item);
+    if (seen.has(value)) return;
+    seen.add(value);
+    for (const item of value) yield* getContextObjects(item, seen);
     return;
   }
   if (typeof value === "object" && value != null) {
-    yield value as Record<string, unknown>;
+    if (seen.has(value)) return;
+    seen.add(value);
+    const record = value as Record<string, unknown>;
+    yield record;
+    for (const definition of Object.values(record)) {
+      if (typeof definition !== "object" || definition == null) continue;
+      const nestedContext = (definition as Record<string, unknown>)["@context"];
+      if (nestedContext == null) continue;
+      yield* getContextObjects(nestedContext, seen);
+    }
   }
 }
 
@@ -48,19 +58,33 @@ function isActivityStreamsAttachmentTerm(value: unknown): boolean {
     (value as Record<string, unknown>)["@type"] === "@id";
 }
 
-function assertPreloadedAttachmentContextInvariant(): void {
+/** @internal */
+export function isPreloadedContextAttachmentSafe(document: unknown): boolean {
+  if (typeof document !== "object" || document == null) return true;
+  const context = (document as Record<string, unknown>)["@context"];
+  for (const contextObject of getContextObjects(context)) {
+    if (!Object.hasOwn(contextObject, "attachment")) continue;
+    if (isActivityStreamsAttachmentTerm(contextObject.attachment)) continue;
+    return false;
+  }
+  return true;
+}
+
+function getKnownSafeContextUrls(): ReadonlySet<string> {
+  const urls = new Set<string>();
   for (const [url, document] of Object.entries(preloadedContexts)) {
-    if (typeof document !== "object" || document == null) continue;
-    const context = (document as Record<string, unknown>)["@context"];
-    for (const contextObject of getContextObjects(context)) {
-      if (!Object.hasOwn(contextObject, "attachment")) continue;
-      if (isActivityStreamsAttachmentTerm(contextObject.attachment)) continue;
-      throw new TypeError(
-        "Preloaded JSON-LD context " + url +
-          " redefines the `attachment` term incompatibly.",
+    if (isPreloadedContextAttachmentSafe(document)) {
+      urls.add(url);
+    } else {
+      logger.warn(
+        "Preloaded JSON-LD context {contextUrl} redefines the " +
+          "`attachment` term incompatibly; attachment array normalization " +
+          "will require canonicalization for documents using it.",
+        { contextUrl: url },
       );
     }
   }
+  return urls;
 }
 
 /**

@@ -3,6 +3,7 @@ import { Create, Document, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertStrictEquals } from "@std/assert/assert-strict-equals";
 import {
+  isPreloadedContextAttachmentSafe,
   normalizeAttachmentArrays,
   normalizeOutgoingActivityJsonLd,
 } from "./outgoing-jsonld.ts";
@@ -57,6 +58,40 @@ test("normalizeAttachmentArrays() skips canonicalization for known-safe contexts
       url: "https://example.com/image.png",
     },
   ]);
+});
+
+test("isPreloadedContextAttachmentSafe() checks scoped contexts", () => {
+  assertEquals(
+    isPreloadedContextAttachmentSafe({
+      "@context": {
+        attachment: {
+          "@id": "as:attachment",
+          "@type": "@id",
+        },
+        Example: {
+          "@context": {
+            attachment: {
+              "@id": "as:attachment",
+              "@type": "@id",
+            },
+          },
+        },
+      },
+    }),
+    true,
+  );
+  assertEquals(
+    isPreloadedContextAttachmentSafe({
+      "@context": {
+        Example: {
+          "@context": {
+            attachment: "https://example.com/custom-attachment",
+          },
+        },
+      },
+    }),
+    false,
+  );
 });
 
 test("normalizeAttachmentArrays() does not wrap JSON-LD list objects", async () => {

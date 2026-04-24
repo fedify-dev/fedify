@@ -12,6 +12,7 @@ import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
+import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import {
   fetchKey,
   type FetchKeyResult,
@@ -451,10 +452,12 @@ async function verifyProofInternal(
     );
   };
   if (await verifyCandidate(msg)) return publicKey;
-  // This fallback runs on inbound, attacker-controlled JSON-LD.  Keep it on
-  // normalizeOutgoingActivityJsonLd()'s restricted fallback loader so custom
-  // `@context` values cannot trigger network fetches here.
-  const normalized = await normalizeOutgoingActivityJsonLd(msg);
+  // This fallback runs on inbound, attacker-controlled JSON-LD, so the loader
+  // must not fetch custom `@context` URLs from the network.
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    msg,
+    preloadedOnlyDocumentLoader,
+  );
   if (normalized !== msg && await verifyCandidate(normalized)) {
     return publicKey;
   }
