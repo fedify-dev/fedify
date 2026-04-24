@@ -33,9 +33,12 @@ test("normalizeAttachmentArrays() wraps scalar attachments", async () => {
   ]);
 });
 
-test("normalizeAttachmentArrays() skips canonicalization for ActivityStreams-only context", async () => {
+test("normalizeAttachmentArrays() skips canonicalization for known-safe contexts", async () => {
   const input = {
-    "@context": "https://www.w3.org/ns/activitystreams",
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
     type: "Note",
     attachment: {
       type: "Document",
@@ -53,6 +56,23 @@ test("normalizeAttachmentArrays() skips canonicalization for ActivityStreams-onl
       url: "https://example.com/image.png",
     },
   ]);
+});
+
+test("normalizeAttachmentArrays() does not wrap JSON-LD list objects", async () => {
+  const attachment = {
+    "@list": [
+      { type: "Document", url: "https://example.com/image.png" },
+    ],
+  };
+  const input = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    attachment,
+  };
+  const output = await normalizeAttachmentArrays(input, () => {
+    throw new Error("context loader should not be called");
+  }) as Record<string, unknown>;
+  assertEquals(output.attachment, attachment);
 });
 
 test("normalizeAttachmentArrays() leaves attachment arrays unchanged", async () => {

@@ -11,6 +11,9 @@ const ATTACHMENT_FIELDS = new Set([
 ]);
 
 const AS_CONTEXT_URL = "https://www.w3.org/ns/activitystreams";
+const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = new Set(
+  Object.keys(preloadedContexts),
+);
 
 // Keep the traversal bounded for adversarial JSON-LD passed through proof
 // verification fallback paths.
@@ -30,6 +33,11 @@ const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
     ),
   );
 };
+
+function isJsonLdListObject(value: unknown): boolean {
+  return typeof value === "object" && value != null &&
+    Object.hasOwn(value, "@list");
+}
 
 /**
  * Wraps scalar ActivityStreams attachment properties in arrays.
@@ -53,27 +61,34 @@ function wrapScalarAttachments(
   if (typeof jsonLd !== "object" || jsonLd == null) return jsonLd;
 
   const record = jsonLd as Record<string, unknown>;
-  let changed = false;
-  const normalized: Record<string, unknown> = Object.create(null);
-  for (const key of Object.keys(record)) {
+  const keys = Object.keys(record);
+  let normalized: Record<string, unknown> | null = null;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
     const value = record[key];
     const next = key === "@context"
       ? value
       : wrapScalarAttachments(value, depth + 1);
-    if (
-      ATTACHMENT_FIELDS.has(key) &&
+    const shouldWrap = ATTACHMENT_FIELDS.has(key) &&
       next != null &&
-      !Array.isArray(next)
-    ) {
-      normalized[key] = [next];
-      changed = true;
-    } else {
-      normalized[key] = next;
-      if (next !== value) changed = true;
+      !Array.isArray(next) &&
+      !isJsonLdListObject(next);
+    const output = shouldWrap ? [next] : next;
+
+    if (normalized == null && output !== value) {
+      const cloned: Record<string, unknown> = Object.create(null);
+      for (let j = 0; j < i; j++) {
+        const previousKey = keys[j];
+        cloned[previousKey] = record[previousKey];
+      }
+      normalized = cloned;
+    }
+    if (normalized != null) {
+      normalized[key] = output;
     }
   }
 
-  return changed ? normalized : jsonLd;
+  return normalized ?? jsonLd;
 }
 
 function hasNestedContext(value: unknown, depth: number = 0): boolean {
@@ -90,7 +105,7 @@ function hasNestedContext(value: unknown, depth: number = 0): boolean {
   return false;
 }
 
-function hasActivityStreamsOnlyContext(jsonLd: unknown): boolean {
+function hasKnownSafeContext(jsonLd: unknown): boolean {
   if (typeof jsonLd !== "object" || jsonLd == null) return false;
   const record = jsonLd as Record<string, unknown>;
   if (!Object.hasOwn(record, "@context")) return false;
@@ -101,7 +116,13 @@ function hasActivityStreamsOnlyContext(jsonLd: unknown): boolean {
     ? context
     : null;
   if (entries == null || entries.length < 1) return false;
-  if (!entries.every((entry) => entry === AS_CONTEXT_URL)) return false;
+  let hasActivityStreamsContext = false;
+  for (const entry of entries) {
+    if (typeof entry !== "string") return false;
+    if (!KNOWN_SAFE_CONTEXT_URLS.has(entry)) return false;
+    if (entry === AS_CONTEXT_URL) hasActivityStreamsContext = true;
+  }
+  if (!hasActivityStreamsContext) return false;
   for (const key of Object.keys(record)) {
     if (key === "@context") continue;
     if (hasNestedContext(record[key])) return false;
@@ -124,7 +145,7 @@ export async function normalizeAttachmentArrays(
 ): Promise<unknown> {
   const normalized = wrapScalarAttachments(jsonLd);
   if (normalized === jsonLd) return jsonLd;
-  if (hasActivityStreamsOnlyContext(jsonLd)) return normalized;
+  if (hasKnownSafeContext(jsonLd)) return normalized;
   const loader = contextLoader ?? preloadedOnlyDocumentLoader;
   try {
     const [before, after] = await Promise.all([
