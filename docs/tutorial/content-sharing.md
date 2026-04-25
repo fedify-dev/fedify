@@ -3378,3 +3378,198 @@ Content-Length: ...
 
 The next chapter teaches Fedify to serve those rows as
 ActivityPub `Note` objects so other servers can fetch them.
+
+
+Note object dispatcher
+----------------------
+
+We have rows in `posts` and a way to add new ones, but other
+servers cannot see them yet.  An ActivityPub post is a [`Note`]
+object with at least an `id`, an `attributedTo` actor, and some
+content.  Image posts also carry a [`Document`] attachment.
+Fedify's `~Federatable.setObjectDispatcher()` lets us declare a
+URL template, give it a typed callback, and have all the routing
+and content negotiation handled for us.
+
+[`Note`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-note
+[`Document`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-document
+
+### Adding the dispatcher
+
+Open *server/federation.ts*.  Add `Document`, `Note`, and
+`PUBLIC_COLLECTION` to the `@fedify/vocab` import, pull in the
+`Temporal` polyfill, and add `posts` to the schema import:
+
+~~~~ typescript [server/federation.ts]
+import {
+  Accept,
+  Document,
+  Endpoints,
+  Follow,
+  getActorHandle,
+  Note,
+  Person,
+  PUBLIC_COLLECTION,
+  type Recipient,
+  Undo,
+} from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+// ...
+import { actorKeys, followers, posts, users } from "./db/schema";
+~~~~
+
+We also need the polyfill itself in *package.json*:
+
+~~~~ sh
+npm install @js-temporal/polyfill
+~~~~
+
+Node 22 does not yet ship `Temporal` natively, and Fedify uses
+`Temporal.Instant` for ActivityPub timestamps; the polyfill bridges
+the gap.
+
+> [!NOTE]
+> Once Node ships [`Temporal`] natively (currently behind a flag
+> in 22.x and slated to be on by default in a near-term release),
+> the polyfill goes away.  Fedify keeps using `Temporal.Instant`
+> regardless, so this is the only line that needs to change.
+
+Then add a final dispatcher block after the followers dispatcher:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307 7006
+import { type Federation } from "@fedify/fedify";
+import { Document, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { posts, users } from "./db/schema";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  async (ctx, { identifier, id }) => {
+    const postId = Number(id);
+    if (!Number.isInteger(postId) || postId < 1) return null;
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return null;
+    const post = (
+      await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.id, postId), eq(posts.userId, localUser.id)))
+        .limit(1)
+    )[0];
+    if (post === undefined) return null;
+
+    const mediaUrl = new URL(`/uploads/${post.mediaPath}`, ctx.canonicalOrigin);
+    const noteId = ctx.getObjectUri(Note, { identifier, id });
+    return new Note({
+      id: noteId,
+      attribution: ctx.getActorUri(identifier),
+      to: PUBLIC_COLLECTION,
+      cc: ctx.getFollowersUri(identifier),
+      url: noteId,
+      content: post.caption ?? "",
+      published: Temporal.Instant.from(
+        `${post.createdAt.replace(" ", "T")}Z`,
+      ),
+      // Always emit `attachments` as an array; some peers (notably
+      // Pixelfed) treat a scalar Document as an entirely different
+      // shape and ignore the attached image.
+      attachments: [
+        new Document({
+          mediaType: post.mediaType,
+          url: mediaUrl,
+        }),
+      ],
+    });
+  },
+);
+~~~~
+
+Walking through the listener:
+
+`ctx.getObjectUri(Note, { identifier, id })`
+:   Mints the canonical URI from the same template we registered
+    the dispatcher with.  Using the helper instead of building a
+    URL ourselves means the URI updates if we ever change the
+    template.
+
+`Number.isInteger(postId)`
+:   Belt and suspenders: the route template only matches strings,
+    but integer-shaped strings like `"1.2"` would still slip
+    through.  We normalise and reject anything that is not a
+    positive integer.
+
+*The `userId` filter*
+:   Even though only one local user exists today, we constrain
+    the lookup to `posts.userId = localUser.id` so a future
+    multi-user instance cannot have one user serve another's
+    posts.
+
+`to: PUBLIC_COLLECTION`, `cc: ctx.getFollowersUri(identifier)`
+:   Public posts are addressed to the magic
+    `https://www.w3.org/ns/activitystreams#Public` URI on `to`,
+    plus the followers collection on `cc`.  Mastodon and Pixelfed
+    both render this as a “public” post; either field alone is
+    less consistent.
+
+`published: Temporal.Instant.from(...)`
+:   SQLite stores `2026-04-26 01:23:43`, which is not an ISO 8601
+    instant.  The dance with `replace(" ", "T")` and a trailing
+    `Z` turns it into one before we hand it to Temporal.
+
+`attachments: [...]`
+:   *Always* an array, even for a single attachment.  Pixelfed in
+    particular treats a scalar Document as a different shape and
+    silently ignores it; emitting an array keeps interop
+    predictable.  See [PR #721] for the upstream wrapper that
+    catches this for activities, but writing it idiomatically here
+    saves us from depending on it.
+
+[`Temporal`]: https://tc39.es/proposal-temporal/docs/
+[PR #721]: https://github.com/fedify-dev/fedify/pull/721
+
+### Looking the post up
+
+With the dev server restarted, ask Fedify to look up the post you
+created in the previous chapter:
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice/posts/1
+~~~~
+
+~~~~ console
+✔ Fetched object: http://localhost:3000/users/alice/posts/1
+Note {
+  id: URL 'http://localhost:3000/users/alice/posts/1',
+  attachments: [
+    Document {
+      url: URL 'http://localhost:3000/uploads/alice/<uuid>.png',
+      mediaType: 'image/png'
+    }
+  ],
+  attribution: URL 'http://localhost:3000/users/alice',
+  content: 'Hello from chapter 14',
+  published: Instant [Temporal.Instant] {},
+  url: URL 'http://localhost:3000/users/alice/posts/1',
+  to: URL 'https://www.w3.org/ns/activitystreams#Public',
+  cc: URL 'http://localhost:3000/users/alice/followers'
+}
+~~~~
+
+The attached `Document` lives at the same URL Nuxt serves the
+file from, so any peer that fetches this Note can also fetch the
+image directly.
+
+Posts are now individually addressable, but alice's profile page
+still says “No posts yet”.  The next chapter renders posts in a
+grid on the profile.
