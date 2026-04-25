@@ -18,6 +18,17 @@ import {
 import { broadcastEvent } from "./sse.ts";
 import { keyPairsStore, postStore, relationStore } from "./store.ts";
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) =>
+    ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[c]!);
+}
+
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
@@ -75,16 +86,16 @@ federation
     if (result?.type !== "actor" || result.identifier !== IDENTIFIER) {
       return;
     }
-    const follower = await follow.getActor(context) as Person;
-    if (!follower?.id) {
-      throw new Error("follower is null");
+    const follower = await follow.getActor(context);
+    if (!(follower instanceof Person) || follower.id == null) {
+      throw new Error("follower is not a Person");
     }
     await context.sendActivity(
       { identifier: result.identifier },
       follower,
       new Accept({
         id: new URL(
-          `#accepts/${follower.id.href}`,
+          `#accepts/${encodeURIComponent(follow.id.href)}`,
           context.getActorUri(IDENTIFIER),
         ),
         actor: follow.objectId,
@@ -119,7 +130,7 @@ federation.setObjectDispatcher(
       attribution: ctx.getActorUri(values.identifier),
       to: PUBLIC_COLLECTION,
       cc: ctx.getFollowersUri(values.identifier),
-      content: post.content,
+      content: escapeHtml(post.content),
       mediaType: "text/html",
       published: post.published,
       url: id,

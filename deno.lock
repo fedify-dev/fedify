@@ -58,7 +58,6 @@
     "jsr:@std/semver@^1.0.6": "1.0.8",
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.0",
-    "jsr:@std/yaml@^1.0.8": "1.0.12",
     "jsr:@valibot/valibot@^1.2.0": "1.3.1",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__@types+node@24.12.2__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.3__yaml@2.8.3_@types+node@24.12.2_ioredis@5.10.1_tsx@4.21.0_typescript@6.0.3_yaml@2.8.3",
@@ -170,9 +169,6 @@
     "@alinea/suite@0.6.3": {
       "integrity": "7d24a38729663b84d8a263d64ff7e3f8c72ac7cbb1db8ec5f414d0416b6b72e2"
     },
-    "@david/console-static-text@0.3.0": {
-      "integrity": "2dfb46ecee525755f7989f94ece30bba85bd8ffe3e8666abc1bf926e1ee0698d"
-    },
     "@david/console-static-text@0.3.4": {
       "integrity": "1c596f500b075ff3c8bab1d328ca7148a88067fd9a506b16a73eeaf230c229fd"
     },
@@ -194,9 +190,6 @@
         "jsr:@std/fs@1",
         "jsr:@std/path@1"
       ]
-    },
-    "@david/which@0.4.1": {
-      "integrity": "896a682b111f92ab866cc70c5b4afab2f5899d2f9bde31ed00203b9c250f225e"
     },
     "@david/which@0.4.2": {
       "integrity": "440ee262bc0673b57a39ad4d0dc5673e515ddd41c049a55b2588a0881e5d4a8c"
@@ -332,9 +325,6 @@
     "@std/fmt@0.224.0": {
       "integrity": "e20e9a2312a8b5393272c26191c0a68eda8d2c4b08b046bad1673148f1d69851"
     },
-    "@std/fmt@1.0.9": {
-      "integrity": "2487343e8899fb2be5d0e3d35013e54477ada198854e52dd05ed0422eddcabe0"
-    },
     "@std/fmt@1.0.10": {
       "integrity": "90dfba288802ac6de82fb31d0917eb9e4450b9925b954d5e51fc29ac07419db5"
     },
@@ -365,9 +355,6 @@
       "dependencies": [
         "jsr:@std/fmt@0.224"
       ]
-    },
-    "@std/internal@1.0.12": {
-      "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
     },
     "@std/internal@1.0.13": {
       "integrity": "2f9546691d4ac2d32859c82dff284aaeac980ddeca38430d07941e7e288725c0"
@@ -419,9 +406,6 @@
       "dependencies": [
         "jsr:@std/bytes"
       ]
-    },
-    "@std/yaml@1.0.12": {
-      "integrity": "7deabca4545bcedd07c5f69ea53acea71b8b4c67562f224e17b90d75944cb20c"
     },
     "@valibot/valibot@1.3.1": {
       "integrity": "635faaec9d32a25efca7b4614e7a07306cc03937bfd0679e05530d31081bc501"
