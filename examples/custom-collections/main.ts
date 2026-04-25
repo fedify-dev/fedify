@@ -297,6 +297,7 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
     content: `<p><a href="${escapeHtml(bookmarkUrl.href)}">${
       escapeHtml(bookmark.title)
     }</a></p>`,
+    mediaType: "text/html",
     url: bookmarkUrl,
     published: bookmark.savedAt,
     to: bookmark.visibility === "public"
