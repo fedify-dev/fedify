@@ -40,6 +40,6 @@ test("Next.js template loads LogTape through instrumentation", async () => {
   const instrumentation = files["instrumentation.ts"];
   ok(instrumentation);
   ok(instrumentation.includes("export async function register()"));
-  ok(instrumentation.includes("globalThis.process?.env.NEXT_RUNTIME"));
+  ok(instrumentation.includes("process.env.NEXT_RUNTIME"));
   ok(instrumentation.includes('await import("./logging")'));
 });
