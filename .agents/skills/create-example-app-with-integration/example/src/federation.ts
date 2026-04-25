@@ -46,6 +46,7 @@ federation
       });
     },
   )
+  .mapHandle((_, username) => username === IDENTIFIER ? IDENTIFIER : null)
   .setKeyPairsDispatcher(async (_, identifier) => {
     if (identifier != IDENTIFIER) {
       return [];
@@ -54,9 +55,11 @@ federation
     if (keyPairs) {
       return keyPairs;
     }
-    const { privateKey, publicKey } = await generateCryptoKeyPair();
-    keyPairsStore.set(identifier, [{ privateKey, publicKey }]);
-    return [{ privateKey, publicKey }];
+    const rsa = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+    const ed25519 = await generateCryptoKeyPair("Ed25519");
+    const newKeyPairs = [rsa, ed25519];
+    keyPairsStore.set(identifier, newKeyPairs);
+    return newKeyPairs;
   });
 
 federation
