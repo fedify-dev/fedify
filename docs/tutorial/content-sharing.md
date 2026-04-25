@@ -5127,3 +5127,453 @@ Posts arrive in real time: no polling, no scheduled job.  The
 fediverse pushed the activity to alice the instant the remote
 server queued the delivery, and the only thing we added was a
 strict little filter on top of the inbox listener chain.
+
+
+Likes and undo(like)
+--------------------
+
+A `Like` activity is the fediverse's heart button.  This chapter
+makes it work in both directions: alice can heart a remote post
+from her home grid, and remote actors can heart alice's posts.
+`Undo(Like)` reverses either action.
+
+### A bidirectional `likes` table
+
+Append to *server/db/schema.ts*:
+
+~~~~ typescript [server/db/schema.ts]
+export const likes = sqliteTable(
+  "likes",
+  {
+    actorUri: text("actor_uri").notNull(),
+    noteUri: text("note_uri").notNull(),
+    likeActivityId: text("like_activity_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.actorUri, t.noteUri] })],
+);
+
+export type Like = typeof likes.$inferSelect;
+~~~~
+
+One row per (actor, note) pair, regardless of who is local.
+`like_activity_id` is what we use to match an `Undo(Like)`
+back to the row that should disappear.  Push the schema:
+
+~~~~ ansi [terminal]
+$ npm run db:push
+~~~~
+
+### Outbound: alice likes a remote post
+
+Create *server/api/likes.post.ts*:
+
+~~~~ typescript [server/api/likes.post.ts]
+import { isActor, Like } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  readBody,
+  toWebRequest,
+} from "h3";
+import { db } from "../db/client";
+import { likes, timelinePosts } from "../db/schema";
+import federation from "../federation";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const body = await readBody<{ noteUri?: unknown }>(event);
+  const noteUri = typeof body?.noteUri === "string" ? body.noteUri : "";
+  if (noteUri === "") {
+    throw createError({ statusCode: 400, statusMessage: "Missing noteUri" });
+  }
+
+  // Find the cached timeline row so we know the author actor URI
+  // without a fresh fetch.
+  const [cached] = await db
+    .select()
+    .from(timelinePosts)
+    .where(
+      and(
+        eq(timelinePosts.userId, user.id),
+        eq(timelinePosts.noteUri, noteUri),
+      ),
+    )
+    .limit(1);
+  if (cached === undefined) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Post not in your timeline",
+    });
+  }
+
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const aliceUri = ctx.getActorUri(user.username);
+  const likeActivityId = new URL(`#likes/${crypto.randomUUID()}`, aliceUri);
+  await db
+    .insert(likes)
+    .values({
+      actorUri: aliceUri.href,
+      noteUri,
+      likeActivityId: likeActivityId.href,
+    })
+    .onConflictDoNothing();
+
+  const author = await ctx.lookupObject(cached.authorActorUri, {
+    documentLoader: await ctx.getDocumentLoader({ identifier: user.username }),
+  });
+  if (author != null && isActor(author)) {
+    await ctx.sendActivity(
+      { identifier: user.username },
+      author,
+      new Like({
+        id: likeActivityId,
+        actor: aliceUri,
+        object: new URL(noteUri),
+      }),
+    );
+  }
+
+  return { noteUri, liked: true };
+});
+~~~~
+
+The unlike sibling, *server/api/likes.delete.ts*, mirrors this
+but wraps the original `Like` in an `Undo`:
+
+~~~~ typescript [server/api/likes.delete.ts]
+import { isActor, Like, Undo } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { createError, defineEventHandler, readBody, toWebRequest } from "h3";
+import { db } from "../db/client";
+import { likes, timelinePosts } from "../db/schema";
+import federation from "../federation";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const body = await readBody<{ noteUri?: unknown }>(event);
+  const noteUri = typeof body?.noteUri === "string" ? body.noteUri : "";
+  if (noteUri === "") {
+    throw createError({ statusCode: 400, statusMessage: "Missing noteUri" });
+  }
+
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const aliceUri = ctx.getActorUri(user.username);
+
+  const [existing] = await db
+    .select()
+    .from(likes)
+    .where(and(eq(likes.actorUri, aliceUri.href), eq(likes.noteUri, noteUri)))
+    .limit(1);
+  if (existing === undefined) {
+    return { noteUri, liked: false };
+  }
+
+  await db
+    .delete(likes)
+    .where(and(eq(likes.actorUri, aliceUri.href), eq(likes.noteUri, noteUri)));
+
+  const [cached] = await db
+    .select()
+    .from(timelinePosts)
+    .where(
+      and(
+        eq(timelinePosts.userId, user.id),
+        eq(timelinePosts.noteUri, noteUri),
+      ),
+    )
+    .limit(1);
+  if (cached !== undefined) {
+    const author = await ctx.lookupObject(cached.authorActorUri, {
+      documentLoader: await ctx.getDocumentLoader({
+        identifier: user.username,
+      }),
+    });
+    if (author != null && isActor(author)) {
+      await ctx.sendActivity(
+        { identifier: user.username },
+        author,
+        new Undo({
+          id: new URL(`#undo-likes/${crypto.randomUUID()}`, aliceUri),
+          actor: aliceUri,
+          object: new Like({
+            id: new URL(existing.likeActivityId),
+            actor: aliceUri,
+            object: new URL(noteUri),
+          }),
+        }),
+      );
+    }
+  }
+
+  return { noteUri, liked: false };
+});
+~~~~
+
+Two design notes:
+
+`isActor()`
+:   `lookupObject()` is typed broadly because the URI could in
+    principle resolve to anything (a Note, a Collection).
+    `isActor()` from *@fedify/vocab* narrows it down to
+    `Application | Group | Organization | Person | Service`.
+    If the lookup somehow returns a Note we silently skip
+    delivery; the local row still flips, which is the user's
+    intent.
+
+`Undo(Like)` *wraps the original Like*
+:   We rebuild the `Like` with the original `id` so peers that
+    match by activity id (Mastodon does) line up with the row
+    they recorded earlier.
+
+### Inbound: receive likes and undo(like)
+
+Two changes in *server/federation.ts*.  First, add `Like` to
+the *@fedify/vocab* import (alongside `Follow`, `Note`, etc.).
+Second, fold the existing `Undo(Follow)` handler into a single
+listener that branches on the embedded type, and add a `Like`
+listener at the end of the chain.
+
+~~~~ typescript [server/federation.ts]
+.on(Undo, async (ctx, undo) => {
+  const object = await undo.getObject();
+  if (object instanceof Follow) {
+    if (undo.actorId == null || object.objectId == null) return;
+    const target = ctx.parseUri(object.objectId);
+    if (target?.type !== "actor") return;
+    const localUser = (
+      await db.select().from(users).where(eq(users.username, target.identifier)).limit(1)
+    )[0];
+    if (localUser === undefined) return;
+    await db
+      .delete(followers)
+      .where(
+        and(
+          eq(followers.followingId, localUser.id),
+          eq(followers.actorUri, undo.actorId.href),
+        ),
+      );
+    return;
+  }
+  if (object instanceof Like) {
+    if (undo.actorId == null) return;
+    if (object.id != null) {
+      await db
+        .delete(likes)
+        .where(eq(likes.likeActivityId, object.id.href));
+      return;
+    }
+    if (object.objectId == null) return;
+    await db
+      .delete(likes)
+      .where(
+        and(
+          eq(likes.actorUri, undo.actorId.href),
+          eq(likes.noteUri, object.objectId.href),
+        ),
+      );
+  }
+})
+~~~~
+
+~~~~ typescript [server/federation.ts]
+.on(Like, async (_ctx, like) => {
+  if (like.actorId == null || like.objectId == null) return;
+  const likeId = like.id?.href ?? `${like.actorId.href}#${like.objectId.href}`;
+  await db
+    .insert(likes)
+    .values({
+      actorUri: like.actorId.href,
+      noteUri: like.objectId.href,
+      likeActivityId: likeId,
+    })
+    .onConflictDoUpdate({
+      target: [likes.actorUri, likes.noteUri],
+      set: { likeActivityId: likeId },
+    });
+});
+~~~~
+
+The `Like` handler does not gate by *is the object one of our
+local posts*.  Storing every like is cheap; the post-detail
+page only counts rows whose `note_uri` matches its own canonical
+URI, so cross-Talk never leaks across posts.
+
+> [!TIP]
+> The fallback id `${actor}#${object}` exists because some
+> peers (Pleroma, older Friendica) drop the `Like.id` entirely.
+> Building a synthetic id keeps the upsert deterministic so the
+> row stays unique even when nothing global addresses it.
+
+### Show like counts
+
+Update *server/api/home.get.ts* to fold the like aggregates
+into each timeline row.  We compute alice's canonical actor URI
+from the request URL so the same code works behind a tunnel or
+on localhost:
+
+~~~~ typescript [server/api/home.get.ts]
+import { and, count, desc, eq, inArray } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  getRequestProtocol,
+  getRequestURL,
+} from "h3";
+import { db } from "../db/client";
+import { likes, timelinePosts } from "../db/schema";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const rows = await db
+    .select()
+    .from(timelinePosts)
+    .where(eq(timelinePosts.userId, user.id))
+    .orderBy(desc(timelinePosts.publishedAt))
+    .limit(60);
+  if (rows.length === 0) return { posts: [] };
+
+  const origin = `${getRequestProtocol(event)}://${getRequestURL(event).host}`;
+  const aliceActorUri = `${origin}/users/${user.username}`;
+  const noteUris = rows.map((r) => r.noteUri);
+
+  const likeCounts = await db
+    .select({ noteUri: likes.noteUri, cnt: count() })
+    .from(likes)
+    .where(inArray(likes.noteUri, noteUris))
+    .groupBy(likes.noteUri);
+  const myLikes = await db
+    .select({ noteUri: likes.noteUri })
+    .from(likes)
+    .where(
+      and(eq(likes.actorUri, aliceActorUri), inArray(likes.noteUri, noteUris)),
+    );
+
+  const countMap = new Map(likeCounts.map((r) => [r.noteUri, r.cnt]));
+  const mySet = new Set(myLikes.map((r) => r.noteUri));
+  return {
+    posts: rows.map((row) => ({
+      ...row,
+      likeCount: countMap.get(row.noteUri) ?? 0,
+      likedByMe: mySet.has(row.noteUri),
+    })),
+  };
+});
+~~~~
+
+Apply the same trick to the local post detail endpoint so
+alice's profile shows like counts on her own posts:
+
+~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+const origin = `${getRequestProtocol(event)}://${getRequestURL(event).host}`;
+const noteUri = `${origin}/users/${username}/posts/${id}`;
+const [{ likeCount }] = await db
+  .select({ likeCount: count() })
+  .from(likes)
+  .where(eq(likes.noteUri, noteUri));
+return { user, post, likeCount };
+~~~~
+
+### Wire the heart button
+
+Replace the home grid in *app/pages/home.vue* with a
+single-column feed that carries a heart per post.  The
+key part is the toggle action and the row of like state next
+to the image:
+
+~~~~ vue [app/pages/home.vue]
+async function toggleLike(post: TimelineEntry) {
+  const method = post.likedByMe ? "DELETE" : "POST";
+  await $fetch("/api/likes", {
+    method,
+    body: { noteUri: post.noteUri },
+  });
+  await refresh();
+}
+~~~~
+
+~~~~ vue [app/pages/home.vue]
+<div class="flex items-center gap-3 px-3 pb-3">
+  <button
+    type="button"
+    class="text-xl leading-none transition"
+    :class="post.likedByMe ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'"
+    @click="toggleLike(post)"
+  >
+    {{ post.likedByMe ? "♥" : "♡" }}
+  </button>
+  <span class="text-sm text-gray-500">
+    {{ post.likeCount }}
+    {{ post.likeCount === 1 ? "like" : "likes" }}
+  </span>
+</div>
+~~~~
+
+> [!TIP]
+> `$fetch` from Nuxt is the unauthenticated client helper.
+> The dev server's session cookie rides along automatically
+> because `/api/likes` is same-origin.  If you ever move likes
+> to a separate API host, switch to `useFetch` with
+> `credentials: "include"`.
+
+A small addition to the post detail Vue page surfaces the count
+on alice's own posts:
+
+~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+const likeCount = computed(() => data.value?.likeCount ?? 0);
+~~~~
+
+~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+<p class="text-sm text-gray-500">
+  <span class="text-rose-500">♥</span>
+  {{ likeCount }}
+  {{ likeCount === 1 ? "like" : "likes" }}
+</p>
+~~~~
+
+### Trying it out
+
+Click the heart on any home tile.  The button fills in, the
+counter ticks up, and the dev log shows the outbound `Like`:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·outbox Successfully sent activity
+  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#likes/8b288acb-…'
+  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+~~~~
+
+The home grid now renders one full-width card per post with
+the heart in place:
+
+![alice's home page rendering anbelia's photograph with a
+filled red heart icon and “1 like” beneath
+it.](./content-sharing/home-with-like.png)
+
+For the inbound side, on a Mastodon test account, search for
+one of alice's post URLs (the */users/alice/posts/&lt;id&gt;*
+form), open it, and click *Favourite*.  Mastodon sends a
+`Like` to alice's inbox; our handler stores the row, and the
+post-detail page shows *1 like* the next time alice loads it.
+
+Click the heart again to unlike: the counter decrements and an
+`Undo(Like)` flies out, signed with alice's keys.
+
+> [!NOTE]
+> Some peers report likes asynchronously through their own
+> federation queue.  Mastodon delivers within a second; Pleroma
+> can take ten or twenty.  Refreshing the post detail page is
+> the simplest way to see the count update; the closing chapter
+> lists websockets / SSE as a stretch goal for live updates.
