@@ -1,4 +1,4 @@
-import { Follow, Person, type Object as APObject } from "@fedify/vocab";
+import { Follow, type Object as APObject, Person } from "@fedify/vocab";
 import { readBody, sendRedirect, toWebRequest } from "h3";
 import federation from "../federation";
 import { broadcastEvent } from "../sse";
