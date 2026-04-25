@@ -1225,3 +1225,266 @@ the home page now takes you straight to alice's profile.
 > Same URL, two totally different responses.  The next chapter replaces
 > the scaffolded stub with a dispatcher that pulls real data from the
 > `users` table.
+
+
+Actor dispatcher
+----------------
+
+ActivityPub is a protocol for exchanging *activities* between *actors*.
+Posting an image, liking it, commenting, following somebody — every
+action a user takes on the fediverse is an activity, and every
+activity travels from one actor to another.  Implementing the actor
+is the first stop on the federation tour.
+
+Our scaffolded *server/federation.ts* already declares a tiny actor.
+Open it again:
+
+~~~~ typescript twoslash [server/federation.ts]
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+
+const logger = getLogger("content-sharing");
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (ctx, identifier) => {
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: identifier,
+    });
+  },
+);
+
+export default federation;
+~~~~
+
+The interesting line is `~Federatable.setActorDispatcher()`.  Whenever
+another fediverse server fetches an actor URL on our service, Fedify
+calls this callback with the matched `identifier` (the `{identifier}`
+template variable, filled in from the URL) and a `Context` object.
+The callback returns a [`Person`] — Fedify's typed representation of
+an ActivityPub actor — and Fedify takes care of serializing it into
+the right JSON-LD shape, attaching a JSON-LD context, and answering
+with the correct content type.
+
+`~Context.getActorUri()` reads the URL template you passed in and
+hands back the canonical actor URI for that identifier.  Using the
+context to mint URIs (instead of building strings yourself) means the
+URLs always match what `setActorDispatcher` registered, even after
+you put the app behind a reverse proxy or change the path.
+
+The current dispatcher is a fib: it accepts *any* identifier and
+hands back a freshly invented `Person`.  We want it to consult the
+`users` table and refuse anything that is not a real account.
+
+[`Person`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-person
+
+### Reading the user from the database
+
+Let's rewrite the dispatcher so it reads from `users`, returns `null`
+when the identifier does not exist (Fedify turns that into a `404 Not Found`),
+and emits a `Person` filled in with the data we have. Replace
+*server/federation.ts* with this:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { users } from "./db/schema";
+
+const logger = getLogger("content-sharing");
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (ctx, identifier) => {
+    const user = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (user === undefined) return null;
+
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: user.name,
+      url: ctx.getActorUri(identifier),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      manuallyApprovesFollowers: false,
+      discoverable: true,
+      indexable: true,
+    });
+  },
+);
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+export default federation;
+~~~~
+
+A lot is happening here, so let's walk through it.
+
+ -  *Database lookup.*  The query mirrors the one we wrote in
+    *server/api/users/&#91;username&#93;.get.ts*: the dispatcher hands
+    `identifier` to `eq(users.username, identifier)` and pulls the
+    matching row.  When the row is missing, returning `null` lets
+    Fedify respond with `404 Not Found` automatically.
+
+ -  *Display name and profile URL.*  We hand the database's display
+    name to the `Person` and pin the actor's profile URL to the same
+    address other servers will use as the actor ID.  ActivityPub
+    allows the actor ID and the profile URL to differ, but our app
+    keeps them identical for simplicity.
+
+ -  *Inbox and shared inbox.*  The `inbox` is the URL where other
+    servers POST activities addressed to alice — for example, a
+    Mastodon user's `Follow`.  The [`Endpoints.sharedInbox`] is a
+    single inbox that handles activities addressed to anyone on our
+    server; busy instances rely on it to deliver one copy of a
+    public post instead of one POST per follower.  Both URLs come
+    from `~Context.getInboxUri()`, which returns the per-actor inbox
+    when called with an identifier and the shared inbox when called
+    without arguments.
+
+ -  *Pixelfed-friendly flags.*  `manuallyApprovesFollowers: false`,
+    `discoverable: true`, and `indexable: true` tell other servers
+    and search crawlers that alice is happy to be found, indexed,
+    and auto-followed.  Pixelfed in particular reads `discoverable`
+    to decide whether a remote profile shows up in its explore feed.
+    An unflagged actor often appears as a blank or pending profile
+    on Pixelfed, so we set the trio up front.
+
+ -  *Registering the inbox path.*  `~Context.getInboxUri()` complains
+    if no inbox path has been registered yet; even though we are not
+    handling activities in this chapter, calling
+    `~Federatable.setInboxListeners()` with empty bodies is enough to
+    make the call succeed.  We will fill in the listener bodies in
+    [chapter 10](#handling-follows).
+
+> [!TIP]
+> [`Person`] is one of many actor types in the ActivityPub vocabulary.
+> The standard also defines [`Application`], [`Group`],
+> [`Organization`], and [`Service`].  PxShare hosts a single human
+> user, so `Person` is the natural fit; a bot account would use
+> [`Service`] instead.
+
+[`Endpoints.sharedInbox`]: https://www.w3.org/TR/activitypub/#actor-objects
+[`Application`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-application
+[`Group`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-group
+[`Organization`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-organization
+[`Service`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-service
+
+### Looking the actor up
+
+Save the file.  The dev server should pick the change up
+automatically; if it does not, restart it with `npm run dev`.
+
+In a separate terminal, ask Fedify's CLI to look the actor up:
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice
+~~~~
+
+You should see something close to this:
+
+~~~~ console
+- Looking up the object...
+✔ Fetched object: http://localhost:3000/users/alice
+Person {
+  id: URL 'http://localhost:3000/users/alice',
+  name: 'Alice Example',
+  url: URL 'http://localhost:3000/users/alice',
+  preferredUsername: 'alice',
+  manuallyApprovesFollowers: false,
+  inbox: URL 'http://localhost:3000/users/alice/inbox',
+  endpoints: Endpoints { sharedInbox: URL 'http://localhost:3000/inbox' },
+  discoverable: true,
+  indexable: true
+}
+✔ Successfully fetched the object.
+~~~~
+
+Every property we set on the `Person` shows up in the response — the
+flags too.  Now try a username that does not exist:
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/nobody
+~~~~
+
+The dispatcher returns `null`, so Fedify answers `404 Not Found`:
+
+~~~~ console
+- Looking up the object...
+✖ Failed to fetch http://localhost:3000/users/nobody
+Error: It may be a private object.  Try with -a/--authorized-fetch.
+~~~~
+
+> [!TIP]
+> The fediverse uses `404 Not Found` to mean both <q>this account
+> never existed</q> and <q>this account is private and you are not
+> allowed to see it</q>; Fedify's lookup hint nudges you to retry
+> with [`fedify lookup --authorized-fetch`].  Our actor is public, so
+> the hint does not apply here, but you will see this message a lot
+> when poking at Mastodon's hidden profiles.
+
+[`fedify lookup --authorized-fetch`]: ../cli.md#fedify-lookup
+
+### Browser still gets HTML
+
+The HTML profile page from chapter 6 is unchanged.  Visit
+<http://localhost:3000/users/alice> in your browser and the same Vue
+page renders, because Fedify only intercepts requests whose
+<code>Accept</code> header asks for ActivityPub-flavoured JSON.
+
+You can confirm both responses come from the same URL:
+
+~~~~ sh
+curl -s -o /dev/null -w "%{http_code} %{content_type}\n" \
+  -H "Accept: text/html" http://localhost:3000/users/alice
+curl -s -o /dev/null -w "%{http_code} %{content_type}\n" \
+  -H "Accept: application/activity+json" http://localhost:3000/users/alice
+~~~~
+
+~~~~ console
+200 text/html;charset=utf-8
+200 application/activity+json
+~~~~
+
+> [!NOTE]
+> *@fedify/nuxt* implements this by registering its middleware ahead
+> of Nuxt's pages.  Every incoming request goes through Fedify first;
+> if Fedify recognises the URL and the <code>Accept</code> header,
+> it answers directly.  Otherwise it falls through to Nuxt and our
+> Vue page handles it.  Both worlds share the same route table, so
+> we never have to keep two URL schemes in sync.
+
+With a real actor in place, the next chapter teaches alice how to
+*sign* the activities she sends and verify the ones she receives.
