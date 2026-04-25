@@ -3039,30 +3039,36 @@ export type Post = typeof posts.$inferSelect;
 
 Walking through the columns:
 
- -  *`id`.*  An autoincrementing integer.  This is the post's
-    public identifier on our server; chapter 15 weaves it into
-    the ActivityPub IRI we hand out to other servers.
+`id`
+:   An autoincrementing integer.  This is the post's public
+    identifier on our server; chapter 15 weaves it into the
+    ActivityPub IRI we hand out to other servers.
 
- -  *`userId`.*  Foreign key to `users`.  Today the only value is
-    `1` (alice), but the foreign key is forward-compatible with
+`userId`
+:   Foreign key to `users`.  Today the only value is `1`
+    (alice), but the foreign key is forward-compatible with
     chapter 19, which starts caching remote actors in the same
     table.
 
- -  *`caption`.*  Optional text body shown next to the image.
-    Pixelfed allows captionless posts, so we keep the column
-    nullable instead of forcing a placeholder.
+`caption`
+:   Optional text body shown next to the image.  Pixelfed allows
+    captionless posts, so we keep the column nullable instead of
+    forcing a placeholder.
 
- -  *`mediaPath`.*  Relative path under *public/uploads/*, e.g.
+`mediaPath`
+:   Relative path under *public/uploads/*, e.g.
     `alice/abc123.jpg`.  Nuxt serves anything under *public/* as
     a static asset, so there is no separate file-serving
     endpoint to write.
 
- -  *`mediaType`.*  MIME type (`image/jpeg`, `image/png`, …).
-    We hand this verbatim to ActivityPub's `Document.mediaType`
-    once chapter 15 wires up the Note object dispatcher.
+`mediaType`
+:   MIME type (`image/jpeg`, `image/png`, …).  We hand this
+    verbatim to ActivityPub's `Document.mediaType` once chapter 15
+    wires up the Note object dispatcher.
 
- -  *`createdAt`.*  Unix-style created-at timestamp.  Drizzle's
-    `sql\`CURRENT\_TIMESTAMP\`\` default lets SQLite stamp it for
+`createdAt`
+:   Unix-style created-at timestamp.  Drizzle's
+    `` sql`CURRENT_TIMESTAMP` `` default lets SQLite stamp it for
     us; the post composer in chapter 14 only sets the other
     columns.
 
