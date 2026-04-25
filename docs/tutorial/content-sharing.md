@@ -2176,6 +2176,14 @@ import { actorKeys, followers, users } from "./db/schema";
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
+  // Pixelfed (as of 2026-04) only implements the legacy
+  // draft-cavage HTTP Signatures spec, and its inbox controller
+  // returns 200 *before* validating the signature.  Fedify's
+  // automatic RFC 9421 -> draft-cavage double-knock fallback only
+  // triggers on 4xx, so without the first-knock override Pixelfed
+  // would silently drop every Accept we send.  Mastodon and
+  // GoToSocial transparently upgrade us back to RFC 9421 anyway.
+  firstKnock: "draft-cavage-http-signatures-12",
 });
 const logger = getLogger("content-sharing");
 
@@ -2255,6 +2263,30 @@ federation
 export default federation;
 ~~~~
 
+Before we dig into the listener body, notice the new option on
+`createFederation`:
+
+~~~~ typescript
+firstKnock: "draft-cavage-http-signatures-12",
+~~~~
+
+ActivityPub servers sign every outbound delivery so the receiver
+can prove the activity really came from the claimed actor.  The
+modern signature spec is [RFC 9421] (HTTP Message Signatures); its
+predecessor is the [draft-cavage-http-signatures] spec that
+Mastodon shipped first and that most fediverse software
+implemented before RFC 9421 stabilized.  Fedify defaults to
+RFC 9421 and double-knocks back to draft-cavage if the first try
+fails.  That fallback works against Mastodon, GoToSocial, and
+anything else that returns a 4xx for unknown signature formats.
+Pixelfed, however, accepts the inbox POST with HTTP 200 *before*
+checking the signature, then drops the activity silently when its
+queue worker cannot parse the RFC 9421 header.  Forcing the first
+knock to draft-cavage keeps Pixelfed in the loop without
+sacrificing modern peers, who upgrade us back to RFC 9421 on the
+return trip anyway.  See [issue #693] for tracking, and the
+Pixelfed compatibility notes in [chapter 9](#first-federation-test).
+
 Walking through the listener:
 
  -  *Validating the target.*  `~Context.parseUri()` turns
@@ -2295,6 +2327,9 @@ Walking through the listener:
 > a different display handle, so do not try to derive this from URL
 > parsing alone.
 
+[RFC 9421]: https://datatracker.ietf.org/doc/html/rfc9421
+[draft-cavage-http-signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
+[issue #693]: https://github.com/fedify-dev/fedify/issues/693
 [`getActorHandle()`]: https://jsr.io/@fedify/vocab/doc/~/getActorHandle
 
 ### Trying it from Mastodon
@@ -2373,14 +2408,25 @@ the remote brand.
 
 > [!NOTE]
 > Pixelfed's UI on alice's remote profile may keep showing
-> *Follow* and *0 Followers* even after the round trip succeeds.
-> The relationship is recorded inside Pixelfed (you can see the
-> *Following* counter on your own profile tick up), but the public
-> remote-profile view does not visibly reflect it until alice
-> exposes a `followers` collection URL.  We add that collection
-> in [chapter 12](#followers-list-and-collection); revisit this
-> Pixelfed tab afterwards and the button will flip to *Following*
-> on its own.
+> *Follow* and *0 Followers* even after the round trip succeeds
+> on the wire.  Pixelfed's
+> [`accountFollowById`]
+> writes a `FollowRequest` row when you click *Follow* and queues
+> our outbound `Accept` for asynchronous processing; under good
+> conditions a queue worker eventually picks the row up and
+> promotes it to a `Follower`.  That promotion is sensitive to
+> several factors that are unstable on a tutorial-grade tunnel:
+> queue lag, `profileFetch` re-resolution against an actor URL
+> whose tunnel may have rotated, signature parsing differences,
+> and others.  All five early-return branches in Pixelfed's
+> `handleAcceptActivity`
+> ([*app/Util/ActivityPub/Inbox.php*])
+> are silent, so when one of them fires the only proof is the
+> `relationships` API still reporting `requested: true`.  We
+> consider this a Pixelfed-side issue and have drafted a bug
+> report; for the rest of the tutorial we treat the dev-log
+> “Successfully sent activity” line as the wire-level proof of
+> success and continue.
 
 > [!TIP]
 > If the follower row never lands, the most likely culprits are:
@@ -2399,3 +2445,6 @@ the remote brand.
 The next chapter rounds the symmetric case out: handling the
 `Undo(Follow)` activity Mastodon and Pixelfed send when somebody
 clicks *Unfollow*.
+
+[`accountFollowById`]: https://github.com/pixelfed/pixelfed/blob/main/app/Http/Controllers/Api/ApiV1Controller.php
+[*app/Util/ActivityPub/Inbox.php*]: https://github.com/pixelfed/pixelfed/blob/main/app/Util/ActivityPub/Inbox.php
