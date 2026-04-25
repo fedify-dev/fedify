@@ -5577,3 +5577,442 @@ Click the heart again to unlike: the counter decrements and an
 > can take ten or twenty.  Refreshing the post detail page is
 > the simplest way to see the count update; the closing chapter
 > lists websockets / SSE as a stretch goal for live updates.
+
+
+Comments
+--------
+
+A comment in ActivityPub is just a `Note` whose
+`replyTarget` (`inReplyTo` in JSON-LD) points at the parent
+post.  Caching them and rendering them as a thread on the post
+detail page is the last federation feature this tutorial
+covers.
+
+### A `comments` table
+
+Append to *server/db/schema.ts*:
+
+~~~~ typescript [server/db/schema.ts]
+export const comments = sqliteTable("comments", {
+  noteUri: text("note_uri").primaryKey(),
+  inReplyToUri: text("in_reply_to_uri").notNull(),
+  authorActorUri: text("author_actor_uri").notNull(),
+  authorHandle: text("author_handle").notNull(),
+  authorName: text("author_name"),
+  authorUrl: text("author_url"),
+  content: text("content").notNull(),
+  publishedAt: text("published_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type Comment = typeof comments.$inferSelect;
+~~~~
+
+`note_uri` is unique because every Note has a globally
+addressable id.  Push the schema:
+
+~~~~ ansi [terminal]
+$ npm run db:push
+~~~~
+
+### Branch the `Create(Note)` handler
+
+The same `Create` listener that caches top-level posts must
+now route comments into the new table.  Open
+*server/federation.ts* and update the listener:
+
+~~~~ typescript [server/federation.ts]
+.on(Create, async (ctx, create) => {
+  if (create.actorId == null) return;
+  const object = await create.getObject();
+  if (!(object instanceof Note)) return;
+  if (object.id == null) return;
+
+  // Comment branch: the Note has an `inReplyTo`.  Only cache
+  // replies whose parent is alice's own post or already in the
+  // timeline cache.
+  if (object.replyTargetId != null) {
+    const parentUri = object.replyTargetId.href;
+    const target = ctx.parseUri(object.replyTargetId);
+    const isLocalParent =
+      target?.type === "object" && target.class === Note;
+    const isCachedParent =
+      (
+        await db
+          .select({ noteUri: timelinePosts.noteUri })
+          .from(timelinePosts)
+          .where(eq(timelinePosts.noteUri, parentUri))
+          .limit(1)
+      ).length > 0;
+    if (!isLocalParent && !isCachedParent) return;
+
+    const author = await create.getActor();
+    if (author?.id == null) return;
+    const authorHandle = await getActorHandle(author);
+    await db
+      .insert(comments)
+      .values({
+        noteUri: object.id.href,
+        inReplyToUri: parentUri,
+        authorActorUri: author.id.href,
+        authorHandle,
+        authorName: author.name?.toString() ?? null,
+        authorUrl: author.url?.href ?? null,
+        content: object.content?.toString() ?? "",
+        publishedAt:
+          object.published?.toString() ?? new Date().toISOString(),
+      })
+      .onConflictDoNothing();
+    return;
+  }
+
+  // Top-level branch: the existing home-timeline cache logic
+  // (followee filter and image-attachment requirement) applies
+  // unchanged here.
+  // …
+});
+~~~~
+
+`ctx.~Context.parseUri(url)` is the easy way to ask “is this
+URL one I would dispatch to?”  When the parsed `class` is
+`Note`, the URL belongs to one of alice's local posts; we
+accept the comment unconditionally.  For remote parents we
+require the post already to be in the timeline cache, which is
+a soft “alice has expressed interest in this conversation”
+filter.
+
+### Surface comments on the post detail page
+
+Update
+*server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts*
+to pull the matching rows:
+
+~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+import { and, asc, count, eq } from "drizzle-orm";
+// …
+const commentRows = await db
+  .select()
+  .from(comments)
+  .where(eq(comments.inReplyToUri, noteUri))
+  .orderBy(asc(comments.publishedAt));
+return { user, post, likeCount, comments: commentRows };
+~~~~
+
+Then update the Vue page to render the thread and provide a
+textarea.  The interesting part is the `submitComment` handler
+(the rest is straightforward template):
+
+~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+const noteUri = computed(() => {
+  if (!user.value || !post.value) return "";
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/users/${user.value.username}/posts/${post.value.id}`;
+});
+
+const commentDraft = ref("");
+const submitting = ref(false);
+
+async function submitComment() {
+  if (commentDraft.value.trim() === "") return;
+  if (noteUri.value === "") return;
+  submitting.value = true;
+  try {
+    await $fetch("/api/comments", {
+      method: "POST",
+      body: { inReplyToUri: noteUri.value, content: commentDraft.value.trim() },
+    });
+    commentDraft.value = "";
+    await refresh();
+  } finally {
+    submitting.value = false;
+  }
+}
+~~~~
+
+> [!TIP]
+> Building the noteUri client-side from `window.location.origin`
+> rather than passing it down from the server keeps the form
+> trivially correct under a tunnel.  In production you would
+> store `noteUri` server-side once at insert time and feed it
+> back to the page; the closing chapter lists this as a small
+> follow-up.
+
+### The outbound endpoint
+
+Create *server/api/comments.post.ts*:
+
+~~~~ typescript [server/api/comments.post.ts]
+import { Create, isActor, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { and, eq } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  readBody,
+  toWebRequest,
+} from "h3";
+import { db } from "../db/client";
+import { comments, timelinePosts } from "../db/schema";
+import federation from "../federation";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const body = await readBody<{ inReplyToUri?: unknown; content?: unknown }>(
+    event,
+  );
+  const inReplyToUri =
+    typeof body?.inReplyToUri === "string" ? body.inReplyToUri.trim() : "";
+  const content = typeof body?.content === "string" ? body.content.trim() : "";
+  if (inReplyToUri === "" || content === "") {
+    throw createError({ statusCode: 400, statusMessage: "Missing fields" });
+  }
+
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const aliceUri = ctx.getActorUri(user.username);
+  const commentId = crypto.randomUUID();
+  const noteUri = new URL(`#comments/${commentId}`, aliceUri);
+  const publishedAt = new Date().toISOString();
+
+  const parsed = ctx.parseUri(new URL(inReplyToUri));
+  const isLocalParent = parsed?.type === "object" && parsed.class === Note;
+
+  const note = new Note({
+    id: noteUri,
+    attribution: aliceUri,
+    replyTarget: new URL(inReplyToUri),
+    content,
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(user.username),
+    published: Temporal.Instant.from(publishedAt.replace("Z", "+00:00")),
+  });
+
+  await db
+    .insert(comments)
+    .values({
+      noteUri: noteUri.href,
+      inReplyToUri,
+      authorActorUri: aliceUri.href,
+      authorHandle: `@${user.username}@${aliceUri.host}`,
+      authorName: user.name,
+      authorUrl: aliceUri.href,
+      content,
+      publishedAt,
+    })
+    .onConflictDoNothing();
+
+  const create = new Create({
+    id: new URL(`#create-comments/${commentId}`, aliceUri),
+    actor: aliceUri,
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(user.username),
+    object: note,
+    published: note.published,
+  });
+
+  if (isLocalParent) {
+    await ctx.sendActivity({ identifier: user.username }, "followers", create);
+  } else {
+    const [cached] = await db
+      .select()
+      .from(timelinePosts)
+      .where(
+        and(
+          eq(timelinePosts.userId, user.id),
+          eq(timelinePosts.noteUri, inReplyToUri),
+        ),
+      )
+      .limit(1);
+    if (cached !== undefined) {
+      const author = await ctx.lookupObject(cached.authorActorUri, {
+        documentLoader: await ctx.getDocumentLoader({
+          identifier: user.username,
+        }),
+      });
+      if (author != null && isActor(author)) {
+        await ctx.sendActivity({ identifier: user.username }, author, create);
+      }
+    }
+  }
+
+  return { noteUri: noteUri.href };
+});
+~~~~
+
+The shape mirrors the `posts.post.ts` handler from chapter 18,
+with two differences: the recipient depends on whether the
+parent is a local post (deliver to *followers*) or a remote
+post (deliver to the parent's author), and the Note carries
+`replyTarget` so peers thread it under the right parent.
+
+> [!NOTE]
+> The note id we mint is a *fragment URL* (`alice#comments/uuid`).
+> It is not individually retrievable on its own, but the embedded
+> Note flies inside the Create activity, which is what peers
+> actually consume.  The closing chapter lists adding a real
+> `setObjectDispatcher(Note, "/users/{identifier}/comments/{id}")`
+> as a small extension once you want each comment to be
+> permalinkable from outside.
+
+### Trying it out
+
+Open one of alice's posts in PxShare and write a comment.  The
+button greys out for a moment while Fedify signs and dispatches
+the activity, then the page refreshes with the new comment
+inline:
+
+![alice's post detail page with a “1 comment” header and a
+single-comment card showing alice's own reply, “Testing the
+comment thread on my own post.”, followed by an empty
+textarea.](./content-sharing/post-detail-with-comment.png)
+
+The dev server logs the outbound delivery; alice's followers
+on Mastodon and Pixelfed both thread the reply under the
+original post:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·outbox Successfully sent activity
+  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#create-comments/a17a…'
+  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+ℹ INF fedify·federation·outbox Successfully sent activity '…'
+  to 'https://pxlmo.com/users/hongminhee/inbox'.
+~~~~
+
+For inbound, reply to alice's post from your Mastodon test
+account.  Mastodon delivers a `Create(Note)` whose
+`inReplyTo` points at alice's post URI; our listener stores
+the comment, and the post detail page renders it the next time
+alice loads.
+
+
+Where next
+----------
+
+PxShare is a real federated image-sharing service: alice can
+post photos, follow accounts on Mastodon and Pixelfed, see
+their photos in her home timeline, and trade likes and
+comments with the rest of the fediverse.  Roughly 750 lines of
+TypeScript stand between the *fedify init* scaffold and that
+shipping product.
+
+That said, every line of PxShare exists because it teaches
+something about Fedify, not because it is production-ready.
+The list below is what you would change next, ordered roughly
+from “afternoon project” to “weekend sprint”, with pointers
+into the Fedify manual where each item is documented in
+detail.
+
+### Polish that costs an afternoon
+
+`setObjectDispatcher` *for comments*
+:   Chapter 23 mints fragment URLs for alice's outbound
+    comments.  Adding a real dispatcher at
+    */users/&#91;username&#93;/comments/&#91;id&#93;* makes
+    each comment a permalink Mastodon can crawl back to.
+
+*Multi-image posts*
+:   The *posts* schema and the `buildNote` helper both assume
+    one media path per post.  Loosen them and append every
+    `Document` to `attachments` so a post can carry a
+    carousel.  Pixelfed natively renders multi-attachment Notes;
+    Mastodon renders the first four.
+
+*Edit and delete*
+:   `Update(Note)` and `Delete(Note)` are the relevant
+    activities.  Mirror the *Compose* form for editing, send
+    the activity to followers, and the rest of the fediverse
+    rewrites the cached copy in place.
+
+*Pagination*
+:   `setFollowersDispatcher` and `setFollowingDispatcher`
+    accept a *cursor*; passing it through into the SQL query
+    keeps memory flat for accounts with thousands of followers.
+    The same applies to the home timeline grid.  See
+    *Collections* in the manual.
+
+### Mid-size additions
+
+*Multiple local users*
+:   The *users* table has a `CHECK (id = 1)` constraint that
+    closes the door on more than one account.  Drop the check,
+    add a real password / OAuth flow, and route most queries by
+    `user_id` consistently.  The actor dispatcher already
+    accepts an `identifier`, so most of the wiring scales for
+    free.
+
+`Announce` *(boosts)*
+:   The boost button on Mastodon and Pixelfed maps to an
+    `Announce` activity wrapping the original Note.  Add a
+    *boosts* table keyed on (actor, note), an inbound listener
+    that records remote boosts, and an outbound endpoint that
+    sends `Announce` to alice's followers.
+
+*Direct messages*
+:   A Note whose `to` is a specific actor (instead of
+    *Public*) is a DM.  Add an inbox listener that detects
+    that shape and routes the Note into a separate
+    *direct\_messages* table; surface it on a *Messages* page
+    with a list of conversation partners.
+
+*Live updates*
+:   Refreshing the home page to see new posts is the lowest
+    common denominator.  Push fresh rows to connected clients
+    over an SSE endpoint or websocket, fed from the same inbox
+    listener that writes to *timeline\_posts*.
+
+### Production-quality work
+
+*Persistent KV and queue*
+:   `MemoryKvStore` and `InProcessMessageQueue` are perfect
+    for a tutorial; in production replace them with the
+    Postgres, Redis, or RabbitMQ adapter from the
+    [`@fedify`] family of
+    packages.  Activities you have already enqueued survive
+    restarts that way.
+
+*Authorized fetch and rate limits*
+:   Mastodon's *secure mode* requires every actor fetch to be
+    HTTP-signed by the requesting actor.  Fedify already signs
+    when you pass a `documentLoader`, but you should also
+    apply rate limits at the inbox endpoint to keep the
+    federation queue healthy.
+
+*Moderation*
+:   `Block` and `Flag` are first-class activities.  An
+    inbound `Block` should drop deliveries from the blocked
+    actor; outbound `Flag` reports content to the destination
+    server's moderators.
+
+*Object integrity proofs*
+:   FEP-8b32 attaches a verifiable signature to every object,
+    not just the HTTP request.  Fedify supports it through the
+    proof-normalization opt-in.
+
+[`@fedify`]: https://github.com/fedify-dev
+
+### Beyond pxshare
+
+Take a look at the [microblog tutorial](./microblog.md) for
+a parallel walk-through that ends in a Mastodon-style timeline
+rather than a grid; it covers some material this tutorial
+intentionally skipped, like WebFinger plumbing and Hashtag
+handling.
+
+The [Fedify manual](../manual/index.md) is the authoritative
+reference for the bits we used in passing.  Bookmark the
+*Federation* and *Vocabulary* sections in particular; once you
+start adding activities, you will visit them often.
+
+Finally, when something does not work between two servers, the
+[FEP] repository on
+Codeberg is where the fediverse codifies how things *should*
+work.  Reading the FEPs that cover the activities you are
+sending is the fastest way to figure out which side has the
+bug.
+
+Happy federating.
+
+[FEP]: https://codeberg.org/fediverse/fep

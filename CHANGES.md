@@ -243,6 +243,16 @@ To be released.
     redistribution that threadiverse software (Lemmy, Mbin, NodeBB) uses to fan
     activity out to every subscriber.  [[#704], [#710]]
 
+ -  Added [*Creating an image sharing service* tutorial], a Pixelfed-style
+    image-sharing companion to the microblog walk-through.  Built on Nuxt 4
+    and the new `@fedify/nuxt` integration, the tutorial covers actor
+    dispatchers, key pairs, follow/unfollow flows, image-bearing
+    `Create(Note)` fan-out and reception, an outbound `Like`/`Undo(Like)`
+    heart toggle, and threaded comments through `inReplyTo`.  Each chapter
+    maps 1:1 to a commit in the [companion example repository], and the
+    federation flows are demonstrated against both Mastodon and Pixelfed.
+    [[#693]]
+
  -  Added a custom collections cookbook example for bookmark-like data,
     demonstrating cursor pagination, URI-template filtering, collection
     counters, actor stream links, and requester-aware collections using
@@ -253,8 +263,12 @@ To be released.
 [Bun]: https://bun.sh/
 [*Building a threadiverse community platform*]: https://fedify.dev/tutorial/threadiverse
 [*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
+[*Creating an image sharing service* tutorial]: https://fedify.dev/tutorial/content-sharing
+[companion example repository]: https://github.com/fedify-dev/content-sharing
+[Claude]: https://www.anthropic.com/claude
 [#691]: https://github.com/fedify-dev/fedify/issues/691
 [#694]: https://github.com/fedify-dev/fedify/issues/694
+[#693]: https://github.com/fedify-dev/fedify/issues/693
 [#695]: https://github.com/fedify-dev/fedify/pull/695
 [#704]: https://github.com/fedify-dev/fedify/issues/704
 [#706]: https://github.com/fedify-dev/fedify/issues/706
