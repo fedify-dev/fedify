@@ -2255,7 +2255,11 @@ federation
         ),
         actor: follow.objectId,
         to: follow.actorId,
-        object: follow,
+        object: new Follow({
+          id: follow.id,
+          actor: follow.actorId,
+          object: follow.objectId,
+        }),
       }),
     );
   });
@@ -2309,16 +2313,28 @@ Walking through the listener:
  -  *Sending the `Accept`.*  `~Context.sendActivity()` takes the
     sender (the parsed actor target), the recipient (the remote
     follower), and the activity to send.  We construct an `Accept`
-    whose `object` is the original `Follow`; that is how Mastodon
-    and Pixelfed correlate our reply with their pending follow.
+    whose `object` references the original `Follow`; that is how
+    Mastodon and Pixelfed correlate our reply with their pending
+    follow.
 
  -  *The explicit `id` on the `Accept`.*  Fedify will auto-generate
     an id if you do not provide one, but the auto-generated form
-    (`https://<host>/#Accept/<uuid>`) confuses Pixelfed: the local
-    follow stays in a half-finished state and the *Follow* button
-    never flips.  Building the id under the actor's URI
-    (`<actor>#accepts/<uuid>`) follows the convention Mastodon uses
-    and works on every implementation we tested.
+    (`https://<host>/#Accept/<uuid>`) confuses some peers because
+    it is not anchored under any actor's URI.  Building the id
+    under alice's URI (`<actor>#accepts/<uuid>`) follows the
+    convention Mastodon uses and works on every implementation we
+    tested.
+
+ -  *Reconstructing a minimal `Follow` for the `object`.*  Fedify
+    hydrates the inbound `Follow` so that `follow.actor` is the
+    full `Person` object.  When we serialize the same `follow`
+    inline as our Accept's object, that nested `Person` rides
+    along.  Pixelfed's `AcceptValidator` requires `object.actor`
+    and `object.object` to be URL strings (its `'url'` validation
+    rule) and silently rejects payloads where they are nested
+    objects.  Building a fresh `Follow({ id, actor, object })`
+    from the original URL fields keeps every other peer happy and
+    unblocks Pixelfed's `handleAcceptActivity`.
 
 > [!TIP]
 > [`getActorHandle()`] returns the canonical fediverse handle in
@@ -2401,32 +2417,19 @@ following_id  handle                                    inbox_url
 1             @you@<your-pixelfed-instance>             https://<your-pixelfed-instance>/users/you/inbox
 ~~~~
 
-Same handler, two very different servers, identical wire-level
-outcome.  That is the win condition for an ActivityPub server:
-behavior should follow from activity types, not from special-casing
-the remote brand.
+After Pixelfed's queue picks the activity up, the *Follow* button
+flips to *Unfollow* on alice's profile:
 
-> [!NOTE]
-> Pixelfed's UI on alice's remote profile may keep showing
-> *Follow* and *0 Followers* even after the round trip succeeds
-> on the wire.  Pixelfed's
-> [`accountFollowById`]
-> writes a `FollowRequest` row when you click *Follow* and queues
-> our outbound `Accept` for asynchronous processing; under good
-> conditions a queue worker eventually picks the row up and
-> promotes it to a `Follower`.  That promotion is sensitive to
-> several factors that are unstable on a tutorial-grade tunnel:
-> queue lag, `profileFetch` re-resolution against an actor URL
-> whose tunnel may have rotated, signature parsing differences,
-> and others.  All five early-return branches in Pixelfed's
-> `handleAcceptActivity`
-> ([*app/Util/ActivityPub/Inbox.php*])
-> are silent, so when one of them fires the only proof is the
-> `relationships` API still reporting `requested: true`.  We
-> consider this a Pixelfed-side issue and have drafted a bug
-> report; for the rest of the tutorial we treat the dev-log
-> “Successfully sent activity” line as the wire-level proof of
-> success and continue.
+![alice's profile rendered on a Pixelfed instance after the round
+trip succeeds.  The follow button now reads *Unfollow*; the
+counters still read 0/0/0 because alice does not yet expose a
+followers collection (we add it in
+chapter 12).](./content-sharing/pixelfed-after-follow.png)
+
+Same handler, two very different servers, identical outcome.
+That is the win condition for an ActivityPub server: behavior
+should follow from activity types, not from special-casing the
+remote brand.
 
 > [!TIP]
 > If the follower row never lands, the most likely culprits are:
@@ -2445,6 +2448,3 @@ the remote brand.
 The next chapter rounds the symmetric case out: handling the
 `Undo(Follow)` activity Mastodon and Pixelfed send when somebody
 clicks *Unfollow*.
-
-[`accountFollowById`]: https://github.com/pixelfed/pixelfed/blob/main/app/Http/Controllers/Api/ApiV1Controller.php
-[*app/Util/ActivityPub/Inbox.php*]: https://github.com/pixelfed/pixelfed/blob/main/app/Util/ActivityPub/Inbox.php
