@@ -78,6 +78,8 @@ export interface WebFrameworkInitializer {
   federationFile: string;
   /** Relative path where the logging configuration file will be created. */
   loggingFile: string;
+  /** Optional template path for the logging configuration file. */
+  loggingTemplate?: string;
   /**
    * Additional files to create, keyed by relative path to file content.
    * Do not use `".env"` as a key — use the {@link env} property instead so
