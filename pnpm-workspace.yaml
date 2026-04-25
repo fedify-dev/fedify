@@ -37,10 +37,10 @@ packages:
 - examples/express
 - examples/koa
 - examples/next-integration
-- examples/nuxt
 - examples/fastify
 - examples/next14-app-router
 - examples/next15-app-router
+- examples/nuxt
 - examples/solidstart
 - examples/sveltekit-sample
 
