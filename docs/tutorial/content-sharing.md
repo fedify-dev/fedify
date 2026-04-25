@@ -2449,3 +2449,174 @@ remote brand.
 The next chapter rounds the symmetric case out: handling the
 `Undo(Follow)` activity Mastodon and Pixelfed send when somebody
 clicks *Unfollow*.
+
+
+Handling unfollows
+------------------
+
+When a remote actor unfollows alice, the originating server sends
+an [`Undo`] activity whose inner `object` is the original `Follow`:
+
+~~~~ json
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "id": "https://activitypub.academy/users/anbelia_doshaelen#follows/9867/undo",
+  "type": "Undo",
+  "actor": "https://activitypub.academy/users/anbelia_doshaelen",
+  "object": {
+    "id": "https://activitypub.academy/<...>",
+    "type": "Follow",
+    "actor": "https://activitypub.academy/users/anbelia_doshaelen",
+    "object": "https://<tunnel>/users/alice"
+  }
+}
+~~~~
+
+Without a handler, our inbox happily accepts the activity (HTTP 202)
+and ignores it; the `followers` row keeps living.  We need to
+delete it.
+
+[`Undo`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-undo
+
+### The `Undo` listener
+
+Open *server/federation.ts* once more.  Add `Undo` to the imports
+from `@fedify/vocab` and `and` to the imports from `drizzle-orm`,
+then chain a fourth listener after the `Follow` handler:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307 2304 7006
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  getActorHandle,
+  Person,
+  Undo,
+} from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { actorKeys, followers, users } from "./db/schema";
+
+// (createFederation, the actor and key-pairs dispatchers, and the
+// `on(Follow, ...)` listener from earlier chapters live here.)
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => { /* chapter 10 */ })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject();
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null || object.objectId == null) return;
+    const target = ctx.parseUri(object.objectId);
+    if (target?.type !== "actor") return;
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, target.identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return;
+    await db
+      .delete(followers)
+      .where(
+        and(
+          eq(followers.followingId, localUser.id),
+          eq(followers.actorUri, undo.actorId.href),
+        ),
+      );
+  });
+~~~~
+
+Walking through the listener:
+
+ -  *Verifying the inner type.*  `undo.getObject()` resolves the
+    activity nested under `Undo.object`.  An `Undo` can wrap many
+    activity types (`Like`, `Announce`, `Block`, …); we only care
+    about `Follow`, so we discard everything else.
+
+ -  *Confirming the target.*  Just like the `Follow` listener, we
+    pass the inner Follow's `objectId` through `~Context.parseUri()`
+    to make sure the unfollow is aimed at one of *our* actors.
+    Otherwise we silently bail.
+
+ -  *Identifying the row to delete.*  We delete on `undo.actorId`
+    (the URI of the actor sending the `Undo`).  Fedify has already
+    verified the HTTP signature on the inbox POST; if a hostile
+    peer tried to forge an `Undo` on behalf of somebody else, the
+    signature check would have rejected the delivery before our
+    handler ever ran.
+
+ -  *Drizzle's composite delete.*  `and(...)` combines the two
+    `eq(...)` predicates so the `WHERE` clause matches both
+    columns of the table's composite primary key, guaranteeing we
+    only ever drop the one row we mean to.
+
+> [!NOTE]
+> Some implementations send `Undo(Follow)` even when the original
+> `Follow` was never accepted, e.g. when the remote user cancels a
+> pending follow request before it landed.  Our handler treats the
+> missing row case implicitly: `db.delete(...)` on a row that does
+> not exist is a no-op, no error.  Idempotent, by design.
+
+### Trying it from Mastodon
+
+Restart the dev server (or save the file and let HMR pick it up).
+On your ActivityPub.Academy tab, navigate back to alice's profile.
+You should still see the *Unfollow* button from the previous
+chapter; click it.
+
+Within a second or two, the dev log records an `Undo(Follow)`
+landing in alice's inbox:
+
+~~~~ console
+INF fedify·federation·inbox Activity 'https://activitypub.academy/users/<acct>#follows/<id>/undo' is enqueued.
+INF fedify·federation·http 'POST' '/users/alice/inbox': 202
+INF fedify·federation·inbox Activity '...#follows/<id>/undo' has been processed.
+~~~~
+
+The Mastodon UI flips the button back to *Follow* and the follower
+counter ticks down.  The same SQL we ran in chapter 10 confirms
+the row is gone:
+
+~~~~ sh
+sqlite3 -header -column content-sharing.sqlite3 \
+  "SELECT following_id, handle FROM followers"
+~~~~
+
+The Academy row no longer appears.
+
+### Trying it from Pixelfed
+
+Switch back to your Pixelfed tab, open alice's profile, and click
+*Unfollow*.  The same round trip happens: Pixelfed sends an
+`Undo(Follow)`, our listener parses it, the row is removed.
+Pixelfed's UI flips the button back to *Follow*:
+
+![alice's profile on a Pixelfed instance after the *Unfollow*
+click; the action button reads *Follow* again, and the followers
+counter is back at zero.](./content-sharing/pixelfed-after-unfollow.png)
+
+### Why we do not delete by `actorUri` alone
+
+A subtler design question: why include
+`eq(followers.followingId, localUser.id)` in the `WHERE` clause if `actorUri`
+is unique to the remote actor?
+
+The answer lies in how the table will grow when chapter 19 adds
+multi-account support.  Today there is exactly one local user
+(`localUser.id = 1`), but the schema's composite primary key
+`(following_id, actor_uri)` lets the same remote actor follow
+multiple local users on the same instance.  Matching both columns
+keeps the listener correct in advance: an unfollow against alice
+must not delete the row representing the same actor following bob.
