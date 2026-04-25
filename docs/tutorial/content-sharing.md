@@ -431,7 +431,7 @@ A few things are worth noting:
 [Nuxt] is a meta-framework built on top of Vue.  It adds:
 
  -  *File-based routing*.  A Vue file at *app/pages/index.vue* becomes the
-    route */*, and a file named *&#91;username&#93;.vue* inside
+    route */*, and a file named *\[username].vue* inside
     *app/pages/users/* becomes */users/:username*.
  -  *Server routes*.  A TypeScript file at *server/api/posts.ts* becomes an
     HTTP endpoint at */api/posts*.
@@ -1097,11 +1097,11 @@ will teach the same URL to speak ActivityPub as well.
 
 ### The API endpoint
 
-Create *server/api/users/\[username\].get.ts*.  The square brackets in
+Create *server/api/users/\[username].get.ts*.  The square brackets in
 the filename make `username` a route parameter that Nuxt extracts for
 us.
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -1128,11 +1128,11 @@ the value.
 
 ### The Vue page
 
-Create *app/pages/users/\[username\].vue*.  `useFetch` is Nuxt's
+Create *app/pages/users/\[username].vue*.  `useFetch` is Nuxt's
 server-aware fetch wrapper: during SSR it calls the endpoint as a
 direct function, on the client it does a real network request.
 
-~~~~ vue [app/pages/users/[username].vue]
+~~~~ vue [app/pages/users/&#91;username&#93;.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -1359,7 +1359,7 @@ export default federation;
 A lot is happening here, so let's walk through it.
 
  -  *Database lookup.*  The query mirrors the one we wrote in
-    *server/api/users/&#91;username&#93;.get.ts*: the dispatcher hands
+    *server/api/users/\[username].get.ts*: the dispatcher hands
     `identifier` to `eq(users.username, identifier)` and pulls the
     matching row.  When the row is missing, returning `null` lets
     Fedify respond with `404 Not Found` automatically.
@@ -2638,7 +2638,7 @@ This chapter adds two complementary pieces in lockstep:
     remote servers can ask alice for her follower list and see a
     real number.
  -  An HTML *followers* page on our own site at
-    */users/&#91;username&#93;/followers*, so the local user can
+    */users/\[username]/followers*, so the local user can
     browse the list in a browser.
 
 Both end up reading the same `followers` table; the only
@@ -2785,9 +2785,9 @@ mkdir -p app/pages/users/\[username\]
 git mv app/pages/users/\[username\].vue app/pages/users/\[username\]/index.vue
 ~~~~
 
-Now create *app/pages/users/&#91;username&#93;/followers.vue*:
+Now create *app/pages/users/\[username]/followers.vue*:
 
-~~~~ vue [app/pages/users/[username]/followers.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/followers.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -2852,11 +2852,10 @@ useHead({
 ~~~~
 
 This page expects a JSON endpoint at
-*/api/users/&#91;username&#93;/followers*.  Add it next to the
-existing user endpoint, in
-*server/api/users/&#91;username&#93;/followers.get.ts*:
+*/api/users/\[username]/followers*.  Add it next to the
+existing user endpoint, in *server/api/users/\[username]/followers.get.ts*:
 
-~~~~ typescript [server/api/users/[username]/followers.get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/followers.get.ts]
 import { desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../db/client";
@@ -2883,10 +2882,9 @@ export default defineEventHandler(async (event) => {
 ~~~~
 
 Finally, surface the count on the profile page itself.  Update
-*server/api/users/&#91;username&#93;.get.ts* to include
-`followerCount`:
+*server/api/users/\[username].get.ts* to include `followerCount`:
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { count, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -2911,10 +2909,10 @@ export default defineEventHandler(async (event) => {
 });
 ~~~~
 
-…and rewrite *app/pages/users/&#91;username&#93;/index.vue* to
+…and rewrite *app/pages/users/\[username]/index.vue* to
 render the count as a link to the new page:
 
-~~~~ vue [app/pages/users/[username]/index.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
