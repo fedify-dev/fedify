@@ -2058,3 +2058,319 @@ add behavior by adding handlers, not by special-casing servers.
 With the federation pipe open, the next chapter teaches alice how
 to *accept* the `Follow` activities Mastodon and Pixelfed are eager
 to send.
+
+
+Handling follows
+----------------
+
+The *Follow* button you saw on the federation test does nothing
+useful yet.  Mastodon already sent a `Follow` activity to alice's
+inbox the moment you clicked it; our scaffolded inbox just logged a
+warning and dropped the request.  This chapter wires up the inbox
+so a remote `Follow` actually creates a follower record and sends
+back the `Accept` reply Mastodon needs to flip the button to
+*Following*.
+
+### What an inbox is
+
+Every actor in ActivityPub has its own *inbox*: an HTTP endpoint
+that accepts signed `POST` requests carrying activities.  When
+somebody likes alice's post, the *Like* lands in alice's inbox.
+When somebody follows alice, the *Follow* lands in her inbox.
+A server can also expose a *shared inbox* (the `endpoints.sharedInbox`
+URL we set in chapter 7) for activities that target many local
+actors at once; busy instances rely on it to deliver one copy of a
+public post instead of one POST per follower.
+
+Fedify already speaks the inbox protocol.  The
+`~Federatable.setInboxListeners()` call we added in chapter 7
+registers the routes; the empty body just acknowledges every
+request with a `202 Accepted`.  Adding behavior is a matter of
+chaining `~InboxListenerSetters.on(ActivityClass, callback)`.
+
+### The `followers` table
+
+Open *server/db/schema.ts* and add an `actorKeys`-style
+`followers` table after `actorKeys`:
+
+~~~~ typescript [server/db/schema.ts]
+// Remote actors that follow the local user.  Stored denormalized:
+// we keep just enough to address the actor when fanning out
+// activities (`inboxUrl`, `sharedInboxUrl`) and to render a basic
+// "Followers" list (`handle`, `name`, `url`).
+export const followers = sqliteTable(
+  "followers",
+  {
+    followingId: integer("following_id")
+      .notNull()
+      .references(() => users.id),
+    actorUri: text("actor_uri").notNull(),
+    handle: text("handle").notNull(),
+    name: text("name"),
+    inboxUrl: text("inbox_url").notNull(),
+    sharedInboxUrl: text("shared_inbox_url"),
+    url: text("url"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.followingId, t.actorUri] })],
+);
+
+export type Follower = typeof followers.$inferSelect;
+~~~~
+
+A few columns deserve a comment:
+
+ -  *Composite primary key.*  `(followingId, actorUri)` is the row's
+    identity.  A single remote actor can follow alice exactly once;
+    a re-follow updates the same row instead of inserting a new one.
+ -  *Cached profile fields.*  We could refetch the actor every time
+    we need to display followers, but caching `handle`, `name`,
+    `url` makes the followers list cheap to render and survives
+    transient outages on the remote server.
+ -  *`inboxUrl` plus `sharedInboxUrl`.*  Fedify's
+    `~Context.sendActivity()` will prefer the shared inbox when it
+    is available, falling back to the per-actor inbox.  Storing
+    both up front lets later chapters fan out posts efficiently.
+
+Push the schema:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+### The `Follow` listener
+
+Open *server/federation.ts*.  Add `Accept`, `Follow`, and
+`getActorHandle` to the `@fedify/vocab` import, pull in the new
+`followers` table, and chain a listener onto
+`~Federatable.setInboxListeners()`:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307 7006
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  getActorHandle,
+  Person,
+} from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { actorKeys, followers, users } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+const logger = getLogger("content-sharing");
+
+// (the actor and key-pairs dispatchers from earlier chapters live
+// here, unchanged)
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.objectId == null) {
+      logger.debug("The Follow has no object: {follow}", { follow });
+      return;
+    }
+    const target = ctx.parseUri(follow.objectId);
+    if (target?.type !== "actor") {
+      logger.debug("The Follow object is not one of our actors: {follow}", {
+        follow,
+      });
+      return;
+    }
+    const follower = await follow.getActor();
+    if (follower?.id == null || follower.inboxId == null) {
+      logger.debug("The Follow has no usable actor: {follow}", { follow });
+      return;
+    }
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, target.identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) {
+      logger.debug("Follow target {identifier} does not exist", {
+        identifier: target.identifier,
+      });
+      return;
+    }
+
+    await db
+      .insert(followers)
+      .values({
+        followingId: localUser.id,
+        actorUri: follower.id.href,
+        handle: await getActorHandle(follower),
+        name: follower.name?.toString() ?? null,
+        inboxUrl: follower.inboxId.href,
+        sharedInboxUrl: follower.endpoints?.sharedInbox?.href ?? null,
+        url: follower.url?.href ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [followers.followingId, followers.actorUri],
+        set: {
+          handle: await getActorHandle(follower),
+          name: follower.name?.toString() ?? null,
+          inboxUrl: follower.inboxId.href,
+          sharedInboxUrl: follower.endpoints?.sharedInbox?.href ?? null,
+          url: follower.url?.href ?? null,
+        },
+      });
+
+    await ctx.sendActivity(
+      target,
+      follower,
+      new Accept({
+        actor: follow.objectId,
+        to: follow.actorId,
+        object: follow,
+      }),
+    );
+  });
+
+export default federation;
+~~~~
+
+Walking through the listener:
+
+ -  *Validating the target.*  `~Context.parseUri()` turns
+    `follow.objectId` (the actor URL inside the `Follow`) back into
+    the `{identifier}` we registered the dispatcher with.  If the
+    URL is not one of our actors, we log and bail out so we never
+    accidentally accept follows for accounts we do not own.
+
+ -  *Fetching the follower.*  `follow.getActor()` returns the
+    sending actor as a typed object; if the activity arrived without
+    a usable actor (no inbox, no ID), we cannot send `Accept` back,
+    so again we drop the request.
+
+ -  *Recording the follower.*  Drizzle's
+    `insert(...).values(...) .onConflictDoUpdate(...)` is the SQLite equivalent
+    of a real upsert.  The `onConflictDoUpdate` payload re-applies the cached
+    fields, so a remote actor changing their display name eventually flows
+    through the next time they re-follow.
+
+ -  *Sending the `Accept`.*  `~Context.sendActivity()` takes the
+    sender (the parsed actor target), the recipient (the remote
+    follower), and the activity to send.  We construct an `Accept`
+    whose `object` is the original `Follow`; that is how Mastodon
+    correlates our reply with their pending follow.
+
+> [!TIP]
+> [`getActorHandle()`] returns the canonical fediverse handle in
+> `@user@host` form by combining the actor's `preferredUsername`
+> with the host its WebFinger record lives on.  Some servers expose
+> a different display handle, so do not try to derive this from URL
+> parsing alone.
+
+[`getActorHandle()`]: https://jsr.io/@fedify/vocab/doc/~/getActorHandle
+
+### Trying it from Mastodon
+
+Restart the dev server if it is not already running, make sure
+your `fedify tunnel` URL still reaches alice (`fedify lookup @alice@<tunnel>`
+should still work), and head over to your ActivityPub.Academy tab.
+
+Search for alice (paste the actor URL into the search box at the
+top left), open her profile, and click *Follow*.  Within a second
+or two the button flips:
+
+![Mastodon's view of alice's profile after a successful follow:
+the Follow button has become a red Unfollow button, a bell icon
+appears next to it, and the follower count reads “1 Follower”
+instead of zero.](./content-sharing/academy-after-follow.png)
+
+The button only flips because Mastodon received the `Accept(Follow)`
+our listener sent.  Without the `Accept`, the button stays
+*Pending* indefinitely.
+
+Now check the local database:
+
+~~~~ sh
+sqlite3 -header -column content-sharing.sqlite3 \
+  "SELECT following_id, handle, inbox_url FROM followers"
+~~~~
+
+~~~~ console
+following_id  handle                                    inbox_url
+------------  ----------------------------------------  ----------------------------------------------------
+1             @anbelia_doshaelen@activitypub.academy    https://activitypub.academy/users/anbelia_doshaelen/inbox
+~~~~
+
+The Academy assigned your account a randomly-generated name; yours
+will read differently, but the `following_id = 1` and a real
+`/inbox` URL are the proof that the round trip happened.
+
+### Trying it from Pixelfed
+
+We are building a Pixelfed-style service, so verifying the
+Pixelfed side of the protocol matters at least as much as the
+Mastodon side.  Switch to your Pixelfed tab, paste the actor
+handle (`@alice@<tunnel>`) into the search bar, and open the
+profile from the dropdown.  Click *Follow*.
+
+After a second or two, alice's *Followers* counter ticks up:
+
+![Pixelfed's view of alice after a successful follow.  The
+counters now read “0 Posts”, “1 Followers”, “0 Following”, with
+the placeholder avatar still in
+place.](./content-sharing/pixelfed-after-follow.png)
+
+> [!NOTE]
+> Pixelfed sometimes leaves the *Follow* button label unchanged
+> even after a successful follow, especially when the remote
+> instance is brand new to it.  The follower count is the
+> reliable signal; navigating away and back will eventually
+> refresh the button label too.
+
+Re-run the database query and you will see two rows now, one for
+each remote actor:
+
+~~~~ sh
+sqlite3 -header -column content-sharing.sqlite3 \
+  "SELECT following_id, handle, inbox_url FROM followers"
+~~~~
+
+~~~~ console
+following_id  handle                                    inbox_url
+------------  ----------------------------------------  ----------------------------------------------------
+1             @anbelia_doshaelen@activitypub.academy    https://activitypub.academy/users/anbelia_doshaelen/inbox
+1             @you@<your-pixelfed-instance>             https://<your-pixelfed-instance>/users/you/inbox
+~~~~
+
+Same handler, two very different servers, identical outcome.
+That is the win condition for an ActivityPub server: behavior
+should follow from activity types, not from special-casing the
+remote brand.
+
+> [!TIP]
+> If the follower row never lands, the most likely culprits are:
+>
+>  -  The tunnel URL changed since the actor was last fetched.
+>     Both Mastodon and Pixelfed cache actor data, including the
+>     inbox URL; clear the remote tab, fetch alice again, and
+>     retry the follow.
+>  -  The dev server is no longer running.  Vite's hot reload
+>     makes it easy to think the process is alive when it has
+>     actually exited; check `tail` on your dev log.
+>  -  Signature verification failed.  Fedify's logs name the
+>     actor and key it tried to verify against; running with
+>     `LOG_LEVEL=debug npm run dev` shows the full failure path.
+
+The next chapter rounds the symmetric case out: handling the
+`Undo(Follow)` activity Mastodon and Pixelfed send when somebody
+clicks *Unfollow*.
