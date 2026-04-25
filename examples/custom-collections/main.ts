@@ -76,10 +76,12 @@ const bookmarks: Bookmark[] = [
   },
 ];
 
-export const followerIds = new Set([
-  "https://remote.example/users/bob",
-  "https://social.example/users/carol",
-]);
+export const followerIds = new Set(
+  [
+    "https://remote.example/users/bob",
+    "https://social.example/users/carol",
+  ].map(normalizeActorId),
+);
 
 export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -89,6 +91,8 @@ federation
   .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
     if (identifier !== OWNER) return null;
 
+    // inbox/outbox are omitted here; use setInboxListeners() and
+    // setOutboxDispatcher() for full ActivityPub actors.
     return new Person({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
@@ -112,6 +116,7 @@ federation.setFollowersDispatcher(
   (_ctx, identifier) => {
     if (identifier !== OWNER) return null;
 
+    // For large follower lists, add counters and cursor callbacks as below.
     const items: Recipient[] = Array.from(followerIds, (id) => {
       const actorId = new URL(id);
       return {
@@ -184,7 +189,9 @@ federation
     FOLLOWERS_ONLY_BOOKMARKS,
     Article,
     "/users/{identifier}/collections/followers-only",
-    (ctx, _values, cursor) => {
+    (ctx, values, cursor) => {
+      if (values.identifier !== OWNER) return null;
+
       return collectionBookmarks(
         ctx,
         followersOnlyBookmarks(),
@@ -205,7 +212,8 @@ federation
     return lastCursor(followersOnlyBookmarks());
   })
   .authorize(async (ctx, values) => {
-    return values.identifier === OWNER && await isFollowerRequest(ctx);
+    if (values.identifier !== OWNER) return true;
+    return await isFollowerRequest(ctx);
   });
 
 function publicBookmarks(): Bookmark[] {
@@ -319,7 +327,7 @@ async function isFollowerRequest(ctx: RequestContext<void>): Promise<boolean> {
   const signedKeyOwner = await ctx.getSignedKeyOwner();
   return signedKeyOwner?.id == null
     ? false
-    : followerIds.has(signedKeyOwner.id.href);
+    : followerIds.has(normalizeActorId(signedKeyOwner.id));
 }
 
 function firstCursor(items: Bookmark[]): string | null {
@@ -340,6 +348,10 @@ function parseCursor(cursor: string): number | null {
 
 function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase();
+}
+
+function normalizeActorId(id: string | URL): string {
+  return new URL(id).href;
 }
 
 async function fetchActivityJson(path: string): Promise<unknown> {

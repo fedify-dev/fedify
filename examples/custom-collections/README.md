@@ -24,5 +24,6 @@ deno task codegen  # At very first time only
 deno run -A ./main.ts
 ~~~~
 
-The output prints the actor document, collection metadata responses, and page
-responses for the example routes.
+The output prints the actor document, collection metadata and page responses
+for the public and tag-filtered routes, and the HTTP status codes returned
+for unsigned requests to the followers-only collection.
