@@ -15,11 +15,24 @@ import {
 import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
-const jsrRefPlugin = await jsrRef({
-  package: "@fedify/fedify",
-  version: process.env.JSR_REF_VERSION ?? "unstable",
-  cachePath: ".jsr-cache.json",
-});
+const jsrRefVersion = process.env.JSR_REF_VERSION ?? "unstable";
+const jsrRefPackages = [
+  ["@fedify/fedify", ".jsr-cache.json"],
+  ["@fedify/vocab", ".jsr-vocab-cache.json"],
+  ["@fedify/vocab-runtime", ".jsr-vocab-runtime-cache.json"],
+  ["@fedify/webfinger", ".jsr-webfinger-cache.json"],
+  ["@fedify/debugger", ".jsr-debugger-cache.json"],
+  ["@fedify/testing", ".jsr-testing-cache.json"],
+] as const;
+const jsrRefPlugins = await Promise.all(
+  jsrRefPackages.map(([packageName, cachePath]) =>
+    jsrRef({
+      package: packageName,
+      version: jsrRefVersion,
+      cachePath,
+    })
+  ),
+);
 
 let extraNav: { text: string; link: string }[] = [];
 if (process.env.EXTRA_NAV_TEXT && process.env.EXTRA_NAV_LINK) {
@@ -300,7 +313,9 @@ export default withMermaid(defineConfig({
       md.use(footnote);
       md.use(taskLists);
       md.use(groupIconMdPlugin);
-      md.use(jsrRefPlugin);
+      for (const jsrRefPlugin of jsrRefPlugins) {
+        md.use(jsrRefPlugin);
+      }
     },
   },
   sitemap: {
