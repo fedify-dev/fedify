@@ -2620,3 +2620,385 @@ multi-account support.  Today there is exactly one local user
 multiple local users on the same instance.  Matching both columns
 keeps the listener correct in advance: an unfollow against alice
 must not delete the row representing the same actor following bob.
+
+
+Followers list and collection
+-----------------------------
+
+Look at alice's profile on a fresh Mastodon or Pixelfed tab now —
+the *Followers* counter says **0**, even though our database
+clearly has at least one follower.  Remote servers do not poke
+our SQLite directly; they want to fetch alice's [followers collection], which
+is an ActivityPub `OrderedCollection` of every actor following her.  We do not
+expose that collection yet.
+
+This chapter adds two complementary pieces in lockstep:
+
+ -  The ActivityPub-side *followers collection dispatcher*, so
+    remote servers can ask alice for her follower list and see a
+    real number.
+ -  An HTML *followers* page on our own site at
+    */users/&#91;username&#93;/followers*, so the local user can
+    browse the list in a browser.
+
+Both end up reading the same `followers` table; the only
+difference is content negotiation.
+
+[followers collection]: https://www.w3.org/TR/activitypub/#followers
+
+### The collection dispatcher
+
+Open *server/federation.ts*.  Pull the `Recipient` type into the
+existing `@fedify/vocab` import, and pull `count` and `desc` into
+the `drizzle-orm` import:
+
+~~~~ typescript [server/federation.ts]
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  getActorHandle,
+  Person,
+  type Recipient,
+  Undo,
+} from "@fedify/vocab";
+import { and, count, desc, eq } from "drizzle-orm";
+~~~~
+
+Then chain a third dispatcher on the `federation` builder, after
+the inbox listener block:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307 2304 7006
+import { type Federation } from "@fedify/fedify";
+import { type Recipient } from "@fedify/vocab";
+import { count, desc, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { followers, users } from "./db/schema";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setFollowersDispatcher(
+    "/users/{identifier}/followers",
+    async (_ctx, identifier) => {
+      const localUser = (
+        await db
+          .select()
+          .from(users)
+          .where(eq(users.username, identifier))
+          .limit(1)
+      )[0];
+      if (localUser === undefined) return null;
+      const rows = await db
+        .select()
+        .from(followers)
+        .where(eq(followers.followingId, localUser.id))
+        .orderBy(desc(followers.createdAt));
+      const items: Recipient[] = rows.map((row) => ({
+        id: new URL(row.actorUri),
+        inboxId: new URL(row.inboxUrl),
+        endpoints:
+          row.sharedInboxUrl == null
+            ? null
+            : { sharedInbox: new URL(row.sharedInboxUrl) },
+      }));
+      return { items };
+    },
+  )
+  .setCounter(async (_ctx, identifier) => {
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return 0;
+    const result = await db
+      .select({ cnt: count() })
+      .from(followers)
+      .where(eq(followers.followingId, localUser.id));
+    return result[0]?.cnt ?? 0;
+  });
+~~~~
+
+A few notes on the shape:
+
+ -  *The route template.*  `"/users/{identifier}/followers"` is
+    parallel to the actor and inbox templates we registered in
+    earlier chapters.  Fedify uses the same `{identifier}` to
+    cross-reference the dispatcher, so other code can ask for the
+    collection's URI via `~Context.getFollowersUri(identifier)`.
+
+ -  *Returning `null` for unknown identifiers.*  Just like the
+    actor dispatcher, this turns into a `404 Not Found` so we
+    never invent a follower list for a username that doesn't exist.
+
+ -  *The [`Recipient`] type.*  Each item we return has the shape
+    Fedify uses internally to address remote actors: an `id`, an
+    `inboxId`, and an optional `endpoints.sharedInbox`.  Storing
+    the inbox URL directly on the row pays off here; we don't
+    need a network round trip to compute the response.
+
+ -  *`~CollectionCallbackSetters.setCounter()`.*  Computing
+    `count(*)` separately is much cheaper than serializing every
+    row, and most clients only render the count in their UI.
+    Returning `0` for unknown identifiers is again the safe default.
+
+[`Recipient`]: https://jsr.io/@fedify/vocab/doc/~/Recipient
+
+### Linking the collection from the actor
+
+The dispatcher exists, but alice's `Person` does not yet point at
+it.  Add one line to the actor dispatcher's returned `Person`:
+
+~~~~ typescript [server/federation.ts]
+return new Person({
+  id: ctx.getActorUri(identifier),
+  // ... other fields ...
+  inbox: ctx.getInboxUri(identifier),
+  followers: ctx.getFollowersUri(identifier),
+  // ... other fields ...
+});
+~~~~
+
+`~Context.getFollowersUri()` returns the URL the new dispatcher
+serves, computed from the same template Fedify keeps internally.
+If we ever change the route template, this call updates with it.
+
+> [!TIP]
+> Try `fedify lookup http://localhost:3000/users/alice/followers`.
+> You should get an `OrderedCollection` whose `totalItems` matches
+> the row count in our `followers` table, and whose `items` array
+> holds each remote follower's actor URL.  Remote servers will
+> hit the same endpoint and update their cached follower count
+> the next time they refresh alice's profile.
+
+### A browser page for the local user
+
+Remote servers are happy with the `OrderedCollection`, but the
+local user wants to actually see who's following them.  Move the
+existing profile page so it can host a sibling route:
+
+~~~~ sh
+mkdir -p app/pages/users/\[username\]
+git mv app/pages/users/\[username\].vue app/pages/users/\[username\]/index.vue
+~~~~
+
+Now create *app/pages/users/&#91;username&#93;/followers.vue*:
+
+~~~~ vue [app/pages/users/[username]/followers.vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+
+const { data, error } = await useFetch(
+  () => `/api/users/${username.value}/followers`,
+  { key: () => `followers-${username.value}` },
+);
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "User not found" });
+}
+
+const user = computed(() => data.value?.user ?? null);
+const followers = computed(() => data.value?.followers ?? []);
+
+useHead({
+  title: () =>
+    user.value
+      ? `${user.value.name}'s followers (@${user.value.username})`
+      : "PxShare",
+});
+</script>
+
+<template>
+  <section v-if="user" class="flex flex-col gap-6">
+    <header class="flex flex-col gap-1">
+      <NuxtLink
+        :to="`/users/${user.username}`"
+        class="text-sm text-gray-500 hover:text-brand"
+      >
+        ← {{ user.name }}
+      </NuxtLink>
+      <h1 class="text-xl font-bold">Followers</h1>
+      <p class="text-sm text-gray-500">
+        {{ followers.length }}
+        {{ followers.length === 1 ? "follower" : "followers" }}
+      </p>
+    </header>
+    <ul v-if="followers.length > 0" class="flex flex-col gap-3">
+      <li
+        v-for="follower in followers"
+        :key="follower.actorUri"
+        class="flex items-center gap-3"
+      >
+        <a
+          :href="follower.url ?? follower.actorUri"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex flex-col hover:text-brand"
+        >
+          <span class="font-semibold">{{ follower.name ?? follower.handle }}</span>
+          <span class="text-sm text-gray-500">{{ follower.handle }}</span>
+        </a>
+      </li>
+    </ul>
+    <p v-else class="text-sm text-gray-400 py-8 text-center">
+      No followers yet.
+    </p>
+  </section>
+</template>
+~~~~
+
+This page expects a JSON endpoint at
+*/api/users/&#91;username&#93;/followers*.  Add it next to the
+existing user endpoint, in
+*server/api/users/&#91;username&#93;/followers.get.ts*:
+
+~~~~ typescript [server/api/users/[username]/followers.get.ts]
+import { desc, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../../db/client";
+import { followers, users } from "../../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  const rows = await db
+    .select()
+    .from(followers)
+    .where(eq(followers.followingId, user.id))
+    .orderBy(desc(followers.createdAt));
+  return { user, followers: rows };
+});
+~~~~
+
+Finally, surface the count on the profile page itself.  Update
+*server/api/users/&#91;username&#93;.get.ts* to include
+`followerCount`:
+
+~~~~ typescript [server/api/users/[username].get.ts]
+import { count, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../db/client";
+import { followers, users } from "../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  const [{ followerCount }] = await db
+    .select({ followerCount: count() })
+    .from(followers)
+    .where(eq(followers.followingId, user.id));
+  return { user, followerCount };
+});
+~~~~
+
+…and rewrite *app/pages/users/&#91;username&#93;/index.vue* to
+render the count as a link to the new page:
+
+~~~~ vue [app/pages/users/[username]/index.vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+
+const { data, error } = await useFetch(() => `/api/users/${username.value}`, {
+  key: () => `user-${username.value}`,
+});
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "User not found" });
+}
+
+const user = computed(() => data.value?.user ?? null);
+const followerCount = computed(() => data.value?.followerCount ?? 0);
+
+useHead({
+  title: () =>
+    user.value ? `${user.value.name} (@${user.value.username})` : "PxShare",
+});
+</script>
+
+<template>
+  <section v-if="user" class="flex flex-col gap-6">
+    <header class="flex items-center gap-4">
+      <div
+        class="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center text-3xl font-bold text-brand"
+      >
+        {{ user.name[0] }}
+      </div>
+      <div class="flex flex-col">
+        <h1 class="text-xl font-bold">{{ user.name }}</h1>
+        <p class="text-sm text-gray-500">@{{ user.username }}</p>
+      </div>
+    </header>
+    <nav class="flex gap-6 text-sm border-b border-gray-200 pb-3">
+      <NuxtLink
+        :to="`/users/${user.username}/followers`"
+        class="hover:text-brand"
+      >
+        <strong>{{ followerCount }}</strong>
+        {{ followerCount === 1 ? "follower" : "followers" }}
+      </NuxtLink>
+    </nav>
+    <div
+      class="grid grid-cols-3 gap-1 min-h-40 text-sm text-gray-400 items-center justify-center"
+    >
+      <div class="col-span-3 text-center py-16">No posts yet.</div>
+    </div>
+  </section>
+</template>
+~~~~
+
+### Trying it out
+
+Visit <http://localhost:3000/users/alice> with at least one
+follower in the database.  The profile shows the linked count:
+
+![Alice's profile page after the followers count is wired up.
+Below the avatar and handle, a thin navigation row reads
+“1 follower” with the number bolded; it is a
+link.](./content-sharing/profile-with-follower-count.png)
+
+Click through and you land on the new HTML list:
+
+![Alice's followers page.  A “← Alice Example” back link, the
+“Followers” heading, “1 follower”, and a single entry showing
+the remote follower's display name and handle.  Each follower's
+handle is itself a link to their original profile on the remote
+server.](./content-sharing/followers-list.png)
+
+Refresh alice's profile on Mastodon or Pixelfed.  Both servers
+re-read the `Person`, find the new `followers` URL, fetch the
+collection, and start displaying the real follower count.
+
+> [!NOTE]
+> If a remote server still shows *0 followers* after a refresh,
+> two things help:
+>
+>  -  Wait for the remote server's actor cache to expire (Mastodon
+>     defaults to a few minutes, Pixelfed varies by version).
+>  -  Trigger a fresh fetch by following alice from the remote
+>     side; the remote server reads the actor JSON afresh and the
+>     new `followers` URL goes live.
+
+With our followers list complete, alice can now finally start
+producing the *content* her followers signed up for.  The next
+chapter introduces the `posts` table that will store image posts.
