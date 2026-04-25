@@ -500,7 +500,7 @@ export default defineNuxtConfig({
 ~~~~
 
 Then create *uno.config.ts* at the project root to configure the utility
-set and add one custom colour for our brand accent:
+set and add one custom color for our brand accent:
 
 ~~~~ typescript [uno.config.ts]
 import { defineConfig, presetWind3 } from "unocss";
@@ -518,7 +518,7 @@ export default defineConfig({
 });
 ~~~~
 
-The `brand` colour is what will power the pink accent on buttons and the
+The `brand` color is what will power the pink accent on buttons and the
 logo; `brand-dark` is a slightly darker variant we will use for hover
 states.
 
@@ -1462,7 +1462,7 @@ Error: It may be a private object.  Try with -a/--authorized-fetch.
 The HTML profile page from chapter 6 is unchanged.  Visit
 <http://localhost:3000/users/alice> in your browser and the same Vue
 page renders, because Fedify only intercepts requests whose
-<code>Accept</code> header asks for ActivityPub-flavoured JSON.
+<code>Accept</code> header asks for ActivityPub-flavored JSON.
 
 You can confirm both responses come from the same URL:
 
@@ -1725,7 +1725,7 @@ breaks down into three movements.
  -  *Lazy generation.*  The callback first reads any existing rows
     from `actor_keys`.  If a row for a given algorithm is missing,
     it calls [`generateCryptoKeyPair()`] to create a new pair, calls
-    [`exportJwk()`] to serialise both halves to JSON, and inserts
+    [`exportJwk()`] to serialize both halves to JSON, and inserts
     them.  Existing rows are deserialised back into [`CryptoKey`]
     objects with [`importJwk()`].  This way alice never has to
     “set up” her account; the first ActivityPub fetch produces her
@@ -1744,7 +1744,7 @@ breaks down into three movements.
 > only `publicKey`, and many implementations still assume it holds
 > exactly one key.  [FEP-521a] introduced `assertionMethods` to
 > register multiple keys at once.  Setting both means RSA-only and
-> Ed25519-aware servers can each find a key they recognise.
+> Ed25519-aware servers can each find a key they recognize.
 
 [`generateCryptoKeyPair()`]: https://jsr.io/@fedify/fedify/doc/~/generateCryptoKeyPair
 [`exportJwk()`]: https://jsr.io/@fedify/fedify/doc/~/exportJwk
@@ -1843,3 +1843,217 @@ points alice's local instance at the public internet for the first
 time, and gets Mastodon and Pixelfed to fetch her profile.
 
 [WebFinger]: https://datatracker.ietf.org/doc/html/rfc7033
+
+
+First federation test
+---------------------
+
+Alice's profile, keys, and WebFinger response all live at
+*localhost:3000*, which is not a place the rest of the fediverse can
+reach.  To make sure our tutorial code talks to real ActivityPub
+software, we need a public URL that proxies through to the local
+dev server.  Fedify ships exactly that, in the form of `fedify tunnel`.
+
+### Running `fedify tunnel`
+
+Open a second terminal so the dev server keeps running, and start
+the tunnel:
+
+~~~~ sh
+fedify tunnel 3000
+~~~~
+
+After a couple of seconds, the CLI prints a publicly reachable URL:
+
+~~~~ console
+- Creating a secure tunnel...
+✔ Your local server at 3000 is now publicly accessible:
+
+"https://cc001590e20ab0.lhr.life/"
+ Press ^C to close the tunnel.
+~~~~
+
+The exact subdomain changes every session.  We will refer to it as
+*&lt;tunnel&gt;* for the rest of the chapter; copy your real URL into
+the commands below.
+
+> [!TIP]
+> `fedify tunnel` rotates between three free SSH-based services
+> (`localhost.run`, `serveo.net`, `pinggy.io`) so it does not depend
+> on you signing up for anything.  If a session drops or refuses to
+> start, run the command again, or pin a specific service with `-s`,
+> for example `fedify tunnel -s localhost.run 3000`.  When all three
+> misbehave, [`cloudflared tunnel --url http://localhost:3000`] and
+> [`ngrok http 3000`] are good fallbacks; the rest of the tutorial
+> works with whichever public URL you ended up with.
+
+[`cloudflared tunnel --url http://localhost:3000`]: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/
+[`ngrok http 3000`]: https://ngrok.com/docs/getting-started/
+
+### Allowing the tunnel host in Nuxt
+
+If you try to open the tunnel URL right away, Nuxt's dev server will
+refuse with a *Blocked request* page.  This is a Vite security
+feature: in development it only answers requests whose
+<code>Host</code> header matches one of the allowed hosts.  Add the
+tunnel hosting services to *nuxt.config.ts* so we never have to
+edit it again when the subdomain rotates:
+
+~~~~ typescript [nuxt.config.ts]
+// https://nuxt.com/docs/api/configuration/nuxt-config
+export default defineNuxtConfig({
+  modules: ["@fedify/nuxt", "@unocss/nuxt"],
+  fedify: { federationModule: "#server/federation" },
+  ssr: true,
+  css: ["~/assets/styles.css"],
+  vite: {
+    server: {
+      // Tunnel hosts used during development.  `fedify tunnel`
+      // rotates subdomains every session, so we allow any
+      // subdomain of the hosting service rather than pinning a
+      // specific URL.
+      allowedHosts: [".lhr.life", ".trycloudflare.com", ".ngrok-free.app"],
+    },
+  },
+});
+~~~~
+
+The leading dot makes Vite accept any subdomain of the listed
+host, so a fresh tunnel session does not require another config
+change.  Save the file; Nuxt restarts automatically.
+
+> [!NOTE]
+> Vite's default `allowedHosts` already accepts `localhost` and any
+> private network address, so adding tunnel hosts here does not
+> open the dev server up beyond what you intend.  Production builds
+> ignore the option entirely.
+
+### Smoke test from the command line
+
+With the tunnel up and Nuxt happy, fetch alice's actor through the
+public URL.  Use `fedify lookup` so we exercise the full WebFinger
+to actor flow:
+
+~~~~ sh
+fedify lookup @alice@<tunnel>
+~~~~
+
+You should get back the same `Person` object we saw in chapter 8,
+except every URL now starts with the tunnel's hostname:
+
+~~~~ console
+✔ Fetched object: https://<tunnel>/users/alice
+Person {
+  id: URL 'https://<tunnel>/users/alice',
+  inbox: URL 'https://<tunnel>/users/alice/inbox',
+  endpoints: Endpoints { sharedInbox: URL 'https://<tunnel>/inbox' },
+  publicKey: CryptographicKey { ... },
+  assertionMethods: [ Multikey { ... }, Multikey { ... } ],
+  ...
+}
+~~~~
+
+Fedify uses the [`X-Forwarded-*`] headers the tunnel attaches to
+every request to figure out the public origin.  That is why the
+URL on the actor flips from `http://localhost:3000` to
+`https://<tunnel>` automatically; nothing in our code had to know
+the tunnel hostname.
+
+[`X-Forwarded-*`]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+
+### Looking alice up from Mastodon
+
+Now for the actual federation test.  Open
+<https://activitypub.academy/> in a new browser tab.  The Academy is
+an open Mastodon instance for ActivityPub experimentation: every
+sign-up gets an ephemeral account that is deleted the next day, so
+no real identity is involved.  Click *Sign up*, accept the privacy
+policy, and you land in a fresh Mastodon UI.
+
+In the search box at the top left, paste the actor URL from the
+tunnel:
+
+~~~~ text
+https://<tunnel>/users/alice
+~~~~
+
+Mastodon performs an authenticated fetch to your tunnel, follows
+the WebFinger pointer, and shows the result inline:
+
+![Search results panel on activitypub.academy showing one entry,
+“Alice Example  @alice@&lt;tunnel&gt;”, with a generic mascot
+avatar.](./content-sharing/academy-search-alice.png)
+
+Click the result (or navigate directly to
+*https://activitypub.academy/@alice@&lt;tunnel&gt;*) to see alice
+rendered as a fully-fledged remote profile, complete with a *Follow*
+button:
+
+![Mastodon profile view of Alice Example showing her display name,
+the federated handle, “Joined 25 Apr 2026”, and zero posts, zero
+following, zero followers.](./content-sharing/academy-alice-profile.png)
+
+The avatar is a default placeholder because we never wired one up
+for alice.  The *Follow* button is a clickable button, but no
+follow flow runs yet; the inbox handler that turns the academy's
+incoming `Follow` activity into a follower record is what we build
+in [chapter 10](#handling-follows).
+
+### Looking alice up from Pixelfed
+
+Mastodon was the first proof point.  Pixelfed is the second, and
+it has a slightly different interface but the same underlying
+ActivityPub plumbing.  Open <https://pxlmo.com/> in another tab and
+sign in (any Pixelfed instance with federation enabled will do).
+
+Pixelfed's URL pattern for remote profiles is
+*pxlmo.com/@username@host*, so navigating to
+*https://pxlmo.com/@alice@&lt;tunnel&gt;* triggers a federation
+fetch and renders alice's profile:
+
+![Pixelfed profile view of Alice Example with the federated handle,
+the default placeholder avatar, three counters (0 Posts, 0
+Followers, 0 Following), and a blue Follow
+button.](./content-sharing/pxlmo-alice-profile.png)
+
+Notice that Pixelfed shows the counters even though we have not
+exposed a `followers` or `following` collection yet; it is happy to
+default to zero when those endpoints are missing.
+
+> [!TIP]
+> Pixelfed's quick-search dropdown sometimes prefills the input
+> with `[object Object]` when you press *Enter* on a remote-account
+> result.  Navigate by URL instead (or restart the tab and try the
+> dropdown again).  This is a Pixelfed UI quirk unrelated to our
+> server.
+
+### What just happened?
+
+Three things had to line up for this chapter to work, all of which
+have been quietly built up over the previous chapters:
+
+ -  *WebFinger.*  Both Mastodon and Pixelfed asked our tunnel for
+    `acct:alice@<tunnel>`, and Fedify answered using the actor
+    dispatcher we registered in chapter 7.
+ -  *Signed actor fetch.*  The remote servers signed their request
+    with their own actor's keys; Fedify verified the signature
+    against the public key it fetched from the remote server.
+ -  *Public keys advertised on alice.*  Once Mastodon or Pixelfed
+    cached alice's actor JSON, they recorded the keys we generated
+    in chapter 8.  When alice eventually sends activities back, the
+    receiver will already know which key to verify against.
+
+Nothing in our code knows about Mastodon or Pixelfed specifically.
+ActivityPub is a single protocol, and the chapters that follow will
+add behavior by adding handlers, not by special-casing servers.
+
+> [!CAUTION]
+> Stop the tunnel (`Ctrl+C`) when you are not actively testing
+> federation.  A live tunnel exposes your dev server to the entire
+> internet, including unsolicited probing traffic.  Keys remain
+> safe (they sit in your local SQLite file), but you do not want to
+> leave a development backend reachable longer than necessary.
+
+With the federation pipe open, the next chapter teaches alice how
+to *accept* the `Follow` activities Mastodon and Pixelfed are eager
+to send.
