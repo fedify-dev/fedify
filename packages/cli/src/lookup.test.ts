@@ -11,6 +11,7 @@ import { join } from "node:path";
 import process from "node:process";
 import { Writable } from "node:stream";
 import test from "node:test";
+import { serve } from "srvx";
 import { configContext } from "./config.ts";
 import { getContextLoader } from "./docloader.ts";
 import { runCli } from "./runner.ts";
@@ -21,6 +22,7 @@ import {
   collectRecursiveObjects,
   createTimeoutSignal,
   getLookupFailureHint,
+  getPrivateUrlCandidate,
   getRecursiveTargetId,
   lookupCommand,
   RecursiveLookupError,
@@ -768,6 +770,25 @@ test("getLookupFailureHint - suggests authorized-fetch for non-URL errors", () =
   );
 });
 
+test("getPrivateUrlCandidate - detects obvious private hosts without DNS", () => {
+  assert.equal(
+    getPrivateUrlCandidate("http://localhost:8080/object")?.href,
+    "http://localhost:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("http://127.0.0.1:8080/object")?.href,
+    "http://127.0.0.1:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("http://[::1]:8080/object")?.href,
+    "http://[::1]:8080/object",
+  );
+  assert.equal(
+    getPrivateUrlCandidate("https://example.com/object"),
+    null,
+  );
+});
+
 test("getLookupFailureHint - does not treat all UrlError values as private", () => {
   assert.equal(
     getLookupFailureHint(new UrlError("Unsupported protocol: ftp:")),
@@ -1056,11 +1077,220 @@ async function runLookupAndCaptureExitCode(
   }
 }
 
+async function captureStderr<T>(
+  callback: () => Promise<T>,
+): Promise<{ result: T; stderr: string }> {
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((
+    chunk: string | Uint8Array,
+    encodingOrCallback?: unknown,
+    callback?: () => void,
+  ) => {
+    stderr += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+    if (typeof encodingOrCallback === "function") {
+      encodingOrCallback();
+    } else {
+      callback?.();
+    }
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const result = await callback();
+    return { result, stderr };
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+}
+
 function extractIdsFromRawOutput(content: string): string[] {
   return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>
     match[1]
   );
 }
+
+async function withRecursiveLookupServer<T>(
+  options: {
+    replyContextPath?: string;
+  },
+  callback: (server: {
+    rootUrl: URL;
+    replyUrl: URL;
+    requestedPaths: string[];
+  }) => Promise<T>,
+): Promise<T> {
+  const requestedPaths: string[] = [];
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch(request) {
+      const requestUrl = new URL(request.url);
+      const rootUrl = new URL("/notes/1", requestUrl.origin);
+      const replyUrl = new URL("/notes/0", requestUrl.origin);
+      const replyContextUrl = options.replyContextPath == null
+        ? undefined
+        : new URL(options.replyContextPath, requestUrl.origin);
+      requestedPaths.push(requestUrl.pathname);
+
+      let body: unknown;
+      if (requestUrl.pathname === rootUrl.pathname) {
+        body = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: rootUrl.href,
+          type: "Note",
+          content: "root",
+          inReplyTo: replyUrl.href,
+        };
+      } else if (requestUrl.pathname === replyUrl.pathname) {
+        body = {
+          "@context": replyContextUrl == null
+            ? "https://www.w3.org/ns/activitystreams"
+            : [
+              "https://www.w3.org/ns/activitystreams",
+              replyContextUrl.href,
+            ],
+          id: replyUrl.href,
+          type: "Note",
+          content: "reply",
+          ...(replyContextUrl == null ? {} : { fedifyTest: "value" }),
+        };
+      } else if (
+        replyContextUrl != null &&
+        requestUrl.pathname === replyContextUrl.pathname
+      ) {
+        body = {
+          "@context": {
+            fedifyTest: "https://fedify.dev/ns/test#fedifyTest",
+          },
+        };
+      } else {
+        return new Response(null, { status: 404 });
+      }
+
+      return Response.json(body, {
+        headers: {
+          "Content-Type": "application/activity+json",
+        },
+      });
+    },
+  });
+
+  await server.ready();
+  assert.ok(server.url != null);
+  const origin = new URL(server.url).origin;
+  try {
+    return await callback({
+      rootUrl: new URL("/notes/1", origin),
+      replyUrl: new URL("/notes/0", origin),
+      requestedPaths,
+    });
+  } finally {
+    await server.close(true);
+  }
+}
+
+test("runLookup - rejects recursive private targets by default", async () => {
+  const testDir = "./test_output_runlookup_recurse_private_default";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    await withRecursiveLookupServer(
+      {},
+      async ({ rootUrl, requestedPaths }) => {
+        const { result: exitCode, stderr } = await captureStderr(() =>
+          runLookupAndCaptureExitCode(
+            createLookupRunCommand({
+              urls: [rootUrl.href],
+              recurse: "replyTarget",
+              recurseDepth: 20,
+              allowPrivateAddress: false,
+              output: testFile,
+            }),
+          )
+        );
+        assert.equal(exitCode, 1);
+        assert.deepEqual(requestedPaths, ["/notes/1"]);
+        assert.match(
+          stderr,
+          /--allow-private-address/,
+        );
+
+        const content = await readFile(testFile, "utf8");
+        assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
+      },
+    );
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - allows recursive private targets with allowPrivateAddress", async () => {
+  const testDir = "./test_output_runlookup_recurse_private_allowed";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    await withRecursiveLookupServer(
+      {},
+      async ({ rootUrl, replyUrl, requestedPaths }) => {
+        const exitCode = await runLookupAndCaptureExitCode(
+          createLookupRunCommand({
+            urls: [rootUrl.href],
+            recurse: "replyTarget",
+            recurseDepth: 20,
+            allowPrivateAddress: true,
+            output: testFile,
+          }),
+        );
+        assert.equal(exitCode, 0);
+        assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
+
+        const content = await readFile(testFile, "utf8");
+        assert.deepEqual(extractIdsFromRawOutput(content), [
+          rootUrl.href,
+          replyUrl.href,
+        ]);
+      },
+    );
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - keeps recursive private contexts blocked", async () => {
+  const testDir = "./test_output_runlookup_recurse_private_context";
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    await withRecursiveLookupServer(
+      { replyContextPath: "/contexts/reply" },
+      async ({ rootUrl, requestedPaths }) => {
+        const { result: exitCode, stderr } = await captureStderr(() =>
+          runLookupAndCaptureExitCode(
+            createLookupRunCommand({
+              urls: [rootUrl.href],
+              recurse: "replyTarget",
+              recurseDepth: 20,
+              allowPrivateAddress: true,
+              output: testFile,
+            }),
+          )
+        );
+        assert.equal(exitCode, 1);
+        assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
+        assert.match(
+          stderr,
+          /Recursive JSON-LD context URL .* is always blocked/,
+        );
+
+        const content = await readFile(testFile, "utf8");
+        assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
+      },
+    );
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
 
 test("runLookup - reverses output order in default multi-input mode", async () => {
   const testDir = "./test_output_runlookup_default_reverse";

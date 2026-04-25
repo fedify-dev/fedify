@@ -143,9 +143,18 @@ To be released.
 
 ### @fedify/cli
 
+ -  Made `fedify lookup --recurse` honor `-p`/`--allow-private-address`
+    for recursively discovered object URLs, matching the policy already used
+    by `-t`/`--traverse`.  Recursive lookups still reject private or
+    localhost targets by default unless users explicitly opt in.
+    [[#700], [#718]]
+
  -  Added [FEP-044f] `quote` support to `fedify lookup --recurse`, so the CLI
     can follow both the new quote-post relation and the older `quoteUrl`
     compatibility surface.  [[#452], [#679]]
+
+[#700]: https://github.com/fedify-dev/fedify/issues/700
+[#718]: https://github.com/fedify-dev/fedify/pull/718
 
 ### @fedify/solidstart
 

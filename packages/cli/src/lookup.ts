@@ -12,7 +12,13 @@ import {
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
-import { type DocumentLoader, UrlError } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  expandIPv6Address,
+  isValidPublicIPv4Address,
+  isValidPublicIPv6Address,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { bindConfig } from "@optique/config";
@@ -37,8 +43,10 @@ import {
   string,
   withDefault,
 } from "@optique/core";
+import { url as messageUrl } from "@optique/core/message";
 import { path, printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
+import { isIP } from "node:net";
 import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
@@ -87,11 +95,9 @@ const suppressErrorsOption = bindConfig(
 const allowPrivateAddressOption = bindConfig(
   flag("-p", "--allow-private-address", {
     description: message`Allow private IP addresses for URLs discovered \
-during traversal. This option only has an effect when used together \
-with ${optionNames(["-t", "--traverse"])}, since URLs explicitly \
-provided on the command line always allow private addresses and \
-recursive fetches via ${optionNames(["--recurse"])} always disallow \
-them.`,
+during traversal or recursive object fetches. Recursive JSON-LD \
+context URLs always remain blocked. URLs explicitly provided on the \
+command line always allow private addresses.`,
   }),
   {
     context: configContext,
@@ -527,7 +533,9 @@ function handleTimeoutError(
   const urlText = url ? ` for: ${colors.red(url)}` : "";
   spinner.fail(`Request timed out after ${timeoutSeconds} seconds${urlText}.`);
   printError(
-    message`Try increasing the timeout with -T/--timeout option or check network connectivity.`,
+    message`Try increasing the timeout with ${
+      optionNames(["-T", "--timeout"])
+    } option or check network connectivity.`,
   );
 }
 
@@ -545,6 +553,94 @@ function isPrivateAddressError(error: unknown): boolean {
     lowerMessage.includes("private ip") ||
     lowerMessage.includes("localhost") ||
     lowerMessage.includes("loopback")
+  );
+}
+
+export function getPrivateUrlCandidate(
+  candidate: unknown,
+): URL | null {
+  // This helper is only for post-failure hinting. It intentionally does a
+  // cheap hostname/IP check so we can recognize obvious private targets
+  // without re-running the full document-loader validation path.
+  if (typeof candidate !== "string" && !(candidate instanceof URL)) return null;
+
+  try {
+    const url = new URL(candidate);
+    const hostname = url.hostname;
+    if (hostname === "localhost") return url;
+
+    const normalized = hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
+    const ipVersion = isIP(normalized);
+    if (ipVersion === 4) {
+      return isValidPublicIPv4Address(normalized) ? null : url;
+    }
+    if (ipVersion === 6) {
+      const expanded = expandIPv6Address(normalized);
+      return isValidPublicIPv6Address(expanded) ? null : url;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isPrivateAddressTarget(target: string): boolean {
+  return getPrivateUrlCandidate(target) != null;
+}
+
+function getPrivateContextUrl(error: unknown): URL | null {
+  // Recursive object fetches and recursive JSON-LD context fetches use
+  // different loader policies. When the strict context loader rejects a
+  // private @context URL, the underlying UrlError is often surfaced as a
+  // jsonld parsing error instead of the original loader error. This helper
+  // reconstructs the blocked private context URL so the CLI can show a
+  // recurse-specific hint instead of the generic authorized-fetch hint.
+  // This detection intentionally depends on jsonld's current error shape:
+  // name === "jsonld.InvalidUrl", the "valid JSON-LD object" substring, and
+  // a trailing `URL: "..."` segment all at once. If jsonld changes those
+  // details, this helper and the related lookup tests need to be updated
+  // together.
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  if (
+    !(error instanceof Error) ||
+    error.name !== "jsonld.InvalidUrl" ||
+    !errorMessage.includes("valid JSON-LD object")
+  ) {
+    return null;
+  }
+
+  const structuredError = error as {
+    details?: { url?: unknown };
+    url?: unknown;
+  };
+  const structuredUrl = getPrivateUrlCandidate(structuredError.details?.url) ??
+    getPrivateUrlCandidate(structuredError.url);
+  if (structuredUrl != null) return structuredUrl;
+
+  const match = errorMessage.match(/URL:\s*"([^"]+)"/);
+  if (match == null) return null;
+  return getPrivateUrlCandidate(match[1]);
+}
+
+function printRecursivePrivateAddressHint(): void {
+  printError(
+    message`The recursive target appears to be private or localhost.  Try with ${
+      optionNames(["-p", "--allow-private-address"])
+    }, or use ${
+      optionNames(["-S", "--suppress-errors"])
+    } to skip blocked steps.`,
+  );
+}
+
+function printRecursivePrivateContextHint(privateContextUrl: URL): void {
+  printError(
+    message`Recursive JSON-LD context URL ${
+      messageUrl(privateContextUrl)
+    } is always blocked, even with ${
+      optionNames(["-p", "--allow-private-address"])
+    }.  Use ${optionNames(["-S", "--suppress-errors"])} to skip blocked steps.`,
   );
 }
 
@@ -582,17 +678,19 @@ function printLookupFailureHint(
   switch (hint) {
     case "private-address":
       printError(
-        message`The URL appears to be private or localhost.  Try with -p/--allow-private-address.`,
+        message`The URL appears to be private or localhost.  Try with ${
+          optionNames(["-p", "--allow-private-address"])
+        }.`,
       );
       return;
     case "recursive-private-address":
-      printError(
-        message`Recursive fetches do not allow private/localhost URLs.  Use -S/--suppress-errors to skip blocked steps, or fetch those targets explicitly without --recurse.`,
-      );
+      printRecursivePrivateAddressHint();
       return;
     case "authorized-fetch":
       printError(
-        message`It may be a private object.  Try with -a/--authorized-fetch.`,
+        message`It may be a private object.  Try with ${
+          optionNames(["-a", "--authorized-fetch"])
+        }.`,
       );
       return;
   }
@@ -730,10 +828,8 @@ export async function runLookup(
   let server: TemporaryServer | undefined = undefined;
   // URLs explicitly provided by the user always allow private addresses,
   // so that local servers can be looked up without -p/--allow-private-address.
-  // URLs discovered during traversal follow the option to mitigate SSRF
-  // against private addresses, while recursive fetches always disallow
-  // private addresses regardless of the option (see the --recurse branch
-  // below, which hardcodes `allowPrivateAddress: false`).
+  // URLs discovered during traversal or recursion follow the option to
+  // mitigate SSRF against private addresses.
   const initialBaseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: true,
@@ -894,14 +990,14 @@ export async function runLookup(
   }...`;
 
   if (command.recurse != null) {
-    const recursiveBaseDocumentLoader = await getDocumentLoader({
-      userAgent: command.userAgent,
-      allowPrivateAddress: false,
-    });
-    const recursiveDocumentLoader = wrapDocumentLoaderWithTimeout(
-      recursiveBaseDocumentLoader,
-      command.timeout,
-    );
+    const initialLookupDocumentLoader: DocumentLoader = initialAuthLoader ??
+      initialDocumentLoader;
+    const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
+      documentLoader;
+    // `-p/--allow-private-address` only changes the follow-up object fetches
+    // that recurse explicitly performs. JSON-LD context loads stay on the
+    // strict loader so a remote object cannot implicitly expand the trust
+    // boundary via private @context URLs.
     const recursiveBaseContextLoader = await getContextLoader({
       userAgent: command.userAgent,
       allowPrivateAddress: false,
@@ -910,30 +1006,6 @@ export async function runLookup(
       recursiveBaseContextLoader,
       command.timeout,
     );
-    const recursiveAuthLoader = command.authorizedFetch &&
-        authIdentity != null
-      ? wrapDocumentLoaderWithTimeout(
-        getAuthenticatedDocumentLoader(
-          authIdentity,
-          {
-            allowPrivateAddress: false,
-            userAgent: command.userAgent,
-            specDeterminer: {
-              determineSpec() {
-                return command.firstKnock;
-              },
-              rememberSpec() {
-              },
-            },
-          },
-        ),
-        command.timeout,
-      )
-      : undefined;
-    const initialLookupDocumentLoader: DocumentLoader = initialAuthLoader ??
-      initialDocumentLoader;
-    const recursiveLookupDocumentLoader: DocumentLoader = recursiveAuthLoader ??
-      recursiveDocumentLoader;
     let totalObjects = 0;
     const recurseDepth = command.recurseDepth!;
 
@@ -966,7 +1038,9 @@ export async function runLookup(
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
         if (authLoader == null) {
           printError(
-            message`It may be a private object.  Try with -a/--authorized-fetch.`,
+            message`It may be a private object.  Try with ${
+              optionNames(["-a", "--authorized-fetch"])
+            }.`,
           );
         }
         await finalizeAndExit(1);
@@ -1048,17 +1122,32 @@ export async function runLookup(
           spinner.fail(
             `Failed to recursively fetch object: ${colors.red(error.target)}.`,
           );
-          if (authLoader == null) {
+          if (
+            !command.allowPrivateAddress &&
+            isPrivateAddressTarget(error.target)
+          ) {
+            printRecursivePrivateAddressHint();
+          } else if (authLoader == null) {
             printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
+              message`It may be a private object.  Try with ${
+                optionNames(["-a", "--authorized-fetch"])
+              }.`,
             );
           }
         } else {
           spinner.fail("Failed to recursively fetch object.");
+          const privateContextUrl = getPrivateContextUrl(error);
+          if (privateContextUrl != null) {
+            printRecursivePrivateContextHint(privateContextUrl);
+            await finalizeAndExit(1);
+            return;
+          }
           const hint = getLookupFailureHint(error, { recursive: true });
           if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(
-              message`Use the -S/--suppress-errors option to suppress partial errors.`,
+              message`Use the ${
+                optionNames(["-S", "--suppress-errors"])
+              } option to suppress partial errors.`,
             );
           } else {
             printLookupFailureHint(authLoader, error, { recursive: true });
@@ -1172,7 +1261,9 @@ export async function runLookup(
         spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
         if (authLoader == null) {
           printError(
-            message`It may be a private object.  Try with -a/--authorized-fetch.`,
+            message`It may be a private object.  Try with ${
+              optionNames(["-a", "--authorized-fetch"])
+            }.`,
           );
         }
         await finalizeAndExit(1);
@@ -1272,7 +1363,9 @@ export async function runLookup(
           const hint = getLookupFailureHint(error);
           if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
             printError(
-              message`Use the -S/--suppress-errors option to suppress partial errors.`,
+              message`Use the ${
+                optionNames(["-S", "--suppress-errors"])
+              } option to suppress partial errors.`,
             );
           } else {
             printLookupFailureHint(authLoader, error);
@@ -1323,7 +1416,9 @@ export async function runLookup(
       spinner.fail(`Failed to fetch ${colors.red(url)}`);
       if (authLoader == null) {
         printError(
-          message`It may be a private object.  Try with -a/--authorized-fetch.`,
+          message`It may be a private object.  Try with ${
+            optionNames(["-a", "--authorized-fetch"])
+          }.`,
         );
       }
       success = false;
