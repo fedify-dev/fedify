@@ -300,6 +300,9 @@ const webFrameworks: WebFrameworks = {
       federationFile: "server/federation.ts",
       loggingFile: "server/logging.ts",
       files: {
+        "server/plugins/logging.ts": await readTemplate(
+          "nitro/server/plugins/logging.ts",
+        ),
         "server/middleware/federation.ts": await readTemplate(
           "nitro/server/middleware/federation.ts",
         ),
@@ -338,6 +341,7 @@ const webFrameworks: WebFrameworks = {
       federationFile: "federation/index.ts",
       loggingFile: "logging.ts",
       files: {
+        "instrumentation.ts": await readTemplate("next/instrumentation.ts"),
         "middleware.ts": await readTemplate("next/middleware.ts"),
         ...(pm !== "deno"
           ? {
