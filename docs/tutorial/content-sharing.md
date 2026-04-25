@@ -3573,3 +3573,182 @@ image directly.
 Posts are now individually addressable, but alice's profile page
 still says “No posts yet”.  The next chapter renders posts in a
 grid on the profile.
+
+
+Profile feed
+------------
+
+Alice now has posts she can author and Notes other servers can
+fetch, but her own profile page is still stuck on “No posts yet.”
+This chapter renders the feed.
+
+### A JSON endpoint for the posts list
+
+Create *server/api/users/&#91;username&#93;/posts.get.ts*:
+
+~~~~ typescript [server/api/users/[username]/posts.get.ts]
+import { desc, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../../db/client";
+import { posts, users } from "../../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  const rows = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.userId, user.id))
+    .orderBy(desc(posts.createdAt));
+  return { user, posts: rows };
+});
+~~~~
+
+The endpoint mirrors the followers one from chapter 12: validate
+the username, resolve the user, return everything ordered
+newest-first.  Real Pixelfed instances paginate this; we will
+revisit pagination in the closing chapter under “areas for
+improvement.”
+
+### Surfacing the post count
+
+Open *server/api/users/&#91;username&#93;.get.ts* and add a
+matching `postCount` aggregate to the existing profile payload:
+
+~~~~ typescript [server/api/users/[username].get.ts]
+import { count, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../db/client";
+import { followers, posts, users } from "../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  const [{ followerCount }] = await db
+    .select({ followerCount: count() })
+    .from(followers)
+    .where(eq(followers.followingId, user.id));
+  const [{ postCount }] = await db
+    .select({ postCount: count() })
+    .from(posts)
+    .where(eq(posts.userId, user.id));
+  return { user, followerCount, postCount };
+});
+~~~~
+
+### The grid on the profile page
+
+Rewrite *app/pages/users/&#91;username&#93;/index.vue* to fetch
+both endpoints in parallel and render the post grid:
+
+~~~~ vue [app/pages/users/[username]/index.vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+
+const { data: profile, error } = await useFetch(
+  () => `/api/users/${username.value}`,
+  { key: () => `user-${username.value}` },
+);
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "User not found" });
+}
+
+const { data: postsData } = await useFetch(
+  () => `/api/users/${username.value}/posts`,
+  { key: () => `posts-${username.value}` },
+);
+
+const user = computed(() => profile.value?.user ?? null);
+const followerCount = computed(() => profile.value?.followerCount ?? 0);
+const postCount = computed(() => profile.value?.postCount ?? 0);
+const posts = computed(() => postsData.value?.posts ?? []);
+
+useHead({
+  title: () =>
+    user.value ? `${user.value.name} (@${user.value.username})` : "PxShare",
+});
+</script>
+
+<template>
+  <section v-if="user" class="flex flex-col gap-6">
+    <header class="flex items-center gap-4">
+      <div
+        class="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center text-3xl font-bold text-brand"
+      >
+        {{ user.name[0] }}
+      </div>
+      <div class="flex flex-col">
+        <h1 class="text-xl font-bold">{{ user.name }}</h1>
+        <p class="text-sm text-gray-500">@{{ user.username }}</p>
+      </div>
+    </header>
+    <nav class="flex gap-6 text-sm border-b border-gray-200 pb-3">
+      <span>
+        <strong>{{ postCount }}</strong>
+        {{ postCount === 1 ? "post" : "posts" }}
+      </span>
+      <NuxtLink
+        :to="`/users/${user.username}/followers`"
+        class="hover:text-brand"
+      >
+        <strong>{{ followerCount }}</strong>
+        {{ followerCount === 1 ? "follower" : "followers" }}
+      </NuxtLink>
+    </nav>
+    <div v-if="posts.length > 0" class="grid grid-cols-3 gap-1">
+      <NuxtLink
+        v-for="post in posts"
+        :key="post.id"
+        :to="`/users/${user.username}/posts/${post.id}`"
+        class="block aspect-square overflow-hidden bg-gray-100 hover:opacity-90 transition"
+      >
+        <img
+          :src="`/uploads/${post.mediaPath}`"
+          :alt="post.caption ?? ''"
+          class="w-full h-full object-cover"
+        />
+      </NuxtLink>
+    </div>
+    <p v-else class="text-sm text-gray-400 py-8 text-center">No posts yet.</p>
+  </section>
+</template>
+~~~~
+
+The grid is three columns of square tiles, the same shape Pixelfed
+uses on its profile pages.  Each tile is a `NuxtLink` pointing at
+*/users/&lt;username&gt;/posts/&lt;id&gt;*; the route the next
+chapter will fill in.  `object-cover` crops images that are not
+square so they fill the tile cleanly.
+
+### Trying it out
+
+Refresh <http://localhost:3000/users/alice>.  Now the counter row
+shows the post count, and the grid renders a tile per row in
+`posts`:
+
+![Alice's profile with the post count and a grid of square thumbnails.](./content-sharing/profile-feed.png)
+
+The counters and grid update on every page load; there is no
+caching layer beyond the database itself, so freshly composed
+posts appear on the next refresh.
+
+The next chapter wires up the post detail route the tiles already
+link to, so clicking a tile leads somewhere instead of 404ing.
