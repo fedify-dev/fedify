@@ -212,7 +212,12 @@ The most interesting files and directories are:
      -  *federation.ts*: the Fedify federation object.  This is where actors,
         inbox listeners, and object dispatchers are registered.  Most of our
         work will land here.
-     -  *logging.ts*: [LogTape] configuration used by Fedify.
+     -  *logging.ts*: [LogTape] configuration used by Fedify.  The default
+        export is the configuration promise; we never call into this file
+        directly.
+     -  *plugins/logging.ts*: a [Nitro server plugin] that awaits the
+        configuration promise on startup so Fedify's logs are alive before
+        any request lands.
  -  *nuxt.config.ts*: Nuxt's configuration file; already has `@fedify/nuxt`
     wired up as a module.
  -  *package.json*: npm metadata and dependencies.
@@ -225,6 +230,7 @@ TypeScript) or *.vue* (for Vue single-file components that may contain
 TypeScript in their `<script>` blocks).
 
 [LogTape]: https://logtape.org/
+[Nitro server plugin]: https://nitro.build/guide/plugins
 [Biome]: https://biomejs.dev/
 
 ### Running the dev server for the first time
@@ -2235,6 +2241,10 @@ federation
       target,
       follower,
       new Accept({
+        id: new URL(
+          `#accepts/${crypto.randomUUID()}`,
+          ctx.getActorUri(target.identifier),
+        ),
         actor: follow.objectId,
         to: follow.actorId,
         object: follow,
@@ -2268,7 +2278,15 @@ Walking through the listener:
     sender (the parsed actor target), the recipient (the remote
     follower), and the activity to send.  We construct an `Accept`
     whose `object` is the original `Follow`; that is how Mastodon
-    correlates our reply with their pending follow.
+    and Pixelfed correlate our reply with their pending follow.
+
+ -  *The explicit `id` on the `Accept`.*  Fedify will auto-generate
+    an id if you do not provide one, but the auto-generated form
+    (`https://<host>/#Accept/<uuid>`) confuses Pixelfed: the local
+    follow stays in a half-finished state and the *Follow* button
+    never flips.  Building the id under the actor's URI
+    (`<actor>#accepts/<uuid>`) follows the convention Mastodon uses
+    and works on every implementation we tested.
 
 > [!TIP]
 > [`getActorHandle()`] returns the canonical fediverse handle in
