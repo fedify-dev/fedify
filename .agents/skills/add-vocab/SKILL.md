@@ -33,8 +33,8 @@ fediverse. Specifically, verify:
     async/sync interface contract
  -  The `functional` flag is correct — marking a multi-valued property as
     functional silently drops values
- -  Every property `range` entry is accurate — wrong range types produce incorrect
-    TypeScript types
+ -  Every property `range` entry is accurate — wrong range types produce
+    incorrect TypeScript types
  -  The spec document (FEP or W3C spec) has been read in full, not just skimmed
 
 Do not rely solely on automated checks (`mise run check`)—they verify only
@@ -86,8 +86,8 @@ $schema: ../../vocab-tools/schema.yaml
 **Entity vs. value type (`entity` flag):**
 
  -  `entity: true` — property accessors are `async` and can fetch remote objects
- -  `entity: false` — property accessors are synchronous; used for embedded value
-    objects (e.g. `Endpoints`, `Source`, `Hashtag`)
+ -  `entity: false` — property accessors are synchronous; used for embedded
+    value objects (e.g. `Endpoints`, `Source`, `Hashtag`)
 
 ### `defaultContext` format
 
@@ -117,8 +117,8 @@ defaultContext:
 Embedded context entries are YAML mappings where:
 
  -  String value `"prefix:term"` or `"https://..."` defines a simple term alias
- -  Object value with `"@id"` and optionally `"@type": "@id"` defines a term that
-    should be treated as an IRI (linked resource)
+ -  Object value with `"@id"` and optionally `"@type": "@id"` defines a term
+    that should be treated as an IRI (linked resource)
 
 ### Ensuring complete compaction coverage
 
@@ -128,9 +128,9 @@ document produced by `toJsonLd()`**, including:
 1.  **The type's own `compactName`** — if the type has a `compactName`, the
     context must map that name to the type's URI.
 
-2.  **All own property `compactName`s** — every property defined directly on this
-    type must have its `compactName` (or full URI fallback) resolvable via the
-    context.
+2.  **All own property `compactName`s** — every property defined directly on
+    this type must have its `compactName` (or full URI fallback) resolvable via
+    the context.
 
 3.  **Inherited properties** — properties from parent types are usually covered
     by the parent's context URL (e.g., `https://www.w3.org/ns/activitystreams`

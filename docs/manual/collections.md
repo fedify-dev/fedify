@@ -1567,7 +1567,8 @@ Custom collections support the same callback methods as built-in collections:
 
  -  **`.setCounter()`**: Sets a callback that returns the total number of items
     in the collection
- -  **`.setFirstCursor()`**: Sets the cursor for the first page of the collection
+ -  **`.setFirstCursor()`**: Sets the cursor for the first page of the
+    collection
  -  **`.setLastCursor()`**: Sets the cursor for the last page of the collection
  -  **`.authorize()`**: Sets an authorization predicate to control access to
     the collection

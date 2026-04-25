@@ -1061,8 +1061,8 @@ Released on February 22, 2026.
     to the standardized `Intl.Locale` class for representing language tags.
     [[#280], [#392] by Jang Hanarae]
 
-     -  The `LanguageString.language` property is now `LanguageString.locale` and
-        is of type `Intl.Locale` instead of `LanguageTag`.
+     -  The `LanguageString.language` property is now `LanguageString.locale`
+        and is of type `Intl.Locale` instead of `LanguageTag`.
      -  The `LanguageString` constructor now accepts either an `Intl.Locale`
         object or a string for the language parameter.
      -  The `Link.language` property is now of type `Intl.Locale` instead
@@ -1782,8 +1782,8 @@ Released on December 24, 2025.
 
 ### @fedify/nestjs
 
- -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
-    [[#492], [#493] by Cho Hasang]
+ -  Allowed Express 5 in the `express` peer dependency range to support NestJS
+    11. [[#492], [#493] by Cho Hasang]
 
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
@@ -4083,8 +4083,9 @@ Released on November 30, 2024.
 
  -  The `Router` now provide the matched route's URI template besides the name.
 
-     -  The return type of `Router.route()` method became `RouterRouteResult | null`
-        (was `{ name: string; values: Record<string, string> } | null`).
+     -  The return type of `Router.route()` method became
+        `RouterRouteResult | null` (was
+        `{ name: string; values: Record<string, string> } | null`).
      -  Added `RouterRouteResult` interface.
 
  -  Added `getTypeId()` function.
@@ -5733,8 +5734,8 @@ Released on September 26, 2024.
 
  -  Added options for PostgreSQL drivers to `fedify init` command.
 
-     -  Added `postgres` value to the `-k`/`--kv-store` option of the `fedify init`
-        command.
+     -  Added `postgres` value to the `-k`/`--kv-store` option of the
+        `fedify init` command.
      -  Added `postgres` value to the `-q`/`--message-queue` option of
         the `fedify init` command.
 

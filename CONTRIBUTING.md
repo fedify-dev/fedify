@@ -244,7 +244,8 @@ Because this project supports both Deno and Node.js/Bun, dependencies must
 be added to *both* configuration files:
 
  -  *deno.json*: Add to the `imports` field (for Deno).
- -  *package.json*: Add to `dependencies` or `devDependencies` (for Node.js/Bun).
+ -  *package.json*: Add to `dependencies` or `devDependencies` (for
+    Node.js/Bun).
 
 For workspace packages, use the pnpm catalog (*pnpm-workspace.yaml*) to manage
 versions centrally.  In *package.json*, reference catalog versions with
@@ -371,10 +372,10 @@ The repository is organized as a monorepo with the following packages:
     creating new Fedify projects.  Wraps @fedify/init.
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
  -  *packages/astro/*: Astro integration (@fedify/astro) for Fedify.
- -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers) for
-    Fedify.
- -  *packages/debugger/*: Embedded ActivityPub debug dashboard (@fedify/debugger)
+ -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
     for Fedify.
+ -  *packages/debugger/*: Embedded ActivityPub debug dashboard
+    (@fedify/debugger) for Fedify.
  -  *packages/denokv/*: Deno KV integration (@fedify/denokv) for Fedify.
  -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
  -  *packages/express/*: Express integration (@fedify/express) for Fedify.

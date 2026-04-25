@@ -132,7 +132,8 @@ Configuration options
     keys.
 
 `origin` (required)
-:   The origin URL where the relay is hosted (e.g., `"https://relay.example.com"`).
+:   The origin URL where the relay is hosted (e.g.,
+    `"https://relay.example.com"`).
 
 `name`
 :   Display name for the relay actor. Defaults to `"ActivityPub Relay"`.
