@@ -7,7 +7,7 @@ A comprehensive example of building a federated server application using
 [Fedify] with [Nuxt].  This example demonstrates how to create an
 ActivityPub-compatible federated social media server that can interact with
 other federated platforms like [Mastodon], [Misskey], and other ActivityPub
-implementations using the Fedify and [Nuxt].
+implementations using [Fedify] and [Nuxt].
 
 [Fedify]: https://fedify.dev
 [Nuxt]: https://nuxt.com/

@@ -29,8 +29,8 @@ export default defineEventHandler(async (event) => {
         },
       };
     }
-  } catch {
-    // lookup failed
+  } catch (error) {
+    console.debug("Actor lookup failed:", q, error);
   }
 
   return { result: null };
