@@ -1079,3 +1079,149 @@ curl -s -X POST -H "Content-Type: application/json" \
 ~~~~ console
 {"error":true,"statusCode":409,"statusMessage":"Account already exists on this instance."}
 ~~~~
+
+
+Profile page
+------------
+
+Now that we have an account, let's give it a public profile page.
+This is the page the world (and, eventually, other fediverse servers)
+sees when they look up alice.  For now it is plain HTML; Chapter 7
+will teach the same URL to speak ActivityPub as well.
+
+### The API endpoint
+
+Create *server/api/users/\[username\].get.ts*.  The square brackets in
+the filename make `username` a route parameter that Nuxt extracts for
+us.
+
+~~~~ typescript [server/api/users/[username].get.ts]
+import { eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../db/client";
+import { users } from "../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  return { user };
+});
+~~~~
+
+Drizzle's `eq(column, value)` builds the SQL `WHERE column = value`
+clause in a typed way; you cannot accidentally swap the column with
+the value.
+
+### The Vue page
+
+Create *app/pages/users/\[username\].vue*.  `useFetch` is Nuxt's
+server-aware fetch wrapper: during SSR it calls the endpoint as a
+direct function, on the client it does a real network request.
+
+~~~~ vue [app/pages/users/[username].vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+
+const { data, error } = await useFetch(() => `/api/users/${username.value}`, {
+  key: () => `user-${username.value}`,
+});
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "User not found" });
+}
+
+const user = computed(() => data.value?.user ?? null);
+
+useHead({
+  title: () =>
+    user.value ? `${user.value.name} (@${user.value.username})` : "PxShare",
+});
+</script>
+
+<template>
+  <section v-if="user" class="flex flex-col gap-6">
+    <header class="flex items-center gap-4">
+      <div
+        class="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center text-3xl font-bold text-brand"
+      >
+        {{ user.name[0] }}
+      </div>
+      <div class="flex flex-col">
+        <h1 class="text-xl font-bold">{{ user.name }}</h1>
+        <p class="text-sm text-gray-500">@{{ user.username }}</p>
+      </div>
+    </header>
+    <div
+      class="grid grid-cols-3 gap-1 min-h-40 text-sm text-gray-400 items-center justify-center"
+    >
+      <div class="col-span-3 text-center py-16">No posts yet.</div>
+    </div>
+  </section>
+</template>
+~~~~
+
+The avatar circle is a placeholder showing the first letter of the
+display name.  A real app would let the user upload an image; we
+defer that to the reader as an exercise.
+
+### Redirecting the home page
+
+Right now our home page just says “Welcome to PxShare”.  Single-user
+instances are friendlier if `/` takes you straight to the local
+user's profile, so update *app/pages/index.vue*:
+
+~~~~ vue [app/pages/index.vue]
+<script setup lang="ts">
+const { data } = await useFetch("/api/me", { key: "me-home" });
+
+definePageMeta({ middleware: [] });
+
+if (data.value?.user) {
+  await navigateTo(`/users/${data.value.user.username}`, { replace: true });
+}
+</script>
+
+<template>
+  <section class="text-center py-16">
+    <h1 class="text-3xl font-bold mb-2">Welcome to PxShare</h1>
+    <p class="text-gray-500">A tiny federated image sharing service.</p>
+  </section>
+</template>
+~~~~
+
+### Trying it out
+
+Save the files and go to <http://localhost:3000/users/alice>:
+
+![Alice's profile page: a pink circular avatar, her display name and
+handle, and an empty “No posts yet.”
+grid.](./content-sharing/profile-page-empty.png)
+
+Open the root URL <http://localhost:3000/> and notice the redirect:
+the home page now takes you straight to alice's profile.
+
+> [!TIP]
+> The profile URL we chose (*/users/:username*) is exactly where the
+> ActivityPub actor already lives, thanks to the scaffolded
+> `setActorDispatcher("/users/{identifier}", …)` in
+> *server/federation.ts*.  Run `fedify lookup` once more and compare
+> with what the browser sees:
+>
+> ~~~~ sh
+> curl -H "Accept: text/html" http://localhost:3000/users/alice | head -5
+> curl -H "Accept: application/activity+json" \
+>   http://localhost:3000/users/alice | head -20
+> ~~~~
+>
+> Same URL, two totally different responses.  The next chapter replaces
+> the scaffolded stub with a dispatcher that pulls real data from the
+> `users` table.
