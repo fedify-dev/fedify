@@ -1101,7 +1101,7 @@ Create *server/api/users/\[username].get.ts*.  The square brackets in
 the filename make `username` a route parameter that Nuxt extracts for
 us.
 
-~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
+~~~~ typescript [server/api/users/[username].get.ts]
 import { eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -1132,7 +1132,7 @@ Create *app/pages/users/\[username].vue*.  `useFetch` is Nuxt's
 server-aware fetch wrapper: during SSR it calls the endpoint as a
 direct function, on the client it does a real network request.
 
-~~~~ vue [app/pages/users/&#91;username&#93;.vue]
+~~~~ vue [app/pages/users/[username].vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -2787,7 +2787,7 @@ git mv app/pages/users/\[username\].vue app/pages/users/\[username\]/index.vue
 
 Now create *app/pages/users/\[username]/followers.vue*:
 
-~~~~ vue [app/pages/users/&#91;username&#93;/followers.vue]
+~~~~ vue [app/pages/users/[username]/followers.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -2855,7 +2855,7 @@ This page expects a JSON endpoint at
 */api/users/\[username]/followers*.  Add it next to the
 existing user endpoint, in *server/api/users/\[username]/followers.get.ts*:
 
-~~~~ typescript [server/api/users/&#91;username&#93;/followers.get.ts]
+~~~~ typescript [server/api/users/[username]/followers.get.ts]
 import { desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../db/client";
@@ -2884,7 +2884,7 @@ export default defineEventHandler(async (event) => {
 Finally, surface the count on the profile page itself.  Update
 *server/api/users/\[username].get.ts* to include `followerCount`:
 
-~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
+~~~~ typescript [server/api/users/[username].get.ts]
 import { count, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -2912,7 +2912,7 @@ export default defineEventHandler(async (event) => {
 …and rewrite *app/pages/users/\[username]/index.vue* to
 render the count as a link to the new page:
 
-~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
+~~~~ vue [app/pages/users/[username]/index.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -3000,3 +3000,121 @@ collection, and start displaying the real follower count.
 With our followers list complete, alice can now finally start
 producing the *content* her followers signed up for.  The next
 chapter introduces the `posts` table that will store image posts.
+
+
+Image post schema
+-----------------
+
+Up to this point alice's account has been a passive shell: it
+exists, accepts followers, and otherwise stays silent.  This
+chapter lays the groundwork for posts.  We will not let alice
+*publish* anything yet (that's [chapter 14](#composing-and-uploading)),
+but we add the storage layer the next several chapters all build on:
+a `posts` table and a directory to hold uploaded images.
+
+### The `posts` table
+
+Open *server/db/schema.ts* and append a new table at the bottom:
+
+~~~~ typescript [server/db/schema.ts]
+// Image posts authored by the local user.  One row per post, one
+// image per row.  `mediaPath` is a path under *public/uploads/* so
+// Nuxt serves the file directly; `mediaType` is the MIME type so
+// we can advertise it as `Document.mediaType` in ActivityPub.
+// `caption` is the text body shown next to the image; nullable
+// because Pixelfed allows captionless posts.
+export const posts = sqliteTable("posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  caption: text("caption"),
+  mediaPath: text("media_path").notNull(),
+  mediaType: text("media_type").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type Post = typeof posts.$inferSelect;
+~~~~
+
+Walking through the columns:
+
+ -  *`id`.*  An autoincrementing integer.  This is the post's
+    public identifier on our server; chapter 15 weaves it into
+    the ActivityPub IRI we hand out to other servers.
+
+ -  *`userId`.*  Foreign key to `users`.  Today the only value is
+    `1` (alice), but the foreign key is forward-compatible with
+    chapter 19, which starts caching remote actors in the same
+    table.
+
+ -  *`caption`.*  Optional text body shown next to the image.
+    Pixelfed allows captionless posts, so we keep the column
+    nullable instead of forcing a placeholder.
+
+ -  *`mediaPath`.*  Relative path under *public/uploads/*, e.g.
+    `alice/abc123.jpg`.  Nuxt serves anything under *public/* as
+    a static asset, so there is no separate file-serving
+    endpoint to write.
+
+ -  *`mediaType`.*  MIME type (`image/jpeg`, `image/png`, …).
+    We hand this verbatim to ActivityPub's `Document.mediaType`
+    once chapter 15 wires up the Note object dispatcher.
+
+ -  *`createdAt`.*  Unix-style created-at timestamp.  Drizzle's
+    `sql\`CURRENT\_TIMESTAMP\`\` default lets SQLite stamp it for
+    us; the post composer in chapter 14 only sets the other
+    columns.
+
+Push the schema:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+> [!NOTE]
+> The same “index already exists” warning we saw before re-runs
+> idempotently; the new `posts` table is created regardless.
+
+### The uploads directory
+
+Posts are useless without somewhere to store the actual image
+bytes.  Nuxt automatically serves anything under *public/* as a
+static asset, so we just need to make a directory:
+
+~~~~ sh
+mkdir -p public/uploads
+touch public/uploads/.gitkeep
+~~~~
+
+The empty *.gitkeep* file gives git something to track even when
+the folder has no other contents.
+
+We do not want every uploaded image to leak into commits, though.
+Update *.gitignore* to exclude the contents of *public/uploads/*
+while keeping the *.gitkeep*:
+
+~~~~ gitignore [.gitignore]
+# Uploaded image files (the directory is tracked via .gitkeep)
+public/uploads/*
+!public/uploads/.gitkeep
+~~~~
+
+The leading `!` is git's “negate this rule” syntax: the bare
+*.gitkeep* sneaks past the wider exclusion.
+
+> [!TIP]
+> Production deployments would store uploads on object storage
+> (S3, Cloudflare R2, MinIO) rather than the local filesystem,
+> both for durability and to avoid coupling a single application
+> server to its own disk.  We use the local filesystem in the
+> tutorial because it is one less dependency and Nuxt makes the
+> static path effectively free.  The chapter on production
+> deployment in your own future would swap the filesystem path
+> for an object-storage URL and adjust the column definition
+> accordingly.
+
+That is the entire schema chapter.  No code runs yet; we have set
+the stage for the compose form to follow.  The next chapter adds
+a *Compose* page, a multipart upload endpoint, and the first
+proper insert into the `posts` table.
