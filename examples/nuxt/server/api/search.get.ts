@@ -5,8 +5,9 @@ import { followingStore } from "../store";
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const q = query.q as string | undefined;
-  if (!q || !q.trim()) {
+  const raw = Array.isArray(query.q) ? query.q[0] : query.q;
+  const q = typeof raw === "string" ? raw.trim() : "";
+  if (!q) {
     return { result: null };
   }
 
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const ctx = federation.createContext(request, undefined);
 
   try {
-    const target = await ctx.lookupObject(q.trim());
+    const target = await ctx.lookupObject(q);
     if (target instanceof Person && target.id) {
       const iconUrl = await target.getIcon(ctx);
       return {

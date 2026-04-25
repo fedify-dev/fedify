@@ -1,13 +1,8 @@
 import { Create, Note } from "@fedify/vocab";
-import {
-  defineEventHandler,
-  readBody,
-  sendRedirect,
-  toWebRequest,
-} from "@nuxt/nitro-server/h3";
-import federation from "../federation.ts";
-import { broadcastEvent } from "../sse.ts";
-import { postStore } from "../store.ts";
+import { readBody, sendRedirect, toWebRequest } from "h3";
+import federation from "../federation";
+import { broadcastEvent } from "../sse";
+import { postStore } from "../store";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ content?: unknown }>(event);
