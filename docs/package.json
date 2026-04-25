@@ -56,7 +56,7 @@
     "markdown-it-abbr": "^2.0.0",
     "markdown-it-deflist": "^3.0.0",
     "markdown-it-footnote": "^4.0.0",
-    "markdown-it-jsr-ref": "0.4.1",
+    "markdown-it-jsr-ref": "0.4.4",
     "mermaid": "^11.4.1",
     "postgres": "catalog:",
     "srvx": "^0.11.15",

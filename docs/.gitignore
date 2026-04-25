@@ -1,4 +1,9 @@
 .jsr-cache.json
+.jsr-debugger-cache.json
+.jsr-testing-cache.json
+.jsr-vocab-cache.json
+.jsr-vocab-runtime-cache.json
+.jsr-webfinger-cache.json
 .vitepress/cache/
 .vitepress/dist/
 node_modules/
