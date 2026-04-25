@@ -1895,9 +1895,9 @@ the commands below.
 If you try to open the tunnel URL right away, Nuxt's dev server will
 refuse with a *Blocked request* page.  This is a Vite security
 feature: in development it only answers requests whose
-<code>Host</code> header matches one of the allowed hosts.  Add the
-tunnel hosting services to *nuxt.config.ts* so we never have to
-edit it again when the subdomain rotates:
+<code>Host</code> header matches one of the allowed hosts.  Tell
+Vite to accept any host so it does not matter which tunneling
+service `fedify tunnel` ends up using.  Edit *nuxt.config.ts*:
 
 ~~~~ typescript [nuxt.config.ts]
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -1908,25 +1908,22 @@ export default defineNuxtConfig({
   css: ["~/assets/styles.css"],
   vite: {
     server: {
-      // Tunnel hosts used during development.  `fedify tunnel`
-      // rotates subdomains every session, so we allow any
-      // subdomain of the hosting service rather than pinning a
-      // specific URL.
-      allowedHosts: [".lhr.life", ".trycloudflare.com", ".ngrok-free.app"],
+      // Accept any `Host` header during development.  Whichever
+      // tunneling service we point `fedify tunnel` at, the dev
+      // server will answer.  Production builds ignore this option.
+      allowedHosts: true,
     },
   },
 });
 ~~~~
 
-The leading dot makes Vite accept any subdomain of the listed
-host, so a fresh tunnel session does not require another config
-change.  Save the file; Nuxt restarts automatically.
+Save the file; Nuxt restarts automatically.
 
 > [!NOTE]
-> Vite's default `allowedHosts` already accepts `localhost` and any
-> private network address, so adding tunnel hosts here does not
-> open the dev server up beyond what you intend.  Production builds
-> ignore the option entirely.
+> `allowedHosts: true` only loosens the Vite *dev* server, which
+> never runs in production.  `npm run build` ignores the option,
+> so deployed instances still rely on the reverse proxy in front
+> of them to reject unknown hostnames.
 
 ### Smoke test from the command line
 
@@ -2003,18 +2000,20 @@ in [chapter 10](#handling-follows).
 
 Mastodon was the first proof point.  Pixelfed is the second, and
 it has a slightly different interface but the same underlying
-ActivityPub plumbing.  Open <https://pxlmo.com/> in another tab and
-sign in (any Pixelfed instance with federation enabled will do).
+ActivityPub plumbing.  If you do not already have a Pixelfed
+account, pick an instance from the [official server list] and sign
+up; any instance with open registration and federation enabled is
+fine.
 
-Pixelfed's URL pattern for remote profiles is
-*pxlmo.com/@username@host*, so navigating to
-*https://pxlmo.com/@alice@&lt;tunnel&gt;* triggers a federation
-fetch and renders alice's profile:
+Once you are signed in, Pixelfed's URL pattern for remote profiles
+is *&lt;your-instance&gt;/@username@host*, so navigating to
+*https://&lt;your-instance&gt;/@alice@&lt;tunnel&gt;* triggers a
+federation fetch and renders alice's profile:
 
 ![Pixelfed profile view of Alice Example with the federated handle,
 the default placeholder avatar, three counters (0 Posts, 0
 Followers, 0 Following), and a blue Follow
-button.](./content-sharing/pxlmo-alice-profile.png)
+button.](./content-sharing/pixelfed-alice-profile.png)
 
 Notice that Pixelfed shows the counters even though we have not
 exposed a `followers` or `following` collection yet; it is happy to
@@ -2022,10 +2021,12 @@ default to zero when those endpoints are missing.
 
 > [!TIP]
 > Pixelfed's quick-search dropdown sometimes prefills the input
-> with `[object Object]` when you press *Enter* on a remote-account
-> result.  Navigate by URL instead (or restart the tab and try the
-> dropdown again).  This is a Pixelfed UI quirk unrelated to our
-> server.
+> with `[object Object]` when you press <kbd>Enter</kbd> on a
+> remote-account result.  Navigate by URL instead (or restart the
+> tab and try the dropdown again).  This is a Pixelfed UI quirk
+> unrelated to our server.
+
+[official server list]: https://pixelfed.org/servers
 
 ### What just happened?
 
@@ -2048,11 +2049,11 @@ ActivityPub is a single protocol, and the chapters that follow will
 add behavior by adding handlers, not by special-casing servers.
 
 > [!CAUTION]
-> Stop the tunnel (`Ctrl+C`) when you are not actively testing
-> federation.  A live tunnel exposes your dev server to the entire
-> internet, including unsolicited probing traffic.  Keys remain
-> safe (they sit in your local SQLite file), but you do not want to
-> leave a development backend reachable longer than necessary.
+> Stop the tunnel (<kbd>Ctrl</kbd>+<kbd>C</kbd>) when you are not actively
+> testing federation.  A live tunnel exposes your dev server to the entire
+> internet, including unsolicited probing traffic.  Keys remain safe (they sit
+> in your local SQLite file), but you do not want to leave a development
+> backend reachable longer than necessary.
 
 With the federation pipe open, the next chapter teaches alice how
 to *accept* the `Follow` activities Mastodon and Pixelfed are eager
