@@ -1231,7 +1231,7 @@ Actor dispatcher
 ----------------
 
 ActivityPub is a protocol for exchanging *activities* between *actors*.
-Posting an image, liking it, commenting, following somebody — every
+Posting an image, liking it, commenting, following somebody: every
 action a user takes on the fediverse is an activity, and every
 activity travels from one actor to another.  Implementing the actor
 is the first stop on the federation tour.
@@ -1273,8 +1273,8 @@ The interesting line is `~Federatable.setActorDispatcher()`.  Whenever
 another fediverse server fetches an actor URL on our service, Fedify
 calls this callback with the matched `identifier` (the `{identifier}`
 template variable, filled in from the URL) and a `Context` object.
-The callback returns a [`Person`] — Fedify's typed representation of
-an ActivityPub actor — and Fedify takes care of serializing it into
+The callback returns a [`Person`] (Fedify's typed representation of
+an ActivityPub actor), and Fedify takes care of serializing it into
 the right JSON-LD shape, attaching a JSON-LD context, and answering
 with the correct content type.
 
@@ -1365,8 +1365,8 @@ A lot is happening here, so let's walk through it.
     keeps them identical for simplicity.
 
  -  *Inbox and shared inbox.*  The `inbox` is the URL where other
-    servers POST activities addressed to alice — for example, a
-    Mastodon user's `Follow`.  The [`Endpoints.sharedInbox`] is a
+    servers POST activities addressed to alice; a Mastodon user's
+    `Follow` will land here.  The [`Endpoints.sharedInbox`] is a
     single inbox that handles activities addressed to anyone on our
     server; busy instances rely on it to deliver one copy of a
     public post instead of one POST per follower.  Both URLs come
@@ -1432,8 +1432,8 @@ Person {
 ✔ Successfully fetched the object.
 ~~~~
 
-Every property we set on the `Person` shows up in the response — the
-flags too.  Now try a username that does not exist:
+Every property we set on the `Person` shows up in the response,
+flags included.  Now try a username that does not exist:
 
 ~~~~ sh
 fedify lookup http://localhost:3000/users/nobody
