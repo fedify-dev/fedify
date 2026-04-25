@@ -4146,50 +4146,50 @@ Three details worth pausing on:
 
 ### Trying it out
 
-Make sure something is following alice first; chapter 10 covered
-two ways to do that, the easiest being to search alice's full
-handle from your Mastodon test account and click *Follow*.  With
-a follower in place, restart the dev server, open the *Compose*
-form on the tunnel URL (so the canonical origin in the activity
-matches the keys alice signs with), pick an image, write a
-caption, and hit *Post*.
+Make sure a Pixelfed account is following alice first; chapter
+10 covered the round trip end-to-end.  With a follower in place,
+restart the dev server, open the *Compose* form on the tunnel
+URL (so the canonical origin in the activity matches the keys
+alice signs with), pick an image, write a caption, and hit
+*Post*.
 
 The dev server logs the delivery the moment Fedify drains the
 queue:
 
 ~~~~ ansi [terminal]
 ℹ INF fedify·federation·outbox Successfully sent activity
-  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice/posts/5#create'
-  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+  'https://your-tunnel.example/users/alice/posts/7#create'
+  to 'https://your-pixelfed.example/users/tester/inbox'.
 ~~~~
 
-ActivityPub.Academy ships a debugging panel called *Activity
-Log* that records every inbox delivery while the page stays
-open.  Open it before you click *Post* and the Create lands in
-real time:
+Refresh the Pixelfed account's *Home Feed*: alice's image lands
+on the feed straight away, captioned and ready to like:
 
-![ActivityPub.Academy's Activity Log showing a Create activity
-from alice carrying a Note whose content is the caption we
-typed.](./content-sharing/academy-create-note-activity.png)
+![Pixelfed's home feed rendering alice's foggy beach photo
+under her handle, with the caption “Pixelfed federation debug
+post.” beneath the
+image.](./content-sharing/pixelfed-home-with-alice-post.png)
+
+This is the round trip the whole tutorial has been pointing at:
+alice composes locally, the fediverse sees it within a second,
+and Pixelfed renders it as a first-class post inside its own
+feed.  Mastodon and GoToSocial accept the same activity and
+behave the same way.
 
 > [!TIP]
-> The Activity Log only captures activities that arrive while
-> its page is open: a refresh wipes it.  If the panel is empty,
-> open it first, then trigger the activity from another tab.
+> If alice's post does not show up, the most common causes are
+> a stale tunnel URL (the activity went out with the wrong
+> canonical origin), the Pixelfed instance running on an older
+> queue worker, or, on Pixelfed specifically, the
+> `firstKnock` setting in *server/federation.ts* not being set
+> to `"draft-cavage-http-signatures-12"`.  Chapter 10 covers
+> that flag in detail.
 
-> [!NOTE]
-> Whether the post then *renders* on a peer's home timeline is
-> a separate question that depends on the peer's filtering and
-> caching.  ActivityPub.Academy stores the inbound activity but
-> does not always surface freshly-federated posts in the home
-> column.  Mastodon proper, Pixelfed, and GoToSocial all show
-> alice's photos within seconds.
-
-Once you have confirmed the activity reaches at least one
-follower, the federation loop is real: alice posts, the
-fediverse sees it.  The next chapter teaches alice to follow
-*back*: discovering remote actors, sending a `Follow`, and
-handling the `Accept` that completes the relationship.
+Once Pixelfed shows the post, the federation loop is real:
+alice posts, the fediverse sees it.  The next chapter teaches
+alice to follow *back*: discovering remote actors, sending a
+`Follow`, and handling the `Accept` that completes the
+relationship.
 
 
 Following remote accounts
@@ -5101,32 +5101,32 @@ if (data.value?.user) {
 
 ### Trying it out
 
-Restart the dev server and from your Mastodon test account
-(the one you followed alice with in chapter 10) post a status
-that includes an image.  Within a second or two, alice's home
-page lights up:
+Restart the dev server and post a photo from a Pixelfed account
+that alice follows (chapter 19 covers the follow flow).  Within
+a second or two, alice's home page lights up:
 
-![alice's home page rendering a single 3-column grid tile that
-shows a galaxy photograph posted by
-anbelia.](./content-sharing/home-timeline.png)
+![alice's home grid showing a single full-width card with
+tester's foggy beach photograph from Pixelfed and the caption
+“Photo from tester for federation
+testing.”](./content-sharing/home-with-pixelfed-post.png)
 
 The dev server narrates the inbound activity, and the database
 gains a row:
 
 ~~~~ ansi [terminal]
-ℹ INF fedify·federation·inbox Activity 'https://activitypub.academy/users/anbelia_doshaelen/statuses/116…/activity'
+ℹ INF fedify·federation·inbox Activity 'https://your-pixelfed.example/p/tester/953…/activity'
   is enqueued.
 ℹ INF fedify·federation·http 'POST' '/inbox': 202
 ℹ INF fedify·federation·inbox Activity '…/activity' has been processed.
 
 $ sqlite3 content-sharing.sqlite3 "SELECT note_uri, author_handle FROM timeline_posts"
-https://activitypub.academy/users/anbelia_doshaelen/statuses/116…|@anbelia_doshaelen@activitypub.academy
+https://your-pixelfed.example/p/tester/953…|@tester@your-pixelfed.example
 ~~~~
 
 Posts arrive in real time: no polling, no scheduled job.  The
-fediverse pushed the activity to alice the instant the remote
-server queued the delivery, and the only thing we added was a
-strict little filter on top of the inbox listener chain.
+fediverse pushed the activity to alice the instant Pixelfed
+queued the delivery, and the only thing we added was a strict
+little filter on top of the inbox listener chain.
 
 
 Likes and undo(like)
@@ -5551,32 +5551,30 @@ counter ticks up, and the dev log shows the outbound `Like`:
 
 ~~~~ ansi [terminal]
 ℹ INF fedify·federation·outbox Successfully sent activity
-  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#likes/8b288acb-…'
-  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+  'https://your-tunnel.example/users/alice#likes/8b288acb-…'
+  to 'https://your-pixelfed.example/users/tester/inbox'.
 ~~~~
 
-The home grid now renders one full-width card per post with
-the heart in place:
+For the inbound side, click the heart on alice's photo from a
+Pixelfed account that follows her.  Pixelfed sends a `Like` to
+alice's inbox; our handler stores the row, and the post detail
+page shows *1 like* the next time alice loads it:
 
-![alice's home page rendering anbelia's photograph with a
-filled red heart icon and “1 like” beneath
-it.](./content-sharing/home-with-like.png)
-
-For the inbound side, on a Mastodon test account, search for
-one of alice's post URLs (the */users/alice/posts/&lt;id&gt;*
-form), open it, and click *Favourite*.  Mastodon sends a
-`Like` to alice's inbox; our handler stores the row, and the
-post-detail page shows *1 like* the next time alice loads it.
+![alice's post detail page showing her foggy beach photo with
+caption “Pixelfed federation debug post.”, a red heart icon
+and “1 like” beneath
+it.](./content-sharing/post-detail-with-like.png)
 
 Click the heart again to unlike: the counter decrements and an
 `Undo(Like)` flies out, signed with alice's keys.
 
 > [!NOTE]
 > Some peers report likes asynchronously through their own
-> federation queue.  Mastodon delivers within a second; Pleroma
-> can take ten or twenty.  Refreshing the post detail page is
-> the simplest way to see the count update; the closing chapter
-> lists websockets / SSE as a stretch goal for live updates.
+> federation queue.  Pixelfed delivers within a second once its
+> queue worker (Horizon) drains; Mastodon is similarly quick.
+> Refreshing the post detail page is the simplest way to see
+> the count update; the closing chapter lists websockets / SSE
+> as a stretch goal for live updates.
 
 
 Comments
@@ -5865,27 +5863,29 @@ the activity, then the page refreshes with the new comment
 inline:
 
 ![alice's post detail page with a “1 comment” header and a
-single-comment card showing alice's own reply, “Testing the
-comment thread on my own post.”, followed by an empty
+single-comment card showing alice's own reply, “Reply from alice
+on her own beach photo.”, followed by an empty
 textarea.](./content-sharing/post-detail-with-comment.png)
 
 The dev server logs the outbound delivery; alice's followers
-on Mastodon and Pixelfed both thread the reply under the
-original post:
+on Pixelfed thread the reply under the original post:
 
 ~~~~ ansi [terminal]
 ℹ INF fedify·federation·outbox Successfully sent activity
-  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#create-comments/a17a…'
-  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
-ℹ INF fedify·federation·outbox Successfully sent activity '…'
-  to 'https://pxlmo.com/users/hongminhee/inbox'.
+  'https://your-tunnel.example/users/alice#create-comments/a17a…'
+  to 'https://your-pixelfed.example/users/tester/inbox'.
 ~~~~
 
-For inbound, reply to alice's post from your Mastodon test
-account.  Mastodon delivers a `Create(Note)` whose
-`inReplyTo` points at alice's post URI; our listener stores
-the comment, and the post detail page renders it the next time
-alice loads.
+For inbound, reply to alice's post from a Pixelfed account that
+follows her.  Pixelfed delivers a `Create(Note)` whose
+`inReplyTo` points at alice's post URI; our listener stores the
+comment, and alice's post detail page now shows the Pixelfed
+reply threaded beneath the photo:
+
+![alice's post detail page showing one comment whose author is
+&commat;tester&commat;your-pixelfed.example with the body “Reply
+from tester on Pixelfed - federation works!” rendered above the
+comment textarea.](./content-sharing/post-detail-with-pixelfed-comment.png)
 
 
 Where next
