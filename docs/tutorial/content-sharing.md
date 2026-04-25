@@ -253,7 +253,7 @@ for the first time.](./content-sharing/nuxt-welcome-page.png)
 
 We will replace this page with our own in the next chapter.  But first,
 let's prove that Fedify is actually serving federation routes on the same
-server.  In a **new terminal** (keep `npm run dev` running in the first
+server.  In a *new terminal* (keep `npm run dev` running in the first
 one), run:
 
 ~~~~ sh
@@ -424,13 +424,13 @@ A few things are worth noting:
 
 [Nuxt] is a meta-framework built on top of Vue.  It adds:
 
- -  **File-based routing**: *app/pages/index.vue* becomes */*, and a file
-    named *&#91;username&#93;.vue* inside *app/pages/users/* becomes
-    */users/:username*.
- -  **Server routes**: *server/api/posts.ts* becomes an HTTP endpoint at
-    */api/posts*.
- -  **Built-in TypeScript**, Vite-based hot reloading, SSR, and a modules
-    system.  [`@fedify/nuxt`][fedify-nuxt] is one such module.
+ -  *File-based routing*.  A Vue file at *app/pages/index.vue* becomes the
+    route */*, and a file named *&#91;username&#93;.vue* inside
+    *app/pages/users/* becomes */users/:username*.
+ -  *Server routes*.  A TypeScript file at *server/api/posts.ts* becomes an
+    HTTP endpoint at */api/posts*.
+ -  *Built-in TypeScript, Vite-based hot reloading, SSR, and a modules
+    system.*  [`@fedify/nuxt`][fedify-nuxt] is one such module.
 
 Think of Nuxt as Vue with Next.js-style conveniences bolted on.  In this
 tutorial, we will write Vue components for HTML views and plain TypeScript
@@ -443,11 +443,11 @@ small JSON API in *server/api/*.
 ### What is ActivityPub, roughly?
 
 ActivityPub is a decentralized social networking protocol.  Every user has
-an **actor** (usually of type `Person`), which is just a JSON-LD object
-hosted at a stable URL.  Actors can send each other **activities** (like
+an *actor* (usually of type `Person`), which is just a JSON-LD object
+hosted at a stable URL.  Actors can send each other *activities* (like
 `Follow`, `Create`, `Like`, `Announce`, `Delete`) by POSTing them to the
-recipient's **inbox** URL.  Each actor also advertises a **followers**
-collection, an **outbox**, a few cryptographic keys, and so on.
+recipient's *inbox* URL.  Each actor also advertises a *followers*
+collection, an *outbox*, a few cryptographic keys, and so on.
 
 You do not need to know any of this in detail to follow the tutorial.
 Fedify gives you typed helpers for every activity and object, so you can
@@ -455,3 +455,191 @@ think in terms like “when someone follows alice, insert a row in the
 `followers` table” instead of “parse JSON-LD, verify HTTP signatures,
 dereference the actor”.  Whenever we introduce a new activity or property,
 we will explain what it means.
+
+
+A minimal app shell
+-------------------
+
+Before we get into federation work, let's replace Nuxt's placeholder welcome
+page with a tiny layout that looks like a real image sharing site.  We will
+keep it intentionally plain so the CSS stays out of the way for the rest of
+the tutorial.
+
+We are calling our instance *PxShare* throughout the tutorial.  It is a
+made-up name; feel free to pick your own.
+
+### Installing unocss
+
+We will use [UnoCSS] for styling.  UnoCSS is a tiny utility-first CSS
+engine; you write classes like `flex`, `rounded-full`, `text-brand`, and
+it generates just enough CSS to cover what you used.  This keeps our
+stylesheets short and lets later chapters paste a few class names instead
+of writing real CSS.
+
+Install UnoCSS as a Nuxt module, its Wind3 preset (utility set), and a
+CSS reset:
+
+~~~~ sh
+npm install -D @unocss/nuxt @unocss/preset-wind3 @unocss/reset
+~~~~
+
+[UnoCSS]: https://unocss.dev/
+
+### Configuring Nuxt and unocss
+
+Add UnoCSS to the Nuxt module list and point Nuxt at a stylesheet we will
+create in a moment.  Replace *nuxt.config.ts* with:
+
+~~~~ typescript [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ["@fedify/nuxt", "@unocss/nuxt"],
+  fedify: { federationModule: "#server/federation" },
+  ssr: true,
+  css: ["~/assets/styles.css"],
+});
+~~~~
+
+Then create *uno.config.ts* at the project root to configure the utility
+set and add one custom colour for our brand accent:
+
+~~~~ typescript [uno.config.ts]
+import { defineConfig, presetWind3 } from "unocss";
+
+export default defineConfig({
+  presets: [presetWind3()],
+  theme: {
+    colors: {
+      brand: {
+        DEFAULT: "#e85a9b",
+        dark: "#c43f7d",
+      },
+    },
+  },
+});
+~~~~
+
+The `brand` colour is what will power the pink accent on buttons and the
+logo; `brand-dark` is a slightly darker variant we will use for hover
+states.
+
+Create *app/assets/styles.css* with a CSS reset and one or two global
+styles:
+
+~~~~ css [app/assets/styles.css]
+@import "@unocss/reset/tailwind.css";
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background: #fafafa;
+  color: #262626;
+}
+~~~~
+
+### The root layout
+
+Replace *app/app.vue* with a two-row layout: a sticky top navbar, a main
+area that holds whatever page we are on, and a small footer.  The
+`<NuxtPage />` component is where Nuxt injects the page matched by the
+current URL.
+
+~~~~ vue [app/app.vue]
+<script setup lang="ts">
+const siteName = "PxShare";
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col">
+    <header
+      class="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between"
+    >
+      <NuxtLink to="/" class="text-xl font-bold text-brand tracking-tight">
+        {{ siteName }}
+      </NuxtLink>
+      <nav class="flex items-center gap-4 text-sm">
+        <NuxtLink
+          to="/compose"
+          class="px-3 py-1.5 bg-brand text-white rounded-full hover:bg-brand-dark"
+        >
+          Compose
+        </NuxtLink>
+      </nav>
+    </header>
+    <main class="flex-1 max-w-2xl w-full mx-auto px-4 py-6">
+      <NuxtPage />
+    </main>
+    <footer class="py-6 text-center text-xs text-gray-400">
+      Built with Fedify and Nuxt
+    </footer>
+  </div>
+</template>
+~~~~
+
+> [!TIP]
+> Three Nuxt things to notice here:
+>
+>  -  `<NuxtLink to="/">` is Nuxt's client-side navigation link.  It
+>     renders as an `<a>` element, but clicks update the URL without a
+>     full page reload.
+>  -  `<NuxtPage />` is the slot where the currently matched page
+>     component renders.  If we did not include it, our pages would
+>     never show.
+>  -  `<script setup lang="ts">` is Vue's *single-file component script
+>     setup* syntax.  Top-level bindings (like `siteName`) are
+>     automatically available in the template.
+
+### The home page
+
+Create *app/pages/index.vue* for the `/` route:
+
+~~~~ vue [app/pages/index.vue]
+<script setup lang="ts">
+useHead({ title: "PxShare" });
+</script>
+
+<template>
+  <section class="text-center py-16">
+    <h1 class="text-3xl font-bold mb-2">Welcome to PxShare</h1>
+    <p class="text-gray-500">A tiny federated image sharing service.</p>
+  </section>
+</template>
+~~~~
+
+`useHead({ title: "PxShare" })` sets the browser tab title.  We will use
+the same helper later to set per-page titles.
+
+### Checking the result
+
+Save every file.  If `npm run dev` is still running from the previous
+chapter, Nuxt picks up the changes automatically, though it restarts once
+because *nuxt.config.ts* changed.  Otherwise, run it again:
+
+~~~~ sh
+npm run dev
+~~~~
+
+Open <http://localhost:3000/> and you should see the new shell:
+
+![The PxShare home page: a pink brand name on the left, a Compose button
+on the right, and a simple welcome message in the
+middle.](./content-sharing/app-shell-home.png)
+
+Nothing federated yet, but the skeleton is ready for us to fill in.  The
+ActivityPub actor from the previous chapter still works:
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice
+~~~~
+
+Content negotiation means the same URL serves the welcome layout to a
+browser and a JSON-LD `Person` object to ActivityPub clients.  Chapter 6
+covers this in detail.
