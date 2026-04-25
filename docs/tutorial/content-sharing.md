@@ -2335,28 +2335,24 @@ will read differently, but the `following_id = 1` and a real
 
 ### Trying it from Pixelfed
 
-We are building a Pixelfed-style service, so verifying the
-Pixelfed side of the protocol matters at least as much as the
-Mastodon side.  Switch to your Pixelfed tab, paste the actor
-handle (`@alice@<tunnel>`) into the search bar, and open the
-profile from the dropdown.  Click *Follow*.
+We are building a Pixelfed-style service, so the Pixelfed side of
+the protocol matters at least as much as the Mastodon side.
+Switch to your Pixelfed tab, paste the actor handle
+(`@alice@<tunnel>`) into the search bar, and open the profile from
+the dropdown.  Click *Follow*.
 
-After a second or two, alice's *Followers* counter ticks up:
+The dev log records the matching round trip; you should see lines
+like:
 
-![Pixelfed's view of alice after a successful follow.  The
-counters now read “0 Posts”, “1 Followers”, “0 Following”, with
-the placeholder avatar still in
-place.](./content-sharing/pixelfed-after-follow.png)
+~~~~ console
+INF fedify·federation·inbox Activity 'https://<your-pixelfed-instance>/users/.../#follow/...' is enqueued.
+INF fedify·federation·http 'POST' '/inbox': 202
+INF fedify·federation·inbox Activity '...' has been processed.
+INF fedify·federation·outbox Successfully sent activity 'https://<tunnel>/users/alice#accepts/...' to 'https://<your-pixelfed-instance>/users/.../inbox'.
+~~~~
 
-> [!NOTE]
-> Pixelfed sometimes leaves the *Follow* button label unchanged
-> even after a successful follow, especially when the remote
-> instance is brand new to it.  The follower count is the
-> reliable signal; navigating away and back will eventually
-> refresh the button label too.
-
-Re-run the database query and you will see two rows now, one for
-each remote actor:
+Re-run the database query and you will see two rows, one per
+remote actor:
 
 ~~~~ sh
 sqlite3 -header -column content-sharing.sqlite3 \
@@ -2370,10 +2366,21 @@ following_id  handle                                    inbox_url
 1             @you@<your-pixelfed-instance>             https://<your-pixelfed-instance>/users/you/inbox
 ~~~~
 
-Same handler, two very different servers, identical outcome.
-That is the win condition for an ActivityPub server: behavior
-should follow from activity types, not from special-casing the
-remote brand.
+Same handler, two very different servers, identical wire-level
+outcome.  That is the win condition for an ActivityPub server:
+behavior should follow from activity types, not from special-casing
+the remote brand.
+
+> [!NOTE]
+> Pixelfed's UI on alice's remote profile may keep showing
+> *Follow* and *0 Followers* even after the round trip succeeds.
+> The relationship is recorded inside Pixelfed (you can see the
+> *Following* counter on your own profile tick up), but the public
+> remote-profile view does not visibly reflect it until alice
+> exposes a `followers` collection URL.  We add that collection
+> in [chapter 12](#followers-list-and-collection); revisit this
+> Pixelfed tab afterwards and the button will flip to *Following*
+> on its own.
 
 > [!TIP]
 > If the follower row never lands, the most likely culprits are:
