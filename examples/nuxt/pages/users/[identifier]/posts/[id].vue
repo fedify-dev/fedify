@@ -41,10 +41,12 @@ const route = useRoute();
 const identifier = route.params.identifier as string;
 const id = route.params.id as string;
 
-const { data } = await useFetch(`/api/posts/${identifier}/${id}`);
+const { data, error } = await useFetch(`/api/posts/${identifier}/${id}`);
 
 useHead({
-  title: data.value
+  title: error.value
+    ? "Error - Fedify Nuxt Example"
+    : data.value
     ? `Post - ${data.value.author.name} - Fedify Nuxt Example`
     : "Not Found - Fedify Nuxt Example",
 });

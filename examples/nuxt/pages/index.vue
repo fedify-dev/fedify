@@ -157,7 +157,7 @@
 
     <div class="fedify-badge">
       Powered by
-      <a href="https://fedify.dev" class="fedify-anchor" target="_blank">
+      <a href="https://fedify.dev" class="fedify-anchor" target="_blank" rel="noopener noreferrer">
         Fedify
       </a>
     </div>
@@ -209,14 +209,17 @@ function formatDate(dateStr: string): string {
   });
 }
 
+let eventSource: EventSource | null = null;
+
 onMounted(() => {
-  const eventSource = new EventSource("/api/events");
+  eventSource = new EventSource("/api/events");
   eventSource.onmessage = () => {
     refresh();
   };
-  onBeforeUnmount(() => {
-    eventSource.close();
-  });
+});
+
+onBeforeUnmount(() => {
+  eventSource?.close();
 });
 </script>
 

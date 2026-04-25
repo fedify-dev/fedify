@@ -37,6 +37,7 @@
                 href="https://fedify.dev"
                 class="fedify-anchor"
                 target="_blank"
+                rel="noopener noreferrer"
               >
                 Fedify
               </a>
@@ -55,10 +56,12 @@
 const route = useRoute();
 const identifier = route.params.identifier as string;
 
-const { data } = await useFetch(`/api/profile/${identifier}`);
+const { data, error } = await useFetch(`/api/profile/${identifier}`);
 
 useHead({
-  title: data.value
+  title: error.value
+    ? "Error - Fedify Nuxt Example"
+    : data.value
     ? `${data.value.name} - Fedify Nuxt Example`
     : "Not Found - Fedify Nuxt Example",
 });
