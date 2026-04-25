@@ -4836,3 +4836,294 @@ browser, and any peer that walks her actor object can fetch it
 through the standard ActivityPub route.  Next we make the
 relationship pay off: a *home timeline* page that shows posts
 the people alice follows have shared.
+
+
+Home timeline
+-------------
+
+When the people alice follows post on their own servers, those
+servers send `Create(Note)` activities to alice's inbox.  Up to
+this chapter we ignore them.  Now we cache them in a small
+*timeline\_posts* table and render the result as the *home* page,
+the entry point alice lands on right after signup.
+
+### A timeline cache table
+
+Append to *server/db/schema.ts*:
+
+~~~~ typescript [server/db/schema.ts]
+export const timelinePosts = sqliteTable(
+  "timeline_posts",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    noteUri: text("note_uri").notNull(),
+    authorActorUri: text("author_actor_uri").notNull(),
+    authorHandle: text("author_handle").notNull(),
+    authorName: text("author_name"),
+    authorUrl: text("author_url"),
+    caption: text("caption"),
+    mediaUrl: text("media_url").notNull(),
+    mediaType: text("media_type").notNull(),
+    publishedAt: text("published_at").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.noteUri] })],
+);
+
+export type TimelinePost = typeof timelinePosts.$inferSelect;
+~~~~
+
+Two design points worth calling out:
+
+*Denormalized*
+:   Storing *authorHandle*, *authorName*, *authorUrl* alongside
+    *authorActorUri* means the home page can render entirely
+    from one table.  We pay a small write cost on every inbound
+    Note, but reads stay flat and a remote profile rename only
+    becomes stale until the *next* post from that author refreshes
+    the row.
+
+*Composite primary key*
+:   *(userId, noteUri)* makes redelivery a no-op.  Mastodon and
+    Pixelfed both retry deliveries when a peer responds slowly,
+    and ActivityPub permits delivering the same activity to a
+    shared inbox more than once.  Without the unique key we would
+    accumulate duplicates.
+
+Push the schema:
+
+~~~~ ansi [terminal]
+$ npm run db:push
+~~~~
+
+### Cache inbound create(note) activities
+
+Open *server/federation.ts* and add a `Create` handler at the
+end of the inbox-listener chain (after the `Accept` handler from
+chapter 19):
+
+~~~~ typescript [server/federation.ts]
+.on(Create, async (_ctx, create) => {
+  // A remote actor has authored something.  We only cache it if
+  // (a) the object is a Note, (b) the author is one of our
+  // accepted followees, and (c) the Note has at least one image
+  // Document attachment we can show in the grid.
+  if (create.actorId == null) return;
+  const object = await create.getObject();
+  if (!(object instanceof Note)) return;
+  if (object.id == null) return;
+  const actorRows = await db
+    .select()
+    .from(following)
+    .where(
+      and(
+        eq(following.actorUri, create.actorId.href),
+        eq(following.status, "accepted"),
+      ),
+    );
+  if (actorRows.length === 0) return;
+  let mediaUrl: string | null = null;
+  let mediaType: string | null = null;
+  for await (const attachment of object.getAttachments()) {
+    if (
+      attachment instanceof Document &&
+      attachment.url instanceof URL &&
+      attachment.mediaType?.startsWith("image/")
+    ) {
+      mediaUrl = attachment.url.href;
+      mediaType = attachment.mediaType;
+      break;
+    }
+  }
+  if (mediaUrl == null || mediaType == null) return;
+  const published =
+    object.published?.toString() ?? new Date().toISOString();
+  for (const row of actorRows) {
+    await db
+      .insert(timelinePosts)
+      .values({
+        userId: row.followerId,
+        noteUri: object.id.href,
+        authorActorUri: row.actorUri,
+        authorHandle: row.handle,
+        authorName: row.name,
+        authorUrl: row.url,
+        caption: object.content?.toString() ?? null,
+        mediaUrl,
+        mediaType,
+        publishedAt: published,
+      })
+      .onConflictDoNothing();
+  }
+});
+~~~~
+
+Three guards keep the table tidy:
+
+1.  `getObject()` returns the embedded Note.  We use
+    `instanceof Note` rather than a string compare on
+    `type` because Fedify hands us strongly-typed objects;
+    relying on the class is more robust to JSON-LD reshapes.
+2.  We filter by author URI on the *following* table, with the
+    *accepted* gate.  This rejects activities from anyone we are
+    not deliberately following, which means random
+    follower-of-a-follower posts that arrive at our shared inbox
+    do *not* end up on the home grid.
+3.  `getAttachments()` is an async iterator.  We pull the first
+    image-shaped attachment and stop.  PxShare is single-image,
+    so dropping further attachments is fine for this tutorial;
+    the closing chapter lists multi-image carousels as a stretch
+    goal.
+
+> [!NOTE]
+> Mastodon's status URLs and the underlying activity URLs are
+> different.  The activity has *…/statuses/&lt;id&gt;/activity*
+> as its id; the embedded Note is *…/statuses/&lt;id&gt;*.  Our
+> handler stores the *Note*'s id in *noteUri* (so the row links
+> back to the user-visible status, not the federation envelope).
+
+### A home-page endpoint and view
+
+Create *server/api/home.get.ts*:
+
+~~~~ typescript [server/api/home.get.ts]
+import { desc, eq } from "drizzle-orm";
+import { createError, defineEventHandler } from "h3";
+import { db } from "../db/client";
+import { timelinePosts } from "../db/schema";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async () => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const rows = await db
+    .select()
+    .from(timelinePosts)
+    .where(eq(timelinePosts.userId, user.id))
+    .orderBy(desc(timelinePosts.publishedAt))
+    .limit(60);
+  return { posts: rows };
+});
+~~~~
+
+Then *app/pages/home.vue*:
+
+~~~~ vue [app/pages/home.vue]
+<script setup lang="ts">
+const { data } = await useFetch("/api/home", { key: "home-timeline" });
+const posts = computed(() => data.value?.posts ?? []);
+
+useHead({ title: "Home · PxShare" });
+</script>
+
+<template>
+  <section class="flex flex-col gap-6">
+    <header>
+      <h1 class="text-xl font-bold">Home</h1>
+      <p class="text-sm text-gray-500">
+        Posts from the people you follow.  New posts arrive here as soon
+        as their server delivers a Create activity.
+      </p>
+    </header>
+    <div v-if="posts.length > 0" class="grid grid-cols-3 gap-1">
+      <a
+        v-for="post in posts"
+        :key="post.noteUri"
+        :href="post.noteUri"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="block aspect-square overflow-hidden bg-gray-100 hover:opacity-90 transition relative group"
+      >
+        <img
+          :src="post.mediaUrl"
+          :alt="post.caption ?? ''"
+          class="w-full h-full object-cover"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+        />
+        <div
+          class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition"
+        >
+          <span class="font-semibold">{{ post.authorName ?? post.authorHandle }}</span>
+        </div>
+      </a>
+    </div>
+    <p v-else class="text-sm text-gray-400 py-12 text-center">
+      Your home timeline is empty.  Follow someone from the
+      <NuxtLink to="/follow" class="text-brand hover:underline">
+        Follow page
+      </NuxtLink>
+      and their next post will land here.
+    </p>
+  </section>
+</template>
+~~~~
+
+> [!TIP]
+> The `<img>` tag uses `referrerpolicy="no-referrer"` because
+> some servers (Pixelfed especially) block hot-linked images
+> when the *Referer* header points at a different origin.
+> Stripping the referrer makes the request look like a direct
+> fetch, which most servers happily serve.
+
+### Wire `/home` as the entry point
+
+Update the navbar in *app/app.vue* and the redirect in
+*app/pages/index.vue* so the home grid is the first thing alice
+sees on every login:
+
+~~~~ vue [app/app.vue]
+<nav class="flex items-center gap-4 text-sm">
+  <NuxtLink to="/home" class="text-gray-700 hover:text-brand">
+    Home
+  </NuxtLink>
+  <NuxtLink to="/follow" class="text-gray-700 hover:text-brand">
+    Follow
+  </NuxtLink>
+  <NuxtLink
+    to="/compose"
+    class="px-3 py-1.5 bg-brand text-white rounded-full hover:bg-brand-dark"
+  >
+    Compose
+  </NuxtLink>
+</nav>
+~~~~
+
+~~~~ vue [app/pages/index.vue]
+if (data.value?.user) {
+  await navigateTo("/home", { replace: true });
+}
+~~~~
+
+### Trying it out
+
+Restart the dev server and from your Mastodon test account
+(the one you followed alice with in chapter 10) post a status
+that includes an image.  Within a second or two, alice's home
+page lights up:
+
+![alice's home page rendering a single 3-column grid tile that
+shows a galaxy photograph posted by
+anbelia.](./content-sharing/home-timeline.png)
+
+The dev server narrates the inbound activity, and the database
+gains a row:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·inbox Activity 'https://activitypub.academy/users/anbelia_doshaelen/statuses/116…/activity'
+  is enqueued.
+ℹ INF fedify·federation·http 'POST' '/inbox': 202
+ℹ INF fedify·federation·inbox Activity '…/activity' has been processed.
+
+$ sqlite3 content-sharing.sqlite3 "SELECT note_uri, author_handle FROM timeline_posts"
+https://activitypub.academy/users/anbelia_doshaelen/statuses/116…|@anbelia_doshaelen@activitypub.academy
+~~~~
+
+Posts arrive in real time: no polling, no scheduled job.  The
+fediverse pushed the activity to alice the instant the remote
+server queued the delivery, and the only thing we added was a
+strict little filter on top of the inbox listener chain.
