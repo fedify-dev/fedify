@@ -1,5 +1,5 @@
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
+  if (globalThis.process?.env.NEXT_RUNTIME === "nodejs") {
     await import("./logging");
   }
 }
