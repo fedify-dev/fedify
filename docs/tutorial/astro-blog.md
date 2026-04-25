@@ -274,10 +274,11 @@ the fediverse.
 >   http://localhost:4321/users/john | jq .
 > ~~~~
 >
-> The `-H "Accept: application/activity+json"` header tells Astro to
-> return the ActivityPub JSON representation of the page rather than the
-> HTML version.  This is called *content negotiation*, and we'll cover it
-> in detail when we implement our actor.
+> The `-H "Accept: application/activity+json"` option sets the
+> <code>Accept</code> header and tells Astro to return the ActivityPub JSON
+> representation of the page rather than the HTML version.  This is called
+> *content negotiation*, and we'll cover it in detail when we implement our
+> actor.
 
 Stop the dev server with <kbd>Ctrl</kbd>+<kbd>C</kbd> for now.
 
@@ -938,14 +939,16 @@ description stay in sync between the HTML and JSON-LD views.
 
 > [!TIP]
 > The URL `/users/blog` is served by both Fedify and Astro—they share the
-> route.  Which one responds depends on the `Accept` header of the request.
-> ActivityPub clients send `Accept: application/activity+json`, so Fedify
-> handles those and returns JSON-LD.  Browsers send `Accept: text/html`, so
-> Astro handles those and renders the HTML profile page.
+> route.  Which one responds depends on the <code>Accept</code> header of the
+> request.  ActivityPub clients send `Accept: application/activity+json`, so
+> Fedify handles those and returns JSON-LD.  Browsers send
+> `Accept: text/html`, so Astro handles those and renders the HTML profile
+> page.
 >
 > This HTTP [content negotiation] trick is what makes Fedify and Astro work
 > together on the same path.  Fedify's `@fedify/astro` middleware inspects the
-> `Accept` header and hands off non-ActivityPub requests to the Astro router.
+> <code>Accept</code> header and hands off non-ActivityPub requests to the
+> Astro router.
 
 [content negotiation]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
@@ -1174,7 +1177,7 @@ Click the blog's profile to confirm all the metadata looks correct:
 
 The blog is now discoverable across the fediverse.  In the next chapter
 we'll implement inbox listeners so it can actually receive and respond
-to Follow activities.
+to `Follow` activities.
 
 [ActivityPub.Academy]: https://activitypub.academy
 [WebFinger]: https://webfinger.net/
@@ -1873,7 +1876,7 @@ export default db;
 ~~~~
 
 The `id` column stores the Astro content collection slug (e.g.,
-`hello-fediverse`).  `url` is the ActivityPub ID of the Article—it doubles
+`hello-fediverse`).  `url` is the ActivityPub ID of the `Article`—it doubles
 as the HTML page URL since we'll share the path `/posts/{slug}` between Astro
 and Fedify via content negotiation.  `content_hash` is a SHA-256 digest of the
 title and body, used to detect edits.
@@ -2062,8 +2065,9 @@ callback that returns the ActivityPub object for that path.  The `{ slug }`
 destructuring extracts the path parameter.
 
 `ctx.getObjectUri(Article, { slug })` generates the canonical ActivityPub
-ID for the Article, e.g. `https://example.com/posts/hello-fediverse`.  This
-is the same URL as the HTML page—content negotiation (via the `Accept` header)
+ID for the `Article`, e.g. `https://example.com/posts/hello-fediverse`.  This
+is the same URL as the HTML page—content negotiation (via the
+<code>Accept</code> header)
 determines which representation is served:
 
  -  Browser sends `Accept: text/html, */*` → Astro renders the HTML page
@@ -2676,7 +2680,7 @@ Let's walk through the three new handlers:
 
      1.  Fetch the activity's `object` and verify it's a `Note`.
      2.  Check `note.replyTargetId` (the `inReplyTo` URL) and parse it with
-        `ctx.parseUri`.  If it matches our Article dispatcher pattern, we
+        `ctx.parseUri`.  If it matches our `Article` dispatcher pattern, we
         get back `{ type: "object", class: Article, values: { slug: "…" } }`.
      3.  Fetch the author actor to get their display name.
      4.  Store the comment with `addComment`.

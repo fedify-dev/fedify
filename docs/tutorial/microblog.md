@@ -1348,10 +1348,11 @@ profile URL match.
 > Sharp-eyed readers may have noticed that we're defining overlapping handlers
 > for `GET /users/{identifier}` on both Hono and Fedify sides. So what happens
 > when an actual request is sent to this path? The answer is that it depends on
-> the <code>Accept</code> header of the request. If a request is sent with
-> the `Accept: text/html` header, the request handler on the Hono side responds.
-> If a request is sent with the `Accept: application/activity+json` header,
-> the request handler on the Fedify side responds.
+> the <code>Accept</code> header of the request.  If a request is sent with
+> the `Accept: text/html` header, the request handler on the Hono side
+> responds.  If a request is sent with the
+> `Accept: application/activity+json` header, the request handler on the
+> Fedify side responds.
 >
 > This way of giving different responses according to the <code>Accept</code>
 > header of the request is called HTTP [content negotiation], and Fedify itself
@@ -3472,8 +3473,8 @@ browser:
 You can see that the created posts are displayed well.
 
 
-Follow
-------
+`Follow`
+--------
 
 Currently, our actor can receive follow requests from actors on other servers,
 but it can't send follow requests to actors on other servers. Since we can't

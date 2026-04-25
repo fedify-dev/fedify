@@ -1339,7 +1339,7 @@ You should see something like this:
 ![Screenshot: the user profile page](./threadiverse/profile-page.png)
 
 The same URL right now, when you open it with a browser, renders the HTML
-page above.  But if a fediverse server asks for it with an
+page above.  But if a fediverse server asks for it with the
 `Accept: application/activity+json` header, Fedify's middleware intercepts
 the request and returns the default placeholder `Person` actor we saw
 earlier.  In
@@ -1663,7 +1663,7 @@ Leave that terminal running as long as you want the public URL to exist.
 > URL usually changes on restart, so expect to re-paste it anywhere
 > you typed it in.
 
-#### Honouring X-forwarded-\* headers
+#### Honouring `X-Forwarded-*` headers
 
 When a request comes in through a tunnel, Next.js sees the tunnel as a
 reverse proxy.  The real public host is in the `X-Forwarded-Host` and
@@ -1761,7 +1761,7 @@ shows it as a result.  That's all we need for now: the wider fediverse
 can now *see* the user we created.  In
 [*Communities as `Group` actors*](#communities-as-group-actors) and
 [*Subscribing to communities*](#subscribing-to-communities) we'll pair
-this with a Follow handler so the academy (and other servers) can
+this with a `Follow` handler so the academy (and other servers) can
 actually subscribe.
 
 [Serveo]: https://serveo.net/
@@ -2222,7 +2222,7 @@ Academy, like Mastodon, calls this a *group* in its UI.  Threadiverse
 software that speaks the same protocol (Lemmy, Mbin, NodeBB) will
 recognise it as a community they can subscribe to.  In the next two
 sections we'll add the follow half of the story: receiving and
-accepting Follow requests.
+accepting `Follow` requests.
 
 
 Subscribing to communities
@@ -2336,7 +2336,7 @@ a collection to paginate.
 
 ### Handling an inbound `Follow`
 
-Most of the Follow flow is inbox work.  The community inbox needs to:
+Most of the `Follow` flow is inbox work.  The community inbox needs to:
 
 1.  Recognise a `Follow` whose `object` is one of our communities.
 2.  Resolve the follower's actor so we can read its `inbox` and
@@ -2407,7 +2407,7 @@ A few important details:
  -  `follow.getActor(ctx)` fetches the remote actor over HTTP
     (Fedify caches it) so we know their inbox URL.
  -  `onConflictDoUpdate` makes the upsert idempotent: if the same
-    remote user sends us a Follow twice (say, after a transient
+    remote user sends us a `Follow` twice (say, after a transient
     failure), we don't crash on the unique constraint.
  -  `ctx.sendActivity(sender, recipient, activity)` enqueues the
     `Accept` on Fedify's in-process message queue.  The HTTP
@@ -2417,7 +2417,7 @@ A few important details:
 ### Handling an inbound `Accept(Follow)`
 
 The mirror image: when a remote community accepts one of *our*
-Follow requests, the Accept lands in the local user's inbox.  Add a
+`Follow` requests, the `Accept` lands in the local user's inbox.  Add a
 listener:
 
 ~~~~ typescript [federation/index.ts]
@@ -2437,7 +2437,7 @@ listener:
   });
 ~~~~
 
-`accept.getObject` returns the object the Accept wraps.  Only when
+`accept.getObject` returns the object the `Accept` wraps.  Only when
 that object is a `Follow` do we flip the corresponding row's
 `accepted` flag.
 
@@ -2588,10 +2588,10 @@ community profile on Academy looks like this:
 
 ![Screenshot: Academy sees the community as followed, with 1 follower and a Group badge](./threadiverse/academy-following-community.png)
 
-The “Group” badge, the *Unfollow* button (Academy has decided our
-Accept came back), and the *1 Follower* count prove that the round
-trip worked: Academy sent a Follow, the community inbox accepted and
-recorded it, the Accept shipped back, and Academy trusts the
+The `Group` badge, the *Unfollow* button (Academy has decided our
+`Accept` came back), and the *1 Follower* count prove that the round
+trip worked: Academy sent a `Follow`, the community inbox accepted and
+recorded it, the `Accept` shipped back, and Academy trusts the
 relationship.  A direct peek at the local database confirms it:
 
 ~~~~ sh
@@ -2614,8 +2614,8 @@ the actual content: discussion threads.  In threadiverse federation a
 thread is a `Page` object wrapped in a `Create` activity sent from the
 author to the community.  The community inbox stores the thread and
 redistributes it to its subscribers as an `Announce(Create(Page))`.  The
-subscribers' inboxes then unwrap the Announce and route the inner Create
-to their own Create handler, which persists the thread.  One pattern,
+subscribers' inboxes then unwrap the `Announce` and route the inner `Create`
+to their own `Create` handler, which persists the thread.  One pattern,
 two directions.
 
 ### The `threads` table
@@ -2928,7 +2928,7 @@ A few things to notice:
 
 ### Community-side: `Create` handler and `Announce` fan-out
 
-Now the inbox side.  When the Create lands in the community inbox, the
+Now the inbox side.  When the `Create` lands in the community inbox, the
 community persists the thread and re-announces it to all its followers.
 Extend *federation/index.ts* `setInboxListeners()`:
 
@@ -2985,13 +2985,13 @@ Extend *federation/index.ts* `setInboxListeners()`:
 
 Important details:
 
- -  The handler works both for directly-delivered Creates (our own user
-    posted) and for Creates pulled out of an Announce (a follower of a
-    remote community).  In the first case the community is local, so
-    we Announce.  In the second case `localCommunity` is null, the
+ -  The handler works both for directly-delivered `Create` activities (our own
+    user posted) and for `Create` activities pulled out of an `Announce` (a
+    follower of a remote community).  In the first case the community is local,
+    so we send an `Announce`.  In the second case `localCommunity` is null, the
     handler returns early, and the thread is just stored.
  -  `onConflictDoNothing()` on the insert is what keeps optimistic
-    local inserts (from the Create action above) and the inbox insert
+    local inserts (from the `Create` action above) and the inbox insert
     from stepping on each other: the URI is the same, so the second
     insert is a no-op.
  -  `sendActivity(..., "followers", ...)` resolves to the
@@ -3004,11 +3004,11 @@ Important details:
 ### Follower-side: `Announce` router
 
 The mirror half: when a follower receives `Announce(Create(Page))` from
-a community, we unwrap the Announce and let the same Create handler
+a community, we unwrap the `Announce` and let the same `Create` handler
 store the thread.  `ctx.routeActivity` is the right tool: it verifies
 the enclosed activity's signature (it must either be signed by its
 actor or come from its actor's origin) before routing, so a malicious
-Announce can't smuggle in a fake thread:
+`Announce` can't smuggle in a fake thread:
 
 ~~~~ typescript [federation/index.ts]
   .on(Announce, async (ctx, announce) => {
@@ -3019,7 +3019,7 @@ Announce can't smuggle in a fake thread:
   });
 ~~~~
 
-That's it.  With the Announce listener in place, the same Create
+That's it.  With the `Announce` listener in place, the same `Create`
 handler that stored a locally-originated thread now also stores threads
 that flow in via federation.
 
@@ -3040,7 +3040,7 @@ There are three useful end-to-end tests for this chapter:
     then create another thread.  Mastodon-family servers (Academy
     included) don't render `Page` objects in their timelines (that's
     a Mastodon limitation, not a bug), but your community's outbound
-    Announce is still enqueued and delivered.  You can see the
+    `Announce` is still enqueued and delivered.  You can see the
     outbound HTTP signatures in your dev server logs.
 
 3.  *Remote community federates inbound.*  Find a real Lemmy
@@ -3154,7 +3154,7 @@ export type NewReply = typeof replies.$inferInsert;
 `thread_uri` is always set; `parent_uri` is `null` for direct
 replies to a thread or set to another reply's URI for nested
 replies.  `community_uri` is denormalised into the reply so
-community-side Announce delivery doesn't need to walk back through
+community-side `Announce` delivery doesn't need to walk back through
 `threads`.
 
 `npm run db:push`.
@@ -3319,8 +3319,8 @@ accept `Note` objects.  The inline diff against the previous version:
 
 The rest of the handler (the local-community check and the
 `sendActivity(..., "followers", Announce(Create))` fan-out) is
-shared between threads and replies, so the community Announces
-threads and replies exactly the same way.
+shared between threads and replies, so the community sends an `Announce`
+for threads and replies exactly the same way.
 
 ### Testing
 
@@ -3369,7 +3369,7 @@ export type Vote = typeof votes.$inferSelect;
 ~~~~
 
 The `(voter_uri, target_uri)` unique index gives each voter exactly one
-current vote per target.  Switching from Like to Dislike is an upsert
+current vote per target.  Switching from `Like` to `Dislike` is an upsert
 that updates `kind` in place, so a voter's two activity URIs don't
 leave two vote rows behind.
 
@@ -3528,8 +3528,8 @@ Two important bits:
 ### Inbox: `Like`/`Dislike` handlers with re-`Announce`
 
 The community side does the same pattern as threads and replies: upsert
-the vote, then re-Announce if the community is local.  Both Like and
-Dislike go through one shared function:
+the vote, then re-`Announce` if the community is local.  Both `Like` and
+`Dislike` go through one shared function:
 
 ~~~~ typescript [federation/index.ts]
 federation
@@ -3611,7 +3611,7 @@ async function handleVote(
 There's no new inbox plumbing for subscribers: the `Announce` listener
 we already have `routeActivity`s the inner `Like`/`Dislike` right
 back through this same handler, and `handleVote` short-circuits the
-re-Announce branch when the community is remote.  One function, two
+re-`Announce` branch when the community is remote.  One function, two
 directions.
 
 > [!TIP]
@@ -3625,8 +3625,8 @@ directions.
 Putting it together: the subscribed feed
 ----------------------------------------
 
-Every feature so far (Person/Group actors, Follow/Accept/Undo,
-Create(Page), Create(Note), Like, Dislike) has moved a row into or
+Every feature so far (`Person`/`Group` actors, `Follow`/`Accept`/`Undo`,
+`Create(Page)`, `Create(Note)`, `Like`, `Dislike`) has moved a row into or
 out of one of our tables.  The home page is where those rows become
 something the reader actually sees: a chronological feed of every
 thread from every community they subscribe to.
@@ -3763,19 +3763,19 @@ export async function unfollowCommunity(formData: FormData): Promise<void> {
 A few subtle bits:
 
  -  The enclosed `Follow` inside the `Undo` doesn't have to be the
-    exact original Follow (we don't necessarily remember its URI);
+    exact original `Follow` (we don't necessarily remember its URI);
     it only needs to have the same `actor` + `object` so the
     receiving server can match it against its own record.
  -  The recipient is built by hand with the followee's URI as `id`
     and the follower's inbox URL (which we stored when the follow
     was first inserted).  That's sufficient for `sendActivity`
     without another network lookup.
- -  We ship the Undo *before* deleting the local row.  If delivery
+ -  We ship the `Undo` *before* deleting the local row.  If delivery
     fails, the follow stays in the table and the user can try again.
 
 ### Inbound: `Undo` handler
 
-When a remote actor Undoes a Follow directed at one of our communities,
+When a remote actor undoes a `Follow` directed at one of our communities,
 we need to remove the row:
 
 ~~~~ typescript [federation/index.ts]
@@ -3796,8 +3796,8 @@ we need to remove the row:
 ~~~~
 
 The `undo.actorId?.href !== enclosed.actorId.href` check is the
-authorization: you can only Undo your own Follow, not someone else's.
-Fedify already verifies the Undo's HTTP signature, so `undo.actorId`
+authorization: you can only `Undo` your own `Follow`, not someone else's.
+Fedify already verifies the `Undo`'s HTTP signature, so `undo.actorId`
 is trustworthy; we rely on that plus an explicit actor-equality check
 to defend the row.
 
@@ -3810,7 +3810,7 @@ later your `follows` table has zero rows for the
 `@enulius_dorvorglan@activitypub.academy` actor.  Inversely, log in as
 a local user, expand the *Subscriptions* section on the home page,
 and click *Unfollow* next to a remote community; the row disappears
-from your table and, once the remote server processes the Undo, from
+from your table and, once the remote server processes the `Undo`, from
 their member count too.
 
 
@@ -3819,7 +3819,7 @@ Making the community actor Lemmy-compatible
 
 The actor JSON we've built so far is enough for Mastodon-family
 software to find our community through WebFinger and show it as a
-Group, but [Lemmy] is stricter.  When a Lemmy user subscribes to
+`Group`, but [Lemmy] is stricter.  When a Lemmy user subscribes to
 `!pictures@host`, Lemmy's community parser checks for three fields
 that Mastodon doesn't require and rejects the actor silently if
 they're missing.  Adding them is a small edit to
@@ -3954,7 +3954,7 @@ Two changes from the version we wrote in
     Lemmy's URL parser doesn't tolerate a URL inside a fragment.
  -  The nested `object` is a brand-new `Follow` with only `id`,
     `actor`, and `object` populated; Lemmy's parser balks at the
-    full original Follow (with its own `@context` and ancillary
+    full original `Follow` (with its own `@context` and ancillary
     fields) that Fedify would otherwise serialise inline.
 
 ### Verification
@@ -4021,7 +4021,7 @@ in place:
     activity types are required.
  -  *Editing and deletion.*  `Update(Page)`/`Update(Note)` and
     `Delete(Page)`/`Delete(Note)` with `Tombstone` substitutes.
-    The handlers look just like the Create handler, differing only
+    The handlers look just like the `Create` handler, differing only
     in what DB row they mutate.
  -  *Local community index.*  A `/communities` page that lists
     every `communities` row.  A single select + paginate; no
