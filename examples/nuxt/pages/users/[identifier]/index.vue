@@ -44,12 +44,6 @@
           </div>
         </div>
       </div>
-      <div class="info-card">
-        <h3>Posts</h3>
-        <p>
-          <a :href="`/`">View and create posts &rarr;</a>
-        </p>
-      </div>
     </div>
   </div>
   <div v-else class="profile-container">
