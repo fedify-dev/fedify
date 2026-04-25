@@ -3124,3 +3124,257 @@ That is the entire schema chapter.  No code runs yet; we have set
 the stage for the compose form to follow.  The next chapter adds
 a *Compose* page, a multipart upload endpoint, and the first
 proper insert into the `posts` table.
+
+
+Composing and uploading
+-----------------------
+
+Time to give alice a way to actually post.  We will build two
+pieces in lockstep: a form at */compose* and a server endpoint
+that accepts the upload.  The combined flow is:
+
+1.  The reader picks a file and a caption in the form.
+2.  The browser POSTs the form as `multipart/form-data` to
+    */api/posts*.
+3.  The endpoint validates the MIME type and size, writes the
+    bytes to *public/uploads/&lt;username&gt;/&lt;uuid&gt;.&lt;ext&gt;*,
+    inserts a `posts` row, and `303` redirects back to the
+    profile.
+4.  Nuxt serves the saved file as a static asset under
+    */uploads/…* without any extra handler.
+
+### The upload endpoint
+
+Create *server/api/posts.post.ts*:
+
+~~~~ typescript [server/api/posts.post.ts]
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import {
+  createError,
+  defineEventHandler,
+  readMultipartFormData,
+  sendRedirect,
+} from "h3";
+import { db } from "../db/client";
+import { posts } from "../db/schema";
+import { getLocalUser } from "../utils/users";
+
+const ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+
+const EXTENSION: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+
+  const parts = await readMultipartFormData(event);
+  if (parts == null) {
+    throw createError({ statusCode: 400, statusMessage: "Empty body" });
+  }
+
+  let caption: string | null = null;
+  let imageBuffer: Buffer | null = null;
+  let imageType: string | null = null;
+  for (const part of parts) {
+    if (part.name === "caption") {
+      const text = part.data.toString("utf8").trim();
+      caption = text === "" ? null : text;
+    } else if (part.name === "image") {
+      imageBuffer = part.data;
+      imageType = part.type ?? null;
+    }
+  }
+
+  if (imageBuffer == null || imageType == null) {
+    throw createError({ statusCode: 400, statusMessage: "Missing image" });
+  }
+  if (!ALLOWED_TYPES.has(imageType)) {
+    throw createError({
+      statusCode: 415,
+      statusMessage: `Unsupported media type: ${imageType}`,
+    });
+  }
+  if (imageBuffer.byteLength > MAX_BYTES) {
+    throw createError({
+      statusCode: 413,
+      statusMessage: `Image too large (max ${MAX_BYTES / 1024 / 1024} MB)`,
+    });
+  }
+
+  const ext = EXTENSION[imageType];
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const userDir = path.join("public", "uploads", user.username);
+  await mkdir(userDir, { recursive: true });
+  await writeFile(path.join(userDir, filename), imageBuffer);
+
+  const mediaPath = `${user.username}/${filename}`;
+  await db.insert(posts).values({
+    userId: user.id,
+    caption,
+    mediaPath,
+    mediaType: imageType,
+  });
+
+  return await sendRedirect(event, `/users/${user.username}`, 303);
+});
+~~~~
+
+Walking through:
+
+`readMultipartFormData(event)`
+:   h3 has a built-in multipart parser; no extra dependency.  We
+    iterate the parts twice (once for the caption, once for the
+    image) instead of trusting the order the browser uses.
+
+`ALLOWED_TYPES`, `MAX_BYTES`
+:   Only JPEG, PNG, WebP, and GIF go through, capped at 8 MB.
+    Anything else fails fast with a meaningful HTTP status; the
+    browser shows the message in the form's default error UI.
+
+*Filename generation*
+:   `crypto.randomUUID()` plus the extension we pick for the MIME
+    type.  Random UUIDs avoid both clashes and the security
+    concern of accepting filenames from user input.
+
+*`303 See Other`*
+:   This is the right HTTP status for “the POST succeeded; come
+    fetch the next page with a `GET`.”  Browsers follow it
+    automatically, and the form pattern works without any
+    client-side JS.
+
+> [!TIP]
+> Real Pixelfed instances run uploaded images through a
+> thumbnailing pipeline (sharp/libvips) so the in-feed image is
+> a sensible size and the original lives only on the post detail
+> page.  We deliberately ship the original byte-for-byte: the
+> dependency surface stays small, Nuxt's *public/* pipeline
+> streams the file as-is, and the closing chapter lists
+> thumbnailing as a natural next step.
+
+### The compose page
+
+Create *app/pages/compose.vue*:
+
+~~~~ vue [app/pages/compose.vue]
+<script setup lang="ts">
+const { data } = await useFetch("/api/me", { key: "me-compose" });
+const meUsername = computed(() => data.value?.user?.username ?? "");
+
+useHead({ title: "Compose · PxShare" });
+</script>
+
+<template>
+  <section class="flex flex-col gap-4">
+    <header>
+      <h1 class="text-xl font-bold">New post</h1>
+      <p class="text-sm text-gray-500">
+        Pick an image, add a caption, and share it with your followers.
+      </p>
+    </header>
+    <form
+      action="/api/posts"
+      method="post"
+      enctype="multipart/form-data"
+      class="flex flex-col gap-4"
+    >
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-semibold">Image</span>
+        <input
+          type="file"
+          name="image"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          required
+          class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-brand/10 file:text-brand file:font-semibold hover:file:bg-brand/20 cursor-pointer"
+        />
+        <span class="text-xs text-gray-500">
+          JPEG, PNG, WebP, or GIF.  Up to 8 MB.
+        </span>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-semibold">Caption</span>
+        <textarea
+          name="caption"
+          rows="3"
+          maxlength="500"
+          placeholder="Say something about this picture (optional)"
+          class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
+        ></textarea>
+      </label>
+      <div class="flex items-center justify-end gap-3">
+        <NuxtLink
+          v-if="meUsername"
+          :to="`/users/${meUsername}`"
+          class="text-sm text-gray-500 hover:text-brand"
+        >
+          Cancel
+        </NuxtLink>
+        <button
+          type="submit"
+          class="px-4 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark"
+        >
+          Post
+        </button>
+      </div>
+    </form>
+  </section>
+</template>
+~~~~
+
+The `Compose` button in *app.vue* already points at */compose*,
+so the new page is reachable from anywhere.  The `<form>` POSTs
+straight to */api/posts* with `enctype="multipart/form-data"`,
+which is the only required ingredient for browsers to upload
+binary data without JavaScript.
+
+### Trying it out
+
+Open <http://localhost:3000/compose> and you should see:
+
+![PxShare compose page.  An *Image* file picker, an empty
+*Caption* textarea, and a pink *Post* button on the
+right.](./content-sharing/compose-form.png)
+
+Pick any small image, add a caption, and click *Post*.  The
+browser follows the `303` redirect back to alice's profile.
+The post itself does not show on the profile yet; chapter 16
+adds the grid of posts that pulls from the new table.  But you
+can confirm the row was written:
+
+~~~~ sh
+sqlite3 -header -column content-sharing.sqlite3 "SELECT * FROM posts"
+~~~~
+
+~~~~ console
+id  user_id  caption                 media_path                                       media_type  created_at
+--  -------  ----------------------  -----------------------------------------------  ----------  -------------------
+ 1        1  Hello from chapter 14   alice/5a1d45d6-74f6-48fe-a578-ed33e62d478b.png   image/png   2026-04-26 01:23:43
+~~~~
+
+…and the file lives where we asked Nuxt to serve it:
+
+~~~~ sh
+curl -I "http://localhost:3000/uploads/alice/5a1d45d6-74f6-48fe-a578-ed33e62d478b.png"
+~~~~
+
+~~~~ console
+HTTP/1.1 200 OK
+Content-Type: image/png
+Content-Length: ...
+~~~~
+
+The next chapter teaches Fedify to serve those rows as
+ActivityPub `Note` objects so other servers can fetch them.
