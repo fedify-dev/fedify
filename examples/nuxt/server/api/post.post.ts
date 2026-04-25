@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
     id: url,
     attribution,
     content: content.trim(),
+    published: Temporal.Now.instant(),
     url,
   });
   postStore.append([post]);
