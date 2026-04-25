@@ -32,10 +32,16 @@ export const loadFederation = async (
   );
 
 /**
- * Loads the logging configuration file content from template.
- * Reads the default logging template and replaces the project name placeholder.
+ * Loads logging configuration file content for the initializer.
  *
- * @param param0 - Destructured object containing the project name
+ * `loadLogging` accepts the full {@link InitCommandData} so it can read the
+ * project name and the framework initializer.  It uses {@link readTemplate} to
+ * read `initializer.loggingTemplate` when provided, or falls back to
+ * *defaults/logging.ts*, then replaces the project name placeholder.
+ *
+ * @param param0 - {@link InitCommandData} containing `projectName` and
+ *   `initializer`; `initializer.loggingTemplate` selects a framework-specific
+ *   logging template when present.
  * @returns The complete logging configuration file content as a string
  */
 export const loadLogging = async (
