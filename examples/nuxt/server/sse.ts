@@ -16,6 +16,10 @@ export function removeClient(client: EventClient): void {
 export function broadcastEvent(): void {
   const data = JSON.stringify({ type: "update" });
   for (const client of clients) {
-    client.send(data);
+    try {
+      client.send(data);
+    } catch {
+      clients.delete(client);
+    }
   }
 }
