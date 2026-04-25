@@ -4557,3 +4557,282 @@ proof of it is a row in SQLite.  The next chapter renders that
 list as a Vue page so alice can see who she follows, and
 exposes it as an ActivityPub `Following` collection so peers
 can read it back.
+
+
+Following list
+--------------
+
+This chapter is the symmetric counterpart of the followers list
+from chapter 12: an HTML page that shows who alice follows, plus
+an ActivityPub *OrderedCollection* peers can fetch.  Both reuse
+the *following* table from chapter 19, filtered to the rows
+whose status is `accepted`.
+
+### A JSON endpoint
+
+Create
+*server/api/users/&#91;username&#93;/following.get.ts*:
+
+~~~~ typescript [server/api/users/[username]/following.get.ts]
+import { and, desc, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../../db/client";
+import { following, users } from "../../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  // Hide pending rows from the public list: an unconfirmed follow
+  // is between alice and the remote server, not something to
+  // advertise.
+  const rows = await db
+    .select()
+    .from(following)
+    .where(
+      and(eq(following.followerId, user.id), eq(following.status, "accepted")),
+    )
+    .orderBy(desc(following.createdAt));
+  return { user, following: rows };
+});
+~~~~
+
+### The Vue page
+
+Create *app/pages/users/&#91;username&#93;/following.vue*:
+
+~~~~ vue [app/pages/users/[username]/following.vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+
+const { data, error } = await useFetch(
+  () => `/api/users/${username.value}/following`,
+  { key: () => `following-${username.value}` },
+);
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "User not found" });
+}
+
+const user = computed(() => data.value?.user ?? null);
+const following = computed(() => data.value?.following ?? []);
+
+useHead({
+  title: () =>
+    user.value
+      ? `${user.value.name} is following (@${user.value.username})`
+      : "PxShare",
+});
+</script>
+
+<template>
+  <section v-if="user" class="flex flex-col gap-6">
+    <header class="flex flex-col gap-1">
+      <NuxtLink
+        :to="`/users/${user.username}`"
+        class="text-sm text-gray-500 hover:text-brand"
+      >
+        ← {{ user.name }}
+      </NuxtLink>
+      <h1 class="text-xl font-bold">Following</h1>
+      <p class="text-sm text-gray-500">
+        Following {{ following.length }}
+        {{ following.length === 1 ? "account" : "accounts" }}
+      </p>
+    </header>
+    <ul v-if="following.length > 0" class="flex flex-col gap-3">
+      <li
+        v-for="account in following"
+        :key="account.actorUri"
+        class="flex items-center gap-3"
+      >
+        <a
+          :href="account.url ?? account.actorUri"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex flex-col hover:text-brand"
+        >
+          <span class="font-semibold">{{ account.name ?? account.handle }}</span>
+          <span class="text-sm text-gray-500">{{ account.handle }}</span>
+        </a>
+      </li>
+    </ul>
+    <p v-else class="text-sm text-gray-400 py-8 text-center">
+      Not following anyone yet.
+    </p>
+  </section>
+</template>
+~~~~
+
+### A counter on the profile
+
+Update *server/api/users/&#91;username&#93;.get.ts* to surface
+*followingCount* alongside the existing aggregates:
+
+~~~~ typescript [server/api/users/[username].get.ts]
+import { and, count, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../db/client";
+import { followers, following, posts, users } from "../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  // …user lookup unchanged…
+  const [{ followerCount }] = await db
+    .select({ followerCount: count() })
+    .from(followers)
+    .where(eq(followers.followingId, user.id));
+  const [{ followingCount }] = await db
+    .select({ followingCount: count() })
+    .from(following)
+    .where(
+      and(eq(following.followerId, user.id), eq(following.status, "accepted")),
+    );
+  const [{ postCount }] = await db
+    .select({ postCount: count() })
+    .from(posts)
+    .where(eq(posts.userId, user.id));
+  return { user, followerCount, followingCount, postCount };
+});
+~~~~
+
+Then add a third pill to the profile header in
+*app/pages/users/&#91;username&#93;/index.vue*:
+
+~~~~ vue [app/pages/users/[username]/index.vue]
+const followingCount = computed(() => profile.value?.followingCount ?? 0);
+~~~~
+
+~~~~ vue [app/pages/users/[username]/index.vue]
+<NuxtLink
+  :to="`/users/${user.username}/followers`"
+  class="hover:text-brand"
+>
+  <strong>{{ followerCount }}</strong>
+  {{ followerCount === 1 ? "follower" : "followers" }}
+</NuxtLink>
+<NuxtLink
+  :to="`/users/${user.username}/following`"
+  class="hover:text-brand"
+>
+  <strong>{{ followingCount }}</strong>
+  following
+</NuxtLink>
+~~~~
+
+The header now reads *posts · followers · following*:
+
+![alice's profile header showing “4 posts · 2 followers · 1 following”.](./content-sharing/profile-with-following-counter.png)
+
+Click *1 following* and the new page lists the accounts:
+
+![The Following page showing one entry, “Anbelia Doshaelen
+&commat;anbelia\_doshaelen&commat;activitypub.academy”.](./content-sharing/following-list.png)
+
+### The ActivityPub `Following` collection
+
+A peer that fetches alice's actor JSON should get a `following`
+URL back.  Update the actor dispatcher in *server/federation.ts*:
+
+~~~~ typescript [server/federation.ts]
+return new Person({
+  // …
+  followers: ctx.getFollowersUri(identifier),
+  following: ctx.getFollowingUri(identifier),
+  // …
+});
+~~~~
+
+Then add a sibling to the followers dispatcher that answers
+that URL:
+
+~~~~ typescript [server/federation.ts]
+federation
+  .setFollowingDispatcher(
+    "/users/{identifier}/following",
+    async (_ctx, identifier) => {
+      const localUser = (
+        await db
+          .select()
+          .from(users)
+          .where(eq(users.username, identifier))
+          .limit(1)
+      )[0];
+      if (localUser === undefined) return null;
+      const rows = await db
+        .select()
+        .from(following)
+        .where(
+          and(
+            eq(following.followerId, localUser.id),
+            eq(following.status, "accepted"),
+          ),
+        )
+        .orderBy(desc(following.createdAt));
+      const items = rows.map((row) => new URL(row.actorUri));
+      return { items };
+    },
+  )
+  .setCounter(async (_ctx, identifier) => {
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return 0;
+    const result = await db
+      .select({ cnt: count() })
+      .from(following)
+      .where(
+        and(
+          eq(following.followerId, localUser.id),
+          eq(following.status, "accepted"),
+        ),
+      );
+    return result[0]?.cnt ?? 0;
+  });
+~~~~
+
+Two differences worth pointing out compared to the followers
+dispatcher:
+
+1.  Items are *plain URL strings*, not `Recipient` objects.
+    The `Recipient` shape exists so Fedify can deliver activities
+    to followers; for *Following*, peers only need the actor
+    URIs to fetch the actors themselves.
+2.  Both the dispatcher and its counter filter by
+    `status = "accepted"`.  A pending follow is not part of
+    alice's public footprint until the remote server confirms.
+
+> [!TIP]
+> Fedify validates that the URL on `actor.~Person.followingId`
+> matches the URL the dispatcher answers at.  If they drift
+> apart (a typo, a route rename), the actor dispatcher will
+> throw at startup, which is the correct moment to discover the
+> mismatch.
+
+Verify the collection serves correctly:
+
+~~~~ ansi [terminal]
+$ fedify lookup http://localhost:3000/users/alice/following
+OrderedCollection {
+  id: URL "http://localhost:3000/users/alice/following",
+  totalItems: 1,
+  items: [ URL "https://activitypub.academy/users/anbelia_doshaelen" ],
+}
+~~~~
+
+The list is real on both sides now: alice can see it in the
+browser, and any peer that walks her actor object can fetch it
+through the standard ActivityPub route.  Next we make the
+relationship pay off: a *home timeline* page that shows posts
+the people alice follows have shared.
