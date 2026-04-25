@@ -28,6 +28,13 @@ import {
 const PUBLIC_BOOKMARKS = "public-bookmarks";
 const TAGGED_BOOKMARKS = "tagged-bookmarks";
 const FOLLOWERS_ONLY_BOOKMARKS = "followers-only-bookmarks";
+const HTML_ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -234,12 +241,7 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return value.replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
 }
 
 async function isFollowerRequest(ctx: RequestContext<void>): Promise<boolean> {
