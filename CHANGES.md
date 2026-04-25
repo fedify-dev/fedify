@@ -14,9 +14,10 @@ To be released.
     *logging.ts* files are loaded during server startup.  Nitro projects now
     get a server plugin that imports the LogTape configuration, and Next.js
     projects get an *instrumentation.ts* `register()` hook that imports it in
-    the Node.js runtime before Fedify handles requests.  [[#725]]
+    the Node.js runtime before Fedify handles requests.  [[#725], [#727]]
 
 [#725]: https://github.com/fedify-dev/fedify/issues/725
+[#727]: https://github.com/fedify-dev/fedify/pull/727
 
 
 Version 2.0.14
