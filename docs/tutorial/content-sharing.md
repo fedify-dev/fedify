@@ -155,18 +155,18 @@ fedify init -w nuxt -p npm -k in-memory -m in-process content-sharing
 
 The flags tell `fedify init` to use:
 
-[`-w nuxt`]
+`-w nuxt`
 :   Nuxt as the web framework.
 
-[`-p npm`]
+`-p npm`
 :   npm as the package manager.
 
-[`-k in-memory`]
+`-k in-memory`
 :   An in-memory [key&ndash;value store](../manual/kv.md) for Fedify.  This is
     perfect for development; once you deploy, you would swap it for Redis or
     a relational database.
 
-[`-m in-process`]
+`-m in-process`
 :   An in-process [message queue](../manual/mq.md) for Fedify.  The same
     reasoning applies: fine for development, swap for Redis or RabbitMQ in
     production.
@@ -643,3 +643,158 @@ fedify lookup http://localhost:3000/users/alice
 Content negotiation means the same URL serves the welcome layout to a
 browser and a JSON-LD `Person` object to ActivityPub clients.  Chapter 6
 covers this in detail.
+
+
+Setting up the database
+-----------------------
+
+Fediverse software needs persistent state: who the local user is, who
+follows them, what they have posted, what they have liked.  We will use
+[SQLite] because it is a single file with no server to run, and we will
+talk to it through [Drizzle ORM] so the schema is a TypeScript file and
+the queries are typed.
+
+> [!TIP]
+> If you prefer raw SQL, Drizzle does not stand in the way: the same
+> library exposes a `db.run(sql\`…\`)\` escape hatch.  We stick to the
+> typed query builder in this tutorial so you can hover your cursor over
+> any database call in your editor and see the columns involved.
+
+[SQLite]: https://sqlite.org/
+[Drizzle ORM]: https://orm.drizzle.team/
+
+### Installing the packages
+
+Install Drizzle, the better-sqlite3 driver, Drizzle's CLI (used only at
+dev time to push schema changes), and the TypeScript type
+declarations for better-sqlite3:
+
+~~~~ sh
+npm install better-sqlite3 drizzle-orm
+npm install -D drizzle-kit @types/better-sqlite3
+~~~~
+
+### The schema
+
+Create *server/db/schema.ts* with just an empty module marker.  Later
+chapters will fill it in; keeping the file present lets us import it
+from the client right away.
+
+~~~~ typescript [server/db/schema.ts]
+// Tables live here.  For now the file is empty; later chapters will fill
+// in tables for the local user, followers, posts, comments, and likes.
+
+export {};
+~~~~
+
+> [!NOTE]
+> The `export {}` line makes TypeScript treat this file as a module
+> rather than a plain script.  Without it, other files cannot
+> `import * as schema from "./schema"`.
+
+### The database connection
+
+Create *server/db/client.ts*, which opens the SQLite file on disk and
+wraps it with Drizzle:
+
+~~~~ typescript [server/db/client.ts]
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
+
+const sqlite = new Database("content-sharing.sqlite3");
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
+
+export const db = drizzle(sqlite, { schema });
+~~~~
+
+Two pragmas are worth knowing:
+
+[`journal_mode = WAL`]
+:   Switches SQLite to [write-ahead logging][Write-Ahead Logging], which
+    makes concurrent reads and writes much smoother.  You almost always
+    want this on for server applications.
+
+[`foreign_keys = ON`]
+:   SQLite does not enforce `REFERENCES` constraints unless you ask.
+    Turning this on catches cases like “insert a follower row for a
+    user that does not exist” as an error at write time.
+
+The exported `db` is what every server route and Fedify handler will
+import when it needs to read or write.
+
+[`journal_mode = WAL`]: https://www.sqlite.org/wal.html
+[Write-Ahead Logging]: https://en.wikipedia.org/wiki/Write-ahead_logging
+[`foreign_keys = ON`]: https://www.sqlite.org/foreignkeys.html#fk_enable
+
+### The drizzle-kit config
+
+*drizzle-kit* is the command-line tool that turns the TypeScript
+schema into actual SQL.  Configure it at the project root as
+*drizzle.config.ts*:
+
+~~~~ typescript [drizzle.config.ts]
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./server/db/schema.ts",
+  out: "./server/db/migrations",
+  dialect: "sqlite",
+  dbCredentials: { url: "content-sharing.sqlite3" },
+});
+~~~~
+
+Expose two npm scripts that wrap drizzle-kit, so the reader never has
+to type the tool's name directly.  Edit *package.json*:
+
+~~~~ json [package.json]
+{
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  }
+}
+~~~~
+
+`db:push` compares the schema to the live database and applies any
+differences.  `db:studio` opens a local web UI for poking at rows,
+which is occasionally handy while debugging.
+
+### Creating the database
+
+Run the push command once now:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+It should print something like:
+
+~~~~ console
+[i] No changes detected
+~~~~
+
+That is correct: the schema is empty, so there is nothing to create
+yet.  The command also creates an empty *content-sharing.sqlite3* file
+on disk as a side effect.  From now on, every chapter that edits the
+schema will ask you to re-run `npm run db:push`.
+
+### Gitignoring the database file
+
+Add the SQLite file (and its sidecars that WAL mode creates) to
+*.gitignore* so your local state does not end up in git:
+
+~~~~ gitignore [.gitignore]
+# Local SQLite database
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+~~~~
