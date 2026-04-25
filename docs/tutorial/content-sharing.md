@@ -2288,8 +2288,7 @@ checking the signature, then drops the activity silently when its
 queue worker cannot parse the RFC 9421 header.  Forcing the first
 knock to draft-cavage keeps Pixelfed in the loop without
 sacrificing modern peers, who upgrade us back to RFC 9421 on the
-return trip anyway.  See [issue #693] for tracking, and the
-Pixelfed compatibility notes in [chapter 9](#first-federation-test).
+return trip anyway.
 
 Walking through the listener:
 
@@ -2345,7 +2344,6 @@ Walking through the listener:
 
 [RFC 9421]: https://datatracker.ietf.org/doc/html/rfc9421
 [draft-cavage-http-signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
-[issue #693]: https://github.com/fedify-dev/fedify/issues/693
 [`getActorHandle()`]: https://jsr.io/@fedify/vocab/doc/~/getActorHandle
 
 ### Trying it from Mastodon
@@ -2442,8 +2440,11 @@ remote brand.
 >     makes it easy to think the process is alive when it has
 >     actually exited; check `tail` on your dev log.
 >  -  Signature verification failed.  Fedify's logs name the
->     actor and key it tried to verify against; running with
->     `LOG_LEVEL=debug npm run dev` shows the full failure path.
+>     actor and key it tried to verify against, but `info` level
+>     hides the line that explains *why* the verification failed.
+>     Open *server/logging.ts* and lower the `fedify` logger's
+>     `lowestLevel` from `"info"` to `"debug"` for the duration
+>     of the debugging session, then restart the dev server.
 
 The next chapter rounds the symmetric case out: handling the
 `Undo(Follow)` activity Mastodon and Pixelfed send when somebody
