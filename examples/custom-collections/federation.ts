@@ -243,10 +243,14 @@ function escapeHtml(value: string): string {
 }
 
 async function isFollowerRequest(ctx: RequestContext<void>): Promise<boolean> {
-  const signedKeyOwner = await ctx.getSignedKeyOwner();
-  return signedKeyOwner?.id == null
-    ? false
-    : followerIds.has(normalizeActorId(signedKeyOwner.id));
+  try {
+    const signedKeyOwner = await ctx.getSignedKeyOwner();
+    return signedKeyOwner?.id == null
+      ? false
+      : followerIds.has(normalizeActorId(signedKeyOwner.id));
+  } catch {
+    return false;
+  }
 }
 
 export default federation;
