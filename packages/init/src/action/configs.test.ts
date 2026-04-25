@@ -7,6 +7,7 @@ import { message } from "@optique/core";
 import { kvStores, messageQueues } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import bareBonesDescription from "../webframeworks/bare-bones.ts";
+import nuxtDescription from "../webframeworks/nuxt.ts";
 import { loadDenoConfig } from "./configs.ts";
 import { patchFiles } from "./patch.ts";
 
@@ -133,6 +134,28 @@ test("patchFiles creates a Biome config matching the npm package version", async
   }
 });
 
+test("patchFiles wires Nuxt logging through a Nitro plugin", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-nuxt-"));
+
+  try {
+    const data = await createNuxtNpmInitData(dir);
+    await patchFiles(data);
+
+    const logging = await readFile(join(dir, "server/logging.ts"), "utf8");
+    const plugin = await readFile(
+      join(dir, "server/plugins/logging.ts"),
+      "utf8",
+    );
+
+    assert.match(logging, /export default configure\(/);
+    assert.doesNotMatch(logging, /await configure\(/);
+    assert.match(plugin, /import loggingConfigured from "\.\.\/logging";/);
+    assert.match(plugin, /await loggingConfigured;/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 async function createNpmInitData(dir: string): Promise<InitCommandData> {
   const initializer = await bareBonesDescription.init({
     command: "init",
@@ -152,6 +175,39 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     projectName: "example",
     packageManager: "npm",
     webFramework: "bare-bones",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    testMode: false,
+    dir,
+    initializer,
+    kv: kvStores["in-memory"],
+    mq: messageQueues["in-process"],
+    env: {},
+  } satisfies InitCommandData;
+  return data;
+}
+
+async function createNuxtNpmInitData(dir: string): Promise<InitCommandData> {
+  const initializer = await nuxtDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "nuxt",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    testMode: false,
+    dir,
+  });
+
+  const data = {
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "nuxt",
     kvStore: "in-memory",
     messageQueue: "in-process",
     dryRun: false,

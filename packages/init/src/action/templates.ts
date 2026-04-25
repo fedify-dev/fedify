@@ -38,9 +38,11 @@ export const loadFederation = async (
  * @param param0 - Destructured object containing the project name
  * @returns The complete logging configuration file content as a string
  */
-export const loadLogging = async ({ projectName }: InitCommandData) =>
+export const loadLogging = async (
+  { projectName, initializer }: InitCommandData,
+) =>
   pipe(
-    await readTemplate("defaults/logging.ts"),
+    await readTemplate(initializer.loggingTemplate ?? "defaults/logging.ts"),
     replace(/\/\* project name \*\//, JSON.stringify(projectName)),
   );
 
