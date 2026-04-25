@@ -10,7 +10,7 @@ import { broadcastEvent } from "../sse.ts";
 import { postStore } from "../store.ts";
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
+  const body = await readBody<{ content?: unknown }>(event);
   const content = body?.content;
   if (typeof content !== "string" || !content.trim()) {
     return sendRedirect(event, "/", 303);
