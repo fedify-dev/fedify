@@ -4190,3 +4190,370 @@ follower, the federation loop is real: alice posts, the
 fediverse sees it.  The next chapter teaches alice to follow
 *back*: discovering remote actors, sending a `Follow`, and
 handling the `Accept` that completes the relationship.
+
+
+Following remote accounts
+-------------------------
+
+Federation has been one-directional so far: remote servers can
+follow alice, but alice cannot follow them.  This chapter closes
+the loop.  By the end alice will be able to paste a fediverse
+handle into a form and end up with a recorded relationship that
+remote `Create(Note)` activities can address as inbox.
+
+### A `following` table
+
+Mirror the *followers* table from chapter 10, with two new
+columns:
+
+`status`
+:   either `"pending"` (the moment we send the `Follow`) or
+    `"accepted"` (after the remote server confirms).  Showing
+    the relationship as pending until the `Accept` arrives
+    matches what Mastodon's own UI does for the same case, and
+    avoids surprising alice if the remote server drops the
+    request.
+
+`followActivityId`
+:   the `id` we put on the outbound `Follow`.  Most peers echo
+    this back as the embedded object of `Accept`, which gives
+    us a precise match when several pending follows are in
+    flight at once.
+
+Append the table to *server/db/schema.ts*:
+
+~~~~ typescript [server/db/schema.ts]
+export const following = sqliteTable(
+  "following",
+  {
+    followerId: integer("follower_id")
+      .notNull()
+      .references(() => users.id),
+    actorUri: text("actor_uri").notNull(),
+    handle: text("handle").notNull(),
+    name: text("name"),
+    inboxUrl: text("inbox_url").notNull(),
+    sharedInboxUrl: text("shared_inbox_url"),
+    url: text("url"),
+    status: text("status", { enum: ["pending", "accepted"] })
+      .notNull()
+      .default("pending"),
+    followActivityId: text("follow_activity_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.followerId, t.actorUri] })],
+);
+
+export type Following = typeof following.$inferSelect;
+~~~~
+
+Push the migration:
+
+~~~~ ansi [terminal]
+$ npm run db:push
+~~~~
+
+### The `/follow` page
+
+Create *app/pages/follow.vue*.  It is a thin form on top of
+`$fetch`, with a result paragraph that flips between idle,
+loading, success, and error.
+
+~~~~ vue [app/pages/follow.vue]
+<script setup lang="ts">
+const { data: me } = await useFetch("/api/me", { key: "me-follow" });
+const meUsername = computed(() => me.value?.user?.username ?? "");
+
+const handle = ref("");
+const status = ref<"idle" | "loading" | "success" | "error">("idle");
+const message = ref("");
+
+async function submit() {
+  if (handle.value.trim() === "") return;
+  status.value = "loading";
+  message.value = "";
+  try {
+    const result = await $fetch<{ handle: string }>("/api/follow", {
+      method: "POST",
+      body: { handle: handle.value.trim() },
+    });
+    status.value = "success";
+    message.value = `Sent a Follow to ${result.handle}.  It will move to "accepted" once the remote server confirms.`;
+    handle.value = "";
+  } catch (error) {
+    status.value = "error";
+    const fetchError = error as { statusMessage?: string; message?: string };
+    message.value =
+      fetchError.statusMessage ?? fetchError.message ?? "Follow failed.";
+  }
+}
+
+useHead({ title: "Follow someone · PxShare" });
+</script>
+
+<template>
+  <section class="flex flex-col gap-4">
+    <header>
+      <h1 class="text-xl font-bold">Follow someone</h1>
+      <p class="text-sm text-gray-500">
+        Enter a fediverse handle (<code>@user@server</code>) or a profile URL.
+        We'll look the actor up and send a Follow request.
+      </p>
+    </header>
+    <form class="flex flex-col gap-3" @submit.prevent="submit">
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-semibold">Handle or URL</span>
+        <input
+          v-model="handle"
+          type="text"
+          required
+          placeholder="@dahlia@hollo.social or https://mastodon.social/@gargron"
+          class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
+        />
+      </label>
+      <div class="flex items-center justify-end gap-3">
+        <NuxtLink
+          v-if="meUsername"
+          :to="`/users/${meUsername}`"
+          class="text-sm text-gray-500 hover:text-brand"
+        >
+          Cancel
+        </NuxtLink>
+        <button
+          type="submit"
+          :disabled="status === 'loading'"
+          class="px-4 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ status === "loading" ? "Sending…" : "Follow" }}
+        </button>
+      </div>
+    </form>
+    <p
+      v-if="status === 'success'"
+      class="text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg p-3"
+    >
+      {{ message }}
+    </p>
+    <p
+      v-else-if="status === 'error'"
+      class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-3"
+    >
+      {{ message }}
+    </p>
+  </section>
+</template>
+~~~~
+
+The empty form looks like:
+
+![The Follow page with an empty input box, placeholder “&commat;dahlia&commat;hollo.social or https://mastodon.social/&commat;gargron”, and a Follow button on the right.](./content-sharing/follow-page-empty.png)
+
+Add a quick *Follow* link to the navbar in *app/app.vue* so the
+page is reachable without typing the URL:
+
+~~~~ vue [app/app.vue]
+<nav class="flex items-center gap-4 text-sm">
+  <NuxtLink to="/follow" class="text-gray-700 hover:text-brand">
+    Follow
+  </NuxtLink>
+  <NuxtLink
+    to="/compose"
+    class="px-3 py-1.5 bg-brand text-white rounded-full hover:bg-brand-dark"
+  >
+    Compose
+  </NuxtLink>
+</nav>
+~~~~
+
+### The follow endpoint
+
+Create *server/api/follow.post.ts*:
+
+~~~~ typescript [server/api/follow.post.ts]
+import { Follow, getActorHandle, isActor } from "@fedify/vocab";
+import {
+  createError,
+  defineEventHandler,
+  readBody,
+  toWebRequest,
+} from "h3";
+import { db } from "../db/client";
+import { following } from "../db/schema";
+import federation from "../federation";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+
+  const body = await readBody<{ handle?: unknown }>(event);
+  const handle = typeof body?.handle === "string" ? body.handle.trim() : "";
+  if (handle === "") {
+    throw createError({ statusCode: 400, statusMessage: "Missing handle" });
+  }
+
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const actor = await ctx.lookupObject(handle, {
+    documentLoader: await ctx.getDocumentLoader({ identifier: user.username }),
+  });
+  if (actor == null || !isActor(actor)) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: `Could not resolve actor: ${handle}`,
+    });
+  }
+  if (actor.id == null || actor.inboxId == null) {
+    throw createError({
+      statusCode: 422,
+      statusMessage: "Resolved actor lacks an id or inbox",
+    });
+  }
+
+  const followActivityId = new URL(
+    `#follows/${crypto.randomUUID()}`,
+    ctx.getActorUri(user.username),
+  );
+  const remoteHandle = await getActorHandle(actor);
+  await db
+    .insert(following)
+    .values({
+      followerId: user.id,
+      actorUri: actor.id.href,
+      handle: remoteHandle,
+      name: actor.name?.toString() ?? null,
+      inboxUrl: actor.inboxId.href,
+      sharedInboxUrl: actor.endpoints?.sharedInbox?.href ?? null,
+      url: actor.url?.href ?? null,
+      status: "pending",
+      followActivityId: followActivityId.href,
+    })
+    .onConflictDoNothing();
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Follow({
+      id: followActivityId,
+      actor: ctx.getActorUri(user.username),
+      object: actor.id,
+    }),
+  );
+
+  return {
+    handle: remoteHandle,
+    actorUri: actor.id.href,
+    status: "pending" as const,
+  };
+});
+~~~~
+
+The interesting bits:
+
+`ctx.~Context.lookupObject()`
+:   accepts whatever shape the user typed.  An *@user@server*
+    handle triggers a WebFinger request (resolves to an
+    `acct:` URI, then to a profile URL); a profile URL is
+    fetched directly.  Pass `documentLoader` so the fetch is
+    signed with alice's keys, which lets *authorized-fetch*
+    instances (notably Mastodon with secure mode on) answer the
+    request.
+
+`isActor()`
+:   filters the result down to
+    `Application | Group | Organization | Person | Service`. Anything else (a
+    stray `Note` or `Image`) gets a 404 instead of crashing later.
+
+`onConflictDoNothing()`
+:   makes following the same account twice a safe no-op.  We
+    keep the existing row's status because we may already have
+    been accepted, and re-sending a `Follow` is harmless from
+    the peer's perspective anyway.
+
+`new Follow({ id: …, actor: …, object: … })`
+:   the bare minimum.  The `id` is what the remote server is
+    expected to embed back into the `Accept`'s `object` field
+    so we can match the response to the right row.
+
+### Accept inbox listener
+
+Add an `Accept` handler at the end of the inbox-listener chain
+in *server/federation.ts*:
+
+~~~~ typescript [server/federation.ts]
+.on(Accept, async (_ctx, accept) => {
+  // The remote server has accepted alice's outbound Follow.
+  // Match the Accept against our `following` row by either the
+  // original Follow's `id` (when the peer echoes it) or the
+  // remote actor URI (Pixelfed sometimes drops the embedded id),
+  // and flip the row's status to "accepted".
+  if (accept.actorId == null) return;
+  const followObject = await accept.getObject();
+  const followActivityId =
+    followObject instanceof Follow ? followObject.id?.href : null;
+  const remoteActorUri = accept.actorId.href;
+  const matcher = followActivityId
+    ? eq(following.followActivityId, followActivityId)
+    : eq(following.actorUri, remoteActorUri);
+  await db
+    .update(following)
+    .set({ status: "accepted" })
+    .where(matcher);
+});
+~~~~
+
+`accept.~Activity.getObject()` resolves the embedded Follow.
+Mastodon and GoToSocial both keep the original Follow's `id`,
+which makes matching unambiguous.  Pixelfed, in contrast, often
+returns a freshly-minted Follow with a new id, so we fall back
+to the actor URI if no id is present.
+
+> [!TIP]
+> If you ship multiple local users later (the closing chapter
+> lists this as a stretch goal), narrow the matcher to the
+> *follower* user too.  The current single-user constraint
+> means an `Accept` from any peer always belongs to alice, but
+> with two local accounts you must look at *who* sent the
+> Follow before flipping a row.
+
+### Trying it out
+
+Restart the dev server, open <http://localhost:3000/follow>,
+paste a remote handle, and click *Follow*.  An ActivityPub.Academy
+account is the easiest target because academy auto-accepts
+every Follow without manual intervention:
+
+![The Follow page after submitting “&commat;anbelia\_doshaelen&commat;activitypub.academy”, with a green confirmation banner that reads “Sent a Follow to &commat;anbelia\_doshaelen&commat;activitypub.academy.  It will move to ‘accepted’ once the remote server confirms.”](./content-sharing/follow-success.png)
+
+The dev server narrates the round trip in real time:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·outbox Successfully sent activity
+  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#follows/1f39…'
+  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+ℹ INF fedify·federation·inbox Activity 'https://activitypub.academy/users/anbelia_doshaelen#accepts/follows/16039'
+  is enqueued.
+ℹ INF fedify·federation·http 'POST' '/users/alice/inbox': 202
+ℹ INF fedify·federation·inbox Activity '…#accepts/follows/16039' has been processed.
+~~~~
+
+Run a quick query to confirm the row flipped:
+
+~~~~ ansi [terminal]
+$ sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
+@anbelia_doshaelen@activitypub.academy|accepted
+~~~~
+
+> [!NOTE]
+> Mastodon proper sometimes takes a few seconds to send the
+> `Accept`; Pixelfed is usually instantaneous.  If the row
+> stays `pending`, check that the dev server's URL matches the
+> URL the actor was looked up from (canonical-origin mismatch
+> is the most common cause of dropped Accepts).
+
+Now alice can follow anyone in the fediverse, but the only
+proof of it is a row in SQLite.  The next chapter renders that
+list as a Vue page so alice can see who she follows, and
+exposes it as an ActivityPub `Following` collection so peers
+can read it back.
