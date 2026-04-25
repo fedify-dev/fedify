@@ -798,3 +798,284 @@ Add the SQLite file (and its sidecars that WAL mode creates) to
 *.sqlite3-shm
 *.sqlite3-wal
 ~~~~
+
+
+Account creation
+----------------
+
+Our instance hosts exactly one user.  In this chapter we wire up a
+first-run signup flow: if no account exists, Nuxt redirects to
+*/setup*; once the account is created, the middleware steps aside and
+we see the home page.
+
+### The `users` table
+
+Open *server/db/schema.ts* and replace the placeholder with a real
+`users` table:
+
+~~~~ typescript [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+// The single local user of this instance.  The `id = 1` check enforces
+// "only one account per instance"; if anyone tries to insert another
+// row, SQLite rejects the write.
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+
+export type User = typeof users.$inferSelect;
+~~~~
+
+A few SQL-shaped details worth explaining:
+
+ -  `CHECK (id = 1)` is a table-level constraint that rejects any row
+    whose `id` is not 1.  Since the column is also the primary key, it
+    is unique, so the combination means “at most one row, and its id is
+    always 1”.  This is how we keep the instance single-user at the
+    storage layer.
+ -  `username` has a `UNIQUE` constraint and `NOT NULL`.  A user with no
+    username makes no sense in a federated app.
+ -  `created_at` gets `DEFAULT CURRENT_TIMESTAMP`, meaning SQLite fills
+    it in automatically when we `INSERT` without supplying it.
+ -  `User = typeof users.$inferSelect` gives us the TypeScript type
+    corresponding to a row read from this table.  We will import `User`
+    in many places and never have to maintain the shape by hand.
+
+Apply the schema to the database:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+### A helper for reading the local user
+
+Almost every server route needs to know “is anyone registered?” or
+“who is the local user?”.  Rather than repeat the query, put it in a
+utility module:
+
+~~~~ typescript [server/utils/users.ts]
+import { db } from "../db/client";
+import { users } from "../db/schema";
+
+export async function getLocalUser() {
+  return (await db.select().from(users).limit(1).all())[0] ?? null;
+}
+~~~~
+
+Drizzle's `db.select().from(users).limit(1).all()` builds the SQL
+`SELECT * FROM "users" LIMIT 1` for us; the `[0] ?? null` pattern turns
+an empty result into `null` so callers can write
+`if (user === null) …`.
+
+### The signup endpoint
+
+Create *server/api/signup.post.ts*.  The `.post.ts` suffix tells Nuxt
+to only match `POST` requests to */api/signup*.
+
+~~~~ typescript [server/api/signup.post.ts]
+import { createError, defineEventHandler, readBody } from "h3";
+import { db } from "../db/client";
+import { users } from "../db/schema";
+import { getLocalUser } from "../utils/users";
+
+const USERNAME_PATTERN = /^[a-z0-9_]+$/;
+
+export default defineEventHandler(async (event) => {
+  const existing = await getLocalUser();
+  if (existing !== null) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: "Account already exists on this instance.",
+    });
+  }
+
+  const body = await readBody<{ username?: unknown; name?: unknown }>(event);
+  const username =
+    typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+
+  if (username === "" || !USERNAME_PATTERN.test(username)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage:
+        "Username must be non-empty and use only lowercase letters, digits, and underscores.",
+    });
+  }
+  if (name === "") {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Display name must not be empty.",
+    });
+  }
+
+  await db.insert(users).values({ id: 1, username, name });
+
+  return { ok: true };
+});
+~~~~
+
+> [!TIP]
+> The validation here is intentionally narrow: lowercase letters,
+> digits, and underscores only.  This matches the character set
+> Mastodon and Pixelfed accept in usernames, and keeps our actor URIs
+> (which embed the username) safe without extra URL encoding.
+
+Also add a tiny `GET /api/me` endpoint for the Vue side to consult:
+
+~~~~ typescript [server/api/me.get.ts]
+import { defineEventHandler } from "h3";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async () => {
+  const user = await getLocalUser();
+  return { user };
+});
+~~~~
+
+### The setup page
+
+Create *app/pages/setup.vue*.  It is a plain form that POSTs the body
+fields to */api/signup* and redirects to `/` on success:
+
+~~~~ vue [app/pages/setup.vue]
+<script setup lang="ts">
+useHead({ title: "Set up PxShare" });
+
+const username = ref("");
+const name = ref("");
+const error = ref<string | null>(null);
+const submitting = ref(false);
+
+async function submit() {
+  error.value = null;
+  submitting.value = true;
+  try {
+    await $fetch("/api/signup", {
+      method: "POST",
+      body: { username: username.value, name: name.value },
+    });
+    await navigateTo("/", { replace: true });
+  } catch (e: unknown) {
+    error.value =
+      (e as { statusMessage?: string })?.statusMessage ??
+      "Signup failed. Please try again.";
+  } finally {
+    submitting.value = false;
+  }
+}
+</script>
+
+<template>
+  <section class="max-w-md mx-auto py-10">
+    <h1 class="text-2xl font-bold mb-6">Set up your PxShare instance</h1>
+    <p class="text-sm text-gray-500 mb-6">
+      PxShare is a single-user federated service.  Choose the one account this
+      instance will host.
+    </p>
+    <form class="flex flex-col gap-4" @submit.prevent="submit">
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Username</span>
+        <input
+          v-model="username"
+          required
+          autocomplete="off"
+          placeholder="alice"
+          class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-brand"
+        />
+        <span class="text-xs text-gray-500">
+          Lowercase letters, digits, and underscores only.  Fediverse actors
+          will find you as <code>@username@your-domain</code>.
+        </span>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Display name</span>
+        <input
+          v-model="name"
+          required
+          placeholder="Alice"
+          class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-brand"
+        />
+      </label>
+      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+      <button
+        type="submit"
+        :disabled="submitting"
+        class="bg-brand text-white rounded-full py-2 font-medium hover:bg-brand-dark disabled:opacity-50"
+      >
+        {{ submitting ? "Creating..." : "Create account" }}
+      </button>
+    </form>
+  </section>
+</template>
+~~~~
+
+### The first-run middleware
+
+If we opened the browser now, */setup* would work but so would every
+other page, including `/` with its “Welcome to PxShare” placeholder.
+That is not what we want: a brand new instance should redirect you
+straight to the setup page.
+
+Nuxt route middleware can run before every navigation.  Create
+*app/middleware/setup.global.ts*; the `.global.ts` suffix makes it
+apply to every route automatically.
+
+~~~~ typescript [app/middleware/setup.global.ts]
+export default defineNuxtRouteMiddleware(async (to) => {
+  if (to.path === "/setup") return;
+  const { user } = await $fetch("/api/me");
+  if (user === null) {
+    return navigateTo("/setup", { replace: true });
+  }
+});
+~~~~
+
+The middleware skips over the */setup* route itself (otherwise we
+would loop forever), asks the server whether a user exists, and
+redirects to the setup page if not.
+
+### Trying it out
+
+With `npm run dev` running, visit <http://localhost:3000/>.  Because
+no account exists yet, you land on the setup form:
+
+![The setup form on a brand new instance, reached by visiting `/` which
+the middleware rewrote to `/setup`.](./content-sharing/signup-form-empty.png)
+
+Fill it in, submit, and you get bounced back to `/`:
+
+![The home page after signup, reachable now that the instance has an
+account.](./content-sharing/home-after-signup.png)
+
+Verify the row with the `sqlite3` CLI:
+
+~~~~ sh
+sqlite3 content-sharing.sqlite3 "SELECT * FROM users"
+~~~~
+
+~~~~ console
+1|alice|Alice Example|2026-04-25 03:20:13
+~~~~
+
+And confirm the single-user constraint holds by attempting a second
+signup:
+
+~~~~ sh
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"username":"bob","name":"Bob"}' \
+  http://localhost:3000/api/signup
+~~~~
+
+~~~~ console
+{"error":true,"statusCode":409,"statusMessage":"Account already exists on this instance."}
+~~~~
