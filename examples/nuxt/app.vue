@@ -8,6 +8,6 @@ useHead({
     { rel: "stylesheet", href: "/style.css" },
     { rel: "icon", type: "image/svg+xml", href: "/fedify-logo.svg" },
   ],
-  script: [{ src: "/theme.js" }],
+  script: [{ src: "/theme.js", defer: true }],
 });
 </script>

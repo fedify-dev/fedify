@@ -1,6 +1,6 @@
 <template>
   <div v-if="data" class="post-detail-container">
-    <a class="back-link" href="/">&larr; Back to home</a>
+    <NuxtLink class="back-link" to="/">&larr; Back to home</NuxtLink>
     <article class="post-detail-card">
       <a
         class="post-detail-author"
@@ -31,7 +31,7 @@
     </article>
   </div>
   <div v-else class="post-detail-container">
-    <a class="back-link" href="/">&larr; Back to home</a>
+    <NuxtLink class="back-link" to="/">&larr; Back to home</NuxtLink>
     <p>Post not found.</p>
   </div>
 </template>

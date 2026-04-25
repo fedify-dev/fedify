@@ -179,6 +179,7 @@ const searchResult = ref<{
 } | null>(null);
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+let latestSearchRequest = 0;
 
 function onSearchInput() {
   if (searchTimeout) clearTimeout(searchTimeout);
@@ -187,10 +188,13 @@ function onSearchInput() {
       searchResult.value = null;
       return;
     }
+    const requestId = ++latestSearchRequest;
     const res = await $fetch<{ result: typeof searchResult.value }>(
       `/api/search?q=${encodeURIComponent(searchQuery.value)}`,
     );
-    searchResult.value = res.result;
+    if (requestId === latestSearchRequest) {
+      searchResult.value = res.result;
+    }
   }, 300);
 }
 
