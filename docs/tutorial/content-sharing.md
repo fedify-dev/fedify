@@ -3752,3 +3752,170 @@ posts appear on the next refresh.
 
 The next chapter wires up the post detail route the tiles already
 link to, so clicking a tile leads somewhere instead of 404ing.
+
+
+Post detail page
+----------------
+
+The grid tiles from chapter 16 link at
+*/users/&lt;username&gt;/posts/&lt;id&gt;* but that route does
+not exist yet.  This chapter adds the page that goes there: a
+single image at full bleed, the caption, a timestamp, and the
+Open Graph metadata that turns the URL into a rich preview when
+it is shared.
+
+### A JSON endpoint for one post
+
+Create
+*server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts*:
+
+~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+import { and, eq } from "drizzle-orm";
+import { createError, defineEventHandler, getRouterParam } from "h3";
+import { db } from "../../../../db/client";
+import { posts, users } from "../../../../db/schema";
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, "username");
+  const idParam = getRouterParam(event, "id");
+  if (typeof username !== "string" || username === "") {
+    throw createError({ statusCode: 404 });
+  }
+  const id = Number(idParam);
+  if (!Number.isInteger(id) || id < 1) {
+    throw createError({ statusCode: 404 });
+  }
+  const user = (
+    await db.select().from(users).where(eq(users.username, username)).limit(1)
+  )[0];
+  if (user === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  const post = (
+    await db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.id, id), eq(posts.userId, user.id)))
+      .limit(1)
+  )[0];
+  if (post === undefined) {
+    throw createError({ statusCode: 404 });
+  }
+  return { user, post };
+});
+~~~~
+
+The endpoint validates both pieces of the URL (username + integer
+id) and constrains the lookup with both columns.  That makes
+*/users/alice/posts/2* a 404 if post id 2 actually belongs to
+*bob*; the URL stays canonical even if the schema later opens up
+to multiple local users.
+
+### The Vue page
+
+Create
+*app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue*:
+
+~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+<script setup lang="ts">
+const route = useRoute();
+const username = computed(() => String(route.params.username));
+const postId = computed(() => String(route.params.id));
+
+const { data, error } = await useFetch(
+  () => `/api/users/${username.value}/posts/${postId.value}`,
+  { key: () => `post-${username.value}-${postId.value}` },
+);
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "Post not found" });
+}
+
+const user = computed(() => data.value?.user ?? null);
+const post = computed(() => data.value?.post ?? null);
+const imageUrl = computed(() =>
+  post.value ? `/uploads/${post.value.mediaPath}` : "",
+);
+const headline = computed(() =>
+  user.value && post.value
+    ? post.value.caption
+      ? `${user.value.name}: ${post.value.caption}`
+      : `Post by ${user.value.name}`
+    : "PxShare",
+);
+
+useHead({
+  title: () => headline.value,
+  meta: () => [
+    { property: "og:title", content: headline.value },
+    { property: "og:type", content: "article" },
+    { property: "og:image", content: imageUrl.value },
+    {
+      property: "og:description",
+      content: post.value?.caption ?? "Posted on PxShare",
+    },
+  ],
+});
+</script>
+
+<template>
+  <article v-if="user && post" class="flex flex-col gap-4">
+    <NuxtLink
+      :to="`/users/${user.username}`"
+      class="text-sm text-gray-500 hover:text-brand"
+    >
+      ← {{ user.name }}
+    </NuxtLink>
+    <figure
+      class="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center"
+    >
+      <img
+        :src="imageUrl"
+        :alt="post.caption ?? ''"
+        class="w-full max-h-[80vh] object-contain"
+      />
+    </figure>
+    <p v-if="post.caption" class="text-base whitespace-pre-line">
+      {{ post.caption }}
+    </p>
+    <p class="text-xs text-gray-400">
+      Posted {{ new Date(post.createdAt + "Z").toLocaleString() }}
+    </p>
+  </article>
+</template>
+~~~~
+
+A few details worth calling out:
+
+`max-h-[80vh] object-contain`
+:   Wide-aspect images get the full viewport width; portrait
+    images do not blow past 80% of the viewport height.  The
+    container's grey rectangle fills the rest, giving every
+    post a consistent visual weight regardless of orientation.
+
+*Open Graph metadata*
+:   When somebody pastes the post URL into Slack, Mastodon, or
+    any rich-link target, the embed shows the image and caption
+    instead of just the URL.  `og:image` points at the same
+    static-asset path Nuxt already serves; no separate preview
+    pipeline.
+
+*Locale-aware timestamp*
+:   `new Date(post.createdAt + "Z").toLocaleString()` parses the
+    SQLite string as UTC and formats it in the visitor's locale.
+    The closing chapter's “areas for improvement” lists relative
+    timestamps as a natural extension.
+
+### Trying it out
+
+Click any post tile from the profile.  The detail page renders
+the image, the caption, and the timestamp:
+
+![Post detail page for a sample image, with the image filling the
+content column and a caption beneath it.](./content-sharing/post-detail.png)
+
+The image still has the original dimensions we uploaded; the
+container handles the layout.  The next chapter teaches alice to
+*push* posts: when she composes one, our server sends a
+`Create(Note)` to every follower's inbox so the post lands in
+their home timeline.
