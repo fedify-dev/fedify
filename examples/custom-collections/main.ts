@@ -22,7 +22,9 @@ async function fetchStatus(path: string): Promise<number> {
     { contextData: undefined },
   );
 
-  return response.status;
+  const status = response.status;
+  await response.body?.cancel();
+  return status;
 }
 
 async function printActivityJson(label: string, path: string): Promise<void> {
@@ -38,28 +40,34 @@ async function printActivityStatus(
   console.log(await fetchStatus(path));
 }
 
-await printActivityJson("Actor with custom collection links", "/users/alice");
-await printActivityJson(
-  "Public bookmarks collection",
-  "/users/alice/collections/public",
-);
-await printActivityJson(
-  "Public bookmarks first page",
-  "/users/alice/collections/public?cursor=0",
-);
-await printActivityJson(
-  "Tag-filtered ActivityPub bookmarks collection",
-  "/users/alice/collections/tags/activitypub",
-);
-await printActivityJson(
-  "Tag-filtered ActivityPub bookmarks first page",
-  "/users/alice/collections/tags/activitypub?cursor=0",
-);
-await printActivityStatus(
-  "Followers-only collection requested without a signature",
-  "/users/alice/collections/followers-only",
-);
-await printActivityStatus(
-  "Followers-only first page requested without a signature",
-  "/users/alice/collections/followers-only?cursor=0",
-);
+async function main(): Promise<void> {
+  await printActivityJson("Actor with custom collection links", "/users/alice");
+  await printActivityJson(
+    "Public bookmarks collection",
+    "/users/alice/collections/public",
+  );
+  await printActivityJson(
+    "Public bookmarks first page",
+    "/users/alice/collections/public?cursor=0",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks collection",
+    "/users/alice/collections/tags/activitypub",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks first page",
+    "/users/alice/collections/tags/activitypub?cursor=0",
+  );
+  await printActivityStatus(
+    "Followers-only collection requested without a signature",
+    "/users/alice/collections/followers-only",
+  );
+  await printActivityStatus(
+    "Followers-only first page requested without a signature",
+    "/users/alice/collections/followers-only?cursor=0",
+  );
+}
+
+if (import.meta.main) {
+  await main();
+}
