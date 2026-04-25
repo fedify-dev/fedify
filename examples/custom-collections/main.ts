@@ -293,7 +293,7 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
     id: new URL(`/users/${OWNER}/bookmarks/${bookmark.id}`, ctx.url),
     attribution: ctx.getActorUri(OWNER),
     name: bookmark.title,
-    summary: escapeHtml(bookmark.note),
+    summary: bookmark.note,
     content: `<p><a href="${escapeHtml(bookmarkUrl.href)}">${
       escapeHtml(bookmark.title)
     }</a></p>`,
