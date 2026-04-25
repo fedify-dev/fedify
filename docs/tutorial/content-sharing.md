@@ -1488,3 +1488,358 @@ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" \
 
 With a real actor in place, the next chapter teaches alice how to
 *sign* the activities she sends and verify the ones she receives.
+
+
+Cryptographic key pairs
+-----------------------
+
+Every activity that flows between fediverse servers carries a
+[digital signature].  When alice sends a `Follow` to a Mastodon user,
+Mastodon expects her server to sign the request with alice's private
+key and to publish the matching public key on alice's actor.  The
+receiving side fetches the public key, verifies the signature, and
+trusts that the activity really came from alice's server.  Without
+this handshake, anyone could impersonate her.
+
+Fedify takes care of the signing and the verification on every
+incoming and outgoing activity.  What it does not do is *create* the
+keys, because alice has to own them; they are the only thing keeping
+her account hers.  This chapter wires up that ownership.
+
+> [!WARNING]
+> The private key is alice's secret.  Never log it, expose it through
+> the API, or paste it into chat.  The public key is the opposite:
+> publishing it everywhere is the whole point.  Our `actor_keys`
+> table will keep both columns next to each other in the database;
+> when the app grows up, the private key column is the first thing
+> you would move into a [secrets manager].
+
+[digital signature]: https://en.wikipedia.org/wiki/Digital_signature
+[secrets manager]: https://en.wikipedia.org/wiki/Secrets_management
+
+### Two algorithms, side by side
+
+The fediverse is in the middle of a slow transition from
+[RSA-PKCS#1-v1.5] signatures to [Ed25519] signatures.  Mastodon and
+Pixelfed verify both, while older Misskey installs and a long tail
+of niche servers still expect only RSA.  Carrying both key types is
+the safest option, so our table will hold two rows per user, one
+per algorithm.
+
+[RSA-PKCS#1-v1.5]: https://www.rfc-editor.org/rfc/rfc2313
+[Ed25519]: https://ed25519.cr.yp.to/
+
+### The `actor_keys` table
+
+Open *server/db/schema.ts* and add an `actorKeys` table after the
+`users` table:
+
+~~~~ typescript [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+
+export type User = typeof users.$inferSelect;
+
+export const actorKeys = sqliteTable(
+  "actor_keys",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    type: text("type", { enum: ["RSASSA-PKCS1-v1_5", "Ed25519"] }).notNull(),
+    privateKey: text("private_key").notNull(),
+    publicKey: text("public_key").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.type] })],
+);
+
+export type ActorKey = typeof actorKeys.$inferSelect;
+~~~~
+
+A few things to notice:
+
+ -  *Composite primary key.*  The combination of `userId` and `type`
+    is the row's identity; one user gets exactly one row per
+    algorithm, so the table can hold at most two rows for alice.
+ -  *Foreign key to `users`.*  The reference makes sure a key row
+    cannot exist without an owner, which gives us cascade-friendly
+    cleanup if we ever delete a user.
+ -  *Both keys as text.*  We will store both halves of the pair as
+    serialised [JWK] objects.  JWK is JSON-shaped, so a `text`
+    column works without any binary handling.
+ -  *Algorithm enum.*  `text("type", { enum: [...] })` gives Drizzle
+    a TypeScript-level union for the column, so the dispatcher cannot
+    accidentally write a typo like `"ed25519"` (lowercase) without
+    failing to compile.
+
+Push the change to SQLite:
+
+~~~~ sh
+npm run db:push
+~~~~
+
+> [!TIP]
+> If `db:push` complains that an index already exists, that is a
+> known quirk of `drizzle-kit push` re-running idempotent statements.
+> The new `actor_keys` table is still created.  You can also wipe
+> the dev database and re-run if you prefer a clean slate:
+>
+> ~~~~ sh
+> rm -f content-sharing.sqlite3*
+> npm run db:push
+> ~~~~
+
+[JWK]: https://www.rfc-editor.org/rfc/rfc7517
+
+### The key pairs dispatcher
+
+Open *server/federation.ts*.  We will add three Fedify helpers
+([`generateCryptoKeyPair`], [`exportJwk`], [`importJwk`]), pull in
+the `actorKeys` table, and chain a `setKeyPairsDispatcher` onto the
+existing dispatcher chain:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2307 7006
+import {
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+import { getLogger } from "@logtape/logtape";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { actorKeys, users } from "./db/schema";
+
+const logger = getLogger("content-sharing");
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const user = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (user === undefined) return null;
+
+    const keys = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: user.name,
+      url: ctx.getActorUri(identifier),
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      publicKey: keys[0]?.cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+      manuallyApprovesFollowers: false,
+      discoverable: true,
+      indexable: true,
+    });
+  })
+  .setKeyPairsDispatcher(async (_ctx, identifier) => {
+    const user = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (user === undefined) return [];
+
+    const rows = await db
+      .select()
+      .from(actorKeys)
+      .where(eq(actorKeys.userId, user.id));
+    const stored = Object.fromEntries(rows.map((row) => [row.type, row]));
+
+    const pairs: CryptoKeyPair[] = [];
+    for (const keyType of ["RSASSA-PKCS1-v1_5", "Ed25519"] as const) {
+      const row = stored[keyType];
+      if (row === undefined) {
+        logger.debug(
+          "User {identifier} has no {keyType} key; generating one.",
+          { identifier, keyType },
+        );
+        const { privateKey, publicKey } = await generateCryptoKeyPair(keyType);
+        await db.insert(actorKeys).values({
+          userId: user.id,
+          type: keyType,
+          privateKey: JSON.stringify(await exportJwk(privateKey)),
+          publicKey: JSON.stringify(await exportJwk(publicKey)),
+        });
+        pairs.push({ privateKey, publicKey });
+      } else {
+        pairs.push({
+          privateKey: await importJwk(JSON.parse(row.privateKey), "private"),
+          publicKey: await importJwk(JSON.parse(row.publicKey), "public"),
+        });
+      }
+    }
+    return pairs;
+  });
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+export default federation;
+~~~~
+
+This is one of the longer pieces of code in the tutorial, but it
+breaks down into three movements.
+
+ -  *The dispatcher chain.*  `~Federatable.setActorDispatcher()`
+    returns an `~ActorCallbackSetters` object, so we can chain
+    `~ActorCallbackSetters.setKeyPairsDispatcher()` straight onto it.
+    Whenever Fedify needs alice's keys, this callback runs.
+
+ -  *Lazy generation.*  The callback first reads any existing rows
+    from `actor_keys`.  If a row for a given algorithm is missing,
+    it calls [`generateCryptoKeyPair()`] to create a new pair, calls
+    [`exportJwk()`] to serialise both halves to JSON, and inserts
+    them.  Existing rows are deserialised back into [`CryptoKey`]
+    objects with [`importJwk()`].  This way alice never has to
+    “set up” her account; the first ActivityPub fetch produces her
+    keys on demand.
+
+ -  *Wiring the keys onto the actor.*  Inside the actor dispatcher,
+    we call `~Context.getActorKeyPairs()` to get back an array of
+    rich key descriptors.  We pass the first key's
+    `cryptographicKey` to `publicKey` (the legacy slot expected by
+    older software) and map the whole array's `multikey` field to
+    `assertionMethods` (the modern slot, which can carry several
+    keys).
+
+> [!TIP]
+> Why two `publicKey`-shaped properties?  Originally ActivityPub had
+> only `publicKey`, and many implementations still assume it holds
+> exactly one key.  [FEP-521a] introduced `assertionMethods` to
+> register multiple keys at once.  Setting both means RSA-only and
+> Ed25519-aware servers can each find a key they recognise.
+
+[`generateCryptoKeyPair()`]: https://jsr.io/@fedify/fedify/doc/~/generateCryptoKeyPair
+[`exportJwk()`]: https://jsr.io/@fedify/fedify/doc/~/exportJwk
+[`CryptoKey`]: https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey
+[`importJwk()`]: https://jsr.io/@fedify/fedify/doc/~/importJwk
+[FEP-521a]: https://w3id.org/fep/521a
+
+### Looking the actor up again
+
+Restart the dev server (or save the file and let HMR pick it up) and
+ask Fedify to look alice up.  The first lookup is the one that
+populates `actor_keys`.
+
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice
+~~~~
+
+The response now carries a `publicKey` and an `assertionMethods`
+array, in addition to the properties from chapter 7:
+
+~~~~ console
+✔ Fetched object: http://localhost:3000/users/alice
+Person {
+  id: URL 'http://localhost:3000/users/alice',
+  name: 'Alice Example',
+  url: URL 'http://localhost:3000/users/alice',
+  preferredUsername: 'alice',
+  publicKey: CryptographicKey {
+    id: URL 'http://localhost:3000/users/alice#main-key',
+    owner: URL 'http://localhost:3000/users/alice',
+    publicKey: CryptoKey {
+      type: 'public',
+      algorithm: { name: 'RSASSA-PKCS1-v1_5', modulusLength: 4096, ... },
+    },
+  },
+  assertionMethods: [
+    Multikey { id: URL '.../alice#multikey-1', algorithm: 'RSASSA-PKCS1-v1_5' },
+    Multikey { id: URL '.../alice#multikey-2', algorithm: 'Ed25519' },
+  ],
+  inbox: URL 'http://localhost:3000/users/alice/inbox',
+  endpoints: Endpoints { sharedInbox: URL 'http://localhost:3000/inbox' },
+  manuallyApprovesFollowers: false,
+  discoverable: true,
+  indexable: true,
+}
+~~~~
+
+If you peek inside the database, you can see both rows landed:
+
+~~~~ sh
+sqlite3 content-sharing.sqlite3 "SELECT user_id, type FROM actor_keys"
+~~~~
+
+~~~~ console
+1|RSASSA-PKCS1-v1_5
+1|Ed25519
+~~~~
+
+A second `fedify lookup` does not create new rows; the dispatcher
+notices both algorithms are already present and just hands the
+existing keys back to Fedify.
+
+### WebFinger comes for free
+
+Most fediverse software does not start with a URL like
+`http://localhost:3000/users/alice`; it starts with a handle, like
+`@alice@example.com`.  To turn the handle into a URL, the software
+asks the host for a [WebFinger] resource:
+
+~~~~ sh
+curl 'http://localhost:3000/.well-known/webfinger?resource=acct:alice@localhost:3000'
+~~~~
+
+~~~~ console
+{
+  "subject": "acct:alice@localhost:3000",
+  "aliases": ["http://localhost:3000/users/alice"],
+  "links": [
+    { "rel": "self",
+      "href": "http://localhost:3000/users/alice",
+      "type": "application/activity+json" },
+    { "rel": "http://webfinger.net/rel/profile-page",
+      "href": "http://localhost:3000/users/alice" }
+  ]
+}
+~~~~
+
+We did not write a WebFinger endpoint.  Fedify wires one up
+automatically the moment `setActorDispatcher` is registered, using
+the same `{identifier}` template as a hint.  When chapter 9 puts the
+app behind a public hostname, that hostname will be all another
+server needs to discover and verify alice.
+
+With keys, signatures, and discovery in place, the next chapter
+points alice's local instance at the public internet for the first
+time, and gets Mastodon and Pixelfed to fetch her profile.
+
+[WebFinger]: https://datatracker.ietf.org/doc/html/rfc7033
