@@ -3919,3 +3919,274 @@ container handles the layout.  The next chapter teaches alice to
 *push* posts: when she composes one, our server sends a
 `Create(Note)` to every follower's inbox so the post lands in
 their home timeline.
+
+
+Distributing new posts to followers
+-----------------------------------
+
+So far alice can post, and other servers can fetch each post
+through the object dispatcher.  But fetching is *pull*, and
+nothing makes a remote follower notice a new post unless they
+think to refetch alice's profile.  Federation needs *push*:
+whenever alice composes, we should send a `Create(Note)`
+activity to every follower's inbox so the post lands in their
+home timeline straight away.
+
+This is the moment the rest of the fediverse stops being a
+curiosity and starts being a place: alice's friends on Mastodon
+or Pixelfed see her photos in their feeds without ever knowing
+PxShare exists.
+
+### Refactor: a reusable `buildNote`
+
+The Note we construct inside `~Federatable.setObjectDispatcher()`
+in chapter 15 is exactly what we want to wrap in a `Create`
+when alice composes.  Pull that body into a small helper so the
+two callers share one definition.
+
+Open *server/federation.ts* and add the helper just above the
+existing object-dispatcher block:
+
+~~~~ typescript [server/federation.ts]
+import type { Context } from "@fedify/fedify";
+// …existing imports…
+import {
+  Accept,
+  Create,
+  Document,
+  // …
+} from "@fedify/vocab";
+
+// …actor / followers / inbox setup unchanged…
+
+// Build a Note for a stored post.  Shared by the object
+// dispatcher (so other servers can fetch a single post) and the
+// compose endpoint (so we can wrap the Note in a Create activity
+// and fan it out to followers).
+export function buildNote(
+  ctx: Context<unknown>,
+  identifier: string,
+  post: {
+    id: number;
+    caption: string | null;
+    mediaPath: string;
+    mediaType: string;
+    createdAt: string;
+  },
+): Note {
+  const noteId = ctx.getObjectUri(Note, {
+    identifier,
+    id: String(post.id),
+  });
+  return new Note({
+    id: noteId,
+    attribution: ctx.getActorUri(identifier),
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(identifier),
+    url: noteId,
+    content: post.caption ?? "",
+    published: Temporal.Instant.from(`${post.createdAt.replace(" ", "T")}Z`),
+    attachments: [
+      new Document({
+        mediaType: post.mediaType,
+        url: new URL(`/uploads/${post.mediaPath}`, ctx.canonicalOrigin),
+      }),
+    ],
+  });
+}
+~~~~
+
+Then collapse the `setObjectDispatcher()` body to delegate to
+the helper:
+
+~~~~ typescript [server/federation.ts]
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  async (ctx, { identifier, id }) => {
+    const postId = Number(id);
+    if (!Number.isInteger(postId) || postId < 1) return null;
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return null;
+    const post = (
+      await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.id, postId), eq(posts.userId, localUser.id)))
+        .limit(1)
+    )[0];
+    if (post === undefined) return null;
+    return buildNote(ctx, identifier, post);
+  },
+);
+~~~~
+
+> [!TIP]
+> Why drop a typed `Context<unknown>` in here?
+> `~Federatable.setObjectDispatcher()` already gives the dispatcher callback a
+> `~Context` whose `~Context.contextData` is the federation's context-data type
+> (we have not customized it, so it is `unknown`).  The compose endpoint will
+> obtain the same `Context` from `federation.~Federation.createContext()`, and
+> that returns a `~Context` of the same shape.  Typing the parameter once lets
+> both callers feed in their own `Context` without copy-pasting generic
+> parameters.
+
+### Send `Create(Note)` from the compose endpoint
+
+Now hook the fan-out into *server/api/posts.post.ts*.  We want
+to:
+
+1.  Insert the row (already done) but capture the inserted record
+    so we know its id and timestamp without an extra read.
+2.  Build a Note from that record using `buildNote`.
+3.  Wrap the Note in a `Create` activity.
+4.  Hand the activity to Fedify with the magic recipient
+    `"followers"` so it expands into every follower's inbox.
+
+Open *server/api/posts.post.ts* and update the imports plus the
+section after the file write:
+
+~~~~ typescript [server/api/posts.post.ts]
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { Create } from "@fedify/vocab";
+import { eq } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  readMultipartFormData,
+  sendRedirect,
+  toWebRequest,
+} from "h3";
+import { db } from "../db/client";
+import { posts } from "../db/schema";
+import federation, { buildNote } from "../federation";
+import { getLocalUser } from "../utils/users";
+
+// …ALLOWED_TYPES, MAX_BYTES, EXTENSION unchanged…
+
+export default defineEventHandler(async (event) => {
+  // …auth, multipart parsing, validation, and writeFile() unchanged…
+
+  const mediaPath = `${user.username}/${filename}`;
+  const [inserted] = await db
+    .insert(posts)
+    .values({
+      userId: user.id,
+      caption,
+      mediaPath,
+      mediaType: imageType,
+    })
+    .returning();
+
+  // Fan out a Create(Note) to every follower's inbox.  Fedify
+  // expands the magic "followers" target into the right inbox or
+  // sharedInbox URLs and queues the deliveries through the
+  // message queue, so the request returns quickly even for big
+  // follower lists.
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const note = buildNote(ctx, user.username, inserted);
+  await ctx.sendActivity(
+    { identifier: user.username },
+    "followers",
+    new Create({
+      id: new URL("#create", note.id ?? ""),
+      actor: ctx.getActorUri(user.username),
+      to: note.toIds[0] ?? null,
+      cc: note.ccIds[0] ?? null,
+      object: note,
+      published: note.published,
+    }),
+  );
+
+  return await sendRedirect(event, `/users/${user.username}`, 303);
+});
+~~~~
+
+Three details worth pausing on:
+
+`.returning()` *(Drizzle)*
+:   Drizzle's SQLite driver supports SQL's `RETURNING` clause,
+    which gives us back the row exactly as it was written, with
+    the auto-incremented `id` and the database-generated
+    `createdAt`.  Without it we would have to re-`SELECT` after
+    the insert.
+
+`federation.~Federation.createContext()`
+:   Inbox listeners and dispatchers receive a `~Context` for free.
+    Anywhere else, including a route handler outside Fedify's
+    own routes, we ask the federation for one.  `~Federation.createContext()`
+    needs the request so it can resolve the canonical origin from
+    the *Host* and *X-Forwarded-Host* headers.  The second
+    argument is the per-request context data; we passed
+    `undefined` because PxShare does not use a context-data
+    payload.
+
+`"followers"` *as a sendActivity recipient*
+:   Fedify recognizes this magic string and consults the followers
+    dispatcher we wrote in chapter 12.  It walks the result,
+    deduplicates by shared-inbox URL where one is advertised, and
+    queues a delivery for each unique endpoint.  The compose
+    request returns immediately; the actual HTTP POSTs happen in
+    the message queue worker, signed with alice's keys.
+
+> [!NOTE]
+> The `to`/`cc` fields on the `Create` repeat the Note's
+> recipients.  Some peers (most notably Mastodon) read the
+> activity envelope before they look at the embedded object, and
+> they decide a status is public when the *activity*'s `to`
+> contains the public collection.  Mirroring the Note's audience
+> onto the Create keeps both readings consistent.
+
+### Trying it out
+
+Make sure something is following alice first; chapter 10 covered
+two ways to do that, the easiest being to search alice's full
+handle from your Mastodon test account and click *Follow*.  With
+a follower in place, restart the dev server, open the *Compose*
+form on the tunnel URL (so the canonical origin in the activity
+matches the keys alice signs with), pick an image, write a
+caption, and hit *Post*.
+
+The dev server logs the delivery the moment Fedify drains the
+queue:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·outbox Successfully sent activity
+  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice/posts/5#create'
+  to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
+~~~~
+
+ActivityPub.Academy ships a debugging panel called *Activity
+Log* that records every inbox delivery while the page stays
+open.  Open it before you click *Post* and the Create lands in
+real time:
+
+![ActivityPub.Academy's Activity Log showing a Create activity
+from alice carrying a Note whose content is the caption we
+typed.](./content-sharing/academy-create-note-activity.png)
+
+> [!TIP]
+> The Activity Log only captures activities that arrive while
+> its page is open: a refresh wipes it.  If the panel is empty,
+> open it first, then trigger the activity from another tab.
+
+> [!NOTE]
+> Whether the post then *renders* on a peer's home timeline is
+> a separate question that depends on the peer's filtering and
+> caching.  ActivityPub.Academy stores the inbound activity but
+> does not always surface freshly-federated posts in the home
+> column.  Mastodon proper, Pixelfed, and GoToSocial all show
+> alice's photos within seconds.
+
+Once you have confirmed the activity reaches at least one
+follower, the federation loop is real: alice posts, the
+fediverse sees it.  The next chapter teaches alice to follow
+*back*: discovering remote actors, sending a `Follow`, and
+handling the `Accept` that completes the relationship.
