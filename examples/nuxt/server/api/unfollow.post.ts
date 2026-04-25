@@ -15,30 +15,39 @@ export default defineEventHandler(async (event) => {
   const ctx = federation.createContext(request, undefined);
   const identifier = "demo";
 
-  const target = await ctx.lookupObject(targetUri) as APObject | null;
+  let target: APObject | null = null;
+  try {
+    target = await ctx.lookupObject(targetUri) as APObject | null;
+  } catch {
+    return sendRedirect(event, "/", 303);
+  }
   if (target?.id == null) {
     return sendRedirect(event, "/", 303);
   }
 
-  await ctx.sendActivity(
-    { identifier },
-    target,
-    new Undo({
-      id: new URL(
-        `#undo-follows/${target.id.href}`,
-        ctx.getActorUri(identifier),
-      ),
-      actor: ctx.getActorUri(identifier),
-      object: new Follow({
+  try {
+    await ctx.sendActivity(
+      { identifier },
+      target,
+      new Undo({
         id: new URL(
-          `#follows/${target.id.href}`,
+          `#undo-follows/${target.id.href}`,
           ctx.getActorUri(identifier),
         ),
         actor: ctx.getActorUri(identifier),
-        object: target.id,
+        object: new Follow({
+          id: new URL(
+            `#follows/${target.id.href}`,
+            ctx.getActorUri(identifier),
+          ),
+          actor: ctx.getActorUri(identifier),
+          object: target.id,
+        }),
       }),
-    }),
-  );
+    );
+  } catch {
+    // Delivery failure is non-fatal; continue updating local state.
+  }
 
   followingStore.delete(target.id.href);
   broadcastEvent();

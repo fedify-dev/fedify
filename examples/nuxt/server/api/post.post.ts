@@ -6,6 +6,7 @@ import {
   toWebRequest,
 } from "@nuxt/nitro-server/h3";
 import federation from "../federation.ts";
+import { broadcastEvent } from "../sse.ts";
 import { postStore } from "../store.ts";
 
 export default defineEventHandler(async (event) => {
@@ -27,8 +28,9 @@ export default defineEventHandler(async (event) => {
     content: content.trim(),
     url,
   });
+  postStore.append([post]);
+  broadcastEvent();
   try {
-    postStore.append([post]);
     const note = await ctx.getObject(Note, { identifier, id });
     await ctx.sendActivity(
       { identifier },
@@ -42,7 +44,7 @@ export default defineEventHandler(async (event) => {
       }),
     );
   } catch {
-    postStore.delete(url);
+    // Delivery failure is non-fatal; local state is already updated.
   }
 
   return sendRedirect(event, "/", 303);
