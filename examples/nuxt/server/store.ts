@@ -10,7 +10,6 @@ declare global {
 class PostStore {
   #map: Map<string, Note> = new Map();
   #timeline: URL[] = [];
-  constructor() {}
   append(posts: Note[]) {
     for (const p of posts) {
       if (!p.id) continue;
