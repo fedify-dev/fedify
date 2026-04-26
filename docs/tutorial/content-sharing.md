@@ -1488,7 +1488,7 @@ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" \
 > [!NOTE]
 > [`@fedify/nuxt`][fedify-nuxt] implements this by registering its middleware
 > ahead of Nuxt's pages.  Every incoming request goes through Fedify first; if
-> Fedify recognises the URL and the <code>Accept</code> header, it answers
+> Fedify recognizes the URL and the <code>Accept</code> header, it answers
 > directly.  Otherwise it falls through to Nuxt and our Vue page handles it.
 > Both worlds share the same route table, so we never have to keep two URL
 > schemes in sync.
@@ -1590,7 +1590,7 @@ A few things to notice:
     cannot exist without an owner, which gives us cascade-friendly
     cleanup if we ever delete a user.
  -  *Both keys as text.*  We will store both halves of the pair as
-    serialised [JWK] objects.  JWK is JSON-shaped, so a `text`
+    serialized [JWK] objects.  JWK is JSON-shaped, so a `text`
     column works without any binary handling.
  -  *Algorithm enum.*  `text("type", { enum: [...] })` gives Drizzle
     a TypeScript-level union for the column, so the dispatcher cannot
@@ -1733,7 +1733,7 @@ breaks down into three movements.
     from `actor_keys`.  If a row for a given algorithm is missing,
     it calls [`generateCryptoKeyPair()`] to create a new pair, calls
     [`exportJwk()`] to serialize both halves to JSON, and inserts
-    them.  Existing rows are deserialised back into [`CryptoKey`]
+    them.  Existing rows are deserialized back into [`CryptoKey`]
     objects with [`importJwk()`].  This way alice never has to
     “set up” her account; the first ActivityPub fetch produces her
     keys on demand.
@@ -3557,7 +3557,7 @@ Walking through the listener:
 `Number.isInteger(postId)`
 :   Belt and suspenders: the route template only matches strings,
     but integer-shaped strings like `"1.2"` would still slip
-    through.  We normalise and reject anything that is not a
+    through.  We normalize and reject anything that is not a
     positive integer.
 
 *The `userId` filter*
@@ -3943,7 +3943,7 @@ A few details worth calling out:
 `max-h-[80vh] object-contain`
 :   Wide-aspect images get the full viewport width; portrait
     images do not blow past 80% of the viewport height.  The
-    container's grey rectangle fills the rest, giving every
+    container's gray rectangle fills the rest, giving every
     post a consistent visual weight regardless of orientation.
 
 *Open Graph metadata*
