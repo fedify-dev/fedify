@@ -4092,7 +4092,7 @@ federation.setObjectDispatcher(
 > `~Federatable.setObjectDispatcher()` already gives the dispatcher callback a
 > `Context` whose `contextData` is the federation's context-data type
 > (we have not customized it, so it is `unknown`).  The compose endpoint will
-> obtain the same `Context` from `federation.~Federation.createContext()`, and
+> obtain the same `Context` from `federation.createContext()`, and
 > that returns a `Context` of the same shape.  Typing the parameter once lets
 > both callers feed in their own `Context` without copy-pasting generic
 > parameters.
@@ -4179,7 +4179,7 @@ Three details worth pausing on:
     `createdAt`.  Without it we would have to re-`SELECT` after
     the insert.
 
-`federation.~Federation.createContext()`
+`federation.createContext()`
 :   Inbox listeners and dispatchers receive a `Context` for free.
     Anywhere else, including a route handler outside Fedify's
     own routes, we ask the federation for one.  `~Federation.createContext()`
@@ -4536,7 +4536,7 @@ export default defineEventHandler(async (event) => {
 
 The interesting bits:
 
-`ctx.~Context.lookupObject()`
+`ctx.lookupObject()`
 :   accepts whatever shape the user typed.  An *@user@server*
     handle triggers a WebFinger request (resolves to an
     `acct:` URI, then to a profile URL); a profile URL is
@@ -4607,7 +4607,7 @@ federation
 });
 ~~~~
 
-`accept.~Activity.getObject()` resolves the embedded Follow.
+`accept.getObject()` resolves the embedded Follow.
 Mastodon and GoToSocial both keep the original Follow's `id`,
 which makes matching unambiguous.  Pixelfed, in contrast, often
 returns a freshly-minted Follow with a new id, so we fall back
@@ -4931,7 +4931,7 @@ Two details worth pointing out:
     silently no-ops on the remote side.
 
 *The recipient is built inline*
-:   `ctx.~Context.sendActivity()` accepts any object that
+:   `ctx.sendActivity()` accepts any object that
     implements the `Recipient` shape (an actor `id`, an
     `inboxId`, and an optional `endpoints.sharedInbox`).  We
     have all three on the *following* row, so we hand them over
@@ -5096,7 +5096,7 @@ dispatcher:
     alice's public footprint until the remote server confirms.
 
 > [!TIP]
-> Fedify validates that the URL on `actor.~Person.followingId`
+> Fedify validates that the URL on `actor.followingId`
 > matches the URL the dispatcher answers at.  If they drift
 > apart (a typo, a route rename), the actor dispatcher will
 > throw at startup, which is the correct moment to discover the
@@ -6095,7 +6095,7 @@ federation
 });
 ~~~~
 
-`ctx.~Context.parseUri(url)` is the easy way to ask “is this
+`ctx.parseUri(url)` is the easy way to ask “is this
 URL one I would dispatch to?”  When the parsed `class` is
 `Note`, the URL belongs to one of alice's local posts; we
 accept the comment unconditionally.  For remote parents we
