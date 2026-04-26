@@ -4579,7 +4579,7 @@ import {
   MemoryKvStore,
 } from "@fedify/fedify";
 import { Accept, Follow } from "@fedify/vocab";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "./db/client";
 import { following } from "./db/schema";
 
@@ -4595,15 +4595,18 @@ federation
   // The remote server has accepted alice's outbound Follow.
   // Match the Accept against our `following` row by either the
   // original Follow's `id` (when the peer echoes it) or the
-  // remote actor URI (Pixelfed sometimes drops the embedded id),
-  // and flip the row's status to "accepted".
+  // remote actor URI (Pixelfed sometimes mints a fresh id on the
+  // way back), and flip the row's status to "accepted".
   if (accept.actorId == null) return;
   const followObject = await accept.getObject();
   const followActivityId =
     followObject instanceof Follow ? followObject.id?.href : null;
   const remoteActorUri = accept.actorId.href;
   const matcher = followActivityId
-    ? eq(following.followActivityId, followActivityId)
+    ? or(
+        eq(following.followActivityId, followActivityId),
+        eq(following.actorUri, remoteActorUri),
+      )
     : eq(following.actorUri, remoteActorUri);
   await db
     .update(following)
