@@ -9,6 +9,7 @@ import {
   Endpoints,
   Follow,
   Image,
+  isActor,
   Note,
   Person,
   PUBLIC_COLLECTION,
@@ -90,9 +91,7 @@ federation
       return;
     }
     const follower = await follow.getActor(context);
-    if (!(follower instanceof Person) || follower.id == null) {
-      throw new Error("follower is not a Person");
-    }
+    if (!isActor(follower) || follower.id == null) return;
     await context.sendActivity(
       { identifier: result.identifier },
       follower,
@@ -125,6 +124,7 @@ federation.setObjectDispatcher(
   Note,
   "/users/{identifier}/posts/{id}",
   (ctx, values) => {
+    if (values.identifier !== IDENTIFIER) return null;
     const id = ctx.getObjectUri(Note, values);
     const post = postStore.get(id);
     if (post == null) return null;
