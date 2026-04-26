@@ -3424,15 +3424,16 @@ We also need the polyfill itself in *package.json*:
 npm install @js-temporal/polyfill
 ~~~~
 
-Node 22 does not yet ship `Temporal` natively, and Fedify uses
-`Temporal.Instant` for ActivityPub timestamps; the polyfill bridges
-the gap.
+Node.js 22 does not yet ship `Temporal` natively, and Fedify
+uses `Temporal.Instant` for ActivityPub timestamps; the polyfill
+bridges the gap.
 
 > [!NOTE]
-> Once Node ships [`Temporal`] natively (currently behind a flag
-> in 22.x and slated to be on by default in a near-term release),
-> the polyfill goes away.  Fedify keeps using `Temporal.Instant`
-> regardless, so this is the only line that needs to change.
+> Once Node.js ships [`Temporal`] natively (currently behind a
+> flag in 22.x and slated to be on by default in a near-term
+> release), the polyfill goes away.  Fedify keeps using
+> `Temporal.Instant` regardless, so this is the only line that
+> needs to change.
 
 Then add a final dispatcher block after the followers dispatcher:
 
