@@ -296,7 +296,7 @@ That tells us a few important things at once:
 > local server too.
 >
 > If you prefer `curl`, you can also query the actor directly (note the
-> `Accept` header):
+> <code>Accept</code> header):
 >
 > ~~~~ sh
 > curl -H "Accept: application/activity+json" http://localhost:3000/users/alice
