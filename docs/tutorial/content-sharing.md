@@ -4787,7 +4787,7 @@ export default defineEventHandler(async (event) => {
 Then add a third pill to the profile header in
 *app/pages/users/\[username]/index.vue*:
 
-~~~~ vue [app/pages/users/[username]/index.vue]
+~~~~ typescript [app/pages/users/[username]/index.vue]
 const followingCount = computed(() => profile.value?.followingCount ?? 0);
 ~~~~
 
@@ -5216,7 +5216,7 @@ sees on every login:
 </nav>
 ~~~~
 
-~~~~ vue [app/pages/index.vue]
+~~~~ typescript [app/pages/index.vue]
 if (data.value?.user) {
   await navigateTo("/home", { replace: true });
 }
@@ -5659,7 +5659,7 @@ single-column feed that carries a heart per post.  The
 key part is the toggle action and the row of like state next
 to the image:
 
-~~~~ vue [app/pages/home.vue]
+~~~~ typescript [app/pages/home.vue]
 async function toggleLike(post: TimelineEntry) {
   const method = post.likedByMe ? "DELETE" : "POST";
   await $fetch("/api/likes", {
@@ -5697,7 +5697,7 @@ async function toggleLike(post: TimelineEntry) {
 A small addition to the post detail Vue page surfaces the count
 on alice's own posts:
 
-~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+~~~~ typescript [app/pages/users/[username]/posts/[id].vue]
 const likeCount = computed(() => data.value?.likeCount ?? 0);
 ~~~~
 
@@ -5891,7 +5891,7 @@ Then update the Vue page to render the thread and provide a
 textarea.  The interesting part is the `submitComment` handler
 (the rest is straightforward template):
 
-~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+~~~~ typescript [app/pages/users/[username]/posts/[id].vue]
 const noteUri = computed(() => {
   if (!user.value || !post.value) return "";
   if (typeof window === "undefined") return "";
