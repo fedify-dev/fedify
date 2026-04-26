@@ -736,7 +736,7 @@ import when it needs to read or write.
 
 ### The drizzle-kit config
 
-*drizzle-kit* is the command-line tool that turns the TypeScript
+`drizzle-kit` is the command-line tool that turns the TypeScript
 schema into actual SQL.  Configure it at the project root as
 *drizzle.config.ts*:
 
@@ -2081,8 +2081,8 @@ back the `Accept` reply Mastodon needs to flip the button to
 
 Every actor in ActivityPub has its own *inbox*: an HTTP endpoint
 that accepts signed `POST` requests carrying activities.  When
-somebody likes alice's post, the *Like* lands in alice's inbox.
-When somebody follows alice, the *Follow* lands in her inbox.
+somebody likes alice's post, the `Like` lands in alice's inbox.
+When somebody follows alice, the `Follow` lands in her inbox.
 A server can also expose a *shared inbox* (the `endpoints.sharedInbox`
 URL we set in chapter 7) for activities that target many local
 actors at once; busy instances rely on it to deliver one copy of a
@@ -6448,7 +6448,7 @@ PxShare is a real federated image-sharing service: alice can
 post photos, follow accounts on Mastodon and Pixelfed, see
 their photos in her home timeline, and trade likes and
 comments with the rest of the fediverse.  Roughly 750 lines of
-TypeScript stand between the *fedify init* scaffold and that
+TypeScript stand between the `fedify init` scaffold and that
 shipping product.
 
 That said, every line of PxShare exists because it teaches
