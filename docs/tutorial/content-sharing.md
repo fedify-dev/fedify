@@ -86,9 +86,11 @@ You are encouraged to add any of these features yourself after finishing the
 tutorial.  The closing chapter lists a few natural extensions as a starting
 point.
 
-The full source code is available in the [GitHub repository], with one commit
-per tutorial chapter so you can follow along by checking out the commit that
-matches the chapter you are reading.
+The full source code is available in the [GitHub repository].  Each chapter
+that touches the example app lands as its own commit, with a small number of
+follow-up commits at the tip that fix issues spotted during the end-to-end
+rehearsal.  Reading the log from the bottom up still walks through the chapters
+in order; the latest tip is the canonical end state.
 
 [GitHub repository]: https://github.com/fedify-dev/content-sharing
 
@@ -4620,8 +4622,10 @@ federation
 `accept.getObject()` resolves the embedded Follow.
 Mastodon and GoToSocial both keep the original Follow's `id`,
 which makes matching unambiguous.  Pixelfed, in contrast, often
-returns a freshly-minted Follow with a new id, so we fall back
-to the actor URI if no id is present.
+returns a freshly-minted Follow with a different `id`, so even
+when an `id` is present it may not be the one we sent.  Combining
+the two predicates with `or` lets the row flip to *accepted*
+whichever path the peer took.
 
 > [!TIP]
 > If you ship multiple local users later (the closing chapter
@@ -5213,6 +5217,57 @@ Push the schema:
 npm run db:push
 ~~~~
 
+### Strip HTML before storing remote captions
+
+Mastodon, Pixelfed, and most other fediverse servers send
+`Note.content` wrapped in HTML elements like `<p>` and `<a>`.
+Rendering that markup directly through `v-html` against a public
+inbox is an XSS surface, since any peer could push markup we did
+not author.  Cleaning the input at write time means the database
+stores text we can safely interpolate with `{{ }}` everywhere
+downstream.
+
+Add *server/utils/text.ts*:
+
+~~~~ typescript [server/utils/text.ts]
+const NAMED_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
+export function stripHtml(input: string): string {
+  let text = input
+    .replace(/<\s*\/p\s*>/gi, "\n\n")
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  for (const [entity, char] of Object.entries(NAMED_ENTITIES)) {
+    text = text.replace(new RegExp(entity, "g"), char);
+  }
+  text = text.replace(/&#(\d+);/g, (_, n) =>
+    String.fromCodePoint(Number(n)),
+  );
+  text = text.replace(/&#x([0-9a-f]+);/gi, (_, h) =>
+    String.fromCodePoint(parseInt(h, 16)),
+  );
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+~~~~
+
+The helper turns paragraph and `<br>` markers into newlines,
+strips the rest of the tags, and decodes the named and numeric
+entities you actually see on the wire.  It is deliberately small:
+production apps usually pull in a library like
+[sanitize-html] and keep an allow-list of safe tags so they can
+preserve mentions and link formatting; the tutorial trades that
+fidelity for a few lines of regex.
+
+[sanitize-html]: https://www.npmjs.com/package/sanitize-html
+
 ### Cache inbound `Create(Note)` activities
 
 Open *server/federation.ts* and add a `Create` handler at the
@@ -5230,6 +5285,7 @@ import { Create, Document, Note } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { following, timelinePosts } from "./db/schema";
+import { stripHtml } from "./utils/text";
 
 export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -5284,7 +5340,7 @@ federation
         authorHandle: row.handle,
         authorName: row.name,
         authorUrl: row.url,
-        caption: object.content?.toString() ?? null,
+        caption: stripHtml(object.content?.toString() ?? "") || null,
         mediaUrl,
         mediaType,
         publishedAt: published,
@@ -5705,7 +5761,7 @@ import {
   MemoryKvStore,
 } from "@fedify/fedify";
 import { Follow, Like, Undo } from "@fedify/vocab";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "./db/client";
 import { followers, likes, users } from "./db/schema";
 
@@ -5738,22 +5794,16 @@ federation
     return;
   }
   if (object instanceof Like) { // [!code ++]
-    if (undo.actorId == null) return; // [!code ++]
-    if (object.id != null) { // [!code ++]
-      await db // [!code ++]
-        .delete(likes) // [!code ++]
-        .where(eq(likes.likeActivityId, object.id.href)); // [!code ++]
-      return; // [!code ++]
-    } // [!code ++]
-    if (object.objectId == null) return; // [!code ++]
-    await db // [!code ++]
-      .delete(likes) // [!code ++]
-      .where( // [!code ++]
-        and( // [!code ++]
-          eq(likes.actorUri, undo.actorId.href), // [!code ++]
-          eq(likes.noteUri, object.objectId.href), // [!code ++]
-        ), // [!code ++]
-      ); // [!code ++]
+    if (undo.actorId == null || object.objectId == null) return; // [!code ++]
+    const likeActivityId = object.id?.href ?? null; // [!code ++]
+    const baseMatch = and( // [!code ++]
+      eq(likes.actorUri, undo.actorId.href), // [!code ++]
+      eq(likes.noteUri, object.objectId.href), // [!code ++]
+    ); // [!code ++]
+    const matcher = likeActivityId // [!code ++]
+      ? or(eq(likes.likeActivityId, likeActivityId), baseMatch) // [!code ++]
+      : baseMatch; // [!code ++]
+    await db.delete(likes).where(matcher); // [!code ++]
   } // [!code ++]
 })
 ~~~~
@@ -6069,6 +6119,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { comments, following, timelinePosts } from "./db/schema";
+import { stripHtml } from "./utils/text";
 
 export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -6114,7 +6165,7 @@ federation
         authorHandle, // [!code ++]
         authorName: author.name?.toString() ?? null, // [!code ++]
         authorUrl: author.url?.href ?? null, // [!code ++]
-        content: object.content?.toString() ?? "", // [!code ++]
+        content: stripHtml(object.content?.toString() ?? ""), // [!code ++]
         publishedAt: // [!code ++]
           object.published?.toString() ?? new Date().toISOString(), // [!code ++]
       }) // [!code ++]

@@ -248,10 +248,11 @@ To be released.
     and the new `@fedify/nuxt` integration, the tutorial covers actor
     dispatchers, key pairs, follow/unfollow flows, image-bearing
     `Create(Note)` fan-out and reception, an outbound `Like`/`Undo(Like)`
-    heart toggle, and threaded comments through `inReplyTo`.  Each chapter
-    maps 1:1 to a commit in the [companion example repository], and the
-    federation flows are demonstrated against both Mastodon and Pixelfed.
-    [[#693]]
+    heart toggle, and threaded comments through `inReplyTo`.  The
+    [companion example repository] keeps one commit per chapter at the
+    bottom of its log, with a few rehearsal-driven follow-ups landed on top,
+    and the federation flows are demonstrated against both Mastodon and
+    Pixelfed.  [[#693]]
 
  -  Added a custom collections cookbook example for bookmark-like data,
     demonstrating cursor pagination, URI-template filtering, collection
@@ -266,8 +267,8 @@ To be released.
 [*Creating an image sharing service* tutorial]: https://fedify.dev/tutorial/content-sharing
 [companion example repository]: https://github.com/fedify-dev/content-sharing
 [#691]: https://github.com/fedify-dev/fedify/issues/691
-[#694]: https://github.com/fedify-dev/fedify/issues/694
 [#693]: https://github.com/fedify-dev/fedify/issues/693
+[#694]: https://github.com/fedify-dev/fedify/issues/694
 [#695]: https://github.com/fedify-dev/fedify/pull/695
 [#704]: https://github.com/fedify-dev/fedify/issues/704
 [#706]: https://github.com/fedify-dev/fedify/issues/706
