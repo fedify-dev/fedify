@@ -1,118 +1,73 @@
-import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import { Note } from "@fedify/vocab";
+import federation from "./federation.ts";
 
-// Mock data - in a real application, this would query your database
-const POSTS = [
-  new Note({
-    id: new URL("https://example.com/posts/post-1"),
-    content: "ActivityPub is a decentralized social networking protocol...",
-    tags: [
-      new URL("https://example.com/tags/ActivityPub"),
-      new URL("https://example.com/tags/Decentralization"),
-    ],
-  }),
+async function fetchActivityJson(path: string): Promise<unknown> {
+  const response = await federation.fetch(
+    new Request(new URL(path, "https://example.com"), {
+      headers: { Accept: "application/activity+json" },
+    }),
+    { contextData: undefined },
+  );
 
-  new Note({
-    id: new URL("https://example.com/posts/post-2"),
-    content: "Fedify makes it easy to build federated applications...",
-  }),
-
-  new Note({
-    id: new URL("https://example.com/posts/post-3"),
-    content: "WebFinger is a protocol for discovering information...",
-    tags: [new URL("https://example.com/tags/ActivityPub")],
-  }),
-
-  new Note({
-    id: new URL("https://example.com/posts/post-4"),
-    content: "HTTP Signatures provide authentication for ActivityPub...",
-  }),
-
-  new Note({
-    id: new URL("https://example.com/posts/post-5"),
-    content: "Understanding ActivityPub's data model is crucial...",
-  }),
-];
-
-function getTagFromUrl(url: string): string {
-  const parts = url.split("/");
-  return parts[parts.length - 1];
+  if (!response.ok) {
+    throw new Error(`${path}: ${response.status} ${await response.text()}`);
+  }
+  return await response.json();
 }
 
-function getTaggedPostsByTag(tag: string): Note[] {
-  return POSTS
-    .filter((post) => {
-      if (!post.tagIds) {
-        return false;
-      }
-      return post.tagIds.some((tagId) => {
-        return getTagFromUrl(tagId.toString()) === tag;
-      });
-    });
+async function fetchStatus(path: string): Promise<number> {
+  const response = await federation.fetch(
+    new Request(new URL(path, "https://example.com"), {
+      headers: { Accept: "application/activity+json" },
+    }),
+    { contextData: undefined },
+  );
+
+  const status = response.status;
+  await response.body?.cancel();
+  return status;
 }
 
-async function demonstrateCustomCollection(): Promise<Response> {
-  // Federation instance created for demonstration
-  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+async function printActivityJson(label: string, path: string): Promise<void> {
+  console.log(`\n## ${label}`);
+  console.log(JSON.stringify(await fetchActivityJson(path), null, 2));
+}
 
-  federation.setCollectionDispatcher(
-    "TaggedPosts",
-    Note,
-    "/users/{userId}/tags/{tag}",
-    (
-      _ctx: { url: URL },
-      values: Record<string, string>,
-      cursor: string | null,
-    ) => {
-      if (!values.tag) {
-        throw new Error("Missing userId or tag in values");
-      }
+async function printActivityStatus(
+  label: string,
+  path: string,
+): Promise<void> {
+  console.log(`\n## ${label}`);
+  console.log(await fetchStatus(path));
+}
 
-      // Normally here you would look up posts from a database by user ID and tag name:
-      const posts = getTaggedPostsByTag(values.tag);
-
-      if (cursor != null) {
-        const idx = Number.parseInt(cursor, 10);
-        if (Number.isNaN(idx) || idx > posts.length || idx < 0) {
-          return { items: [], nextCursor: null, prevCursor: null };
-        }
-        return {
-          items: idx < posts.length ? [posts[idx]] : [],
-          nextCursor: idx < posts.length - 1 ? (idx + 1).toString() : null,
-          prevCursor: idx > 0 ? (idx - 1).toString() : null,
-        };
-      }
-      return { items: posts, nextCursor: null, prevCursor: null };
-    },
-  ).setCounter((_ctx, values) => {
-    // Return the total count of tagged posts
-    const count = getTaggedPostsByTag(values.tag).length;
-    return count;
-  });
-
-  return await federation.fetch(
-    new Request(
-      "https://example.com/users/123/tags/ActivityPub",
-      {
-        headers: {
-          Accept: "application/activity+json",
-        },
-      },
-    ),
-    {
-      contextData: undefined,
-    },
+async function main(): Promise<void> {
+  await printActivityJson("Actor with custom collection links", "/users/alice");
+  await printActivityJson(
+    "Public bookmarks collection",
+    "/users/alice/collections/public",
+  );
+  await printActivityJson(
+    "Public bookmarks first page",
+    "/users/alice/collections/public?cursor=0",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks collection",
+    "/users/alice/collections/tags/activitypub",
+  );
+  await printActivityJson(
+    "Tag-filtered ActivityPub bookmarks first page",
+    "/users/alice/collections/tags/activitypub?cursor=0",
+  );
+  await printActivityStatus(
+    "Followers-only collection requested without a signature",
+    "/users/alice/collections/followers-only",
+  );
+  await printActivityStatus(
+    "Followers-only first page requested without a signature",
+    "/users/alice/collections/followers-only?cursor=0",
   );
 }
 
 if (import.meta.main) {
-  const response = await demonstrateCustomCollection();
-
-  if (response.ok) {
-    const jsonResponse = await response.json();
-    console.log("Custom collection data:", jsonResponse);
-  } else {
-    const errorText = await response.text();
-    console.log("Error response:", errorText);
-  }
+  await main();
 }

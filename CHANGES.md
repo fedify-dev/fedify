@@ -243,16 +243,23 @@ To be released.
     redistribution that threadiverse software (Lemmy, Mbin, NodeBB) uses to fan
     activity out to every subscriber.  [[#704], [#710]]
 
+ -  Added a custom collections cookbook example for bookmark-like data,
+    demonstrating cursor pagination, URI-template filtering, collection
+    counters, actor stream links, and requester-aware collections using
+    `ctx.getSignedKeyOwner()`.  [[#694], [#722]]
+
 [*Building a federated blog* tutorial]: https://fedify.dev/tutorial/astro-blog
 [Astro]: https://astro.build/
 [Bun]: https://bun.sh/
 [*Building a threadiverse community platform*]: https://fedify.dev/tutorial/threadiverse
 [*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
 [#691]: https://github.com/fedify-dev/fedify/issues/691
+[#694]: https://github.com/fedify-dev/fedify/issues/694
 [#695]: https://github.com/fedify-dev/fedify/pull/695
 [#704]: https://github.com/fedify-dev/fedify/issues/704
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
+[#722]: https://github.com/fedify-dev/fedify/pull/722
 
 
 Version 2.1.10
