@@ -4249,8 +4249,8 @@ export type Following = typeof following.$inferSelect;
 
 Push the migration:
 
-~~~~ ansi [terminal]
-$ npm run db:push
+~~~~ sh
+npm run db:push
 ~~~~
 
 ### The `/follow` page
@@ -4540,8 +4540,11 @@ The dev server narrates the round trip in real time:
 
 Run a quick query to confirm the row flipped:
 
-~~~~ ansi [terminal]
-$ sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
+~~~~ sh
+sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
+~~~~
+
+~~~~
 @anbelia_doshaelen@activitypub.academy|accepted
 ~~~~
 
@@ -4822,8 +4825,11 @@ dispatcher:
 
 Verify the collection serves correctly:
 
-~~~~ ansi [terminal]
-$ fedify lookup http://localhost:3000/users/alice/following
+~~~~ sh
+fedify lookup http://localhost:3000/users/alice/following
+~~~~
+
+~~~~
 OrderedCollection {
   id: URL "http://localhost:3000/users/alice/following",
   totalItems: 1,
@@ -4894,8 +4900,8 @@ Two design points worth calling out:
 
 Push the schema:
 
-~~~~ ansi [terminal]
-$ npm run db:push
+~~~~ sh
+npm run db:push
 ~~~~
 
 ### Cache inbound create(note) activities
@@ -5160,8 +5166,8 @@ One row per (actor, note) pair, regardless of who is local.
 `like_activity_id` is what we use to match an `Undo(Like)`
 back to the row that should disappear.  Push the schema:
 
-~~~~ ansi [terminal]
-$ npm run db:push
+~~~~ sh
+npm run db:push
 ~~~~
 
 ### Outbound: alice likes a remote post
@@ -5609,8 +5615,8 @@ export type Comment = typeof comments.$inferSelect;
 `note_uri` is unique because every Note has a globally
 addressable id.  Push the schema:
 
-~~~~ ansi [terminal]
-$ npm run db:push
+~~~~ sh
+npm run db:push
 ~~~~
 
 ### Branch the `Create(Note)` handler
