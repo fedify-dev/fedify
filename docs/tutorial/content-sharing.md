@@ -662,7 +662,7 @@ the queries are typed.
 
 > [!TIP]
 > If you prefer raw SQL, Drizzle does not stand in the way: the same
-> library exposes a `db.run(sql\`…\`)\` escape hatch.  We stick to the
+> library exposes a ``db.run(sql`…`)`` escape hatch.  We stick to the
 > typed query builder in this tutorial so you can hover your cursor over
 > any database call in your editor and see the columns involved.
 
