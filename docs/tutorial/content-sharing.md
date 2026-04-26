@@ -1725,7 +1725,7 @@ This is one of the longer pieces of code in the tutorial, but it
 breaks down into three movements.
 
  -  *The dispatcher chain.*  `~Federatable.setActorDispatcher()`
-    returns an `~ActorCallbackSetters` object, so we can chain
+    returns an `ActorCallbackSetters` object, so we can chain
     `~ActorCallbackSetters.setKeyPairsDispatcher()` straight onto it.
     Whenever Fedify needs alice's keys, this callback runs.
 
@@ -2100,7 +2100,7 @@ Fedify already speaks the inbox protocol.  The
 [*Actor dispatcher*](#actor-dispatcher)
 registers the routes; the empty body just acknowledges every
 request with a `202 Accepted`.  Adding behavior is a matter of
-chaining `~InboxListenerSetters.on(ActivityClass, callback)`.
+chaining `~InboxListenerSetters.on()`.
 
 ### The `followers` table
 
@@ -2759,7 +2759,7 @@ A few notes on the shape:
     parallel to the actor and inbox templates we registered in
     earlier chapters.  Fedify uses the same `{identifier}` to
     cross-reference the dispatcher, so other code can ask for the
-    collection's URI via `~Context.getFollowersUri(identifier)`.
+    collection's URI via `~Context.getFollowersUri()`.
 
  -  *Returning `null` for unknown identifiers.*  Just like the
     actor dispatcher, this turns into a `404 Not Found` so we
@@ -4090,10 +4090,10 @@ federation.setObjectDispatcher(
 > [!TIP]
 > Why drop a typed `Context<unknown>` in here?
 > `~Federatable.setObjectDispatcher()` already gives the dispatcher callback a
-> `~Context` whose `~Context.contextData` is the federation's context-data type
+> `Context` whose `contextData` is the federation's context-data type
 > (we have not customized it, so it is `unknown`).  The compose endpoint will
 > obtain the same `Context` from `federation.~Federation.createContext()`, and
-> that returns a `~Context` of the same shape.  Typing the parameter once lets
+> that returns a `Context` of the same shape.  Typing the parameter once lets
 > both callers feed in their own `Context` without copy-pasting generic
 > parameters.
 
@@ -4180,7 +4180,7 @@ Three details worth pausing on:
     the insert.
 
 `federation.~Federation.createContext()`
-:   Inbox listeners and dispatchers receive a `~Context` for free.
+:   Inbox listeners and dispatchers receive a `Context` for free.
     Anywhere else, including a route handler outside Fedify's
     own routes, we ask the federation for one.  `~Federation.createContext()`
     needs the request so it can resolve the canonical origin from
@@ -4932,7 +4932,7 @@ Two details worth pointing out:
 
 *The recipient is built inline*
 :   `ctx.~Context.sendActivity()` accepts any object that
-    implements the `~Recipient` shape (an actor `id`, an
+    implements the `Recipient` shape (an actor `id`, an
     `inboxId`, and an optional `endpoints.sharedInbox`).  We
     have all three on the *following* row, so we hand them over
     directly and skip a `lookupObject` round trip.
