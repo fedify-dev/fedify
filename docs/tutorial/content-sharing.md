@@ -5974,10 +5974,9 @@ detail.
 *Persistent KV and queue*
 :   `MemoryKvStore` and `InProcessMessageQueue` are perfect
     for a tutorial; in production replace them with the
-    Postgres, Redis, or RabbitMQ adapter from the
-    [`@fedify`] family of
-    packages.  Activities you have already enqueued survive
-    restarts that way.
+    Postgres, Redis, or RabbitMQ adapter from the `@fedify`
+    family of packages.  Activities you have already enqueued
+    survive restarts that way.
 
 *Authorized fetch and rate limits*
 :   Mastodon's *secure mode* requires every actor fetch to be
@@ -5997,8 +5996,6 @@ detail.
     not just the HTTP request.  Fedify supports it through the
     proof-normalization opt-in.
 
-[`@fedify`]: https://github.com/fedify-dev
-
 ### Beyond pxshare
 
 Take a look at the [microblog tutorial](./microblog.md) for
@@ -6007,18 +6004,17 @@ rather than a grid; it covers some material this tutorial
 intentionally skipped, like WebFinger plumbing and Hashtag
 handling.
 
-The [Fedify manual](../manual/index.md) is the authoritative
-reference for the bits we used in passing.  Bookmark the
-*Federation* and *Vocabulary* sections in particular; once you
-start adding activities, you will visit them often.
+The Fedify manual is the authoritative reference for the bits
+we used in passing.  Bookmark the [*Federation*](../manual/federation.md) and
+[*Vocabulary*](../manual/vocab.md) sections in particular; once you start adding
+activities, you will visit them often.
 
 Finally, when something does not work between two servers, the
-[FEP] repository on
-Codeberg is where the fediverse codifies how things *should*
+[FEP] index is where the fediverse codifies how things *should*
 work.  Reading the FEPs that cover the activities you are
 sending is the fastest way to figure out which side has the
 bug.
 
 Happy federating.
 
-[FEP]: https://codeberg.org/fediverse/fep
+[FEP]: https://w3id.org/fep/
