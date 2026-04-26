@@ -5240,6 +5240,18 @@ const NAMED_ENTITIES: Record<string, string> = {
   "&nbsp;": " ",
 };
 
+function decodeCodePoint(value: number): string {
+  if (!Number.isFinite(value) || value < 0 || value > 0x10ffff) {
+    return "�";
+  }
+  if (value >= 0xd800 && value <= 0xdfff) return "�";
+  try {
+    return String.fromCodePoint(value);
+  } catch {
+    return "�";
+  }
+}
+
 export function stripHtml(input: string): string {
   let text = input
     .replace(/<\s*\/p\s*>/gi, "\n\n")
@@ -5248,11 +5260,9 @@ export function stripHtml(input: string): string {
   for (const [entity, char] of Object.entries(NAMED_ENTITIES)) {
     text = text.replace(new RegExp(entity, "g"), char);
   }
-  text = text.replace(/&#(\d+);/g, (_, n) =>
-    String.fromCodePoint(Number(n)),
-  );
+  text = text.replace(/&#(\d+);/g, (_, n) => decodeCodePoint(Number(n)));
   text = text.replace(/&#x([0-9a-f]+);/gi, (_, h) =>
-    String.fromCodePoint(parseInt(h, 16)),
+    decodeCodePoint(parseInt(h, 16)),
   );
   return text.replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -5260,11 +5270,14 @@ export function stripHtml(input: string): string {
 
 The helper turns paragraph and `<br>` markers into newlines,
 strips the rest of the tags, and decodes the named and numeric
-entities you actually see on the wire.  It is deliberately small:
-production apps usually pull in a library like
-[sanitize-html] and keep an allow-list of safe tags so they can
-preserve mentions and link formatting; the tutorial trades that
-fidelity for a few lines of regex.
+entities you actually see on the wire.  `decodeCodePoint` clamps
+the integer to the Unicode scalar range and falls back to the
+replacement character (`U+FFFD`) when a hostile peer sends an
+out-of-range entity such as `&#999999999999;`.  The helper is
+deliberately small: production apps usually pull in a library
+like [sanitize-html] and keep an allow-list of safe tags so they
+can preserve mentions and link formatting; the tutorial trades
+that fidelity for a few lines of regex.
 
 [sanitize-html]: https://www.npmjs.com/package/sanitize-html
 
@@ -5794,15 +5807,24 @@ federation
     return;
   }
   if (object instanceof Like) { // [!code ++]
-    if (undo.actorId == null || object.objectId == null) return; // [!code ++]
+    if (undo.actorId == null) return; // [!code ++]
     const likeActivityId = object.id?.href ?? null; // [!code ++]
-    const baseMatch = and( // [!code ++]
-      eq(likes.actorUri, undo.actorId.href), // [!code ++]
-      eq(likes.noteUri, object.objectId.href), // [!code ++]
-    ); // [!code ++]
-    const matcher = likeActivityId // [!code ++]
-      ? or(eq(likes.likeActivityId, likeActivityId), baseMatch) // [!code ++]
-      : baseMatch; // [!code ++]
+    const objectId = object.objectId?.href ?? null; // [!code ++]
+    const conditions = []; // [!code ++]
+    if (likeActivityId != null) { // [!code ++]
+      conditions.push(eq(likes.likeActivityId, likeActivityId)); // [!code ++]
+    } // [!code ++]
+    if (objectId != null) { // [!code ++]
+      conditions.push( // [!code ++]
+        and( // [!code ++]
+          eq(likes.actorUri, undo.actorId.href), // [!code ++]
+          eq(likes.noteUri, objectId), // [!code ++]
+        ), // [!code ++]
+      ); // [!code ++]
+    } // [!code ++]
+    if (conditions.length === 0) return; // [!code ++]
+    const matcher = // [!code ++]
+      conditions.length === 1 ? conditions[0] : or(...conditions); // [!code ++]
     await db.delete(likes).where(matcher); // [!code ++]
   } // [!code ++]
 })
