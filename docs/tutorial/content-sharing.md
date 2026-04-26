@@ -5813,6 +5813,12 @@ export const comments = sqliteTable("comments", {
   authorUrl: text("author_url"),
   content: text("content").notNull(),
   publishedAt: text("published_at").notNull(),
+  // Populated only for alice's outbound replies to remote posts.
+  // The Note object dispatcher reads these back to rebuild the
+  // `cc` audience and the `Mention` tag when a peer like Pixelfed
+  // refetches the comment by URL.
+  replyAuthorActorUri: text("reply_author_actor_uri"),
+  replyAuthorMention: text("reply_author_mention"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -5977,7 +5983,14 @@ Create *server/api/comments.post.ts*:
 
 ~~~~ typescript twoslash [server/api/comments.post.ts]
 // @noErrors: 2304 2307
-import { Create, isActor, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import {
+  Create,
+  getActorHandle,
+  isActor,
+  Mention,
+  Note,
+  PUBLIC_COLLECTION,
+} from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 import { and, eq } from "drizzle-orm";
 import {
@@ -6008,49 +6021,28 @@ export default defineEventHandler(async (event) => {
 
   const ctx = federation.createContext(toWebRequest(event), undefined);
   const aliceUri = ctx.getActorUri(user.username);
+  // Use a UUID id under the same `/users/{identifier}/posts/{id}`
+  // route the post object dispatcher already serves.  The
+  // dispatcher in *server/federation.ts* will branch on the id
+  // shape: numeric => post, UUID => comment.
   const commentId = crypto.randomUUID();
-  const noteUri = new URL(`#comments/${commentId}`, aliceUri);
+  const noteUri = ctx.getObjectUri(Note, {
+    identifier: user.username,
+    id: commentId,
+  });
   const publishedAt = new Date().toISOString();
 
   const parsed = ctx.parseUri(new URL(inReplyToUri));
   const isLocalParent = parsed?.type === "object" && parsed.class === Note;
 
-  const note = new Note({
-    id: noteUri,
-    attribution: aliceUri,
-    replyTarget: new URL(inReplyToUri),
-    content,
-    to: PUBLIC_COLLECTION,
-    cc: ctx.getFollowersUri(user.username),
-    published: Temporal.Instant.from(publishedAt.replace("Z", "+00:00")),
-  });
-
-  await db
-    .insert(comments)
-    .values({
-      noteUri: noteUri.href,
-      inReplyToUri,
-      authorActorUri: aliceUri.href,
-      authorHandle: `@${user.username}@${aliceUri.host}`,
-      authorName: user.name,
-      authorUrl: aliceUri.href,
-      content,
-      publishedAt,
-    })
-    .onConflictDoNothing();
-
-  const create = new Create({
-    id: new URL(`#create-comments/${commentId}`, aliceUri),
-    actor: aliceUri,
-    to: PUBLIC_COLLECTION,
-    cc: ctx.getFollowersUri(user.username),
-    object: note,
-    published: note.published,
-  });
-
-  if (isLocalParent) {
-    await ctx.sendActivity({ identifier: user.username }, "followers", create);
-  } else {
+  // For replies to a remote post, look up the parent author so we
+  // can address the comment to them.  Mastodon and Pixelfed only
+  // thread a remote reply under their local copy of the parent
+  // when the comment's `cc` contains the parent author and the
+  // Note carries a matching `Mention` tag.
+  let parentAuthorUri: URL | null = null;
+  let parentAuthorMentionName: string | null = null;
+  if (!isLocalParent) {
     const [cached] = await db
       .select()
       .from(timelinePosts)
@@ -6067,9 +6059,70 @@ export default defineEventHandler(async (event) => {
           identifier: user.username,
         }),
       });
-      if (author != null && isActor(author)) {
-        await ctx.sendActivity({ identifier: user.username }, author, create);
+      if (author != null && isActor(author) && author.id != null) {
+        parentAuthorUri = author.id;
+        parentAuthorMentionName = await getActorHandle(author);
       }
+    }
+  }
+
+  const ccUris: URL[] = [ctx.getFollowersUri(user.username)];
+  if (parentAuthorUri != null) ccUris.push(parentAuthorUri);
+
+  const note = new Note({
+    id: noteUri,
+    attribution: aliceUri,
+    replyTarget: new URL(inReplyToUri),
+    content,
+    to: PUBLIC_COLLECTION,
+    ccs: ccUris,
+    published: Temporal.Instant.from(publishedAt.replace("Z", "+00:00")),
+    tags:
+      parentAuthorUri != null && parentAuthorMentionName != null
+        ? [
+            new Mention({
+              href: parentAuthorUri,
+              name: parentAuthorMentionName,
+            }),
+          ]
+        : [],
+  });
+
+  await db
+    .insert(comments)
+    .values({
+      noteUri: noteUri.href,
+      inReplyToUri,
+      authorActorUri: aliceUri.href,
+      authorHandle: `@${user.username}@${aliceUri.host}`,
+      authorName: user.name,
+      authorUrl: aliceUri.href,
+      content,
+      publishedAt,
+      replyAuthorActorUri: parentAuthorUri?.href ?? null,
+      replyAuthorMention: parentAuthorMentionName,
+    })
+    .onConflictDoNothing();
+
+  const create = new Create({
+    id: new URL(`#create-comments/${commentId}`, aliceUri),
+    actor: aliceUri,
+    to: PUBLIC_COLLECTION,
+    ccs: ccUris,
+    object: note,
+    published: note.published,
+  });
+
+  if (isLocalParent) {
+    await ctx.sendActivity({ identifier: user.username }, "followers", create);
+  } else if (parentAuthorUri != null) {
+    const author = await ctx.lookupObject(parentAuthorUri, {
+      documentLoader: await ctx.getDocumentLoader({
+        identifier: user.username,
+      }),
+    });
+    if (author != null && isActor(author)) {
+      await ctx.sendActivity({ identifier: user.username }, author, create);
     }
   }
 
@@ -6078,21 +6131,120 @@ export default defineEventHandler(async (event) => {
 ~~~~
 
 The shape mirrors the `posts.post.ts` handler from chapter 18,
-with two differences: the recipient depends on whether the
-parent is a local post (deliver to *followers*) or a remote
-post (deliver to the parent's author), and the Note carries
-`replyTarget` so peers thread it under the right parent.
+with three differences:
 
-> [!NOTE]
-> The note id we mint is a *fragment URL* (`alice#comments/uuid`).
-> It is not individually retrievable on its own, but the embedded
-> Note flies inside the Create activity, which is what peers
-> actually consume.  The closing chapter lists adding a real
-> `setObjectDispatcher(Note, "/users/{identifier}/comments/{id}")`
-> as a small extension once you want each comment to be
-> permalinkable from outside.
+1.  The recipient depends on whether the parent is a local post
+    (deliver to *followers*) or a remote post (deliver to the
+    parent's author).
+2.  The Note carries `replyTarget` so peers thread it under the
+    right parent.
+3.  When the parent is remote, the Note also `cc`s the parent
+    author and carries a `Mention` tag for them.  Pixelfed and
+    Mastodon both gate inbound replies on this addressing, so
+    omitting the mention silently drops the comment from the
+    thread on those servers even though the inbox returns 200.
+
+### Extend the `Note` object dispatcher to serve comments
+
+Pixelfed re-fetches the comment Note by URL when it threads a
+reply, so the UUID-based comment URI we mint above must resolve
+through the same `setObjectDispatcher(Note, …)` call from
+chapter 15.  Fedify only allows one dispatcher per `Note`
+class; instead of registering a second route, branch the
+existing dispatcher on the id shape:
+
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Mention, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { comments, posts, users } from "./db/schema";
+
+declare const buildNote: (
+  ctx: import("@fedify/fedify").Context<unknown>,
+  identifier: string,
+  post: typeof posts.$inferSelect,
+) => Note;
+declare const federation: ReturnType<typeof createFederation<void>>;
+// ---cut---
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  async (ctx, { identifier, id }) => {
+    const localUser = (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.username, identifier))
+        .limit(1)
+    )[0];
+    if (localUser === undefined) return null;
+
+    // Numeric id: a top-level post.  UUID id: an outbound comment.
+    const numericId = Number(id);
+    if (Number.isInteger(numericId) && numericId >= 1) {
+      const post = (
+        await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, numericId), eq(posts.userId, localUser.id)))
+          .limit(1)
+      )[0];
+      if (post === undefined) return null;
+      return buildNote(ctx, identifier, post);
+    }
+
+    const noteUri = ctx.getObjectUri(Note, { identifier, id }).href;
+    const comment = (
+      await db
+        .select()
+        .from(comments)
+        .where(eq(comments.noteUri, noteUri))
+        .limit(1)
+    )[0];
+    if (comment === undefined) return null;
+    const tags =
+      comment.replyAuthorActorUri != null && comment.replyAuthorMention != null
+        ? [
+            new Mention({
+              href: new URL(comment.replyAuthorActorUri),
+              name: comment.replyAuthorMention,
+            }),
+          ]
+        : [];
+    const ccUris: URL[] = [ctx.getFollowersUri(identifier)];
+    if (comment.replyAuthorActorUri != null) {
+      ccUris.push(new URL(comment.replyAuthorActorUri));
+    }
+    return new Note({
+      id: new URL(noteUri),
+      attribution: ctx.getActorUri(identifier),
+      replyTarget: new URL(comment.inReplyToUri),
+      content: comment.content,
+      to: PUBLIC_COLLECTION,
+      ccs: ccUris,
+      published: Temporal.Instant.from(comment.publishedAt),
+      tags,
+    });
+  },
+);
+~~~~
+
+Sharing the URL space keeps the route table tidy and lets
+peers crawl back to any single comment by URL.  The numeric-vs-
+UUID branch is unambiguous: chapter 13's posts table uses
+auto-incrementing integers, and `crypto.randomUUID()` always
+contains hyphens, so `Number(id)` is `NaN` for comments.
 
 ### Trying it out
+
+#### Outbound: alice replies on her own post
 
 Open one of alice's posts in PxShare and write a comment.  The
 button greys out for a moment while Fedify signs and dispatches
@@ -6104,20 +6256,32 @@ single-comment card showing alice's own reply, “Reply from alice
 on her own beach photo.”, followed by an empty
 textarea.](./content-sharing/post-detail-with-comment.png)
 
-The dev server logs the outbound delivery; alice's followers
-on Pixelfed thread the reply under the original post:
+The dev server logs the outbound delivery; alice's followers on
+Pixelfed thread the reply under the original post.
 
-~~~~ ansi [terminal]
-ℹ INF fedify·federation·outbox Successfully sent activity
-  'https://your-tunnel.example/users/alice#create-comments/a17a…'
-  to 'https://your-pixelfed.example/users/tester/inbox'.
-~~~~
+#### Outbound: alice replies to a Pixelfed post
 
-For inbound, reply to alice's post from a Pixelfed account that
-follows her.  Pixelfed delivers a `Create(Note)` whose
-`inReplyTo` points at alice's post URI; our listener stores the
-comment, and alice's post detail page now shows the Pixelfed
-reply threaded beneath the photo:
+Comments work in the other direction too.  From the home grid,
+note the URI of a Pixelfed-sourced tile and POST it as
+`inReplyToUri` to */api/comments* (the closing chapter lists
+adding a per-tile reply form as a small follow-up).  The dev
+server logs the same activity shape, and Pixelfed threads the
+reply under the original photo with a *1 Comment* counter and a
+*&commat;alice commented on your post* notification:
+
+![Pixelfed's post detail page showing tester's beach photo, a
+“1 Comment” counter, and beneath it alice's reply
+“&commat;alice&commat;your-tunnel.example  — Reply from alice
+on PxShare to a Pixelfed
+post.”](./content-sharing/pixelfed-post-with-alice-comment.png)
+
+#### Inbound: a Pixelfed account replies to alice's post
+
+Reply to alice's post from a Pixelfed account that follows her.
+Pixelfed delivers a `Create(Note)` whose `inReplyTo` points at
+alice's post URI; our listener stores the comment, and alice's
+post detail page now shows the Pixelfed reply threaded beneath
+the photo:
 
 ![alice's post detail page showing one comment whose author is
 &commat;tester&commat;your-pixelfed.example with the body “Reply
@@ -6144,11 +6308,11 @@ detail.
 
 ### Polish that costs an afternoon
 
-`setObjectDispatcher` *for comments*
-:   Chapter 23 mints fragment URLs for alice's outbound
-    comments.  Adding a real dispatcher at
-    */users/\[username]/comments/\[id]* makes
-    each comment a permalink Mastodon can crawl back to.
+*A reply form on the home grid*
+:   Chapter 23 wires up a comment textarea on alice's own post
+    detail page, but commenting on a remote post still requires
+    POSTing to */api/comments* by hand.  Add a small form per
+    home-grid tile that fills in `inReplyToUri` automatically.
 
 *Multi-image posts*
 :   The *posts* schema and the `buildNote` helper both assume
