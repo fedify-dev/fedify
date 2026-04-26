@@ -2999,9 +2999,11 @@ link.](./content-sharing/profile-with-follower-count.png)
 Click through and you land on the new HTML list:
 
 ![Alice's followers page.  A “← Alice Example” back link, the
-“Followers” heading, “1 follower”, and a single entry showing
-the remote follower's display name and handle.  Each follower's
-handle is itself a link to their original profile on the remote
+“Followers” heading, “3 followers”, and three entries: a
+Pixelfed account “Tester” (&commat;tester@…), an
+ActivityPub.Academy account “Anbelia Doshaelen”, and a Pixelfed
+account “洪 民憙 (Hong Minhee)”.  Each follower's handle is
+itself a link to their original profile on the remote
 server.](./content-sharing/followers-list.png)
 
 Refresh alice's profile on Mastodon or Pixelfed.  Both servers
@@ -4724,7 +4726,7 @@ Create *app/pages/users/\[username]/following.vue*:
 const route = useRoute();
 const username = computed(() => String(route.params.username));
 
-const { data, error } = await useFetch(
+const { data, error, refresh } = await useFetch(
   () => `/api/users/${username.value}/following`,
   { key: () => `following-${username.value}` },
 );
@@ -4735,6 +4737,20 @@ if (error.value) {
 
 const user = computed(() => data.value?.user ?? null);
 const following = computed(() => data.value?.following ?? []);
+const pending = ref<Set<string>>(new Set());
+
+async function unfollow(actorUri: string) {
+  pending.value.add(actorUri);
+  try {
+    await $fetch("/api/follow", {
+      method: "DELETE",
+      body: { actorUri },
+    });
+    await refresh();
+  } finally {
+    pending.value.delete(actorUri);
+  }
+}
 
 useHead({
   title: () =>
@@ -4763,7 +4779,7 @@ useHead({
       <li
         v-for="account in following"
         :key="account.actorUri"
-        class="flex items-center gap-3"
+        class="flex items-center justify-between gap-3"
       >
         <a
           :href="account.url ?? account.actorUri"
@@ -4774,6 +4790,14 @@ useHead({
           <span class="font-semibold">{{ account.name ?? account.handle }}</span>
           <span class="text-sm text-gray-500">{{ account.handle }}</span>
         </a>
+        <button
+          type="button"
+          :disabled="pending.has(account.actorUri)"
+          class="px-3 py-1 text-sm border border-gray-300 rounded-full hover:border-rose-400 hover:text-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="unfollow(account.actorUri)"
+        >
+          {{ pending.has(account.actorUri) ? "Unfollowing…" : "Unfollow" }}
+        </button>
       </li>
     </ul>
     <p v-else class="text-sm text-gray-400 py-8 text-center">
@@ -4782,6 +4806,109 @@ useHead({
   </section>
 </template>
 ~~~~
+
+The *Unfollow* button calls a new `DELETE /api/follow` endpoint
+(written below).  We track in-flight unfollows in a `pending`
+Set so each row's button can disable itself independently
+without freezing the whole list.
+
+### The unfollow endpoint
+
+Create *server/api/follow.delete.ts*:
+
+~~~~ typescript twoslash [server/api/follow.delete.ts]
+// @noErrors: 2304 2307
+import { Follow, Undo } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  readBody,
+  toWebRequest,
+} from "h3";
+import { db } from "../db/client";
+import { following } from "../db/schema";
+import federation from "../federation";
+import { getLocalUser } from "../utils/users";
+
+export default defineEventHandler(async (event) => {
+  const user = await getLocalUser();
+  if (user == null) {
+    throw createError({ statusCode: 403, statusMessage: "No user" });
+  }
+  const body = await readBody<{ actorUri?: unknown }>(event);
+  const actorUri =
+    typeof body?.actorUri === "string" ? body.actorUri.trim() : "";
+  if (actorUri === "") {
+    throw createError({ statusCode: 400, statusMessage: "Missing actorUri" });
+  }
+
+  const [row] = await db
+    .select()
+    .from(following)
+    .where(
+      and(eq(following.followerId, user.id), eq(following.actorUri, actorUri)),
+    )
+    .limit(1);
+  if (row === undefined) {
+    return { actorUri, following: false };
+  }
+
+  // Drop the local row first so the UI reflects the unfollow even
+  // if the remote inbox is slow.
+  await db
+    .delete(following)
+    .where(
+      and(eq(following.followerId, user.id), eq(following.actorUri, actorUri)),
+    );
+
+  // Send an `Undo(Follow)` to the remote actor's inbox.  Re-build
+  // the original `Follow` activity (using the id we stored at
+  // follow time so peers can match by id) and wrap it in `Undo`.
+  const ctx = federation.createContext(toWebRequest(event), undefined);
+  const aliceUri = ctx.getActorUri(user.username);
+  const followActivityId = new URL(row.followActivityId);
+  await ctx.sendActivity(
+    { identifier: user.username },
+    {
+      id: new URL(row.actorUri),
+      inboxId: new URL(row.inboxUrl),
+      endpoints:
+        row.sharedInboxUrl == null
+          ? null
+          : { sharedInbox: new URL(row.sharedInboxUrl) },
+    },
+    new Undo({
+      id: new URL(`#undo-follows/${crypto.randomUUID()}`, aliceUri),
+      actor: aliceUri,
+      object: new Follow({
+        id: followActivityId,
+        actor: aliceUri,
+        object: new URL(row.actorUri),
+      }),
+    }),
+  );
+
+  return { actorUri, following: false };
+});
+~~~~
+
+Two details worth pointing out:
+
+`followActivityId` *(round-tripped through the database)*
+:   Chapter 19 stored the outbound `Follow`'s id on the
+    *following* row precisely so the unfollow path can echo it
+    back inside the embedded `Follow`.  Mastodon, Pixelfed, and
+    GoToSocial all match incoming `Undo(Follow)` against their
+    pending follow record by that id; without it the unfollow
+    silently no-ops on the remote side.
+
+*The recipient is built inline*
+:   `ctx.~Context.sendActivity()` accepts any object that
+    implements the `~Recipient` shape (an actor `id`, an
+    `inboxId`, and an optional `endpoints.sharedInbox`).  We
+    have all three on the *following* row, so we hand them over
+    directly and skip a `lookupObject` round trip.
 
 ### A counter on the profile
 
@@ -4842,10 +4969,27 @@ The header now reads *posts · followers · following*:
 
 ![alice's profile header showing “4 posts · 2 followers · 1 following”.](./content-sharing/profile-with-following-counter.png)
 
-Click *1 following* and the new page lists the accounts:
+Click *2 following* and the new page lists the accounts, each
+with an *Unfollow* button:
 
-![The Following page showing one entry, “Anbelia Doshaelen
-&commat;anbelia\_doshaelen&commat;activitypub.academy”.](./content-sharing/following-list.png)
+![alice's Following page showing two entries: a Pixelfed
+account “Tester” (&commat;tester&commat;your-pixelfed.example)
+and an ActivityPub.Academy account “Anbelia Doshaelen”, each
+with an Unfollow button on the
+right.](./content-sharing/following-list.png)
+
+Click *Unfollow* and the row disappears.  The dev server logs
+the outbound `Undo(Follow)`:
+
+~~~~ ansi [terminal]
+ℹ INF fedify·federation·outbox Successfully sent activity
+  'https://your-tunnel.example/users/alice#undo-follows/…'
+  to 'https://your-pixelfed.example/users/tester/inbox'.
+~~~~
+
+Refresh the Pixelfed account's *Followers* page (or query the
+database directly) and the alice row is gone.  Re-click
+*Follow* on the Follow page to put the relationship back.
 
 ### The ActivityPub `Following` collection
 
@@ -5764,27 +5908,35 @@ post”.](./content-sharing/pixelfed-post-with-like.png)
 
 #### Inbound: a Pixelfed account likes alice's post
 
-For the reverse direction, click the heart on alice's photo
-from a Pixelfed account that follows her.  Pixelfed sends a
-`Like` to alice's inbox; our handler stores the row, and the
-post detail page shows *1 like* the next time alice loads it:
+For the reverse direction, log in to a Pixelfed account that
+follows alice and click the heart on alice's photo there.
+Pixelfed sends a `Like` to alice's inbox; our handler stores the
+row, and alice's post detail page on PxShare shows *1 like* the
+next time it loads:
 
-![alice's post detail page showing her foggy beach photo with
-caption “Pixelfed federation debug post.”, a red heart icon
-and “1 like” beneath
-it.](./content-sharing/post-detail-with-like.png)
+![alice's post detail page on PxShare showing her foggy beach
+photo with caption “Pixelfed federation debug post.”, a filled
+red heart icon and “1 like” beneath it; the like came from the
+&commat;tester Pixelfed
+account.](./content-sharing/post-detail-with-like.png)
 
-Click the heart again to unlike: the counter decrements and an
-`Undo(Like)` flies out, signed with alice's keys.  Refresh the
-Pixelfed post detail page and the *1 Like* line disappears.
+Click the heart again on either side to unlike: the counter
+decrements on PxShare immediately, and an `Undo(Like)` flies out
+signed with alice's keys.  The dev server log confirms the
+delivery, and alice's local row disappears.
 
 > [!NOTE]
 > Some peers report likes asynchronously through their own
-> federation queue.  Pixelfed delivers within a second once its
-> queue worker (Horizon) drains; Mastodon is similarly quick.
-> Refreshing the post detail page is the simplest way to see
-> the count update; the closing chapter lists websockets / SSE
-> as a stretch goal for live updates.
+> federation queue.  Pixelfed accepts the inbound `Like` and
+> `Undo(Like)` activities within a second once Horizon drains,
+> but its post-detail UI keeps a denormalized `likes_count`
+> cached on the status that does not always update straight away,
+> so the *N Likes* display can lag by a few seconds before it
+> matches the underlying row.  PxShare's count is recomputed
+> live on every page load, so refreshing alice's post detail
+> page is the most reliable way to see the latest state; the
+> closing chapter lists websockets / SSE as a stretch goal for
+> truly live updates.
 
 
 Comments
