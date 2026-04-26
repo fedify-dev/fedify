@@ -860,8 +860,10 @@ A few SQL-shaped details worth explaining:
     is unique, so the combination means “at most one row, and its id is
     always 1”.  This is how we keep the instance single-user at the
     storage layer.
- -  `username` has a `UNIQUE` constraint and `NOT NULL`.  A user with no
-    username makes no sense in a federated app.
+ -  `username` is `NOT NULL`.  A user with no username makes no sense
+    in a federated app.  We do not add `UNIQUE` here because the
+    `CHECK (id = 1)` constraint already limits the table to a single
+    row, which makes `username` trivially unique.
  -  `created_at` gets `DEFAULT CURRENT_TIMESTAMP`, meaning SQLite fills
     it in automatically when we `INSERT` without supplying it.
  -  `User = typeof users.$inferSelect` gives us the TypeScript type
@@ -2649,14 +2651,14 @@ A subtler design question: why include
 `eq(followers.followingId, localUser.id)` in the `WHERE` clause if `actorUri`
 is unique to the remote actor?
 
-The answer lies in how the table will grow when
-[*Following remote accounts*](#following-remote-accounts) adds
-multi-account support.  Today there is exactly one local user
-(`localUser.id = 1`), but the schema's composite primary key
-`(following_id, actor_uri)` lets the same remote actor follow
-multiple local users on the same instance.  Matching both columns
-keeps the listener correct in advance: an unfollow against alice
-must not delete the row representing the same actor following bob.
+The answer is that the table's primary key is composite,
+`(following_id, actor_uri)`.  In our single-user setup `following_id`
+is always `1`, so matching only on `actor_uri` would happen to work,
+but the listener is clearer when the `WHERE` clause names the same
+two columns that identify the row.  If you ever extend the schema
+to host more than one local account, the composite match keeps a
+shared remote actor's unfollow against alice from also tearing
+down the row representing the same actor following bob.
 
 
 Followers list and collection
@@ -3102,11 +3104,11 @@ Walking through the columns:
     ActivityPub IRI we hand out to other servers.
 
 `userId`
-:   Foreign key to `users`.  Today the only value is `1`
-    (alice), but the foreign key is forward-compatible with
-    [*Following remote accounts*](#following-remote-accounts),
-    which starts caching remote actors in the same
-    table.
+:   Foreign key to `users`.  In our single-user app this is
+    always `1` (alice), but naming the author explicitly keeps
+    the relationship clear in joins and would generalize without
+    schema changes if you ever supported more than one local
+    account.
 
 `caption`
 :   Optional text body shown next to the image.  Pixelfed allows
@@ -3298,8 +3300,8 @@ Walking through:
 
 `readMultipartFormData(event)`
 :   h3 has a built-in multipart parser; no extra dependency.  We
-    iterate the parts twice (once for the caption, once for the
-    image) instead of trusting the order the browser uses.
+    iterate the parts once and pick out the caption and image by
+    name instead of trusting the order the browser uses.
 
 `ALLOWED_TYPES`, `MAX_BYTES`
 :   Only JPEG, PNG, WebP, and GIF go through, capped at 8 MB.
@@ -5435,13 +5437,20 @@ if (data.value?.user) {
 
 Restart the dev server and post a photo from a Pixelfed account
 that alice follows (*Following remote accounts* covers the
-follow flow).  Within
-a second or two, alice's home page lights up:
+follow flow).  Within a second or two alice's home page lights
+up: the 3-column grid renders one square thumbnail of the new
+photo, and clicking it opens the original on Pixelfed.  We will
+rework this layout into stacked cards in
+[*`Like`s and `Undo(Like)`*](#like-s-and-undo-like-) so that
+hearts have somewhere to live; the screenshot below shows the
+later card form with two timeline entries, which is what alice
+ends up looking at after chapter 22.
 
-![alice's home grid showing a single full-width card with
-tester's foggy beach photograph from Pixelfed and the caption
-“Photo from tester for federation
-testing.”](./content-sharing/home-with-pixelfed-post.png)
+![alice's home page rendered as a stacked single-column feed of
+two timeline cards: tester's foggy beach photograph from Pixelfed
+with the caption “Photo from tester for federation testing.” and
+a “0 likes” counter on top, and anbelia\_doshaelen's space scene
+with “1 like” underneath.](./content-sharing/home-with-pixelfed-post.png)
 
 The dev server narrates the inbound activity, and the database
 gains a row:
@@ -5857,9 +5866,21 @@ export default defineEventHandler(async (event) => {
 ~~~~
 
 Apply the same trick to the local post detail endpoint so
-alice's profile shows like counts on her own posts:
+alice's profile shows like counts on her own posts.  Pull
+`count` into the drizzle-orm imports, `getRequestProtocol` and
+`getRequestURL` into the h3 imports, and `likes` into the
+schema imports, then add the lookup just before the response:
 
 ~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
+import { count, eq } from "drizzle-orm";
+import {
+  createError,
+  defineEventHandler,
+  getRequestProtocol,
+  getRequestURL,
+} from "h3";
+import { likes /* …existing imports… */ } from "../../../../db/schema";
+// …
 const origin = `${getRequestProtocol(event)}://${getRequestURL(event).host}`;
 const noteUri = `${origin}/users/${username}/posts/${id}`;
 const [{ likeCount }] = await db
@@ -6124,6 +6145,7 @@ to pull the matching rows:
 
 ~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
 import { and, asc, count, eq } from "drizzle-orm";
+import { comments /* …existing imports… */ } from "../../../../db/schema";
 // …
 const commentRows = await db
   .select()

@@ -265,7 +265,6 @@ To be released.
 [*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
 [*Creating an image sharing service* tutorial]: https://fedify.dev/tutorial/content-sharing
 [companion example repository]: https://github.com/fedify-dev/content-sharing
-[Claude]: https://www.anthropic.com/claude
 [#691]: https://github.com/fedify-dev/fedify/issues/691
 [#694]: https://github.com/fedify-dev/fedify/issues/694
 [#693]: https://github.com/fedify-dev/fedify/issues/693
