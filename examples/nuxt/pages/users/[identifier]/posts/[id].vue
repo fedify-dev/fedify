@@ -2,9 +2,9 @@
   <div v-if="data" class="post-detail-container">
     <NuxtLink class="back-link" to="/">&larr; Back to home</NuxtLink>
     <article class="post-detail-card">
-      <a
+      <NuxtLink
         class="post-detail-author"
-        :href="`/users/${data.identifier}`"
+        :to="`/users/${data.identifier}`"
       >
         <img
           :src="data.author.icon ?? '/demo-profile.png'"
@@ -24,7 +24,7 @@
             {{ formatDate(data.published) }}
           </time>
         </div>
-      </a>
+      </NuxtLink>
       <div class="post-detail-content">
         <p>{{ data.content }}</p>
       </div>

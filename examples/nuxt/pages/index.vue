@@ -184,11 +184,11 @@ let latestSearchRequest = 0;
 function onSearchInput() {
   if (searchTimeout) clearTimeout(searchTimeout);
   searchTimeout = setTimeout(async () => {
+    const requestId = ++latestSearchRequest;
     if (!searchQuery.value.trim()) {
       searchResult.value = null;
       return;
     }
-    const requestId = ++latestSearchRequest;
     const res = await $fetch<{ result: typeof searchResult.value }>(
       `/api/search?q=${encodeURIComponent(searchQuery.value)}`,
     );
