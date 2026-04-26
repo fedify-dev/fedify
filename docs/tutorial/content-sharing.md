@@ -1304,7 +1304,7 @@ and emits a `Person` filled in with the data we have. Replace
 *server/federation.ts* with this:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307
+// @noErrors: 2304 2307
 import {
   createFederation,
   InProcessMessageQueue,
@@ -1623,7 +1623,7 @@ the `actorKeys` table, and chain a `setKeyPairsDispatcher` onto the
 existing dispatcher chain:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307 7006
+// @noErrors: 2304 2307 7006
 import {
   createFederation,
   exportJwk,
@@ -2152,7 +2152,7 @@ Open *server/federation.ts*.  Add `Accept`, `Follow`, and
 `~Federatable.setInboxListeners()`:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307 7006
+// @noErrors: 2304 2307 7006
 import {
   createFederation,
   exportJwk,
@@ -2485,7 +2485,7 @@ from `@fedify/vocab` and `and` to the imports from `drizzle-orm`,
 then chain a fourth listener after the `Follow` handler:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307 2304 7006
+// @noErrors: 2304 2307 2304 7006
 import {
   createFederation,
   exportJwk,
@@ -2652,7 +2652,8 @@ Open *server/federation.ts*.  Pull the `Recipient` type into the
 existing `@fedify/vocab` import, and pull `count` and `desc` into
 the `drizzle-orm` import:
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
 import {
   Accept,
   Endpoints,
@@ -2669,7 +2670,7 @@ Then chain a third dispatcher on the `federation` builder, after
 the inbox listener block:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307 2304 7006
+// @noErrors: 2304 2307 2304 7006
 import { type Federation } from "@fedify/fedify";
 import { type Recipient } from "@fedify/vocab";
 import { count, desc, eq } from "drizzle-orm";
@@ -3400,7 +3401,8 @@ Open *server/federation.ts*.  Add `Document`, `Note`, and
 `PUBLIC_COLLECTION` to the `@fedify/vocab` import, pull in the
 `Temporal` polyfill, and add `posts` to the schema import:
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
 import {
   Accept,
   Document,
@@ -3438,7 +3440,7 @@ bridges the gap.
 Then add a final dispatcher block after the followers dispatcher:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2307 7006
+// @noErrors: 2304 2307 7006
 import { type Federation } from "@fedify/fedify";
 import { Document, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
@@ -4053,7 +4055,8 @@ to:
 Open *server/api/posts.post.ts* and update the imports plus the
 section after the file write:
 
-~~~~ typescript [server/api/posts.post.ts]
+~~~~ typescript twoslash [server/api/posts.post.ts]
+// @noErrors: 2304 2307 2552 18004
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Create } from "@fedify/vocab";
@@ -4370,7 +4373,8 @@ page is reachable without typing the URL:
 
 Create *server/api/follow.post.ts*:
 
-~~~~ typescript [server/api/follow.post.ts]
+~~~~ typescript twoslash [server/api/follow.post.ts]
+// @noErrors: 2304 2307
 import { Follow, getActorHandle, isActor } from "@fedify/vocab";
 import {
   createError,
@@ -5175,7 +5179,8 @@ npm run db:push
 
 Create *server/api/likes.post.ts*:
 
-~~~~ typescript [server/api/likes.post.ts]
+~~~~ typescript twoslash [server/api/likes.post.ts]
+// @noErrors: 2304 2307
 import { isActor, Like } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
 import {
@@ -5253,7 +5258,8 @@ export default defineEventHandler(async (event) => {
 The unlike sibling, *server/api/likes.delete.ts*, mirrors this
 but wraps the original `Like` in an `Undo`:
 
-~~~~ typescript [server/api/likes.delete.ts]
+~~~~ typescript twoslash [server/api/likes.delete.ts]
+// @noErrors: 2304 2307
 import { isActor, Like, Undo } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
 import { createError, defineEventHandler, readBody, toWebRequest } from "h3";
@@ -5746,7 +5752,8 @@ async function submitComment() {
 
 Create *server/api/comments.post.ts*:
 
-~~~~ typescript [server/api/comments.post.ts]
+~~~~ typescript twoslash [server/api/comments.post.ts]
+// @noErrors: 2304 2307
 import { Create, isActor, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 import { and, eq } from "drizzle-orm";
