@@ -3380,8 +3380,8 @@ The next chapter teaches Fedify to serve those rows as
 ActivityPub `Note` objects so other servers can fetch them.
 
 
-Note object dispatcher
-----------------------
+`Note` object dispatcher
+------------------------
 
 We have rows in `posts` and a way to add new ones, but other
 servers cannot see them yet.  An ActivityPub post is a [`Note`]
@@ -4904,7 +4904,7 @@ Push the schema:
 npm run db:push
 ~~~~
 
-### Cache inbound create(note) activities
+### Cache inbound `Create(Note)` activities
 
 Open *server/federation.ts* and add a `Create` handler at the
 end of the inbox-listener chain (after the `Accept` handler from
@@ -5135,8 +5135,8 @@ queued the delivery, and the only thing we added was a strict
 little filter on top of the inbox listener chain.
 
 
-Likes and undo(like)
---------------------
+`Like`s and `Undo(Like)`
+------------------------
 
 A `Like` activity is the fediverse's heart button.  This chapter
 makes it work in both directions: alice can heart a remote post
@@ -5341,7 +5341,7 @@ Two design notes:
     match by activity id (Mastodon does) line up with the row
     they recorded earlier.
 
-### Inbound: receive likes and undo(like)
+### Inbound: receive `Like`s and `Undo(Like)`
 
 Two changes in *server/federation.ts*.  First, add `Like` to
 the *@fedify/vocab* import (alongside `Follow`, `Note`, etc.).
