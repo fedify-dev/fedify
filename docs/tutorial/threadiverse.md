@@ -2599,6 +2599,12 @@ echo 'SELECT follower_uri, accepted FROM follows;' \
   | sqlite3 threadiverse.sqlite3 -header -box
 ~~~~
 
+You should see a row like this:
+
+| `follower_uri`                                      | `accepted` |
+| --------------------------------------------------- | ---------- |
+| `https://activitypub.academy/users/<your-username>` | `1`        |
+
 Outbound follows work the same way.  Log in as a local user, open
 `/follow`, paste `@fediverse@lemmy.ml` (or any community on an
 instance you like), submit the form, and wait a moment: the follow
@@ -3968,9 +3974,9 @@ echo 'SELECT follower_uri, accepted FROM follows;' \
   | sqlite3 threadiverse.sqlite3
 ~~~~
 
-~~~~ console
-https://lemmy.ml/u/<your-username>|1
-~~~~
+| `follower_uri`                       | `accepted` |
+| ------------------------------------ | ---------- |
+| `https://lemmy.ml/u/<your-username>` | `1`        |
 
 ![Screenshot: the Lemmy community page says “Joined” after the round-trip](./threadiverse/lemmy-subscribed.png)
 

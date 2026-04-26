@@ -1069,9 +1069,9 @@ Verify the row with the `sqlite3` CLI:
 sqlite3 content-sharing.sqlite3 "SELECT * FROM users"
 ~~~~
 
-~~~~ console
-1|alice|Alice Example|2026-04-25 03:20:13
-~~~~
+| `id` | `username` | `name`          | `created_at`          |
+| ---- | ---------- | --------------- | --------------------- |
+| `1`  | `alice`    | `Alice Example` | `2026-04-25 03:20:13` |
 
 And confirm the single-user constraint holds by attempting a second
 signup:
@@ -1806,10 +1806,10 @@ If you peek inside the database, you can see both rows landed:
 sqlite3 content-sharing.sqlite3 "SELECT user_id, type FROM actor_keys"
 ~~~~
 
-~~~~ console
-1|RSASSA-PKCS1-v1_5
-1|Ed25519
-~~~~
+| `user_id` | `type`              |
+| --------- | ------------------- |
+| `1`       | `RSASSA-PKCS1-v1_5` |
+| `1`       | `Ed25519`           |
 
 A second `fedify lookup` does not create new rows; the dispatcher
 notices both algorithms are already present and just hands the
@@ -2400,11 +2400,9 @@ sqlite3 -header -column content-sharing.sqlite3 \
   "SELECT following_id, handle, inbox_url FROM followers"
 ~~~~
 
-~~~~ console
-following_id  handle                                    inbox_url
-------------  ----------------------------------------  ----------------------------------------------------
-1             @anbelia_doshaelen@activitypub.academy    https://activitypub.academy/users/anbelia_doshaelen/inbox
-~~~~
+| `following_id` | `handle`                                 | `inbox_url`                                                 |
+| -------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `1`            | `@anbelia_doshaelen@activitypub.academy` | `https://activitypub.academy/users/anbelia_doshaelen/inbox` |
 
 The Academy assigned your account a randomly-generated name; yours
 will read differently, but the `following_id = 1` and a real
@@ -2436,12 +2434,10 @@ sqlite3 -header -column content-sharing.sqlite3 \
   "SELECT following_id, handle, inbox_url FROM followers"
 ~~~~
 
-~~~~ console
-following_id  handle                                    inbox_url
-------------  ----------------------------------------  ----------------------------------------------------
-1             @anbelia_doshaelen@activitypub.academy    https://activitypub.academy/users/anbelia_doshaelen/inbox
-1             @you@<your-pixelfed-instance>             https://<your-pixelfed-instance>/users/you/inbox
-~~~~
+| `following_id` | `handle`                                 | `inbox_url`                                                 |
+| -------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `1`            | `@anbelia_doshaelen@activitypub.academy` | `https://activitypub.academy/users/anbelia_doshaelen/inbox` |
+| `1`            | `@you@<your-pixelfed-instance>`          | `https://<your-pixelfed-instance>/users/you/inbox`          |
 
 After Pixelfed's queue picks the activity up, the *Follow* button
 flips to *Unfollow* on alice's profile:
@@ -3413,11 +3409,9 @@ can confirm the row was written:
 sqlite3 -header -column content-sharing.sqlite3 "SELECT * FROM posts"
 ~~~~
 
-~~~~ console
-id  user_id  caption                 media_path                                       media_type  created_at
---  -------  ----------------------  -----------------------------------------------  ----------  -------------------
- 1        1  Hello from chapter 14   alice/5a1d45d6-74f6-48fe-a578-ed33e62d478b.png   image/png   2026-04-26 01:23:43
-~~~~
+| `id` | `user_id` | `caption`               | `media_path`                                     | `media_type` | `created_at`          |
+| ---- | --------- | ----------------------- | ------------------------------------------------ | ------------ | --------------------- |
+| `1`  | `1`       | `Hello from chapter 14` | `alice/5a1d45d6-74f6-48fe-a578-ed33e62d478b.png` | `image/png`  | `2026-04-26 01:23:43` |
 
 …and the file lives where we asked Nuxt to serve it:
 
@@ -4652,9 +4646,9 @@ Run a quick query to confirm the row flipped:
 sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
 ~~~~
 
-~~~~
-@anbelia_doshaelen@activitypub.academy|accepted
-~~~~
+| `handle`                                 | `status`   |
+| ---------------------------------------- | ---------- |
+| `@anbelia_doshaelen@activitypub.academy` | `accepted` |
 
 #### Following a Pixelfed account
 
@@ -4669,10 +4663,10 @@ instantaneously, and the row in *following* flips to
 sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
 ~~~~
 
-~~~~
-@anbelia_doshaelen@activitypub.academy|accepted
-@tester@your-pixelfed.example|accepted
-~~~~
+| `handle`                                 | `status`   |
+| ---------------------------------------- | ---------- |
+| `@anbelia_doshaelen@activitypub.academy` | `accepted` |
+| `@tester@your-pixelfed.example`          | `accepted` |
 
 On the Pixelfed side, log in to the account that just got
 followed and open the *Notifications* page: alice's follow
@@ -5443,10 +5437,15 @@ gains a row:
   is enqueued.
 ℹ INF fedify·federation·http 'POST' '/inbox': 202
 ℹ INF fedify·federation·inbox Activity '…/activity' has been processed.
-
-$ sqlite3 content-sharing.sqlite3 "SELECT note_uri, author_handle FROM timeline_posts"
-https://your-pixelfed.example/p/tester/953…|@tester@your-pixelfed.example
 ~~~~
+
+~~~~ sh
+sqlite3 content-sharing.sqlite3 "SELECT note_uri, author_handle FROM timeline_posts"
+~~~~
+
+| `note_uri`                                    | `author_handle`                 |
+| --------------------------------------------- | ------------------------------- |
+| `https://your-pixelfed.example/p/tester/953…` | `@tester@your-pixelfed.example` |
 
 Posts arrive in real time: no polling, no scheduled job.  The
 fediverse pushed the activity to alice the instant Pixelfed
