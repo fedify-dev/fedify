@@ -18,6 +18,9 @@ const nitroDescription: WebFrameworkDescription = {
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
     files: {
+      "server/plugins/logging.ts": await readTemplate(
+        "nitro/server/plugins/logging.ts",
+      ),
       "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
       ),

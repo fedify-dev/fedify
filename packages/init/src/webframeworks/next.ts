@@ -21,6 +21,7 @@ const nextDescription: WebFrameworkDescription = {
     federationFile: "federation/index.ts",
     loggingFile: "logging.ts",
     files: {
+      "instrumentation.ts": await readTemplate("next/instrumentation.ts"),
       "middleware.ts": await readTemplate("next/middleware.ts"),
       ...(pm !== "deno"
         ? {
