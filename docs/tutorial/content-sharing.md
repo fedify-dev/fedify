@@ -4110,18 +4110,18 @@ section after the file write:
 // @noErrors: 2304 2307 2552 18004
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Create } from "@fedify/vocab";
-import { eq } from "drizzle-orm";
+import { Create } from "@fedify/vocab"; // [!code ++]
+import { eq } from "drizzle-orm"; // [!code ++]
 import {
   createError,
   defineEventHandler,
   readMultipartFormData,
   sendRedirect,
-  toWebRequest,
+  toWebRequest, // [!code ++]
 } from "h3";
 import { db } from "../db/client";
 import { posts } from "../db/schema";
-import federation, { buildNote } from "../federation";
+import federation, { buildNote } from "../federation"; // [!code ++]
 import { getLocalUser } from "../utils/users";
 
 // …ALLOWED_TYPES, MAX_BYTES, EXTENSION unchanged…
@@ -4130,7 +4130,7 @@ export default defineEventHandler(async (event) => {
   // …auth, multipart parsing, validation, and writeFile() unchanged…
 
   const mediaPath = `${user.username}/${filename}`;
-  const [inserted] = await db
+  const [inserted] = await db // [!code ++]
     .insert(posts)
     .values({
       userId: user.id,
@@ -4138,27 +4138,27 @@ export default defineEventHandler(async (event) => {
       mediaPath,
       mediaType: imageType,
     })
-    .returning();
+    .returning(); // [!code ++]
 
-  // Fan out a Create(Note) to every follower's inbox.  Fedify
-  // expands the magic "followers" target into the right inbox or
-  // sharedInbox URLs and queues the deliveries through the
-  // message queue, so the request returns quickly even for big
-  // follower lists.
-  const ctx = federation.createContext(toWebRequest(event), undefined);
-  const note = buildNote(ctx, user.username, inserted);
-  await ctx.sendActivity(
-    { identifier: user.username },
-    "followers",
-    new Create({
-      id: new URL("#create", note.id ?? ""),
-      actor: ctx.getActorUri(user.username),
-      to: note.toIds[0] ?? null,
-      cc: note.ccIds[0] ?? null,
-      object: note,
-      published: note.published,
-    }),
-  );
+  // Fan out a Create(Note) to every follower's inbox.  Fedify // [!code ++]
+  // expands the magic "followers" target into the right inbox or // [!code ++]
+  // sharedInbox URLs and queues the deliveries through the // [!code ++]
+  // message queue, so the request returns quickly even for big // [!code ++]
+  // follower lists. // [!code ++]
+  const ctx = federation.createContext(toWebRequest(event), undefined); // [!code ++]
+  const note = buildNote(ctx, user.username, inserted); // [!code ++]
+  await ctx.sendActivity( // [!code ++]
+    { identifier: user.username }, // [!code ++]
+    "followers", // [!code ++]
+    new Create({ // [!code ++]
+      id: new URL("#create", note.id ?? ""), // [!code ++]
+      actor: ctx.getActorUri(user.username), // [!code ++]
+      to: note.toIds[0] ?? null, // [!code ++]
+      cc: note.ccIds[0] ?? null, // [!code ++]
+      object: note, // [!code ++]
+      published: note.published, // [!code ++]
+    }), // [!code ++]
+  ); // [!code ++]
 
   return await sendRedirect(event, `/users/${user.username}`, 303);
 });
@@ -5021,7 +5021,7 @@ URL back.  Update the actor dispatcher in *server/federation.ts*:
 return new Person({
   // …
   followers: ctx.getFollowersUri(identifier),
-  following: ctx.getFollowingUri(identifier),
+  following: ctx.getFollowingUri(identifier), // [!code ++]
   // …
 });
 ~~~~
@@ -5714,24 +5714,24 @@ federation
       );
     return;
   }
-  if (object instanceof Like) {
-    if (undo.actorId == null) return;
-    if (object.id != null) {
-      await db
-        .delete(likes)
-        .where(eq(likes.likeActivityId, object.id.href));
-      return;
-    }
-    if (object.objectId == null) return;
-    await db
-      .delete(likes)
-      .where(
-        and(
-          eq(likes.actorUri, undo.actorId.href),
-          eq(likes.noteUri, object.objectId.href),
-        ),
-      );
-  }
+  if (object instanceof Like) { // [!code ++]
+    if (undo.actorId == null) return; // [!code ++]
+    if (object.id != null) { // [!code ++]
+      await db // [!code ++]
+        .delete(likes) // [!code ++]
+        .where(eq(likes.likeActivityId, object.id.href)); // [!code ++]
+      return; // [!code ++]
+    } // [!code ++]
+    if (object.objectId == null) return; // [!code ++]
+    await db // [!code ++]
+      .delete(likes) // [!code ++]
+      .where( // [!code ++]
+        and( // [!code ++]
+          eq(likes.actorUri, undo.actorId.href), // [!code ++]
+          eq(likes.noteUri, object.objectId.href), // [!code ++]
+        ), // [!code ++]
+      ); // [!code ++]
+  } // [!code ++]
 })
 ~~~~
 
@@ -6049,43 +6049,43 @@ federation
   if (!(object instanceof Note)) return;
   if (object.id == null) return;
 
-  // Comment branch: the Note has an `inReplyTo`.  Only cache
-  // replies whose parent is alice's own post or already in the
-  // timeline cache.
-  if (object.replyTargetId != null) {
-    const parentUri = object.replyTargetId.href;
-    const target = ctx.parseUri(object.replyTargetId);
-    const isLocalParent =
-      target?.type === "object" && target.class === Note;
-    const isCachedParent =
-      (
-        await db
-          .select({ noteUri: timelinePosts.noteUri })
-          .from(timelinePosts)
-          .where(eq(timelinePosts.noteUri, parentUri))
-          .limit(1)
-      ).length > 0;
-    if (!isLocalParent && !isCachedParent) return;
-
-    const author = await create.getActor();
-    if (author?.id == null) return;
-    const authorHandle = await getActorHandle(author);
-    await db
-      .insert(comments)
-      .values({
-        noteUri: object.id.href,
-        inReplyToUri: parentUri,
-        authorActorUri: author.id.href,
-        authorHandle,
-        authorName: author.name?.toString() ?? null,
-        authorUrl: author.url?.href ?? null,
-        content: object.content?.toString() ?? "",
-        publishedAt:
-          object.published?.toString() ?? new Date().toISOString(),
-      })
-      .onConflictDoNothing();
-    return;
-  }
+  // Comment branch: the Note has an `inReplyTo`.  Only cache // [!code ++]
+  // replies whose parent is alice's own post or already in the // [!code ++]
+  // timeline cache. // [!code ++]
+  if (object.replyTargetId != null) { // [!code ++]
+    const parentUri = object.replyTargetId.href; // [!code ++]
+    const target = ctx.parseUri(object.replyTargetId); // [!code ++]
+    const isLocalParent = // [!code ++]
+      target?.type === "object" && target.class === Note; // [!code ++]
+    const isCachedParent = // [!code ++]
+      ( // [!code ++]
+        await db // [!code ++]
+          .select({ noteUri: timelinePosts.noteUri }) // [!code ++]
+          .from(timelinePosts) // [!code ++]
+          .where(eq(timelinePosts.noteUri, parentUri)) // [!code ++]
+          .limit(1) // [!code ++]
+      ).length > 0; // [!code ++]
+    if (!isLocalParent && !isCachedParent) return; // [!code ++]
+ // [!code ++]
+    const author = await create.getActor(); // [!code ++]
+    if (author?.id == null) return; // [!code ++]
+    const authorHandle = await getActorHandle(author); // [!code ++]
+    await db // [!code ++]
+      .insert(comments) // [!code ++]
+      .values({ // [!code ++]
+        noteUri: object.id.href, // [!code ++]
+        inReplyToUri: parentUri, // [!code ++]
+        authorActorUri: author.id.href, // [!code ++]
+        authorHandle, // [!code ++]
+        authorName: author.name?.toString() ?? null, // [!code ++]
+        authorUrl: author.url?.href ?? null, // [!code ++]
+        content: object.content?.toString() ?? "", // [!code ++]
+        publishedAt: // [!code ++]
+          object.published?.toString() ?? new Date().toISOString(), // [!code ++]
+      }) // [!code ++]
+      .onConflictDoNothing(); // [!code ++]
+    return; // [!code ++]
+  } // [!code ++]
 
   // Top-level branch: the existing home-timeline cache logic
   // (followee filter and image-attachment requirement) applies
@@ -6383,38 +6383,38 @@ federation.setObjectDispatcher(
       return buildNote(ctx, identifier, post);
     }
 
-    const noteUri = ctx.getObjectUri(Note, { identifier, id }).href;
-    const comment = (
-      await db
-        .select()
-        .from(comments)
-        .where(eq(comments.noteUri, noteUri))
-        .limit(1)
-    )[0];
-    if (comment === undefined) return null;
-    const tags =
-      comment.replyAuthorActorUri != null && comment.replyAuthorMention != null
-        ? [
-            new Mention({
-              href: new URL(comment.replyAuthorActorUri),
-              name: comment.replyAuthorMention,
-            }),
-          ]
-        : [];
-    const ccUris: URL[] = [ctx.getFollowersUri(identifier)];
-    if (comment.replyAuthorActorUri != null) {
-      ccUris.push(new URL(comment.replyAuthorActorUri));
-    }
-    return new Note({
-      id: new URL(noteUri),
-      attribution: ctx.getActorUri(identifier),
-      replyTarget: new URL(comment.inReplyToUri),
-      content: comment.content,
-      to: PUBLIC_COLLECTION,
-      ccs: ccUris,
-      published: Temporal.Instant.from(comment.publishedAt),
-      tags,
-    });
+    const noteUri = ctx.getObjectUri(Note, { identifier, id }).href; // [!code ++]
+    const comment = ( // [!code ++]
+      await db // [!code ++]
+        .select() // [!code ++]
+        .from(comments) // [!code ++]
+        .where(eq(comments.noteUri, noteUri)) // [!code ++]
+        .limit(1) // [!code ++]
+    )[0]; // [!code ++]
+    if (comment === undefined) return null; // [!code ++]
+    const tags = // [!code ++]
+      comment.replyAuthorActorUri != null && comment.replyAuthorMention != null // [!code ++]
+        ? [ // [!code ++]
+            new Mention({ // [!code ++]
+              href: new URL(comment.replyAuthorActorUri), // [!code ++]
+              name: comment.replyAuthorMention, // [!code ++]
+            }), // [!code ++]
+          ] // [!code ++]
+        : []; // [!code ++]
+    const ccUris: URL[] = [ctx.getFollowersUri(identifier)]; // [!code ++]
+    if (comment.replyAuthorActorUri != null) { // [!code ++]
+      ccUris.push(new URL(comment.replyAuthorActorUri)); // [!code ++]
+    } // [!code ++]
+    return new Note({ // [!code ++]
+      id: new URL(noteUri), // [!code ++]
+      attribution: ctx.getActorUri(identifier), // [!code ++]
+      replyTarget: new URL(comment.inReplyToUri), // [!code ++]
+      content: comment.content, // [!code ++]
+      to: PUBLIC_COLLECTION, // [!code ++]
+      ccs: ccUris, // [!code ++]
+      published: Temporal.Instant.from(comment.publishedAt), // [!code ++]
+      tags, // [!code ++]
+    }); // [!code ++]
   },
 );
 ~~~~
