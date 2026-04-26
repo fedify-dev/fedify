@@ -1,3 +1,4 @@
+import "./logging.ts";
 import { fedifyMiddleware } from "@fedify/astro";
 import federation from "./federation.ts";
 

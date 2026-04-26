@@ -10,11 +10,12 @@ To be released.
 
 ### @fedify/init
 
- -  Fixed the Nitro and Next.js project templates so their generated
+ -  Fixed the Astro, Nitro, and Next.js project templates so their generated
     *logging.ts* files are loaded during server startup.  Nitro projects now
-    get a server plugin that imports the LogTape configuration, and Next.js
+    get a server plugin that imports the LogTape configuration, Next.js
     projects get an *instrumentation.ts* `register()` hook that imports it in
-    the Node.js runtime before Fedify handles requests.  [[#725], [#727]]
+    the Node.js runtime, and Astro projects import it from *src/middleware.ts*
+    before Fedify handles requests.  [[#725], [#727]]
 
 [#725]: https://github.com/fedify-dev/fedify/issues/725
 [#727]: https://github.com/fedify-dev/fedify/pull/727
