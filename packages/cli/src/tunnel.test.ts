@@ -50,6 +50,7 @@ test("inbox runner accepts tunnel options without a tunnel service", async () =>
     undefined,
   );
   deepEqual(withOtherOption.command, "inbox");
+  deepEqual((withOtherOption as { tunnel?: unknown }).tunnel, true);
   deepEqual(
     (withOtherOption as { actorName?: unknown }).actorName,
     "Test Inbox",

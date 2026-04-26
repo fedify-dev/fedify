@@ -175,7 +175,7 @@ const lookupModeOption = withDefault(
         ),
         {
           context: configContext,
-          key: (config) => config.lookup?.recurseDepth ?? 20,
+          key: (config) => config.lookup?.recurseDepth,
           default: 20,
         },
       ),

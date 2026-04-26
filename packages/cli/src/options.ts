@@ -85,7 +85,10 @@ export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
       ),
       {
         context: configContext,
-        key: (config: Config) => !(config[section]?.noTunnel ?? false),
+        key: (config: Config) =>
+          config[section]?.noTunnel == null
+            ? undefined
+            : !config[section].noTunnel,
         default: true,
       },
     ),
