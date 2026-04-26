@@ -5,7 +5,7 @@ import { broadcastEvent } from "../sse";
 import { followingStore } from "../store";
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
+  const body = await readBody<{ uri?: unknown }>(event);
   const targetUri = body?.uri;
   if (typeof targetUri !== "string" || !targetUri.trim()) {
     return sendRedirect(event, "/", 303);
