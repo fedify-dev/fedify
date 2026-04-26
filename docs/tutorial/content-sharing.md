@@ -4486,7 +4486,26 @@ The interesting bits:
 Add an `Accept` handler at the end of the inbox-listener chain
 in *server/federation.ts*:
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Accept, Follow } from "@fedify/vocab";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { following } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+// ---cut---
 .on(Accept, async (_ctx, accept) => {
   // The remote server has accepted alice's outbound Follow.
   // Match the Accept against our `following` row by either the
@@ -4915,7 +4934,26 @@ Open *server/federation.ts* and add a `Create` handler at the
 end of the inbox-listener chain (after the `Accept` handler from
 chapter 19):
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Create, Document, Note } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { following, timelinePosts } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+// ---cut---
 .on(Create, async (_ctx, create) => {
   // A remote actor has authored something.  We only cache it if
   // (a) the object is a Note, (b) the author is one of our
@@ -5356,7 +5394,26 @@ Second, fold the existing `Undo(Follow)` handler into a single
 listener that branches on the embedded type, and add a `Like`
 listener at the end of the chain.
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Follow, Like, Undo } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { followers, likes, users } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+// ---cut---
 .on(Undo, async (ctx, undo) => {
   const object = await undo.getObject();
   if (object instanceof Follow) {
@@ -5398,7 +5455,25 @@ listener at the end of the chain.
 })
 ~~~~
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Like } from "@fedify/vocab";
+import { db } from "./db/client";
+import { likes } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+// ---cut---
 .on(Like, async (_ctx, like) => {
   if (like.actorId == null || like.objectId == null) return;
   const likeId = like.id?.href ?? `${like.actorId.href}#${like.objectId.href}`;
@@ -5632,7 +5707,30 @@ The same `Create` listener that caches top-level posts must
 now route comments into the new table.  Open
 *server/federation.ts* and update the listener:
 
-~~~~ typescript [server/federation.ts]
+~~~~ typescript twoslash [server/federation.ts]
+// @noErrors: 2304 2307
+import {
+  createFederation,
+  InProcessMessageQueue,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import {
+  Create,
+  Note,
+  getActorHandle,
+} from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { comments, following, timelinePosts } from "./db/schema";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+// ---cut---
 .on(Create, async (ctx, create) => {
   if (create.actorId == null) return;
   const object = await create.getObject();
