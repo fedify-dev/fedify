@@ -163,23 +163,21 @@ const lookupModeOption = withDefault(
           key: (config) => config.lookup?.recurse,
         },
       ),
-      recurseDepth: withDefault(
-        bindConfig(
-          option(
-            "--recurse-depth",
-            integer({ min: 1, metavar: "DEPTH" }),
-            {
-              description: message`Maximum recursion depth for ${
-                optionNames(["--recurse"])
-              }.`,
-            },
-          ),
+      recurseDepth: bindConfig(
+        option(
+          "--recurse-depth",
+          integer({ min: 1, metavar: "DEPTH" }),
           {
-            context: configContext,
-            key: (config) => config.lookup?.recurseDepth,
+            description: message`Maximum recursion depth for ${
+              optionNames(["--recurse"])
+            }.`,
           },
         ),
-        20,
+        {
+          context: configContext,
+          key: (config) => config.lookup?.recurseDepth ?? 20,
+          default: 20,
+        },
       ),
       suppressErrors: suppressErrorsOption,
     }),
