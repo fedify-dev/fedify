@@ -633,6 +633,14 @@ because *nuxt.config.ts* changed.  Otherwise, run it again:
 npm run dev
 ~~~~
 
+> [!TIP]
+> Adding a brand-new file under *app/pages/* sometimes makes Nuxt's
+> HMR briefly serve a 404 for the new route while the route map
+> reloads.  If that happens, stop the dev server with
+> <kbd>Ctrl</kbd>+<kbd>C</kbd> and run `npm run dev` again; a clean
+> start always picks the new page up.  The same applies later when
+> we add the rest of the routes.
+
 Open <http://localhost:3000/> and you should see the new shell:
 
 ![The PxShare home page: a pink brand name on the left, a Compose button
@@ -825,12 +833,15 @@ import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // The single local user of this instance.  The `id = 1` check enforces
 // "only one account per instance"; if anyone tries to insert another
-// row, SQLite rejects the write.
+// row, SQLite rejects the write.  That same check makes `username`
+// trivially unique, so we deliberately do not add `.unique()` on it
+// (drizzle-kit re-emits unique indexes on every push against a CHECK-
+// constrained table and the second push fails).
 export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at")
       .notNull()
@@ -1256,7 +1267,7 @@ import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger("content-sharing");
 
-const federation = createFederation({
+export const federation = createFederation({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -1318,7 +1329,7 @@ import { users } from "./db/schema";
 
 const logger = getLogger("content-sharing");
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -1555,7 +1566,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -1641,7 +1652,7 @@ import { actorKeys, users } from "./db/schema";
 
 const logger = getLogger("content-sharing");
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -2121,7 +2132,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -2201,7 +2212,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { actorKeys, followers, users } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
   // Pixelfed (as of 2026-04) only implements the legacy
@@ -3054,7 +3065,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -4294,7 +4305,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -4572,7 +4583,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { following } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -5144,7 +5155,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: false }),
-    username: text("username").notNull().unique(),
+    username: text("username").notNull(),
     name: text("name").notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -5215,7 +5226,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { following, timelinePosts } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -5686,7 +5697,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { followers, likes, users } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -5746,7 +5757,7 @@ import { Like } from "@fedify/vocab";
 import { db } from "./db/client";
 import { likes } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
@@ -6035,7 +6046,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { comments, following, timelinePosts } from "./db/schema";
 
-const federation = createFederation<void>({
+export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
   queue: new InProcessMessageQueue(),
 });
