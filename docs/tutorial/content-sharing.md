@@ -1393,7 +1393,7 @@ A lot is happening here, so let's walk through it.
     handling activities in this chapter, calling
     `~Federatable.setInboxListeners()` with empty bodies is enough to
     make the call succeed.  We will fill in the listener bodies in
-    [chapter 10](#handling-follows).
+    [*Handling follows*](#handling-follows).
 
 > [!TIP]
 > [`Person`] is one of many actor types in the ActivityPub vocabulary.
@@ -1465,7 +1465,8 @@ Error: It may be a private object.  Try with -a/--authorized-fetch.
 
 ### Browser still gets HTML
 
-The HTML profile page from chapter 6 is unchanged.  Visit
+The HTML profile page from [*Profile page*](#profile-page) is
+unchanged.  Visit
 <http://localhost:3000/users/alice> in your browser and the same Vue
 page renders, because Fedify only intercepts requests whose
 <code>Accept</code> header asks for ActivityPub-flavored JSON.
@@ -1485,12 +1486,12 @@ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" \
 ~~~~
 
 > [!NOTE]
-> *@fedify/nuxt* implements this by registering its middleware ahead
-> of Nuxt's pages.  Every incoming request goes through Fedify first;
-> if Fedify recognises the URL and the <code>Accept</code> header,
-> it answers directly.  Otherwise it falls through to Nuxt and our
-> Vue page handles it.  Both worlds share the same route table, so
-> we never have to keep two URL schemes in sync.
+> [`@fedify/nuxt`][fedify-nuxt] implements this by registering its middleware
+> ahead of Nuxt's pages.  Every incoming request goes through Fedify first; if
+> Fedify recognises the URL and the <code>Accept</code> header, it answers
+> directly.  Otherwise it falls through to Nuxt and our Vue page handles it.
+> Both worlds share the same route table, so we never have to keep two URL
+> schemes in sync.
 
 With a real actor in place, the next chapter teaches alice how to
 *sign* the activities she sends and verify the ones she receives.
@@ -1769,7 +1770,8 @@ fedify lookup http://localhost:3000/users/alice
 ~~~~
 
 The response now carries a `publicKey` and an `assertionMethods`
-array, in addition to the properties from chapter 7:
+array, in addition to the properties from
+[*Actor dispatcher*](#actor-dispatcher):
 
 ~~~~ console
 ✔ Fetched object: http://localhost:3000/users/alice
@@ -1840,7 +1842,8 @@ curl 'http://localhost:3000/.well-known/webfinger?resource=acct:alice@localhost:
 
 We did not write a WebFinger endpoint.  Fedify wires one up
 automatically the moment `setActorDispatcher` is registered, using
-the same `{identifier}` template as a hint.  When chapter 9 puts the
+the same `{identifier}` template as a hint.  When
+[*First federation test*](#first-federation-test) puts the
 app behind a public hostname, that hostname will be all another
 server needs to discover and verify alice.
 
@@ -1941,7 +1944,8 @@ to actor flow:
 fedify lookup @alice@<tunnel>
 ~~~~
 
-You should get back the same `Person` object we saw in chapter 8,
+You should get back the same `Person` object we saw in
+[*Cryptographic key pairs*](#cryptographic-key-pairs),
 except every URL now starts with the tunnel's hostname:
 
 ~~~~ console
@@ -2000,7 +2004,7 @@ The avatar is a default placeholder because we never wired one up
 for alice.  The *Follow* button is a clickable button, but no
 follow flow runs yet; the inbox handler that turns the academy's
 incoming `Follow` activity into a follower record is what we build
-in [chapter 10](#handling-follows).
+in [*Handling follows*](#handling-follows).
 
 ### Looking alice up from Pixelfed
 
@@ -2041,13 +2045,15 @@ have been quietly built up over the previous chapters:
 
  -  *WebFinger.*  Both Mastodon and Pixelfed asked our tunnel for
     `acct:alice@<tunnel>`, and Fedify answered using the actor
-    dispatcher we registered in chapter 7.
+    dispatcher we registered in
+    [*Actor dispatcher*](#actor-dispatcher).
  -  *Signed actor fetch.*  The remote servers signed their request
     with their own actor's keys; Fedify verified the signature
     against the public key it fetched from the remote server.
  -  *Public keys advertised on alice.*  Once Mastodon or Pixelfed
     cached alice's actor JSON, they recorded the keys we generated
-    in chapter 8.  When alice eventually sends activities back, the
+    in [*Cryptographic key pairs*](#cryptographic-key-pairs).  When
+    alice eventually sends activities back, the
     receiver will already know which key to verify against.
 
 Nothing in our code knows about Mastodon or Pixelfed specifically.
@@ -2084,12 +2090,14 @@ that accepts signed `POST` requests carrying activities.  When
 somebody likes alice's post, the `Like` lands in alice's inbox.
 When somebody follows alice, the `Follow` lands in her inbox.
 A server can also expose a *shared inbox* (the `endpoints.sharedInbox`
-URL we set in chapter 7) for activities that target many local
+URL we set in [*Actor dispatcher*](#actor-dispatcher)) for
+activities that target many local
 actors at once; busy instances rely on it to deliver one copy of a
 public post instead of one POST per follower.
 
 Fedify already speaks the inbox protocol.  The
-`~Federatable.setInboxListeners()` call we added in chapter 7
+`~Federatable.setInboxListeners()` call we added in
+[*Actor dispatcher*](#actor-dispatcher)
 registers the routes; the empty body just acknowledges every
 request with a `202 Accepted`.  Adding behavior is a matter of
 chaining `~InboxListenerSetters.on(ActivityClass, callback)`.
@@ -2441,8 +2449,8 @@ flips to *Unfollow* on alice's profile:
 ![alice's profile rendered on a Pixelfed instance after the round
 trip succeeds.  The follow button now reads *Unfollow*; the
 counters still read 0/0/0 because alice does not yet expose a
-followers collection (we add it in
-chapter 12).](./content-sharing/pixelfed-after-follow.png)
+followers collection (we add it in *Followers list and
+collection*).](./content-sharing/pixelfed-after-follow.png)
 
 Same handler, two very different servers, identical outcome.
 That is the win condition for an ActivityPub server: behavior
@@ -2532,7 +2540,7 @@ import { actorKeys, followers, users } from "./db/schema";
 
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
-  .on(Follow, async (ctx, follow) => { /* chapter 10 */ })
+  .on(Follow, async (ctx, follow) => { /* from earlier */ })
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject();
     if (!(object instanceof Follow)) return;
@@ -2606,7 +2614,8 @@ INF fedify·federation·inbox Activity '...#follows/<id>/undo' has been processe
 ~~~~
 
 The Mastodon UI flips the button back to *Follow* and the follower
-counter ticks down.  The same SQL we ran in chapter 10 confirms
+counter ticks down.  The same SQL we ran in
+[*Handling follows*](#handling-follows) confirms
 the row is gone:
 
 ~~~~ sh
@@ -2633,7 +2642,8 @@ A subtler design question: why include
 `eq(followers.followingId, localUser.id)` in the `WHERE` clause if `actorUri`
 is unique to the remote actor?
 
-The answer lies in how the table will grow when chapter 19 adds
+The answer lies in how the table will grow when
+[*Following remote accounts*](#following-remote-accounts) adds
 multi-account support.  Today there is exactly one local user
 (`localUser.id = 1`), but the schema's composite primary key
 `(following_id, actor_uri)` lets the same remote actor follow
@@ -3031,7 +3041,8 @@ Image post schema
 Up to this point alice's account has been a passive shell: it
 exists, accepts followers, and otherwise stays silent.  This
 chapter lays the groundwork for posts.  We will not let alice
-*publish* anything yet (that's [chapter 14](#composing-and-uploading)),
+*publish* anything yet (that's
+[*Composing and uploading*](#composing-and-uploading)),
 but we add the storage layer the next several chapters all build on:
 a `posts` table and a directory to hold uploaded images.
 
@@ -3078,13 +3089,16 @@ Walking through the columns:
 
 `id`
 :   An autoincrementing integer.  This is the post's public
-    identifier on our server; chapter 15 weaves it into the
+    identifier on our server;
+    [*`Note` object dispatcher*](#note-object-dispatcher) weaves it
+    into the
     ActivityPub IRI we hand out to other servers.
 
 `userId`
 :   Foreign key to `users`.  Today the only value is `1`
     (alice), but the foreign key is forward-compatible with
-    chapter 19, which starts caching remote actors in the same
+    [*Following remote accounts*](#following-remote-accounts),
+    which starts caching remote actors in the same
     table.
 
 `caption`
@@ -3100,13 +3114,16 @@ Walking through the columns:
 
 `mediaType`
 :   MIME type (`image/jpeg`, `image/png`, …).  We hand this
-    verbatim to ActivityPub's `Document.mediaType` once chapter 15
+    verbatim to ActivityPub's `Document.mediaType` once
+    [*`Note` object dispatcher*](#note-object-dispatcher)
     wires up the Note object dispatcher.
 
 `createdAt`
 :   Unix-style created-at timestamp.  Drizzle's
     `` sql`CURRENT_TIMESTAMP` `` default lets SQLite stamp it for
-    us; the post composer in chapter 14 only sets the other
+    us; the post composer in
+    [*Composing and uploading*](#composing-and-uploading) only
+    sets the other
     columns.
 
 Push the schema:
@@ -3387,7 +3404,8 @@ right.](./content-sharing/compose-form.png)
 
 Pick any small image, add a caption, and click *Post*.  The
 browser follows the `303` redirect back to alice's profile.
-The post itself does not show on the profile yet; chapter 16
+The post itself does not show on the profile yet;
+[*Profile feed*](#profile-feed)
 adds the grid of posts that pulls from the new table.  But you
 can confirm the row was written:
 
@@ -3651,7 +3669,9 @@ export default defineEventHandler(async (event) => {
 });
 ~~~~
 
-The endpoint mirrors the followers one from chapter 12: validate
+The endpoint mirrors the followers one from
+[*Followers list and collection*](#followers-list-and-collection):
+validate
 the username, resolve the user, return everything ordered
 newest-first.  Real Pixelfed instances paginate this; we will
 revisit pagination in the closing chapter under “areas for
@@ -3796,7 +3816,7 @@ link to, so clicking a tile leads somewhere instead of 404ing.
 Post detail page
 ----------------
 
-The grid tiles from chapter 16 link at
+The grid tiles from [*Profile feed*](#profile-feed) link at
 */users/&lt;username&gt;/posts/&lt;id&gt;* but that route does
 not exist yet.  This chapter adds the page that goes there: a
 single image at full bleed, the caption, a timestamp, and the
@@ -3979,7 +3999,8 @@ PxShare exists.
 ### Refactor: a reusable `buildNote`
 
 The Note we construct inside `~Federatable.setObjectDispatcher()`
-in chapter 15 is exactly what we want to wrap in a `Create`
+in [*`Note` object dispatcher*](#note-object-dispatcher) is
+exactly what we want to wrap in a `Create`
 when alice composes.  Pull that body into a small helper so the
 two callers share one definition.
 
@@ -4170,7 +4191,9 @@ Three details worth pausing on:
 
 `"followers"` *as a sendActivity recipient*
 :   Fedify recognizes this magic string and consults the followers
-    dispatcher we wrote in chapter 12.  It walks the result,
+    dispatcher we wrote in
+    [*Followers list and collection*](#followers-list-and-collection).
+    It walks the result,
     deduplicates by shared-inbox URL where one is advertised, and
     queues a delivery for each unique endpoint.  The compose
     request returns immediately; the actual HTTP POSTs happen in
@@ -4243,7 +4266,8 @@ remote `Create(Note)` activities can address as inbox.
 
 ### A `following` table
 
-Mirror the *followers* table from chapter 10, with two new
+Mirror the *followers* table from
+[*Handling follows*](#handling-follows), with two new
 columns:
 
 `status`
@@ -4676,9 +4700,12 @@ Following list
 --------------
 
 This chapter is the symmetric counterpart of the followers list
-from chapter 12: an HTML page that shows who alice follows, plus
+from [*Followers list and collection*](#followers-list-and-collection):
+an HTML page that shows who alice follows, plus
 an ActivityPub *OrderedCollection* peers can fetch.  Both reuse
-the *following* table from chapter 19, filtered to the rows
+the *following* table from
+[*Following remote accounts*](#following-remote-accounts),
+filtered to the rows
 whose status is `accepted`.
 
 ### A JSON endpoint
@@ -5180,7 +5207,7 @@ npm run db:push
 
 Open *server/federation.ts* and add a `Create` handler at the
 end of the inbox-listener chain (after the `Accept` handler from
-chapter 19):
+[*Following remote accounts*](#following-remote-accounts)):
 
 ~~~~ typescript twoslash [server/federation.ts]
 // @noErrors: 2304 2307
@@ -5399,7 +5426,8 @@ if (data.value?.user) {
 ### Trying it out
 
 Restart the dev server and post a photo from a Pixelfed account
-that alice follows (chapter 19 covers the follow flow).  Within
+that alice follows (*Following remote accounts* covers the
+follow flow).  Within
 a second or two, alice's home page lights up:
 
 ![alice's home grid showing a single full-width card with
@@ -5626,7 +5654,7 @@ Two design notes:
 `isActor()`
 :   `lookupObject()` is typed broadly because the URI could in
     principle resolve to anything (a Note, a Collection).
-    `isActor()` from *@fedify/vocab* narrows it down to
+    `isActor()` from [`@fedify/vocab`][fedify-vocab] narrows it down to
     `Application | Group | Organization | Person | Service`.
     If the lookup somehow returns a Note we silently skip
     delivery; the local row still flips, which is the user's
@@ -5637,10 +5665,12 @@ Two design notes:
     match by activity id (Mastodon does) line up with the row
     they recorded earlier.
 
+[fedify-vocab]: https://www.npmjs.com/package/@fedify/vocab
+
 ### Inbound: receive `Like`s and `Undo(Like)`
 
 Two changes in *server/federation.ts*.  First, add `Like` to
-the *@fedify/vocab* import (alongside `Follow`, `Note`, etc.).
+the [`@fedify/vocab`][fedify-vocab] import (alongside `Follow`, `Note`, etc.).
 Second, fold the existing `Undo(Follow)` handler into a single
 listener that branches on the embedded type, and add a `Like`
 listener at the end of the chain.
@@ -6282,7 +6312,8 @@ export default defineEventHandler(async (event) => {
 });
 ~~~~
 
-The shape mirrors the `posts.post.ts` handler from chapter 18,
+The shape mirrors the `posts.post.ts` handler from
+[*Distributing new posts to followers*](#distributing-new-posts-to-followers),
 with three differences:
 
 1.  The recipient depends on whether the parent is a local post
@@ -6301,9 +6332,10 @@ with three differences:
 Pixelfed re-fetches the comment Note by URL when it threads a
 reply, so the UUID-based comment URI we mint above must resolve
 through the same `setObjectDispatcher(Note, …)` call from
-chapter 15.  Fedify only allows one dispatcher per `Note`
-class; instead of registering a second route, branch the
-existing dispatcher on the id shape:
+[*`Note` object dispatcher*](#note-object-dispatcher).  Fedify
+only allows one dispatcher per `Note` class; instead of
+registering a second route, branch the existing dispatcher on
+the id shape:
 
 ~~~~ typescript twoslash [server/federation.ts]
 // @noErrors: 2304 2307
@@ -6390,7 +6422,8 @@ federation.setObjectDispatcher(
 
 Sharing the URL space keeps the route table tidy and lets
 peers crawl back to any single comment by URL.  The numeric-vs-
-UUID branch is unambiguous: chapter 13's posts table uses
+UUID branch is unambiguous:
+[*Image post schema*](#image-post-schema)'s posts table uses
 auto-incrementing integers, and `crypto.randomUUID()` always
 contains hyphens, so `Number(id)` is `NaN` for comments.
 
@@ -6484,7 +6517,7 @@ detail.
     accept a *cursor*; passing it through into the SQL query
     keeps memory flat for accounts with thousands of followers.
     The same applies to the home timeline grid.  See
-    *Collections* in the manual.
+    [*Collections*](../manual/collections.md) in the manual.
 
 ### Mid-size additions
 
