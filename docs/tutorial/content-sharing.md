@@ -1101,7 +1101,7 @@ Create *server/api/users/\[username].get.ts*.  The square brackets in
 the filename make `username` a route parameter that Nuxt extracts for
 us.
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -1132,7 +1132,7 @@ Create *app/pages/users/\[username].vue*.  `useFetch` is Nuxt's
 server-aware fetch wrapper: during SSR it calls the endpoint as a
 direct function, on the client it does a real network request.
 
-~~~~ vue [app/pages/users/[username].vue]
+~~~~ vue [app/pages/users/&#91;username&#93;.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -2808,7 +2808,7 @@ git mv app/pages/users/\[username\].vue app/pages/users/\[username\]/index.vue
 
 Now create *app/pages/users/\[username]/followers.vue*:
 
-~~~~ vue [app/pages/users/[username]/followers.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/followers.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -2876,7 +2876,7 @@ This page expects a JSON endpoint at
 */api/users/\[username]/followers*.  Add it next to the
 existing user endpoint, in *server/api/users/\[username]/followers.get.ts*:
 
-~~~~ typescript [server/api/users/[username]/followers.get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/followers.get.ts]
 import { desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../db/client";
@@ -2905,7 +2905,7 @@ export default defineEventHandler(async (event) => {
 Finally, surface the count on the profile page itself.  Update
 *server/api/users/\[username].get.ts* to include `followerCount`:
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { count, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -2933,7 +2933,7 @@ export default defineEventHandler(async (event) => {
 …and rewrite *app/pages/users/\[username]/index.vue* to
 render the count as a link to the new page:
 
-~~~~ vue [app/pages/users/[username]/index.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -3625,7 +3625,7 @@ This chapter renders the feed.
 
 Create *server/api/users/\[username]/posts.get.ts*:
 
-~~~~ typescript [server/api/users/[username]/posts.get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/posts.get.ts]
 import { desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../db/client";
@@ -3662,7 +3662,7 @@ improvement.”
 Open *server/api/users/\[username].get.ts* and add a
 matching `postCount` aggregate to the existing profile payload:
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { count, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -3696,7 +3696,7 @@ export default defineEventHandler(async (event) => {
 Rewrite *app/pages/users/\[username]/index.vue* to fetch
 both endpoints in parallel and render the post grid:
 
-~~~~ vue [app/pages/users/[username]/index.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -3808,7 +3808,7 @@ it is shared.
 Create
 *server/api/users/\[username]/posts/\[id].get.ts*:
 
-~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
 import { and, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../../db/client";
@@ -3855,7 +3855,7 @@ to multiple local users.
 Create
 *app/pages/users/\[username]/posts/\[id].vue*:
 
-~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -4686,7 +4686,7 @@ whose status is `accepted`.
 Create
 *server/api/users/\[username]/following.get.ts*:
 
-~~~~ typescript [server/api/users/[username]/following.get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/following.get.ts]
 import { and, desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../../db/client";
@@ -4721,7 +4721,7 @@ export default defineEventHandler(async (event) => {
 
 Create *app/pages/users/\[username]/following.vue*:
 
-~~~~ vue [app/pages/users/[username]/following.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/following.vue]
 <script setup lang="ts">
 const route = useRoute();
 const username = computed(() => String(route.params.username));
@@ -4915,7 +4915,7 @@ Two details worth pointing out:
 Update *server/api/users/\[username].get.ts* to surface
 *followingCount* alongside the existing aggregates:
 
-~~~~ typescript [server/api/users/[username].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;.get.ts]
 import { and, count, eq } from "drizzle-orm";
 import { createError, defineEventHandler, getRouterParam } from "h3";
 import { db } from "../../db/client";
@@ -4944,11 +4944,11 @@ export default defineEventHandler(async (event) => {
 Then add a third pill to the profile header in
 *app/pages/users/\[username]/index.vue*:
 
-~~~~ typescript [app/pages/users/[username]/index.vue]
+~~~~ typescript [app/pages/users/&#91;username&#93;/index.vue]
 const followingCount = computed(() => profile.value?.followingCount ?? 0);
 ~~~~
 
-~~~~ vue [app/pages/users/[username]/index.vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
 <NuxtLink
   :to="`/users/${user.username}/followers`"
   class="hover:text-brand"
@@ -5816,7 +5816,7 @@ export default defineEventHandler(async (event) => {
 Apply the same trick to the local post detail endpoint so
 alice's profile shows like counts on her own posts:
 
-~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
 const origin = `${getRequestProtocol(event)}://${getRequestURL(event).host}`;
 const noteUri = `${origin}/users/${username}/posts/${id}`;
 const [{ likeCount }] = await db
@@ -5871,11 +5871,11 @@ async function toggleLike(post: TimelineEntry) {
 A small addition to the post detail Vue page surfaces the count
 on alice's own posts:
 
-~~~~ typescript [app/pages/users/[username]/posts/[id].vue]
+~~~~ typescript [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
 const likeCount = computed(() => data.value?.likeCount ?? 0);
 ~~~~
 
-~~~~ vue [app/pages/users/[username]/posts/[id].vue]
+~~~~ vue [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
 <p class="text-sm text-gray-500">
   <span class="text-rose-500">♥</span>
   {{ likeCount }}
@@ -6079,7 +6079,7 @@ Update
 *server/api/users/\[username]/posts/\[id].get.ts*
 to pull the matching rows:
 
-~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
+~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
 import { and, asc, count, eq } from "drizzle-orm";
 // …
 const commentRows = await db
@@ -6094,7 +6094,7 @@ Then update the Vue page to render the thread and provide a
 textarea.  The interesting part is the `submitComment` handler
 (the rest is straightforward template):
 
-~~~~ typescript [app/pages/users/[username]/posts/[id].vue]
+~~~~ typescript [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
 const noteUri = computed(() => {
   if (!user.value || !post.value) return "";
   if (typeof window === "undefined") return "";
