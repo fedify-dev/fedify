@@ -3584,7 +3584,7 @@ This chapter renders the feed.
 
 ### A JSON endpoint for the posts list
 
-Create *server/api/users/&#91;username&#93;/posts.get.ts*:
+Create *server/api/users/\[username]/posts.get.ts*:
 
 ~~~~ typescript [server/api/users/[username]/posts.get.ts]
 import { desc, eq } from "drizzle-orm";
@@ -3620,7 +3620,7 @@ improvement.”
 
 ### Surfacing the post count
 
-Open *server/api/users/&#91;username&#93;.get.ts* and add a
+Open *server/api/users/\[username].get.ts* and add a
 matching `postCount` aggregate to the existing profile payload:
 
 ~~~~ typescript [server/api/users/[username].get.ts]
@@ -3654,7 +3654,7 @@ export default defineEventHandler(async (event) => {
 
 ### The grid on the profile page
 
-Rewrite *app/pages/users/&#91;username&#93;/index.vue* to fetch
+Rewrite *app/pages/users/\[username]/index.vue* to fetch
 both endpoints in parallel and render the post grid:
 
 ~~~~ vue [app/pages/users/[username]/index.vue]
@@ -3767,7 +3767,7 @@ it is shared.
 ### A JSON endpoint for one post
 
 Create
-*server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts*:
+*server/api/users/\[username]/posts/\[id].get.ts*:
 
 ~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
 import { and, eq } from "drizzle-orm";
@@ -3814,7 +3814,7 @@ to multiple local users.
 ### The Vue page
 
 Create
-*app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue*:
+*app/pages/users/\[username]/posts/\[id].vue*:
 
 ~~~~ vue [app/pages/users/[username]/posts/[id].vue]
 <script setup lang="ts">
@@ -4574,7 +4574,7 @@ whose status is `accepted`.
 ### A JSON endpoint
 
 Create
-*server/api/users/&#91;username&#93;/following.get.ts*:
+*server/api/users/\[username]/following.get.ts*:
 
 ~~~~ typescript [server/api/users/[username]/following.get.ts]
 import { and, desc, eq } from "drizzle-orm";
@@ -4609,7 +4609,7 @@ export default defineEventHandler(async (event) => {
 
 ### The Vue page
 
-Create *app/pages/users/&#91;username&#93;/following.vue*:
+Create *app/pages/users/\[username]/following.vue*:
 
 ~~~~ vue [app/pages/users/[username]/following.vue]
 <script setup lang="ts">
@@ -4677,7 +4677,7 @@ useHead({
 
 ### A counter on the profile
 
-Update *server/api/users/&#91;username&#93;.get.ts* to surface
+Update *server/api/users/\[username].get.ts* to surface
 *followingCount* alongside the existing aggregates:
 
 ~~~~ typescript [server/api/users/[username].get.ts]
@@ -4707,7 +4707,7 @@ export default defineEventHandler(async (event) => {
 ~~~~
 
 Then add a third pill to the profile header in
-*app/pages/users/&#91;username&#93;/index.vue*:
+*app/pages/users/\[username]/index.vue*:
 
 ~~~~ vue [app/pages/users/[username]/index.vue]
 const followingCount = computed(() => profile.value?.followingCount ?? 0);
@@ -5688,7 +5688,7 @@ filter.
 ### Surface comments on the post detail page
 
 Update
-*server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts*
+*server/api/users/\[username]/posts/\[id].get.ts*
 to pull the matching rows:
 
 ~~~~ typescript [server/api/users/[username]/posts/[id].get.ts]
@@ -5916,7 +5916,7 @@ detail.
 `setObjectDispatcher` *for comments*
 :   Chapter 23 mints fragment URLs for alice's outbound
     comments.  Adding a real dispatcher at
-    */users/&#91;username&#93;/comments/&#91;id&#93;* makes
+    */users/\[username]/comments/\[id]* makes
     each comment a permalink Mastodon can crawl back to.
 
 *Multi-image posts*
