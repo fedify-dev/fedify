@@ -9,13 +9,26 @@ import {
   Endpoints,
   Follow,
   Image,
+  isActor,
   Note,
   Person,
   PUBLIC_COLLECTION,
   type Recipient,
   Undo,
 } from "@fedify/vocab";
+import { broadcastEvent } from "./sse.ts";
 import { keyPairsStore, postStore, relationStore } from "./store.ts";
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) =>
+    ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[c]!);
+}
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -40,6 +53,7 @@ federation
         icon: new Image({ url: new URL("/demo-profile.png", context.url) }),
         url: new URL("/", context.url),
         inbox: context.getInboxUri(identifier),
+        followers: context.getFollowersUri(identifier),
         endpoints: new Endpoints({ sharedInbox: context.getInboxUri() }),
         publicKey: keyPairs[0].cryptographicKey,
         assertionMethods: keyPairs.map((keyPair) => keyPair.multikey),
@@ -76,16 +90,14 @@ federation
     if (result?.type !== "actor" || result.identifier !== IDENTIFIER) {
       return;
     }
-    const follower = await follow.getActor(context) as Person;
-    if (!follower?.id) {
-      throw new Error("follower is null");
-    }
+    const follower = await follow.getActor(context);
+    if (!isActor(follower) || follower.id == null) return;
     await context.sendActivity(
       { identifier: result.identifier },
       follower,
       new Accept({
         id: new URL(
-          `#accepts/${follower.id.href}`,
+          `#accepts/${encodeURIComponent(follow.id.href)}`,
           context.getActorUri(IDENTIFIER),
         ),
         actor: follow.objectId,
@@ -93,26 +105,26 @@ federation
       }),
     );
     relationStore.set(follower.id.href, follower);
+    broadcastEvent();
   })
   .on(Undo, async (context, undo) => {
     const activity = await undo.getObject(context);
-    if (activity instanceof Follow) {
-      if (activity.id == null) {
-        return;
-      }
-      if (undo.actorId == null) {
-        return;
-      }
-      relationStore.delete(undo.actorId.href);
-    } else {
+    if (!(activity instanceof Follow)) {
       console.debug(undo);
+      return;
     }
+    if (activity.id == null || undo.actorId == null) return;
+    const demoActorUri = context.getActorUri(IDENTIFIER);
+    if (activity.objectId?.href !== demoActorUri.href) return;
+    relationStore.delete(undo.actorId.href);
+    broadcastEvent();
   });
 
 federation.setObjectDispatcher(
   Note,
   "/users/{identifier}/posts/{id}",
   (ctx, values) => {
+    if (values.identifier !== IDENTIFIER) return null;
     const id = ctx.getObjectUri(Note, values);
     const post = postStore.get(id);
     if (post == null) return null;
@@ -121,7 +133,7 @@ federation.setObjectDispatcher(
       attribution: ctx.getActorUri(values.identifier),
       to: PUBLIC_COLLECTION,
       cc: ctx.getFollowersUri(values.identifier),
-      content: post.content,
+      content: escapeHtml(post.content),
       mediaType: "text/html",
       published: post.published,
       url: id,
@@ -132,7 +144,8 @@ federation.setObjectDispatcher(
 federation
   .setFollowersDispatcher(
     "/users/{identifier}/followers",
-    () => {
+    (_ctx, identifier) => {
+      if (identifier !== IDENTIFIER) return null;
       const followers = Array.from(relationStore.values());
       const items: Recipient[] = followers.map((f) => ({
         id: f.id,
@@ -146,20 +159,15 @@ federation
 federation.setNodeInfoDispatcher("/nodeinfo/2.1", (ctx) => {
   return {
     software: {
-      /**
-       * Fill `<framework>` with the actual framework name.
-       * Lowercase, digits, and hyphens only.
-       */
-      name: "fedify-<framework>",
+      name: "fedify-nuxt",
       version: "0.0.1",
       homepage: new URL(ctx.canonicalOrigin),
     },
     protocols: ["activitypub"],
     usage: {
-      // Usage statistics is hard-coded here for demonstration purposes.
-      // You should replace these with real statistics:
       users: { total: 1, activeHalfyear: 1, activeMonth: 1 },
       localPosts: postStore.getAll().length,
+      localComments: 0,
     },
   };
 });

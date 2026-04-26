@@ -1,0 +1,25 @@
+{
+  "name": "nuxt-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Fedify app with Nuxt integration",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "start": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@fedify/nuxt": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@logtape/logtape": "catalog:",
+    "nuxt": "catalog:",
+    "h3": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
