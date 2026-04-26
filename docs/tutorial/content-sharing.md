@@ -4597,10 +4597,14 @@ to the actor URI if no id is present.
 
 ### Trying it out
 
-Restart the dev server, open <http://localhost:3000/follow>,
-paste a remote handle, and click *Follow*.  An ActivityPub.Academy
-account is the easiest target because academy auto-accepts
-every Follow without manual intervention:
+Restart the dev server, open the *Follow* page on the tunnel
+URL (so alice's signature points at the canonical origin),
+paste a remote handle, and click *Follow*.
+
+#### Following an ActivityPub.Academy account
+
+An ActivityPub.Academy account is the easiest first target:
+academy auto-accepts every Follow without manual intervention:
 
 ![The Follow page after submitting “&commat;anbelia\_doshaelen&commat;activitypub.academy”, with a green confirmation banner that reads “Sent a Follow to &commat;anbelia\_doshaelen&commat;activitypub.academy.  It will move to ‘accepted’ once the remote server confirms.”](./content-sharing/follow-success.png)
 
@@ -4608,7 +4612,7 @@ The dev server narrates the round trip in real time:
 
 ~~~~ ansi [terminal]
 ℹ INF fedify·federation·outbox Successfully sent activity
-  'https://blend-knowledgestorm-quebec-spray.trycloudflare.com/users/alice#follows/1f39…'
+  'https://your-tunnel.example/users/alice#follows/1f39…'
   to 'https://activitypub.academy/users/anbelia_doshaelen/inbox'.
 ℹ INF fedify·federation·inbox Activity 'https://activitypub.academy/users/anbelia_doshaelen#accepts/follows/16039'
   is enqueued.
@@ -4625,6 +4629,32 @@ sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
 ~~~~
 @anbelia_doshaelen@activitypub.academy|accepted
 ~~~~
+
+#### Following a Pixelfed account
+
+Pixelfed is the second proof point and the more important one
+for this tutorial.  Submit a Pixelfed account's handle in the
+same form.  The dev server logs the same shape (just to a
+Pixelfed inbox), Pixelfed sends the `Accept` back essentially
+instantaneously, and the row in *following* flips to
+*accepted*:
+
+~~~~ sh
+sqlite3 content-sharing.sqlite3 "SELECT handle, status FROM following"
+~~~~
+
+~~~~
+@anbelia_doshaelen@activitypub.academy|accepted
+@tester@your-pixelfed.example|accepted
+~~~~
+
+On the Pixelfed side, log in to the account that just got
+followed and open the *Notifications* page: alice's follow
+appears in the list:
+
+![Pixelfed's Notifications page showing one entry,
+“&commat;alice&commat;your-tunnel.example followed
+you.”](./content-sharing/pixelfed-follow-notification.png)
 
 > [!NOTE]
 > Mastodon proper sometimes takes a few seconds to send the
@@ -5711,8 +5741,11 @@ const likeCount = computed(() => data.value?.likeCount ?? 0);
 
 ### Trying it out
 
-Click the heart on any home tile.  The button fills in, the
-counter ticks up, and the dev log shows the outbound `Like`:
+#### Outbound: alice likes a Pixelfed post
+
+Click the heart on a Pixelfed-sourced tile in alice's home
+grid.  The button fills in, the counter ticks up, and the dev
+log shows the outbound `Like`:
 
 ~~~~ ansi [terminal]
 ℹ INF fedify·federation·outbox Successfully sent activity
@@ -5720,10 +5753,21 @@ counter ticks up, and the dev log shows the outbound `Like`:
   to 'https://your-pixelfed.example/users/tester/inbox'.
 ~~~~
 
-For the inbound side, click the heart on alice's photo from a
-Pixelfed account that follows her.  Pixelfed sends a `Like` to
-alice's inbox; our handler stores the row, and the post detail
-page shows *1 like* the next time alice loads it:
+Open the original post on Pixelfed: the like appears under the
+photo (*Liked by alice*, *1 Like*) and a notification flags
+*&commat;alice liked your post* in the right column.
+
+![Pixelfed's post detail page for tester's beach photo,
+showing a “Liked by alice” line, a “1 Like” counter, and a
+right-column notification saying “&commat;alice liked your
+post”.](./content-sharing/pixelfed-post-with-like.png)
+
+#### Inbound: a Pixelfed account likes alice's post
+
+For the reverse direction, click the heart on alice's photo
+from a Pixelfed account that follows her.  Pixelfed sends a
+`Like` to alice's inbox; our handler stores the row, and the
+post detail page shows *1 like* the next time alice loads it:
 
 ![alice's post detail page showing her foggy beach photo with
 caption “Pixelfed federation debug post.”, a red heart icon
@@ -5731,7 +5775,8 @@ and “1 like” beneath
 it.](./content-sharing/post-detail-with-like.png)
 
 Click the heart again to unlike: the counter decrements and an
-`Undo(Like)` flies out, signed with alice's keys.
+`Undo(Like)` flies out, signed with alice's keys.  Refresh the
+Pixelfed post detail page and the *1 Like* line disappears.
 
 > [!NOTE]
 > Some peers report likes asynchronously through their own
