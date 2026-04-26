@@ -3104,7 +3104,7 @@ Walking through the columns:
 
 `mediaPath`
 :   Relative path under *public/uploads/*, e.g.
-    `alice/abc123.jpg`.  Nuxt serves anything under *public/* as
+    *alice/abc123.jpg*.  Nuxt serves anything under *public/* as
     a static asset, so there is no separate file-serving
     endpoint to write.
 
