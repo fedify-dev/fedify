@@ -686,7 +686,7 @@ Create *server/db/schema.ts* with just an empty module marker.  Later
 chapters will fill it in; keeping the file present lets us import it
 from the client right away.
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
 // Tables live here.  For now the file is empty; later chapters will fill
 // in tables for the local user, followers, posts, comments, and likes.
 
@@ -819,7 +819,7 @@ we see the home page.
 Open *server/db/schema.ts* and replace the placeholder with a real
 `users` table:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
 import { sql } from "drizzle-orm";
 import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -1540,7 +1540,7 @@ per algorithm.
 Open *server/db/schema.ts* and add an `actorKeys` table after the
 `users` table:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -2099,7 +2099,27 @@ chaining `~InboxListenerSetters.on(ActivityClass, callback)`.
 Open *server/db/schema.ts* and add an `actorKeys`-style
 `followers` table after `actorKeys`:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+// ---cut---
 // Remote actors that follow the local user.  Stored denormalized:
 // we keep just enough to address the actor when fanning out
 // activities (`inboxUrl`, `sharedInboxUrl`) and to render a basic
@@ -3017,7 +3037,21 @@ a `posts` table and a directory to hold uploaded images.
 
 Open *server/db/schema.ts* and append a new table at the bottom:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+// ---cut---
 // Image posts authored by the local user.  One row per post, one
 // image per row.  `mediaPath` is a path under *public/uploads/* so
 // Nuxt serves the file directly; `mediaType` is the MIME type so
@@ -4226,7 +4260,27 @@ columns:
 
 Append the table to *server/db/schema.ts*:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+// ---cut---
 export const following = sqliteTable(
   "following",
   {
@@ -4881,7 +4935,27 @@ the entry point alice lands on right after signup.
 
 Append to *server/db/schema.ts*:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: false }),
+    username: text("username").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [check("users_single_user", sql`${t.id} = 1`)],
+);
+// ---cut---
 export const timelinePosts = sqliteTable(
   "timeline_posts",
   {
@@ -5190,7 +5264,10 @@ from her home grid, and remote actors can heart alice's posts.
 
 Append to *server/db/schema.ts*:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import { primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+// ---cut---
 export const likes = sqliteTable(
   "likes",
   {
@@ -5678,7 +5755,10 @@ covers.
 
 Append to *server/db/schema.ts*:
 
-~~~~ typescript [server/db/schema.ts]
+~~~~ typescript twoslash [server/db/schema.ts]
+import { sql } from "drizzle-orm";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+// ---cut---
 export const comments = sqliteTable("comments", {
   noteUri: text("note_uri").primaryKey(),
   inReplyToUri: text("in_reply_to_uri").notNull(),
