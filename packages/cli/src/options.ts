@@ -10,6 +10,7 @@ import {
   message,
   object,
   option,
+  optional,
   type OptionName,
   or,
   string,
@@ -40,7 +41,7 @@ export function createTunnelServiceOption(
   const [firstOptionName, ...restOptionNames] = optionNames;
   // Note that we don't provide a default value here, since the tunneling
   // implementation will randomly select a service if none is specified.
-  return withDefault(
+  return optional(
     bindConfig(
       option(
         firstOptionName,
@@ -57,7 +58,6 @@ By default, any of the supported tunneling services will be used
         key: (config) => config.tunnelService,
       },
     ),
-    undefined,
   );
 }
 
@@ -76,19 +76,21 @@ type TunnelConfigSection = "inbox" | "relay";
 export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
   return object({
     tunnel: bindConfig(
-      withDefault(
-        map(
-          flag("-T", "--no-tunnel", {
-            description:
-              message`Do not tunnel the server to the public Internet.`,
-          }),
-          () => false as const,
-        ),
-        true,
+      map(
+        flag("-T", "--no-tunnel", {
+          description:
+            message`Do not tunnel the server to the public Internet.`,
+        }),
+        () => false as const,
       ),
       {
         context: configContext,
-        key: (config: Config) => !(config[section]?.noTunnel ?? false),
+        key: (config: Config) => {
+          const sectionConfig = config[section];
+          return sectionConfig?.noTunnel == null
+            ? undefined
+            : !sectionConfig.noTunnel;
+        },
         default: true,
       },
     ),

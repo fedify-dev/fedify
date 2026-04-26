@@ -2,6 +2,7 @@ import type { Tunnel, TunnelOptions } from "@hongminhee/localtunnel";
 import { runSync } from "@optique/run";
 import { deepEqual, rejects } from "node:assert/strict";
 import test from "node:test";
+import { runCli } from "./runner.ts";
 import type { Ora } from "ora";
 import { runTunnel, tunnelCommand } from "./tunnel.ts";
 
@@ -19,6 +20,57 @@ test("tunnel command structure", () => {
 
   deepEqual(testCommandWithoutOptions.port, 3000);
   deepEqual(testCommandWithoutOptions.service, undefined);
+});
+
+test("tunnel runner accepts omitted tunnel service", async () => {
+  const result = await runCli(["tunnel", "3000", "--ignore-config"]);
+
+  deepEqual(result.command, "tunnel");
+  deepEqual(result.port, 3000);
+  deepEqual((result as { service?: unknown }).service, undefined);
+});
+
+test("inbox runner accepts tunnel options without a tunnel service", async () => {
+  const withoutTunnel = await runCli([
+    "inbox",
+    "--no-tunnel",
+    "--ignore-config",
+  ]);
+  const withOtherOption = await runCli([
+    "inbox",
+    "--actor-name",
+    "Test Inbox",
+    "--ignore-config",
+  ]);
+
+  deepEqual(withoutTunnel.command, "inbox");
+  deepEqual((withoutTunnel as { tunnel?: unknown }).tunnel, false);
+  deepEqual(
+    (withoutTunnel as { tunnelService?: unknown }).tunnelService,
+    undefined,
+  );
+  deepEqual(withOtherOption.command, "inbox");
+  deepEqual((withOtherOption as { tunnel?: unknown }).tunnel, true);
+  deepEqual(
+    (withOtherOption as { actorName?: unknown }).actorName,
+    "Test Inbox",
+  );
+  deepEqual(
+    (withOtherOption as { tunnelService?: unknown }).tunnelService,
+    undefined,
+  );
+});
+
+test("relay runner accepts tunnel options without a tunnel service", async () => {
+  const result = await runCli([
+    "relay",
+    "--no-tunnel",
+    "--ignore-config",
+  ]);
+
+  deepEqual(result.command, "relay");
+  deepEqual((result as { tunnel?: unknown }).tunnel, false);
+  deepEqual((result as { tunnelService?: unknown }).tunnelService, undefined);
 });
 
 test("tunnel successfully creates and manages tunnel", async () => {
