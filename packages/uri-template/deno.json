@@ -1,0 +1,27 @@
+{
+  "name": "@fedify/uri-template",
+  "version": "2.2.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "description": "Symmetric RFC 6570 URI Template expansion and pattern matching for Fedify",
+  "author": {
+    "name": "Chanhaeng Lee"
+  },
+  "imports": {},
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test"
+  }
+}
