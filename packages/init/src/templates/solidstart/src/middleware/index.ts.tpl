@@ -1,3 +1,4 @@
+import "../logging";
 import { fedifyMiddleware } from "@fedify/solidstart";
 import federation from "../federation";
 
