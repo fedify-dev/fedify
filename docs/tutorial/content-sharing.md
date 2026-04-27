@@ -5681,14 +5681,24 @@ export default defineEventHandler(async (event) => {
   const ctx = federation.createContext(toWebRequest(event), undefined);
   const aliceUri = ctx.getActorUri(user.username);
   const likeActivityId = new URL(`#likes/${crypto.randomUUID()}`, aliceUri);
-  await db
+  // Insert the row idempotently.  `returning()` is empty when a
+  // row already exists for `(actorUri, noteUri)`, so a duplicate
+  // request (a second click, a retry after a network blip) skips
+  // the outbound `Like` and the recipient never sees a second
+  // copy with a different `id` than the one we would later
+  // `Undo`.
+  const inserted = await db
     .insert(likes)
     .values({
       actorUri: aliceUri.href,
       noteUri,
       likeActivityId: likeActivityId.href,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ likeActivityId: likes.likeActivityId });
+  if (inserted.length === 0) {
+    return { noteUri, liked: true };
+  }
 
   const author = await ctx.lookupObject(cached.authorActorUri, {
     documentLoader: await ctx.getDocumentLoader({ identifier: user.username }),
@@ -5786,7 +5796,18 @@ export default defineEventHandler(async (event) => {
 });
 ~~~~
 
-Two design notes:
+A few design notes:
+
+`returning()` *short-circuits duplicate clicks*
+:   `onConflictDoNothing()` keeps the existing row's
+    `like_activity_id` when the same `(actorUri, noteUri)` already
+    exists, but the in-flight handler has already minted a fresh
+    UUID for this request.  If we naively fell through to
+    `sendActivity`, a second click (or a retry after a network
+    blip) would deliver a `Like` with a different id than the one
+    we record, and a later `Undo(Like)` would only retract the
+    first delivery.  `.returning()` is empty on conflict, so we
+    return early and the duplicate POST becomes a no-op.
 
 `isActor()`
 :   `lookupObject()` is typed broadly because the URI could in
