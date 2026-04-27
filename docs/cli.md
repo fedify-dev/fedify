@@ -99,6 +99,17 @@ command above.
 
 [Deno]: https://deno.com/
 
+### Using mise
+
+If you have [mise] installed, you can install `fedify` by running the following
+command:
+
+~~~~ sh
+mise use -g github:fedify-dev/fedify
+~~~~
+
+[mise]: https://mise.jdx.dev/
+
 ### Downloading the executable
 
 You can download the pre-built executables from the [releases] page.  Download
