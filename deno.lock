@@ -58,6 +58,7 @@
     "jsr:@std/semver@^1.0.6": "1.0.8",
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.0",
+    "jsr:@std/yaml@^1.0.8": "1.0.11",
     "jsr:@valibot/valibot@^1.2.0": "1.3.1",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__@types+node@24.12.2__ioredis@5.10.1__tsx@4.21.0__typescript@6.0.3__yaml@2.8.3_@types+node@24.12.2_ioredis@5.10.1_tsx@4.21.0_typescript@6.0.3_yaml@2.8.3",
@@ -406,6 +407,9 @@
       "dependencies": [
         "jsr:@std/bytes"
       ]
+    },
+    "@std/yaml@1.0.11": {
+      "integrity": "bd139ce77f2d06cbed3713c8b26d301d2a2e12ecc7986130a268107e212143ee"
     },
     "@valibot/valibot@1.3.1": {
       "integrity": "635faaec9d32a25efca7b4614e7a07306cc03937bfd0679e05530d31081bc501"

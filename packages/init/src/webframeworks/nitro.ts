@@ -19,6 +19,9 @@ const nitroDescription: WebFrameworkDescription = {
     loggingFile: "server/logging.ts",
     env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
+      "server/plugins/logging.ts": await readTemplate(
+        "nitro/server/plugins/logging.ts",
+      ),
       "server/middleware/federation.ts": await readTemplate(
         "nitro/server/middleware/federation.ts",
       ),

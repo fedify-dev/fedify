@@ -1,0 +1,69 @@
+import { ok } from "node:assert/strict";
+import test from "node:test";
+import astroDescription from "./webframeworks/astro.ts";
+import nextDescription from "./webframeworks/next.ts";
+import nitroDescription from "./webframeworks/nitro.ts";
+
+test("Nitro template loads LogTape during server startup", async () => {
+  const { files } = await nitroDescription.init({
+    projectName: "test-app",
+    dir: ".",
+    command: "init",
+    packageManager: "npm",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    webFramework: "nitro",
+    testMode: false,
+    dryRun: true,
+    allowNonEmpty: false,
+  });
+
+  ok(files);
+  ok("server/plugins/logging.ts" in files);
+  const plugin = files["server/plugins/logging.ts"];
+  ok(plugin);
+  ok(plugin.includes('import "../logging";'));
+});
+
+test("Next.js template loads LogTape through instrumentation", async () => {
+  const { files } = await nextDescription.init({
+    projectName: "test-app",
+    dir: ".",
+    command: "init",
+    packageManager: "npm",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    webFramework: "next",
+    testMode: false,
+    dryRun: true,
+    allowNonEmpty: false,
+  });
+
+  ok(files);
+  ok("instrumentation.ts" in files);
+  const instrumentation = files["instrumentation.ts"];
+  ok(instrumentation);
+  ok(instrumentation.includes("export async function register()"));
+  ok(instrumentation.includes("process.env.NEXT_RUNTIME"));
+  ok(instrumentation.includes('await import("./logging")'));
+});
+
+test("Astro template loads LogTape through middleware", async () => {
+  const { files } = await astroDescription.init({
+    projectName: "test-app",
+    dir: ".",
+    command: "init",
+    packageManager: "npm",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    webFramework: "astro",
+    testMode: false,
+    dryRun: true,
+    allowNonEmpty: false,
+  });
+
+  ok(files);
+  const middleware = files["src/middleware.ts"];
+  ok(middleware);
+  ok(middleware.includes('import "./logging.ts";'));
+});
