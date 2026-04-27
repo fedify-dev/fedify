@@ -4444,7 +4444,7 @@ The empty form looks like:
 Add a quick *Follow* link to the navbar in *app/app.vue* so the
 page is reachable without typing the URL:
 
-~~~~ vue [app/app.vue]
+~~~~ html [app/app.vue]
 <nav class="flex items-center gap-4 text-sm">
   <NuxtLink to="/follow" class="text-gray-700 hover:text-brand">
     Follow
@@ -4989,7 +4989,7 @@ Then add a third pill to the profile header in
 const followingCount = computed(() => profile.value?.followingCount ?? 0);
 ~~~~
 
-~~~~ vue [app/pages/users/&#91;username&#93;/index.vue]
+~~~~ html [app/pages/users/&#91;username&#93;/index.vue]
 <NuxtLink
   :to="`/users/${user.username}/followers`"
   class="hover:text-brand"
@@ -5525,7 +5525,7 @@ Update the navbar in *app/app.vue* and the redirect in
 *app/pages/index.vue* so the home grid is the first thing alice
 sees on every login:
 
-~~~~ vue [app/app.vue]
+~~~~ html [app/app.vue]
 <nav class="flex items-center gap-4 text-sm">
   <NuxtLink to="/home" class="text-gray-700 hover:text-brand">
     Home
@@ -6017,12 +6017,13 @@ alice's profile shows like counts on her own posts.  Pull
 schema imports, then add the lookup just before the response:
 
 ~~~~ typescript [server/api/users/&#91;username&#93;/posts/&#91;id&#93;.get.ts]
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import {
   createError,
   defineEventHandler,
   getRequestProtocol,
   getRequestURL,
+  getRouterParam,
 } from "h3";
 import { likes /* …existing imports… */ } from "../../../../db/schema";
 // …
@@ -6037,12 +6038,32 @@ return { user, post, likeCount };
 
 ### Wire the heart button
 
-Replace the home grid in *app/pages/home.vue* with a
-single-column feed that carries a heart per post.  The
-key part is the toggle action and the row of like state next
-to the image:
+Replace the contents of *app/pages/home.vue* with a single-column
+feed that carries a heart per post.  The script types the timeline
+entries with a `TimelineEntry` shape, pulls `refresh` out of
+`useFetch`, and adds a `toggleLike` helper that POSTs or DELETEs
+*/api/likes* depending on the current state:
 
-~~~~ typescript [app/pages/home.vue]
+~~~~ vue [app/pages/home.vue]
+<script setup lang="ts">
+type TimelineEntry = {
+  noteUri: string;
+  authorHandle: string;
+  authorName: string | null;
+  authorUrl: string | null;
+  caption: string | null;
+  captionText: string | null;
+  mediaUrl: string;
+  likeCount: number;
+  likedByMe: boolean;
+};
+
+const { data, refresh } = await useFetch<{ posts: TimelineEntry[] }>(
+  "/api/home",
+  { key: "home-timeline" },
+);
+const posts = computed(() => data.value?.posts ?? []);
+
 async function toggleLike(post: TimelineEntry) {
   const method = post.likedByMe ? "DELETE" : "POST";
   await $fetch("/api/likes", {
@@ -6051,23 +6072,94 @@ async function toggleLike(post: TimelineEntry) {
   });
   await refresh();
 }
+
+useHead({ title: "Home · PxShare" });
+</script>
+
+<template>
+  <section class="flex flex-col gap-6">
+    <header>
+      <h1 class="text-xl font-bold">Home</h1>
+      <p class="text-sm text-gray-500">
+        Posts from the people you follow.  New posts arrive here as soon
+        as their server delivers a Create activity.
+      </p>
+    </header>
+    <ul v-if="posts.length > 0" class="flex flex-col gap-6">
+      <li
+        v-for="post in posts"
+        :key="post.noteUri"
+        class="flex flex-col gap-2 border border-gray-200 rounded-lg overflow-hidden"
+      >
+        <a
+          :href="post.authorUrl ?? `https://${post.authorHandle.replace('@', '').split('@')[1]}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 px-3 pt-3 hover:text-brand"
+        >
+          <span class="font-semibold text-sm">
+            {{ post.authorName ?? post.authorHandle }}
+          </span>
+          <span class="text-xs text-gray-500">{{ post.authorHandle }}</span>
+        </a>
+        <a
+          :href="post.noteUri"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block bg-gray-100"
+        >
+          <img
+            :src="post.mediaUrl"
+            :alt="post.captionText ?? ''"
+            class="w-full max-h-[80vh] object-contain"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          />
+        </a>
+        <div class="flex items-center gap-3 px-3 pb-3">
+          <button
+            type="button"
+            class="text-xl leading-none transition"
+            :class="post.likedByMe ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'"
+            @click="toggleLike(post)"
+          >
+            {{ post.likedByMe ? "♥" : "♡" }}
+          </button>
+          <span class="text-sm text-gray-500">
+            {{ post.likeCount }}
+            {{ post.likeCount === 1 ? "like" : "likes" }}
+          </span>
+        </div>
+        <div
+          v-if="post.caption"
+          class="text-sm px-3 pb-3 prose-content"
+          v-html="post.caption"
+        />
+      </li>
+    </ul>
+    <p v-else class="text-sm text-gray-400 py-12 text-center">
+      Your home timeline is empty.  Follow someone from the
+      <NuxtLink to="/follow" class="text-brand hover:underline">
+        Follow page
+      </NuxtLink>
+      and their next post will land here.
+    </p>
+  </section>
+</template>
 ~~~~
 
-~~~~ vue [app/pages/home.vue]
-<div class="flex items-center gap-3 px-3 pb-3">
-  <button
-    type="button"
-    class="text-xl leading-none transition"
-    :class="post.likedByMe ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'"
-    @click="toggleLike(post)"
-  >
-    {{ post.likedByMe ? "♥" : "♡" }}
-  </button>
-  <span class="text-sm text-gray-500">
-    {{ post.likeCount }}
-    {{ post.likeCount === 1 ? "like" : "likes" }}
-  </span>
-</div>
+`prose-content` is a small UnoCSS shortcut that gives `<p>`
+margins and a brand-tinted hover for embedded `<a>` tags inside
+the sanitized caption.  Add it to *uno.config.ts*:
+
+~~~~ typescript [uno.config.ts]
+shortcuts: {
+  // Styling for sanitized remote `Note.content`: paragraph
+  // spacing for `<p>`, brand-coloured links for `<a>`, and a
+  // graceful break behaviour for long URLs.
+  "prose-content":
+    "[&_p]:mb-2 [&_p:last-child]:mb-0 [&_a]:text-brand [&_a:hover]:underline [&_a]:break-all",
+},
 ~~~~
 
 > [!TIP]
@@ -6077,14 +6169,18 @@ async function toggleLike(post: TimelineEntry) {
 > to a separate API host, switch to `useFetch` with
 > `credentials: "include"`.
 
-A small addition to the post detail Vue page surfaces the count
-on alice's own posts:
+A small addition to *app/pages/users/\[username]/posts/\[id].vue*
+surfaces the count on alice's own posts.  Add a `likeCount`
+computed alongside the others in `<script setup>`:
 
 ~~~~ typescript [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
-const likeCount = computed(() => data.value?.likeCount ?? 0);
+const likeCount = computed(() => data.value?.likeCount ?? 0); // [!code ++]
 ~~~~
 
-~~~~ vue [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
+Then render it inside `<template>` between the caption paragraph
+and the *Posted …* timestamp:
+
+~~~~ html [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
 <p class="text-sm text-gray-500">
   <span class="text-rose-500">♥</span>
   {{ likeCount }}
@@ -6301,11 +6397,27 @@ const commentRows = await db
 return { user, post, likeCount, comments: commentRows };
 ~~~~
 
-Then update the Vue page to render the thread and provide a
-textarea.  The interesting part is the `submitComment` handler
-(the rest is straightforward template):
+Then update *app/pages/users/\[username]/posts/\[id].vue*.  The
+script grows a `Comment` type, pulls `refresh` out of the
+existing `useFetch` destructure so we can reload the page after
+sending, and gains a `noteUri` computed, a `submitComment`
+handler, and the local form state.  Add the new declarations
+alongside the existing ones in `<script setup>`:
 
 ~~~~ typescript [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
+type Comment = {
+  noteUri: string;
+  authorHandle: string;
+  authorName: string | null;
+  authorUrl: string | null;
+  content: string;
+  publishedAt: string;
+};
+
+// Add `refresh` to the existing `useFetch` destructure:
+//   const { data, error, refresh } = await useFetch(...)
+
+const comments = computed<Comment[]>(() => data.value?.comments ?? []);
 const noteUri = computed(() => {
   if (!user.value || !post.value) return "";
   if (typeof window === "undefined") return "";
@@ -6330,6 +6442,58 @@ async function submitComment() {
     submitting.value = false;
   }
 }
+~~~~
+
+The template grows a `<section>` that lists the cached replies
+and ends in the textarea form.  Append it inside the existing
+`<article>`, after the *Posted …* timestamp:
+
+~~~~ html [app/pages/users/&#91;username&#93;/posts/&#91;id&#93;.vue]
+<section class="flex flex-col gap-3 border-t border-gray-200 pt-4">
+  <h2 class="text-sm font-semibold">
+    {{ comments.length }}
+    {{ comments.length === 1 ? "comment" : "comments" }}
+  </h2>
+  <ul v-if="comments.length > 0" class="flex flex-col gap-3">
+    <li
+      v-for="comment in comments"
+      :key="comment.noteUri"
+      class="flex flex-col gap-1 border border-gray-200 rounded-lg p-3"
+    >
+      <a
+        :href="comment.authorUrl ?? comment.authorActorUri"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-sm font-semibold hover:text-brand"
+      >
+        {{ comment.authorName ?? comment.authorHandle }}
+        <span class="text-xs font-normal text-gray-500">
+          {{ comment.authorHandle }}
+        </span>
+      </a>
+      <div class="text-sm prose-content" v-html="comment.content" />
+      <p class="text-xs text-gray-400">
+        {{ new Date(comment.publishedAt).toLocaleString() }}
+      </p>
+    </li>
+  </ul>
+  <form class="flex flex-col gap-2" @submit.prevent="submitComment">
+    <textarea
+      v-model="commentDraft"
+      rows="2"
+      maxlength="500"
+      placeholder="Write a comment…"
+      class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
+    />
+    <button
+      type="submit"
+      :disabled="submitting || commentDraft.trim() === ''"
+      class="self-end px-4 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {{ submitting ? "Sending…" : "Comment" }}
+    </button>
+  </form>
+</section>
 ~~~~
 
 > [!TIP]
