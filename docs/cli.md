@@ -216,7 +216,7 @@ precedence over configuration file values.
 
 *This command is available since Fedify 0.12.0.*
 
-[![The “fedify init” command demo](https://asciinema.org/a/671658.svg)](https://asciinema.org/a/671658)
+[![The “fedify init” command demo](https://asciinema.org/a/979416.svg)](https://asciinema.org/a/979416)
 
 The `fedify init` command is used to initialize a new Fedify project.
 It creates a new directory with the necessary files and directories for a
