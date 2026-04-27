@@ -5556,7 +5556,7 @@ follow flow).  Within a second or two alice's home page lights
 up: the 3-column grid renders one square thumbnail of the new
 photo, and clicking it opens the original on Pixelfed.  We will
 rework this layout into stacked cards in
-[*`Like`s and `Undo(Like)`*](#like-s-and-undo-like-) so that
+[*`Like`s and `Undo(Like)`*](#likes-and-undo-like) so that
 hearts have somewhere to live; the screenshot below shows the
 later card form with two timeline entries, which is what alice
 ends up looking at after chapter 22.
