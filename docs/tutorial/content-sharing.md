@@ -4572,7 +4572,10 @@ The interesting bits:
 
 ### Accept inbox listener
 
-Add an `Accept` handler at the end of the inbox-listener chain
+Add `Accept` (alongside the existing `Follow`) to the
+[`@fedify/vocab`][fedify-vocab] import, pull `or` into the
+drizzle-orm import, and bring in the `following` schema.  Then
+chain an `Accept` handler at the end of the inbox-listener chain
 in *server/federation.ts*:
 
 ~~~~ typescript twoslash [server/federation.ts]
@@ -4634,6 +4637,8 @@ whichever path the peer took.
 > means an `Accept` from any peer always belongs to alice, but
 > with two local accounts you must look at *who* sent the
 > Follow before flipping a row.
+
+[fedify-vocab]: https://www.npmjs.com/package/@fedify/vocab
 
 ### Trying it out
 
@@ -5320,8 +5325,12 @@ literal characters.
 
 ### Cache inbound `Create(Note)` activities
 
-Open *server/federation.ts* and add a `Create` handler at the
-end of the inbox-listener chain (after the `Accept` handler from
+Open *server/federation.ts* and add `Create`, `Document`, and
+`Note` to the [`@fedify/vocab`][fedify-vocab] import, `and` to
+the drizzle-orm import, and the `timelinePosts` table to the
+schema import.  Bring in `sanitizeNoteContent` from
+*./utils/text*.  Then add a `Create` handler at the end of the
+inbox-listener chain (after the `Accept` handler from
 [*Following remote accounts*](#following-remote-accounts)):
 
 ~~~~ typescript twoslash [server/federation.ts]
@@ -5822,8 +5831,6 @@ A few design notes:
 :   We rebuild the `Like` with the original `id` so peers that
     match by activity id (Mastodon does) line up with the row
     they recorded earlier.
-
-[fedify-vocab]: https://www.npmjs.com/package/@fedify/vocab
 
 ### Inbound: receive `Like`s and `Undo(Like)`
 
@@ -6687,7 +6694,9 @@ through the same `setObjectDispatcher(Note, …)` call from
 [*`Note` object dispatcher*](#note-object-dispatcher).  Fedify
 only allows one dispatcher per `Note` class; instead of
 registering a second route, branch the existing dispatcher on
-the id shape:
+the id shape.  Add `Mention` to the
+[`@fedify/vocab`][fedify-vocab] import (alongside `Note` and
+`PUBLIC_COLLECTION`) and `comments` to the schema import:
 
 ~~~~ typescript twoslash [server/federation.ts]
 // @noErrors: 2304 2307
