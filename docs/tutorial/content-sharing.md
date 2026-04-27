@@ -5829,9 +5829,11 @@ A few design notes:
 
 Two changes in *server/federation.ts*.  First, add `Like` to
 the [`@fedify/vocab`][fedify-vocab] import (alongside `Follow`, `Note`, etc.).
-Second, fold the existing `Undo(Follow)` handler into a single
-listener that branches on the embedded type, and add a `Like`
-listener at the end of the chain.
+Second, prepend a new `Undo(Like)` branch to the existing
+`Undo` listener so the `Undo(Follow)` body from
+[*Handling unfollows*](#handling-unfollows) keeps working
+unchanged.  A separate top-level `Like` listener at the end of
+the chain records inbound likes themselves.
 
 ~~~~ typescript twoslash [server/federation.ts]
 // @noErrors: 2304 2307
@@ -5855,24 +5857,6 @@ federation
 // ---cut---
 .on(Undo, async (ctx, undo) => {
   const object = await undo.getObject();
-  if (object instanceof Follow) {
-    if (undo.actorId == null || object.objectId == null) return;
-    const target = ctx.parseUri(object.objectId);
-    if (target?.type !== "actor") return;
-    const localUser = (
-      await db.select().from(users).where(eq(users.username, target.identifier)).limit(1)
-    )[0];
-    if (localUser === undefined) return;
-    await db
-      .delete(followers)
-      .where(
-        and(
-          eq(followers.followingId, localUser.id),
-          eq(followers.actorUri, undo.actorId.href),
-        ),
-      );
-    return;
-  }
   if (object instanceof Like) { // [!code ++]
     if (undo.actorId == null) return; // [!code ++]
     const likeActivityId = object.id?.href ?? null; // [!code ++]
@@ -5893,7 +5877,24 @@ federation
     const matcher = // [!code ++]
       conditions.length === 1 ? conditions[0] : or(...conditions); // [!code ++]
     await db.delete(likes).where(matcher); // [!code ++]
+    return; // [!code ++]
   } // [!code ++]
+  if (!(object instanceof Follow)) return;
+  if (undo.actorId == null || object.objectId == null) return;
+  const target = ctx.parseUri(object.objectId);
+  if (target?.type !== "actor") return;
+  const localUser = (
+    await db.select().from(users).where(eq(users.username, target.identifier)).limit(1)
+  )[0];
+  if (localUser === undefined) return;
+  await db
+    .delete(followers)
+    .where(
+      and(
+        eq(followers.followingId, localUser.id),
+        eq(followers.actorUri, undo.actorId.href),
+      ),
+    );
 })
 ~~~~
 
