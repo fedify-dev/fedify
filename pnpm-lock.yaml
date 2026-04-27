@@ -81,6 +81,9 @@ catalogs:
     '@types/amqplib':
       specifier: ^0.10.7
       version: 0.10.7
+    '@types/better-sqlite3':
+      specifier: ^7.6.13
+      version: 7.6.13
     '@types/bun':
       specifier: ^1.2.23
       version: 1.3.3
@@ -102,12 +105,18 @@ catalogs:
     astro:
       specifier: ^5.0.0
       version: 5.18.1
+    better-sqlite3:
+      specifier: ^12.9.0
+      version: 12.9.0
     byte-encodings:
       specifier: ^1.0.11
       version: 1.0.11
     chalk:
       specifier: ^5.6.2
       version: 5.6.2
+    drizzle-orm:
+      specifier: ^0.45.2
+      version: 0.45.2
     elysia:
       specifier: ^1.3.8
       version: 1.3.8
@@ -290,7 +299,7 @@ importers:
         specifier: 'catalog:'
         version: 0.10.7
       '@types/better-sqlite3':
-        specifier: ^7.6.12
+        specifier: 'catalog:'
         version: 7.6.13
       '@types/bun':
         specifier: ^1.1.14
@@ -308,7 +317,7 @@ importers:
         specifier: 'catalog:'
         version: 0.10.9
       better-sqlite3:
-        specifier: ^12.9.0
+        specifier: 'catalog:'
         version: 12.9.0
       dayjs:
         specifier: ^1.11.13
@@ -317,7 +326,7 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 'catalog:'
         version: 0.45.2(@cloudflare/workers-types@4.20251221.0)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.2(@types/node@22.19.1))(postgres@3.4.7)
       express:
         specifier: 'catalog:'
