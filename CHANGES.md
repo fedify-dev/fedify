@@ -265,7 +265,7 @@ To be released.
 Version 2.1.11
 --------------
 
-To be released.
+Released on April 27, 2026.
 
 ### @fedify/init
 
@@ -712,7 +712,7 @@ Released on March 24, 2026.
 Version 2.0.15
 --------------
 
-To be released.
+Released on April 27, 2026.
 
 ### @fedify/init
 
