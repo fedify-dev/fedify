@@ -5281,13 +5281,16 @@ export function sanitizeNoteContent(input: string): string {
 
 // Strip all markup from already-sanitized HTML so we can reuse
 // the caption in places where HTML is meaningless (`alt`
-// attributes, page titles, OpenGraph descriptions).  Whitespace
-// is collapsed so multi-paragraph content does not blow up alt
-// text.
+// attributes, page titles, OpenGraph descriptions).  `textFilter`
+// appends a space to each text node before the surrounding tags
+// are removed, which keeps block boundaries from running together
+// (e.g. `<p>one</p><p>two</p>` becomes `one two`, not `onetwo`).
+// The trailing whitespace is collapsed by the regex below.
 export function extractText(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: [],
     allowedAttributes: {},
+    textFilter: (text) => `${text} `,
   })
     .replace(/\s+/g, " ")
     .trim();
@@ -5430,6 +5433,7 @@ import { desc, eq } from "drizzle-orm";
 import { createError, defineEventHandler } from "h3";
 import { db } from "../db/client";
 import { timelinePosts } from "../db/schema";
+import { extractText } from "../utils/text";
 import { getLocalUser } from "../utils/users";
 
 export default defineEventHandler(async () => {
@@ -5443,7 +5447,15 @@ export default defineEventHandler(async () => {
     .where(eq(timelinePosts.userId, user.id))
     .orderBy(desc(timelinePosts.publishedAt))
     .limit(60);
-  return { posts: rows };
+  return {
+    posts: rows.map((row) => ({
+      ...row,
+      // `caption` is sanitized HTML for `v-html`; `captionText`
+      // is the same content stripped to plain text for the
+      // `alt` attribute and other text-only spots.
+      captionText: row.caption ? extractText(row.caption) : null,
+    })),
+  };
 });
 ~~~~
 
@@ -5477,7 +5489,7 @@ useHead({ title: "Home · PxShare" });
       >
         <img
           :src="post.mediaUrl"
-          :alt="post.caption ?? ''"
+          :alt="post.captionText ?? ''"
           class="w-full h-full object-cover"
           loading="lazy"
           referrerpolicy="no-referrer"
