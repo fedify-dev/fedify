@@ -5244,9 +5244,15 @@ Then add *server/utils/text.ts*:
 import sanitizeHtml from "sanitize-html";
 
 const ALLOWED_TAGS = ["p", "br", "a", "span"];
+// Note: `class` is intentionally not in `allowedAttributes`; it
+// is governed exclusively by `allowedClasses` below so peers can
+// only surface microformats values we recognize.
 const ALLOWED_ATTRS = {
-  a: ["href", "class"],
-  span: ["class"],
+  a: ["href", "rel", "target"],
+};
+const ALLOWED_CLASSES = {
+  a: ["mention", "hashtag", "u-url"],
+  span: ["h-card", "invisible", "ellipsis"],
 };
 const ALLOWED_SCHEMES = ["http", "https"];
 
@@ -5254,6 +5260,7 @@ export function sanitizeNoteContent(input: string): string {
   return sanitizeHtml(input, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: ALLOWED_ATTRS,
+    allowedClasses: ALLOWED_CLASSES,
     allowedSchemes: ALLOWED_SCHEMES,
     transformTags: {
       // Force a safe `rel` and `target` on every `<a>` regardless
@@ -5271,6 +5278,20 @@ export function sanitizeNoteContent(input: string): string {
     },
   }).trim();
 }
+
+// Strip all markup from already-sanitized HTML so we can reuse
+// the caption in places where HTML is meaningless (`alt`
+// attributes, page titles, OpenGraph descriptions).  Whitespace
+// is collapsed so multi-paragraph content does not blow up alt
+// text.
+export function extractText(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+  })
+    .replace(/\s+/g, " ")
+    .trim();
+}
 ~~~~
 
 `sanitize-html` parses the input into a DOM, walks every node
@@ -5279,7 +5300,18 @@ Anything outside the allow-list (including `<script>`, inline
 event handlers, `<img>` with hostile `src`, exotic schemes such as
 `javascript:` and `data:`) is dropped.  `transformTags` rewrites
 each surviving `<a>` to carry the `rel` and `target` attributes
-we want, which means peers cannot opt out by omitting them.
+we want; because `rel` and `target` are also listed in
+`allowedAttributes.a`, the values the transform writes survive
+the final attribute-allow-list pass.  `allowedClasses` keeps the
+common Mastodon microformats markers (`mention`, `hashtag`,
+`u-url`, `h-card`) so the rendered timeline can style them, while
+dropping everything else a peer might inject.
+
+`extractText` is a deliberately narrow companion: feeding the
+already-sanitized caption back through `sanitizeHtml` with empty
+allow-lists yields plain text, which is what we want for `alt`
+attributes and OpenGraph descriptions where HTML is rendered as
+literal characters.
 
 [sanitize-html]: https://www.npmjs.com/package/sanitize-html
 
@@ -5896,6 +5928,7 @@ import {
 } from "h3";
 import { db } from "../db/client";
 import { likes, timelinePosts } from "../db/schema";
+import { extractText } from "../utils/text";
 import { getLocalUser } from "../utils/users";
 
 export default defineEventHandler(async (event) => {
@@ -5932,6 +5965,10 @@ export default defineEventHandler(async (event) => {
   return {
     posts: rows.map((row) => ({
       ...row,
+      // `caption` is sanitized HTML for `v-html`; `captionText`
+      // is the same content stripped to plain text so it can ride
+      // along into the `alt` attribute and other text-only spots.
+      captionText: row.caption ? extractText(row.caption) : null,
       likeCount: countMap.get(row.noteUri) ?? 0,
       likedByMe: mySet.has(row.noteUri),
     })),
@@ -6294,6 +6331,7 @@ import {
 import { db } from "../db/client";
 import { comments, timelinePosts } from "../db/schema";
 import federation from "../federation";
+import { sanitizeNoteContent } from "../utils/text";
 import { getLocalUser } from "../utils/users";
 
 export default defineEventHandler(async (event) => {
@@ -6306,7 +6344,13 @@ export default defineEventHandler(async (event) => {
   );
   const inReplyToUri =
     typeof body?.inReplyToUri === "string" ? body.inReplyToUri.trim() : "";
-  const content = typeof body?.content === "string" ? body.content.trim() : "";
+  const rawContent =
+    typeof body?.content === "string" ? body.content.trim() : "";
+  // Run alice's textarea input through the same sanitizer we
+  // apply to inbound remote content.  Plain text passes through
+  // unchanged, and pasted markup is reduced to the same tight
+  // allow-list before it hits the database or federation peers.
+  const content = sanitizeNoteContent(rawContent);
   if (inReplyToUri === "" || content === "") {
     throw createError({ statusCode: 400, statusMessage: "Missing fields" });
   }
