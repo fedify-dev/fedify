@@ -170,8 +170,9 @@ A detailed step-by-step guide is available across three skills:
 
 ### Creating database adapters
 
-1.  For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
-    and *packages/fedify/src/federation/mq.ts*
+1.  For core KV/MQ interfaces: implement in
+    *packages/fedify/src/federation/kv.ts* and
+    *packages/fedify/src/federation/mq.ts*
 2.  For specific database adapters: create dedicated packages
     (*packages/sqlite/*, *packages/postgres/*, *packages/mysql/*,
     *packages/redis/*, *packages/amqp/*)

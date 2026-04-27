@@ -243,6 +243,17 @@ To be released.
     redistribution that threadiverse software (Lemmy, Mbin, NodeBB) uses to fan
     activity out to every subscriber.  [[#704], [#710]]
 
+ -  Added [*Creating an image sharing service* tutorial], a Pixelfed-style
+    image-sharing companion to the microblog walk-through.  Built on Nuxt 4
+    and the new `@fedify/nuxt` integration, the tutorial covers actor
+    dispatchers, key pairs, follow/unfollow flows, image-bearing
+    `Create(Note)` fan-out and reception, an outbound `Like`/`Undo(Like)`
+    heart toggle, and threaded comments through `inReplyTo`.  The
+    [companion example repository] keeps one commit per chapter at the
+    bottom of its log, with a few rehearsal-driven follow-ups landed on top,
+    and the federation flows are demonstrated against both Mastodon and
+    Pixelfed.  [[#693]]
+
  -  Added a custom collections cookbook example for bookmark-like data,
     demonstrating cursor pagination, URI-template filtering, collection
     counters, actor stream links, and requester-aware collections using
@@ -253,7 +264,10 @@ To be released.
 [Bun]: https://bun.sh/
 [*Building a threadiverse community platform*]: https://fedify.dev/tutorial/threadiverse
 [*Creating your own federated microblog*]: https://fedify.dev/tutorial/microblog
+[*Creating an image sharing service* tutorial]: https://fedify.dev/tutorial/content-sharing
+[companion example repository]: https://github.com/fedify-dev/content-sharing
 [#691]: https://github.com/fedify-dev/fedify/issues/691
+[#693]: https://github.com/fedify-dev/fedify/issues/693
 [#694]: https://github.com/fedify-dev/fedify/issues/694
 [#695]: https://github.com/fedify-dev/fedify/pull/695
 [#704]: https://github.com/fedify-dev/fedify/issues/704
@@ -1061,8 +1075,8 @@ Released on February 22, 2026.
     to the standardized `Intl.Locale` class for representing language tags.
     [[#280], [#392] by Jang Hanarae]
 
-     -  The `LanguageString.language` property is now `LanguageString.locale` and
-        is of type `Intl.Locale` instead of `LanguageTag`.
+     -  The `LanguageString.language` property is now `LanguageString.locale`
+        and is of type `Intl.Locale` instead of `LanguageTag`.
      -  The `LanguageString` constructor now accepts either an `Intl.Locale`
         object or a string for the language parameter.
      -  The `Link.language` property is now of type `Intl.Locale` instead
@@ -1782,8 +1796,8 @@ Released on December 24, 2025.
 
 ### @fedify/nestjs
 
- -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
-    [[#492], [#493] by Cho Hasang]
+ -  Allowed Express 5 in the `express` peer dependency range to support NestJS
+    11. [[#492], [#493] by Cho Hasang]
 
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
@@ -4083,8 +4097,9 @@ Released on November 30, 2024.
 
  -  The `Router` now provide the matched route's URI template besides the name.
 
-     -  The return type of `Router.route()` method became `RouterRouteResult | null`
-        (was `{ name: string; values: Record<string, string> } | null`).
+     -  The return type of `Router.route()` method became
+        `RouterRouteResult | null` (was
+        `{ name: string; values: Record<string, string> } | null`).
      -  Added `RouterRouteResult` interface.
 
  -  Added `getTypeId()` function.
@@ -5733,8 +5748,8 @@ Released on September 26, 2024.
 
  -  Added options for PostgreSQL drivers to `fedify init` command.
 
-     -  Added `postgres` value to the `-k`/`--kv-store` option of the `fedify init`
-        command.
+     -  Added `postgres` value to the `-k`/`--kv-store` option of the
+        `fedify init` command.
      -  Added `postgres` value to the `-q`/`--message-queue` option of
         the `fedify init` command.
 

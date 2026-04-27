@@ -1271,7 +1271,7 @@ up*.
 Every user needs a page to call their own.  For now we'll keep it simple:
 URL path, display name, join date.  Create *app/users/\[username]/page.tsx*:
 
-~~~~ tsx
+~~~~ tsx [app/users/&#91;username&#93;/page.tsx]
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, users } from "@/db";
@@ -2005,7 +2005,7 @@ profile page only knows about users.  The next section fixes that.
 Teach the profile page to fall through to `communities` when the
 identifier doesn't match a user.  Rewrite *app/users/\[username]/page.tsx*:
 
-~~~~ tsx
+~~~~ tsx [app/users/&#91;username&#93;/page.tsx]
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { communities, db, users } from "@/db";
@@ -2599,6 +2599,12 @@ echo 'SELECT follower_uri, accepted FROM follows;' \
   | sqlite3 threadiverse.sqlite3 -header -box
 ~~~~
 
+You should see a row like this:
+
+| `follower_uri`                                      | `accepted` |
+| --------------------------------------------------- | ---------- |
+| `https://activitypub.academy/users/<your-username>` | `1`        |
+
 Outbound follows work the same way.  Log in as a local user, open
 `/follow`, paste `@fediverse@lemmy.ml` (or any community on an
 instance you like), submit the form, and wait a moment: the follow
@@ -2651,7 +2657,7 @@ can be used everywhere threads get persisted.  Re-run
 Create a form at *app/users/\[username]/new-thread/page.tsx* that's
 scoped to a single community:
 
-~~~~ tsx
+~~~~ tsx [app/users/&#91;username&#93;/new-thread/page.tsx]
 import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { communities, db } from "@/db";
@@ -2711,7 +2717,7 @@ up after redirect.  Extend the existing *app/users/\[username]/page.tsx*
 to query `threads` for the community URI and render them in a simple
 card list, plus a *Start a thread* CTA visible to logged-in users:
 
-~~~~ tsx{1,2,4-6,47-62,76-101}
+~~~~ tsx{1,2,4-6,47-62,76-101} [app/users/&#91;username&#93;/page.tsx]
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2827,7 +2833,7 @@ The server action does two things: insert the row locally, and federate
 a `Create(Page)` to the community.  Write
 *app/users/\[username]/new-thread/actions.ts*:
 
-~~~~ typescript
+~~~~ typescript [app/users/&#91;username&#93;/new-thread/actions.ts]
 "use server";
 
 import { Create, Page, PUBLIC_COLLECTION } from "@fedify/vocab";
@@ -3076,7 +3082,7 @@ will fan replies out to subscribers without any new plumbing.
 Before we can reply to a thread, the thread needs a dedicated page of
 its own.  Create *app/users/\[username]/threads/\[id]/page.tsx*:
 
-~~~~ tsx
+~~~~ tsx [app/users/&#91;username&#93;/threads/&#91;id&#93;/page.tsx]
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { communities, db, threads } from "@/db";
@@ -3171,7 +3177,7 @@ helper that turns a flat list of rows into a nested tree using
 
 Recursive render:
 
-~~~~ tsx{1,19-21}
+~~~~ tsx{1,19-21} [app/users/&#91;username&#93;/threads/&#91;id&#93;/page.tsx]
 function ReplyList({ nodes, slug, threadId, user }) {
   return (
     <ul className="reply-tree">
@@ -3202,7 +3208,7 @@ function ReplyList({ nodes, slug, threadId, user }) {
 
 `buildReplyTree`:
 
-~~~~ typescript
+~~~~ typescript [app/users/&#91;username&#93;/threads/&#91;id&#93;/page.tsx]
 function buildReplyTree(rows: ReplyRow[], threadUri: string): ReplyNode[] {
   const byUri = new Map<string, ReplyNode>();
   const roots: ReplyNode[] = [];
@@ -3226,7 +3232,7 @@ border so the tree reads visually.
 
 Write *app/users/\[username]/threads/\[id]/actions.ts*:
 
-~~~~ typescript
+~~~~ typescript [app/users/&#91;username&#93;/threads/&#91;id&#93;/actions.ts]
 "use server";
 
 import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
@@ -3383,7 +3389,7 @@ a small `VoteTally` type and, before rendering, query every vote for
 every target on the page in a single `inArray` query and fold the rows
 into a `Map<targetUri, VoteTally>`:
 
-~~~~ typescript
+~~~~ typescript [app/users/&#91;username&#93;/threads/&#91;id&#93;/page.tsx]
 type VoteTally = {
   likes: number;
   dislikes: number;
@@ -3415,7 +3421,7 @@ Still in *app/users/\[username]/threads/\[id]/page.tsx*, define a
 small `<VoteButtons>` component that renders two forms, each a
 one-shot that POSTs to the server action we'll write next:
 
-~~~~ tsx
+~~~~ tsx [app/users/&#91;username&#93;/threads/&#91;id&#93;/page.tsx]
 <div style={{ display: "flex", gap: "0.5rem" }}>
   <form action={castVote.bind(null, slug, threadId)}>
     <input type="hidden" name="targetUri" value={targetUri} />
@@ -3450,7 +3456,7 @@ Create *app/users/\[username]/threads/\[id]/vote-actions.ts* with the
 server action that publishes a `Like` or `Dislike` activity and
 optimistically records the vote locally:
 
-~~~~ typescript
+~~~~ typescript [app/users/&#91;username&#93;/threads/&#91;id&#93;/vote-actions.ts]
 "use server";
 
 import { Dislike, Like, PUBLIC_COLLECTION } from "@fedify/vocab";
@@ -3968,9 +3974,9 @@ echo 'SELECT follower_uri, accepted FROM follows;' \
   | sqlite3 threadiverse.sqlite3
 ~~~~
 
-~~~~ console
-https://lemmy.ml/u/<your-username>|1
-~~~~
+| `follower_uri`                       | `accepted` |
+| ------------------------------------ | ---------- |
+| `https://lemmy.ml/u/<your-username>` | `1`        |
 
 ![Screenshot: the Lemmy community page says “Joined” after the round-trip](./threadiverse/lemmy-subscribed.png)
 

@@ -740,10 +740,10 @@ systemd
     (`systemctl start fedify@web.service fedify@worker.service`).
 
 Kubernetes
-:   Two `Deployment`s.  Only the web `Deployment` gets a `Service` and `Ingress`.
-    Scale workers on queue depth (via a custom metric adapter reading from
-    your MQ backend) rather than CPU—a queue that's falling behind is not
-    necessarily CPU-bound.
+:   Two `Deployment`s.  Only the web `Deployment` gets a `Service` and
+    `Ingress`. Scale workers on queue depth (via a custom metric adapter
+    reading from your MQ backend) rather than CPU—a queue that's falling behind
+    is not necessarily CPU-bound.
 
 > [!WARNING]
 > Do not place worker nodes behind a load balancer or expose them on a
@@ -1214,10 +1214,10 @@ Block abusive instances early
     your own rather than importing them wholesale.
 
 Keep the system clock in sync
-:   HTTP signatures are valid only within `~FederationOptions.signatureTimeWindow`
-    (one hour by default).  Run NTP on every web and worker node.  Clock
-    drift is the second-most-common “it worked in staging” production
-    issue after reverse-proxy misconfiguration.
+:   HTTP signatures are valid only within
+    `~FederationOptions.signatureTimeWindow` (one hour by default).  Run NTP on
+    every web and worker node.  Clock drift is the second-most-common “it
+    worked in staging” production issue after reverse-proxy misconfiguration.
 
 [Pelago]: https://pelago.1sland.social/blocklist
 [FIRES]: https://fires.fedimod.org/

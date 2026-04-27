@@ -136,8 +136,8 @@ Follow the specifications in [ARCHITECTURE.md](./ARCHITECTURE.md) and
  -  Implement all routes listed in the “Routing” section of
     [ARCHITECTURE.md](./ARCHITECTURE.md), using `RequestContext` as described
     in the “Server-side data access” section.
- -  Render HTML pages according to [DESIGN.md](./DESIGN.md).  Serve static assets
-    from the `public/` directory (copy from
+ -  Render HTML pages according to [DESIGN.md](./DESIGN.md).  Serve static
+    assets from the `public/` directory (copy from
     [example/public/](./example/public/)).
  -  Implement the SSE endpoint per the “Server-sent events” section of
     [ARCHITECTURE.md](./ARCHITECTURE.md).
