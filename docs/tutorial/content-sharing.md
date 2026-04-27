@@ -488,7 +488,7 @@ Install UnoCSS as a Nuxt module, its Wind3 preset (utility set), and a
 CSS reset:
 
 ~~~~ sh
-npm install -D @unocss/nuxt @unocss/preset-wind3 @unocss/reset
+npm install -D unocss @unocss/nuxt @unocss/preset-wind3 @unocss/reset
 ~~~~
 
 [UnoCSS]: https://unocss.dev/
