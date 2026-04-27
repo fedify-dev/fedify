@@ -185,3 +185,258 @@ compatibility, ESM is the preferred approach:
 
 [ESM]: https://nodejs.org/api/esm.html
 [CommonJS]: https://nodejs.org/docs/latest/api/modules.html
+
+
+Editor setup
+------------
+
+`fedify init` configures Visual Studio Code for you out of the box.  Setting
+up [Zed] takes a few extra steps because `fedify init` does not generate
+*.zed/* files yet.
+
+[Zed]: https://zed.dev/
+
+### Visual Studio Code
+
+*For Deno projects*, `fedify init` writes a *.vscode/extensions.json* that
+recommends the [Deno extension]:
+
+~~~~ json [.vscode/extensions.json]
+{ "recommendations": ["denoland.vscode-deno"] }
+~~~~
+
+The matching *.vscode/settings.json* turns on Deno's language server and sets
+it as the default formatter for JavaScript and TypeScript:
+
+~~~~ jsonc [.vscode/settings.json]
+{
+  "deno.enable": true,
+  "deno.unstable": true,
+  "editor.detectIndentation": false,
+  "editor.indentSize": 2,
+  "editor.insertSpaces": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.sortImports": "always"
+    }
+  }
+  // The same block applies to [javascript], [javascriptreact], and
+  // [typescriptreact]; [json] and [jsonc] use "vscode.json-language-features".
+}
+~~~~
+
+Deno's [*Set up your environment*] guide covers other editors and shells.
+
+*For Node.js/Bun projects*, `fedify init` writes a *.vscode/extensions.json*
+that recommends the [Biome extension] and the [ESLint extension]:
+
+~~~~ json [.vscode/extensions.json]
+{ "recommendations": ["biomejs.biome", "dbaeumer.vscode-eslint"] }
+~~~~
+
+The matching *.vscode/settings.json* sets Biome as the default formatter and
+runs Biome's import organiser on save:
+
+~~~~ jsonc [.vscode/settings.json]
+{
+  "editor.detectIndentation": false,
+  "editor.indentSize": 2,
+  "editor.insertSpaces": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.biome": "always"
+    }
+  }
+  // The same block applies to [javascript], [javascriptreact],
+  // [typescriptreact], [json], and [jsonc].
+}
+~~~~
+
+If you prefer [Oxc] over Biome and ESLint, install the [oxc-vscode]
+extension and swap the formatter:
+
+~~~~ jsonc [.vscode/settings.json]
+{
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.oxc": "always"
+    }
+  }
+}
+~~~~
+
+[Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
+[*Set up your environment*]: https://docs.deno.com/runtime/getting_started/setup_your_environment/
+[Biome extension]: https://marketplace.visualstudio.com/items?itemName=biomejs.biome
+[ESLint extension]: https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint
+[Oxc]: https://oxc.rs/
+[oxc-vscode]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
+
+### Zed
+
+> [!TIP]
+> `fedify init` does not generate *.zed/* configuration; the snippets below
+> need to be added by hand.
+
+*For Deno projects*, create *.zed/settings.json* that enables the Deno
+language server and uses it as the formatter for TypeScript and JavaScript.
+The `!` prefix disables the bundled TypeScript and ESLint servers so they do
+not compete with Deno:
+
+~~~~ jsonc [.zed/settings.json]
+{
+  "lsp": {
+    "deno": {
+      "settings": { "deno": { "enable": true } }
+    }
+  },
+  "languages": {
+    "TypeScript": {
+      "formatter": [
+        { "language_server": { "name": "deno" } }
+      ],
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!vtsls",
+        "!eslint",
+        "!biome",
+        "..."
+      ]
+    }
+    // The same block applies to TSX and JavaScript.
+  }
+}
+~~~~
+
+Zed's [Deno language docs][zed-deno] cover the available options.
+[Hackers' Pub] is a real-world reference.
+
+*For Node.js/Bun projects*, Zed enables its bundled TypeScript language
+server out of the box; the typical addition is wiring up Biome (or the
+formatter you chose) for `editor.formatOnSave`-style behaviour.  See Zed's
+[TypeScript language docs][zed-ts] for setup.  If you prefer [Oxc] instead,
+set Oxc as the language server and turn on its fix-all action on format:
+
+~~~~ jsonc [.zed/settings.json]
+{
+  "language_servers": ["oxc", "..."],
+  "code_actions_on_format": {
+    "source.fixAll.oxc": true
+  }
+}
+~~~~
+
+[zed-deno]: https://zed.dev/docs/languages/deno
+[Hackers' Pub]: https://github.com/hackers-pub/hackerspub/blob/main/.zed/settings.json
+[zed-ts]: https://zed.dev/docs/languages/typescript
+
+
+Linting
+-------
+
+`fedify init` configures the [`@fedify/lint`] plugin automatically: Deno
+projects pick it up through `lint.plugins` in *deno.json*, and Node.js/Bun
+projects through a generated *eslint.config.ts*.  For the full rule list,
+configuration options, and how to run the linter, see the
+[*Linting*](./manual/lint.md) chapter.
+
+[`@fedify/lint`]: https://jsr.io/@fedify/lint
+
+
+Agentic skill
+-------------
+
+_This skill is available since Fedify 2.2.0._
+
+Fedify ships a [Markdown skill file][SKILL.md] that AI coding assistants such
+as [Claude Code], [Codex], or [OpenCode] can load to learn Fedify's APIs,
+common pitfalls, and recommended patterns.  The file lives inside the
+`@fedify/fedify` package itself, so the only remaining step is exposing it
+to your agent's skills directory.
+
+[SKILL.md]: https://github.com/fedify-dev/fedify/blob/main/packages/fedify/skills/fedify/SKILL.md
+[Claude Code]: https://claude.com/product/claude-code
+[Codex]: https://developers.openai.com/codex
+[OpenCode]: https://opencode.ai/
+
+### Node.js/Bun
+
+Use [`skills-npm`], a third-party tool by Anthony Fu (it is not a Fedify
+package), that scans *node\_modules* for packages exposing the `agents.skills`
+field in their *package.json* and links them into your agent's skills
+directory on every install.
+
+1.  Install `skills-npm` as a dev dependency:
+
+    ::: code-group
+
+    ~~~~ sh [npm]
+    npm add -D skills-npm
+    ~~~~
+
+
+    ~~~~ sh [pnpm]
+    pnpm add -D skills-npm
+    ~~~~
+
+
+    ~~~~ sh [Yarn]
+    yarn add -D skills-npm
+    ~~~~
+
+
+    ~~~~ sh [Bun]
+    bun add -D skills-npm
+    ~~~~
+
+    :::
+
+2.  Add a `prepare` script to your *package.json* so it runs after every
+    install:
+
+    ~~~~ json
+    {
+      "scripts": {
+        "prepare": "skills-npm"
+      }
+    }
+    ~~~~
+
+3.  Reinstall once.  The Fedify skill appears at *.claude/skills/fedify/*
+    (and similar locations for other supported agents).
+
+The same script picks up other Fedify packages and any third-party npm
+packages that adopt the convention.
+
+[`skills-npm`]: https://github.com/antfu/skills-npm
+
+### Deno
+
+> [!NOTE]
+> Automated installation for Deno is not available yet, so the skill must be
+> installed by hand for the time being.  Future automation through the
+> Claude Code plugin marketplace is tracked in
+> [issue #489].
+
+1.  Pick your agent's skills directory.  For Claude Code, this is
+    *.claude/skills/fedify/*.
+
+2.  Download *SKILL.md* from the Fedify repository:
+
+    ~~~~ sh
+    mkdir -p .claude/skills/fedify
+    curl -L -o .claude/skills/fedify/SKILL.md \
+      https://raw.githubusercontent.com/fedify-dev/fedify/main/packages/fedify/skills/fedify/SKILL.md
+    ~~~~
+
+3.  Either commit the file or add it to *.gitignore*, depending on your
+    team's preference.
+
+[issue #489]: https://github.com/fedify-dev/fedify/issues/489
