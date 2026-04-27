@@ -1,5 +1,6 @@
 import { ok } from "node:assert/strict";
 import test from "node:test";
+import astroDescription from "./webframeworks/astro.ts";
 import nextDescription from "./webframeworks/next.ts";
 import nitroDescription from "./webframeworks/nitro.ts";
 
@@ -43,4 +44,23 @@ test("Next.js template loads LogTape through instrumentation", async () => {
   ok(instrumentation.includes("export async function register()"));
   ok(instrumentation.includes("process.env.NEXT_RUNTIME"));
   ok(instrumentation.includes('await import("./logging")'));
+});
+
+test("Astro template loads LogTape through middleware", async () => {
+  const { files } = await astroDescription.init({
+    projectName: "test-app",
+    dir: ".",
+    command: "init",
+    packageManager: "npm",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    webFramework: "astro",
+    testMode: false,
+    dryRun: true,
+  });
+
+  ok(files);
+  const middleware = files["src/middleware.ts"];
+  ok(middleware);
+  ok(middleware.includes('import "./logging.ts";'));
 });
