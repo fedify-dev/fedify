@@ -1,6 +1,6 @@
 {
   "name": "@fedify/koa",
-  "version": "2.1.11",
+  "version": "2.1.12",
   "description": "Integrate Fedify with Koa",
   "keywords": [
     "Fedify",
