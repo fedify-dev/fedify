@@ -1,0 +1,66 @@
+{
+  "name": "@fedify/uri-template",
+  "version": "2.2.0",
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/uri-template"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "engines": {
+    "deno": ">=2.0.0",
+    "node": ">=22.0.0",
+    "bun": ">=1.1.0"
+  },
+  "description": "Symmetric RFC 6570 URI Template expansion and pattern matching",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      },
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/uri-template... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "test": "node --experimental-transform-types --test"
+  },
+  "keywords": [
+    "Fedify",
+    "URI Template",
+    "RFC 6570",
+    "ActivityPub",
+    "Fediverse"
+  ],
+  "author": {
+    "name": "Chanhaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://chomu.dev/"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {}
+}
