@@ -3,6 +3,7 @@ import test from "node:test";
 import astroDescription from "./webframeworks/astro.ts";
 import nextDescription from "./webframeworks/next.ts";
 import nitroDescription from "./webframeworks/nitro.ts";
+import solidstartDescription from "./webframeworks/solidstart.ts";
 
 test("Nitro template loads LogTape during server startup", async () => {
   const { files } = await nitroDescription.init({
@@ -66,4 +67,24 @@ test("Astro template loads LogTape through middleware", async () => {
   const middleware = files["src/middleware.ts"];
   ok(middleware);
   ok(middleware.includes('import "./logging.ts";'));
+});
+
+test("SolidStart template loads LogTape through middleware", async () => {
+  const { files } = await solidstartDescription.init({
+    projectName: "test-app",
+    dir: ".",
+    command: "init",
+    packageManager: "npm",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    webFramework: "solidstart",
+    testMode: false,
+    dryRun: true,
+    allowNonEmpty: false,
+  });
+
+  ok(files);
+  const middleware = files["src/middleware/index.ts"];
+  ok(middleware);
+  ok(middleware.includes('import "../logging";'));
 });
