@@ -5217,67 +5217,69 @@ Push the schema:
 npm run db:push
 ~~~~
 
-### Strip HTML before storing remote captions
+### Sanitize remote captions before storing them
 
 Mastodon, Pixelfed, and most other fediverse servers send
-`Note.content` wrapped in HTML elements like `<p>` and `<a>`.
-Rendering that markup directly through `v-html` against a public
-inbox is an XSS surface, since any peer could push markup we did
-not author.  Cleaning the input at write time means the database
-stores text we can safely interpolate with `{{ }}` everywhere
-downstream.
+`Note.content` wrapped in HTML elements: `<p>` for paragraphs,
+`<br>` for line breaks, `<a>` (often inside a `<span>`) for
+mentions, hashtags, and plain links.  Rendering that markup
+directly through Vue's `v-html` against a public inbox is an XSS
+surface, since any peer could push markup we did not author.  We
+do *not* want to throw all of that markup away either; mentions
+and clickable links are part of what makes the home timeline
+recognizable.  The middle ground is to run remote content through
+a sanitizer with a tight allow-list at write time, and store the
+cleaned HTML.
 
-Add *server/utils/text.ts*:
+Install [sanitize-html] and its types:
+
+~~~~ sh
+npm install sanitize-html
+npm install -D @types/sanitize-html
+~~~~
+
+Then add *server/utils/text.ts*:
 
 ~~~~ typescript [server/utils/text.ts]
-const NAMED_ENTITIES: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&#39;": "'",
-  "&apos;": "'",
-  "&nbsp;": " ",
+import sanitizeHtml from "sanitize-html";
+
+const ALLOWED_TAGS = ["p", "br", "a", "span"];
+const ALLOWED_ATTRS = {
+  a: ["href", "class"],
+  span: ["class"],
 };
+const ALLOWED_SCHEMES = ["http", "https"];
 
-function decodeCodePoint(value: number): string {
-  if (!Number.isFinite(value) || value < 0 || value > 0x10ffff) {
-    return "�";
-  }
-  if (value >= 0xd800 && value <= 0xdfff) return "�";
-  try {
-    return String.fromCodePoint(value);
-  } catch {
-    return "�";
-  }
-}
-
-export function stripHtml(input: string): string {
-  let text = input
-    .replace(/<\s*\/p\s*>/gi, "\n\n")
-    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-  for (const [entity, char] of Object.entries(NAMED_ENTITIES)) {
-    text = text.replace(new RegExp(entity, "g"), char);
-  }
-  text = text.replace(/&#(\d+);/g, (_, n) => decodeCodePoint(Number(n)));
-  text = text.replace(/&#x([0-9a-f]+);/gi, (_, h) =>
-    decodeCodePoint(parseInt(h, 16)),
-  );
-  return text.replace(/\n{3,}/g, "\n\n").trim();
+export function sanitizeNoteContent(input: string): string {
+  return sanitizeHtml(input, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: ALLOWED_ATTRS,
+    allowedSchemes: ALLOWED_SCHEMES,
+    transformTags: {
+      // Force a safe `rel` and `target` on every `<a>` regardless
+      // of what the peer sent.  `nofollow noopener noreferrer ugc`
+      // is the conventional set for user-generated remote links
+      // and matches what Mastodon's web frontend renders.
+      a: (_tagName, attribs) => ({
+        tagName: "a",
+        attribs: {
+          ...attribs,
+          rel: "nofollow noopener noreferrer ugc",
+          target: "_blank",
+        },
+      }),
+    },
+  }).trim();
 }
 ~~~~
 
-The helper turns paragraph and `<br>` markers into newlines,
-strips the rest of the tags, and decodes the named and numeric
-entities you actually see on the wire.  `decodeCodePoint` clamps
-the integer to the Unicode scalar range and falls back to the
-replacement character (`U+FFFD`) when a hostile peer sends an
-out-of-range entity such as `&#999999999999;`.  The helper is
-deliberately small: production apps usually pull in a library
-like [sanitize-html] and keep an allow-list of safe tags so they
-can preserve mentions and link formatting; the tutorial trades
-that fidelity for a few lines of regex.
+`sanitize-html` parses the input into a DOM, walks every node
+against the allow-list, and serializes the survivors back out.
+Anything outside the allow-list (including `<script>`, inline
+event handlers, `<img>` with hostile `src`, exotic schemes such as
+`javascript:` and `data:`) is dropped.  `transformTags` rewrites
+each surviving `<a>` to carry the `rel` and `target` attributes
+we want, which means peers cannot opt out by omitting them.
 
 [sanitize-html]: https://www.npmjs.com/package/sanitize-html
 
@@ -5298,7 +5300,7 @@ import { Create, Document, Note } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { following, timelinePosts } from "./db/schema";
-import { stripHtml } from "./utils/text";
+import { sanitizeNoteContent } from "./utils/text";
 
 export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -5353,7 +5355,7 @@ federation
         authorHandle: row.handle,
         authorName: row.name,
         authorUrl: row.url,
-        caption: stripHtml(object.content?.toString() ?? "") || null,
+        caption: sanitizeNoteContent(object.content?.toString() ?? "") || null,
         mediaUrl,
         mediaType,
         publishedAt: published,
@@ -6141,7 +6143,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { comments, following, timelinePosts } from "./db/schema";
-import { stripHtml } from "./utils/text";
+import { sanitizeNoteContent } from "./utils/text";
 
 export const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -6187,7 +6189,7 @@ federation
         authorHandle, // [!code ++]
         authorName: author.name?.toString() ?? null, // [!code ++]
         authorUrl: author.url?.href ?? null, // [!code ++]
-        content: stripHtml(object.content?.toString() ?? ""), // [!code ++]
+        content: sanitizeNoteContent(object.content?.toString() ?? ""), // [!code ++]
         publishedAt: // [!code ++]
           object.published?.toString() ?? new Date().toISOString(), // [!code ++]
       }) // [!code ++]
