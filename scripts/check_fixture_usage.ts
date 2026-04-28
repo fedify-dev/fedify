@@ -11,7 +11,14 @@
  * review and the published package contents remain the source of truth.
  */
 import { walk } from "@std/fs/walk";
-import { dirname, fromFileUrl, relative, resolve } from "@std/path";
+import {
+  dirname,
+  fromFileUrl,
+  join,
+  relative,
+  resolve,
+  SEPARATOR,
+} from "@std/path";
 
 /**
  * Files exempt from the "@fedify/fixture imports must live in *.test.ts"
@@ -31,7 +38,7 @@ const ALLOWLIST: readonly string[] = [
   // JSDoc `@example` block mentions `import { test } from "@fedify/fixture"`
   // as documentation; not a real runtime import.
   "packages/testing/src/mq-tester.ts",
-];
+].map((path) => join(...path.split("/") as [string, ...string[]]));
 
 const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const packagesDir = resolve(projectRoot, "packages");
@@ -73,8 +80,8 @@ for await (
   const entry of walk(packagesDir, {
     includeDirs: false,
     exts: [".ts"],
-    match: [/\/src\//],
-    skip: [/^packages\/fixture/],
+    match: [new RegExp(`${SEPARATOR}src${SEPARATOR}`)],
+    skip: [new RegExp(`^packages${SEPARATOR}fixture`)],
   })
 ) {
   const rel = relative(projectRoot, entry.path);
