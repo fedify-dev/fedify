@@ -179,6 +179,12 @@ A detailed step-by-step guide is available across three skills:
 3.  Follow the pattern from existing database adapter packages
 4.  Implement both KV store and message queue interfaces as needed
 
+### Writing tests with `@fedify/fixture`
+
+See *CONTRIBUTING.md* “Writing tests with `@fedify/fixture`” section and
+*packages/fixture/README.md* for detailed instructions on using the fixture
+package for runtime-agnostic testing.
+
 ### Adding a new package
 
 See *CONTRIBUTING.md* “Adding a new package” section for the complete checklist

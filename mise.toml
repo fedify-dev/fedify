@@ -47,6 +47,7 @@ depends = [
   "check:md",
   "check-versions",
   "check:manifest:workspace-protocol",
+  "check:fixture-usage",
 ]
 
 [tasks."check:fmt"]
@@ -75,6 +76,10 @@ else
   deno task check-versions
 fi
 '''
+
+[tasks."check:fixture-usage"]
+description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
+run = "deno run --allow-read scripts/check_fixture_usage.ts"
 
 [tasks."check:manifest:workspace-protocol"]
 description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
