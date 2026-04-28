@@ -133,7 +133,7 @@ export class AmqpMessageQueue implements MessageQueue {
     queuePrefix: string;
     partitions: number;
   };
-  #delayedQueues: Set<string> = new Set();
+  #delayedQueues: Map<string, number> = new Map();
   #orderingPrepared: boolean = false;
 
   readonly nativeRetrial: boolean;
@@ -270,7 +270,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
-      this.#delayedQueues.add(queue);
+      this.#trackDelayedQueue(queue, delay);
     }
     channel.sendToQueue(
       queue,
@@ -353,7 +353,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
-      this.#delayedQueues.add(queue);
+      this.#trackDelayedQueue(queue, delay);
     }
 
     for (const message of messages) {
@@ -368,8 +368,26 @@ export class AmqpMessageQueue implements MessageQueue {
     }
   }
 
+  #trackDelayedQueue(queue: string, delay: number): void {
+    this.#delayedQueues.set(queue, Date.now() + Math.max(0, delay) + 60_000);
+    this.#pruneDelayedQueues();
+  }
+
+  #pruneDelayedQueues(): void {
+    const now = Date.now();
+    for (const [queue, expiresAt] of this.#delayedQueues) {
+      if (expiresAt <= now) this.#delayedQueues.delete(queue);
+    }
+  }
+
+  async #createDepthChannel(): Promise<Channel> {
+    const channel = await this.#connection.createChannel();
+    channel.on("error", () => undefined);
+    return channel;
+  }
+
   async getDepth(): Promise<MessageQueueDepth> {
-    let channel: Channel | undefined = await this.#connection.createChannel();
+    let channel: Channel | undefined = await this.#createDepthChannel();
     const closeChannel = async () => {
       if (channel == null) return;
       const currentChannel = channel;
@@ -393,7 +411,8 @@ export class AmqpMessageQueue implements MessageQueue {
       }
 
       let delayed = 0;
-      for (const queue of [...this.#delayedQueues]) {
+      this.#pruneDelayedQueues();
+      for (const queue of [...this.#delayedQueues.keys()]) {
         try {
           delayed += (await channel.checkQueue(queue)).messageCount;
         } catch (error) {
@@ -402,7 +421,7 @@ export class AmqpMessageQueue implements MessageQueue {
           }
           this.#delayedQueues.delete(queue);
           await closeChannel();
-          channel = await this.#connection.createChannel();
+          channel = await this.#createDepthChannel();
         }
       }
 
