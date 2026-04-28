@@ -264,22 +264,24 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
   /**
    * {@inheritDoc MessageQueue.getDepth}
    */
-  getDepth(): Promise<MessageQueueDepth> {
+  async getDepth(): Promise<MessageQueueDepth> {
     this.initialize();
-    const now = Temporal.Now.instant().epochMilliseconds;
-    const row = this.#db
-      .prepare(
-        `SELECT
-          COUNT(*) AS queued,
-          COALESCE(SUM(CASE WHEN scheduled <= ? THEN 1 ELSE 0 END), 0) AS ready
-        FROM "${this.#tableName}"`,
-      )
-      .get(now) as { queued: number; ready: number };
-    return Promise.resolve({
+    const row = await this.#retryOnBusy(() => {
+      const now = Temporal.Now.instant().epochMilliseconds;
+      return this.#db
+        .prepare(
+          `SELECT
+            COUNT(*) AS queued,
+            COALESCE(SUM(CASE WHEN scheduled <= ? THEN 1 ELSE 0 END), 0) AS ready
+          FROM "${this.#tableName}"`,
+        )
+        .get(now) as { queued: number; ready: number };
+    });
+    return {
       queued: row.queued,
       ready: row.ready,
-      delayed: row.queued - row.ready,
-    });
+      delayed: Math.max(0, row.queued - row.ready),
+    };
   }
 
   /**

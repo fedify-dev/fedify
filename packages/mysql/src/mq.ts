@@ -323,7 +323,7 @@ export class MysqlMessageQueue implements MessageQueue {
     return {
       queued,
       ready,
-      delayed: queued - ready,
+      delayed: Math.max(0, queued - ready),
     };
   }
 
