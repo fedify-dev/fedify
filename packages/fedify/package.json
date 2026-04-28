@@ -1,6 +1,6 @@
 {
   "name": "@fedify/fedify",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "An ActivityPub server framework",
   "keywords": [
     "ActivityPub",
@@ -37,7 +37,10 @@
   ],
   "agents": {
     "skills": [
-      { "name": "fedify", "path": "./skills/fedify" }
+      {
+        "name": "fedify",
+        "path": "./skills/fedify"
+      }
     ]
   },
   "module": "./dist/mod.js",
