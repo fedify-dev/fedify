@@ -2,10 +2,13 @@ import { PlatformDatabase } from "#sqlite";
 import { test } from "@fedify/fixture";
 import { SqliteMessageQueue } from "@fedify/sqlite/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
+import * as temporal from "@js-temporal/polyfill";
 import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbDir = await mkdtemp(join(tmpdir(), "fedify-sqlite-"));
 const dbPath = join(dbDir, `${getRandomKey("sqlite")}.db`);

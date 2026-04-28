@@ -1,10 +1,13 @@
 import { test } from "@fedify/fixture";
 import { RedisMessageQueue } from "@fedify/redis/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
+import * as temporal from "@js-temporal/polyfill";
 import assert from "node:assert/strict";
 import process from "node:process";
 
 import { Redis } from "ioredis";
+
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbUrl = process.env.REDIS_URL;
 

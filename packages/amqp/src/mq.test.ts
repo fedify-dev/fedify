@@ -1,11 +1,14 @@
 import { suite } from "@alinea/suite";
 import { AmqpMessageQueue } from "@fedify/amqp/mq";
 import { getRandomKey, testMessageQueue, waitFor } from "@fedify/testing";
+import * as temporal from "@js-temporal/polyfill";
 import { assert, assertEquals, assertFalse, assertGreater } from "@std/assert";
 import { delay } from "@std/async/delay";
 // @deno-types="npm:@types/amqplib"
 import { type ChannelModel, connect } from "amqplib";
 import process from "node:process";
+
+const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const AMQP_URL = process.env.AMQP_URL;
 const test = AMQP_URL ? suite(import.meta) : suite(import.meta).skip;
