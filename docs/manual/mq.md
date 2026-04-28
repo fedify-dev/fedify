@@ -695,10 +695,10 @@ class CustomMessageQueue implements MessageQueue {
     // Implementation here
   }
 
-  async getDepth(): Promise<MessageQueueDepth> {
-    // Optional: return queue depth for observability
-    return { queued: 0, ready: 0, delayed: 0 };
-  }
+  // Optional: implement only if your backend can report real counts.
+  // async getDepth(): Promise<MessageQueueDepth> {
+  //   return { queued, ready, delayed };
+  // }
 }
 ~~~~
 
@@ -1016,6 +1016,7 @@ if (depth != null) {
 | [`AmqpMessageQueue`]     | `queued`, `ready`, `delayed`[^amqp-depth] |
 | [`SqliteMessageQueue`]   | `queued`, `ready`, `delayed`              |
 | `WorkersMessageQueue`    | No reliable platform count                |
+| `ParallelMessageQueue`   | Same as wrapped queue                     |
 
 If you pass the same `MessageQueue` instance as the shared queue for inbox,
 outbox, and fanout work, observability code should report that queue once as a

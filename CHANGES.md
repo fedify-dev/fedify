@@ -10,10 +10,11 @@ To be released.
 
 ### @fedify/fedify
 
- -  Added optional `MessageQueue.getDepth()` support for reporting queue
-    backlog depth.  `InProcessMessageQueue` can now report queued messages,
-    including ready and delayed counts, and `ParallelMessageQueue` delegates
-    depth reporting to its wrapped queue when supported.  [[#735], [#748]]
+ -  Added optional `MessageQueue.getDepth()` support, using the new
+    `MessageQueueDepth` return type, for reporting queue backlog depth.
+    `InProcessMessageQueue` can now report queued messages, including ready
+    and delayed counts, and `ParallelMessageQueue` delegates depth reporting
+    to its wrapped queue when supported.  [[#735], [#748]]
 
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#748]: https://github.com/fedify-dev/fedify/pull/748
