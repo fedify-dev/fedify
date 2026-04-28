@@ -99,6 +99,17 @@ command above.
 
 [Deno]: https://deno.com/
 
+### Using mise
+
+If you have [mise] installed, you can install `fedify` by running the following
+command:
+
+~~~~ sh
+mise use -g github:fedify-dev/fedify
+~~~~
+
+[mise]: https://mise.jdx.dev/
+
 ### Downloading the executable
 
 You can download the pre-built executables from the [releases] page.  Download
@@ -216,7 +227,7 @@ precedence over configuration file values.
 
 *This command is available since Fedify 0.12.0.*
 
-[![The “fedify init” command demo](https://asciinema.org/a/671658.svg)](https://asciinema.org/a/671658)
+[![The “fedify init” command demo](https://asciinema.org/a/979416.svg)](https://asciinema.org/a/979416)
 
 The `fedify init` command is used to initialize a new Fedify project.
 It creates a new directory with the necessary files and directories for a
