@@ -58,6 +58,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
