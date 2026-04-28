@@ -234,7 +234,7 @@ export class PostgresMessageQueue implements MessageQueue {
       SELECT
         COUNT(*) AS queued,
         COUNT(*) FILTER (
-          WHERE created + delay < CURRENT_TIMESTAMP
+          WHERE created + delay <= CURRENT_TIMESTAMP
         ) AS ready
       FROM ${this.#sql(this.#tableName)}
     `;

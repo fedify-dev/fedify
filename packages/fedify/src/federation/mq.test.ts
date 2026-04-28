@@ -160,6 +160,31 @@ test("InProcessMessageQueue.getDepth()", async () => {
   });
 });
 
+test("InProcessMessageQueue.getDepth() snapshots delayed batches", async () => {
+  const mq = new InProcessMessageQueue();
+  const messages = ["first", "second"];
+  await mq.enqueueMany(messages, {
+    delay: Temporal.Duration.from({ milliseconds: 10 }),
+  });
+  messages.length = 0;
+  assertEquals(await mq.getDepth(), {
+    queued: 2,
+    ready: 0,
+    delayed: 2,
+  });
+
+  const handled: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    handled.push(message);
+    if (handled.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  await waitFor(() => handled.length >= 2, 15_000);
+  await listening;
+  assertEquals(handled, ["first", "second"]);
+});
+
 test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () => {
   const mq = new InProcessMessageQueue();
   let resolveHandler: (() => void) | undefined;

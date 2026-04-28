@@ -204,10 +204,19 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
 
   async getDepth(): Promise<MessageQueueDepth> {
     const now = Temporal.Now.instant().epochMilliseconds;
-    const [queued, ready] = await Promise.all([
-      this.#redis.zcard(this.#queueKey),
-      this.#redis.zcount(this.#queueKey, "-inf", now),
-    ]);
+    const [queuedCount, readyCount] = await this.#redis.eval(
+      `
+        return {
+          redis.call("ZCARD", KEYS[1]),
+          redis.call("ZCOUNT", KEYS[1], "-inf", ARGV[1])
+        }
+      `,
+      1,
+      this.#queueKey,
+      now,
+    ) as [number, number];
+    const queued = Number(queuedCount);
+    const ready = Number(readyCount);
     return {
       queued,
       ready,

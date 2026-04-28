@@ -222,11 +222,16 @@ export class InProcessMessageQueue implements MessageQueue {
       ? 0
       : Math.max(options.delay.total("millisecond"), 0);
     if (delay > 0) {
-      this.#delayedMessages += messages.length;
+      const delayedCount = messages.length;
+      const deferredMessages = [...messages];
+      this.#delayedMessages += delayedCount;
       setTimeout(
         () => {
-          this.#delayedMessages -= messages.length;
-          void this.enqueueMany(messages, { ...options, delay: undefined });
+          this.#delayedMessages -= delayedCount;
+          void this.enqueueMany(deferredMessages, {
+            ...options,
+            delay: undefined,
+          });
         },
         delay,
       );
