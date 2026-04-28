@@ -398,30 +398,37 @@ export class AmqpMessageQueue implements MessageQueue {
         // The channel can already be closed by a failed passive queue check.
       }
     };
+    const checkQueue = async (
+      queueName: string,
+    ): Promise<number | undefined> => {
+      if (channel == null) channel = await this.#createDepthChannel();
+      try {
+        return (await channel.checkQueue(queueName)).messageCount;
+      } catch (error) {
+        if (!isQueueNotFoundError(error)) {
+          throw error;
+        }
+        await closeChannel();
+        channel = await this.#createDepthChannel();
+        return undefined;
+      }
+    };
     try {
-      await this.#prepareQueue(channel);
-      await this.#prepareOrdering(channel);
-
-      let ready = (await channel.checkQueue(this.#queue)).messageCount;
+      let ready = (await checkQueue(this.#queue)) ?? 0;
       if (this.#ordering != null) {
         for (let i = 0; i < this.#ordering.partitions; i++) {
-          ready += (await channel.checkQueue(this.#getOrderingQueueName(i)))
-            .messageCount;
+          ready += (await checkQueue(this.#getOrderingQueueName(i))) ?? 0;
         }
       }
 
       let delayed = 0;
       this.#pruneDelayedQueues();
-      for (const queue of [...this.#delayedQueues.keys()]) {
-        try {
-          delayed += (await channel.checkQueue(queue)).messageCount;
-        } catch (error) {
-          if (!isQueueNotFoundError(error)) {
-            throw error;
-          }
+      for (const queue of this.#delayedQueues.keys()) {
+        const messageCount = await checkQueue(queue);
+        if (messageCount == null) {
           this.#delayedQueues.delete(queue);
-          await closeChannel();
-          channel = await this.#createDepthChannel();
+        } else {
+          delayed += messageCount;
         }
       }
 
