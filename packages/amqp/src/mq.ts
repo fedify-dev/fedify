@@ -8,6 +8,11 @@ import type {
 import type { Channel, ChannelModel, ConsumeMessage } from "amqplib";
 import { Buffer } from "node:buffer";
 
+function isQueueNotFoundError(error: unknown): boolean {
+  return typeof error === "object" && error != null &&
+    "code" in error && error.code === 404;
+}
+
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
  *
@@ -364,7 +369,17 @@ export class AmqpMessageQueue implements MessageQueue {
   }
 
   async getDepth(): Promise<MessageQueueDepth> {
-    let channel = await this.#connection.createChannel();
+    let channel: Channel | undefined = await this.#connection.createChannel();
+    const closeChannel = async () => {
+      if (channel == null) return;
+      const currentChannel = channel;
+      channel = undefined;
+      try {
+        await currentChannel.close();
+      } catch {
+        // The channel can already be closed by a failed passive queue check.
+      }
+    };
     try {
       await this.#prepareQueue(channel);
       await this.#prepareOrdering(channel);
@@ -381,13 +396,12 @@ export class AmqpMessageQueue implements MessageQueue {
       for (const queue of [...this.#delayedQueues]) {
         try {
           delayed += (await channel.checkQueue(queue)).messageCount;
-        } catch {
-          this.#delayedQueues.delete(queue);
-          try {
-            await channel.close();
-          } catch {
-            // The channel is usually already closed after a failed checkQueue().
+        } catch (error) {
+          if (!isQueueNotFoundError(error)) {
+            throw error;
           }
+          this.#delayedQueues.delete(queue);
+          await closeChannel();
           channel = await this.#connection.createChannel();
         }
       }
@@ -398,11 +412,7 @@ export class AmqpMessageQueue implements MessageQueue {
         delayed,
       };
     } finally {
-      try {
-        await channel.close();
-      } catch {
-        // The channel can already be closed if a tracked delayed queue vanished.
-      }
+      await closeChannel();
     }
   }
 
