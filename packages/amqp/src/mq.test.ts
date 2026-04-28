@@ -72,11 +72,15 @@ test(
         delayed: 1,
       });
     } finally {
-      const channel = await conn.createChannel();
-      await channel.deleteQueue(queue);
-      await channel.deleteQueue(`${delayedQueuePrefix}60000`).catch(() => {});
-      await channel.close();
-      await conn.close();
+      const channel = await conn.createChannel().catch(() => undefined);
+      try {
+        await channel?.deleteQueue(queue).catch(() => {});
+        await channel?.deleteQueue(`${delayedQueuePrefix}60000`).catch(() => {
+        });
+      } finally {
+        await channel?.close().catch(() => {});
+        await conn.close().catch(() => {});
+      }
     }
   },
 );
