@@ -204,15 +204,19 @@ test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () =>
     controller.abort();
   }, { signal: controller.signal });
 
-  await mq.enqueue("in-flight");
-  await handlerStarted;
-  assertEquals(await mq.getDepth(), {
-    queued: 0,
-    ready: 0,
-    delayed: 0,
-  });
-  resolveHandler?.();
-  await listening;
+  try {
+    await mq.enqueue("in-flight");
+    await handlerStarted;
+    assertEquals(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+  } finally {
+    resolveHandler?.();
+    controller.abort();
+    await listening;
+  }
 });
 
 test("InProcessMessageQueue orderingKey", async (t) => {
