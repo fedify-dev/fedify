@@ -177,6 +177,38 @@ A patch set should include the following:
 Feature pull requests should target the *main* branch for non-breaking changes,
 or the *next* branch for breaking changes.
 
+### Writing tests with `@fedify/fixture`
+
+The monorepo-private [`@fedify/fixture`] package provides the shared test
+infrastructure used across every workspace package.  Reach for it whenever you
+add or modify a unit test:
+
+ -  `test()`: A drop-in `Deno.test()`-compatible wrapper that runs the same
+    test on Deno, Node.js, Bun, and the Cloudflare Workers harness.
+ -  `testDefinitions`: The array of every registered `test()`, consumed by
+    the Workers test runner.
+ -  `mockDocumentLoader()`: A document loader that resolves
+    ActivityPub/JSON-LD URLs from on-disk fixtures under
+    *packages/fixture/src/fixtures/* instead of issuing real HTTP requests.
+ -  `TestSpanExporter` / `createTestTracerProvider()`: Helpers for asserting
+    on OpenTelemetry spans and events recorded by the code under test.
+
+See *[packages/fixture/README.md]* for the full API, fixture layout, and
+runtime-specific notes.
+
+> [!CAUTION]
+>
+> `@fedify/fixture` is a private workspace package and is **not** published
+> to npm or JSR.  Importing it from any file that ships to end users will
+> break consumers as soon as they install the package from a registry.
+>
+> Restrict every import of `@fedify/fixture` to files matching
+> `**/*.test.ts`.  Keeping the boundary at the filename level makes it
+> trivial to audit. You can check this with `mise run check:fixture-usage`.
+
+[`@fedify/fixture`]: packages/fixture/
+[packages/fixture/README.md]: packages/fixture/README.md
+
 ### Adding a new package
 
 When adding a new package to the monorepo, the following files must be updated:
