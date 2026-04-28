@@ -1,5 +1,8 @@
 /**
- * Symmetric RFC 6570 URI Template expansion and pattern matching.
+ * Symmetric [RFC 6570] URI
+ * Template expansion and pattern matching.
+ *
+ * [RFC 6570]: https://www.rfc-editor.org/rfc/rfc6570.html
  *
  * @module
  */

@@ -1677,6 +1677,9 @@ importers:
 
   packages/uri-template:
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
