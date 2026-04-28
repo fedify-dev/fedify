@@ -37,19 +37,11 @@ dependency to the package that needs it:
 }
 ~~~~
 
-~~~~ jsonc
-// packages/<your-package>/deno.json
-{
-  "imports": {
-    "@fedify/fixture": "jsr:@fedify/fixture@^2.0.0"
-  }
-}
-~~~~
-
 For Deno, the `imports` entry resolves to the in-tree source through the
-workspace at the repository root.  For Node.js and Bun, pnpm links the local
-package by virtue of the `workspace:` specifier; remember to run
-`mise run install` (or `pnpm install`) at the repository root after the edit.
+workspace at the repository root, so you don't need to add it to *deno.json*.
+For Node.js and Bun, pnpm links the local package by virtue of the `workspace:`
+specifier; remember to run `mise run install` (or `pnpm install`) at the
+repository root after the edit.
 
 
 Usage
@@ -106,15 +98,14 @@ test("nested steps", async (t) => {
 
 #### Logging behavior
 
-`test()` configures [LogTape] before every test and resets it afterwards.
-By default log records are captured in memory and only flushed to the console
-if the test throws — this keeps successful runs quiet.  Set the environment
-variable `LOG=always` to stream every log record to stdout regardless of test
-outcome, which is useful when you are debugging a flaky test:
+On Deno, `test()` configures [LogTape] before every test and resets it
+afterwards. By default log records are captured in memory and only flushed to
+the console if the test throws — this keeps successful runs quiet.  Set the
+environment variable `LOG=always` to stream every log record to stdout
+regardless of test outcome, which is useful when you are debugging a flaky test:
 
 ~~~~ bash
-LOG=always deno task test
-LOG=always pnpm test
+LOG=always mise run test:deno
 ~~~~
 
 [`Deno.test()`]: https://docs.deno.com/api/deno/~/Deno.test
@@ -307,7 +298,7 @@ Genuinely justified exceptions can be added to the `ALLOWLIST` constant in
 together with an inline comment explaining why.
 
 [npm]: https://www.npmjs.com/
-[JSR]: https://jsr.dev/
+[JSR]: https://jsr.io/
 
 
 Repository layout

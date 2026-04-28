@@ -190,7 +190,7 @@ add or modify a unit test:
  -  `mockDocumentLoader()`: A document loader that resolves
     ActivityPub/JSON-LD URLs from on-disk fixtures under
     *packages/fixture/src/fixtures/* instead of issuing real HTTP requests.
- -  `TestSpanExporter` / `createTestTracerProvider()`: Helpers for asserting
+ -  `TestSpanExporter`/`createTestTracerProvider()`: Helpers for asserting
     on OpenTelemetry spans and events recorded by the code under test.
 
 See *[packages/fixture/README.md]* for the full API, fixture layout, and
