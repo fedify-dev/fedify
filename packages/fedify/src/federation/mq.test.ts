@@ -164,7 +164,7 @@ test("InProcessMessageQueue.getDepth() snapshots delayed batches", async () => {
   const mq = new InProcessMessageQueue();
   const messages = ["first", "second"];
   await mq.enqueueMany(messages, {
-    delay: Temporal.Duration.from({ milliseconds: 10 }),
+    delay: Temporal.Duration.from({ milliseconds: 250 }),
   });
   messages.length = 0;
   assertEquals(await mq.getDepth(), {
