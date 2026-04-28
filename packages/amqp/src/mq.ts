@@ -1,5 +1,6 @@
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
@@ -127,6 +128,7 @@ export class AmqpMessageQueue implements MessageQueue {
     queuePrefix: string;
     partitions: number;
   };
+  #delayedQueues: Set<string> = new Set();
   #orderingPrepared: boolean = false;
 
   readonly nativeRetrial: boolean;
@@ -263,6 +265,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
+      this.#delayedQueues.add(queue);
     }
     channel.sendToQueue(
       queue,
@@ -345,6 +348,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
+      this.#delayedQueues.add(queue);
     }
 
     for (const message of messages) {
@@ -356,6 +360,49 @@ export class AmqpMessageQueue implements MessageQueue {
           contentType: "application/json",
         },
       );
+    }
+  }
+
+  async getDepth(): Promise<MessageQueueDepth> {
+    let channel = await this.#connection.createChannel();
+    try {
+      await this.#prepareQueue(channel);
+      await this.#prepareOrdering(channel);
+
+      let ready = (await channel.checkQueue(this.#queue)).messageCount;
+      if (this.#ordering != null) {
+        for (let i = 0; i < this.#ordering.partitions; i++) {
+          ready += (await channel.checkQueue(this.#getOrderingQueueName(i)))
+            .messageCount;
+        }
+      }
+
+      let delayed = 0;
+      for (const queue of [...this.#delayedQueues]) {
+        try {
+          delayed += (await channel.checkQueue(queue)).messageCount;
+        } catch {
+          this.#delayedQueues.delete(queue);
+          try {
+            await channel.close();
+          } catch {
+            // The channel is usually already closed after a failed checkQueue().
+          }
+          channel = await this.#connection.createChannel();
+        }
+      }
+
+      return {
+        queued: ready + delayed,
+        ready,
+        delayed,
+      };
+    } finally {
+      try {
+        await channel.close();
+      } catch {
+        // The channel can already be closed if a tracked delayed queue vanished.
+      }
     }
   }
 

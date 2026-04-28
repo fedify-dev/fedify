@@ -1,5 +1,6 @@
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
@@ -303,6 +304,27 @@ export class MysqlMessageQueue implements MessageQueue {
       count: messages.length,
       orderingKey,
     });
+  }
+
+  /**
+   * {@inheritDoc MessageQueue.getDepth}
+   * @since 2.3.0
+   */
+  async getDepth(): Promise<MessageQueueDepth> {
+    await this.initialize();
+    const [rows] = await this.#pool.query<RowDataPacket[]>(
+      `SELECT
+         COUNT(*) AS queued,
+         COALESCE(SUM(\`deliver_after\` <= NOW(6)), 0) AS ready
+       FROM \`${this.#tableName}\``,
+    );
+    const queued = Number(rows[0].queued);
+    const ready = Number(rows[0].ready);
+    return {
+      queued,
+      ready,
+      delayed: queued - ready,
+    };
   }
 
   /**

@@ -1,5 +1,6 @@
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
@@ -225,6 +226,25 @@ export class PostgresMessageQueue implements MessageQueue {
       messages,
       orderingKey,
     });
+  }
+
+  async getDepth(): Promise<MessageQueueDepth> {
+    await this.initialize();
+    const result = await this.#sql`
+      SELECT
+        COUNT(*) AS queued,
+        COUNT(*) FILTER (
+          WHERE created + delay < CURRENT_TIMESTAMP
+        ) AS ready
+      FROM ${this.#sql(this.#tableName)}
+    `;
+    const queued = Number(result[0].queued);
+    const ready = Number(result[0].ready);
+    return {
+      queued,
+      ready,
+      delayed: queued - ready,
+    };
   }
 
   async listen(

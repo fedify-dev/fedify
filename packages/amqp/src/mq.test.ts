@@ -37,6 +37,47 @@ test(
     ),
 );
 
+test(
+  "AmqpMessageQueue.getDepth()",
+  { sanitizeOps: false, sanitizeExit: false, sanitizeResources: false },
+  async () => {
+    const conn = await getConnection();
+    const queue = getRandomKey("depth_queue");
+    const delayedQueuePrefix = getRandomKey("depth_delayed") + "_";
+    const mq = new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
+    try {
+      assertEquals(await mq.getDepth(), {
+        queued: 0,
+        ready: 0,
+        delayed: 0,
+      });
+      await mq.enqueue("ready");
+      await mq.enqueue("delayed", {
+        delay: Temporal.Duration.from({ seconds: 60 }),
+      });
+      const started = Date.now();
+      while (Date.now() - started < 15_000) {
+        const depth = await mq.getDepth();
+        if (depth.queued === 2 && depth.ready === 1 && depth.delayed === 1) {
+          break;
+        }
+        await delay(100);
+      }
+      assertEquals(await mq.getDepth(), {
+        queued: 2,
+        ready: 1,
+        delayed: 1,
+      });
+    } finally {
+      const channel = await conn.createChannel();
+      await channel.deleteQueue(queue);
+      await channel.deleteQueue(`${delayedQueuePrefix}60000`).catch(() => {});
+      await channel.close();
+      await conn.close();
+    }
+  },
+);
+
 // Test with ordering key support (requires rabbitmq_consistent_hash_exchange plugin)
 const orderingConnections: ChannelModel[] = [];
 const orderingQueue = getRandomKey("ordering_queue");

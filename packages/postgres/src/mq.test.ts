@@ -42,6 +42,34 @@ test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
   );
 });
 
+test("PostgresMessageQueue.getDepth()", { ignore: dbUrl == null }, async () => {
+  if (dbUrl == null) return; // Bun does not support skip option
+
+  const tableName = getRandomKey("message_depth");
+  const channelName = getRandomKey("channel_depth");
+  const sql = postgres(dbUrl);
+  const mq = new PostgresMessageQueue(sql, { tableName, channelName });
+  try {
+    deepStrictEqual(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+    await mq.enqueue("ready");
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ hours: 1 }),
+    });
+    deepStrictEqual(await mq.getDepth(), {
+      queued: 2,
+      ready: 1,
+      delayed: 1,
+    });
+  } finally {
+    await mq.drop();
+    await sql.end();
+  }
+});
+
 // Regression test for advisory lock not being fully released after processing
 // a message with an ordering key.  This test verifies that after processing
 // a message through PostgresMessageQueue.listen(), the advisory lock is fully

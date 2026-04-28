@@ -34,6 +34,14 @@ test("InProcessMessageQueue", async (t) => {
     assertFalse(mq.nativeRetrial);
   });
 
+  await t.step("getDepth() [empty]", async () => {
+    assertEquals(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+  });
+
   const messages: string[] = [];
   const controller = new AbortController();
   const listening = mq.listen((message: string) => {
@@ -115,6 +123,70 @@ test("InProcessMessageQueue", async (t) => {
   });
 
   controller.abort();
+  await listening;
+});
+
+test("InProcessMessageQueue.getDepth()", async () => {
+  const mq = new InProcessMessageQueue();
+  assertEquals(await mq.getDepth(), {
+    queued: 0,
+    ready: 0,
+    delayed: 0,
+  });
+
+  await mq.enqueue("Ready message");
+  await mq.enqueue("Delayed message", {
+    delay: Temporal.Duration.from({ seconds: 1 }),
+  });
+  assertEquals(await mq.getDepth(), {
+    queued: 2,
+    ready: 1,
+    delayed: 1,
+  });
+
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    if (messages.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  await waitFor(() => messages.length >= 2, 15_000);
+  await listening;
+  assertEquals(await mq.getDepth(), {
+    queued: 0,
+    ready: 0,
+    delayed: 0,
+  });
+});
+
+test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () => {
+  const mq = new InProcessMessageQueue();
+  let resolveHandler: (() => void) | undefined;
+  const controller = new AbortController();
+  const handled = new Promise<void>((resolve) => {
+    resolveHandler = resolve;
+  });
+  // Resolved after the message has been removed from the queue and handed
+  // to the handler.
+  let notifyStarted: () => void = () => {};
+  const handlerStarted = new Promise<void>((resolve) => {
+    notifyStarted = resolve;
+  });
+  const listening = mq.listen(async () => {
+    notifyStarted();
+    await handled;
+    controller.abort();
+  }, { signal: controller.signal });
+
+  await mq.enqueue("in-flight");
+  await handlerStarted;
+  assertEquals(await mq.getDepth(), {
+    queued: 0,
+    ready: 0,
+    delayed: 0,
+  });
+  resolveHandler?.();
   await listening;
 });
 
@@ -275,6 +347,14 @@ for (const mqName in queues) {
 
       await t.step("nativeRetrial property inheritance", () => {
         assertEquals(workers.nativeRetrial, mq.nativeRetrial);
+      });
+
+      await t.step("getDepth() delegation", async () => {
+        if (mq.getDepth == null) {
+          assertEquals(workers.getDepth, undefined);
+        } else {
+          assertEquals(await workers.getDepth?.(), await mq.getDepth());
+        }
       });
 
       const messages: string[] = [];

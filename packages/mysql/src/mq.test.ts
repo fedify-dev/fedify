@@ -97,6 +97,32 @@ test("MysqlMessageQueue", { skip: dbUrl == null }, () => {
   );
 });
 
+test("MysqlMessageQueue.getDepth()", { skip: dbUrl == null }, async () => {
+  if (dbUrl == null) return; // Bun does not support skip option
+  const pool = mysql.createPool(dbUrl);
+  const tableName = randomTableName("depth");
+  const mq = new MysqlMessageQueue(pool, { tableName });
+  try {
+    assert.deepStrictEqual(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+    await mq.enqueue("ready");
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ hours: 1 }),
+    });
+    assert.deepStrictEqual(await mq.getDepth(), {
+      queued: 2,
+      ready: 1,
+      delayed: 1,
+    });
+  } finally {
+    await mq.drop();
+    await pool.end();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // initialize() and drop()
 // ---------------------------------------------------------------------------
