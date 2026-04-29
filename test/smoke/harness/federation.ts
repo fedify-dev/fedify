@@ -17,11 +17,9 @@ const federation = createFederation<void>({
 });
 
 export async function resetFederationTestState(): Promise<void> {
-  const keys = [];
   for await (const entry of kv.list()) {
-    keys.push(entry.key);
+    await kv.delete(entry.key);
   }
-  await Promise.all(keys.map((key) => kv.delete(key)));
 }
 
 federation
