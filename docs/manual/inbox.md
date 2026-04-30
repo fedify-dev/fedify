@@ -780,7 +780,7 @@ for await (const item of context.traverseCollection(collection)) {
 >
 >  -  The `Activity` has its Object Integrity Proofs and the proofs are signed
 >     by its actor.
-
+>
 >  -  The `Activity` is dereferenceable by its `~Object.id` and
 >     the dereferenced object has an actor that belongs to the same origin
 >     as the `Activity` object.
