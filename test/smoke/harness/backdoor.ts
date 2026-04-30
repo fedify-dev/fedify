@@ -1,5 +1,6 @@
 import type { Federation } from "@fedify/fedify/federation";
 import { Create, Follow, Note, Undo } from "@fedify/vocab";
+import { resetFederationTestState } from "./federation.ts";
 import { store } from "./store.ts";
 
 function json(data: unknown, status = 200): Response {
@@ -80,6 +81,7 @@ export async function handleBackdoor(
   if (url.pathname === "/_test/reset" && request.method === "POST") {
     store.clear();
     recipientCache.clear();
+    await resetFederationTestState();
     return json({ ok: true });
   }
 

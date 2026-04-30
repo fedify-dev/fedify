@@ -7,13 +7,20 @@ const ORIGIN = Deno.env.get("HARNESS_ORIGIN") ??
   "http://fedify-harness:3001";
 
 const rsaKeyPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+const kv = new MemoryKvStore();
 
 const federation = createFederation<void>({
-  kv: new MemoryKvStore(),
+  kv,
   origin: ORIGIN,
   allowPrivateAddress: true,
   skipSignatureVerification: !Deno.env.get("STRICT_MODE"),
 });
+
+export async function resetFederationTestState(): Promise<void> {
+  for await (const entry of kv.list()) {
+    await kv.delete(entry.key);
+  }
+}
 
 federation
   .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
