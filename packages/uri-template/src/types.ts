@@ -1,29 +1,35 @@
+export type { Operator, OperatorSpec } from "./const.ts";
+import type { Operator } from "./const.ts";
+
 /**
  * Primitive value accepted by {@link Template.expand}.
  */
-export type PrimitiveValue = string | number | boolean | null;
+export type PrimitiveValue = string | number | boolean | null | undefined;
+
+/**
+ * Associative composite value accepted by {@link Template.expand}.
+ *
+ * Keys are expanded as URI Template associative names. Values may be primitive
+ * values or primitive lists.
+ */
+export type AssociativeValue = Record<
+  string,
+  PrimitiveValue | readonly PrimitiveValue[]
+>;
+
+/**
+ * Any value shape accepted for one template variable during expansion.
+ */
+export type ExpandValue =
+  | PrimitiveValue
+  | readonly PrimitiveValue[]
+  | AssociativeValue;
 
 /**
  * Context object accepted by {@link Template.expand}.  Each variable resolves
  * to a primitive, an ordered list of primitives, or an associative map.
  */
-export type ExpandContext = Record<
-  string,
-  | PrimitiveValue
-  | PrimitiveValue[]
-  | Record<string, PrimitiveValue | PrimitiveValue[]>
->;
-
-/**
- * Compiled URI template that can be expanded against an {@link ExpandContext}.
- */
-export interface Template {
-  /**
-   * Expands the template against the supplied context, returning the resolved
-   * URI string.
-   */
-  expand(context: ExpandContext): string;
-}
+export type ExpandContext = Record<string, ExpandValue>;
 
 /**
  * Variable specification produced when a template is added to a {@link Router}.
@@ -61,3 +67,53 @@ export interface Result {
   uri: string;
   uriTemplate: string;
 }
+
+/**
+ * Parsed RFC 6570 variable specification inside an expression.
+ *
+ * Produced by the expression parser and consumed by the expansion module.
+ */
+export interface VarSpec {
+  /** Variable name to look up in the expansion context. */
+  name: string;
+  /** Whether the varspec uses the Level 4 explode modifier (`*`). */
+  explode: boolean;
+  /** Prefix length from a Level 4 prefix modifier (`:N`), if present. */
+  prefix?: number;
+}
+
+/**
+ * Token produced by parsing a URI Template.
+ *
+ * Literal tokens are copied directly. Expression tokens are expanded with a
+ * context object.
+ */
+export type Token =
+  | { kind: "literal"; text: string }
+  | { kind: "expression"; operator: Operator; vars: VarSpec[] };
+
+/**
+ * Options controlling URI Template parsing diagnostics.
+ */
+export interface TemplateOptions {
+  /**
+   * If `true`, the first error in the template will be automatically thrown
+   * while parsing after being reported. `true` is the default value.
+   * If `false`, all errors will be reported to by the `report` function,
+   * but none will be thrown unless the `report` function itself throws.
+   */
+  strict: boolean;
+  /**
+   * A function that will be called with any errors encountered while parsing.
+   * By default, errors are ignored.  In strict mode, they are still thrown
+   * after this reporter runs.
+   * @param error The error that was encountered while parsing the template.
+   * @returns The result of the report function.
+   */
+  report: Reporter;
+}
+
+/**
+ * Callback used by the parser to report recoverable parse diagnostics.
+ */
+export type Reporter = (error: Error) => void;

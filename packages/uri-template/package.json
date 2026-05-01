@@ -42,6 +42,7 @@
     "build": "pnpm --filter @fedify/uri-template... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
+    "test:bun": "bun test",
     "test": "node --experimental-transform-types --test"
   },
   "keywords": [
