@@ -1,0 +1,75 @@
+import { test } from "@fedify/fixture";
+import { deepEqual, equal } from "node:assert";
+import { throws } from "node:assert/strict";
+import {
+  InvalidLiteralError,
+  InvalidPrefixError,
+  ReservedOperatorError,
+  UnclosedExpressionError,
+} from "../errors.ts";
+import {
+  createFixedTemplateTest,
+  createTemplateHardTest,
+  createTemplatePairTest,
+  createWrongTemplateTest,
+  fixedTestSuites,
+  hardTestSuites,
+  pairTestSuites,
+  wrongTestSuites,
+} from "../tests/mod.ts";
+import Template from "./mod.ts";
+
+const runPairCases = createTemplatePairTest(Template);
+for (const { name, cases } of pairTestSuites) {
+  test(name, runPairCases(cases as unknown as readonly [string, string][]));
+}
+
+const runFixedCases = createFixedTemplateTest(Template);
+for (const { template, name, cases } of fixedTestSuites) {
+  test(name, runFixedCases(template)(cases));
+}
+
+const runWrongCases = createWrongTemplateTest(Template);
+for (const { name, cases } of wrongTestSuites) {
+  test(name, runWrongCases(cases));
+}
+
+const runHardCases = createTemplateHardTest(Template);
+for (const { name, cases } of hardTestSuites) {
+  test(name, runHardCases(cases));
+}
+
+test("throws parse errors in strict mode", () => {
+  throws(() => new Template("{var"), UnclosedExpressionError);
+  throws(() => new Template("bad literal"), InvalidLiteralError);
+  throws(() => new Template("{=var}"), ReservedOperatorError);
+  throws(() => new Template("{var:0}"), InvalidPrefixError);
+});
+
+test("reports parse errors without throwing in non-strict mode", () => {
+  const errors: Error[] = [];
+  const template = new Template("{=bad}/{ok}", {
+    strict: false,
+    report: (error: Error) => errors.push(error),
+  });
+
+  equal(template.expand({ ok: "value" }), "{=bad}/value");
+  equal(errors.length, 1);
+  equal(errors[0] instanceof ReservedOperatorError, true);
+});
+
+test("parses reusable template instances", () => {
+  const template = Template.parse("/mapper{?address*}");
+  equal(
+    template.expand({ address: { city: "Newport Beach", state: "CA" } }),
+    "/mapper?city=Newport%20Beach&state=CA",
+  );
+  deepEqual(template.tokens, [
+    { kind: "literal", text: "/mapper" },
+    {
+      kind: "expression",
+      operator: "?",
+      vars: [{ name: "address", explode: true }],
+    },
+  ]);
+});

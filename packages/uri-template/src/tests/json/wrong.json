@@ -1,0 +1,407 @@
+[
+  {
+    "name": "Brackets not matched",
+    "cases": [
+      {
+        "template": "{var",
+        "name": "unclosed opening brace",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "var}",
+        "name": "unmatched closing brace after literal",
+        "expected": "StrayClosingBraceError"
+      },
+      {
+        "template": "{",
+        "name": "lone opening brace",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "}",
+        "name": "lone closing brace",
+        "expected": "StrayClosingBraceError"
+      },
+      {
+        "template": "prefix{var",
+        "name": "unclosed expression after literal prefix",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "{a}{b",
+        "name": "second expression unclosed",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "{+var:3",
+        "name": "unclosed expression with operator and prefix modifier",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "{var,name",
+        "name": "unclosed expression with multiple varspecs",
+        "expected": "UnclosedExpressionError"
+      },
+      {
+        "template": "text{?q,r",
+        "name": "unclosed query-style expression",
+        "expected": "UnclosedExpressionError"
+      }
+    ]
+  },
+  {
+    "name": "Duplicated brackets",
+    "cases": [
+      {
+        "template": "{{var}}",
+        "name": "nested opening braces",
+        "expected": "NestedOpeningBraceError"
+      },
+      {
+        "template": "{var}}",
+        "name": "extra closing brace after expression",
+        "expected": "StrayClosingBraceError"
+      },
+      {
+        "template": "{{var}",
+        "name": "extra opening brace before expression",
+        "expected": "NestedOpeningBraceError"
+      },
+      {
+        "template": "{}}",
+        "name": "extra closing brace after empty expression",
+        "expected": "EmptyExpressionError"
+      },
+      {
+        "template": "{{}",
+        "name": "nested empty expression",
+        "expected": "NestedOpeningBraceError"
+      },
+      {
+        "template": "{a{b}",
+        "name": "opening brace inside expression",
+        "expected": "NestedOpeningBraceError"
+      },
+      {
+        "template": "{a}b}",
+        "name": "extra closing brace after literal",
+        "expected": "StrayClosingBraceError"
+      },
+      {
+        "template": "{{{var}}}",
+        "name": "triple-nested braces",
+        "expected": "NestedOpeningBraceError"
+      }
+    ]
+  },
+  {
+    "name": "Wrong position of level4 modifier",
+    "cases": [
+      {
+        "template": "{*var}",
+        "name": "explode placed before varname",
+        "expected": "UnknownOperatorError"
+      },
+      {
+        "template": "{:3var}",
+        "name": "prefix placed before varname",
+        "expected": "UnknownOperatorError"
+      },
+      {
+        "template": "{var*name}",
+        "name": "explode placed in the middle of varname",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{var:3:5}",
+        "name": "two prefix modifiers on a single varspec",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{var**}",
+        "name": "two explode modifiers on a single varspec",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{var*:3}",
+        "name": "explode followed by prefix on a single varspec",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{var:3*}",
+        "name": "prefix followed by explode on a single varspec",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{*}",
+        "name": "lone explode modifier without varname",
+        "expected": "UnknownOperatorError"
+      },
+      {
+        "template": "{:3}",
+        "name": "lone prefix modifier without varname",
+        "expected": "UnknownOperatorError"
+      },
+      {
+        "template": "{a*,b*c}",
+        "name": "explode placed in the middle of the second varname",
+        "expected": "UnexpectedCharacterError"
+      }
+    ]
+  },
+  {
+    "name": "Wrong prefix modifier",
+    "cases": [
+      {
+        "template": "{var:}",
+        "name": "empty prefix length (max-length requires at least one digit)",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:0}",
+        "name": "zero prefix length (max-length first digit is %x31-39)",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:01}",
+        "name": "leading zero in prefix length",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:10000}",
+        "name": "prefix length must be less than 10000",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:99999}",
+        "name": "prefix length exceeds max-length digit count",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:abc}",
+        "name": "non-numeric prefix length",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:-1}",
+        "name": "negative prefix length",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var: 3}",
+        "name": "space before prefix length",
+        "expected": "InvalidPrefixError"
+      },
+      {
+        "template": "{var:3a}",
+        "name": "non-digit character after digits in prefix length",
+        "expected": "UnexpectedCharacterError"
+      },
+      {
+        "template": "{var:1.5}",
+        "name": "decimal point in prefix length",
+        "expected": "UnexpectedCharacterError"
+      }
+    ]
+  },
+  {
+    "name": "Invalid characters in literals",
+    "cases": [
+      {
+        "template": "\\u0000",
+        "name": "NUL control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u0001",
+        "name": "SOH control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u0009",
+        "name": "TAB control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u000A",
+        "name": "LF control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u000D",
+        "name": "CR control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u001F",
+        "name": "US control character (last C0 CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\u007F",
+        "name": "DEL control character (CTL forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": " ",
+        "name": "space character (SP forbidden in literals)",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "a b",
+        "name": "embedded space in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\"",
+        "name": "double-quote character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "'",
+        "name": "apostrophe forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "%",
+        "name": "lone percent sign without pct-encoded triplet",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "%1",
+        "name": "incomplete pct-encoded sequence",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "%G1",
+        "name": "invalid first hex digit in pct-encoded sequence",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "%1G",
+        "name": "invalid second hex digit in pct-encoded sequence",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "<",
+        "name": "less-than character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": ">",
+        "name": "greater-than character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "\\",
+        "name": "backslash character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "^",
+        "name": "caret character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "`",
+        "name": "backtick character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      },
+      {
+        "template": "|",
+        "name": "pipe character forbidden in literals",
+        "expected": "InvalidLiteralError"
+      }
+    ]
+  },
+  {
+    "name": "Invalid characters in expression",
+    "cases": [
+      {
+        "template": "{}",
+        "name": "empty expression (variable-list requires at least one varspec)",
+        "expected": "EmptyExpressionError"
+      },
+      {
+        "template": "{,var}",
+        "name": "empty varname before comma in variable-list",
+        "expected": "ReservedOperatorError"
+      },
+      {
+        "template": "{var,}",
+        "name": "empty varname after trailing comma in variable-list",
+        "expected": "TrailingCommaError"
+      },
+      {
+        "template": "{var,,name}",
+        "name": "consecutive commas yielding an empty varspec",
+        "expected": "EmptyVarNameError"
+      },
+      {
+        "template": "{var..name}",
+        "name": "consecutive dots in varname (varname allows at most one dot between varchars)",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var.}",
+        "name": "trailing dot in varname (dot must be followed by a varchar)",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var-name}",
+        "name": "hyphen is not in the varchar set",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var name}",
+        "name": "space is not in the varchar set",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var$name}",
+        "name": "dollar sign is not in the varchar set",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var^name}",
+        "name": "caret is not in the varchar set",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{var%G1}",
+        "name": "invalid hex in pct-encoded varchar",
+        "expected": "InvalidVarNameError"
+      },
+      {
+        "template": "{=var}",
+        "name": "operator '=' is reserved (op-reserve, unimplemented)",
+        "expected": "ReservedOperatorError"
+      },
+      {
+        "template": "{!var}",
+        "name": "operator '!' is reserved (op-reserve, unimplemented)",
+        "expected": "ReservedOperatorError"
+      },
+      {
+        "template": "{@var}",
+        "name": "operator '@' is reserved (op-reserve, unimplemented)",
+        "expected": "ReservedOperatorError"
+      },
+      {
+        "template": "{|var}",
+        "name": "operator '|' is reserved (op-reserve, unimplemented)",
+        "expected": "ReservedOperatorError"
+      },
+      {
+        "template": "{++var}",
+        "name": "duplicated operator characters",
+        "expected": "EmptyVarNameError"
+      },
+      {
+        "template": "{+#var}",
+        "name": "two operators in a single expression",
+        "expected": "EmptyVarNameError"
+      }
+    ]
+  }
+]

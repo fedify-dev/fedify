@@ -1,0 +1,324 @@
+[
+  {
+    "name": "Pct-encoded triplets in literal text are emitted verbatim",
+    "cases": [
+      {
+        "name": "Pct-encoded path separators in surrounding literal are preserved as-is",
+        "template": "%2Fapi%2Fv1%2F{var}",
+        "expected": "%2Fapi%2Fv1%2Fvalue",
+        "reason": "Literal text including pct-encoded triplets is emitted verbatim — the parser MUST NOT re-encode `%2F` to `%252F` nor decode it to `/`.",
+        "success": true
+      },
+      {
+        "name": "Lowercase hex in a literal pct-encoded triplet is preserved without normalization",
+        "template": "%2f{var}%2F",
+        "expected": "%2fvalue%2F",
+        "reason": "RFC 6570 says hex digits are case-insensitive, but literals are emitted verbatim. The lowercase `%2f` MUST stay lowercase in the output even though the trailing `%2F` is uppercase.",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded percent sign in a literal does not become double-encoded",
+        "template": "%25{var}",
+        "expected": "%25value",
+        "reason": "`%25` is the literal pct-encoded form of `%`. Because it appears in literal text (not in an expanded value), it is NOT re-encoded into `%2525`.",
+        "success": true
+      },
+      {
+        "name": "Multi-octet UTF-8 sequence written as pct-encoded literals stays untouched",
+        "template": "%ED%8E%98%EB%94%94%ED%8C%8C%EC%9D%B4{?var}",
+        "expected": "%ED%8E%98%EB%94%94%ED%8C%8C%EC%9D%B4?var=value",
+        "reason": "The literal `%ED%8E%98%EB%94%94%ED%8C%8C%EC%9D%B4` (the UTF-8 encoding of `페디파이`) consists of twelve pct-encoded triplets. The parser must accept consecutive pct-encoded literals and emit them unchanged.",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded operator-like characters in a literal do not introduce another expression",
+        "template": "%23section{?var}",
+        "expected": "%23section?var=value",
+        "reason": "`%23` is the encoded `#`, which is forbidden as a bare literal but ALLOWED as a pct-encoded triplet. It must NOT trigger fragment-style expansion behavior.",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded reserved characters appear in literal even though their decoded forms are forbidden",
+        "template": "%3C%3E%5C%5E%60%7C{var}",
+        "expected": "%3C%3E%5C%5E%60%7Cvalue",
+        "reason": "The bare characters `<`, `>`, `\\`, `^`, `` ` ``, `|` are forbidden in literals, but their pct-encoded forms `%3C`, `%3E`, `%5C`, `%5E`, `%60`, `%7C` are allowed verbatim.",
+        "success": true
+      }
+    ]
+  },
+  {
+    "name": "Pct-encoded brackets in literals are not delimiters",
+    "cases": [
+      {
+        "name": "Encoded `{` and `}` surrounding a varname are literal text, no expansion happens",
+        "template": "%7Bvar%7D",
+        "expected": "%7Bvar%7D",
+        "reason": "`%7B`/`%7D` are pct-encoded literals — they look like brackets to a human but are NOT expression delimiters. The whole template is one literal; `var` is never looked up.",
+        "success": true
+      },
+      {
+        "name": "Encoded brackets surrounding a real expression form decorative literals",
+        "template": "%7B{var}%7D",
+        "expected": "%7Bvalue%7D",
+        "reason": "Only the unencoded `{`/`}` denote the expression. `%7B` before and `%7D` after are literal text — useful when you actually want braces around an expanded value.",
+        "success": true
+      },
+      {
+        "name": "Encoded close-brace inside literal does not terminate a previous open expression",
+        "template": "{var}%7Dtail",
+        "expected": "value%7Dtail",
+        "reason": "After the expression `{var}` closes, the literal `%7Dtail` follows. The encoded `%7D` is ordinary literal text and does not interact with bracket parsing.",
+        "success": true
+      },
+      {
+        "name": "Encoded brackets adjacent to real brackets must not be confused",
+        "template": "%7B%7B{var}%7D%7D",
+        "expected": "%7B%7Bvalue%7D%7D",
+        "reason": "Doubled encoded brackets are still literal. The single real expression `{var}` expands; the two encoded `%7B%7B` and `%7D%7D` flank it as decoration.",
+        "success": true
+      },
+      {
+        "name": "Encoded brackets between two expressions do not nest or escape anything",
+        "template": "{var}%7B%7D{hello}",
+        "expected": "value%7B%7DHello%20World%21",
+        "reason": "The two expressions are independent and concatenate; the encoded `%7B%7D` literal sits between them like any other literal text.",
+        "success": true
+      }
+    ]
+  },
+  {
+    "name": "Pct-encoded characters within varnames",
+    "cases": [
+      {
+        "name": "Varname containing a pct-encoded space is looked up verbatim",
+        "template": "{abc%20def}",
+        "expected": "spaced",
+        "reason": "Per RFC 6570 ABNF, `varchar = ALPHA / DIGIT / \"_\" / pct-encoded`. So `abc%20def` is one valid varname. The lookup uses the pct-encoded form as the key — it is NOT decoded to `abc def`.",
+        "success": true
+      },
+      {
+        "name": "Varname starting with a pct-encoded character is not interpreted as an operator",
+        "template": "{%2Bvar}",
+        "expected": "plus",
+        "reason": "The first character of the expression is `%`, which is not an operator. The varname is the entire pct-encoded string `%2Bvar` — it must NOT be confused with the `+` operator (whose pct-encoded form is `%2B`).",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded varname is preserved when emitted by a named operator",
+        "template": "{?abc%20def}",
+        "expected": "?abc%20def=spaced",
+        "reason": "Named operators echo the varname using \"the same encoding process as for literals\". A pct-encoded triplet inside the varname is therefore preserved verbatim — neither decoded nor double-encoded.",
+        "success": true
+      },
+      {
+        "name": "Varname with an internal dot is one varname, not two joined by `.`",
+        "template": "{foo.bar}",
+        "expected": "dotted",
+        "reason": "ABNF: `varname = varchar *( [\".\"] varchar )`. Dots are part of the varname, so `foo.bar` is the literal lookup key — NOT a path into nested objects.",
+        "success": true
+      },
+      {
+        "name": "Varname consisting only of digits is valid",
+        "template": "{123}",
+        "expected": "numeric",
+        "reason": "`varchar` includes DIGIT, so a varname may start with — and consist entirely of — digits.",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded varname combined with a normal varname in one expression",
+        "template": "{abc%20def,var}",
+        "expected": "spaced,value",
+        "reason": "Two independent varspecs joined by `,`. The first uses a pct-encoded varname; the lookup is independent of how varnames are written.",
+        "success": true
+      },
+      {
+        "name": "Varname that looks like an encoded close-brace is a valid (undefined) varname",
+        "template": "O{%7D}X",
+        "expected": "OX",
+        "reason": "RFC 6570 §2.3: \"A varname MAY contain one or more pct-encoded triplets.\" So `%7D` is a single pct-encoded varchar — and a complete, valid varname. With no `%7D` key defined, the varname is undefined per §3.2.1 and the expression collapses to an empty string.",
+        "success": true
+      },
+      {
+        "name": "Varname that looks like an encoded open-brace resolves to its defined value",
+        "template": "{%7B}",
+        "expected": "open-brace",
+        "reason": "Symmetric to the undefined `%7D` case: `%7B` is a single pct-encoded varchar and a complete varname. With `%7B` mapped to `open-brace` in the variable set, the expression expands to that defined value — the encoded-bracket appearance does NOT prevent normal lookup.",
+        "success": true
+      },
+      {
+        "name": "Varname spelled in pct-encoded form is NOT the same as its decoded counterpart",
+        "template": "{%41}",
+        "expected": "encoded-A",
+        "reason": "RFC 6570 §2.3: \"A varname containing pct-encoded characters is not the same variable as a varname with those same characters decoded.\" So `%41` and `A` are two distinct variable names. The lookup uses `%41` literally and yields `encoded-A`, not whatever `A` might (or might not) resolve to.",
+        "success": true
+      },
+      {
+        "name": "Pct-encoded varname under a named operator emits the encoded form as the parameter name",
+        "template": "{?%41}",
+        "expected": "?%41=encoded-A",
+        "reason": "Named-operator output echoes the varname \"using the same encoding process as for literals\". Since `%41` is already a valid pct-encoded literal triplet, it is preserved verbatim — the parameter name in the URI is literally `%41`, not `A`.",
+        "success": true
+      }
+    ]
+  },
+  {
+    "name": "Composite values with null members",
+    "cases": [
+      {
+        "name": "Null entries in a list are skipped during expansion",
+        "template": "{sparse}",
+        "expected": "one,three",
+        "reason": "RFC 6570 §2.3 says \"a list... a null... is considered undefined\". The null at index 1 is skipped; only `one` and `three` are joined by `,`.",
+        "success": true
+      },
+      {
+        "name": "Null entries in a list are skipped under named explode too",
+        "template": "{?sparse*}",
+        "expected": "?sparse=one&sparse=three",
+        "reason": "Null members are excluded from the iteration entirely. Only the two defined members emit `sparse=…` pairs joined by `&`.",
+        "success": true
+      },
+      {
+        "name": "Null entries do not produce an empty path segment",
+        "template": "{/sparse*}",
+        "expected": "/one/three",
+        "reason": "Each defined member produces one path segment. The null member is skipped, so the output has TWO segments — NOT three with an empty middle one.",
+        "success": true
+      },
+      {
+        "name": "Null values in an associative array drop their key",
+        "template": "{nullable_keys}",
+        "expected": "a,1,c,3",
+        "reason": "The pair `(b, null)` is excluded because its value is undefined. Only `a=1` and `c=3` survive, flattened as `name,value` joined by `,`.",
+        "success": true
+      },
+      {
+        "name": "Null values are skipped under named explode of an associative array",
+        "template": "{?nullable_keys*}",
+        "expected": "?a=1&c=3",
+        "reason": "Pairs with undefined values are skipped before the `?`/`&` separator logic runs. The output looks identical to an object that simply did not contain key `b`.",
+        "success": true
+      }
+    ]
+  },
+  {
+    "name": "Explode modifier on string values is silently ignored",
+    "cases": [
+      {
+        "name": "Explode on a string under NUL is a no-op",
+        "template": "{var*}",
+        "expected": "value",
+        "reason": "The expansion algorithm dispatches on value type. For string values, the explode flag is irrelevant — the result is identical to `{var}`.",
+        "success": true
+      },
+      {
+        "name": "Explode on a string under named operator does not multiply assignments",
+        "template": "{?var*}",
+        "expected": "?var=value",
+        "reason": "Strings have no \"members\" to explode over. The output is the same as `{?var}`. People often expect `?var=v&var=a&var=l&var=u&var=e` — that is wrong.",
+        "success": true
+      },
+      {
+        "name": "Explode on an empty string is also a no-op",
+        "template": "{?empty*}",
+        "expected": "?empty=",
+        "reason": "Empty string is a defined string value. The string-branch logic runs and emits `name=` because of `ifemp = =`. The `*` has no effect.",
+        "success": true
+      },
+      {
+        "name": "Explode on a path-like string still encodes reserved characters under NUL",
+        "template": "{path*}",
+        "expected": "%2Ffoo%2Fbar",
+        "reason": "Same string-branch — `*` is ignored. Encoding rules of NUL still apply: each `/` becomes `%2F`.",
+        "success": true
+      },
+      {
+        "name": "Explode on a string with prefix-length-exceeding value is still a single value",
+        "template": "{hello*}",
+        "expected": "Hello%20World%21",
+        "reason": "`*` is silently ignored on the string `hello`. The result is the same as `{hello}`.",
+        "success": true
+      }
+    ]
+  },
+  {
+    "name": "Mismatched pct-encoded brackets and stray brackets",
+    "cases": [
+      {
+        "name": "Bare closing brace in literals is forbidden even when an encoded open brace precedes it",
+        "template": "%7Bvar}",
+        "expected": "StrayClosingBraceError",
+        "reason": "`%7B` is a pct-encoded literal — it does NOT open an expression. The trailing bare `}` is forbidden in literals (allowed character set excludes `}`), so the template is malformed.",
+        "success": false
+      },
+      {
+        "name": "Real opening brace closed only by an encoded brace is unclosed",
+        "template": "{var%7D",
+        "expected": "UnclosedExpressionError",
+        "reason": "Inside the expression, `%7D` is a valid pct-encoded varchar — it becomes part of the varname `var%7D`. There is no actual `}` to terminate the expression, so parsing fails.",
+        "success": false
+      },
+      {
+        "name": "Stray bare close-brace before any literal text or expression fails",
+        "template": "}%7B%7D",
+        "expected": "StrayClosingBraceError",
+        "reason": "The leading `}` is a bare close-brace in the literals position. RFC 6570 §2.1 forbids `}` from the literals character set regardless of what follows — the trailing encoded `%7B%7D` does not rescue the template.",
+        "success": false
+      },
+      {
+        "name": "Encoded open brace followed by stray real close brace fails on the close brace",
+        "template": "%7B}",
+        "expected": "StrayClosingBraceError",
+        "reason": "The literal `%7B` is fine. The following bare `}` is forbidden in literals.",
+        "success": false
+      },
+      {
+        "name": "Real opening brace nested inside a varname-shaped sequence is invalid",
+        "template": "{var%7B%7D",
+        "expected": "UnclosedExpressionError",
+        "reason": "The expression body becomes `var%7B%7D` — three pct-encoded characters all valid as varchars — but the expression never sees a literal `}`. Unclosed.",
+        "success": false
+      }
+    ]
+  },
+  {
+    "name": "Prefix modifier on composite values (RFC 6570 §2.4.1)",
+    "cases": [
+      {
+        "name": "Prefix on a list is not applicable per spec",
+        "template": "{list:3}",
+        "expected": "PrefixModifierNotApplicableError",
+        "reason": "RFC 6570 §2.4.1 states: \"Prefix modifiers are not applicable to variables that have composite values.\" `list` is composite, so this must fail at expansion time.",
+        "success": false
+      },
+      {
+        "name": "Prefix on an associative array is not applicable per spec",
+        "template": "{keys:3}",
+        "expected": "PrefixModifierNotApplicableError",
+        "reason": "Same rule as for lists: prefix length is undefined for object values.",
+        "success": false
+      },
+      {
+        "name": "Prefix on a list under named operator also fails",
+        "template": "{?list:6}",
+        "expected": "PrefixModifierNotApplicableError",
+        "reason": "The named operator does not bypass the §2.4.1 restriction. The prefix modifier remains inapplicable regardless of the surrounding operator.",
+        "success": false
+      },
+      {
+        "name": "Prefix on a path-segment expansion of a composite still fails",
+        "template": "{/keys:4}",
+        "expected": "PrefixModifierNotApplicableError",
+        "reason": "Path-segment operator does not change the type of the variable. Composite means composite.",
+        "success": false
+      },
+      {
+        "name": "Prefix on the canonical `count` list also fails",
+        "template": "{count:2}",
+        "expected": "PrefixModifierNotApplicableError",
+        "reason": "`count` is `[\"one\", \"two\", \"three\"]`. Prefix modifier is invalid for it. The error is at expansion time, not parsing time — the syntax `count:2` is grammatically well-formed.",
+        "success": false
+      }
+    ]
+  }
+]
