@@ -159,25 +159,53 @@ unitTest(
   },
 );
 
-unitTest("AmqpMessageQueue caps delayed queue tracking", async () => {
+unitTest("AmqpMessageQueue reuses depth probe channels", async () => {
   const conn = new FakeDepthConnection(0);
   const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
     queue: "ready",
     delayedQueuePrefix: "delayed_",
   });
 
-  for (let milliseconds = 1; milliseconds <= 4097; milliseconds++) {
+  for (let milliseconds = 1; milliseconds <= 12; milliseconds++) {
     await mq.enqueue("delayed", {
       delay: Temporal.Duration.from({ milliseconds }),
     });
   }
+  conn.channelCount = 0;
 
   assertEquals(await mq.getDepth(), {
-    queued: 4096,
+    queued: 12,
     ready: 0,
-    delayed: 4096,
+    delayed: 12,
   });
+  assert(
+    conn.channelCount <= 9,
+    `expected at most 9 depth probe channels, got ${conn.channelCount}`,
+  );
 });
+
+unitTest(
+  "AmqpMessageQueue keeps delayed queues past cleanup threshold",
+  async () => {
+    const conn = new FakeDepthConnection(0);
+    const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+      queue: "ready",
+      delayedQueuePrefix: "delayed_",
+    });
+
+    for (let milliseconds = 1; milliseconds <= 4097; milliseconds++) {
+      await mq.enqueue("delayed", {
+        delay: Temporal.Duration.from({ milliseconds }),
+      });
+    }
+
+    assertEquals(await mq.getDepth(), {
+      queued: 4097,
+      ready: 0,
+      delayed: 4097,
+    });
+  },
+);
 
 unitTest(
   "AmqpMessageQueue.getDepth() keeps delayed queues past local expiry",

@@ -20,7 +20,7 @@ function isPreconditionFailedError(error: unknown): boolean {
 
 const depthProbeConcurrency = 8;
 const delayedQueueExpiryMargin = 60_000;
-const delayedQueueTrackingLimit = 4096;
+const delayedQueueCleanupThreshold = 4096;
 
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
@@ -143,6 +143,7 @@ export class AmqpMessageQueue implements MessageQueue {
     partitions: number;
   };
   #delayedQueues: Set<string> = new Set();
+  #delayedQueueCleanup?: Promise<void>;
   #orderingPrepared: boolean = false;
 
   readonly nativeRetrial: boolean;
@@ -384,10 +385,15 @@ export class AmqpMessageQueue implements MessageQueue {
 
   #trackDelayedQueue(queue: string): void {
     this.#delayedQueues.add(queue);
-    while (this.#delayedQueues.size > delayedQueueTrackingLimit) {
-      const oldestQueue = this.#delayedQueues.values().next().value;
-      if (oldestQueue == null) break;
-      this.#delayedQueues.delete(oldestQueue);
+    if (
+      this.#delayedQueues.size > delayedQueueCleanupThreshold &&
+      this.#delayedQueueCleanup == null
+    ) {
+      this.#delayedQueueCleanup = this.#pruneMissingDelayedQueues()
+        .catch(() => undefined)
+        .finally(() => {
+          this.#delayedQueueCleanup = undefined;
+        });
     }
   }
 
@@ -429,24 +435,6 @@ export class AmqpMessageQueue implements MessageQueue {
     return channel;
   }
 
-  async #checkQueueDepth(queueName: string): Promise<number | undefined> {
-    const channel = await this.#createDepthChannel();
-    try {
-      return (await channel.checkQueue(queueName)).messageCount;
-    } catch (error) {
-      if (!isQueueNotFoundError(error)) {
-        throw error;
-      }
-      return undefined;
-    } finally {
-      try {
-        await channel.close();
-      } catch {
-        // The channel can already be closed by a failed passive queue check.
-      }
-    }
-  }
-
   async #checkQueueDepths(
     queueNames: readonly string[],
   ): Promise<readonly (readonly [string, number | undefined])[]> {
@@ -455,10 +443,37 @@ export class AmqpMessageQueue implements MessageQueue {
     );
     let nextIndex = 0;
     const worker = async () => {
-      while (nextIndex < queueNames.length) {
-        const index = nextIndex++;
-        const queue = queueNames[index];
-        results[index] = [queue, await this.#checkQueueDepth(queue)];
+      let channel: Channel | undefined;
+      const closeChannel = async () => {
+        if (channel == null) return;
+        const currentChannel = channel;
+        channel = undefined;
+        try {
+          await currentChannel.close();
+        } catch {
+          // The channel can already be closed by a failed passive queue check.
+        }
+      };
+      const checkQueue = async (
+        queue: string,
+      ): Promise<number | undefined> => {
+        channel ??= await this.#createDepthChannel();
+        try {
+          return (await channel.checkQueue(queue)).messageCount;
+        } catch (error) {
+          await closeChannel();
+          if (!isQueueNotFoundError(error)) throw error;
+          return undefined;
+        }
+      };
+      try {
+        while (nextIndex < queueNames.length) {
+          const index = nextIndex++;
+          const queue = queueNames[index];
+          results[index] = [queue, await checkQueue(queue)];
+        }
+      } finally {
+        await closeChannel();
       }
     };
     const workers = Array.from(
@@ -467,6 +482,15 @@ export class AmqpMessageQueue implements MessageQueue {
     );
     await Promise.all(workers);
     return results;
+  }
+
+  async #pruneMissingDelayedQueues(): Promise<void> {
+    const delayedQueues = [...this.#delayedQueues];
+    for (
+      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
+    ) {
+      if (messageCount == null) this.#delayedQueues.delete(queue);
+    }
   }
 
   async getDepth(): Promise<MessageQueueDepth> {
