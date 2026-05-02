@@ -5,13 +5,91 @@ import * as temporal from "@js-temporal/polyfill";
 import { assert, assertEquals, assertFalse, assertGreater } from "@std/assert";
 import { delay } from "@std/async/delay";
 // @deno-types="npm:@types/amqplib"
-import { type ChannelModel, connect } from "amqplib";
+import { type Channel, type ChannelModel, connect } from "amqplib";
 import process from "node:process";
 
 const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const AMQP_URL = process.env.AMQP_URL;
-const test = AMQP_URL ? suite(import.meta) : suite(import.meta).skip;
+const unitTest = suite(import.meta);
+const test = AMQP_URL ? unitTest : unitTest.skip;
+
+class FakeDepthChannel {
+  constructor(private readonly connection: FakeDepthConnection) {
+  }
+
+  on(): void {
+  }
+
+  assertQueue(queue: string): Promise<void> {
+    this.connection.queues.add(queue);
+    return Promise.resolve();
+  }
+
+  sendToQueue(queue: string): boolean {
+    this.connection.messageCounts.set(
+      queue,
+      (this.connection.messageCounts.get(queue) ?? 0) + 1,
+    );
+    return true;
+  }
+
+  async checkQueue(queue: string): Promise<{ messageCount: number }> {
+    this.connection.activeChecks++;
+    this.connection.maxActiveChecks = Math.max(
+      this.connection.maxActiveChecks,
+      this.connection.activeChecks,
+    );
+    try {
+      await delay(25);
+      return { messageCount: this.connection.messageCounts.get(queue) ?? 0 };
+    } finally {
+      this.connection.activeChecks--;
+    }
+  }
+
+  async close(): Promise<void> {
+  }
+}
+
+class FakeDepthConnection {
+  readonly queues = new Set<string>();
+  readonly messageCounts = new Map<string, number>();
+  activeChecks = 0;
+  maxActiveChecks = 0;
+
+  createChannel(): Promise<Channel> {
+    return Promise.resolve(new FakeDepthChannel(this) as unknown as Channel);
+  }
+}
+
+unitTest(
+  "AmqpMessageQueue.getDepth() probes delayed queues concurrently",
+  async () => {
+    const conn = new FakeDepthConnection();
+    const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+      queue: "ready",
+      delayedQueuePrefix: "delayed_",
+    });
+
+    await mq.enqueue("first", {
+      delay: Temporal.Duration.from({ milliseconds: 1_000 }),
+    });
+    await mq.enqueue("second", {
+      delay: Temporal.Duration.from({ milliseconds: 2_000 }),
+    });
+    await mq.enqueue("third", {
+      delay: Temporal.Duration.from({ milliseconds: 3_000 }),
+    });
+
+    assertEquals(await mq.getDepth(), {
+      queued: 3,
+      ready: 0,
+      delayed: 3,
+    });
+    assertGreater(conn.maxActiveChecks, 1);
+  },
+);
 
 function getConnection(): Promise<ChannelModel> {
   return connect(AMQP_URL!);

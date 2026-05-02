@@ -13,6 +13,8 @@ function isQueueNotFoundError(error: unknown): boolean {
     "code" in error && error.code === 404;
 }
 
+const depthProbeConcurrency = 8;
+
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
  *
@@ -386,60 +388,77 @@ export class AmqpMessageQueue implements MessageQueue {
     return channel;
   }
 
-  async getDepth(): Promise<MessageQueueDepth> {
-    let channel: Channel | undefined = await this.#createDepthChannel();
-    const closeChannel = async () => {
-      if (channel == null) return;
-      const currentChannel = channel;
-      channel = undefined;
+  async #checkQueueDepth(queueName: string): Promise<number | undefined> {
+    const channel = await this.#createDepthChannel();
+    try {
+      return (await channel.checkQueue(queueName)).messageCount;
+    } catch (error) {
+      if (!isQueueNotFoundError(error)) {
+        throw error;
+      }
+      return undefined;
+    } finally {
       try {
-        await currentChannel.close();
+        await channel.close();
       } catch {
         // The channel can already be closed by a failed passive queue check.
       }
-    };
-    const checkQueue = async (
-      queueName: string,
-    ): Promise<number | undefined> => {
-      if (channel == null) channel = await this.#createDepthChannel();
-      try {
-        return (await channel.checkQueue(queueName)).messageCount;
-      } catch (error) {
-        if (!isQueueNotFoundError(error)) {
-          throw error;
-        }
-        await closeChannel();
-        channel = await this.#createDepthChannel();
-        return undefined;
-      }
-    };
-    try {
-      let ready = (await checkQueue(this.#queue)) ?? 0;
-      if (this.#ordering != null) {
-        for (let i = 0; i < this.#ordering.partitions; i++) {
-          ready += (await checkQueue(this.#getOrderingQueueName(i))) ?? 0;
-        }
-      }
-
-      let delayed = 0;
-      this.#pruneDelayedQueues();
-      for (const queue of this.#delayedQueues.keys()) {
-        const messageCount = await checkQueue(queue);
-        if (messageCount == null) {
-          this.#delayedQueues.delete(queue);
-        } else {
-          delayed += messageCount;
-        }
-      }
-
-      return {
-        queued: ready + delayed,
-        ready,
-        delayed,
-      };
-    } finally {
-      await closeChannel();
     }
+  }
+
+  async #checkQueueDepths(
+    queueNames: readonly string[],
+  ): Promise<readonly (readonly [string, number | undefined])[]> {
+    const results = new Array<readonly [string, number | undefined]>(
+      queueNames.length,
+    );
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < queueNames.length) {
+        const index = nextIndex++;
+        const queue = queueNames[index];
+        results[index] = [queue, await this.#checkQueueDepth(queue)];
+      }
+    };
+    const workers = Array.from(
+      { length: Math.min(depthProbeConcurrency, queueNames.length) },
+      () => worker(),
+    );
+    await Promise.all(workers);
+    return results;
+  }
+
+  async getDepth(): Promise<MessageQueueDepth> {
+    const readyQueues = [this.#queue];
+    if (this.#ordering != null) {
+      for (let i = 0; i < this.#ordering.partitions; i++) {
+        readyQueues.push(this.#getOrderingQueueName(i));
+      }
+    }
+
+    let ready = 0;
+    for (const [, messageCount] of await this.#checkQueueDepths(readyQueues)) {
+      ready += messageCount ?? 0;
+    }
+
+    let delayed = 0;
+    this.#pruneDelayedQueues();
+    const delayedQueues = [...this.#delayedQueues.keys()];
+    for (
+      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
+    ) {
+      if (messageCount == null) {
+        this.#delayedQueues.delete(queue);
+      } else {
+        delayed += messageCount;
+      }
+    }
+
+    return {
+      queued: ready + delayed,
+      ready,
+      delayed,
+    };
   }
 
   async listen(
