@@ -91,6 +91,35 @@ unitTest(
   },
 );
 
+unitTest(
+  "AmqpMessageQueue.getDepth() keeps delayed queues past local expiry",
+  async () => {
+    const now = Date.now;
+    const started = now();
+    Date.now = () => started;
+    try {
+      const conn = new FakeDepthConnection();
+      const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+        queue: "ready",
+        delayedQueuePrefix: "delayed_",
+      });
+
+      await mq.enqueue("delayed", {
+        delay: Temporal.Duration.from({ milliseconds: 1_000 }),
+      });
+      Date.now = () => started + 62_000;
+
+      assertEquals(await mq.getDepth(), {
+        queued: 1,
+        ready: 0,
+        delayed: 1,
+      });
+    } finally {
+      Date.now = now;
+    }
+  },
+);
+
 function getConnection(): Promise<ChannelModel> {
   return connect(AMQP_URL!);
 }

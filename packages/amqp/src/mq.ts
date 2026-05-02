@@ -135,7 +135,7 @@ export class AmqpMessageQueue implements MessageQueue {
     queuePrefix: string;
     partitions: number;
   };
-  #delayedQueues: Map<string, number> = new Map();
+  #delayedQueues: Set<string> = new Set();
   #orderingPrepared: boolean = false;
 
   readonly nativeRetrial: boolean;
@@ -272,7 +272,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
-      this.#trackDelayedQueue(queue, delay);
+      this.#trackDelayedQueue(queue);
     }
     channel.sendToQueue(
       queue,
@@ -355,7 +355,7 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterRoutingKey,
         messageTtl: delay,
       });
-      this.#trackDelayedQueue(queue, delay);
+      this.#trackDelayedQueue(queue);
     }
 
     for (const message of messages) {
@@ -370,15 +370,8 @@ export class AmqpMessageQueue implements MessageQueue {
     }
   }
 
-  #trackDelayedQueue(queue: string, delay: number): void {
-    this.#delayedQueues.set(queue, Date.now() + Math.max(0, delay) + 60_000);
-  }
-
-  #pruneDelayedQueues(): void {
-    const now = Date.now();
-    for (const [queue, expiresAt] of this.#delayedQueues) {
-      if (expiresAt <= now) this.#delayedQueues.delete(queue);
-    }
+  #trackDelayedQueue(queue: string): void {
+    this.#delayedQueues.add(queue);
   }
 
   async #createDepthChannel(): Promise<Channel> {
@@ -441,8 +434,7 @@ export class AmqpMessageQueue implements MessageQueue {
     }
 
     let delayed = 0;
-    this.#pruneDelayedQueues();
-    const delayedQueues = [...this.#delayedQueues.keys()];
+    const delayedQueues = [...this.#delayedQueues];
     for (
       const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
     ) {
