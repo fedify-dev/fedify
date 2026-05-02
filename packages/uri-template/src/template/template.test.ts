@@ -4,6 +4,7 @@ import { throws } from "node:assert/strict";
 import {
   InvalidLiteralError,
   InvalidPrefixError,
+  PrefixModifierNotApplicableError,
   ReservedOperatorError,
   UnclosedExpressionError,
 } from "../errors.ts";
@@ -56,6 +57,33 @@ test("reports parse errors without throwing in non-strict mode", () => {
   equal(template.expand({ ok: "value" }), "{=bad}/value");
   equal(errors.length, 1);
   equal(errors[0] instanceof ReservedOperatorError, true);
+});
+
+test("reports expansion errors without throwing in non-strict mode", () => {
+  const errors: Error[] = [];
+  const template = new Template("{list:3}/{ok}", {
+    strict: false,
+    report: (error: Error) => errors.push(error),
+  });
+
+  equal(template.expand({ list: ["red"], ok: "value" }), "/value");
+  equal(errors.length, 1);
+  equal(errors[0] instanceof PrefixModifierNotApplicableError, true);
+});
+
+test("uses explicit expand options when provided", () => {
+  const errors: Error[] = [];
+  const template = new Template("{list:3}/{ok}");
+
+  equal(
+    template.expand(
+      { list: ["red"], ok: "value" },
+      { strict: false, report: (error: Error) => errors.push(error) },
+    ),
+    "/value",
+  );
+  equal(errors.length, 1);
+  equal(errors[0] instanceof PrefixModifierNotApplicableError, true);
 });
 
 test("parses reusable template instances", () => {

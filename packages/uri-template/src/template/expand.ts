@@ -4,6 +4,7 @@ import type {
   AssociativeValue,
   ExpandContext,
   PrimitiveValue,
+  TemplateOptions,
   VarSpec,
 } from "../types.ts";
 import { encodeName, encodeValue, truncateValue } from "./encoding.ts";
@@ -16,10 +17,11 @@ export default function expand(
   vars: VarSpec[],
   operator: keyof typeof operatorSpecs,
   context: ExpandContext,
+  options: TemplateOptions,
 ): string {
   const spec = operatorSpecs[operator];
   const parts = vars.flatMap((varSpec) =>
-    expandValue(varSpec, context[varSpec.name], spec)
+    expandValue(varSpec, context[varSpec.name], spec, options)
   );
   return parts.length < 1 ? "" : `${spec.first}${parts.join(spec.sep)}`;
 }
@@ -28,18 +30,19 @@ function expandValue(
   varSpec: VarSpec,
   value: ExpandContext[string],
   spec: typeof operatorSpecs[keyof typeof operatorSpecs],
+  options: TemplateOptions,
 ): string[] {
   if (isUndefined(value)) return [];
   if (isList(value)) {
     const encoded = encodeListMembers(value, spec.allowReserved);
     if (encoded.length < 1) return [];
-    assertNoPrefixModifier(varSpec, "list");
+    if (!reportPrefixModifierError(varSpec, "list", options)) return [];
     return expandList(varSpec, encoded, spec);
   }
   if (isAssociative(value)) {
     const pairs = encodeAssociativePairs(value, spec.allowReserved);
     if (pairs.length < 1) return [];
-    assertNoPrefixModifier(varSpec, "associative");
+    if (!reportPrefixModifierError(varSpec, "associative", options)) return [];
     return expandAssociative(varSpec, pairs, spec);
   }
   return expandPrimitive(varSpec, value, spec);
@@ -159,14 +162,18 @@ function isUndefined(value: unknown): value is null | undefined {
   return value == null;
 }
 
-function assertNoPrefixModifier(
+function reportPrefixModifierError(
   varSpec: VarSpec,
   valueType: "list" | "associative",
-): void {
-  if (varSpec.prefix == null) return;
-  throw new PrefixModifierNotApplicableError(
+  { report, strict }: TemplateOptions,
+): boolean {
+  if (varSpec.prefix == null) return true;
+  const error = new PrefixModifierNotApplicableError(
     varSpec.name,
     varSpec.prefix,
     valueType,
   );
+  report(error);
+  if (strict) throw error;
+  return false;
 }

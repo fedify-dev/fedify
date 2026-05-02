@@ -15,7 +15,7 @@ import tokenize from "./token.ts";
  */
 export default class Template {
   readonly #tokens: Token[];
-  readonly fullOptions: TemplateOptions;
+  readonly #fullOptions: TemplateOptions;
 
   constructor(
     /**
@@ -33,15 +33,18 @@ export default class Template {
      */
     readonly options: Partial<TemplateOptions> = {},
   ) {
-    this.fullOptions = fillOptions(options);
-    this.#tokens = tokenize(uriTemplate, this.fullOptions);
+    this.#fullOptions = fillOptions(options);
+    this.#tokens = tokenize(uriTemplate, this.#fullOptions);
   }
 
   /**
    * Parses a URI Template using default strict parsing options.
    */
-  static parse(uriTemplate: string): Template {
-    return new Template(uriTemplate);
+  static parse(
+    uriTemplate: string,
+    options: Partial<TemplateOptions> = {},
+  ): Template {
+    return new Template(uriTemplate, options);
   }
 
   /**
@@ -51,17 +54,21 @@ export default class Template {
     return this.#tokens;
   }
 
-  #expand(context: ExpandContext): string {
+  #expand(
+    context: ExpandContext,
+    options: TemplateOptions = this.#fullOptions,
+  ): string {
     return this.#tokens.map((token) =>
       token.kind === "literal"
         ? token.text
-        : expand(token.vars, token.operator, context)
+        : expand(token.vars, token.operator, context, options)
     ).join("");
   }
   /**
    * Expands this template against a variable context.
    */
-  expand: (context: ExpandContext) => string = this.#expand.bind(this);
+  expand: (context: ExpandContext, options?: TemplateOptions) => string = this
+    .#expand.bind(this);
 }
 
 const defaultReporter = (_error: Error): void => {};
