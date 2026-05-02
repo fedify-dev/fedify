@@ -1436,19 +1436,22 @@ export class FederationImpl<TContextData>
     }
     switch (routeName) {
       case "actor":
+      case "actorAlias": {
+        const identifier = route.name.startsWith("actorAlias:")
+          ? route.name.substring("actorAlias:".length)
+          : route.values.identifier;
         context = this.#createContext(request, contextData, {
-          invokedFromActorDispatcher: {
-            identifier: route.values.identifier,
-          },
+          invokedFromActorDispatcher: { identifier },
         });
         return await handleActor(request, {
-          identifier: route.values.identifier,
+          identifier,
           context,
           actorDispatcher: this.actorCallbacks?.dispatcher,
           authorizePredicate: this.actorCallbacks?.authorizePredicate,
           onUnauthorized,
           onNotFound,
         });
+      }
       case "object": {
         const typeId = route.name.replace(/^object:/, "");
         const callbacks = this.objectCallbacks[typeId];
@@ -1789,10 +1792,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   getActorUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "actor",
-      { identifier },
+    let path = this.federation.router.build(
+      `actorAlias:${identifier}`,
+      {},
     );
+    if (path == null) {
+      path = this.federation.router.build(
+        "actor",
+        { identifier },
+      );
+    }
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
     }
@@ -1938,8 +1947,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         identifier: undefined,
       };
     }
-    const identifier = route.values.identifier;
-    if (route.name === "actor") {
+    const identifier = route.name.startsWith("actorAlias:")
+      ? route.name.substring("actorAlias:".length)
+      : route.values.identifier;
+    if (route.name === "actor" || route.name.startsWith("actorAlias:")) {
       return {
         type: "actor",
         identifier,

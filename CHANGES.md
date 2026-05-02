@@ -10,6 +10,12 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `mapActorAlias()` method to `ActorCallbackSetters` interface to
+    support fixed-path actor dispatchers.  This is useful for exposing a
+    single, instance-level actor at a fixed path, such as `/actor` for a relay
+    or `/bot` for a bot, without leaking a sentinel identifier into the actor's
+    URI. [[#752], [#753]]
+
  -  Added optional `MessageQueue.getDepth()` support, using the new
     `MessageQueueDepth` return type, for reporting queue backlog depth.
     `InProcessMessageQueue` can now report queued messages, including ready
@@ -18,6 +24,8 @@ To be released.
 
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#748]: https://github.com/fedify-dev/fedify/pull/748
+[#752]: https://github.com/fedify-dev/fedify/issues/752
+[#753]: https://github.com/fedify-dev/fedify/pull/753
 
 ### @fedify/amqp
 

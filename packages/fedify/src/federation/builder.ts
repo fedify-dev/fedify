@@ -522,6 +522,16 @@ export class FederationBuilderImpl<TContextData>
         callbacks.aliasMapper = mapper;
         return setters;
       },
+      mapActorAlias: (path: string, identifier: string) => {
+        const variables = new Router().add(path, "temp");
+        if (variables.size > 0) {
+          throw new RouterError(
+            "Path for actor alias must have no variables.",
+          );
+        }
+        this.router.add(path, `actorAlias:${identifier}`);
+        return setters;
+      },
       authorize(predicate: AuthorizePredicate<TContextData>) {
         callbacks.authorizePredicate = predicate;
         return setters;

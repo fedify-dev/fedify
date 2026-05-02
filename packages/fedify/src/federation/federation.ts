@@ -1109,6 +1109,20 @@ export interface ActorCallbackSetters<TContextData> {
   ): ActorCallbackSetters<TContextData>;
 
   /**
+   * Maps a fixed path to a sentinel identifier.  It is useful for exposing
+   * a single, instance-level actor at a fixed path, such as `/actor` for
+   * a relay or `/bot` for a bot.
+   * @param path The fixed path to map to the identifier.
+   * @param identifier The sentinel identifier to map the path to.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.3.0
+   */
+  mapActorAlias(
+    path: string,
+    identifier: string,
+  ): ActorCallbackSetters<TContextData>;
+
+  /**
    * Specifies the conditions under which requests are authorized.
    * @param predicate A callback that returns whether a request is authorized.
    * @returns The setters object so that settings can be chained.
