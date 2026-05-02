@@ -21,8 +21,14 @@ class FakeDepthChannel {
   on(): void {
   }
 
-  assertQueue(queue: string): Promise<void> {
+  assertQueue(
+    queue: string,
+    options?: { expires?: number },
+  ): Promise<void> {
     this.connection.queues.add(queue);
+    if (options?.expires != null) {
+      this.connection.queueExpires.set(queue, options.expires);
+    }
     return Promise.resolve();
   }
 
@@ -54,6 +60,7 @@ class FakeDepthChannel {
 
 class FakeDepthConnection {
   readonly queues = new Set<string>();
+  readonly queueExpires = new Map<string, number>();
   readonly messageCounts = new Map<string, number>();
   activeChecks = 0;
   maxActiveChecks = 0;
@@ -90,6 +97,20 @@ unitTest(
     assertGreater(conn.maxActiveChecks, 1);
   },
 );
+
+unitTest("AmqpMessageQueue sets delayed queue expiry", async () => {
+  const conn = new FakeDepthConnection();
+  const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+    queue: "ready",
+    delayedQueuePrefix: "delayed_",
+  });
+
+  await mq.enqueue("delayed", {
+    delay: Temporal.Duration.from({ milliseconds: 1_000 }),
+  });
+
+  assertEquals(conn.queueExpires.get("delayed_1000"), 61_000);
+});
 
 unitTest(
   "AmqpMessageQueue.getDepth() keeps delayed queues past local expiry",

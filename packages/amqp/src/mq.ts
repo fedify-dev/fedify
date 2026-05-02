@@ -14,6 +14,7 @@ function isQueueNotFoundError(error: unknown): boolean {
 }
 
 const depthProbeConcurrency = 8;
+const delayedQueueExpiryMargin = 60_000;
 
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
@@ -270,6 +271,7 @@ export class AmqpMessageQueue implements MessageQueue {
         durable: this.#durable,
         deadLetterExchange,
         deadLetterRoutingKey,
+        expires: delay + delayedQueueExpiryMargin,
         messageTtl: delay,
       });
       this.#trackDelayedQueue(queue);
@@ -353,6 +355,7 @@ export class AmqpMessageQueue implements MessageQueue {
         durable: this.#durable,
         deadLetterExchange,
         deadLetterRoutingKey,
+        expires: delay + delayedQueueExpiryMargin,
         messageTtl: delay,
       });
       this.#trackDelayedQueue(queue);
