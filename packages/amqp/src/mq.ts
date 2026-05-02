@@ -13,8 +13,14 @@ function isQueueNotFoundError(error: unknown): boolean {
     "code" in error && error.code === 404;
 }
 
+function isPreconditionFailedError(error: unknown): boolean {
+  return typeof error === "object" && error != null &&
+    "code" in error && error.code === 406;
+}
+
 const depthProbeConcurrency = 8;
 const delayedQueueExpiryMargin = 60_000;
+const delayedQueueTrackingLimit = 4096;
 
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
@@ -204,6 +210,15 @@ export class AmqpMessageQueue implements MessageQueue {
     return channel;
   }
 
+  async #dropSenderChannel(channel: Channel): Promise<void> {
+    if (this.#senderChannel === channel) this.#senderChannel = undefined;
+    try {
+      await channel.close();
+    } catch {
+      // The channel may already have been closed by an AMQP exception.
+    }
+  }
+
   /**
    * Enqueues a message to be processed.
    *
@@ -224,7 +239,7 @@ export class AmqpMessageQueue implements MessageQueue {
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const channel = await this.#getSenderChannel();
+    let channel = await this.#getSenderChannel();
     const delay = options?.delay?.total("millisecond");
     const orderingKey = options?.orderingKey;
 
@@ -266,13 +281,10 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterExchange = "";
         deadLetterRoutingKey = this.#queue;
       }
-      await channel.assertQueue(queue, {
-        autoDelete: true,
-        durable: this.#durable,
+      channel = await this.#assertDelayedQueue(channel, queue, {
         deadLetterExchange,
         deadLetterRoutingKey,
-        expires: delay + delayedQueueExpiryMargin,
-        messageTtl: delay,
+        delay,
       });
       this.#trackDelayedQueue(queue);
     }
@@ -306,7 +318,7 @@ export class AmqpMessageQueue implements MessageQueue {
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const channel = await this.#getSenderChannel();
+    let channel = await this.#getSenderChannel();
     const delay = options?.delay?.total("millisecond");
     const orderingKey = options?.orderingKey;
 
@@ -350,13 +362,10 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterExchange = "";
         deadLetterRoutingKey = this.#queue;
       }
-      await channel.assertQueue(queue, {
-        autoDelete: true,
-        durable: this.#durable,
+      channel = await this.#assertDelayedQueue(channel, queue, {
         deadLetterExchange,
         deadLetterRoutingKey,
-        expires: delay + delayedQueueExpiryMargin,
-        messageTtl: delay,
+        delay,
       });
       this.#trackDelayedQueue(queue);
     }
@@ -375,6 +384,43 @@ export class AmqpMessageQueue implements MessageQueue {
 
   #trackDelayedQueue(queue: string): void {
     this.#delayedQueues.add(queue);
+    while (this.#delayedQueues.size > delayedQueueTrackingLimit) {
+      const oldestQueue = this.#delayedQueues.values().next().value;
+      if (oldestQueue == null) break;
+      this.#delayedQueues.delete(oldestQueue);
+    }
+  }
+
+  async #assertDelayedQueue(
+    channel: Channel,
+    queue: string,
+    options: {
+      deadLetterExchange?: string;
+      deadLetterRoutingKey?: string;
+      delay: number;
+    },
+  ): Promise<Channel> {
+    const assertOptions = {
+      autoDelete: true,
+      durable: this.#durable,
+      deadLetterExchange: options.deadLetterExchange,
+      deadLetterRoutingKey: options.deadLetterRoutingKey,
+      messageTtl: options.delay,
+    };
+    try {
+      await channel.assertQueue(queue, {
+        ...assertOptions,
+        expires: options.delay + delayedQueueExpiryMargin,
+      });
+      return channel;
+    } catch (error) {
+      if (!isPreconditionFailedError(error)) throw error;
+      await this.#dropSenderChannel(channel);
+    }
+
+    const fallbackChannel = await this.#getSenderChannel();
+    await fallbackChannel.assertQueue(queue, assertOptions);
+    return fallbackChannel;
   }
 
   async #createDepthChannel(): Promise<Channel> {

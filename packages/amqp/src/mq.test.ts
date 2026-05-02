@@ -15,6 +15,8 @@ const unitTest = suite(import.meta);
 const test = AMQP_URL ? unitTest : unitTest.skip;
 
 class FakeDepthChannel {
+  #closed = false;
+
   constructor(private readonly connection: FakeDepthConnection) {
   }
 
@@ -25,6 +27,19 @@ class FakeDepthChannel {
     queue: string,
     options?: { expires?: number },
   ): Promise<void> {
+    if (this.#closed) {
+      return Promise.reject(new Error("Channel is closed"));
+    }
+    if (
+      options?.expires != null &&
+      this.connection.preconditionOnExpires.has(queue)
+    ) {
+      this.#closed = true;
+      this.connection.preconditionOnExpires.delete(queue);
+      return Promise.reject(
+        Object.assign(new Error("PRECONDITION_FAILED"), { code: 406 }),
+      );
+    }
     this.connection.queues.add(queue);
     if (options?.expires != null) {
       this.connection.queueExpires.set(queue, options.expires);
@@ -33,6 +48,7 @@ class FakeDepthChannel {
   }
 
   sendToQueue(queue: string): boolean {
+    if (this.#closed) throw new Error("Channel is closed");
     this.connection.messageCounts.set(
       queue,
       (this.connection.messageCounts.get(queue) ?? 0) + 1,
@@ -41,20 +57,25 @@ class FakeDepthChannel {
   }
 
   async checkQueue(queue: string): Promise<{ messageCount: number }> {
+    if (this.#closed) throw new Error("Channel is closed");
     this.connection.activeChecks++;
     this.connection.maxActiveChecks = Math.max(
       this.connection.maxActiveChecks,
       this.connection.activeChecks,
     );
     try {
-      await delay(25);
+      if (this.connection.checkDelayMs > 0) {
+        await delay(this.connection.checkDelayMs);
+      }
       return { messageCount: this.connection.messageCounts.get(queue) ?? 0 };
     } finally {
       this.connection.activeChecks--;
     }
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    this.#closed = true;
+    return Promise.resolve();
   }
 }
 
@@ -62,10 +83,16 @@ class FakeDepthConnection {
   readonly queues = new Set<string>();
   readonly queueExpires = new Map<string, number>();
   readonly messageCounts = new Map<string, number>();
+  readonly preconditionOnExpires = new Set<string>();
   activeChecks = 0;
+  channelCount = 0;
   maxActiveChecks = 0;
 
+  constructor(readonly checkDelayMs: number = 25) {
+  }
+
   createChannel(): Promise<Channel> {
+    this.channelCount++;
     return Promise.resolve(new FakeDepthChannel(this) as unknown as Channel);
   }
 }
@@ -110,6 +137,46 @@ unitTest("AmqpMessageQueue sets delayed queue expiry", async () => {
   });
 
   assertEquals(conn.queueExpires.get("delayed_1000"), 61_000);
+});
+
+unitTest(
+  "AmqpMessageQueue falls back for existing delayed queues without expiry",
+  async () => {
+    const conn = new FakeDepthConnection();
+    conn.preconditionOnExpires.add("delayed_1000");
+    const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+      queue: "ready",
+      delayedQueuePrefix: "delayed_",
+    });
+
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ milliseconds: 1_000 }),
+    });
+
+    assertEquals(conn.messageCounts.get("delayed_1000"), 1);
+    assertEquals(conn.queueExpires.get("delayed_1000"), undefined);
+    assertGreater(conn.channelCount, 1);
+  },
+);
+
+unitTest("AmqpMessageQueue caps delayed queue tracking", async () => {
+  const conn = new FakeDepthConnection(0);
+  const mq = new AmqpMessageQueue(conn as unknown as ChannelModel, {
+    queue: "ready",
+    delayedQueuePrefix: "delayed_",
+  });
+
+  for (let milliseconds = 1; milliseconds <= 4097; milliseconds++) {
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ milliseconds }),
+    });
+  }
+
+  assertEquals(await mq.getDepth(), {
+    queued: 4096,
+    ready: 0,
+    delayed: 4096,
+  });
 });
 
 unitTest(
