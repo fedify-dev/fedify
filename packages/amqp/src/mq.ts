@@ -1,11 +1,26 @@
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
 // @deno-types="npm:@types/amqplib@^0.10.7"
 import type { Channel, ChannelModel, ConsumeMessage } from "amqplib";
 import { Buffer } from "node:buffer";
+
+function isQueueNotFoundError(error: unknown): boolean {
+  return typeof error === "object" && error != null &&
+    "code" in error && error.code === 404;
+}
+
+function isPreconditionFailedError(error: unknown): boolean {
+  return typeof error === "object" && error != null &&
+    "code" in error && error.code === 406;
+}
+
+const depthProbeConcurrency = 8;
+const delayedQueueExpiryMargin = 60_000;
+const delayedQueueCleanupThreshold = 4096;
 
 /**
  * Options for ordering key support in {@link AmqpMessageQueue}.
@@ -127,6 +142,8 @@ export class AmqpMessageQueue implements MessageQueue {
     queuePrefix: string;
     partitions: number;
   };
+  #delayedQueues: Set<string> = new Set();
+  #delayedQueueCleanup?: Promise<void>;
   #orderingPrepared: boolean = false;
 
   readonly nativeRetrial: boolean;
@@ -194,6 +211,15 @@ export class AmqpMessageQueue implements MessageQueue {
     return channel;
   }
 
+  async #dropSenderChannel(channel: Channel): Promise<void> {
+    if (this.#senderChannel === channel) this.#senderChannel = undefined;
+    try {
+      await channel.close();
+    } catch {
+      // The channel may already have been closed by an AMQP exception.
+    }
+  }
+
   /**
    * Enqueues a message to be processed.
    *
@@ -214,7 +240,7 @@ export class AmqpMessageQueue implements MessageQueue {
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const channel = await this.#getSenderChannel();
+    let channel = await this.#getSenderChannel();
     const delay = options?.delay?.total("millisecond");
     const orderingKey = options?.orderingKey;
 
@@ -256,13 +282,12 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterExchange = "";
         deadLetterRoutingKey = this.#queue;
       }
-      await channel.assertQueue(queue, {
-        autoDelete: true,
-        durable: this.#durable,
+      channel = await this.#assertDelayedQueue(channel, queue, {
         deadLetterExchange,
         deadLetterRoutingKey,
-        messageTtl: delay,
+        delay,
       });
+      this.#trackDelayedQueue(queue);
     }
     channel.sendToQueue(
       queue,
@@ -294,7 +319,7 @@ export class AmqpMessageQueue implements MessageQueue {
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const channel = await this.#getSenderChannel();
+    let channel = await this.#getSenderChannel();
     const delay = options?.delay?.total("millisecond");
     const orderingKey = options?.orderingKey;
 
@@ -338,13 +363,12 @@ export class AmqpMessageQueue implements MessageQueue {
         deadLetterExchange = "";
         deadLetterRoutingKey = this.#queue;
       }
-      await channel.assertQueue(queue, {
-        autoDelete: true,
-        durable: this.#durable,
+      channel = await this.#assertDelayedQueue(channel, queue, {
         deadLetterExchange,
         deadLetterRoutingKey,
-        messageTtl: delay,
+        delay,
       });
+      this.#trackDelayedQueue(queue);
     }
 
     for (const message of messages) {
@@ -357,6 +381,148 @@ export class AmqpMessageQueue implements MessageQueue {
         },
       );
     }
+  }
+
+  #trackDelayedQueue(queue: string): void {
+    this.#delayedQueues.add(queue);
+    if (
+      this.#delayedQueues.size > delayedQueueCleanupThreshold &&
+      this.#delayedQueueCleanup == null
+    ) {
+      this.#delayedQueueCleanup = this.#pruneMissingDelayedQueues()
+        .catch(() => undefined)
+        .finally(() => {
+          this.#delayedQueueCleanup = undefined;
+        });
+    }
+  }
+
+  async #assertDelayedQueue(
+    channel: Channel,
+    queue: string,
+    options: {
+      deadLetterExchange?: string;
+      deadLetterRoutingKey?: string;
+      delay: number;
+    },
+  ): Promise<Channel> {
+    const assertOptions = {
+      autoDelete: true,
+      durable: this.#durable,
+      deadLetterExchange: options.deadLetterExchange,
+      deadLetterRoutingKey: options.deadLetterRoutingKey,
+      messageTtl: options.delay,
+    };
+    try {
+      await channel.assertQueue(queue, {
+        ...assertOptions,
+        expires: options.delay + delayedQueueExpiryMargin,
+      });
+      return channel;
+    } catch (error) {
+      if (!isPreconditionFailedError(error)) throw error;
+      await this.#dropSenderChannel(channel);
+    }
+
+    const fallbackChannel = await this.#getSenderChannel();
+    await fallbackChannel.assertQueue(queue, assertOptions);
+    return fallbackChannel;
+  }
+
+  async #createDepthChannel(): Promise<Channel> {
+    const channel = await this.#connection.createChannel();
+    channel.on("error", () => undefined);
+    return channel;
+  }
+
+  async #checkQueueDepths(
+    queueNames: readonly string[],
+  ): Promise<readonly (readonly [string, number | undefined])[]> {
+    const results = new Array<readonly [string, number | undefined]>(
+      queueNames.length,
+    );
+    let nextIndex = 0;
+    const worker = async () => {
+      let channel: Channel | undefined;
+      const closeChannel = async () => {
+        if (channel == null) return;
+        const currentChannel = channel;
+        channel = undefined;
+        try {
+          await currentChannel.close();
+        } catch {
+          // The channel can already be closed by a failed passive queue check.
+        }
+      };
+      const checkQueue = async (
+        queue: string,
+      ): Promise<number | undefined> => {
+        channel ??= await this.#createDepthChannel();
+        try {
+          return (await channel.checkQueue(queue)).messageCount;
+        } catch (error) {
+          await closeChannel();
+          if (!isQueueNotFoundError(error)) throw error;
+          return undefined;
+        }
+      };
+      try {
+        while (nextIndex < queueNames.length) {
+          const index = nextIndex++;
+          const queue = queueNames[index];
+          results[index] = [queue, await checkQueue(queue)];
+        }
+      } finally {
+        await closeChannel();
+      }
+    };
+    const workers = Array.from(
+      { length: Math.min(depthProbeConcurrency, queueNames.length) },
+      () => worker(),
+    );
+    await Promise.all(workers);
+    return results;
+  }
+
+  async #pruneMissingDelayedQueues(): Promise<void> {
+    const delayedQueues = [...this.#delayedQueues];
+    for (
+      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
+    ) {
+      if (messageCount == null) this.#delayedQueues.delete(queue);
+    }
+  }
+
+  async getDepth(): Promise<MessageQueueDepth> {
+    const readyQueues = [this.#queue];
+    if (this.#ordering != null) {
+      for (let i = 0; i < this.#ordering.partitions; i++) {
+        readyQueues.push(this.#getOrderingQueueName(i));
+      }
+    }
+
+    let ready = 0;
+    for (const [, messageCount] of await this.#checkQueueDepths(readyQueues)) {
+      ready += messageCount ?? 0;
+    }
+
+    let delayed = 0;
+    const delayedQueues = [...this.#delayedQueues];
+    for (
+      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
+    ) {
+      if (messageCount == null) {
+        this.#delayedQueues.delete(queue);
+      } else {
+        delayed += messageCount;
+      }
+    }
+
+    return {
+      queued: ready + delayed,
+      ready,
+      delayed,
+    };
   }
 
   async listen(

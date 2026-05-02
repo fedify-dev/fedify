@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
@@ -199,6 +200,28 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     await multi.exec();
     // Notify only if there's no delay:
     if (baseTs <= now) this.#redis.publish(this.#channelKey, "");
+  }
+
+  async getDepth(): Promise<MessageQueueDepth> {
+    const now = Temporal.Now.instant().epochMilliseconds;
+    const [queuedCount, readyCount] = await this.#redis.eval(
+      `
+        return {
+          redis.call("ZCARD", KEYS[1]),
+          redis.call("ZCOUNT", KEYS[1], "-inf", ARGV[1])
+        }
+      `,
+      1,
+      this.#queueKey,
+      now,
+    ) as [number, number];
+    const queued = Number(queuedCount);
+    const ready = Number(readyCount);
+    return {
+      queued,
+      ready,
+      delayed: Math.max(0, queued - ready),
+    };
   }
 
   /**

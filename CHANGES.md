@@ -8,6 +8,43 @@ Version 2.3.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Added optional `MessageQueue.getDepth()` support, using the new
+    `MessageQueueDepth` return type, for reporting queue backlog depth.
+    `InProcessMessageQueue` can now report queued messages, including ready
+    and delayed counts, and `ParallelMessageQueue` delegates depth reporting
+    to its wrapped queue when supported.  [[#735], [#748]]
+
+[#735]: https://github.com/fedify-dev/fedify/issues/735
+[#748]: https://github.com/fedify-dev/fedify/pull/748
+
+### @fedify/amqp
+
+ -  Added `AmqpMessageQueue.getDepth()` for reporting queued, ready, and
+    delayed message counts.  Delayed counts include queues created or tracked
+    by the same `AmqpMessageQueue` instance.  [[#735], [#748]]
+
+### @fedify/mysql
+
+ -  Added `MysqlMessageQueue.getDepth()` for reporting queued, ready, and
+    delayed message counts.  [[#735], [#748]]
+
+### @fedify/postgres
+
+ -  Added `PostgresMessageQueue.getDepth()` for reporting queued, ready, and
+    delayed message counts.  [[#735], [#748]]
+
+### @fedify/redis
+
+ -  Added `RedisMessageQueue.getDepth()` for reporting queued, ready, and
+    delayed message counts.  [[#735], [#748]]
+
+### @fedify/sqlite
+
+ -  Added `SqliteMessageQueue.getDepth()` for reporting queued, ready, and
+    delayed message counts.  [[#735], [#748]]
+
 
 Version 2.2.0
 -------------

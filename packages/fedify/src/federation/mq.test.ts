@@ -34,6 +34,14 @@ test("InProcessMessageQueue", async (t) => {
     assertFalse(mq.nativeRetrial);
   });
 
+  await t.step("getDepth() [empty]", async () => {
+    assertEquals(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+  });
+
   const messages: string[] = [];
   const controller = new AbortController();
   const listening = mq.listen((message: string) => {
@@ -116,6 +124,171 @@ test("InProcessMessageQueue", async (t) => {
 
   controller.abort();
   await listening;
+});
+
+test("InProcessMessageQueue.getDepth()", async () => {
+  const mq = new InProcessMessageQueue();
+  assertEquals(await mq.getDepth(), {
+    queued: 0,
+    ready: 0,
+    delayed: 0,
+  });
+
+  await mq.enqueue("Ready message");
+  await mq.enqueue("Delayed message", {
+    delay: Temporal.Duration.from({ seconds: 1 }),
+  });
+  assertEquals(await mq.getDepth(), {
+    queued: 2,
+    ready: 1,
+    delayed: 1,
+  });
+
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    if (messages.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  await waitFor(() => messages.length >= 2, 15_000);
+  await listening;
+  assertEquals(await mq.getDepth(), {
+    queued: 0,
+    ready: 0,
+    delayed: 0,
+  });
+});
+
+test("InProcessMessageQueue.getDepth() snapshots delayed batches", async () => {
+  const mq = new InProcessMessageQueue();
+  const messages = ["first", "second"];
+  await mq.enqueueMany(messages, {
+    delay: Temporal.Duration.from({ milliseconds: 250 }),
+  });
+  messages.length = 0;
+  assertEquals(await mq.getDepth(), {
+    queued: 2,
+    ready: 0,
+    delayed: 2,
+  });
+
+  const handled: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    handled.push(message);
+    if (handled.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  await waitFor(() => handled.length >= 2, 15_000);
+  await listening;
+  assertEquals(handled, ["first", "second"]);
+});
+
+test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () => {
+  const mq = new InProcessMessageQueue();
+  let resolveHandler: (() => void) | undefined;
+  const controller = new AbortController();
+  const handled = new Promise<void>((resolve) => {
+    resolveHandler = resolve;
+  });
+  // Resolved after the message has been removed from the queue and handed
+  // to the handler.
+  let notifyStarted: () => void = () => {};
+  const handlerStarted = new Promise<void>((resolve) => {
+    notifyStarted = resolve;
+  });
+  const listening = mq.listen(async () => {
+    notifyStarted();
+    await handled;
+    controller.abort();
+  }, { signal: controller.signal });
+
+  try {
+    await mq.enqueue("in-flight");
+    await handlerStarted;
+    assertEquals(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+  } finally {
+    resolveHandler?.();
+    controller.abort();
+    await listening;
+  }
+});
+
+test("InProcessMessageQueue delayed enqueue uses the internal ready path", async () => {
+  class RejectingReadyQueue extends InProcessMessageQueue {
+    override enqueue(
+      message: unknown,
+      options?: { delay?: Temporal.Duration },
+    ): Promise<void> {
+      if (options?.delay == null) {
+        return Promise.reject(new Error("ready enqueue should not be called"));
+      }
+      return super.enqueue(message, options);
+    }
+  }
+
+  const mq = new RejectingReadyQueue({
+    pollInterval: { milliseconds: 10 },
+  });
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    controller.abort();
+  }, { signal: controller.signal });
+
+  try {
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ milliseconds: 10 }),
+    });
+    await waitFor(() => messages.length > 0, 2_000);
+    assertEquals(messages, ["delayed"]);
+  } finally {
+    controller.abort();
+    await listening;
+  }
+});
+
+test("InProcessMessageQueue delayed enqueueMany uses the internal ready path", async () => {
+  class RejectingReadyQueue extends InProcessMessageQueue {
+    override enqueueMany(
+      messages: readonly unknown[],
+      options?: { delay?: Temporal.Duration },
+    ): Promise<void> {
+      if (options?.delay == null) {
+        return Promise.reject(
+          new Error("ready enqueueMany should not be called"),
+        );
+      }
+      return super.enqueueMany(messages, options);
+    }
+  }
+
+  const mq = new RejectingReadyQueue({
+    pollInterval: { milliseconds: 10 },
+  });
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    if (messages.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  try {
+    await mq.enqueueMany(["first", "second"], {
+      delay: Temporal.Duration.from({ milliseconds: 10 }),
+    });
+    await waitFor(() => messages.length >= 2, 2_000);
+    assertEquals(messages, ["first", "second"]);
+  } finally {
+    controller.abort();
+    await listening;
+  }
 });
 
 test("InProcessMessageQueue orderingKey", async (t) => {
@@ -275,6 +448,14 @@ for (const mqName in queues) {
 
       await t.step("nativeRetrial property inheritance", () => {
         assertEquals(workers.nativeRetrial, mq.nativeRetrial);
+      });
+
+      await t.step("getDepth() delegation", async () => {
+        if (mq.getDepth == null) {
+          assertEquals(workers.getDepth, undefined);
+        } else {
+          assertEquals(await workers.getDepth?.(), await mq.getDepth());
+        }
       });
 
       const messages: string[] = [];

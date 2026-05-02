@@ -1,6 +1,7 @@
 import { type PlatformDatabase, SqliteDatabase } from "#sqlite";
 import type {
   MessageQueue,
+  MessageQueueDepth,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify";
@@ -258,6 +259,29 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
       );
       throw error;
     });
+  }
+
+  /**
+   * {@inheritDoc MessageQueue.getDepth}
+   */
+  async getDepth(): Promise<MessageQueueDepth> {
+    this.initialize();
+    const row = await this.#retryOnBusy(() => {
+      const now = Temporal.Now.instant().epochMilliseconds;
+      return this.#db
+        .prepare(
+          `SELECT
+            COUNT(*) AS queued,
+            COALESCE(SUM(CASE WHEN scheduled <= ? THEN 1 ELSE 0 END), 0) AS ready
+          FROM "${this.#tableName}"`,
+        )
+        .get(now) as { queued: number; ready: number };
+    });
+    return {
+      queued: row.queued,
+      ready: row.ready,
+      delayed: Math.max(0, row.queued - row.ready),
+    };
   }
 
   /**

@@ -40,6 +40,37 @@ export interface MessageQueueListenOptions {
 }
 
 /**
+ * The number of messages waiting in a message queue.
+ *
+ * @since 2.3.0
+ */
+export interface MessageQueueDepth {
+  /**
+   * The total number of messages still waiting in the backend queue.
+   *
+   * This does not include messages that have already been handed to a worker
+   * for processing.
+   */
+  readonly queued: number;
+
+  /**
+   * The number of queued messages eligible for immediate processing.
+   *
+   * Queue backends that cannot cheaply distinguish ready and delayed messages
+   * may omit this field.
+   */
+  readonly ready?: number;
+
+  /**
+   * The number of queued messages scheduled for later delivery.
+   *
+   * Queue backends that cannot cheaply distinguish ready and delayed messages
+   * may omit this field.
+   */
+  readonly delayed?: number;
+}
+
+/**
  * An abstract interface for a message queue.
  *
  * @since 0.5.0
@@ -88,6 +119,17 @@ export interface MessageQueue {
     handler: (message: any) => Promise<void> | void,
     options?: MessageQueueListenOptions,
   ): Promise<void>;
+
+  /**
+   * Gets the number of messages waiting in the queue.
+   *
+   * This operation is optional, and may not be supported by all
+   * implementations.  The returned counts exclude messages currently being
+   * handled by a worker.
+   *
+   * @since 2.3.0
+   */
+  getDepth?(): Promise<MessageQueueDepth>;
 }
 
 /**
@@ -121,6 +163,7 @@ export class InProcessMessageQueue implements MessageQueue {
   #messages: QueuedMessage[];
   #monitors: Record<ReturnType<typeof crypto.randomUUID>, () => void>;
   #pollIntervalMs: number;
+  #delayedMessages: number;
   /**
    * Tracks which ordering keys are currently being processed to ensure
    * sequential processing for messages with the same key.
@@ -143,6 +186,7 @@ export class InProcessMessageQueue implements MessageQueue {
     this.#pollIntervalMs = Temporal.Duration.from(
       options.pollInterval ?? { seconds: 5 },
     ).total("millisecond");
+    this.#delayedMessages = 0;
     this.#processingKeys = new Set();
   }
 
@@ -151,18 +195,30 @@ export class InProcessMessageQueue implements MessageQueue {
       ? 0
       : Math.max(options.delay.total("millisecond"), 0);
     if (delay > 0) {
+      this.#delayedMessages++;
       setTimeout(
-        () => this.enqueue(message, { ...options, delay: undefined }),
+        () => {
+          this.#delayedMessages--;
+          this.#enqueueReady(message, options);
+        },
         delay,
       );
       return Promise.resolve();
     }
+    this.#enqueueReady(message, options);
+    return Promise.resolve();
+  }
+
+  #enqueueReady(message: any, options?: MessageQueueEnqueueOptions): void {
     const orderingKey = options?.orderingKey ?? null;
     this.#messages.push({ message, orderingKey });
+    this.#notifyMonitors();
+  }
+
+  #notifyMonitors(): void {
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
-    return Promise.resolve();
   }
 
   enqueueMany(
@@ -174,20 +230,31 @@ export class InProcessMessageQueue implements MessageQueue {
       ? 0
       : Math.max(options.delay.total("millisecond"), 0);
     if (delay > 0) {
+      const delayedCount = messages.length;
+      const deferredMessages = [...messages];
+      this.#delayedMessages += delayedCount;
       setTimeout(
-        () => this.enqueueMany(messages, { ...options, delay: undefined }),
+        () => {
+          this.#delayedMessages -= delayedCount;
+          this.#enqueueManyReady(deferredMessages, options);
+        },
         delay,
       );
       return Promise.resolve();
     }
+    this.#enqueueManyReady(messages, options);
+    return Promise.resolve();
+  }
+
+  #enqueueManyReady(
+    messages: readonly any[],
+    options?: MessageQueueEnqueueOptions,
+  ): void {
     const orderingKey = options?.orderingKey ?? null;
     for (const message of messages) {
       this.#messages.push({ message, orderingKey });
     }
-    for (const monitorId in this.#monitors) {
-      this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
-    }
-    return Promise.resolve();
+    this.#notifyMonitors();
   }
 
   async listen(
@@ -225,6 +292,16 @@ export class InProcessMessageQueue implements MessageQueue {
         await this.#wait(10, signal);
       }
     }
+  }
+
+  getDepth(): Promise<MessageQueueDepth> {
+    const ready = this.#messages.length;
+    const delayed = this.#delayedMessages;
+    return Promise.resolve({
+      queued: ready + delayed,
+      ready,
+      delayed,
+    });
   }
 
   #wait(ms: number, signal?: AbortSignal): Promise<void> {
@@ -288,6 +365,7 @@ export class ParallelMessageQueue implements MessageQueue {
    * @since 1.7.0
    */
   readonly nativeRetrial?: boolean;
+  readonly getDepth?: () => Promise<MessageQueueDepth>;
 
   /**
    * Tracks which ordering keys are currently being processed to ensure
@@ -320,6 +398,9 @@ export class ParallelMessageQueue implements MessageQueue {
     this.queue = queue;
     this.workers = workers;
     this.nativeRetrial = queue.nativeRetrial;
+    if (queue.getDepth != null) {
+      this.getDepth = () => queue.getDepth!();
+    }
   }
 
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {

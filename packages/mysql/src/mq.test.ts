@@ -1,9 +1,9 @@
+import { test } from "@fedify/fixture";
 import { MysqlMessageQueue } from "@fedify/mysql/mq";
 import { getRandomKey, testMessageQueue, waitFor } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
 import assert from "node:assert/strict";
 import process from "node:process";
-import { test } from "node:test";
 import mysql from "mysql2/promise";
 
 const Temporal = globalThis.Temporal ?? temporal.Temporal;
@@ -74,8 +74,8 @@ test("MysqlMessageQueue uses default options when none are provided", () => {
 // Standard shared test suite
 // ---------------------------------------------------------------------------
 
-test("MysqlMessageQueue", { skip: dbUrl == null }, () => {
-  if (dbUrl == null) return; // Bun does not support skip option
+test("MysqlMessageQueue", { ignore: dbUrl == null }, () => {
+  if (dbUrl == null) return;
   const tableName = randomTableName("mq");
   const pools: mysql.Pool[] = [];
 
@@ -97,12 +97,42 @@ test("MysqlMessageQueue", { skip: dbUrl == null }, () => {
   );
 });
 
+test(
+  "MysqlMessageQueue.getDepth()",
+  { ignore: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+    const pool = mysql.createPool(dbUrl);
+    const tableName = randomTableName("depth");
+    const mq = new MysqlMessageQueue(pool, { tableName });
+    try {
+      assert.deepStrictEqual(await mq.getDepth(), {
+        queued: 0,
+        ready: 0,
+        delayed: 0,
+      });
+      await mq.enqueue("ready");
+      await mq.enqueue("delayed", {
+        delay: Temporal.Duration.from({ hours: 1 }),
+      });
+      assert.deepStrictEqual(await mq.getDepth(), {
+        queued: 2,
+        ready: 1,
+        delayed: 1,
+      });
+    } finally {
+      await mq.drop();
+      await pool.end();
+    }
+  },
+);
+
 // ---------------------------------------------------------------------------
 // initialize() and drop()
 // ---------------------------------------------------------------------------
 
-test("MysqlMessageQueue.initialize()", { skip: dbUrl == null }, async () => {
-  if (dbUrl == null) return; // Bun does not support skip option
+test("MysqlMessageQueue.initialize()", { ignore: dbUrl == null }, async () => {
+  if (dbUrl == null) return;
   const pool = mysql.createPool(dbUrl!);
   const tableName = randomTableName("init");
   const mq = new MysqlMessageQueue(pool, { tableName });
@@ -166,9 +196,9 @@ test("MysqlMessageQueue.initialize()", { skip: dbUrl == null }, async () => {
 
 test(
   "MysqlMessageQueue.initialize() is idempotent",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("idem");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -191,8 +221,8 @@ test(
   },
 );
 
-test("MysqlMessageQueue.drop()", { skip: dbUrl == null }, async () => {
-  if (dbUrl == null) return; // Bun does not support skip option
+test("MysqlMessageQueue.drop()", { ignore: dbUrl == null }, async () => {
+  if (dbUrl == null) return;
   const pool = mysql.createPool(dbUrl!);
   const tableName = randomTableName("drop");
   const mq = new MysqlMessageQueue(pool, { tableName });
@@ -214,9 +244,9 @@ test("MysqlMessageQueue.drop()", { skip: dbUrl == null }, async () => {
 
 test(
   "MysqlMessageQueue.drop() resets initialized flag so re-initialize works",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("reinit");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -242,9 +272,9 @@ test(
 
 test(
   "MysqlMessageQueue.drop() waits for in-flight initialize() before dropping",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("droprace");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -277,9 +307,9 @@ test(
 
 test(
   "MysqlMessageQueue concurrent initialization does not throw",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pools: mysql.Pool[] = [];
     const tableName = randomTableName("concinit");
     try {
@@ -303,9 +333,9 @@ test(
 
 test(
   "MysqlMessageQueue enqueue() and listen() racing on initialize() is safe",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("race");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -338,9 +368,9 @@ test(
 
 test(
   "MysqlMessageQueue processes messages enqueued before listen() starts",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("preq");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -379,9 +409,9 @@ test(
 
 test(
   "MysqlMessageQueue delayed message is not delivered early",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("delay");
     const mq = new MysqlMessageQueue(pool, {
@@ -436,9 +466,9 @@ test(
 
 test(
   "MysqlMessageQueue handles 30 concurrent enqueue() calls",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("stress");
     const mq = new MysqlMessageQueue(pool, {
@@ -480,9 +510,9 @@ test(
 
 test(
   "MysqlMessageQueue.enqueueMany() with empty array is a no-op",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("emptyb");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -509,9 +539,9 @@ test(
 
 test(
   "MysqlMessageQueue.enqueueMany() inserts all messages atomically",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("batcha");
     const mq = new MysqlMessageQueue(pool, { tableName });
@@ -532,9 +562,9 @@ test(
 
 test(
   "MysqlMessageQueue.enqueueMany() delivers all 100 messages via single INSERT",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("bulk");
     const mq = new MysqlMessageQueue(pool, {
@@ -571,9 +601,9 @@ test(
 
 test(
   "MysqlMessageQueue.enqueueMany() preserves insertion order for same ordering key",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("bord");
     const mq = new MysqlMessageQueue(pool, {
@@ -617,9 +647,9 @@ test(
 
 test(
   "MysqlMessageQueue listener survives handler errors",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("hderr");
     const mq = new MysqlMessageQueue(pool, {
@@ -661,9 +691,9 @@ test(
 
 test(
   "MysqlMessageQueue handlerTimeout prevents hung handler from blocking queue",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("hdto");
     const mq = new MysqlMessageQueue(pool, {
@@ -706,9 +736,9 @@ test(
 
 test(
   "MysqlMessageQueue handlerTimeout with ordering key releases the lock",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("hdtolk");
     const mq = new MysqlMessageQueue(pool, {
@@ -754,9 +784,9 @@ test(
 
 test(
   "MysqlMessageQueue advisory lock is released after processing (regression for lock-leak)",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     // Use a pool with a small max to make lock leaks visible
     const pool = mysql.createPool({ uri: dbUrl!, connectionLimit: 3 });
     const tableName = randomTableName("lockleak");
@@ -799,9 +829,9 @@ test(
 
 test(
   "MysqlMessageQueue GET_LOCK succeeds with a very long ordering key",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     // A 200-char ordering key combined with a 20-char table name produces a
     // raw lock name that is 221 chars — well over MySQL's 64-char limit.
     // The lock name hashing logic must shorten it before calling GET_LOCK,
@@ -843,9 +873,9 @@ test(
 
 test(
   "MysqlMessageQueue delivers each message to exactly one worker",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool1 = mysql.createPool(dbUrl!);
     const pool2 = mysql.createPool(dbUrl!);
     const tableName = randomTableName("onceonly");
@@ -903,9 +933,9 @@ test(
 
 test(
   "MysqlMessageQueue two workers preserve ordering-key order",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool1 = mysql.createPool(dbUrl!);
     const pool2 = mysql.createPool(dbUrl!);
     const tableName = randomTableName("twowork");
@@ -962,9 +992,9 @@ test(
 
 test(
   "MysqlMessageQueue listen() resolves promptly when aborted during poll interval",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("clrtmo");
     // Use a very long poll interval so the test would hang if clearTimeout
@@ -983,13 +1013,18 @@ test(
       controller.abort();
 
       // listen() must resolve well within the 60-second poll interval.
-      const deadline = new Promise<never>((_, reject) =>
-        setTimeout(
+      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_, reject) => {
+        deadlineTimer = setTimeout(
           () => reject(new Error("listen() did not resolve in time")),
           3_000,
-        )
-      );
-      await Promise.race([listening, deadline]);
+        );
+      });
+      try {
+        await Promise.race([listening, deadline]);
+      } finally {
+        clearTimeout(deadlineTimer);
+      }
     } finally {
       await mq.drop();
       await pool.end();
@@ -1003,9 +1038,9 @@ test(
 
 test(
   "MysqlMessageQueue works with getRandomKey() from @fedify/testing",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     // getRandomKey returns names like "fedify_test_mq_<uuid>" which may contain
     // hyphens — unsuitable for MySQL identifiers.  Users must replace hyphens.
     const rawKey = getRandomKey("mq");
@@ -1040,9 +1075,9 @@ test(
 
 test(
   "MysqlMessageQueue with initialized: true skips DDL on first use",
-  { skip: dbUrl == null },
+  { ignore: dbUrl == null },
   async () => {
-    if (dbUrl == null) return; // Bun does not support skip option
+    if (dbUrl == null) return;
     const pool = mysql.createPool(dbUrl!);
     const tableName = randomTableName("preini");
     // Create table manually first
