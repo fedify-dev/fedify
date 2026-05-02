@@ -300,6 +300,16 @@ test({
         new URL("https://example.com/nodeinfo/2.1"),
       );
 
+      assertThrows(
+        () =>
+          createFederation<number>({
+            kv: new MemoryKvStore(),
+          }).setActorDispatcher("/users/{identifier}", () => null)
+            .mapActorAlias("/actor/{id}" as `/${string}`, "instance"),
+        RouterError,
+        "Path for actor alias must have no variables.",
+      );
+
       federation
         .setActorDispatcher("/users/{identifier}", () => new vocab.Person({}))
         .mapActorAlias("/bot", "bot")
