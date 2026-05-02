@@ -372,7 +372,6 @@ export class AmqpMessageQueue implements MessageQueue {
 
   #trackDelayedQueue(queue: string, delay: number): void {
     this.#delayedQueues.set(queue, Date.now() + Math.max(0, delay) + 60_000);
-    this.#pruneDelayedQueues();
   }
 
   #pruneDelayedQueues(): void {
