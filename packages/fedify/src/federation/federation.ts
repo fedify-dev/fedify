@@ -1115,6 +1115,8 @@ export interface ActorCallbackSetters<TContextData> {
    * @param path The fixed path to map to the identifier.
    * @param identifier The sentinel identifier to map the path to.
    * @returns The setters object so that settings can be chained.
+   * @throws {RouterError} If the provided path or identifier is invalid or fails
+   *                       runtime validation.
    * @since 2.3.0
    */
   mapActorAlias(

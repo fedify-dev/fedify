@@ -1219,6 +1219,7 @@ test("Federation.fetch()", async (t) => {
     );
     assertExists(selfLink);
     assertEquals(selfLink.href, "https://example.com/bot");
+    assertExists(body.aliases);
     assert((body.aliases as string[]).includes("https://example.com/bot"));
   });
 

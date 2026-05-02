@@ -63,6 +63,8 @@ import type {
 } from "./handler.ts";
 import { Router, RouterError } from "./router.ts";
 
+const ACTOR_ALIAS_PREFIX = "actorAlias:";
+
 function validateSingleIdentifierVariablePath(
   path: string,
   errorMessage: string,
@@ -523,13 +525,18 @@ export class FederationBuilderImpl<TContextData>
         return setters;
       },
       mapActorAlias: (path: string, identifier: string) => {
+        if (this.router.has(`${ACTOR_ALIAS_PREFIX}${identifier}`)) {
+          throw new RouterError(
+            `Actor alias for "${identifier}" already set.`,
+          );
+        }
         const variables = new Router().add(path, "temp");
         if (variables.size > 0) {
           throw new RouterError(
             "Path for actor alias must have no variables.",
           );
         }
-        this.router.add(path, `actorAlias:${identifier}`);
+        this.router.add(path, `${ACTOR_ALIAS_PREFIX}${identifier}`);
         return setters;
       },
       authorize(predicate: AuthorizePredicate<TContextData>) {

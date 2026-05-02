@@ -35,6 +35,15 @@ test("FederationBuilder", async (t) => {
         RouterError,
         "Path for actor alias must have no variables.",
       );
+      assertThrows(
+        () =>
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
+            .mapActorAlias("/actor", "instance")
+            .mapActorAlias("/bot", "instance"),
+        RouterError,
+        'Actor alias for "instance" already set.',
+      );
       builder.setActorDispatcher("/users/{identifier}", actorDispatcher)
         .mapActorAlias("/actor", "instance");
 

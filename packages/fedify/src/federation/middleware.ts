@@ -112,6 +112,8 @@ import type {
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import { RouterError } from "./router.ts";
+
+const ACTOR_ALIAS_PREFIX = "actorAlias:";
 import {
   extractInboxes,
   sendActivity,
@@ -1437,8 +1439,8 @@ export class FederationImpl<TContextData>
     switch (routeName) {
       case "actor":
       case "actorAlias": {
-        const identifier = route.name.startsWith("actorAlias:")
-          ? route.name.substring("actorAlias:".length)
+        const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
+          ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
           : route.values.identifier;
         context = this.#createContext(request, contextData, {
           invokedFromActorDispatcher: { identifier },
@@ -1793,7 +1795,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   getActorUri(identifier: string): URL {
     let path = this.federation.router.build(
-      `actorAlias:${identifier}`,
+      `${ACTOR_ALIAS_PREFIX}${identifier}`,
       {},
     );
     if (path == null) {
@@ -1947,10 +1949,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         identifier: undefined,
       };
     }
-    const identifier = route.name.startsWith("actorAlias:")
-      ? route.name.substring("actorAlias:".length)
+    const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
+      ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
       : route.values.identifier;
-    if (route.name === "actor" || route.name.startsWith("actorAlias:")) {
+    if (route.name === "actor" || route.name.startsWith(ACTOR_ALIAS_PREFIX)) {
       return {
         type: "actor",
         identifier,
