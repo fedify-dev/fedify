@@ -93,14 +93,14 @@ export type Token =
   | { kind: "expression"; operator: Operator; vars: VarSpec[] };
 
 /**
- * Options controlling URI Template parsing diagnostics.
+ * Options controlling URI Template parsing and expansion diagnostics.
  */
 export interface TemplateOptions {
   /**
-   * If `true`, the first error in the template will be automatically thrown
-   * while parsing after being reported. `true` is the default value.
-   * If `false`, all errors will be reported to by the `report` function,
-   * but none will be thrown unless the `report` function itself throws.
+   * If `true`, the first parse or expansion error will be automatically
+   * thrown after being reported. `true` is the default value. If `false`,
+   * errors will be reported to by the `report` function, but none will be
+   * thrown unless the `report` function itself throws.
    */
   strict: boolean;
   /**
