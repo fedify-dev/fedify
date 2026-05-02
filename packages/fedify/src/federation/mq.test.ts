@@ -219,6 +219,78 @@ test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () =>
   }
 });
 
+test("InProcessMessageQueue delayed enqueue uses the internal ready path", async () => {
+  class RejectingReadyQueue extends InProcessMessageQueue {
+    override enqueue(
+      message: unknown,
+      options?: { delay?: Temporal.Duration },
+    ): Promise<void> {
+      if (options?.delay == null) {
+        return Promise.reject(new Error("ready enqueue should not be called"));
+      }
+      return super.enqueue(message, options);
+    }
+  }
+
+  const mq = new RejectingReadyQueue({
+    pollInterval: { milliseconds: 10 },
+  });
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    controller.abort();
+  }, { signal: controller.signal });
+
+  try {
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ milliseconds: 10 }),
+    });
+    await waitFor(() => messages.length > 0, 2_000);
+    assertEquals(messages, ["delayed"]);
+  } finally {
+    controller.abort();
+    await listening;
+  }
+});
+
+test("InProcessMessageQueue delayed enqueueMany uses the internal ready path", async () => {
+  class RejectingReadyQueue extends InProcessMessageQueue {
+    override enqueueMany(
+      messages: readonly unknown[],
+      options?: { delay?: Temporal.Duration },
+    ): Promise<void> {
+      if (options?.delay == null) {
+        return Promise.reject(
+          new Error("ready enqueueMany should not be called"),
+        );
+      }
+      return super.enqueueMany(messages, options);
+    }
+  }
+
+  const mq = new RejectingReadyQueue({
+    pollInterval: { milliseconds: 10 },
+  });
+  const messages: string[] = [];
+  const controller = new AbortController();
+  const listening = mq.listen((message: string) => {
+    messages.push(message);
+    if (messages.length >= 2) controller.abort();
+  }, { signal: controller.signal });
+
+  try {
+    await mq.enqueueMany(["first", "second"], {
+      delay: Temporal.Duration.from({ milliseconds: 10 }),
+    });
+    await waitFor(() => messages.length >= 2, 2_000);
+    assertEquals(messages, ["first", "second"]);
+  } finally {
+    controller.abort();
+    await listening;
+  }
+});
+
 test("InProcessMessageQueue orderingKey", async (t) => {
   const mq = new InProcessMessageQueue();
 

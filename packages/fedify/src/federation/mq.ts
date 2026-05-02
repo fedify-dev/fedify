@@ -199,18 +199,26 @@ export class InProcessMessageQueue implements MessageQueue {
       setTimeout(
         () => {
           this.#delayedMessages--;
-          void this.enqueue(message, { ...options, delay: undefined });
+          this.#enqueueReady(message, options);
         },
         delay,
       );
       return Promise.resolve();
     }
+    this.#enqueueReady(message, options);
+    return Promise.resolve();
+  }
+
+  #enqueueReady(message: any, options?: MessageQueueEnqueueOptions): void {
     const orderingKey = options?.orderingKey ?? null;
     this.#messages.push({ message, orderingKey });
+    this.#notifyMonitors();
+  }
+
+  #notifyMonitors(): void {
     for (const monitorId in this.#monitors) {
       this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
     }
-    return Promise.resolve();
   }
 
   enqueueMany(
@@ -228,23 +236,25 @@ export class InProcessMessageQueue implements MessageQueue {
       setTimeout(
         () => {
           this.#delayedMessages -= delayedCount;
-          void this.enqueueMany(deferredMessages, {
-            ...options,
-            delay: undefined,
-          });
+          this.#enqueueManyReady(deferredMessages, options);
         },
         delay,
       );
       return Promise.resolve();
     }
+    this.#enqueueManyReady(messages, options);
+    return Promise.resolve();
+  }
+
+  #enqueueManyReady(
+    messages: readonly any[],
+    options?: MessageQueueEnqueueOptions,
+  ): void {
     const orderingKey = options?.orderingKey ?? null;
     for (const message of messages) {
       this.#messages.push({ message, orderingKey });
     }
-    for (const monitorId in this.#monitors) {
-      this.#monitors[monitorId as ReturnType<typeof crypto.randomUUID>]();
-    }
-    return Promise.resolve();
+    this.#notifyMonitors();
   }
 
   async listen(
