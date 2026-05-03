@@ -112,8 +112,8 @@ import type {
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import { RouterError } from "./router.ts";
+import { ACTOR_ALIAS_PREFIX } from "./builder.ts";
 
-const ACTOR_ALIAS_PREFIX = "actorAlias:";
 import {
   extractInboxes,
   sendActivity,
@@ -1794,16 +1794,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   getActorUri(identifier: string): URL {
-    let path = this.federation.router.build(
+    const path = this.federation.router.build(
       `${ACTOR_ALIAS_PREFIX}${identifier}`,
       {},
+    ) ?? this.federation.router.build(
+      "actor",
+      { identifier },
     );
-    if (path == null) {
-      path = this.federation.router.build(
-        "actor",
-        { identifier },
-      );
-    }
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
     }

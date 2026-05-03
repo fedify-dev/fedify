@@ -44,6 +44,15 @@ test("FederationBuilder", async (t) => {
         RouterError,
         'Actor alias for "instance" already set.',
       );
+      assertThrows(
+        () =>
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
+            .mapActorAlias("/actor", "instance")
+            .mapActorAlias("/actor", "bot"),
+        RouterError,
+        'Actor alias path "/actor" conflicts with existing route "actorAlias:instance".',
+      );
       builder.setActorDispatcher("/users/{identifier}", actorDispatcher)
         .mapActorAlias("/actor", "instance");
 

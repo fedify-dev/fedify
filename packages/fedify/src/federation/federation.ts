@@ -1120,7 +1120,7 @@ export interface ActorCallbackSetters<TContextData> {
    * @since 2.3.0
    */
   mapActorAlias(
-    path: string,
+    path: `/${string}`,
     identifier: string,
   ): ActorCallbackSetters<TContextData>;
 

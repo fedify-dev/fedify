@@ -1224,6 +1224,8 @@ test("Federation.fetch()", async (t) => {
     assertEquals(response.status, 200);
     const body = await response.json() as Record<string, unknown>;
     assertEquals(body.subject, "acct:bot@example.com");
+    assertExists(body.links);
+    assert(Array.isArray(body.links));
     const selfLink = (body.links as Record<string, unknown>[]).find((l) =>
       l.rel === "self"
     );
