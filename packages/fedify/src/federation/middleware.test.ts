@@ -9,6 +9,7 @@ import { getTypeId, lookupObject } from "@fedify/vocab";
 import {
   assert,
   assertEquals,
+  assertExists,
   assertFalse,
   assertInstanceOf,
   assertNotEquals,
@@ -299,8 +300,19 @@ test({
         new URL("https://example.com/nodeinfo/2.1"),
       );
 
+      assertThrows(
+        () =>
+          createFederation<number>({
+            kv: new MemoryKvStore(),
+          }).setActorDispatcher("/users/{identifier}", () => null)
+            .mapActorAlias("/actor/{id}" as `/${string}`, "instance"),
+        RouterError,
+        "Path for actor alias must have no variables.",
+      );
+
       federation
         .setActorDispatcher("/users/{identifier}", () => new vocab.Person({}))
+        .mapActorAlias("/bot", "bot")
         .setKeyPairsDispatcher(() => [
           {
             privateKey: rsaPrivateKey2,
@@ -317,10 +329,18 @@ test({
         ctx.getActorUri("handle"),
         new URL("https://example.com/users/handle"),
       );
+      assertEquals(
+        ctx.getActorUri("bot"),
+        new URL("https://example.com/bot"),
+      );
       assertEquals(ctx.parseUri(new URL("https://example.com/")), null);
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle")),
         { type: "actor", identifier: "handle" },
+      );
+      assertEquals(
+        ctx.parseUri(new URL("https://example.com/bot")),
+        { type: "actor", identifier: "bot" },
       );
       assertEquals(ctx.parseUri(null), null);
       assertEquals(
@@ -1132,6 +1152,7 @@ test("Federation.fetch()", async (t) => {
         });
       },
     )
+      .mapActorAlias("/bot", "bot")
       .setKeyPairsDispatcher(() => {
         return [
           { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
@@ -1168,6 +1189,50 @@ test("Federation.fetch()", async (t) => {
 
     assertEquals(dispatches, []);
     assertEquals(response.status, 406);
+  });
+
+  await t.step("GET actor alias", async () => {
+    const { federation, dispatches } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request("https://example.com/bot", {
+        method: "GET",
+        headers: {
+          "Accept": "application/activity+json",
+        },
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(dispatches, ["bot"]);
+    assertEquals(response.status, 200);
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.id, "https://example.com/bot");
+    assertEquals(body.preferredUsername, "bot");
+  });
+
+  await t.step("WebFinger for actor alias", async () => {
+    const { federation } = createTestContext();
+
+    const response = await federation.fetch(
+      new Request(
+        "https://example.com/.well-known/webfinger?resource=acct:bot@example.com",
+      ),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 200);
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.subject, "acct:bot@example.com");
+    assertExists(body.links);
+    assert(Array.isArray(body.links));
+    const selfLink = (body.links as Record<string, unknown>[]).find((l) =>
+      l.rel === "self"
+    );
+    assertExists(selfLink);
+    assertEquals(selfLink.href, "https://example.com/bot");
+    assertExists(body.aliases);
+    assert((body.aliases as string[]).includes("https://example.com/bot"));
   });
 
   await t.step("POST with application/json", async () => {

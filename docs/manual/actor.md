@@ -456,6 +456,49 @@ ctx.getActorUri("2bd304f9-36b3-44f0-bf0b-29124aafcbb4")
 > the argument is a valid identifier before calling the method.
 
 
+Fixed-path actor URIs
+---------------------
+
+*This API is available since Fedify 2.3.0.*
+
+In some cases, you may want to expose a single, instance-level actor at a fixed
+path, such as `/actor` for a relay or `/bot` for a bot, without leaking a
+sentinel identifier like `__instance__` into the actor's URI.
+
+You can alias a fixed path to a sentinel identifier by calling
+the `~ActorCallbackSetters.mapActorAlias()` method:
+
+~~~~ typescript
+// @noErrors: 2345 2391
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier === "bot") {
+      return new Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: "bot",
+        // ...
+      });
+    }
+    // ...
+  })
+  .mapActorAlias("/bot", "bot");
+~~~~
+
+Once the alias is registered, `Context.getActorUri("bot")` will return
+`https://example.com/bot` rather than `https://example.com/users/bot`.
+Incoming requests to `/bot` will also correctly resolve the identifier to
+`"bot"` and trigger the actor dispatcher.  WebFinger responses for the actor
+will also use the fixed path for the `self` link and the aliases.
+
+> [!TIP]
+> You can map multiple fixed paths to different sentinel identifiers by calling
+> the `~ActorCallbackSetters.mapActorAlias()` method multiple times.
+
+
 Decoupling actor URIs from WebFinger usernames
 ----------------------------------------------
 

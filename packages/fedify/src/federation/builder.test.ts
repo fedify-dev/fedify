@@ -25,7 +25,44 @@ test("FederationBuilder", async (t) => {
       const actorDispatcher: ActorDispatcher<string> = (_ctx, _identifier) => {
         return null;
       };
-      builder.setActorDispatcher("/users/{identifier}", actorDispatcher);
+      assertThrows(
+        () =>
+          createFederationBuilder<string>().setActorDispatcher(
+            "/users/{identifier}",
+            actorDispatcher,
+          )
+            .mapActorAlias("/actor/{id}", "instance"),
+        RouterError,
+        "Path for actor alias must have no variables.",
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
+            .mapActorAlias("/actor", "instance")
+            .mapActorAlias("/bot", "instance"),
+        RouterError,
+        'Actor alias for "instance" already set.',
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
+            .mapActorAlias("/actor", "instance")
+            .mapActorAlias("/actor", "bot"),
+        RouterError,
+        'Actor alias path "/actor" conflicts with existing route "actorAlias:instance".',
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
+            .mapActorAlias("/actor", ""),
+        RouterError,
+        "Identifier cannot be empty.",
+      );
+      builder.setActorDispatcher("/users/{identifier}", actorDispatcher)
+        .mapActorAlias("/actor", "instance");
 
       const inboxListener: InboxListener<string, Activity> = (
         _ctx,
@@ -83,6 +120,7 @@ test("FederationBuilder", async (t) => {
         "webfinger",
       );
       assertEquals(impl.router.route("/users/test123")?.name, "actor");
+      assertEquals(impl.router.route("/actor")?.name, "actorAlias:instance");
       assertEquals(impl.router.route("/users/test123/inbox")?.name, "inbox");
       assertEquals(impl.router.route("/users/test123/outbox")?.name, "outbox");
       assertEquals(

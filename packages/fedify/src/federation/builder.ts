@@ -63,6 +63,8 @@ import type {
 } from "./handler.ts";
 import { Router, RouterError } from "./router.ts";
 
+export const ACTOR_ALIAS_PREFIX = "actorAlias:";
+
 function validateSingleIdentifierVariablePath(
   path: string,
   errorMessage: string,
@@ -520,6 +522,30 @@ export class FederationBuilderImpl<TContextData>
       },
       mapAlias(mapper: ActorAliasMapper<TContextData>) {
         callbacks.aliasMapper = mapper;
+        return setters;
+      },
+      mapActorAlias: (path: `/${string}`, identifier: string) => {
+        if (identifier === "") {
+          throw new RouterError("Identifier cannot be empty.");
+        }
+        if (this.router.has(`${ACTOR_ALIAS_PREFIX}${identifier}`)) {
+          throw new RouterError(
+            `Actor alias for "${identifier}" already set.`,
+          );
+        }
+        const variables = new Router().add(path, "temp");
+        if (variables.size > 0) {
+          throw new RouterError(
+            "Path for actor alias must have no variables.",
+          );
+        }
+        const existingRoute = this.router.route(path);
+        if (existingRoute != null) {
+          throw new RouterError(
+            `Actor alias path "${path}" conflicts with existing route "${existingRoute.name}".`,
+          );
+        }
+        this.router.add(path, `${ACTOR_ALIAS_PREFIX}${identifier}`);
         return setters;
       },
       authorize(predicate: AuthorizePredicate<TContextData>) {

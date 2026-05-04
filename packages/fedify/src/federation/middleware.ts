@@ -112,6 +112,8 @@ import type {
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import { RouterError } from "./router.ts";
+import { ACTOR_ALIAS_PREFIX } from "./builder.ts";
+
 import {
   extractInboxes,
   sendActivity,
@@ -1436,19 +1438,22 @@ export class FederationImpl<TContextData>
     }
     switch (routeName) {
       case "actor":
+      case "actorAlias": {
+        const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
+          ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
+          : route.values.identifier;
         context = this.#createContext(request, contextData, {
-          invokedFromActorDispatcher: {
-            identifier: route.values.identifier,
-          },
+          invokedFromActorDispatcher: { identifier },
         });
         return await handleActor(request, {
-          identifier: route.values.identifier,
+          identifier,
           context,
           actorDispatcher: this.actorCallbacks?.dispatcher,
           authorizePredicate: this.actorCallbacks?.authorizePredicate,
           onUnauthorized,
           onNotFound,
         });
+      }
       case "object": {
         const typeId = route.name.replace(/^object:/, "");
         const callbacks = this.objectCallbacks[typeId];
@@ -1790,6 +1795,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   getActorUri(identifier: string): URL {
     const path = this.federation.router.build(
+      `${ACTOR_ALIAS_PREFIX}${identifier}`,
+      {},
+    ) ?? this.federation.router.build(
       "actor",
       { identifier },
     );
@@ -1938,8 +1946,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         identifier: undefined,
       };
     }
-    const identifier = route.values.identifier;
-    if (route.name === "actor") {
+    const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
+      ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
+      : route.values.identifier;
+    if (route.name === "actor" || route.name.startsWith(ACTOR_ALIAS_PREFIX)) {
       return {
         type: "actor",
         identifier,
