@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import type {
   ExpandContext,
   Reporter,
@@ -54,24 +55,23 @@ export default class Template {
     return this.#tokens;
   }
 
-  #expand(
-    context: ExpandContext,
-    options: TemplateOptions = this.#fullOptions,
-  ): string {
-    return this.#tokens.map((token) =>
-      token.kind === "literal"
-        ? token.text
-        : expand(token.vars, token.operator, context, options)
-    ).join("");
-  }
   /**
    * Expands this template against a variable context.
    */
-  expand: (context: ExpandContext, options?: TemplateOptions) => string = this
-    .#expand.bind(this);
+  expand: (
+    context: ExpandContext,
+    options?: TemplateOptions,
+  ) => string = (
+    context: ExpandContext,
+    options: TemplateOptions = this.#fullOptions,
+  ): string => expand(this.#tokens, context, options);
+
+  toString = (): string => this.uriTemplate;
 }
 
-const defaultReporter = (_error: Error): void => {};
+const logger = getLogger(["fedify", "uri-template", "Template"]);
+
+const defaultReporter: Reporter = (error: Error) => logger.error(error);
 
 const fillOptions = (
   { strict, report }: Partial<TemplateOptions>,

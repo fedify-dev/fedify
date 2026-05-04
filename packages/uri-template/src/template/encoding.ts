@@ -7,24 +7,26 @@ const hexDigits = "0123456789ABCDEF";
  *
  * Used by parsers and encoders when recognizing pct-encoded triplets.
  */
-export function isHexDigit(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return (
-    code >= 0x30 && code <= 0x39 ||
-    code >= 0x41 && code <= 0x46 ||
-    code >= 0x61 && code <= 0x66
-  );
-}
+export const isHexDigit: (char: string) => boolean = (
+  char: string,
+): boolean =>
+  some(
+    between(0x30, 0x39),
+    between(0x41, 0x46),
+    between(0x61, 0x66),
+  )(char.charCodeAt(0));
 
 /**
  * Returns whether `value[index]` starts a complete pct-encoded triplet.
  */
-export function isPctEncodedAt(value: string, index: number): boolean {
-  return value[index] === "%" &&
-    index + 2 < value.length &&
-    isHexDigit(value[index + 1]) &&
-    isHexDigit(value[index + 2]);
-}
+export const isPctEncodedAt: (
+  value: string,
+  index: number,
+) => boolean = (value: string, index: number): boolean =>
+  value[index] === "%" &&
+  index + 2 < value.length &&
+  isHexDigit(value[index + 1]) &&
+  isHexDigit(value[index + 2]);
 
 /**
  * Returns the UTF-16 length of an RFC 6570 `varchar` at `index`, or `0` when
@@ -33,7 +35,7 @@ export function isPctEncodedAt(value: string, index: number): boolean {
 export function isVarcharAt(value: string, index: number): number {
   const char = value[index];
   if (char == null) return 0;
-  if (isAlpha(char) || isDigit(char) || char === "_") return 1;
+  if (some(isAlpha, isDigit, eq("_"))(char)) return 1;
   return isPctEncodedAt(value, index) ? 3 : 0;
 }
 
@@ -64,7 +66,12 @@ export function readCodePoint(
  * Percent-encodes an expanded variable value according to the operator's
  * allowed-character rule.
  */
-export function encodeValue(value: string, allowReserved: boolean): string {
+export const encodeValue: (
+  allowReserved: boolean,
+) => (value: string) => string = (
+  allowReserved: boolean,
+): (value: string) => string =>
+(value: string): string => {
   let encoded = "";
   for (let index = 0; index < value.length;) {
     if (allowReserved && isPctEncodedAt(value, index)) {
@@ -74,13 +81,16 @@ export function encodeValue(value: string, allowReserved: boolean): string {
     }
 
     const { char, size } = readCodePoint(value, index);
-    encoded += isUnreserved(char) || allowReserved && isReserved(char)
+    encoded += some(
+        isUnreserved,
+        (char: string): boolean => allowReserved && isReserved(char),
+      )(char)
       ? char
       : percentEncode(char);
     index += size;
   }
   return encoded;
-}
+};
 
 /**
  * Percent-encodes a variable name or associative key for named expansions.
@@ -122,70 +132,83 @@ export function truncateValue(value: string, length: number): string {
   return truncated;
 }
 
-function isAlpha(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return code >= 0x41 && code <= 0x5a || code >= 0x61 && code <= 0x7a;
-}
+const isAlpha: (char: string) => boolean = (char: string): boolean =>
+  some(between(0x41, 0x5a), between(0x61, 0x7a))(char.charCodeAt(0));
 
-function isDigit(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return code >= 0x30 && code <= 0x39;
-}
+const isDigit: (char: string) => boolean = (char: string): boolean =>
+  between(0x30, 0x39)(char.charCodeAt(0));
 
-function isUnreserved(char: string): boolean {
-  return isAlpha(char) || isDigit(char) ||
-    char === "-" || char === "." || char === "_" || char === "~";
-}
+const isUnreserved: (char: string) => boolean = (char: string): boolean =>
+  some(
+    isAlpha,
+    isDigit,
+    (char: string) => "-._~".includes(char),
+  )(char);
 
-function isReserved(char: string): boolean {
-  return ":/?#[]@!$&'()*+,;=".includes(char);
-}
+const isReserved: (char: string) => boolean = (char: string): boolean =>
+  ":/?#[]@!$&'()*+,;=".includes(char);
 
-function isLiteralChar(char: string): boolean {
-  const code = char.codePointAt(0);
-  if (code == null) return false;
-  return code === 0x21 ||
-    code >= 0x23 && code <= 0x24 ||
-    code === 0x26 ||
-    code >= 0x28 && code <= 0x3b ||
-    code === 0x3d ||
-    code >= 0x3f && code <= 0x5b ||
-    code === 0x5d ||
-    code === 0x5f ||
-    code >= 0x61 && code <= 0x7a ||
-    code === 0x7e ||
-    isUcsChar(code) ||
-    isIPrivate(code);
-}
+const isLiteralChar: (char: string) => boolean = (char: string): boolean =>
+  isLiteralCodePoint(char.codePointAt(0));
+
+const isLiteralCodePoint: (
+  code: number | undefined,
+) => boolean = (code: number | undefined): boolean =>
+  code != null &&
+  some(
+    eq(0x21),
+    between(0x23, 0x24),
+    eq(0x26),
+    between(0x28, 0x3b),
+    eq(0x3d),
+    between(0x3f, 0x5b),
+    eq(0x5d),
+    eq(0x5f),
+    between(0x61, 0x7a),
+    eq(0x7e),
+    isUcsChar,
+    isIPrivate,
+  )(code);
 
 function isUcsChar(code: number): boolean {
-  return code >= 0xa0 && code <= 0xd7ff ||
-    code >= 0xf900 && code <= 0xfdcf ||
-    code >= 0xfdf0 && code <= 0xffef ||
-    code >= 0x10000 && code <= 0x1fffd ||
-    code >= 0x20000 && code <= 0x2fffd ||
-    code >= 0x30000 && code <= 0x3fffd ||
-    code >= 0x40000 && code <= 0x4fffd ||
-    code >= 0x50000 && code <= 0x5fffd ||
-    code >= 0x60000 && code <= 0x6fffd ||
-    code >= 0x70000 && code <= 0x7fffd ||
-    code >= 0x80000 && code <= 0x8fffd ||
-    code >= 0x90000 && code <= 0x9fffd ||
-    code >= 0xa0000 && code <= 0xafffd ||
-    code >= 0xb0000 && code <= 0xbfffd ||
-    code >= 0xc0000 && code <= 0xcfffd ||
-    code >= 0xd0000 && code <= 0xdfffd ||
-    code >= 0xe1000 && code <= 0xefffd;
+  if (code < 0x10000) {
+    return some(
+      between(0xa0, 0xd7ff),
+      between(0xf900, 0xfdcf),
+      between(0xfdf0, 0xffef),
+    )(code);
+  }
+
+  if (code > 0xefffd) return false;
+  const offset = code % 0x10000;
+  return offset <= 0xfffd && (code < 0xe0000 || offset >= 0x1000);
 }
 
-function isIPrivate(code: number): boolean {
-  return code >= 0xe000 && code <= 0xf8ff ||
-    code >= 0xf0000 && code <= 0xffffd ||
-    code >= 0x100000 && code <= 0x10fffd;
-}
+const isIPrivate: (code: number) => boolean = (code: number): boolean =>
+  some(
+    between(0xe000, 0xf8ff),
+    between(0xf0000, 0xffffd),
+    between(0x100000, 0x10fffd),
+  )(code);
 
-function percentEncode(char: string): string {
-  return Array.from(textEncoder.encode(char))
+const percentEncode: (char: string) => string = (char: string): string =>
+  Array.from(textEncoder.encode(char))
     .map((byte) => `%${hexDigits[byte >> 4]}${hexDigits[byte & 0x0f]}`)
     .join("");
-}
+
+const between: (
+  min: number,
+  max: number,
+) => (num: number) => boolean =
+  (min: number, max: number): (num: number) => boolean =>
+  (num: number): boolean => min <= num && num <= max;
+
+const eq: <T>(a: T) => (b: T) => boolean =
+  <T>(a: T): (b: T) => boolean => (b: T): boolean => a === b;
+
+const some: <T>(
+  ...preds: ((arg: T) => boolean)[]
+) => (arg: T) => boolean =
+  <T>(...preds: ((arg: T) => boolean)[]): (arg: T) => boolean =>
+  (arg: T): boolean => preds.some((pred) => pred(arg));
+// cspell: ignore preds

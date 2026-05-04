@@ -1,13 +1,15 @@
 export type { Operator, OperatorSpec } from "./const.ts";
 import type { Operator } from "./const.ts";
+import type _Template from "./template/mod.ts";
 
 /**
- * Primitive value accepted by {@link Template.expand}.
+ * Primitive value accepted by {@link _Template.expand Template.expand}.
  */
 export type PrimitiveValue = string | number | boolean | null | undefined;
 
 /**
- * Associative composite value accepted by {@link Template.expand}.
+ * Associative composite value accepted by
+ * {@link _Template.expand Template.expand}.
  *
  * Keys are expanded as URI Template associative names. Values may be primitive
  * values or primitive lists.
@@ -26,8 +28,9 @@ export type ExpandValue =
   | AssociativeValue;
 
 /**
- * Context object accepted by {@link Template.expand}.  Each variable resolves
- * to a primitive, an ordered list of primitives, or an associative map.
+ * Context object accepted by {@link _Template.expand Template.expand}.
+ * Each variable resolves to a primitive, an ordered list of primitives,
+ * or an associative map.
  */
 export type ExpandContext = Record<string, ExpandValue>;
 
