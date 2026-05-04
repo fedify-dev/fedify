@@ -1,4 +1,4 @@
-import { equal, throws } from "node:assert/strict";
+import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import * as ERROR_CLASSES from "../errors.ts";
 import type { ExpandContext } from "../types.ts";
 import testVars from "./json/references/vars.json" with { type: "json" };
@@ -6,6 +6,7 @@ import testVars from "./json/references/vars.json" with { type: "json" };
 interface TemplateConstructor {
   new (template: string): {
     expand(context: ExpandContext): string;
+    match(uri: string): ExpandContext | null;
   };
 }
 
@@ -32,6 +33,60 @@ export function createTemplatePairTest(
         `${template} => ${expected}`,
         () => equal(new Template(template).expand(context), expected),
       );
+    }
+  };
+}
+
+export function createTemplateMatchTest(
+  Template: TemplateConstructor,
+): (
+  cases: readonly PairTestCase[],
+) => (t: Deno.TestContext) => Promise<void> {
+  return (
+    cases: readonly PairTestCase[],
+  ): (t: Deno.TestContext) => Promise<void> =>
+  async (t: Deno.TestContext): Promise<void> => {
+    for (const [template, expanded] of cases) {
+      await t.step(
+        `${expanded} => ${template}`,
+        () => {
+          const instance = new Template(template);
+          const matched = instance.match(expanded);
+          ok(matched != null, `match returned null for ${expanded}`);
+          equal(instance.expand(matched), expanded);
+        },
+      );
+    }
+  };
+}
+
+export interface MatchTestSuite {
+  name: string;
+  cases: readonly MatchTestCase[];
+}
+
+interface MatchTestCase {
+  name: string;
+  template: string;
+  uri: string;
+  expected: ExpandContext | null;
+  reason?: string;
+}
+
+export function createMatchOnlyTest(
+  Template: TemplateConstructor,
+): (
+  cases: readonly MatchTestCase[],
+) => (t: Deno.TestContext) => Promise<void> {
+  return (
+    cases: readonly MatchTestCase[],
+  ): (t: Deno.TestContext) => Promise<void> =>
+  async (t: Deno.TestContext): Promise<void> => {
+    for (const c of cases) {
+      await t.step(c.name, () => {
+        const got = new Template(c.template).match(c.uri);
+        deepEqual(got, c.expected);
+      });
     }
   };
 }
@@ -63,6 +118,29 @@ export const createFixedTemplateTest: (
     async (t: Deno.TestContext): Promise<void> => {
       for (const { name, context, expected } of cases) {
         await t.step(name, () => equal(instance.expand(context), expected));
+      }
+    };
+  };
+
+export const createFixedTemplateMatchTest: (
+  Template: TemplateConstructor,
+) => (
+  template: string,
+) => (
+  cases: FixedTemplateTestCase[],
+) => (t: Deno.TestContext) => Promise<void> =
+  (Template: TemplateConstructor) => (template: string) => {
+    const instance = new Template(template);
+    return (
+      cases: FixedTemplateTestCase[],
+    ): (t: Deno.TestContext) => Promise<void> =>
+    async (t: Deno.TestContext): Promise<void> => {
+      for (const { name, expected } of cases) {
+        await t.step(name, () => {
+          const matched = instance.match(expected);
+          ok(matched != null, `match returned null for ${expected}`);
+          equal(instance.expand(matched), expected);
+        });
       }
     };
   };
@@ -207,6 +285,27 @@ export function createTemplateHardTest(
             ERROR_CLASSES[c.expected],
           );
         }
+      });
+    }
+  };
+}
+
+export function createTemplateMatchHardTest(
+  Template: TemplateConstructor,
+): (
+  cases: readonly HardTestCase[],
+) => (t: Deno.TestContext) => Promise<void> {
+  return (
+    cases: readonly HardTestCase[],
+  ): (t: Deno.TestContext) => Promise<void> =>
+  async (t: Deno.TestContext): Promise<void> => {
+    for (const c of cases) {
+      if (!c.success) continue;
+      await t.step(c.name, () => {
+        const instance = new Template(c.template);
+        const matched = instance.match(c.expected);
+        ok(matched != null, `match returned null for ${c.expected}`);
+        equal(instance.expand(matched), c.expected);
       });
     }
   };
