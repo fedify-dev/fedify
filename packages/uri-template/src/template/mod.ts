@@ -6,6 +6,7 @@ import type {
   Token,
 } from "../types.ts";
 import expand from "./expand.ts";
+import match from "./match.ts";
 import tokenize from "./token.ts";
 
 /**
@@ -65,6 +66,18 @@ export default class Template {
     context: ExpandContext,
     options: TemplateOptions = this.#fullOptions,
   ): string => expand(this.#tokens, context, options);
+
+  /**
+   * Matches a URI against this template, returning the variable context if the
+   * URI matches or `null` if it does not.
+   */
+  match: (
+    uri: string,
+    options?: TemplateOptions,
+  ) => ExpandContext | null = (
+    uri: string,
+    options: TemplateOptions = this.#fullOptions,
+  ): ExpandContext | null => match(this.#tokens, uri, options);
 
   toString = (): string => this.uriTemplate;
 }
