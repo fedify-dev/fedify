@@ -9,12 +9,17 @@ import {
   UnclosedExpressionError,
 } from "../errors.ts";
 import {
+  createFixedTemplateMatchTest,
   createFixedTemplateTest,
+  createMatchOnlyTest,
   createTemplateHardTest,
+  createTemplateMatchHardTest,
+  createTemplateMatchTest,
   createTemplatePairTest,
   createWrongTemplateTest,
   fixedTestSuites,
   hardTestSuites,
+  matchTestSuites,
   pairTestSuites,
   wrongTestSuites,
 } from "../tests/mod.ts";
@@ -38,6 +43,29 @@ for (const { name, cases } of wrongTestSuites) {
 const runHardCases = createTemplateHardTest(Template);
 for (const { name, cases } of hardTestSuites) {
   test(name, runHardCases(cases));
+}
+
+const runMatchCases = createTemplateMatchTest(Template);
+for (const { name, cases } of pairTestSuites) {
+  test(
+    `match: ${name}`,
+    runMatchCases(cases as unknown as readonly [string, string][]),
+  );
+}
+
+const runFixedMatchCases = createFixedTemplateMatchTest(Template);
+for (const { template, name, cases } of fixedTestSuites) {
+  test(`match: ${name}`, runFixedMatchCases(template)(cases));
+}
+
+const runHardMatchCases = createTemplateMatchHardTest(Template);
+for (const { name, cases } of hardTestSuites) {
+  test(`match: ${name}`, runHardMatchCases(cases));
+}
+
+const runMatchOnlyCases = createMatchOnlyTest(Template);
+for (const { name, cases } of matchTestSuites) {
+  test(`match-only: ${name}`, runMatchOnlyCases(cases));
 }
 
 test("throws parse errors in strict mode", () => {

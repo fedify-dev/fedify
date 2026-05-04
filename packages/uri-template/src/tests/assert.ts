@@ -1,5 +1,10 @@
 import * as ERROR_CLASSES from "../errors.ts";
-import type { HardTestSuite, PairTestSuite, WrongTestSuite } from "./lib.ts";
+import type {
+  HardTestSuite,
+  MatchTestSuite,
+  PairTestSuite,
+  WrongTestSuite,
+} from "./lib.ts";
 
 const ERROR_NAMES: ReadonlySet<string> = new Set(Object.keys(ERROR_CLASSES));
 
@@ -19,6 +24,12 @@ export function assertHardTestSuite(
   suites: unknown,
 ): asserts suites is readonly HardTestSuite[] {
   validateSuites(suites, validateHardCase);
+}
+
+export function assertMatchTestSuite(
+  suites: unknown,
+): asserts suites is readonly MatchTestSuite[] {
+  validateSuites(suites, validateMatchCase);
 }
 
 function validateSuites(
@@ -60,6 +71,15 @@ function validateHardCase(c: unknown): void {
   assertBoolean(c.success, "case.success");
   if (c.reason !== undefined) assertString(c.reason, "case.reason");
   if (!c.success) assertErrorName(c.expected, "case.expected");
+}
+
+function validateMatchCase(c: unknown): void {
+  assertObject(c, "case");
+  assertString(c.name, "case.name");
+  assertString(c.template, "case.template");
+  assertString(c.uri, "case.uri");
+  if (c.expected !== null) assertObject(c.expected, "case.expected");
+  if (c.reason !== undefined) assertString(c.reason, "case.reason");
 }
 
 function assertString(

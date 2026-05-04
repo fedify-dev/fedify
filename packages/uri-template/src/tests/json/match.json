@@ -1,0 +1,582 @@
+[
+  {
+    "name": "Required literals must be present in the URI",
+    "cases": [
+      {
+        "name": "Form-style query operator requires the leading `?`",
+        "template": "{?x}",
+        "uri": "x=value",
+        "expected": null,
+        "reason": "The `?` operator unconditionally emits `?` as its first character when any variable is defined. A URI lacking `?` cannot be the round-trip result of any binding."
+      },
+      {
+        "name": "Fragment operator requires the leading `#`",
+        "template": "X{#var}",
+        "uri": "Xvalue",
+        "expected": null,
+        "reason": "Fragment expansion always begins with `#` when the variable is defined. The only no-`#` alternative would have var undefined, which would round-trip to just `X`, not `Xvalue`."
+      },
+      {
+        "name": "Path-style parameter requires the leading `;`",
+        "template": "{;who}",
+        "uri": "who=fred",
+        "expected": null,
+        "reason": "The `;` operator unconditionally emits `;` before the parameter. Without that prefix the URI cannot be a valid expansion."
+      },
+      {
+        "name": "Trailing literal that is not present in the URI causes match to fail",
+        "template": "{+path}/end",
+        "uri": "/a/b/c",
+        "expected": null,
+        "reason": "The required trailing literal `/end` is not present anywhere in the URI; no slicing of `+path` can produce a valid round-trip."
+      },
+      {
+        "name": "Surrounding literal at wrong position rejects the URI",
+        "template": "/api/{id}/profile",
+        "uri": "/api/123/page",
+        "expected": null,
+        "reason": "After consuming `/api/` and the `{id}` expression, the tail must equal `/profile`. `/page` cannot match because simple expansion forbids `/` in `id`."
+      },
+      {
+        "name": "Pct-encoded literal does not match its decoded form",
+        "template": "%2F{var}",
+        "uri": "/value",
+        "expected": null,
+        "reason": "Literal text in a template is matched verbatim. The literal `%2F` only matches the three-character sequence `%2F`, not the single byte `/`."
+      }
+    ]
+  },
+  {
+    "name": "Operator allow-sets gate which characters can appear in the captured value",
+    "cases": [
+      {
+        "name": "Simple expansion does not permit a raw `/` in the captured value",
+        "template": "{var}",
+        "uri": "a/b",
+        "expected": null,
+        "reason": "Simple expansion percent-encodes `/`. A URI containing a raw `/` cannot be the round-trip result of any binding because expansion would emit `%2F`."
+      },
+      {
+        "name": "Reserved expansion captures raw `/` as part of the value",
+        "template": "{+path}",
+        "uri": "/foo/bar/baz",
+        "expected": {
+          "path": "/foo/bar/baz"
+        },
+        "reason": "Reserved expansion (`+`) allows reserved characters unencoded. The whole URI is the value of `path`."
+      },
+      {
+        "name": "Reserved expansion preserves pct-encoded triplets verbatim",
+        "template": "{+var}",
+        "uri": "a%2Fb",
+        "expected": {
+          "var": "a%2Fb"
+        },
+        "reason": "Per RFC 6570 §3.2.3, reserved expansion emits already-encoded triplets without re-encoding. Match must retain the encoded form rather than decode it to `a/b`."
+      },
+      {
+        "name": "Fragment expansion treats already-encoded triplets verbatim",
+        "template": "{#var}",
+        "uri": "#a%2Fb",
+        "expected": {
+          "var": "a%2Fb"
+        },
+        "reason": "Like `+`, the `#` operator allows reserved + pct-encoding (U+R). The captured value retains its encoded form."
+      }
+    ]
+  },
+  {
+    "name": "Prefix modifier must yield a binding consistent with the truncated value",
+    "cases": [
+      {
+        "name": "Prefix length equal to the value length is a no-op",
+        "template": "{var:5}",
+        "uri": "value",
+        "expected": {
+          "var": "value"
+        },
+        "reason": "A 5-char prefix on a 5-char value truncates to the original. Match binds the full string."
+      },
+      {
+        "name": "Prefix length larger than the value is also a no-op",
+        "template": "{var:30}",
+        "uri": "value",
+        "expected": {
+          "var": "value"
+        },
+        "reason": "A prefix length larger than the value returns the full value unchanged. Match binds var to the literal URI content."
+      },
+      {
+        "name": "URI longer than the declared prefix length cannot round-trip",
+        "template": "{var:3}",
+        "uri": "value",
+        "expected": null,
+        "reason": "Any binding for `var` would expand to its first 3 characters. The URI `value` has length 5, so no binding can round-trip."
+      },
+      {
+        "name": "Prefix and full reference of the same variable must agree",
+        "template": "{/var:1,var}",
+        "uri": "/v/wrong",
+        "expected": null,
+        "reason": "First occurrence forces var[:1] === 'v'; second forces var === 'wrong'. truncate('wrong', 1) === 'w' ≠ 'v', so no binding satisfies both."
+      },
+      {
+        "name": "Encoded prefix segment is consistent with the full encoded segment",
+        "template": "{/semi:2,semi}",
+        "uri": "/%3B/%3B",
+        "expected": {
+          "semi": ";"
+        },
+        "reason": "semi=';'. truncate(';', 2) === ';'. Both occurrences expand to `%3B`, so the URI matches with semi=';'."
+      }
+    ]
+  },
+  {
+    "name": "Boundary disambiguation across multiple literal occurrences",
+    "cases": [
+      {
+        "name": "Reserved expansion picks the boundary that lets the trailing literal match the URI tail",
+        "template": "{+path}/end",
+        "uri": "/a/b/end/end",
+        "expected": {
+          "path": "/a/b/end"
+        },
+        "reason": "`/end` appears twice. Only when `+path` consumes through the first `/end` (binding `path` to `/a/b/end`) does the remaining tail equal the trailing literal."
+      },
+      {
+        "name": "Simple expansion forbids `/`, eliminating all candidate boundaries",
+        "template": "{var}/end",
+        "uri": "value/middle/end",
+        "expected": null,
+        "reason": "Simple expansion cannot capture a `/`. Both possible boundaries assign a value containing `/`, so no binding round-trips."
+      },
+      {
+        "name": "Empty captured value between fixed literals is allowed when ifemp permits it",
+        "template": "O{empty}X",
+        "uri": "OX",
+        "expected": {
+          "empty": ""
+        },
+        "reason": "Simple expansion of an empty string emits nothing. Match recovers `empty` as the empty string."
+      }
+    ]
+  },
+  {
+    "name": "Named operators: empty values, missing variables, and name mismatches",
+    "cases": [
+      {
+        "name": "Empty value with `=` separator binds the variable to empty string",
+        "template": "{?x}",
+        "uri": "?x=",
+        "expected": {
+          "x": ""
+        },
+        "reason": "Form-style query expansion of an empty string emits `name=` per the `ifemp` table entry. Match recovers `x` as the empty string."
+      },
+      {
+        "name": "Path-style flag form (`;name` without `=`) binds the variable to empty string",
+        "template": "{;empty}",
+        "uri": ";empty",
+        "expected": {
+          "empty": ""
+        },
+        "reason": "The `;` operator with an empty value emits `;name` (no `=`) per `ifemp`. Match recovers `empty` as the empty string."
+      },
+      {
+        "name": "Form-style with one of two variables undefined",
+        "template": "{?x,y}",
+        "uri": "?y=value",
+        "expected": {
+          "y": "value"
+        },
+        "reason": "Undefined variables are skipped during expansion. Match must allow the same: `x` is unbound, `y` is bound to `value`."
+      },
+      {
+        "name": "Named query with a mismatched parameter name fails to match",
+        "template": "{?x}",
+        "uri": "?other=value",
+        "expected": null,
+        "reason": "The `?` operator emits the varname literally. `other` is not the varname `x`, so no binding can produce this URI."
+      },
+      {
+        "name": "Named explode of a list emits the varname per element",
+        "template": "{?list*}",
+        "uri": "?list=red&list=green&list=blue",
+        "expected": {
+          "list": [
+            "red",
+            "green",
+            "blue"
+          ]
+        },
+        "reason": "Per RFC 6570 §3.2.8, an exploded list under `?` emits `list=red&list=green&...`. Repetition of the same name signals list semantics."
+      }
+    ]
+  },
+  {
+    "name": "Composite values: list vs. associative disambiguation",
+    "cases": [
+      {
+        "name": "Exploded named pairs decode as an associative array",
+        "template": "{?keys*}",
+        "uri": "?a=1&b=2",
+        "expected": {
+          "keys": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "reason": "Each `name=value` part with a unique name decodes as an entry of the associative form. The list interpretation would require all parts to share `name === 'keys'`."
+      },
+      {
+        "name": "Non-exploded composite under a path segment serializes as comma-separated key,value pairs",
+        "template": "{/keys}",
+        "uri": "/semi,%3B,dot,.,comma,%2C",
+        "expected": {
+          "keys": {
+            "semi": ";",
+            "dot": ".",
+            "comma": ","
+          }
+        },
+        "reason": "An even-numbered comma list pairs to a valid associative form whose round-trip equals the URI. The associative interpretation is preferred over list when both round-trip identically."
+      },
+      {
+        "name": "Exploded path segments decode as a list",
+        "template": "{/list*}",
+        "uri": "/red/green/blue",
+        "expected": {
+          "list": [
+            "red",
+            "green",
+            "blue"
+          ]
+        },
+        "reason": "`{/list*}` distributes list elements as `/`-separated segments. Match recovers the list of three elements."
+      }
+    ]
+  },
+  {
+    "name": "Decoding failures bubble up as match failure",
+    "cases": [
+      {
+        "name": "Invalid pct-encoded byte sequence cannot be decoded under simple expansion",
+        "template": "{var}",
+        "uri": "bad%FFseq",
+        "expected": null,
+        "reason": "decodeURIComponent('bad%FFseq') throws because `%FF` is not a valid UTF-8 byte. No binding can produce this URI under simple expansion (which percent-decodes captured values)."
+      },
+      {
+        "name": "Truncated pct-encoded triplet at end of value",
+        "template": "{var}",
+        "uri": "abc%2",
+        "expected": null,
+        "reason": "`%2` is an incomplete pct-encoded triplet. decodeURIComponent throws, so no binding can round-trip under simple expansion."
+      },
+      {
+        "name": "Reserved expansion accepts an otherwise-undecodable triplet verbatim",
+        "template": "{+var}",
+        "uri": "bad%FFseq",
+        "expected": {
+          "var": "bad%FFseq"
+        },
+        "reason": "The same URI fails under simple expansion because decodeURIComponent rejects the `%FF` byte. Under reserved expansion, captured triplets are emitted verbatim — no decoding is performed — so the binding round-trips."
+      }
+    ]
+  },
+  {
+    "name": "ActivityPub-style URIs combine host and resource paths",
+    "cases": [
+      {
+        "name": "Actor URI splits host and username across two simple expansions",
+        "template": "https://{host}/users/{user}",
+        "uri": "https://example.com/users/alice",
+        "expected": {
+          "host": "example.com",
+          "user": "alice"
+        },
+        "reason": "Simple expansion captures `example.com` for `host` and `alice` for `user`. The intervening literal `/users/` fixes the boundary the first expression must stop at."
+      },
+      {
+        "name": "Three-level actor object URI binds host, user, and object id",
+        "template": "https://{host}/users/{user}/notes/{id}",
+        "uri": "https://example.com/users/alice/notes/abc-123",
+        "expected": {
+          "host": "example.com",
+          "user": "alice",
+          "id": "abc-123"
+        },
+        "reason": "Each simple expansion is bounded by a surrounding literal. `-` is in the unreserved set, so `abc-123` round-trips for `id` without encoding."
+      },
+      {
+        "name": "Reserved expansion captures host with port while trailing path remains literal",
+        "template": "https://{+host}/users/{user}",
+        "uri": "https://example.com:3000/users/alice",
+        "expected": {
+          "host": "example.com:3000",
+          "user": "alice"
+        },
+        "reason": "Simple expansion would percent-encode `:`. Reserved expansion (`+`) allows reserved characters unencoded, so `host` retains the port suffix verbatim."
+      },
+      {
+        "name": "Pct-encoded UTF-8 username decodes to its Unicode form",
+        "template": "https://{host}/users/{user}",
+        "uri": "https://example.com/users/%ED%8E%98%EB%94%94%ED%8C%8C%EC%9D%B4",
+        "expected": {
+          "host": "example.com",
+          "user": "페디파이"
+        },
+        "reason": "Simple expansion percent-decodes the captured triplets as UTF-8. Re-expanding `페디파이` produces the same byte sequence, so the binding round-trips."
+      },
+      {
+        "name": "WebFinger discovery URL captures host literal and form-style query parameter",
+        "template": "https://{host}/.well-known/webfinger{?resource}",
+        "uri": "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
+        "expected": {
+          "host": "example.com",
+          "resource": "acct:alice@example.com"
+        },
+        "reason": "Form-style expansion (`?`) percent-encodes `:` and `@`. The captured value decodes to `acct:alice@example.com`; expanding it re-encodes the same octets to round-trip identically."
+      },
+      {
+        "name": "Mismatched trailing literal between expressions rejects the URI",
+        "template": "https://{host}/users/{user}/inbox",
+        "uri": "https://example.com/users/alice/outbox",
+        "expected": null,
+        "reason": "After consuming `host` and `user`, the trailing literal `/inbox` does not appear in the URI. Simple expansion cannot capture `/`, so no boundary lets both literals align."
+      }
+    ]
+  },
+  {
+    "name": "REST resource routes mix path segments and query parameters",
+    "cases": [
+      {
+        "name": "Versioned API path joins literal with two simple expansions and a path segment",
+        "template": "/api/v{version}/users{/id}",
+        "uri": "/api/v1/users/42",
+        "expected": {
+          "version": "1",
+          "id": "42"
+        },
+        "reason": "`{version}` is bounded by the literal `/users`; `{/id}` consumes the final `/42`. Both values are unreserved, so they round-trip without encoding."
+      },
+      {
+        "name": "Form-style query with two parameters captures both as separate bindings",
+        "template": "/posts{?page,limit}",
+        "uri": "/posts?page=2&limit=20",
+        "expected": {
+          "page": "2",
+          "limit": "20"
+        },
+        "reason": "The `?` operator emits `?page=2&limit=20`. Each named part decodes into its declared variable in declaration order."
+      },
+      {
+        "name": "Path-style segment combined with explode list query",
+        "template": "/posts{/id}{?include*}",
+        "uri": "/posts/42?include=author&include=tags",
+        "expected": {
+          "id": "42",
+          "include": [
+            "author",
+            "tags"
+          ]
+        },
+        "reason": "`{?include*}` distributes a list as repeated `include=…` parameters per RFC 6570 §3.2.8. Match recovers the list of two members; `{/id}` separately captures `42`."
+      },
+      {
+        "name": "Exploded path segments yield a list across multiple URI segments",
+        "template": "/files{/path*}",
+        "uri": "/files/a/b/c",
+        "expected": {
+          "path": [
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        "reason": "`{/path*}` distributes list members as `/`-separated segments. The string interpretation `path = \"a/b/c\"` would round-trip to `/a%2Fb%2Fc`, so only the list binding is consistent."
+      },
+      {
+        "name": "Optional query expression is absent and matches with the variable unbound",
+        "template": "/api/users{/id}{?fields}",
+        "uri": "/api/users/42",
+        "expected": {
+          "id": "42"
+        },
+        "reason": "When all variables in a `{?…}` expression are undefined, the expansion is the empty string. The URI ends right after `{/id}`, so `fields` remains unbound."
+      },
+      {
+        "name": "Form-style query with an unrecognized parameter name fails to match",
+        "template": "/api/users{/id}{?fields}",
+        "uri": "/api/users/42?wrong=value",
+        "expected": null,
+        "reason": "`{?fields}` requires the literal name `fields`. The named operator must consume every part of its expression body, so the unknown `wrong` part cannot be discarded."
+      }
+    ]
+  },
+  {
+    "name": "Form-style query continuation appends parameters after a fixed query prefix",
+    "cases": [
+      {
+        "name": "Continuation operator binds two variables after a literal query prefix",
+        "template": "?fixed=yes{&x,y}",
+        "uri": "?fixed=yes&x=1024&y=768",
+        "expected": {
+          "x": "1024",
+          "y": "768"
+        },
+        "reason": "The `&` operator emits `&x=1024&y=768` after the literal `?fixed=yes`. Each named part decodes into its declared variable in order."
+      },
+      {
+        "name": "Form-style query feeds into a continuation across two expressions",
+        "template": "/search{?q}{&page}",
+        "uri": "/search?q=cats&page=2",
+        "expected": {
+          "q": "cats",
+          "page": "2"
+        },
+        "reason": "`{?q}` emits `?q=cats`; `{&page}` emits `&page=2`. Match must split the URI tail at the start of `&page` so each expression sees only its own parts."
+      },
+      {
+        "name": "Two consecutive continuation expressions split distinct parameters",
+        "template": "?type=user{&q}{&page}",
+        "uri": "?type=user&q=alice&page=2",
+        "expected": {
+          "q": "alice",
+          "page": "2"
+        },
+        "reason": "Each `&…` expression declares exactly one named variable, so the only consistent split places `&q=alice` in the first expression and `&page=2` in the second."
+      },
+      {
+        "name": "Continuation operator with a mismatched parameter name fails",
+        "template": "/search{?q}{&page}",
+        "uri": "/search?q=cats&pg=2",
+        "expected": null,
+        "reason": "`{&page}` requires the literal name `page`. The shortened `pg` cannot satisfy any binding under the named operator, so no boundary between the two expressions succeeds."
+      }
+    ]
+  },
+  {
+    "name": "Fragment-anchored deep links carry path and fragment in separate expressions",
+    "cases": [
+      {
+        "name": "Path expression precedes fragment expression",
+        "template": "/docs/{page}{#anchor}",
+        "uri": "/docs/intro#getting-started",
+        "expected": {
+          "page": "intro",
+          "anchor": "getting-started"
+        },
+        "reason": "Simple expansion would percent-encode `#`, so `{page}` cannot consume past the fragment delimiter. `{#anchor}` then absorbs the rest, including the leading `#`."
+      },
+      {
+        "name": "Section and id captured as path segments before a fragment",
+        "template": "/{section}/{id}{#anchor}",
+        "uri": "/posts/42#comments",
+        "expected": {
+          "section": "posts",
+          "id": "42",
+          "anchor": "comments"
+        },
+        "reason": "Three expressions cooperate: `{section}` and `{id}` are simple expansions bounded by `/` literals; `{#anchor}` captures the fragment with the `#` prefix as its own first character."
+      },
+      {
+        "name": "Missing fragment leaves the variable unbound",
+        "template": "/docs/{page}{#anchor}",
+        "uri": "/docs/intro",
+        "expected": {
+          "page": "intro"
+        },
+        "reason": "An undefined variable under `#` produces no output. `{#anchor}` matches the empty tail of the URI, leaving `anchor` unbound."
+      },
+      {
+        "name": "Acct URI splits user and host around a literal `@`",
+        "template": "acct:{user}@{host}",
+        "uri": "acct:alice@example.com",
+        "expected": {
+          "user": "alice",
+          "host": "example.com"
+        },
+        "reason": "The literal `@` between the two simple expansions disambiguates the boundary. Both captured values contain only unreserved characters, so they round-trip without encoding."
+      }
+    ]
+  },
+  {
+    "name": "Repeated variable names across expressions must agree on a single value",
+    "cases": [
+      {
+        "name": "Same simple variable appearing twice with the same value succeeds",
+        "template": "/{lang}/docs/{lang}",
+        "uri": "/en/docs/en",
+        "expected": {
+          "lang": "en"
+        },
+        "reason": "RFC 6570 §3.2.1 requires a variable's value to remain static throughout the expansion. Both occurrences capture `en`, so a single binding `lang = 'en'` satisfies both."
+      },
+      {
+        "name": "Same simple variable appearing twice with conflicting values fails",
+        "template": "/{lang}/docs/{lang}",
+        "uri": "/en/docs/ko",
+        "expected": null,
+        "reason": "The first occurrence forces `lang = 'en'` and the second forces `lang = 'ko'`. No single binding can satisfy both, so the merge step rejects the candidate."
+      },
+      {
+        "name": "Same variable shared between simple and reserved expansions, both consistent",
+        "template": "/{path}/raw/{+path}",
+        "uri": "/notes/raw/notes",
+        "expected": {
+          "path": "notes"
+        },
+        "reason": "Simple expansion of `notes` is `notes`; reserved expansion of `notes` is also `notes`. Both occurrences agree on `path = 'notes'`."
+      },
+      {
+        "name": "Same variable shared between simple and reserved expansions diverges on encoding",
+        "template": "/{path}/raw/{+path}",
+        "uri": "/foo%2Fbar/raw/foo/bar",
+        "expected": {
+          "path": "foo/bar"
+        },
+        "reason": "`{path}` decodes `foo%2Fbar` to `foo/bar`; `{+path}` captures `foo/bar` verbatim. Both occurrences resolve to the same `path = 'foo/bar'`, and re-expanding under each operator reproduces the URI."
+      },
+      {
+        "name": "Same variable shared between simple and reserved expansions with mismatched payloads fails",
+        "template": "/{path}/raw/{+path}",
+        "uri": "/foo/raw/bar",
+        "expected": null,
+        "reason": "Simple expansion forces `path = 'foo'`; reserved expansion forces `path = 'bar'`. The two bindings cannot be reconciled, so the URI does not round-trip under any single context."
+      },
+      {
+        "name": "Variable repeated across path and form-style query with the same value",
+        "template": "/users/{id}/profile{?id}",
+        "uri": "/users/42/profile?id=42",
+        "expected": {
+          "id": "42"
+        },
+        "reason": "The first `{id}` consumes `42` from the path; the second emits `?id=42` under the `?` operator. Both occurrences agree, so a single binding `id = '42'` satisfies the whole template."
+      },
+      {
+        "name": "Variable repeated across path and query diverges on the captured value",
+        "template": "/users/{id}/profile{?id}",
+        "uri": "/users/42/profile?id=99",
+        "expected": null,
+        "reason": "The path occurrence forces `id = '42'` and the query occurrence forces `id = '99'`. RFC 6570 §3.2.1 forbids the variable from taking two values within the same expansion."
+      },
+      {
+        "name": "Prefix and full reference of the same variable both contribute to the binding",
+        "template": "/{slug:3}/{slug}",
+        "uri": "/int/intro",
+        "expected": {
+          "slug": "intro"
+        },
+        "reason": "`{slug:3}` truncates `slug` to its first three characters (`int`); `{slug}` emits the full value. The full-value occurrence determines `slug = 'intro'`, and `truncate('intro', 3) === 'int'` confirms the prefix occurrence."
+      },
+      {
+        "name": "Prefix and full reference of the same variable disagree on the truncation",
+        "template": "/{slug:3}/{slug}",
+        "uri": "/abc/intro",
+        "expected": null,
+        "reason": "Full reference forces `slug = 'intro'`, but `truncate('intro', 3)` is `int`, not `abc`. The prefix and full bindings cannot agree, so no candidate round-trips."
+      }
+    ]
+  }
+]
