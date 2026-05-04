@@ -525,6 +525,9 @@ export class FederationBuilderImpl<TContextData>
         return setters;
       },
       mapActorAlias: (path: `/${string}`, identifier: string) => {
+        if (identifier === "") {
+          throw new RouterError("Identifier cannot be empty.");
+        }
         if (this.router.has(`${ACTOR_ALIAS_PREFIX}${identifier}`)) {
           throw new RouterError(
             `Actor alias for "${identifier}" already set.`,
