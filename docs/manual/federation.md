@@ -444,6 +444,18 @@ For more information, see the [*OpenTelemetry* section](./opentelemetry.md).
 
 [`trace.getTracerProvider()`]: https://open-telemetry.github.io/opentelemetry-js/classes/_opentelemetry_api._opentelemetry_api.TraceAPI.html#gettracerprovider
 
+### `meterProvider`
+
+*This API is available since Fedify 2.3.0.*
+
+The OpenTelemetry meter provider that the `Federation` object uses to record
+Fedify metrics.  If omitted, it is configured to use the default meter provider
+(i.e., [`metrics.getMeterProvider()`]).
+
+For more information, see the [*OpenTelemetry* section](./opentelemetry.md).
+
+[`metrics.getMeterProvider()`]: https://open-telemetry.github.io/opentelemetry-js/classes/_opentelemetry_api._opentelemetry_api.MetricsAPI.html#getmeterprovider
+
 
 Builder pattern for structuring
 -------------------------------
