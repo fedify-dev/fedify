@@ -633,34 +633,39 @@ test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async 
   fetchMock.spyGlobal();
   fetchMock.post("https://sdk-metrics.example/inbox", { status: 202 });
 
-  await sendActivity({
-    activity: {
-      "@context": "https://www.w3.org/ns/activitystreams",
-      type: "Create",
-      id: "https://example.com/activity",
-      actor: "https://example.com/person",
-    },
-    activityId: "https://example.com/activity",
-    activityType: "https://www.w3.org/ns/activitystreams#Create",
-    keys: [],
-    inbox: new URL("https://sdk-metrics.example/inbox"),
-    meterProvider,
-  });
+  try {
+    await sendActivity({
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity",
+        actor: "https://example.com/person",
+      },
+      activityId: "https://example.com/activity",
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      keys: [],
+      inbox: new URL("https://sdk-metrics.example/inbox"),
+      meterProvider,
+    });
 
-  await meterProvider.forceFlush();
-  const exportedMetrics = exporter.getMetrics()
-    .flatMap((resourceMetrics) => resourceMetrics.scopeMetrics)
-    .flatMap((scopeMetrics) => scopeMetrics.metrics);
-  const sent = exportedMetrics.find((metric) =>
-    metric.descriptor.name === "activitypub.delivery.sent"
-  );
-  assert(sent != null);
-  assertEquals(sent.dataPoints.length, 1);
-  assertEquals(
-    sent.dataPoints[0].attributes["activitypub.remote.host"],
-    "sdk-metrics.example",
-  );
-
-  await meterProvider.shutdown();
-  fetchMock.hardReset();
+    await meterProvider.forceFlush();
+    const exportedMetrics = exporter.getMetrics()
+      .flatMap((resourceMetrics) => resourceMetrics.scopeMetrics)
+      .flatMap((scopeMetrics) => scopeMetrics.metrics);
+    const sent = exportedMetrics.find((metric) =>
+      metric.descriptor.name === "activitypub.delivery.sent"
+    );
+    assert(sent != null);
+    assertEquals(sent.dataPoints.length, 1);
+    assertEquals(
+      sent.dataPoints[0].attributes["activitypub.remote.host"],
+      "sdk-metrics.example",
+    );
+  } finally {
+    try {
+      await meterProvider.shutdown();
+    } finally {
+      fetchMock.hardReset();
+    }
+  }
 });
