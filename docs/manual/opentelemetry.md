@@ -408,12 +408,21 @@ ActivityPub activities for a debug dashboard:
 import type { SpanExporter, ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import { ExportResultCode } from "@opentelemetry/core";
 
-interface ActivityRecord {
-  direction: "inbound" | "outbound";
+interface InboundActivityRecord {
+  direction: "inbound";
   activity: unknown;
   timestamp: Date;
   verified?: boolean;
 }
+
+interface OutboundActivityRecord {
+  direction: "outbound";
+  activityId?: string;
+  inboxUrl?: string;
+  timestamp: Date;
+}
+
+type ActivityRecord = InboundActivityRecord | OutboundActivityRecord;
 
 export class FedifyDebugExporter implements SpanExporter {
   private activities: ActivityRecord[] = [];
@@ -443,11 +452,16 @@ export class FedifyDebugExporter implements SpanExporter {
           (e) => e.name === "activitypub.activity.sent"
         );
         if (event && event.attributes) {
+          const activityId = event.attributes[
+            "activitypub.activity.id"
+          ] as string | undefined;
+          const inboxUrl = event.attributes[
+            "activitypub.inbox.url"
+          ] as string | undefined;
           this.activities.push({
             direction: "outbound",
-            activity: JSON.parse(
-              event.attributes["activitypub.activity.json"] as string
-            ),
+            activityId,
+            inboxUrl,
             timestamp: new Date(span.startTime[0] * 1000),
           });
         }
