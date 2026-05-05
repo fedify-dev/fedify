@@ -593,12 +593,20 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
       sent[0].attributes["activitypub.activity.type"],
       "https://www.w3.org/ns/activitystreams#Follow",
     );
+    assertEquals(
+      sent[0].attributes["activitypub.remote.host"],
+      "metrics.example",
+    );
 
     const durations = recorder.getMeasurements(
       "activitypub.delivery.duration",
     );
     assertEquals(durations.length, 1);
     assertGreaterOrEqual(durations[0].value, 0);
+    assertEquals(
+      durations[0].attributes["activitypub.remote.host"],
+      "metrics.example",
+    );
 
     recorder.clear();
     fetchMock.hardReset();

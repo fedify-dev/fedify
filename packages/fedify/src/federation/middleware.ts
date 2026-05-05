@@ -103,7 +103,11 @@ import {
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
-import { getFederationMetrics, getRemoteHost } from "./metrics.ts";
+import {
+  getDurationMs,
+  getFederationMetrics,
+  getRemoteHost,
+} from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import type {
@@ -913,7 +917,7 @@ export class FederationImpl<TContextData>
             getFederationMetrics(this.meterProvider)
               .recordInboxProcessingDuration(
                 activityType,
-                Math.max(0, performance.now() - started),
+                getDurationMs(started),
               );
           }
         } catch (error) {
