@@ -263,7 +263,6 @@ Each span event includes attributes with detailed information:
 
 **`activitypub.activity.sent` event attributes:**
 
- -  `activitypub.activity.json`: The complete activity JSON being sent
  -  `activitypub.inbox.url`: The inbox URL where the activity was delivered
  -  `activitypub.activity.id`: The activity ID
 
@@ -307,7 +306,7 @@ Fedify records the following OpenTelemetry metrics:
 :   `activitypub.remote.host` and `http.response.status_code`.
 
 `activitypub.delivery.duration`
-:   `activitypub.remote.host`.
+:   `activitypub.remote.host` and `activitypub.delivery.success`.
 
 `activitypub.inbox.processing_duration`
 :   `activitypub.activity.type`.

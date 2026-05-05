@@ -554,6 +554,10 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
       durations[0].attributes["activitypub.remote.host"],
       "metrics.example",
     );
+    assertEquals(
+      durations[0].attributes["activitypub.delivery.success"],
+      true,
+    );
 
     recorder.clear();
     fetchMock.hardReset();
@@ -606,6 +610,10 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     assertEquals(
       durations[0].attributes["activitypub.remote.host"],
       "metrics.example",
+    );
+    assertEquals(
+      durations[0].attributes["activitypub.delivery.success"],
+      false,
     );
 
     recorder.clear();

@@ -66,6 +66,7 @@ class FederationMetrics {
     this.deliverySent.add(1, deliveryAttributes);
     this.deliveryDuration.record(durationMs, {
       "activitypub.remote.host": getRemoteHost(inbox),
+      "activitypub.delivery.success": success,
     });
   }
 
