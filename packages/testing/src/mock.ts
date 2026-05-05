@@ -810,6 +810,10 @@ export function createFederation<TContextData>(
   options: {
     contextData?: TContextData;
     origin?: string;
+    /**
+     * The OpenTelemetry meter provider to expose from mock contexts.
+     * @since 2.3.0
+     */
     meterProvider?: any;
     tracerProvider?: any;
   } = {},

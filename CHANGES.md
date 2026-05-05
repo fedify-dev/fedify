@@ -44,6 +44,11 @@ To be released.
     asserting OpenTelemetry metric measurements in runtime-agnostic tests.
     [[#619]]
 
+### @fedify/testing
+
+ -  Added a `meterProvider` option to `createFederation()` so mock contexts can
+    expose a test OpenTelemetry meter provider.  [[#619]]
+
 ### @fedify/amqp
 
  -  Added `AmqpMessageQueue.getDepth()` for reporting queued, ready, and
