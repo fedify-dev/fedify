@@ -498,14 +498,7 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       event.attributes["activitypub.activity.id"],
       "https://example.com/activity",
     );
-    assert(typeof event.attributes["activitypub.activity.json"] === "string");
-
-    // Verify the JSON contains the activity
-    const recordedActivity = JSON.parse(
-      event.attributes["activitypub.activity.json"] as string,
-    );
-    assertEquals(recordedActivity.id, "https://example.com/activity");
-    assertEquals(recordedActivity.type, "Create");
+    assertEquals(event.attributes["activitypub.activity.json"], undefined);
 
     exporter.clear();
     fetchMock.hardReset();

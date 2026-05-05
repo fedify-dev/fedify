@@ -3053,6 +3053,7 @@ test("handleInbox() nonce consumption on valid signed request", async () => {
 });
 
 test("handleInbox() nonce replay prevention", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
   const activity = new Create({
     id: new URL("https://example.com/activities/nonce-3"),
     actor: new URL("https://example.com/person2"),
@@ -3075,7 +3076,10 @@ test("handleInbox() nonce replay prevention", async () => {
     rsaPublicKey3.id!,
     { spec: "rfc9421", rfc9421: { nonce } },
   );
-  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
   const context = createRequestContext({
     federation,
     request: signedRequest,
@@ -3107,6 +3111,7 @@ test("handleInbox() nonce replay prevention", async () => {
     onNotFound: () => new Response("Not found", { status: 404 }),
     signatureTimeWindow: { minutes: 5 },
     skipSignatureVerification: false,
+    meterProvider,
     inboxChallengePolicy: {
       enabled: true,
       requestNonce: true,
@@ -3131,6 +3136,19 @@ test("handleInbox() nonce replay prevention", async () => {
     response.headers.get("Cache-Control"),
     "no-store",
     "Challenge response must have Cache-Control: no-store",
+  );
+  const failures = recorder.getMeasurements(
+    "activitypub.signature.verification_failure",
+  );
+  assertEquals(failures.length, 1);
+  assertEquals(failures[0].value, 1);
+  assertEquals(
+    failures[0].attributes["activitypub.remote.host"],
+    "example.com",
+  );
+  assertEquals(
+    failures[0].attributes["activitypub.verification.failure_reason"],
+    "invalidNonce",
   );
 });
 
@@ -3273,6 +3291,7 @@ test(
 test(
   "handleInbox() actor/key mismatch does not consume nonce",
   async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
     // A request that has a valid RFC 9421 signature with a nonce, but the
     // signing key does not belong to the claimed actor.  The nonce must NOT be
     // consumed so the legitimate sender can still use it.
@@ -3304,7 +3323,10 @@ test(
       rsaPublicKey3.id!,
       { spec: "rfc9421", rfc9421: { nonce } },
     );
-    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+    });
     const context = createRequestContext({
       federation,
       request: maliciousRequest,
@@ -3336,6 +3358,7 @@ test(
       onNotFound: () => new Response("Not found", { status: 404 }),
       signatureTimeWindow: { minutes: 5 },
       skipSignatureVerification: false,
+      meterProvider,
       inboxChallengePolicy: {
         enabled: true,
         requestNonce: true,
@@ -3356,6 +3379,19 @@ test(
       stored,
       true,
       "Nonce must not be consumed when actor/key ownership check fails",
+    );
+    const failures = recorder.getMeasurements(
+      "activitypub.signature.verification_failure",
+    );
+    assertEquals(failures.length, 1);
+    assertEquals(failures[0].value, 1);
+    assertEquals(
+      failures[0].attributes["activitypub.remote.host"],
+      "example.com",
+    );
+    assertEquals(
+      failures[0].attributes["activitypub.verification.failure_reason"],
+      "actorKeyMismatch",
     );
   },
 );

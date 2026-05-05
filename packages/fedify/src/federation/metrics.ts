@@ -30,7 +30,7 @@ class FederationMetrics {
     this.signatureVerificationFailure = meter.createCounter(
       "activitypub.signature.verification_failure",
       {
-        description: "ActivityPub HTTP Signature verification failures.",
+        description: "ActivityPub signature verification failures.",
         unit: "{failure}",
       },
     );

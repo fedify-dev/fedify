@@ -1134,6 +1134,11 @@ async function handleInboxInternal<TContextData>(
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
+    getFederationMetrics(parameters.meterProvider)
+      .recordSignatureVerificationFailure(
+        "actorKeyMismatch",
+        httpSigKey.id?.hostname,
+      );
     logger.error(
       "The signer ({keyId}) and the actor ({actorId}) do not match.",
       {
@@ -1162,6 +1167,11 @@ async function handleInboxInternal<TContextData>(
       pendingNonceLabel,
     );
     if (!nonceValid) {
+      getFederationMetrics(parameters.meterProvider)
+        .recordSignatureVerificationFailure(
+          "invalidNonce",
+          httpSigKey?.id?.hostname,
+        );
       logger.error(
         "Signature nonce verification failed (missing, expired, or replayed).",
         { recipient },

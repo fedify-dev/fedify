@@ -341,7 +341,6 @@ async function sendActivityInternal(
 
     // Record the sent activity with delivery details
     span.addEvent("activitypub.activity.sent", {
-      "activitypub.activity.json": JSON.stringify(activity),
       "activitypub.inbox.url": inbox.href,
       "activitypub.activity.id": activityId ?? "",
     });

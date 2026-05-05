@@ -74,7 +74,7 @@ export interface Context<TContextData> {
    * The OpenTelemetry meter provider.
    * @since 2.3.0
    */
-  readonly meterProvider: MeterProvider;
+  readonly meterProvider?: MeterProvider;
 
   /**
    * The document loader for loading remote JSON-LD documents.

@@ -289,13 +289,13 @@ Instrumented metrics
 
 Fedify records the following OpenTelemetry metrics:
 
-| Metric name                                  | Instrument | Unit        | Description                                                   |
-| -------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------- |
-| `activitypub.delivery.sent`                  | Counter    | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                |
-| `activitypub.delivery.permanent_failure`     | Counter    | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.   |
-| `activitypub.delivery.duration`              | Histogram  | `ms`        | Measures outgoing ActivityPub delivery attempt duration.      |
-| `activitypub.inbox.processing_duration`      | Histogram  | `ms`        | Measures inbox listener processing duration.                  |
-| `activitypub.signature.verification_failure` | Counter    | `{failure}` | Counts failed HTTP Signature verification for inbox requests. |
+| Metric name                                  | Instrument | Unit        | Description                                                 |
+| -------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------- |
+| `activitypub.delivery.sent`                  | Counter    | `{attempt}` | Counts outgoing ActivityPub delivery attempts.              |
+| `activitypub.delivery.permanent_failure`     | Counter    | `{failure}` | Counts outgoing deliveries abandoned as permanent failures. |
+| `activitypub.delivery.duration`              | Histogram  | `ms`        | Measures outgoing ActivityPub delivery attempt duration.    |
+| `activitypub.inbox.processing_duration`      | Histogram  | `ms`        | Measures inbox listener processing duration.                |
+| `activitypub.signature.verification_failure` | Counter    | `{failure}` | Counts failed signature verification for inbox requests.    |
 
 ### Metric attributes
 

@@ -687,8 +687,20 @@ export class FederationImpl<TContextData>
       });
     } catch (error) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+      const remoteHost = (() => {
+        if (error instanceof SendActivityError) {
+          return getRemoteHost(error.inbox);
+        }
+        try {
+          return getRemoteHost(new URL(message.inbox));
+        } catch (_) {
+          return undefined;
+        }
+      })();
       span.addEvent("activitypub.delivery.failed", {
-        "activitypub.remote.host": getRemoteHost(new URL(message.inbox)),
+        ...(remoteHost == null
+          ? {}
+          : { "activitypub.remote.host": remoteHost }),
         "activitypub.delivery.attempt": message.attempt,
         "activitypub.delivery.permanent_failure":
           error instanceof SendActivityError &&
