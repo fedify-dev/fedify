@@ -22,10 +22,36 @@ To be released.
     and delayed counts, and `ParallelMessageQueue` delegates depth reporting
     to its wrapped queue when supported.  [[#735], [#748]]
 
+ -  Added OpenTelemetry metrics for ActivityPub delivery attempts, permanent
+    delivery failures, inbox listener processing duration, and HTTP Signature
+    verification failures.  Applications can pass the new `meterProvider`
+    option to `createFederation()`, and `Context.meterProvider` exposes the
+    provider available to request, inbox, and outbox code.
+    [[#316], [#619], [#755]]
+
+ -  Added the `activitypub.delivery.failed` span event to queued outbox
+    delivery spans so retry and permanent-failure decisions include the
+    remote host, attempt number, and HTTP status code when available.
+    [[#316], [#619], [#755]]
+
+[#316]: https://github.com/fedify-dev/fedify/issues/316
+[#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
+[#755]: https://github.com/fedify-dev/fedify/pull/755
+
+### @fedify/fixture
+
+ -  Added `createTestMeterProvider()` and `TestMetricRecorder` helpers for
+    asserting OpenTelemetry metric measurements in runtime-agnostic tests.
+    [[#316], [#619], [#755]]
+
+### @fedify/testing
+
+ -  Added a `meterProvider` option to `createFederation()` so mock contexts can
+    expose a test OpenTelemetry meter provider.  [[#316], [#619], [#755]]
 
 ### @fedify/amqp
 

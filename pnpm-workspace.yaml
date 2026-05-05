@@ -56,6 +56,7 @@ catalog:
   "@opentelemetry/context-async-hooks": ^2.5.0
   "@opentelemetry/core": ^2.5.0
   "@opentelemetry/sdk-node": ^0.211.0
+  "@opentelemetry/sdk-metrics": 2.5.0
   "@opentelemetry/sdk-trace-base": ^2.5.0
   "@opentelemetry/semantic-conventions": ^1.39.0
   "@optique/config": ^1.0.2

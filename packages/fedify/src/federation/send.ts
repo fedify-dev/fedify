@@ -1,6 +1,7 @@
 import type { Recipient } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
+  type MeterProvider,
   type Span,
   SpanKind,
   SpanStatusCode,
@@ -12,6 +13,7 @@ import {
   doubleKnock,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
+import { getDurationMs, getFederationMetrics } from "./metrics.ts";
 
 /**
  * Parameters for {@link extractInboxes}.
@@ -141,6 +143,13 @@ export interface SendActivityParameters {
   readonly specDeterminer?: HttpMessageSignaturesSpecDeterminer;
 
   /**
+   * The meter provider for recording metrics.
+   * If omitted, the global meter provider is used.
+   * @since 2.3.0
+   */
+  readonly meterProvider?: MeterProvider;
+
+  /**
    * The tracer provider for tracing the request.
    * If omitted, the global tracer provider is used.
    * @since 1.3.0
@@ -232,15 +241,20 @@ async function sendActivityInternal(
   {
     activity,
     activityId,
+    activityType,
     keys,
     inbox,
     headers,
     specDeterminer,
+    meterProvider,
     tracerProvider,
   }: SendActivityParameters,
   span: Span,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
+  const federationMetrics = getFederationMetrics(meterProvider);
+  const started = performance.now();
+  let deliverySuccess = false;
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {
@@ -284,44 +298,60 @@ async function sendActivityInternal(
         error,
       },
     );
+    federationMetrics.recordDelivery(
+      inbox,
+      getDurationMs(started),
+      false,
+      activityType,
+    );
     throw error;
   }
-  if (!response.ok) {
-    let error: string;
-    try {
-      error = await readLimitedResponseBody(
-        response,
-        MAX_ERROR_RESPONSE_BODY_BYTES,
+  try {
+    if (!response.ok) {
+      let error: string;
+      try {
+        error = await readLimitedResponseBody(
+          response,
+          MAX_ERROR_RESPONSE_BODY_BYTES,
+        );
+      } catch (_) {
+        error = "";
+      }
+      logger.error(
+        "Failed to send activity {activityId} to {inbox} ({status} " +
+          "{statusText}):\n{error}",
+        {
+          activityId,
+          inbox: inbox.href,
+          status: response.status,
+          statusText: response.statusText,
+          error,
+        },
       );
-    } catch (_) {
-      error = "";
-    }
-    logger.error(
-      "Failed to send activity {activityId} to {inbox} ({status} " +
-        "{statusText}):\n{error}",
-      {
-        activityId,
-        inbox: inbox.href,
-        status: response.status,
-        statusText: response.statusText,
+      throw new SendActivityError(
+        inbox,
+        response.status,
+        `Failed to send activity ${activityId} to ${inbox.href} ` +
+          `(${response.status} ${response.statusText}):\n${error}`,
         error,
-      },
-    );
-    throw new SendActivityError(
+      );
+    }
+
+    deliverySuccess = true;
+
+    // Record the sent activity with delivery details
+    span.addEvent("activitypub.activity.sent", {
+      "activitypub.inbox.url": inbox.href,
+      "activitypub.activity.id": activityId ?? "",
+    });
+  } finally {
+    federationMetrics.recordDelivery(
       inbox,
-      response.status,
-      `Failed to send activity ${activityId} to ${inbox.href} ` +
-        `(${response.status} ${response.statusText}):\n${error}`,
-      error,
+      getDurationMs(started),
+      deliverySuccess,
+      activityType,
     );
   }
-
-  // Record the sent activity with delivery details
-  span.addEvent("activitypub.activity.sent", {
-    "activitypub.activity.json": JSON.stringify(activity),
-    "activitypub.inbox.url": inbox.href,
-    "activitypub.activity.id": activityId ?? "",
-  });
 }
 
 /**

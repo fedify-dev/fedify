@@ -15,6 +15,7 @@ import {
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import type {
+  MeterProvider,
   Span,
   SpanOptions,
   Tracer,
@@ -63,6 +64,7 @@ import type {
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
+import { getFederationMetrics } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 
@@ -769,6 +771,11 @@ export interface InboxHandlerParameters<TContextData> {
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
+  /**
+   * The meter provider for recording metrics.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
   tracerProvider?: TracerProvider;
 }
 
@@ -988,6 +995,11 @@ async function handleInboxInternal<TContextData>(
       });
       if (verification.verified === false) {
         const reason = verification.reason;
+        const remoteHost = "keyId" in reason
+          ? reason.keyId?.hostname
+          : undefined;
+        getFederationMetrics(parameters.meterProvider)
+          .recordSignatureVerificationFailure(reason.type, remoteHost);
         logger.error(
           "Failed to verify the request's HTTP Signatures.",
           {
@@ -1122,6 +1134,11 @@ async function handleInboxInternal<TContextData>(
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
+    getFederationMetrics(parameters.meterProvider)
+      .recordSignatureVerificationFailure(
+        "actorKeyMismatch",
+        httpSigKey.id?.hostname,
+      );
     logger.error(
       "The signer ({keyId}) and the actor ({actorId}) do not match.",
       {
@@ -1150,6 +1167,11 @@ async function handleInboxInternal<TContextData>(
       pendingNonceLabel,
     );
     if (!nonceValid) {
+      getFederationMetrics(parameters.meterProvider)
+        .recordSignatureVerificationFailure(
+          "invalidNonce",
+          httpSigKey?.id?.hostname,
+        );
       logger.error(
         "Signature nonce verification failed (missing, expired, or replayed).",
         { recipient },
@@ -1173,6 +1195,7 @@ async function handleInboxInternal<TContextData>(
     kvPrefixes,
     queue,
     span,
+    meterProvider: parameters.meterProvider,
     tracerProvider,
     idempotencyStrategy: parameters.idempotencyStrategy,
   });

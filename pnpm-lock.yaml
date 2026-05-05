@@ -45,6 +45,9 @@ catalogs:
     '@opentelemetry/exporter-trace-otlp-proto':
       specifier: ^0.211.0
       version: 0.211.0
+    '@opentelemetry/sdk-metrics':
+      specifier: 2.5.0
+      version: 2.5.0
     '@opentelemetry/sdk-node':
       specifier: ^0.211.0
       version: 0.211.0
@@ -1201,6 +1204,9 @@ importers:
       '@fedify/vocab-tools':
         specifier: workspace:^
         version: link:../vocab-tools
+      '@opentelemetry/sdk-metrics':
+        specifier: 'catalog:'
+        version: 2.5.0(@opentelemetry/api@1.9.0)
       '@std/assert':
         specifier: jsr:^0.226.0
         version: '@jsr/std__assert@0.226.0'

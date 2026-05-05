@@ -32,6 +32,8 @@ import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger, withContext } from "@logtape/logtape";
 import {
   context,
+  type MeterProvider,
+  metrics,
   propagation,
   type Span,
   SpanKind,
@@ -101,6 +103,11 @@ import {
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
+import {
+  getDurationMs,
+  getFederationMetrics,
+  getRemoteHost,
+} from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import type {
@@ -248,6 +255,7 @@ export class FederationImpl<TContextData>
   inboxRetryPolicy: RetryPolicy;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
+  _meterProvider: MeterProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
   inboxChallengePolicy?: InboxChallengePolicy;
 
@@ -395,11 +403,16 @@ export class FederationImpl<TContextData>
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
+    this._meterProvider = options.meterProvider;
     this.firstKnock = options.firstKnock;
   }
 
   get tracerProvider(): TracerProvider {
     return this._tracerProvider ?? trace.getTracerProvider();
+  }
+
+  get meterProvider(): MeterProvider {
+    return this._meterProvider ?? metrics.getMeterProvider();
   }
 
   _initializeRouter(): void {
@@ -673,10 +686,33 @@ export class FederationImpl<TContextData>
           this.kvPrefixes.httpMessageSignaturesSpec,
           this.firstKnock,
         ),
+        meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
       });
     } catch (error) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+      const remoteHost = (() => {
+        if (error instanceof SendActivityError) {
+          return getRemoteHost(error.inbox);
+        }
+        try {
+          return getRemoteHost(new URL(message.inbox));
+        } catch (_) {
+          return undefined;
+        }
+      })();
+      span.addEvent("activitypub.delivery.failed", {
+        ...(remoteHost == null
+          ? {}
+          : { "activitypub.remote.host": remoteHost }),
+        "activitypub.delivery.attempt": message.attempt,
+        "activitypub.delivery.permanent_failure":
+          error instanceof SendActivityError &&
+          this.permanentFailureStatusCodes.includes(error.statusCode),
+        ...(error instanceof SendActivityError
+          ? { "http.response.status_code": error.statusCode }
+          : {}),
+      });
       const loaderOptions = this.#getLoaderOptions(message.baseUrl);
       const activity = await Activity.fromJsonLd(message.activity, {
         contextLoader: this.contextLoaderFactory(loaderOptions),
@@ -699,6 +735,10 @@ export class FederationImpl<TContextData>
         error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode)
       ) {
+        getFederationMetrics(this.meterProvider).recordPermanentFailure(
+          error.inbox,
+          error.statusCode,
+        );
         logger.warn(
           "Permanent delivery failure for activity {activityId} to " +
             "{inbox} ({status}); not retrying.",
@@ -861,15 +901,25 @@ export class FederationImpl<TContextData>
         const { class: cls, listener } = dispatched;
         span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
         try {
-          await listener(
-            context.toInboxContext(
-              message.identifier,
-              message.activity,
-              activity.id?.href,
-              getTypeId(activity).href,
-            ),
-            activity,
-          );
+          const activityType = getTypeId(activity).href;
+          const started = performance.now();
+          try {
+            await listener(
+              context.toInboxContext(
+                message.identifier,
+                message.activity,
+                activity.id?.href,
+                activityType,
+              ),
+              activity,
+            );
+          } finally {
+            getFederationMetrics(this.meterProvider)
+              .recordInboxProcessingDuration(
+                activityType,
+                getDurationMs(started),
+              );
+          }
         } catch (error) {
           try {
             await this.inboxErrorHandler?.(context, error as Error);
@@ -1194,6 +1244,7 @@ export class FederationImpl<TContextData>
               this.kvPrefixes.httpMessageSignaturesSpec,
               this.firstKnock,
             ),
+            meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
           }),
         );
@@ -1550,6 +1601,7 @@ export class FederationImpl<TContextData>
           signatureTimeWindow: this.signatureTimeWindow,
           skipSignatureVerification: this.skipSignatureVerification,
           inboxChallengePolicy: this.inboxChallengePolicy,
+          meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
           idempotencyStrategy: this.idempotencyStrategy,
         });
@@ -1783,6 +1835,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   get tracerProvider(): TracerProvider {
     return this.federation.tracerProvider;
+  }
+
+  get meterProvider(): MeterProvider {
+    return this.federation.meterProvider;
   }
 
   getNodeInfoUri(): URL {
@@ -3062,6 +3118,7 @@ async function forwardActivityInternal<TContextData>(
           activityType: ctx.activityType,
           inbox: new URL(inbox),
           sharedInbox: inboxes[inbox].sharedInbox,
+          meterProvider: ctx.meterProvider,
           tracerProvider: ctx.tracerProvider,
           specDeterminer: new KvSpecDeterminer(
             ctx.federation.kv,

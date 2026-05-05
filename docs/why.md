@@ -201,8 +201,8 @@ TypeScript-native design
 :   Comprehensive type definitions with intelligent auto-completion
 
 Observability
-:   [Built-in OpenTelemetry support](./manual/opentelemetry.md) for tracing and
-    monitoring
+:   [Built-in OpenTelemetry support](./manual/opentelemetry.md) for tracing,
+    metrics, and monitoring
 
 [CLI toolchain](./cli.md)
 :   Tools for testing and debugging federation, including:
