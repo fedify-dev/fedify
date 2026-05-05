@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -16,10 +17,17 @@ import {
   assert,
   assertEquals,
   assertFalse,
+  assertGreaterOrEqual,
   assertInstanceOf,
   assertNotEquals,
   assertRejects,
 } from "@std/assert";
+import {
+  AggregationTemporality,
+  InMemoryMetricExporter,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from "@opentelemetry/sdk-metrics";
 import fetchMock from "fetch-mock";
 import { verifyRequest } from "../sig/http.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
@@ -502,4 +510,148 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
     exporter.clear();
     fetchMock.hardReset();
   });
+});
+
+test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  fetchMock.spyGlobal();
+
+  await t.step("successful send", async () => {
+    fetchMock.post("https://metrics.example:8443/inbox/path?x=1", {
+      status: 202,
+    });
+
+    const activity = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activity",
+      actor: "https://example.com/person",
+    };
+
+    await sendActivity({
+      activity,
+      activityId: "https://example.com/activity",
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      keys: [],
+      inbox: new URL("https://metrics.example:8443/inbox/path?x=1"),
+      meterProvider,
+    });
+
+    const sent = recorder.getMeasurements("activitypub.delivery.sent");
+    assertEquals(sent.length, 1);
+    assertEquals(sent[0].type, "counter");
+    assertEquals(sent[0].value, 1);
+    assertEquals(
+      sent[0].attributes["activitypub.remote.host"],
+      "metrics.example",
+    );
+    assertEquals(
+      sent[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+    assertEquals(sent[0].attributes["activitypub.delivery.success"], true);
+
+    const durations = recorder.getMeasurements(
+      "activitypub.delivery.duration",
+    );
+    assertEquals(durations.length, 1);
+    assertEquals(durations[0].type, "histogram");
+    assertGreaterOrEqual(durations[0].value, 0);
+    assertEquals(
+      durations[0].attributes["activitypub.remote.host"],
+      "metrics.example",
+    );
+
+    recorder.clear();
+    fetchMock.hardReset();
+  });
+
+  await t.step("failed HTTP response", async () => {
+    fetchMock.spyGlobal();
+    fetchMock.post("https://metrics.example/inbox", {
+      status: 500,
+      body: "failed",
+    });
+
+    const activity = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Follow",
+      id: "https://example.com/follow",
+      actor: "https://example.com/person",
+    };
+
+    await assertRejects(
+      () =>
+        sendActivity({
+          activity,
+          activityId: "https://example.com/follow",
+          activityType: "https://www.w3.org/ns/activitystreams#Follow",
+          keys: [],
+          inbox: new URL("https://metrics.example/inbox"),
+          meterProvider,
+        }),
+      SendActivityError,
+    );
+
+    const sent = recorder.getMeasurements("activitypub.delivery.sent");
+    assertEquals(sent.length, 1);
+    assertEquals(sent[0].attributes["activitypub.delivery.success"], false);
+    assertEquals(
+      sent[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Follow",
+    );
+
+    const durations = recorder.getMeasurements(
+      "activitypub.delivery.duration",
+    );
+    assertEquals(durations.length, 1);
+    assertGreaterOrEqual(durations[0].value, 0);
+
+    recorder.clear();
+    fetchMock.hardReset();
+  });
+});
+
+test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async () => {
+  const exporter = new InMemoryMetricExporter(
+    AggregationTemporality.CUMULATIVE,
+  );
+  const reader = new PeriodicExportingMetricReader({
+    exporter,
+    exportIntervalMillis: 60_000,
+  });
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  fetchMock.spyGlobal();
+  fetchMock.post("https://sdk-metrics.example/inbox", { status: 202 });
+
+  await sendActivity({
+    activity: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activity",
+      actor: "https://example.com/person",
+    },
+    activityId: "https://example.com/activity",
+    activityType: "https://www.w3.org/ns/activitystreams#Create",
+    keys: [],
+    inbox: new URL("https://sdk-metrics.example/inbox"),
+    meterProvider,
+  });
+
+  await meterProvider.forceFlush();
+  const exportedMetrics = exporter.getMetrics()
+    .flatMap((resourceMetrics) => resourceMetrics.scopeMetrics)
+    .flatMap((scopeMetrics) => scopeMetrics.metrics);
+  const sent = exportedMetrics.find((metric) =>
+    metric.descriptor.name === "activitypub.delivery.sent"
+  );
+  assert(sent != null);
+  assertEquals(sent.dataPoints.length, 1);
+  assertEquals(
+    sent.dataPoints[0].attributes["activitypub.remote.host"],
+    "sdk-metrics.example",
+  );
+
+  await meterProvider.shutdown();
+  fetchMock.hardReset();
 });

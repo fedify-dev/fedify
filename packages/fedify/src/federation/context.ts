@@ -16,7 +16,7 @@ import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
 } from "@fedify/webfinger";
-import type { TracerProvider } from "@opentelemetry/api";
+import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import type { GetKeyOwnerOptions } from "../sig/owner.ts";
@@ -69,6 +69,12 @@ export interface Context<TContextData> {
    * @since 1.3.0
    */
   readonly tracerProvider: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider.
+   * @since 2.3.0
+   */
+  readonly meterProvider: MeterProvider;
 
   /**
    * The document loader for loading remote JSON-LD documents.

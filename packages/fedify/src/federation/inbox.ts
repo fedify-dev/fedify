@@ -3,6 +3,7 @@ import type { Activity } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   context,
+  type MeterProvider,
   propagation,
   type Span,
   SpanKind,
@@ -21,6 +22,7 @@ import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage } from "./queue.ts";
 import type { ActivityListenerSet } from "./activity-listener.ts";
+import { getDurationMs, getFederationMetrics } from "./metrics.ts";
 
 export interface RouteActivityParameters<TContextData> {
   context: Context<TContextData>;
@@ -39,6 +41,11 @@ export interface RouteActivityParameters<TContextData> {
   kvPrefixes: { activityIdempotence: KvKey };
   queue?: MessageQueue;
   span: Span;
+  /**
+   * The meter provider for recording metrics.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
   tracerProvider?: TracerProvider;
   idempotencyStrategy?:
     | IdempotencyStrategy
@@ -66,6 +73,7 @@ export async function routeActivity<TContextData>(
     kvPrefixes,
     queue,
     span,
+    meterProvider,
     tracerProvider,
     idempotencyStrategy,
   }: RouteActivityParameters<TContextData>,
@@ -198,15 +206,24 @@ export async function routeActivity<TContextData>(
       const { class: cls, listener } = dispatched;
       span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
       try {
-        await listener(
-          inboxContextFactory(
-            recipient,
-            json,
-            activity?.id?.href,
-            getTypeId(activity!).href,
-          ),
-          activity!,
-        );
+        const activityType = getTypeId(activity!).href;
+        const started = performance.now();
+        try {
+          await listener(
+            inboxContextFactory(
+              recipient,
+              json,
+              activity?.id?.href,
+              activityType,
+            ),
+            activity!,
+          );
+        } finally {
+          getFederationMetrics(meterProvider).recordInboxProcessingDuration(
+            activityType,
+            getDurationMs(started),
+          );
+        }
       } catch (error) {
         try {
           await inboxErrorHandler?.(ctx, error as Error);

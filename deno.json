@@ -47,6 +47,7 @@
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.5.0",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.5.0",
+    "@opentelemetry/sdk-metrics": "npm:@opentelemetry/sdk-metrics@2.5.0",
     "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.5.0",
     "@opentelemetry/semantic-conventions": "npm:@opentelemetry/semantic-conventions@^1.39.0",
     "@optique/config": "jsr:@optique/config@^1.0.2",

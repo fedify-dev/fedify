@@ -10,7 +10,7 @@ import type {
   DocumentLoaderFactory,
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
-import type { TracerProvider } from "@opentelemetry/api";
+import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
 import type {
@@ -1052,6 +1052,13 @@ export interface FederationOptions<TContextData> {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider for recording metrics.  If not provided,
+   * the default global meter provider is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**

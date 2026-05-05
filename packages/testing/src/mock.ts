@@ -56,6 +56,29 @@ const noopTracerProvider: any = {
   }),
 };
 
+const noopMeterProvider: any = {
+  getMeter: () => ({
+    createCounter: () => ({ add: () => undefined }),
+    createGauge: () => ({ record: () => undefined }),
+    createHistogram: () => ({ record: () => undefined }),
+    createObservableCounter: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createObservableGauge: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createObservableUpDownCounter: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createUpDownCounter: () => ({ add: () => undefined }),
+    addBatchObservableCallback: () => undefined,
+    removeBatchObservableCallback: () => undefined,
+  }),
+};
+
 /**
  * Helper function to expand URI templates used by the mock.
  * Supports the RFC 6570 operators accepted by Fedify's identifier paths.
@@ -282,6 +305,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     private options: {
       contextData?: TContextData;
       origin?: string;
+      meterProvider?: any;
       tracerProvider?: any;
     } = {},
   ) {
@@ -513,6 +537,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       request,
       data: contextData,
       federation: mockFederation as any,
+      meterProvider: this.options.meterProvider,
+      tracerProvider: this.options.tracerProvider,
     });
   }
 
@@ -784,6 +810,7 @@ export function createFederation<TContextData>(
   options: {
     contextData?: TContextData;
     origin?: string;
+    meterProvider?: any;
     tracerProvider?: any;
   } = {},
 ): TestFederation<TContextData> {
@@ -842,6 +869,7 @@ class MockContext<TContextData> implements Context<TContextData> {
   readonly federation: Federation<TContextData>;
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
+  readonly meterProvider: any;
   readonly tracerProvider: any;
   readonly request: Request;
   readonly url: URL;
@@ -861,6 +889,7 @@ class MockContext<TContextData> implements Context<TContextData> {
       federation: Federation<TContextData>;
       documentLoader?: DocumentLoader;
       contextLoader?: DocumentLoader;
+      meterProvider?: any;
       tracerProvider?: any;
     },
   ) {
@@ -880,6 +909,7 @@ class MockContext<TContextData> implements Context<TContextData> {
       documentUrl: url,
     }));
     this.contextLoader = options.contextLoader ?? this.documentLoader;
+    this.meterProvider = options.meterProvider ?? noopMeterProvider;
     this.tracerProvider = options.tracerProvider ?? noopTracerProvider;
   }
 
@@ -928,6 +958,7 @@ class MockContext<TContextData> implements Context<TContextData> {
       federation: this.federation,
       documentLoader: this.documentLoader,
       contextLoader: this.contextLoader,
+      meterProvider: this.meterProvider,
       tracerProvider: this.tracerProvider,
     });
   }

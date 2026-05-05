@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -12,7 +13,12 @@ import {
   Tombstone,
 } from "@fedify/vocab";
 import { FetchError } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertInstanceOf } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreaterOrEqual,
+  assertInstanceOf,
+} from "@std/assert";
 import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import {
@@ -2318,8 +2324,13 @@ test("handleCustomCollection()", async () => {
 
 test("handleInbox() records OpenTelemetry span events", async () => {
   const [tracerProvider, exporter] = createTestTracerProvider();
+  const [meterProvider, recorder] = createTestMeterProvider();
   const kv = new MemoryKvStore();
-  const federation = createFederation<void>({ kv, tracerProvider });
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    tracerProvider,
+  });
 
   const activity = new Create({
     id: new URL("https://example.com/activity"),
@@ -2390,6 +2401,7 @@ test("handleInbox() records OpenTelemetry span events", async () => {
     onNotFound: (_request) => new Response("Not found", { status: 404 }),
     signatureTimeWindow: false,
     skipSignatureVerification: true,
+    meterProvider,
     tracerProvider,
   });
 
@@ -2428,12 +2440,28 @@ test("handleInbox() records OpenTelemetry span events", async () => {
   );
   assertEquals(recordedActivity.id, "https://example.com/activity");
   assertEquals(recordedActivity.type, "Create");
+
+  const durations = recorder.getMeasurements(
+    "activitypub.inbox.processing_duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(durations[0].type, "histogram");
+  assertGreaterOrEqual(durations[0].value, 0);
+  assertEquals(
+    durations[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
 });
 
 test("handleInbox() records unverified HTTP signature details", async () => {
   const [tracerProvider, exporter] = createTestTracerProvider();
+  const [meterProvider, recorder] = createTestMeterProvider();
   const kv = new MemoryKvStore();
-  const federation = createFederation<void>({ kv, tracerProvider });
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    tracerProvider,
+  });
   const keyId = new URL("https://gone.example/users/someone#main-key");
 
   const activity = new Create({
@@ -2508,6 +2536,7 @@ test("handleInbox() records unverified HTTP signature details", async () => {
     onNotFound: (_request) => new Response("Not found", { status: 404 }),
     signatureTimeWindow: false,
     skipSignatureVerification: false,
+    meterProvider,
     tracerProvider,
   });
 
@@ -2536,6 +2565,21 @@ test("handleInbox() records unverified HTTP signature details", async () => {
     "keyFetchError",
   );
   assertEquals(event.attributes["http_signatures.key_fetch_status"], 410);
+
+  const failures = recorder.getMeasurements(
+    "activitypub.signature.verification_failure",
+  );
+  assertEquals(failures.length, 1);
+  assertEquals(failures[0].type, "counter");
+  assertEquals(failures[0].value, 1);
+  assertEquals(
+    failures[0].attributes["activitypub.remote.host"],
+    "gone.example",
+  );
+  assertEquals(
+    failures[0].attributes["activitypub.verification.failure_reason"],
+    "keyFetchError",
+  );
 });
 
 test("handleInbox() challenge policy enabled + unsigned request", async () => {

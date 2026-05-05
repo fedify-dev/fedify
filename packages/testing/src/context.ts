@@ -37,6 +37,29 @@ const noopTracerProvider: any = {
   }),
 };
 
+const noopMeterProvider: any = {
+  getMeter: () => ({
+    createCounter: () => ({ add: () => undefined }),
+    createGauge: () => ({ record: () => undefined }),
+    createHistogram: () => ({ record: () => undefined }),
+    createObservableCounter: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createObservableGauge: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createObservableUpDownCounter: () => ({
+      addCallback: () => undefined,
+      removeCallback: () => undefined,
+    }),
+    createUpDownCounter: () => ({ add: () => undefined }),
+    addBatchObservableCallback: () => undefined,
+    removeBatchObservableCallback: () => undefined,
+  }),
+};
+
 // NOTE: Copied from @fedify/fedify/testing/context.ts
 
 // Not exported - used internally only. Public API is in mock.ts
@@ -54,6 +77,7 @@ function createContext<TContextData>(
     data,
     documentLoader,
     contextLoader,
+    meterProvider,
     tracerProvider,
     clone,
     getNodeInfoUri,
@@ -89,6 +113,7 @@ function createContext<TContextData>(
     hostname: url.hostname,
     documentLoader: documentLoader ?? mockDocumentLoader,
     contextLoader: contextLoader ?? mockDocumentLoader,
+    meterProvider: meterProvider ?? noopMeterProvider,
     tracerProvider: tracerProvider ?? noopTracerProvider,
     clone: clone ?? ((data) => createContext({ ...values, data })),
     getNodeInfoUri: getNodeInfoUri ?? throwRouterError,

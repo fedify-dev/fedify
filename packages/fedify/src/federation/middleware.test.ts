@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -3274,6 +3275,62 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     await federation.processQueuedTask(undefined, inboxMessage);
     assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
   });
+
+  await t.step("records queued inbox processing duration", async () => {
+    const kv = new MemoryKvStore();
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const queue: MessageQueue = {
+      enqueue(_message, _options) {
+        return Promise.resolve();
+      },
+      listen(_handler, _options) {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv,
+      meterProvider,
+      queue,
+    });
+    let handled = false;
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(vocab.Create, () => {
+        handled = true;
+      });
+
+    await federation.processQueuedTask(
+      undefined,
+      {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/1",
+          actor: "https://remote.example/users/alice",
+          object: {
+            type: "Note",
+            content: "Hello world",
+          },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage,
+    );
+
+    assert(handled);
+    const durations = recorder.getMeasurements(
+      "activitypub.inbox.processing_duration",
+    );
+    assertEquals(durations.length, 1);
+    assertEquals(
+      durations[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+  });
 });
 
 test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
@@ -3305,6 +3362,12 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     options: {
       permanentFailureStatusCodes?: readonly number[];
       nativeRetrial?: boolean;
+      meterProvider?: ConstructorParameters<typeof FederationImpl<void>>[0][
+        "meterProvider"
+      ];
+      tracerProvider?: ConstructorParameters<typeof FederationImpl<void>>[0][
+        "tracerProvider"
+      ];
     } = {},
   ): PermanentFailureSetup {
     const kv = new MemoryKvStore();
@@ -3324,6 +3387,12 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
       queue,
       ...(options.permanentFailureStatusCodes
         ? { permanentFailureStatusCodes: options.permanentFailureStatusCodes }
+        : {}),
+      ...(options.meterProvider
+        ? { meterProvider: options.meterProvider }
+        : {}),
+      ...(options.tracerProvider
+        ? { tracerProvider: options.tracerProvider }
         : {}),
     });
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
@@ -3359,7 +3428,12 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
   }
 
   await t.step("410 Gone triggers permanent failure handler", async () => {
-    const { federation, queuedMessages } = setup();
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation, queuedMessages } = setup({
+      meterProvider,
+      tracerProvider,
+    });
     let handlerCalled = false;
     let handlerValues: Record<string, unknown> = {};
     federation.setOutboxPermanentFailureHandler((_ctx, values) => {
@@ -3391,6 +3465,36 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     ]);
     // Should NOT be re-enqueued for retry
     assertEquals(queuedMessages, []);
+
+    const failures = recorder.getMeasurements(
+      "activitypub.delivery.permanent_failure",
+    );
+    assertEquals(failures.length, 1);
+    assertEquals(failures[0].value, 1);
+    assertEquals(
+      failures[0].attributes["activitypub.remote.host"],
+      "gone.example",
+    );
+    assertEquals(
+      failures[0].attributes["http.response.status_code"],
+      410,
+    );
+
+    const events = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.delivery.failed",
+    );
+    assertEquals(events.length, 1);
+    assertEquals(
+      events[0].attributes?.["activitypub.remote.host"],
+      "gone.example",
+    );
+    assertEquals(events[0].attributes?.["activitypub.delivery.attempt"], 0);
+    assertEquals(
+      events[0].attributes?.["activitypub.delivery.permanent_failure"],
+      true,
+    );
+    assertEquals(events[0].attributes?.["http.response.status_code"], 410);
   });
 
   await t.step("404 Not Found triggers permanent failure handler", async () => {

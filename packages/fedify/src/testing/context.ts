@@ -4,7 +4,7 @@ import {
   traverseCollection as globalTraverseCollection,
 } from "@fedify/vocab";
 import { lookupWebFinger as globalLookupWebFinger } from "@fedify/webfinger";
-import { trace } from "@opentelemetry/api";
+import { metrics, trace } from "@opentelemetry/api";
 import type {
   Context,
   InboxContext,
@@ -28,6 +28,7 @@ export function createContext<TContextData>(
     data,
     documentLoader,
     contextLoader,
+    meterProvider,
     tracerProvider,
     clone,
     getNodeInfoUri,
@@ -63,6 +64,7 @@ export function createContext<TContextData>(
     hostname: url.hostname,
     documentLoader: documentLoader ?? mockDocumentLoader,
     contextLoader: contextLoader ?? mockDocumentLoader,
+    meterProvider: meterProvider ?? metrics.getMeterProvider(),
     tracerProvider: tracerProvider ?? trace.getTracerProvider(),
     clone: clone ?? ((data) => createContext({ ...values, data })),
     getNodeInfoUri: getNodeInfoUri ?? throwRouterError,
