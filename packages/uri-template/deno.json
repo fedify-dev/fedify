@@ -5,7 +5,7 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "description": "Symmetric RFC 6570 URI Template expansion and pattern matching for Fedify",
+  "description": "RFC 6570 URI Template expansion and round-trip pattern matching for Fedify",
   "author": {
     "name": "Chanhaeng Lee"
   },

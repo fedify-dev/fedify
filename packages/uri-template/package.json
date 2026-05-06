@@ -19,7 +19,7 @@
     "node": ">=22.0.0",
     "bun": ">=1.1.0"
   },
-  "description": "Symmetric RFC 6570 URI Template expansion and pattern matching",
+  "description": "RFC 6570 URI Template expansion and round-trip pattern matching",
   "type": "module",
   "main": "./dist/mod.cjs",
   "module": "./dist/mod.js",
@@ -42,8 +42,8 @@
     "build": "pnpm --filter @fedify/uri-template... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test:bun": "bun test",
-    "test": "node --experimental-transform-types --test"
+    "test:bun": "bun test src/**/*.test.ts",
+    "test": "node --experimental-transform-types --test src/**/*.test.ts"
   },
   "keywords": [
     "Fedify",
