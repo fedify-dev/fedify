@@ -25,18 +25,22 @@ export {
   UnexpectedCharacterError,
   UnknownOperatorError,
 } from "./errors.ts";
-export { Router } from "./router.ts";
+export { RouterError, RouteTemplatePathError } from "./router/errors.ts";
+export { default as Router } from "./router/mod.ts";
+export type {
+  RouterOptions,
+  RouterPathPattern,
+  RouterRouteResult,
+} from "./router/mod.ts";
 export { default as Template } from "./template/mod.ts";
 export type {
   AssociativeValue,
   ExpandContext,
   ExpandValue,
-  HierarchyNode,
   Operator,
+  Path,
   PrimitiveValue,
   Reporter,
-  Result,
-  Route,
   TemplateOptions,
   Token,
   VariableSpec,

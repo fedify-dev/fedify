@@ -1,15 +1,19 @@
 export type { Operator, OperatorSpec } from "./const.ts";
 import type { Operator } from "./const.ts";
-import type _Template from "./template/mod.ts";
 
 /**
- * Primitive value accepted by {@link _Template.expand Template.expand}.
+ * Path-shaped URI Template accepted by the router.
+ */
+export type Path = `/${string}` | `{/${string}}/${string}`;
+
+/**
+ * Primitive value accepted by {@link Template.expand}.
  */
 export type PrimitiveValue = string | number | boolean | null | undefined;
 
 /**
  * Associative composite value accepted by
- * {@link _Template.expand Template.expand}.
+ * {@link Template.expand}.
  *
  * Keys are expanded as URI Template associative names. Values may be primitive
  * values or primitive lists.
@@ -28,7 +32,7 @@ export type ExpandValue =
   | AssociativeValue;
 
 /**
- * Context object accepted by {@link _Template.expand Template.expand}.
+ * Context object accepted by {@link Template.expand}.
  * Each variable resolves to a primitive, an ordered list of primitives,
  * or an associative map.
  */
@@ -39,36 +43,6 @@ export type ExpandContext = Record<string, ExpandValue>;
  */
 export interface VariableSpec {
   varname: string;
-}
-
-/**
- * Route entry returned by {@link Router.addTemplate}.
- */
-export interface Route {
-  uriTemplate: string;
-  matchValue: unknown;
-  variables: VariableSpec[];
-}
-
-/**
- * Hierarchy node tracked internally by a {@link Router}, exposed as a mutable
- * field so that callers may clone routers via structural copy.
- */
-export interface HierarchyNode {
-  children: HierarchyNode[];
-  node?: Route;
-  uriTemplate?: string;
-}
-
-/**
- * Result returned by {@link Router.resolveURI} when a URI matches a registered
- * template.
- */
-export interface Result {
-  matchValue: string;
-  params: Record<string, string>;
-  uri: string;
-  uriTemplate: string;
 }
 
 /**
