@@ -1,16 +1,15 @@
 import {
+  createDeepPrefixRouterTest,
+  createDynamicRoutesTest,
+  createInactiveEntriesTest,
   createRouterBuildPathsBench,
   createRouterCompileAndAddBench,
-  createRouterDeepCommonPrefixScenario,
   createRouterFirstRouteAfterBuildBench,
-  createRouterHundredsOfRoutesScenario,
-  createRouterInactiveEntriesScenario,
-  createRouterRootAdjacentDynamicRoutesScenario,
   createRouterRouteHitsBench,
   createRouterRouteMissesBench,
+  createRoutesPressureTest,
   routerBuildCases,
   routerHitPaths,
-  type RouterMemoryPressureScenario,
   routerMissPaths,
   routerRouteDefinitions,
 } from "../tests/mod.ts";
@@ -43,11 +42,11 @@ Deno.bench(
 const runFirstRouteAfterBuild = createRouterFirstRouteAfterBuildBench(Router);
 for (
   const scenario of [
-    createRouterHundredsOfRoutesScenario(),
-    createRouterDeepCommonPrefixScenario(),
-    createRouterRootAdjacentDynamicRoutesScenario(),
-    createRouterInactiveEntriesScenario(),
-  ] satisfies readonly RouterMemoryPressureScenario[]
+    createRoutesPressureTest(),
+    createDeepPrefixRouterTest(),
+    createDynamicRoutesTest(),
+    createInactiveEntriesTest(),
+  ]
 ) {
   Deno.bench(
     `Router: ${scenario.name}: compile and add routes`,
