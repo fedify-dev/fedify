@@ -41,6 +41,12 @@ import type { Path } from "../src/types.ts";
  * for building, matching, and variable extraction, so pct-encoded variable
  * names and reserved expansion values are preserved instead of decoded or
  * encoded a second time.
+ *
+ * The same compatibility run also records route-shape differences that matter
+ * for Fedify routes.  The previous router rejects leading path expansion
+ * templates such as `{/identifier}/inbox` when they partially overlap with
+ * slash-prefixed routes, and it misses optional form-style query matches such
+ * as `/search{?q,page}` with only one query variable present.
  */
 export interface RouterOptions {
   trailingSlashInsensitive?: boolean;
