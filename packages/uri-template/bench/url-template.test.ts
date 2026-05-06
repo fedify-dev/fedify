@@ -67,6 +67,7 @@ class Template {
     const { expand } = parseTemplate(template);
     this.expand = expand;
   }
+  match = (_: string) => null;
 }
 
 const runPairCases = createTemplatePairTest(Template);
