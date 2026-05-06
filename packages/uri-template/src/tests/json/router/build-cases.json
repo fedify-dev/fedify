@@ -1,0 +1,100 @@
+[
+  [
+    "actor",
+    {
+      "identifier": "alice"
+    }
+  ],
+  [
+    "inbox",
+    {
+      "identifier": "alice"
+    }
+  ],
+  [
+    "outbox",
+    {
+      "identifier": "alice"
+    }
+  ],
+  [
+    "followers",
+    {
+      "identifier": "alice"
+    }
+  ],
+  [
+    "following",
+    {
+      "identifier": "alice"
+    }
+  ],
+  [
+    "collection",
+    {
+      "identifier": "alice",
+      "collection": "bookmarks"
+    }
+  ],
+  [
+    "note",
+    {
+      "identifier": "alice",
+      "statusId": "2026050501"
+    }
+  ],
+  [
+    "activity",
+    {
+      "identifier": "alice",
+      "statusId": "2026050501"
+    }
+  ],
+  [
+    "replies",
+    {
+      "identifier": "alice",
+      "statusId": "2026050501"
+    }
+  ],
+  [
+    "media",
+    {
+      "identifier": "alice",
+      "mediaId": "avatar"
+    }
+  ],
+  [
+    "object",
+    {
+      "type": "note",
+      "id": "2026050501"
+    }
+  ],
+  [
+    "collectionItem",
+    {
+      "collection": "public",
+      "itemId": "2026050501"
+    }
+  ],
+  [
+    "tag",
+    {
+      "tag": "activitypub"
+    }
+  ],
+  [
+    "search",
+    {
+      "q": "fedify",
+      "page": "2"
+    }
+  ],
+  [
+    "file",
+    {
+      "path": "images/avatar/original.png"
+    }
+  ]
+]

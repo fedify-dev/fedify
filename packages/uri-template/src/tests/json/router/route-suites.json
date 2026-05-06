@@ -1,0 +1,357 @@
+[
+  {
+    "name": "default trailing slash behavior",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/users/{name}/posts/{postId}",
+        "post"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "matches user path",
+        "path": "/users/alice",
+        "expected": {
+          "name": "user",
+          "template": "/users/{name}",
+          "values": {
+            "name": "alice"
+          }
+        }
+      },
+      {
+        "name": "rejects user path with trailing slash",
+        "path": "/users/bob/",
+        "expected": null
+      },
+      {
+        "name": "matches post path",
+        "path": "/users/alice/posts/123",
+        "expected": {
+          "name": "post",
+          "template": "/users/{name}/posts/{postId}",
+          "values": {
+            "name": "alice",
+            "postId": "123"
+          }
+        }
+      },
+      {
+        "name": "rejects post path with trailing slash",
+        "path": "/users/bob/posts/456/",
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "trailing slash insensitive behavior",
+    "options": {
+      "trailingSlashInsensitive": true
+    },
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/users/{name}/posts/{postId}/",
+        "post"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "matches user path without trailing slash",
+        "path": "/users/alice",
+        "expected": {
+          "name": "user",
+          "template": "/users/{name}",
+          "values": {
+            "name": "alice"
+          }
+        }
+      },
+      {
+        "name": "matches user path with trailing slash",
+        "path": "/users/bob/",
+        "expected": {
+          "name": "user",
+          "template": "/users/{name}",
+          "values": {
+            "name": "bob"
+          }
+        }
+      },
+      {
+        "name": "matches post path without trailing slash",
+        "path": "/users/alice/posts/123",
+        "expected": {
+          "name": "post",
+          "template": "/users/{name}/posts/{postId}/",
+          "values": {
+            "name": "alice",
+            "postId": "123"
+          }
+        }
+      },
+      {
+        "name": "matches post path with trailing slash",
+        "path": "/users/bob/posts/456/",
+        "expected": {
+          "name": "post",
+          "template": "/users/{name}/posts/{postId}/",
+          "values": {
+            "name": "bob",
+            "postId": "456"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "leading path expansion templates",
+    "routeDefinitions": [
+      [
+        "{/identifier}/inbox",
+        "inbox"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "matches expanded leading path segment",
+        "path": "/alice/inbox",
+        "expected": {
+          "name": "inbox",
+          "template": "{/identifier}/inbox",
+          "values": {
+            "identifier": "alice"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "literal route priority",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/users/settings",
+        "settings"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "prefers more specific literal route",
+        "path": "/users/settings",
+        "expected": {
+          "name": "settings",
+          "template": "/users/settings",
+          "values": {}
+        }
+      }
+    ]
+  },
+  {
+    "name": "template matching symmetry",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/files/{+path}",
+        "file"
+      ],
+      [
+        "/actors{/identifier}",
+        "actor"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "decodes escaped slash in simple variable",
+        "path": "/users/a%2Fb",
+        "expected": {
+          "name": "user",
+          "template": "/users/{name}",
+          "values": {
+            "name": "a/b"
+          }
+        }
+      },
+      {
+        "name": "rejects raw slash in simple variable",
+        "path": "/users/a/b",
+        "expected": null
+      },
+      {
+        "name": "preserves raw slash in reserved expansion",
+        "path": "/files/a/b",
+        "expected": {
+          "name": "file",
+          "template": "/files/{+path}",
+          "values": {
+            "path": "a/b"
+          }
+        }
+      },
+      {
+        "name": "preserves pct-encoded slash in reserved expansion",
+        "path": "/files/a%2Fb",
+        "expected": {
+          "name": "file",
+          "template": "/files/{+path}",
+          "values": {
+            "path": "a%2Fb"
+          }
+        }
+      },
+      {
+        "name": "preserves pct-encoded reserved characters in reserved expansion",
+        "path": "/files/%30%23",
+        "expected": {
+          "name": "file",
+          "template": "/files/{+path}",
+          "values": {
+            "path": "%30%23"
+          }
+        }
+      },
+      {
+        "name": "preserves pct-encoded UTF-8 sequence in reserved expansion",
+        "path": "/files/%E3%81%82",
+        "expected": {
+          "name": "file",
+          "template": "/files/{+path}",
+          "values": {
+            "path": "%E3%81%82"
+          }
+        }
+      },
+      {
+        "name": "matches path expansion operator",
+        "path": "/actors/alice",
+        "expected": {
+          "name": "actor",
+          "template": "/actors{/identifier}",
+          "values": {
+            "identifier": "alice"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "pct-encoded variable names",
+    "routeDefinitions": [
+      [
+        "/encoded-query{?%41,%42}",
+        "encodedQuery"
+      ],
+      [
+        "/matrix{;abc%20def}",
+        "matrix"
+      ],
+      [
+        "/continuation?fixed=true{&abc%20def}",
+        "continuation"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "matches query expansion with pct-encoded variable names",
+        "path": "/encoded-query?%41=a&%42=b",
+        "expected": {
+          "name": "encodedQuery",
+          "template": "/encoded-query{?%41,%42}",
+          "values": {
+            "%41": "a",
+            "%42": "b"
+          }
+        }
+      },
+      {
+        "name": "matches matrix expansion with pct-encoded variable name",
+        "path": "/matrix;abc%20def=spaced%20value",
+        "expected": {
+          "name": "matrix",
+          "template": "/matrix{;abc%20def}",
+          "values": {
+            "abc%20def": "spaced value"
+          }
+        }
+      },
+      {
+        "name": "matches continuation expansion with pct-encoded variable name",
+        "path": "/continuation?fixed=true&abc%20def=spaced%20value",
+        "expected": {
+          "name": "continuation",
+          "template": "/continuation?fixed=true{&abc%20def}",
+          "values": {
+            "abc%20def": "spaced value"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "query expansion with optional variables",
+    "routeDefinitions": [
+      [
+        "/search{?q,page}",
+        "search"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "matches query expansion with no variables",
+        "path": "/search",
+        "expected": {
+          "name": "search",
+          "template": "/search{?q,page}",
+          "values": {}
+        }
+      },
+      {
+        "name": "matches first optional query variable",
+        "path": "/search?q=fedify",
+        "expected": {
+          "name": "search",
+          "template": "/search{?q,page}",
+          "values": {
+            "q": "fedify"
+          }
+        }
+      },
+      {
+        "name": "matches later optional query variable without first variable",
+        "path": "/search?page=2",
+        "expected": {
+          "name": "search",
+          "template": "/search{?q,page}",
+          "values": {
+            "page": "2"
+          }
+        }
+      },
+      {
+        "name": "matches unicode query variable value",
+        "path": "/search?q=%ED%8E%98%EB%94%94%ED%8C%8C%EC%9D%B4&page=42",
+        "expected": {
+          "name": "search",
+          "template": "/search{?q,page}",
+          "values": {
+            "page": "42",
+            "q": "페디파이"
+          }
+        }
+      }
+    ]
+  }
+]
