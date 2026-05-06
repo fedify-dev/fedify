@@ -1,6 +1,5 @@
 /**
- * Symmetric [RFC 6570] URI
- * Template expansion and pattern matching.
+ * [RFC 6570] URI Template expansion and round-trip pattern matching.
  *
  * [RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
  *
@@ -42,6 +41,5 @@ export type {
   Reporter,
   TemplateOptions,
   Token,
-  VariableSpec,
   VarSpec,
 } from "./types.ts";

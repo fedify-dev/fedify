@@ -39,13 +39,6 @@ export type ExpandValue =
 export type ExpandContext = Record<string, ExpandValue>;
 
 /**
- * Variable specification produced when a template is added to a {@link Router}.
- */
-export interface VariableSpec {
-  varname: string;
-}
-
-/**
  * Parsed RFC 6570 variable specification inside an expression.
  *
  * Produced by the expression parser and consumed by the expansion module.
@@ -81,16 +74,17 @@ export interface TemplateOptions {
    */
   strict: boolean;
   /**
-   * A function that will be called with any errors encountered while parsing.
-   * By default, errors are ignored.  In strict mode, they are still thrown
-   * after this reporter runs.
-   * @param error The error that was encountered while parsing the template.
+   * A function that will be called with any errors encountered while parsing
+   * or expanding.  By default, errors are ignored.  In strict mode, they are
+   * still thrown after this reporter runs.
+   * @param error The error that was encountered while parsing or expanding the
+   *              template.
    * @returns The result of the report function.
    */
   report: Reporter;
 }
 
 /**
- * Callback used by the parser to report recoverable parse diagnostics.
+ * Callback used to report recoverable parse and expansion diagnostics.
  */
 export type Reporter = (error: Error) => void;
