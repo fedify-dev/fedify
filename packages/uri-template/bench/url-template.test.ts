@@ -15,7 +15,7 @@ import {
 /**
  * Known failures for npm:url-template@^3.1.1, checked with `deno task bench`.
  * These are the compatibility gaps that motivated the strict
- * @fedify/url-template implementation.
+ * @fedify/uri-template implementation.
  *
  * Expected-error cases that throw a different npm error are intentionally
  * excluded. In the current run, none of the failing expected-error cases fell
@@ -39,7 +39,7 @@ import {
  *  -  Section 2.4.1 says prefix modifiers are not applicable to variables
  *     that have composite values.
  *  -  Section 3 says grammar errors SHOULD indicate the location and type of
- *     error to the invoking application. @fedify/url-template reports these
+ *     error to the invoking application. @fedify/uri-template reports these
  *     cases as typed errors; npm:url-template silently returns a best-effort
  *     expansion for the cases below.
  *
