@@ -129,6 +129,23 @@ export const routerCloneTestSuites: readonly RouterCloneTestSuite[] = validate(
   _routerCloneTestSuites,
 );
 export {
+  createDeepPrefixRouterTest,
+  createDynamicRoutesTest,
+  createInactiveEntriesTest,
+  createRouterAddTest,
+  createRouterBuildPathsBench,
+  createRouterBuildTest,
+  createRouterCloneTest,
+  createRouterCompileAndAddBench,
+  createRouterCompileErrorTest,
+  createRouterFirstRouteAfterBuildBench,
+  createRouterRouteHitsBench,
+  createRouterRouteMissesBench,
+  createRouterRouteTest,
+  createRouterVariablesTest,
+  createRoutesPressureTest,
+} from "./router.ts";
+export {
   createFixedTemplateMatchTest,
   createFixedTemplateTest,
   createMatchOnlyTest,
@@ -138,21 +155,3 @@ export {
   createTemplatePairTest,
   createWrongTemplateTest,
 } from "./template.ts";
-export {
-  createRouterAddTest,
-  createRouterBuildPathsBench,
-  createRouterBuildTest,
-  createRouterCloneTest,
-  createRouterCompileAndAddBench,
-  createRouterCompileErrorTest,
-  createRouterDeepCommonPrefixScenario,
-  createRouterFirstRouteAfterBuildBench,
-  createRouterHundredsOfRoutesScenario,
-  createRouterInactiveEntriesScenario,
-  createRouterRootAdjacentDynamicRoutesScenario,
-  createRouterRouteHitsBench,
-  createRouterRouteMissesBench,
-  createRouterRouteTest,
-  createRouterVariablesTest,
-  type RouterMemoryPressureScenario,
-} from "./router.ts";

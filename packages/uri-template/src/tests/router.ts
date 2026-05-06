@@ -1,8 +1,8 @@
 import { deepEqual, equal, throws } from "node:assert/strict";
-import * as ERROR_CLASS_BY_NAME from "../router/errors.ts";
+import * as ERROR_CLASSES from "../router/errors.ts";
 import type { Path } from "../types.ts";
 
-type ErrorName = keyof typeof ERROR_CLASS_BY_NAME;
+type ErrorName = keyof typeof ERROR_CLASSES;
 
 interface RouterTestOptions {
   readonly trailingSlashInsensitive?: boolean;
@@ -87,7 +87,7 @@ export interface RouterCloneTestSuite {
   readonly clonedRouteCases: readonly RouterRouteCase[];
 }
 
-export interface RouterMemoryPressureScenario {
+interface RouterMemoryPressureSuite {
   readonly name: string;
   readonly routeDefinitions: readonly RouterRouteDefinition[];
   readonly hitPaths: readonly Path[];
@@ -126,7 +126,7 @@ const createSampledIndexes = (count: number, sampleCount: number): number[] =>
 const padRouterIndex = (index: number): string =>
   index.toString().padStart(4, "0");
 
-export function createRouterHundredsOfRoutesScenario(): RouterMemoryPressureScenario {
+export function createRoutesPressureTest(): RouterMemoryPressureSuite {
   const routeDefinitions = createRouterDefinitions(
     512,
     (index): RouterRouteDefinition => [
@@ -149,7 +149,7 @@ export function createRouterHundredsOfRoutesScenario(): RouterMemoryPressureScen
   };
 }
 
-export function createRouterDeepCommonPrefixScenario(): RouterMemoryPressureScenario {
+export function createDeepPrefixRouterTest(): RouterMemoryPressureSuite {
   const segments = Array.from(
     { length: 128 },
     (_, index) => `segment-${padRouterIndex(index)}`,
@@ -172,7 +172,7 @@ export function createRouterDeepCommonPrefixScenario(): RouterMemoryPressureScen
   };
 }
 
-export function createRouterRootAdjacentDynamicRoutesScenario(): RouterMemoryPressureScenario {
+export function createDynamicRoutesTest(): RouterMemoryPressureSuite {
   const routeDefinitions = createRouterDefinitions(
     384,
     (index): RouterRouteDefinition => [
@@ -195,7 +195,7 @@ export function createRouterRootAdjacentDynamicRoutesScenario(): RouterMemoryPre
   };
 }
 
-export function createRouterInactiveEntriesScenario(): RouterMemoryPressureScenario {
+export function createInactiveEntriesTest(): RouterMemoryPressureSuite {
   return {
     name: "inactive entries",
     routeDefinitions: createRouterDefinitions(
@@ -259,7 +259,7 @@ export function createRouterCompileErrorTest<TPattern>(
         for (const errorName of expected) {
           throws(
             () => Router.compile(path as Path),
-            ERROR_CLASS_BY_NAME[errorName],
+            ERROR_CLASSES[errorName],
           );
         }
       });
