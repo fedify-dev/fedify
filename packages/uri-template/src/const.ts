@@ -30,6 +30,15 @@ export type Operator = typeof OPERATORS[number];
 
 /**
  * RFC 6570 operator behavior table used during expansion.
+ * This table is from RFC 6570 Appendix A.
+ *
+ * |       | `NUL`   | `+`     | `.`     | `/`     | `;`    | `?`    | `&`    | `#`     |
+ * | ----- | ------- | ------- | ------- | ------- | ------ | ------ | ------ | ------- |
+ * | first | `""`    | `""`    | `"."`   | `"/"`   | `";"`  | `"?"`  | `"&"`  | `"#"`   |
+ * | sep   | `","`   | `","`   | `"."`   | `"/"`   | `";"`  | `"&"`  | `"&"`  | `","`   |
+ * | named | `false` | `false` | `false` | `false` | `true` | `true` | `true` | `false` |
+ * | ifemp | `""`    | `""`    | `""`    | `""`    | `""`   | `"="`  | `"="`  | `""`    |
+ * | allow | `U`     | `U+R`   | `U`     | `U`     | `U`    | `U`    | `U`    | `U+R`   |
  */
 export const operatorSpecs: Record<Operator, OperatorSpec> = {
   "": { first: "", sep: ",", named: false, ifEmpty: "", allowReserved: false },
@@ -66,7 +75,4 @@ export const operatorSpecs: Record<Operator, OperatorSpec> = {
   "#": { first: "#", sep: ",", named: false, ifEmpty: "", allowReserved: true },
 };
 
-/**
- * Placeholder message used by modules whose behavior is still unimplemented.
- */
-export const NOT_IMPLEMENTED = "@fedify/uri-template is not implemented yet";
+// cspell: ignore ifemp
