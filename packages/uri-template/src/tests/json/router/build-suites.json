@@ -1,0 +1,182 @@
+[
+  {
+    "name": "default routes",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/users/{name}/posts/{postId}",
+        "post"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "builds user path",
+        "routeName": "user",
+        "values": {
+          "name": "alice"
+        },
+        "expected": "/users/alice"
+      },
+      {
+        "name": "builds post path",
+        "routeName": "post",
+        "values": {
+          "name": "alice",
+          "postId": "123"
+        },
+        "expected": "/users/alice/posts/123"
+      },
+      {
+        "name": "returns null for missing route name",
+        "routeName": "missing",
+        "values": {},
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "leading path expansion templates",
+    "routeDefinitions": [
+      [
+        "{/identifier}/inbox",
+        "inbox"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "builds leading path expansion",
+        "routeName": "inbox",
+        "values": {
+          "identifier": "alice"
+        },
+        "expected": "/alice/inbox"
+      }
+    ]
+  },
+  {
+    "name": "template matching symmetry",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/files/{+path}",
+        "file"
+      ],
+      [
+        "/actors{/identifier}",
+        "actor"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "escapes slash in simple variable",
+        "routeName": "user",
+        "values": {
+          "name": "a/b"
+        },
+        "expected": "/users/a%2Fb"
+      },
+      {
+        "name": "preserves slash in reserved expansion",
+        "routeName": "file",
+        "values": {
+          "path": "a/b"
+        },
+        "expected": "/files/a/b"
+      },
+      {
+        "name": "preserves pct-encoded slash in reserved expansion",
+        "routeName": "file",
+        "values": {
+          "path": "a%2Fb"
+        },
+        "expected": "/files/a%2Fb"
+      },
+      {
+        "name": "preserves pct-encoded reserved characters in reserved expansion",
+        "routeName": "file",
+        "values": {
+          "path": "%30%23"
+        },
+        "expected": "/files/%30%23"
+      },
+      {
+        "name": "preserves pct-encoded UTF-8 sequence in reserved expansion",
+        "routeName": "file",
+        "values": {
+          "path": "%E3%81%82"
+        },
+        "expected": "/files/%E3%81%82"
+      },
+      {
+        "name": "builds path expansion operator",
+        "routeName": "actor",
+        "values": {
+          "identifier": "alice"
+        },
+        "expected": "/actors/alice"
+      }
+    ]
+  },
+  {
+    "name": "pct-encoded query variable names",
+    "routeDefinitions": [
+      [
+        "/encoded-query{?abc%20def}",
+        "encodedQuery"
+      ],
+      [
+        "/encoded-letters{?%41,%42}",
+        "encodedLetters"
+      ],
+      [
+        "/matrix{;abc%20def}",
+        "matrix"
+      ],
+      [
+        "/continuation?fixed=true{&abc%20def}",
+        "continuation"
+      ]
+    ],
+    "cases": [
+      {
+        "name": "preserves pct-encoded triplet in query variable name",
+        "routeName": "encodedQuery",
+        "values": {
+          "abc%20def": "spaced"
+        },
+        "expected": "/encoded-query?abc%20def=spaced"
+      },
+      {
+        "name": "preserves pct-encoded query variable names",
+        "routeName": "encodedLetters",
+        "values": {
+          "%41": "a",
+          "%42": "b"
+        },
+        "expected": "/encoded-letters?%41=a&%42=b"
+      },
+      {
+        "name": "preserves pct-encoded matrix variable name",
+        "routeName": "matrix",
+        "values": {
+          "abc%20def": "spaced"
+        },
+        "expected": "/matrix;abc%20def=spaced"
+      },
+      {
+        "name": "preserves pct-encoded continuation variable name",
+        "routeName": "continuation",
+        "values": {
+          "abc%20def": "spaced"
+        },
+        "expected": "/continuation?fixed=true&abc%20def=spaced"
+      }
+    ]
+  }
+]

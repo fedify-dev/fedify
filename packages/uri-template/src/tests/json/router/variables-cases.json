@@ -1,0 +1,58 @@
+[
+  {
+    "name": "literal path",
+    "path": "/users",
+    "expected": []
+  },
+  {
+    "name": "single variable",
+    "path": "/users/{name}",
+    "expected": [
+      "name"
+    ]
+  },
+  {
+    "name": "multiple variables",
+    "path": "/users/{name}/posts/{postId}",
+    "expected": [
+      "name",
+      "postId"
+    ]
+  },
+  {
+    "name": "leading path expansion",
+    "path": "{/identifier}/inbox",
+    "expected": [
+      "identifier"
+    ]
+  },
+  {
+    "name": "pct-encoded query variable name",
+    "path": "/encoded-query{?abc%20def}",
+    "expected": [
+      "abc%20def"
+    ]
+  },
+  {
+    "name": "pct-encoded query variable names",
+    "path": "/encoded-query{?%41,%42}",
+    "expected": [
+      "%41",
+      "%42"
+    ]
+  },
+  {
+    "name": "pct-encoded matrix variable name",
+    "path": "/matrix{;abc%20def}",
+    "expected": [
+      "abc%20def"
+    ]
+  },
+  {
+    "name": "pct-encoded continuation variable name",
+    "path": "/continuation?fixed=true{&abc%20def}",
+    "expected": [
+      "abc%20def"
+    ]
+  }
+]
