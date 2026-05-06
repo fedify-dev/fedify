@@ -1,11 +1,11 @@
+import type { TemplateOptions, Token } from "../types.ts";
+import { isLiteralAt, readCodePoint } from "./encoding.ts";
 import {
   InvalidLiteralError,
   NestedOpeningBraceError,
   StrayClosingBraceError,
   UnclosedExpressionError,
-} from "../errors.ts";
-import type { TemplateOptions, Token } from "../types.ts";
-import { isLiteralAt, readCodePoint } from "./encoding.ts";
+} from "./errors.ts";
 import parseExpression from "./expression.ts";
 
 /**

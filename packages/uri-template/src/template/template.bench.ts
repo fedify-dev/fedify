@@ -1,6 +1,6 @@
 import { test } from "@fedify/fixture";
 import { createTemplatePairTest, pairTestSuites } from "../tests/mod.ts";
-import Template from "./mod.ts";
+import Template from "./template.ts";
 
 Deno.bench("Template using RegExp", (b) => {
   const runPairCases = createTemplatePairTest(Template);

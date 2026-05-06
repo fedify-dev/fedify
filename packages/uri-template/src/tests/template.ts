@@ -1,5 +1,5 @@
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
-import * as ERROR_CLASSES from "../errors.ts";
+import * as ERROR_CLASSES from "../template/errors.ts";
 import type { ExpandContext } from "../types.ts";
 import testVars from "./json/references/vars.json" with { type: "json" };
 
@@ -170,7 +170,7 @@ interface WrongTemplateTestCase {
   template: string;
   /**
    * The `name` of the error class that the parser MUST throw, taken from
-   * the concrete classes exported by *src/errors.ts* (e.g.
+   * the concrete classes exported by *src/template/errors.ts* (e.g.
    * `"UnclosedExpressionError"`, `"InvalidLiteralError"`).
    *
    * The runner compares the thrown error's `instanceof` against the class
@@ -212,7 +212,7 @@ export function createWrongTemplateTest(
  *  - `success: true`  → `expected` is the exact expansion result string.
  *  - `success: false` → `expected` is the `name` of the error class that the
  *    parser or expander MUST throw, taken from the concrete classes exported
- *    by *src/errors.ts*. The runner verifies the thrown error via
+ *    by *src/template/errors.ts*. The runner verifies the thrown error via
  *    `instanceof` against the resolved class.
  *
  * Use {@link HardTestCase.reason} for the human-readable rationale.
@@ -238,7 +238,7 @@ interface HardSuccessCase extends HardCaseBase {
 interface HardFailureCase extends HardCaseBase {
   /**
    * The `name` of the error class that the parser or expander MUST throw,
-   * taken from the concrete classes exported by *src/errors.ts* (e.g.
+   * taken from the concrete classes exported by *src/template/errors.ts* (e.g.
    * `"UnclosedExpressionError"`, `"PrefixModifierNotApplicableError"`).
    *
    * The runner compares the thrown error's `instanceof` against the class

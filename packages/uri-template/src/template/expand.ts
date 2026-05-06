@@ -1,5 +1,4 @@
 import { operatorSpecs } from "../const.ts";
-import { PrefixModifierNotApplicableError } from "../errors.ts";
 import type {
   AssociativeValue,
   ExpandContext,
@@ -10,6 +9,7 @@ import type {
   VarSpec,
 } from "../types.ts";
 import { encodeName, encodeValue, truncateValue } from "./encoding.ts";
+import { PrefixModifierNotApplicableError } from "./errors.ts";
 
 /**
  * Expands one parsed URI Template expression against the supplied variable

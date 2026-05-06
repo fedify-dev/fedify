@@ -34,14 +34,14 @@
         "name": "Pct-encoded operator-like characters in a literal do not introduce another expression",
         "template": "%23section{?var}",
         "expected": "%23section?var=value",
-        "reason": "`%23` is the encoded `#`, which is forbidden as a bare literal but ALLOWED as a pct-encoded triplet. It must NOT trigger fragment-style expansion behavior.",
+        "reason": "`%23` is the encoded `#`. It appears in literal text, not in the operator slot immediately after `{`, so it must NOT trigger fragment-style expansion behavior.",
         "success": true
       },
       {
-        "name": "Pct-encoded reserved characters appear in literal even though their decoded forms are forbidden",
+        "name": "Pct-encoded forbidden literal characters appear in literal text",
         "template": "%3C%3E%5C%5E%60%7C{var}",
         "expected": "%3C%3E%5C%5E%60%7Cvalue",
-        "reason": "The bare characters `<`, `>`, `\\`, `^`, `` ` ``, `|` are forbidden in literals, but their pct-encoded forms `%3C`, `%3E`, `%5C`, `%5E`, `%60`, `%7C` are allowed verbatim.",
+        "reason": "The bare characters `<`, `>`, `\\`, `^`, `` ` ``, `|` are forbidden by RFC 6570 literal syntax, but their pct-encoded forms `%3C`, `%3E`, `%5C`, `%5E`, `%60`, `%7C` are allowed verbatim.",
         "success": true
       }
     ]
@@ -142,7 +142,7 @@
         "name": "Varname that looks like an encoded open-brace resolves to its defined value",
         "template": "{%7B}",
         "expected": "open-brace",
-        "reason": "Symmetric to the undefined `%7D` case: `%7B` is a single pct-encoded varchar and a complete varname. With `%7B` mapped to `open-brace` in the variable set, the expression expands to that defined value — the encoded-bracket appearance does NOT prevent normal lookup.",
+        "reason": "Analogous to the undefined `%7D` case: `%7B` is a single pct-encoded varchar and a complete varname. With `%7B` mapped to `open-brace` in the variable set, the expression expands to that defined value — the encoded-bracket appearance does NOT prevent normal lookup.",
         "success": true
       },
       {
@@ -168,7 +168,7 @@
         "name": "Null entries in a list are skipped during expansion",
         "template": "{sparse}",
         "expected": "one,three",
-        "reason": "RFC 6570 §2.3 says \"a list... a null... is considered undefined\". The null at index 1 is skipped; only `one` and `three` are joined by `,`.",
+        "reason": "RFC 6570 §3.2.1 expands only defined list member string values. The null at index 1 is treated as undefined and skipped; only `one` and `three` are joined by `,`.",
         "success": true
       },
       {
@@ -276,7 +276,7 @@
         "name": "Real opening brace nested inside a varname-shaped sequence is invalid",
         "template": "{var%7B%7D",
         "expected": "UnclosedExpressionError",
-        "reason": "The expression body becomes `var%7B%7D` — three pct-encoded characters all valid as varchars — but the expression never sees a literal `}`. Unclosed.",
+        "reason": "The expression body becomes `var%7B%7D` — two pct-encoded characters all valid as varchars — but the expression never sees a literal `}`. Unclosed.",
         "success": false
       }
     ]

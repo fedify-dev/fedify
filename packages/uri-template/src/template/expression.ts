@@ -1,4 +1,6 @@
 import { OPERATORS } from "../const.ts";
+import type { Operator, TemplateOptions, Token, VarSpec } from "../types.ts";
+import { isVarcharAt } from "./encoding.ts";
 import {
   EmptyExpressionError,
   EmptyVarNameError,
@@ -8,9 +10,7 @@ import {
   TrailingCommaError,
   UnexpectedCharacterError,
   UnknownOperatorError,
-} from "../errors.ts";
-import type { Operator, TemplateOptions, Token, VarSpec } from "../types.ts";
-import { isVarcharAt } from "./encoding.ts";
+} from "./errors.ts";
 
 const reservedOperators = ["=", ",", "!", "@", "|"] as const;
 

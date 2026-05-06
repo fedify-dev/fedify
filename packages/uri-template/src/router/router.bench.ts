@@ -14,7 +14,7 @@ import {
   routerMissPaths,
   routerRouteDefinitions,
 } from "../tests/mod.ts";
-import Router from "./mod.ts";
+import Router from "./router.ts";
 
 const runCompileAndAddRoutes = createRouterCompileAndAddBench(Router);
 Deno.bench(
