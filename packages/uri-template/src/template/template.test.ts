@@ -2,13 +2,6 @@ import { test } from "@fedify/fixture";
 import { deepEqual, equal } from "node:assert";
 import { throws } from "node:assert/strict";
 import {
-  InvalidLiteralError,
-  InvalidPrefixError,
-  PrefixModifierNotApplicableError,
-  ReservedOperatorError,
-  UnclosedExpressionError,
-} from "../errors.ts";
-import {
   createFixedTemplateMatchTest,
   createFixedTemplateTest,
   createMatchOnlyTest,
@@ -23,7 +16,14 @@ import {
   pairTestSuites,
   wrongTestSuites,
 } from "../tests/mod.ts";
-import Template from "./mod.ts";
+import {
+  InvalidLiteralError,
+  InvalidPrefixError,
+  PrefixModifierNotApplicableError,
+  ReservedOperatorError,
+  UnclosedExpressionError,
+} from "./errors.ts";
+import Template from "./template.ts";
 
 const runPairCases = createTemplatePairTest(Template);
 for (const { name, cases } of pairTestSuites) {

@@ -1,12 +1,6 @@
-import * as ERROR_CLASSES from "../errors.ts";
 import * as ROUTER_ERROR_CLASSES from "../router/errors.ts";
+import * as ERROR_CLASSES from "../template/errors.ts";
 import type { Path } from "../types.ts";
-import type {
-  HardTestSuite,
-  MatchTestSuite,
-  PairTestSuite,
-  WrongTestSuite,
-} from "./lib.ts";
 import type {
   RouterBuildCase,
   RouterBuildTestSuite,
@@ -16,11 +10,12 @@ import type {
   RouterRouteTestSuite,
   RouterVariablesCase,
 } from "./router.ts";
-
-const ERROR_NAMES: ReadonlySet<string> = new Set([
-  ...Object.keys(ERROR_CLASSES),
-  ...Object.keys(ROUTER_ERROR_CLASSES),
-]);
+import type {
+  HardTestSuite,
+  MatchTestSuite,
+  PairTestSuite,
+  WrongTestSuite,
+} from "./template.ts";
 
 export function assertPairTestSuite(
   suites: unknown,
@@ -341,6 +336,11 @@ function assertStringOrNull(
 ): asserts value is string | null {
   if (value !== null) assertString(value, label);
 }
+
+const ERROR_NAMES: ReadonlySet<string> = new Set([
+  ...Object.keys(ERROR_CLASSES),
+  ...Object.keys(ROUTER_ERROR_CLASSES),
+]);
 
 function assertErrorName(
   value: unknown,

@@ -13,10 +13,6 @@ import {
   assertRouterVariablesCases,
   assertWrongTestSuite,
 } from "./assert.ts";
-import _hardTestSuites from "./json/hard.json" with {
-  type: "json",
-};
-import _matchTestSuites from "./json/match.json" with { type: "json" };
 import _fixedTestSuites from "./json/references/fixed.json" with {
   type: "json",
 };
@@ -50,14 +46,11 @@ import _routerRouteTestSuites from "./json/router/route-suites.json" with {
 import _routerVariablesCases from "./json/router/variables-cases.json" with {
   type: "json",
 };
-import _wrongTestSuites from "./json/wrong.json" with { type: "json" };
-import type {
-  FixedTemplateTestSuite,
-  HardTestSuite,
-  MatchTestSuite,
-  PairTestSuite,
-  WrongTestSuite,
-} from "./lib.ts";
+import _hardTestSuites from "./json/template/hard.json" with {
+  type: "json",
+};
+import _matchTestSuites from "./json/template/match.json" with { type: "json" };
+import _wrongTestSuites from "./json/template/wrong.json" with { type: "json" };
 import type {
   RouterBuildCase,
   RouterBuildTestSuite,
@@ -67,6 +60,13 @@ import type {
   RouterRouteTestSuite,
   RouterVariablesCase,
 } from "./router.ts";
+import type {
+  FixedTemplateTestSuite,
+  HardTestSuite,
+  MatchTestSuite,
+  PairTestSuite,
+  WrongTestSuite,
+} from "./template.ts";
 
 type JsonAssertion<T> = (value: unknown) => asserts value is T;
 
@@ -137,7 +137,7 @@ export {
   createTemplateMatchTest,
   createTemplatePairTest,
   createWrongTemplateTest,
-} from "./lib.ts";
+} from "./template.ts";
 export {
   createRouterAddTest,
   createRouterBuildPathsBench,

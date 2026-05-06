@@ -324,7 +324,7 @@
       },
       {
         "template": "{,var}",
-        "name": "empty varname before comma in variable-list",
+        "name": "reserved comma operator before variable-list",
         "expected": "ReservedOperatorError"
       },
       {

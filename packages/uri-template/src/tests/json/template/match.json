@@ -467,7 +467,7 @@
           "page": "intro",
           "anchor": "getting-started"
         },
-        "reason": "Simple expansion would percent-encode `#`, so `{page}` cannot consume past the fragment delimiter. `{#anchor}` then absorbs the rest, including the leading `#`."
+        "reason": "Simple expansion would percent-encode `#`, so `{page}` cannot consume past the fragment delimiter. `{#anchor}` consumes the leading `#` as the fragment operator prefix and binds `anchor` to the value after it."
       },
       {
         "name": "Section and id captured as path segments before a fragment",
@@ -478,7 +478,7 @@
           "id": "42",
           "anchor": "comments"
         },
-        "reason": "Three expressions cooperate: `{section}` and `{id}` are simple expansions bounded by `/` literals; `{#anchor}` captures the fragment with the `#` prefix as its own first character."
+        "reason": "Three expressions cooperate: `{section}` and `{id}` are simple expansions bounded by `/` literals; `{#anchor}` consumes the `#` prefix and captures the fragment value after it."
       },
       {
         "name": "Missing fragment leaves the variable unbound",

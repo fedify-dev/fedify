@@ -63,8 +63,8 @@ export class TemplateParseError extends Error {
 /**
  * Raised when an opening `{` has no matching `}` before the template ends.
  *
- * Fix: close the expression with `}` or escape the literal `{` (RFC 6570
- * does not define an escape; remove the stray brace).
+ * Fix: close the expression with `}` or pct-encode the literal `{` as `%7B`.
+ * RFC 6570 does not define an escape syntax.
  */
 export class UnclosedExpressionError extends TemplateParseError {
   constructor(template: string, position: number) {

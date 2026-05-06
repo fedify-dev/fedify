@@ -13,7 +13,7 @@ import {
   routerRouteTestSuites,
   routerVariablesCases,
 } from "../tests/mod.ts";
-import Router from "./mod.ts";
+import Router from "./router.ts";
 
 const runAddCases = createRouterAddTest(Router);
 test("Router.add()", runAddCases(routerRouteDefinitions));
