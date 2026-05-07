@@ -10,8 +10,9 @@ export { Router, RouterError, RouteTemplatePathError } from "./router/mod.ts";
 export type {
   RouterOptions,
   RouterPathPattern,
+  RouterRoute,
   RouterRouteResult,
-} from "./router/router.ts";
+} from "./router/mod.ts";
 export {
   EmptyExpressionError,
   EmptyVarNameError,
