@@ -26,6 +26,28 @@ export default class Trie<TEntry extends TrieEntry> {
     this.#dirty = true;
   };
 
+  insertAll = (entries: readonly TEntry[]): void => {
+    if (entries.length === 0) return;
+
+    const buckets = new Map<Node<TEntry>, TEntry[]>();
+
+    for (const entry of entries) {
+      let node = this.#root;
+      for (const char of entry.initialLiteralPrefix) {
+        node = node.childOrInsert(char);
+      }
+      const bucket = buckets.get(node);
+      if (bucket == null) buckets.set(node, [entry]);
+      else bucket.push(entry);
+    }
+
+    for (const [node, bucket] of buckets) {
+      node.insertAll(bucket);
+    }
+
+    this.#dirty = true;
+  };
+
   *candidates(
     path: Path,
     isActive: (entry: TEntry) => boolean,

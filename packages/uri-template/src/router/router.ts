@@ -53,6 +53,17 @@ export interface RouterPathPattern {
   readonly variables: ReadonlySet<string>;
 }
 
+/**
+ * Route definition accepted by {@link Router#register}, the {@link Router}
+ * constructor, and {@link Router.from}.  The first element is either a path
+ * template string or a pre-parsed {@link RouterPathPattern} from
+ * {@link Router.compile}; the second element is the route name.
+ */
+export type RouterRoute = readonly [
+  pathOrPattern: Path | RouterPathPattern,
+  name: string,
+];
+
 interface RouteEntry {
   readonly index: number;
   readonly name: string;
@@ -77,26 +88,54 @@ export default class Router {
 
   /**
    * Create a new {@link Router}.
+   *
+   * The first argument may be an iterable of routes, an options object, or
+   * omitted.  When two arguments are passed, they are interpreted as
+   * `(routes, options)`.
+   *
+   * @param routes Routes to register on the new router.
    * @param options Options for the router.
    */
-  constructor(options: RouterOptions = {}) {
+  constructor(routes: Iterable<RouterRoute>, options?: RouterOptions);
+  constructor(options?: RouterOptions);
+  constructor(
+    routesOrOptions?: Iterable<RouterRoute> | RouterOptions,
+    maybeOptions?: RouterOptions,
+  ) {
+    const routes = isRoutesArgument(routesOrOptions)
+      ? routesOrOptions
+      : undefined;
+    const options = isRoutesArgument(routesOrOptions)
+      ? maybeOptions
+      : routesOrOptions;
+
     this.#trie = new Trie();
     this.#routesByName = new Map();
     this.#nextIndex = 0;
-    this.trailingSlashInsensitive = options.trailingSlashInsensitive ?? false;
+    this.trailingSlashInsensitive = options?.trailingSlashInsensitive ?? false;
+
+    if (routes != null) this.register(routes);
   }
 
-  clone(): Router {
-    const clone = new Router({
-      trailingSlashInsensitive: this.trailingSlashInsensitive,
-    });
-
-    for (const entry of this.#activeEntries()) {
-      clone.add(entry.pattern.path, entry.name);
-    }
-
-    return clone;
+  /**
+   * Creates a new {@link Router}.  Mirrors the constructor argument
+   * interface and is provided for ergonomic call sites that prefer a
+   * static factory over `new`.
+   */
+  static from(routes: Iterable<RouterRoute>, options?: RouterOptions): Router;
+  static from(options?: RouterOptions): Router;
+  static from(
+    routesOrOptions?: Iterable<RouterRoute> | RouterOptions,
+    options?: RouterOptions,
+  ): Router {
+    return new Router(routesOrOptions as Iterable<RouterRoute>, options);
   }
+
+  clone = (): Router =>
+    new Router(
+      this.#activeEntries(),
+      { trailingSlashInsensitive: this.trailingSlashInsensitive },
+    );
 
   /**
    * Compiles a path template without registering it in a router.
@@ -133,15 +172,41 @@ export default class Router {
 
   /**
    * Adds a new path rule to the router.
-   * @param template The path template to add.
+   * @param pathOrPattern The path template, or a pre-parsed
+   *                      {@link RouterPathPattern} produced by
+   *                      {@link Router.compile}.
    * @param name The name of the path.
    */
-  add = (template: Path, name: string): void => {
-    const pattern = Router.compile(template);
+  add = (pathOrPattern: Path | RouterPathPattern, name: string): void => {
+    const pattern = resolvePathPattern(pathOrPattern);
     const entry = createRouteEntry({ index: this.#nextIndex++, name, pattern });
 
     this.#routesByName.set(name, entry);
     this.#trie.insert(entry);
+  };
+
+  /**
+   * Registers multiple path rules at once.  Compared to calling {@link add}
+   * in a loop, this batches trie insertions into one sorted merge per
+   * affected node, which lowers the asymptotic cost of bulk registration.
+   * @param routes Iterable of `[pathOrPattern, name]` pairs to register.
+   */
+  register = (routes: Iterable<RouterRoute>): void => {
+    const entries: RouteEntry[] = [];
+
+    for (const [pathOrPattern, name] of routes) {
+      const pattern = resolvePathPattern(pathOrPattern);
+      const entry = createRouteEntry({
+        index: this.#nextIndex++,
+        name,
+        pattern,
+      });
+
+      this.#routesByName.set(name, entry);
+      entries.push(entry);
+    }
+
+    this.#trie.insertAll(entries);
   };
 
   /**
@@ -186,9 +251,11 @@ export default class Router {
     return null;
   }
 
-  #activeEntries = (): RouteEntry[] =>
+  #activeEntries = (): RouterRoute[] =>
     Array.from(this.#routesByName.values())
-      .sort((left, right) => left.index - right.index);
+      .sort((left, right) => left.index - right.index)
+      .filter(this.#isActiveEntry)
+      .map((entry): RouterRoute => [entry.pattern, entry.name]);
 
   #isActiveEntry = (entry: RouteEntry): boolean =>
     this.#routesByName.get(entry.name) === entry;
@@ -212,6 +279,18 @@ const createRouteEntry = ({
   literalLength: getLiteralLength(pattern.template.tokens),
   variableCount: pattern.variables.size,
 });
+
+const resolvePathPattern = (
+  value: Path | RouterPathPattern,
+): RouterPathPattern =>
+  typeof value === "string" ? Router.compile(value) : value;
+
+const isRoutesArgument = (
+  value: Iterable<RouterRoute> | RouterOptions | undefined,
+): value is Iterable<RouterRoute> =>
+  value != null &&
+  typeof value === "object" &&
+  Symbol.iterator in (value as object);
 
 const toggleTrailingSlash = (path: Path): Path | null => {
   if (!path.endsWith("/")) return `${path}/`;

@@ -35,6 +35,20 @@ export default class Node<TEntry extends PrioritizedRouteEntry> {
     this.#entries.splice(this.#insertionIndex(entry), 0, entry);
   };
 
+  insertAll = (entries: TEntry[]): void => {
+    if (entries.length === 0) return;
+    if (entries.length === 1) {
+      this.insert(entries[0]);
+      return;
+    }
+
+    entries.sort(compareRouteEntries);
+    const merged = mergeRouteEntries(this.#entries, entries);
+
+    this.#entries.length = 0;
+    for (const entry of merged) this.#entries.push(entry);
+  };
+
   rebuildCandidates = (parentCandidates: readonly TEntry[]): void => {
     this.#candidates = mergeRouteEntries(parentCandidates, this.#entries);
 
