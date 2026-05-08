@@ -128,6 +128,7 @@ export const routerCloneTestSuites: readonly RouterCloneTestSuite[] = validate(
   assertRouterCloneTestSuites,
   _routerCloneTestSuites,
 );
+
 export {
   createDeepPrefixRouterTest,
   createDynamicRoutesTest,
@@ -148,6 +149,8 @@ export {
 export {
   createFixedTemplateMatchTest,
   createFixedTemplateTest,
+  createMatchBench,
+  createMatchBenchTestCases,
   createMatchOnlyTest,
   createTemplateHardTest,
   createTemplateMatchHardTest,
