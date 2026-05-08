@@ -7,7 +7,9 @@
   },
   "description": "RFC 6570 URI Template expansion and round-trip pattern matching for Fedify",
   "author": {
-    "name": "Chanhaeng Lee"
+    "name": "Chanhaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://chomu.dev"
   },
   "imports": {},
   "exclude": [
@@ -21,8 +23,8 @@
     ]
   },
   "tasks": {
-    "bench": "deno test --allow-env bench/",
-    "check": "deno fmt --check && deno lint && deno check src/",
-    "test": "deno test --allow-env src/"
+    "check": "deno fmt --check && deno lint && deno check",
+    "test": "deno test --allow-env src/",
+    "test:old": "OLD=true deno test --allow-env old/"
   }
 }

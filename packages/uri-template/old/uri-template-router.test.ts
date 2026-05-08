@@ -22,9 +22,9 @@ import type { Path } from "../src/types.ts";
 
 /**
  * Known failures for npm:uri-template-router@^1.0.0, checked with
- * `deno test --allow-env packages/uri-template/bench/uri-template-router.test.ts`.
- * These pct-encoding gaps are the main routing correctness issues that
- * motivated the @fedify/uri-template Router implementation.
+ * `deno task test:old`. These pct-encoding gaps are the main routing
+ * correctness issues that motivated the @fedify/uri-template Router
+ * implementation.
  *
  * RFC 6570 treats pct-encoded triplets as valid literal and varname syntax.
  * It also distinguishes reserved characters from their pct-encoded forms
@@ -187,31 +187,35 @@ export class RouterError extends Error {
   }
 }
 
-const runAddCases = createRouterAddTest(Router);
-test("Router.add()", runAddCases(routerRouteDefinitions));
+const isTest = Deno.env.get("OLD") === "true";
 
-const runVariablesCases = createRouterVariablesTest(Router);
-test("Router.variables()", runVariablesCases(routerVariablesCases));
+if (isTest) {
+  const runAddCases = createRouterAddTest(Router);
+  test("Router.add()", runAddCases(routerRouteDefinitions));
 
-const runCloneCases = createRouterCloneTest(Router);
-test("Router.clone()", runCloneCases(routerCloneTestSuites));
+  const runVariablesCases = createRouterVariablesTest(Router);
+  test("Router.variables()", runVariablesCases(routerVariablesCases));
 
-const runRouteCases = createRouterRouteTest(Router);
-for (
-  const { name, options, routeDefinitions, cases } of routerRouteTestSuites
-) {
-  test(
-    `Router.route(): ${name}`,
-    runRouteCases(routeDefinitions, options)(cases),
-  );
-}
+  const runCloneCases = createRouterCloneTest(Router);
+  test("Router.clone()", runCloneCases(routerCloneTestSuites));
 
-const runBuildCases = createRouterBuildTest(Router);
-for (
-  const { name, options, routeDefinitions, cases } of routerBuildTestSuites
-) {
-  test(
-    `Router.build(): ${name}`,
-    runBuildCases(routeDefinitions, options)(cases),
-  );
+  const runRouteCases = createRouterRouteTest(Router);
+  for (
+    const { name, options, routeDefinitions, cases } of routerRouteTestSuites
+  ) {
+    test(
+      `Router.route(): ${name}`,
+      runRouteCases(routeDefinitions, options)(cases),
+    );
+  }
+
+  const runBuildCases = createRouterBuildTest(Router);
+  for (
+    const { name, options, routeDefinitions, cases } of routerBuildTestSuites
+  ) {
+    test(
+      `Router.build(): ${name}`,
+      runBuildCases(routeDefinitions, options)(cases),
+    );
+  }
 }

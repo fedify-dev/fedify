@@ -33,7 +33,7 @@ parser and one expansion/matching model.
 
 [url-template] describes itself as an RFC 6570 implementation, but its behavior
 is not strict enough for Fedify's URI routing and round-trip matching needs.
-The benchmark in *bench/url-template.test.ts* records the differences against
+The test in *old/url-template.test.ts* records the differences against
 `npm:url-template@^3.1.1`.
 
 The important failures are:
@@ -76,7 +76,7 @@ all errors or throw only for selected error classes.
 
 The previous router shape combined two independent third-party
 implementations: [url-template] for building URLs and [uri-template-router] for
-matching URLs.  *bench/uri-template-router.test.ts* defines that old shape as
+matching URLs.  *old/uri-template-router.test.ts* defines that old shape as
 closely as possible so the differences are visible under the same route API.
 
 The important differences are:
@@ -115,12 +115,12 @@ The important differences are:
     and dependency-free at runtime.
 
 The old implementation differences can be checked by running the compatibility
-tests in *bench/url-template.test.ts* and *bench/uri-template-router.test.ts*.
+tests in *old/url-template.test.ts* and *old/uri-template-router.test.ts*.
 These tests intentionally run Fedify's expected behavior against the old
 libraries, so the failing cases show the gaps:
 
 ~~~~ bash
-deno task bench
+deno task test:old
 ~~~~
 
 

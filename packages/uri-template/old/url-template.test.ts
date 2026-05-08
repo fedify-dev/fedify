@@ -13,7 +13,8 @@ import {
 } from "../src/tests/mod.ts";
 
 /**
- * Known failures for npm:url-template@^3.1.1, checked with `deno task bench`.
+ * Known failures for npm:url-template@^3.1.1, checked with
+ * `deno task test:old`.
  * These are the compatibility gaps that motivated the strict
  * @fedify/uri-template implementation.
  *
@@ -70,22 +71,26 @@ class Template {
   match = (_: string) => null;
 }
 
-const runPairCases = createTemplatePairTest(Template);
-for (const { name, cases } of pairTestSuites) {
-  test(name, runPairCases(cases as unknown as readonly [string, string][]));
-}
+const isTest = Deno.env.get("OLD") === "true";
 
-const runFixedCases = createFixedTemplateTest(Template);
-for (const { template, name, cases } of fixedTestSuites) {
-  test(name, runFixedCases(template)(cases));
-}
+if (isTest) {
+  const runPairCases = createTemplatePairTest(Template);
+  for (const { name, cases } of pairTestSuites) {
+    test(name, runPairCases(cases as unknown as readonly [string, string][]));
+  }
 
-const runWrongCases = createWrongTemplateTest(Template);
-for (const { name, cases } of wrongTestSuites) {
-  test(name, runWrongCases(cases));
-}
+  const runFixedCases = createFixedTemplateTest(Template);
+  for (const { template, name, cases } of fixedTestSuites) {
+    test(name, runFixedCases(template)(cases));
+  }
 
-const runHardCases = createTemplateHardTest(Template);
-for (const { name, cases } of hardTestSuites) {
-  test(name, runHardCases(cases));
+  const runWrongCases = createWrongTemplateTest(Template);
+  for (const { name, cases } of wrongTestSuites) {
+    test(name, runWrongCases(cases));
+  }
+
+  const runHardCases = createTemplateHardTest(Template);
+  for (const { name, cases } of hardTestSuites) {
+    test(name, runHardCases(cases));
+  }
 }
