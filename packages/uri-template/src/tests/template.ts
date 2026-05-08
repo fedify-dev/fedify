@@ -336,3 +336,36 @@ export function createTemplateMatchHardTest(
     }
   };
 }
+
+export function createMatchBench(
+  Template: TemplateConstructor,
+): (templateText: string) => (uris: readonly string[]) => void {
+  return (templateText: string): (uris: readonly string[]) => void => {
+    const template = new Template(templateText);
+    return (uris: readonly string[]): void => {
+      for (const uri of uris) template.match(uri);
+    };
+  };
+}
+const mod = (i: number, j: number) => Math.floor(i / j);
+
+export function createMatchBenchTestCases(): readonly string[] {
+  let a = "/A";
+  const b = ["/A"];
+  for (let i = 1; i < 26; i++) {
+    a += "/" + String.fromCharCode(0x41 + i);
+    b.push(a);
+  }
+
+  for (let i = 0; i < 26; i++) {
+    a += "/" + String.fromCharCode(0x61 + i);
+    b.push(a);
+  }
+  for (let i = 0; i < 676; i++) {
+    a += "/" +
+      String.fromCharCode(0x61 + mod(i, 26)) +
+      String.fromCharCode(0x61 + i % 26);
+    b.push(a);
+  }
+  return b;
+}
