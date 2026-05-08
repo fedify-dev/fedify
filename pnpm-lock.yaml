@@ -1146,6 +1146,9 @@ importers:
 
   packages/fedify:
     dependencies:
+      '@fedify/uri-template':
+        specifier: workspace:*
+        version: link:../uri-template
       '@fedify/vocab':
         specifier: workspace:*
         version: link:../vocab

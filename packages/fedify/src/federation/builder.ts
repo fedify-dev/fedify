@@ -1,3 +1,9 @@
+import {
+  isExpression,
+  type Path,
+  Router,
+  RouterError,
+} from "@fedify/uri-template";
 import type {
   Activity,
   Actor,
@@ -8,9 +14,10 @@ import type {
 } from "@fedify/vocab";
 import { getTypeId, Tombstone } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
-import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { Tracer } from "@opentelemetry/api";
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
+import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -41,7 +48,6 @@ import type {
   OutboxContext,
   RequestContext,
 } from "./context.ts";
-import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorCallbackSetters,
   CollectionCallbackSetters,
@@ -61,7 +67,6 @@ import type {
   CollectionCallbacks,
   CustomCollectionCallbacks,
 } from "./handler.ts";
-import { Router, RouterError } from "./router.ts";
 
 export const ACTOR_ALIAS_PREFIX = "actorAlias:";
 
@@ -69,24 +74,24 @@ function validateSingleIdentifierVariablePath(
   path: string,
   errorMessage: string,
 ): void {
-  const operatorMatches = globalThis.Array.from(
-    path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
-  );
-  if (
-    operatorMatches.length !== 1 ||
-    operatorMatches[0]?.[2] !== "identifier"
-  ) {
+  const pattern = Router.compile(path as Path);
+  if (pattern.variables.size !== 1 || !pattern.variables.has("identifier")) {
     throw new RouterError(errorMessage);
   }
-  if (
-    operatorMatches.some((match) =>
-      ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
-    )
-  ) {
+  const expressions = pattern.template.tokens
+    .filter(isExpression)
+    .filter((token) => token.vars.some(({ name }) => name === "identifier"));
+
+  if (expressions.length !== 1 || expressions[0].vars.length !== 1) {
     throw new RouterError(errorMessage);
   }
-  const variables = new Router().add(path, "outbox");
-  if (variables.size !== 1 || !variables.has("identifier")) {
+
+  const { operator, vars: [varSpec] } = expressions[0];
+  if (
+    ["?", "&", "#"].includes(operator) ||
+    varSpec.explode ||
+    varSpec.prefix != null
+  ) {
     throw new RouterError(errorMessage);
   }
 }
@@ -251,7 +256,8 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("actor")) {
       throw new RouterError("Actor dispatcher already set.");
     }
-    const variables = this.router.add(path, "actor");
+    const variables = Router.variables(path as Path);
+    this.router.add(path as Path, "actor");
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -524,7 +530,7 @@ export class FederationBuilderImpl<TContextData>
         callbacks.aliasMapper = mapper;
         return setters;
       },
-      mapActorAlias: (path: `/${string}`, identifier: string) => {
+      mapActorAlias: (path: Path, identifier: string) => {
         if (identifier === "") {
           throw new RouterError("Identifier cannot be empty.");
         }
@@ -533,7 +539,7 @@ export class FederationBuilderImpl<TContextData>
             `Actor alias for "${identifier}" already set.`,
           );
         }
-        const variables = new Router().add(path, "temp");
+        const variables = Router.variables(path);
         if (variables.size > 0) {
           throw new RouterError(
             "Path for actor alias must have no variables.",
@@ -563,12 +569,13 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("nodeInfo")) {
       throw new RouterError("NodeInfo dispatcher already set.");
     }
-    const variables = this.router.add(path, "nodeInfo");
+    const variables = Router.variables(path as Path);
     if (variables.size !== 0) {
       throw new RouterError(
         "Path for NodeInfo dispatcher must have no variables.",
       );
     }
+    this.router.add(path as Path, "nodeInfo");
     this.nodeInfoDispatcher = dispatcher;
   }
 
@@ -624,12 +631,13 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has(routeName)) {
       throw new RouterError(`Object dispatcher for ${cls.name} already set.`);
     }
-    const variables = this.router.add(path, routeName);
+    const variables = Router.variables(path as Path);
     if (variables.size < 1) {
       throw new RouterError(
         "Path for object dispatcher must have at least one variable.",
       );
     }
+    this.router.add(path as Path, routeName);
     const callbacks: ObjectCallbacks<TContextData, TParam> = {
       dispatcher: (ctx, values) => {
         const tracer = this._getTracer();
@@ -711,7 +719,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      const variables = this.router.add(path, "inbox");
+      const variables = Router.variables(path as Path);
       if (
         variables.size !== 1 ||
         !variables.has("identifier")
@@ -720,6 +728,7 @@ export class FederationBuilderImpl<TContextData>
           "Path for inbox dispatcher must have one variable: {identifier}",
         );
       }
+      this.router.add(path as Path, "inbox");
       this.inboxPath = path;
     }
     const callbacks: CollectionCallbacks<
@@ -793,7 +802,7 @@ export class FederationBuilderImpl<TContextData>
         path,
         "Path for outbox dispatcher must have one variable: {identifier}",
       );
-      this.router.add(path, "outbox");
+      this.router.add(path as Path, "outbox");
       this.outboxPath = path;
     }
     const callbacks: CollectionCallbacks<
@@ -857,7 +866,7 @@ export class FederationBuilderImpl<TContextData>
         outboxPath,
         "Path for outbox must have one variable: {identifier}",
       );
-      this.router.add(outboxPath, "outbox");
+      this.router.add(outboxPath as Path, "outbox");
       this.outboxPath = outboxPath;
     }
     const listeners = this.outboxListeners = new ActivityListenerSet<
@@ -904,7 +913,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("following")) {
       throw new RouterError("Following collection dispatcher already set.");
     }
-    const variables = this.router.add(path, "following");
+    const variables = Router.variables(path as Path);
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -914,6 +923,7 @@ export class FederationBuilderImpl<TContextData>
           "{identifier}",
       );
     }
+    this.router.add(path as Path, "following");
     const callbacks: CollectionCallbacks<
       Actor | URL,
       RequestContext<TContextData>,
@@ -970,7 +980,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("followers")) {
       throw new RouterError("Followers collection dispatcher already set.");
     }
-    const variables = this.router.add(path, "followers");
+    const variables = Router.variables(path as Path);
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -980,6 +990,7 @@ export class FederationBuilderImpl<TContextData>
           "{identifier}",
       );
     }
+    this.router.add(path as Path, "followers");
     const callbacks: CollectionCallbacks<
       Recipient,
       Context<TContextData>,
@@ -1032,7 +1043,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("liked")) {
       throw new RouterError("Liked collection dispatcher already set.");
     }
-    const variables = this.router.add(path, "liked");
+    const variables = Router.variables(path as Path);
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -1042,6 +1053,7 @@ export class FederationBuilderImpl<TContextData>
           "{identifier}",
       );
     }
+    this.router.add(path as Path, "liked");
     const callbacks: CollectionCallbacks<
       Like,
       RequestContext<TContextData>,
@@ -1102,7 +1114,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("featured")) {
       throw new RouterError("Featured collection dispatcher already set.");
     }
-    const variables = this.router.add(path, "featured");
+    const variables = Router.variables(path as Path);
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -1112,6 +1124,7 @@ export class FederationBuilderImpl<TContextData>
           "{identifier}",
       );
     }
+    this.router.add(path as Path, "featured");
     const callbacks: CollectionCallbacks<
       Object,
       RequestContext<TContextData>,
@@ -1172,7 +1185,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("featuredTags")) {
       throw new RouterError("Featured tags collection dispatcher already set.");
     }
-    const variables = this.router.add(path, "featuredTags");
+    const variables = Router.variables(path as Path);
     if (
       variables.size !== 1 ||
       !variables.has("identifier")
@@ -1182,6 +1195,7 @@ export class FederationBuilderImpl<TContextData>
           "variable: {identifier}",
       );
     }
+    this.router.add(path as Path, "featuredTags");
     const callbacks: CollectionCallbacks<
       Hashtag,
       RequestContext<TContextData>,
@@ -1240,7 +1254,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      const variables = this.router.add(inboxPath, "inbox");
+      const variables = Router.variables(inboxPath as Path);
       if (
         variables.size !== 1 ||
         !variables.has("identifier")
@@ -1249,15 +1263,17 @@ export class FederationBuilderImpl<TContextData>
           "Path for inbox must have one variable: {identifier}",
         );
       }
+      this.router.add(inboxPath as Path, "inbox");
       this.inboxPath = inboxPath;
     }
     if (sharedInboxPath != null) {
-      const siVars = this.router.add(sharedInboxPath, "sharedInbox");
+      const siVars = Router.variables(sharedInboxPath as Path);
       if (siVars.size !== 0) {
         throw new RouterError(
           "Path for shared inbox must have no variables.",
         );
       }
+      this.router.add(sharedInboxPath as Path, "sharedInbox");
     }
     const listeners = this.inboxListeners = new ActivityListenerSet<
       InboxContext<TContextData>
@@ -1533,12 +1549,13 @@ export class FederationBuilderImpl<TContextData>
       );
     }
 
-    const variables = this.router.add(path, routeName);
+    const variables = Router.variables(path as Path);
     if (variables.size < 1) {
       throw new RouterError(
         "Path for collection dispatcher must have at least one variable.",
       );
     }
+    this.router.add(path as Path, routeName);
 
     const callbacks: CustomCollectionCallbacks<
       TObject,

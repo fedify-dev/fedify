@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { RouterError } from "@fedify/uri-template";
 import { Activity, Note, Person } from "@fedify/vocab";
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import type { Protocol } from "../nodeinfo/types.ts";
@@ -13,7 +14,6 @@ import type {
 } from "./callback.ts";
 import { MemoryKvStore } from "./kv.ts";
 import type { FederationImpl } from "./middleware.ts";
-import { RouterError } from "./router.ts";
 
 test("FederationBuilder", async (t) => {
   await t.step(
@@ -211,6 +211,27 @@ test("FederationBuilder", async (t) => {
         ),
       RouterError,
     );
+    assertThrows(
+      () =>
+        builderAfterInvalid.setOutboxListeners(
+          "/users/{identifier:3}/outbox" as `${string}{identifier}${string}`,
+        ),
+      RouterError,
+    );
+    assertThrows(
+      () =>
+        builderAfterInvalid.setOutboxListeners(
+          "/users/{identifier*}/outbox" as `${string}{identifier}${string}`,
+        ),
+      RouterError,
+    );
+    assertThrows(
+      () =>
+        builderAfterInvalid.setOutboxListeners(
+          "/users/{identifier,identifier}/outbox" as `${string}{identifier}${string}`,
+        ),
+      RouterError,
+    );
     builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
 
     const builder2 = createFederationBuilder<void>();
@@ -236,6 +257,16 @@ test("FederationBuilder", async (t) => {
       () =>
         builder4.setOutboxDispatcher(
           "/users{?identifier}/outbox",
+          () => ({ items: [] }),
+        ),
+      RouterError,
+    );
+
+    const builder5 = createFederationBuilder<void>();
+    assertThrows(
+      () =>
+        builder5.setOutboxDispatcher(
+          "/users/{identifier:3}/outbox" as `${string}{identifier}${string}`,
           () => ({ items: [] }),
         ),
       RouterError,
