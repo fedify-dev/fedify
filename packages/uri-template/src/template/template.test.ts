@@ -26,37 +26,22 @@ import {
 import Template from "./template.ts";
 
 const runPairCases = createTemplatePairTest(Template);
-for (const { name, cases } of pairTestSuites) {
-  test(name, runPairCases(cases as unknown as readonly [string, string][]));
-}
+test("expand: examples", runPairCases(pairTestSuites));
 
 const runFixedCases = createFixedTemplateTest(Template);
-for (const { template, name, cases } of fixedTestSuites) {
-  test(name, runFixedCases(template)(cases));
-}
+test("expand: fixed templates", runFixedCases(fixedTestSuites));
 
 const runWrongCases = createWrongTemplateTest(Template);
-for (const { name, cases } of wrongTestSuites) {
-  test(name, runWrongCases(cases));
-}
+test("parse: invalid templates", runWrongCases(wrongTestSuites));
 
 const runHardCases = createTemplateHardTest(Template);
-for (const { name, cases } of hardTestSuites) {
-  test(name, runHardCases(cases));
-}
+test("expand: hard cases", runHardCases(hardTestSuites));
 
 const runMatchCases = createTemplateMatchTest(Template);
-for (const { name, cases } of pairTestSuites) {
-  test(
-    `match: ${name}`,
-    runMatchCases(cases as unknown as readonly [string, string][]),
-  );
-}
+test("match: examples", runMatchCases(pairTestSuites));
 
 const runFixedMatchCases = createFixedTemplateMatchTest(Template);
-for (const { template, name, cases } of fixedTestSuites) {
-  test(`match: ${name}`, runFixedMatchCases(template)(cases));
-}
+test("match: fixed templates", runFixedMatchCases(fixedTestSuites));
 
 const runHardMatchCases = createTemplateMatchHardTest(Template);
 for (const { name, cases } of hardTestSuites) {
@@ -64,9 +49,7 @@ for (const { name, cases } of hardTestSuites) {
 }
 
 const runMatchOnlyCases = createMatchOnlyTest(Template);
-for (const { name, cases } of matchTestSuites) {
-  test(`match-only: ${name}`, runMatchOnlyCases(cases));
-}
+test("match-only", runMatchOnlyCases(matchTestSuites));
 
 test("throws parse errors in strict mode", () => {
   throws(() => new Template("{var"), UnclosedExpressionError);

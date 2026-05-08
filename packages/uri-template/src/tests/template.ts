@@ -20,19 +20,23 @@ export interface PairTestSuite {
 export function createTemplatePairTest(
   Template: TemplateConstructor,
 ): (
-  cases: readonly PairTestCase[],
+  suites: readonly PairTestSuite[],
   context?: ExpandContext,
 ) => (t: Deno.TestContext) => Promise<void> {
   return (
-    cases: readonly PairTestCase[],
+    suites: readonly PairTestSuite[],
     context: ExpandContext = testVars,
   ): (t: Deno.TestContext) => Promise<void> =>
   async (t: Deno.TestContext): Promise<void> => {
-    for (const [template, expected] of cases) {
-      await t.step(
-        `${template} => ${expected}`,
-        () => equal(new Template(template).expand(context), expected),
-      );
+    for (const { name, cases } of suites) {
+      await t.step(name, async (t) => {
+        for (const [template, expected] of cases) {
+          await t.step(
+            `${template} => ${expected}`,
+            () => equal(new Template(template).expand(context), expected),
+          );
+        }
+      });
     }
   };
 }
@@ -40,22 +44,26 @@ export function createTemplatePairTest(
 export function createTemplateMatchTest(
   Template: TemplateConstructor,
 ): (
-  cases: readonly PairTestCase[],
+  suites: readonly PairTestSuite[],
 ) => (t: Deno.TestContext) => Promise<void> {
   return (
-    cases: readonly PairTestCase[],
+    suites: readonly PairTestSuite[],
   ): (t: Deno.TestContext) => Promise<void> =>
   async (t: Deno.TestContext): Promise<void> => {
-    for (const [template, expanded] of cases) {
-      await t.step(
-        `${expanded} => ${template}`,
-        () => {
-          const instance = new Template(template);
-          const matched = instance.match(expanded);
-          ok(matched != null, `match returned null for ${expanded}`);
-          equal(instance.expand(matched), expanded);
-        },
-      );
+    for (const { name, cases } of suites) {
+      await t.step(name, async (t) => {
+        for (const [template, expanded] of cases) {
+          await t.step(
+            `${expanded} => ${template}`,
+            () => {
+              const instance = new Template(template);
+              const matched = instance.match(expanded);
+              ok(matched != null, `match returned null for ${expanded}`);
+              equal(instance.expand(matched), expanded);
+            },
+          );
+        }
+      });
     }
   };
 }
@@ -76,16 +84,20 @@ interface MatchTestCase {
 export function createMatchOnlyTest(
   Template: TemplateConstructor,
 ): (
-  cases: readonly MatchTestCase[],
+  suites: readonly MatchTestSuite[],
 ) => (t: Deno.TestContext) => Promise<void> {
   return (
-    cases: readonly MatchTestCase[],
+    suites: readonly MatchTestSuite[],
   ): (t: Deno.TestContext) => Promise<void> =>
   async (t: Deno.TestContext): Promise<void> => {
-    for (const c of cases) {
-      await t.step(c.name, () => {
-        const got = new Template(c.template).match(c.uri);
-        deepEqual(got, c.expected);
+    for (const { name, cases } of suites) {
+      await t.step(name, async (t) => {
+        for (const c of cases) {
+          await t.step(c.name, () => {
+            const got = new Template(c.template).match(c.uri);
+            deepEqual(got, c.expected);
+          });
+        }
       });
     }
   };
@@ -94,7 +106,7 @@ export function createMatchOnlyTest(
 export interface FixedTemplateTestSuite {
   name: string;
   template: string;
-  cases: FixedTemplateTestCase[];
+  cases: readonly FixedTemplateTestCase[];
 }
 
 interface FixedTemplateTestCase {
@@ -106,44 +118,50 @@ interface FixedTemplateTestCase {
 export const createFixedTemplateTest: (
   Template: TemplateConstructor,
 ) => (
-  template: string,
-) => (
-  cases: FixedTemplateTestCase[],
-) => (t: Deno.TestContext) => Promise<void> =
-  (Template: TemplateConstructor) => (template: string) => {
-    const instance = new Template(template);
-    return (
-      cases: FixedTemplateTestCase[],
-    ): (t: Deno.TestContext) => Promise<void> =>
-    async (t: Deno.TestContext): Promise<void> => {
-      for (const { name, context, expected } of cases) {
-        await t.step(name, () => equal(instance.expand(context), expected));
-      }
-    };
+  suites: readonly FixedTemplateTestSuite[],
+) => (t: Deno.TestContext) => Promise<void> = (
+  Template: TemplateConstructor,
+) => {
+  return (
+    suites: readonly FixedTemplateTestSuite[],
+  ): (t: Deno.TestContext) => Promise<void> =>
+  async (t: Deno.TestContext): Promise<void> => {
+    for (const { template, name, cases } of suites) {
+      await t.step(name, async (t) => {
+        const instance = new Template(template);
+        for (const { name, context, expected } of cases) {
+          await t.step(name, () => equal(instance.expand(context), expected));
+        }
+      });
+    }
   };
+};
 
 export const createFixedTemplateMatchTest: (
   Template: TemplateConstructor,
 ) => (
-  template: string,
-) => (
-  cases: FixedTemplateTestCase[],
-) => (t: Deno.TestContext) => Promise<void> =
-  (Template: TemplateConstructor) => (template: string) => {
-    const instance = new Template(template);
-    return (
-      cases: FixedTemplateTestCase[],
-    ): (t: Deno.TestContext) => Promise<void> =>
-    async (t: Deno.TestContext): Promise<void> => {
-      for (const { name, expected } of cases) {
-        await t.step(name, () => {
-          const matched = instance.match(expected);
-          ok(matched != null, `match returned null for ${expected}`);
-          equal(instance.expand(matched), expected);
-        });
-      }
-    };
+  suites: readonly FixedTemplateTestSuite[],
+) => (t: Deno.TestContext) => Promise<void> = (
+  Template: TemplateConstructor,
+) => {
+  return (
+    suites: readonly FixedTemplateTestSuite[],
+  ): (t: Deno.TestContext) => Promise<void> =>
+  async (t: Deno.TestContext): Promise<void> => {
+    for (const { template, name, cases } of suites) {
+      await t.step(name, async (t) => {
+        const instance = new Template(template);
+        for (const { name, expected } of cases) {
+          await t.step(name, () => {
+            const matched = instance.match(expected);
+            ok(matched != null, `match returned null for ${expected}`);
+            equal(instance.expand(matched), expected);
+          });
+        }
+      });
+    }
   };
+};
 
 type ErrorName = keyof typeof ERROR_CLASSES;
 
@@ -187,17 +205,21 @@ export interface WrongTestSuite {
 export function createWrongTemplateTest(
   Template: TemplateConstructor,
 ): (
-  cases: readonly WrongTemplateTestCase[],
+  suites: readonly WrongTestSuite[],
 ) => (t: Deno.TestContext) => Promise<void> {
   return (
-    cases: readonly WrongTemplateTestCase[],
+    suites: readonly WrongTestSuite[],
   ): (t: Deno.TestContext) => Promise<void> =>
   async (t: Deno.TestContext): Promise<void> => {
-    for (const { name, template, expected } of cases) {
-      await t.step(
-        `${template} — ${name}`,
-        () => throws(() => new Template(template), ERROR_CLASSES[expected]),
-      );
+    for (const { name, cases } of suites) {
+      await t.step(name, async (t) => {
+        for (const { name, template, expected } of cases) {
+          await t.step(
+            `${template} — ${name}`,
+            () => throws(() => new Template(template), ERROR_CLASSES[expected]),
+          );
+        }
+      });
     }
   };
 }
@@ -267,23 +289,27 @@ export interface HardTestSuite {
 export function createTemplateHardTest(
   Template: TemplateConstructor,
 ): (
-  cases: readonly HardTestCase[],
+  suites: readonly HardTestSuite[],
   context?: ExpandContext,
 ) => (t: Deno.TestContext) => Promise<void> {
   return (
-    cases: readonly HardTestCase[],
+    suites: readonly HardTestSuite[],
     context: ExpandContext = testVars,
   ): (t: Deno.TestContext) => Promise<void> =>
   async (t: Deno.TestContext): Promise<void> => {
-    for (const c of cases) {
-      await t.step(c.name, () => {
-        if (c.success) {
-          equal(new Template(c.template).expand(context), c.expected);
-        } else {
-          throws(
-            () => new Template(c.template).expand(context),
-            ERROR_CLASSES[c.expected],
-          );
+    for (const { name, cases } of suites) {
+      await t.step(name, async (t) => {
+        for (const c of cases) {
+          await t.step(c.name, () => {
+            if (c.success) {
+              equal(new Template(c.template).expand(context), c.expected);
+            } else {
+              throws(
+                () => new Template(c.template).expand(context),
+                ERROR_CLASSES[c.expected],
+              );
+            }
+          });
         }
       });
     }
