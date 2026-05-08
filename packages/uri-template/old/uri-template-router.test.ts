@@ -187,35 +187,47 @@ export class RouterError extends Error {
   }
 }
 
-const isTest = Deno.env.get("OLD") === "true";
+const isOldTest = Deno.env.get("OLD") === "true";
 
-if (isTest) {
-  const runAddCases = createRouterAddTest(Router);
-  test("Router.add()", runAddCases(routerRouteDefinitions));
+const runAddCases = createRouterAddTest(Router);
+test(
+  "Router.add()",
+  { ignore: !isOldTest },
+  runAddCases(routerRouteDefinitions),
+);
 
-  const runVariablesCases = createRouterVariablesTest(Router);
-  test("Router.variables()", runVariablesCases(routerVariablesCases));
+const runVariablesCases = createRouterVariablesTest(Router);
+test(
+  "Router.variables()",
+  { ignore: !isOldTest },
+  runVariablesCases(routerVariablesCases),
+);
 
-  const runCloneCases = createRouterCloneTest(Router);
-  test("Router.clone()", runCloneCases(routerCloneTestSuites));
+const runCloneCases = createRouterCloneTest(Router);
+test(
+  "Router.clone()",
+  { ignore: !isOldTest },
+  runCloneCases(routerCloneTestSuites),
+);
 
-  const runRouteCases = createRouterRouteTest(Router);
-  for (
-    const { name, options, routeDefinitions, cases } of routerRouteTestSuites
-  ) {
-    test(
-      `Router.route(): ${name}`,
-      runRouteCases(routeDefinitions, options)(cases),
-    );
-  }
+const runRouteCases = createRouterRouteTest(Router);
+for (
+  const { name, options, routeDefinitions, cases } of routerRouteTestSuites
+) {
+  test(
+    `Router.route(): ${name}`,
+    { ignore: !isOldTest },
+    runRouteCases(routeDefinitions, options)(cases),
+  );
+}
 
-  const runBuildCases = createRouterBuildTest(Router);
-  for (
-    const { name, options, routeDefinitions, cases } of routerBuildTestSuites
-  ) {
-    test(
-      `Router.build(): ${name}`,
-      runBuildCases(routeDefinitions, options)(cases),
-    );
-  }
+const runBuildCases = createRouterBuildTest(Router);
+for (
+  const { name, options, routeDefinitions, cases } of routerBuildTestSuites
+) {
+  test(
+    `Router.build(): ${name}`,
+    { ignore: !isOldTest },
+    runBuildCases(routeDefinitions, options)(cases),
+  );
 }

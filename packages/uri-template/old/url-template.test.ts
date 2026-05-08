@@ -71,26 +71,32 @@ class Template {
   match = (_: string) => null;
 }
 
-const isTest = Deno.env.get("OLD") === "true";
+const isOldTest = Deno.env.get("OLD") === "true";
 
-if (isTest) {
-  const runPairCases = createTemplatePairTest(Template);
-  for (const { name, cases } of pairTestSuites) {
-    test(name, runPairCases(cases as unknown as readonly [string, string][]));
-  }
+const runPairCases = createTemplatePairTest(Template);
+test(
+  "old expand: examples",
+  { ignore: !isOldTest },
+  runPairCases(pairTestSuites),
+);
 
-  const runFixedCases = createFixedTemplateTest(Template);
-  for (const { template, name, cases } of fixedTestSuites) {
-    test(name, runFixedCases(template)(cases));
-  }
+const runFixedCases = createFixedTemplateTest(Template);
+test(
+  "old expand: fixed templates",
+  { ignore: !isOldTest },
+  runFixedCases(fixedTestSuites),
+);
 
-  const runWrongCases = createWrongTemplateTest(Template);
-  for (const { name, cases } of wrongTestSuites) {
-    test(name, runWrongCases(cases));
-  }
+const runWrongCases = createWrongTemplateTest(Template);
+test(
+  "old parse: invalid templates",
+  { ignore: !isOldTest },
+  runWrongCases(wrongTestSuites),
+);
 
-  const runHardCases = createTemplateHardTest(Template);
-  for (const { name, cases } of hardTestSuites) {
-    test(name, runHardCases(cases));
-  }
-}
+const runHardCases = createTemplateHardTest(Template);
+test(
+  "old expand: hard cases",
+  { ignore: !isOldTest },
+  runHardCases(hardTestSuites),
+);

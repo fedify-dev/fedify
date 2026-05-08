@@ -18,13 +18,16 @@
   ],
   "publish": {
     "exclude": [
+      "**/*.bench.ts",
       "**/*.test.ts",
+      "src/tests/",
+      "summary.txt",
       "tsdown.config.ts"
     ]
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check",
-    "test": "deno test --allow-env src/",
+    "test": "deno test --allow-env",
     "test:old": "OLD=true deno test --allow-env old/"
   }
 }
