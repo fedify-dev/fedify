@@ -139,6 +139,7 @@
     }
   },
   "dependencies": {
+    "@fedify/uri-template": "workspace:*",
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/webfinger": "workspace:*",

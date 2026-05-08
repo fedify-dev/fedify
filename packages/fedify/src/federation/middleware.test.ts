@@ -4,6 +4,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import { RouterError } from "@fedify/uri-template";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
 import { getTypeId, lookupObject } from "@fedify/vocab";
@@ -59,7 +60,6 @@ import {
 } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
-import { RouterError } from "./router.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
