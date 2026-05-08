@@ -1,6 +1,6 @@
 import { Template } from "../template/mod.ts";
 import type { ExpandContext, Path, Token } from "../types.ts";
-import { isExpression } from "../utils.ts";
+import { isExpression, isPath } from "../utils.ts";
 import { RouteTemplatePathError } from "./errors.ts";
 import Trie from "./trie.ts";
 
@@ -315,9 +315,6 @@ const getLiteralLength = (tokens: readonly Token[]): number =>
     (sum, token) => token.kind === "literal" ? sum + token.text.length : sum,
     0,
   );
-
-const isPath = (path: string): path is Path =>
-  path.startsWith("/") || /^\{\/[^}]+\}\//.test(path);
 
 const toRouteValues = (
   context: ExpandContext,
