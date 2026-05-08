@@ -1,5 +1,6 @@
 import { Template } from "../template/mod.ts";
 import type { ExpandContext, Path, Token } from "../types.ts";
+import { isExpression } from "../utils.ts";
 import { RouteTemplatePathError } from "./errors.ts";
 import Trie from "./trie.ts";
 
@@ -305,10 +306,6 @@ const collectVariables = (tokens: readonly Token[]): Set<string> =>
       .filter(isExpression)
       .flatMap((token) => token.vars.map((varSpec) => varSpec.name)),
   );
-
-const isExpression = <T extends { kind: string }>(
-  token: T,
-): token is Extract<T, { kind: "expression" }> => token.kind === "expression";
 
 const getInitialLiteralPrefix = (tokens: readonly Token[]): string =>
   tokens[0]?.kind === "literal" ? tokens[0].text : "";
