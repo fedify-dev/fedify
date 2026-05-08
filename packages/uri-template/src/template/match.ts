@@ -222,7 +222,14 @@ function* matchUnnamedFrom(
 
   const varSpec = vars[varIndex];
   for (
-    const consumed of consumeUnnamed(varSpec, spec, parts, partIndex, vars)
+    const consumed of consumeUnnamed(
+      varSpec,
+      spec,
+      parts,
+      partIndex,
+      vars,
+      varIndex,
+    )
   ) {
     for (
       const rest of matchUnnamedFrom(
@@ -257,11 +264,15 @@ function* consumeUnnamed(
   parts: readonly string[],
   partIndex: number,
   vars: readonly VarSpec[],
+  varIndex: number,
 ): Generator<ConsumedParts, void, unknown> {
   if (partIndex >= parts.length) return;
 
   const maxLength = parts.length - partIndex;
-  const minLength = Math.max(1, parts.length - partIndex - remainingVars(vars));
+  const minLength = Math.max(
+    1,
+    parts.length - partIndex - remainingVars(vars, varIndex),
+  );
   for (let length = minLength; length <= maxLength; length++) {
     const slice = parts.slice(partIndex, partIndex + length);
     for (const bindings of parseUnnamedValue(varSpec, spec, slice)) {
@@ -270,8 +281,10 @@ function* consumeUnnamed(
   }
 }
 
-const remainingVars = (vars: readonly VarSpec[]): number =>
-  Math.max(0, vars.length - 1);
+const remainingVars = (
+  vars: readonly VarSpec[],
+  varIndex: number,
+): number => Math.max(0, vars.length - varIndex - 1);
 
 /**
  * Yields every binding interpretation of a slice assigned to one unnamed
@@ -535,7 +548,7 @@ function* consumeNamedList(
   const name = encodeName(varSpec.name);
   const values = [...namedListValues(name, spec, parts, partIndex)];
 
-  if (values) {
+  if (values.length > 0) {
     yield {
       bindings: bindValue(varSpec, values),
       index: partIndex + values.length,
