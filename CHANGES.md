@@ -113,7 +113,13 @@ To be released.
     and other high-cardinality identifiers are deliberately excluded
     from the fanout histogram.  [[#316], [#742], [#770]]
 
+ -  Replaced Fedify's internal federation routing with
+    *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
+    matching.  The deprecated `Router` export from *@fedify/fedify* remains
+    available for compatibility.  [[#418]]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
+[#418]: https://github.com/fedify-dev/fedify/issues/418
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
@@ -139,6 +145,13 @@ To be released.
 
  -  Added a `meterProvider` option to `createFederation()` so mock contexts can
     expose a test OpenTelemetry meter provider.  [[#316], [#619], [#755]]
+
+### @fedify/uri-template
+
+ -  Added *@fedify/uri-template*, a dependency-free RFC 6570 URI Template
+    implementation for expansion, variable extraction, and round-trip route
+    matching.  This package replaces Fedify's previous direct use of
+    *url-template* and *uri-template-router*.  [[#418]]
 
 ### @fedify/amqp
 
