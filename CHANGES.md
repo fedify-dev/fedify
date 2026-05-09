@@ -151,7 +151,9 @@ To be released.
  -  Added *@fedify/uri-template*, a dependency-free RFC 6570 URI Template
     implementation for expansion, variable extraction, and round-trip route
     matching.  This package replaces Fedify's previous direct use of
-    *url-template* and *uri-template-router*.  [[#418]]
+    *url-template* and *uri-template-router*.  [[#418], [#758] by ChanHaeng Lee]
+
+[#758]: https://github.com/fedify-dev/fedify/pull/758
 
 ### @fedify/amqp
 
