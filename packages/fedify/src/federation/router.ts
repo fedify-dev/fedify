@@ -1,52 +1,29 @@
-// @ts-ignore TS7016
-import { cloneDeep } from "es-toolkit";
-import { Router as InnerRouter } from "uri-template-router";
-import { parseTemplate, type Template } from "url-template";
+import type {
+  RouterOptions as _RouterOptions,
+  RouterRouteResult as _RouterRouteResult,
+} from "@fedify/uri-template";
+import {
+  assertPath,
+  Router as _Router,
+  RouterError as _RouterError,
+} from "@fedify/uri-template";
+import { getLogger } from "@logtape/logtape";
+
+const logger = getLogger(["fedify", "federation", "router", "deprecated"]);
 
 /**
  * Options for the {@link Router}.
  * @since 0.12.0
  * @deprecated Import `RouterOptions` from `@fedify/uri-template` instead.
  */
-export interface RouterOptions {
-  /**
-   * Whether to ignore trailing slashes when matching paths.
-   */
-  trailingSlashInsensitive?: boolean;
-}
+export interface RouterOptions extends _RouterOptions {}
 
 /**
  * The result of {@link Router.route} method.
  * @since 1.3.0
  * @deprecated Import `RouterRouteResult` from `@fedify/uri-template` instead.
  */
-export interface RouterRouteResult {
-  /**
-   * The matched route name.
-   */
-  name: string;
-
-  /**
-   * The URL template of the matched route.
-   */
-  template: string;
-
-  /**
-   * The values extracted from the URL.
-   */
-  values: Record<string, string>;
-}
-
-function cloneInnerRouter(router: InnerRouter): InnerRouter {
-  const clone = new InnerRouter();
-  clone.nid = router.nid;
-  clone.fsm = cloneDeep(router.fsm);
-  clone.routeSet = new Set(router.routeSet);
-  clone.templateRouteMap = new Map(router.templateRouteMap);
-  clone.valueRouteMap = new Map(router.valueRouteMap);
-  clone.hierarchy = cloneDeep(router.hierarchy);
-  return clone;
-}
+export interface RouterRouteResult extends _RouterRouteResult {}
 
 /**
  * URL router and constructor based on URI Template
@@ -58,28 +35,15 @@ function cloneInnerRouter(router: InnerRouter): InnerRouter {
  *             and should be used directly in new code.
  */
 export class Router {
-  #router: InnerRouter;
-  #templates: Record<string, Template>;
-  #templateStrings: Record<string, string>;
-
-  /**
-   * Whether to ignore trailing slashes when matching paths.
-   * @since 1.6.0
-   * @deprecated Use `Router` from `@fedify/uri-template` instead.
-   */
-  trailingSlashInsensitive: boolean;
-
+  #router: _Router;
   /**
    * Create a new {@link Router}.
    * @param options Options for the router.
    * @deprecated Use `new Router(options)` from `@fedify/uri-template`
    *             instead.
    */
-  constructor(options: RouterOptions = {}) {
-    this.#router = new InnerRouter();
-    this.#templates = {};
-    this.#templateStrings = {};
-    this.trailingSlashInsensitive = options.trailingSlashInsensitive ?? false;
+  constructor(options?: _RouterOptions) {
+    this.#router = convertRouterError(() => new _Router(options));
   }
 
   /**
@@ -87,13 +51,11 @@ export class Router {
    * @deprecated Use `Router` from `@fedify/uri-template` instead.
    */
   clone(): Router {
-    const clone = new Router({
-      trailingSlashInsensitive: this.trailingSlashInsensitive,
+    return convertRouterError(() => {
+      const clone = new Router();
+      clone.#router = this.#router.clone();
+      return clone;
     });
-    clone.#router = cloneInnerRouter(this.#router);
-    clone.#templates = { ...this.#templates };
-    clone.#templateStrings = { ...this.#templateStrings };
-    return clone;
   }
 
   /**
@@ -103,7 +65,7 @@ export class Router {
    * @deprecated Use `Router` from `@fedify/uri-template` instead.
    */
   has(name: string): boolean {
-    return name in this.#templates;
+    return convertRouterError(() => this.#router.has(name));
   }
 
   /**
@@ -123,13 +85,11 @@ export class Router {
    *             route.
    */
   add(template: string, name: string): Set<string> {
-    if (!template.startsWith("/")) {
-      throw new RouterError("Path must start with a slash.");
-    }
-    const rule = this.#router.addTemplate(template, {}, name);
-    this.#templates[name] = parseTemplate(template);
-    this.#templateStrings[name] = template;
-    return new Set(rule.variables.map((v: { varname: string }) => v.varname));
+    return convertRouterError(() => {
+      assertPath(template);
+      this.#router.add(template, name);
+      return _Router.variables(template);
+    });
   }
 
   /**
@@ -140,18 +100,10 @@ export class Router {
    * @deprecated Use `Router` from `@fedify/uri-template` instead.
    */
   route(url: string): RouterRouteResult | null {
-    let match = this.#router.resolveURI(url);
-    if (match == null) {
-      if (!this.trailingSlashInsensitive) return null;
-      url = url.endsWith("/") ? url.replace(/\/+$/, "") : `${url}/`;
-      match = this.#router.resolveURI(url);
-      if (match == null) return null;
-    }
-    return {
-      name: match.matchValue,
-      template: this.#templateStrings[match.matchValue],
-      values: match.params,
-    };
+    return convertRouterError(() => {
+      assertPath(url);
+      return this.#router.route(url);
+    });
   }
 
   /**
@@ -162,10 +114,7 @@ export class Router {
    * @deprecated Use `Router` from `@fedify/uri-template` instead.
    */
   build(name: string, values: Record<string, string>): string | null {
-    if (name in this.#templates) {
-      return this.#templates[name].expand(values);
-    }
-    return null;
+    return convertRouterError(() => this.#router.build(name, values));
   }
 }
 
@@ -173,7 +122,7 @@ export class Router {
  * An error thrown by the {@link Router}.
  * @deprecated Import `RouterError` from `@fedify/uri-template` instead.
  */
-export class RouterError extends Error {
+export class RouterError extends _RouterError {
   /**
    * Create a new {@link RouterError}.
    * @param message The error message.
@@ -181,6 +130,24 @@ export class RouterError extends Error {
    */
   constructor(message: string) {
     super(message);
-    this.name = "RouterError";
+    logger.warn(
+      "The `RouterError` class from `@fedify/fedify` is deprecated." +
+        " Please use `Router` from `@fedify/uri-template` instead.",
+    );
+  }
+}
+
+function convertRouterError<T>(func: () => T): T {
+  try {
+    logger.warn(
+      "The `Router` class from `@fedify/fedify` is deprecated." +
+        " Please use `Router` from `@fedify/uri-template` instead.",
+    );
+    return func();
+  } catch (error) {
+    if (error instanceof _RouterError) {
+      throw new RouterError(error.message);
+    }
+    throw error;
   }
 }
