@@ -1,3 +1,4 @@
+import { RouterError } from "./router/errors.ts";
 import Template from "./template/template.ts";
 import type { Path } from "./types.ts";
 
@@ -26,4 +27,12 @@ export function isPath(path: string): path is Path {
   if (isLiteral(first)) return first.text.startsWith("/");
   if (first.operator === "/") return true;
   return false;
+}
+
+export function assertPath(path: string): asserts path is Path {
+  if (!isPath(path)) {
+    throw new RouterError(
+      `"${path}" is not looks like a path. Is this start with slash(\`//\`?)`,
+    );
+  }
 }
