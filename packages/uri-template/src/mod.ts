@@ -44,4 +44,4 @@ export type {
   Token,
   VarSpec,
 } from "./types.ts";
-export { isExpression, isPath } from "./utils.ts";
+export { assertPath, isExpression, isPath } from "./utils.ts";
