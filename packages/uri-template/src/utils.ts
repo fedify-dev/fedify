@@ -20,13 +20,17 @@ export const isLiteral = <T extends { kind: string }>(
  * return `false`.
  */
 export function isPath(path: string): path is Path {
-  const template = new Template(path);
+  try {
+    const template = new Template(path);
 
-  const [first] = template.tokens;
-  if (first == null) return false;
-  if (isLiteral(first)) return first.text.startsWith("/");
-  if (first.operator === "/") return true;
-  return false;
+    const [first] = template.tokens;
+    if (first == null) return false;
+    if (isLiteral(first)) return first.text.startsWith("/");
+    if (first.operator === "/") return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function assertPath(path: string): asserts path is Path {

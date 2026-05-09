@@ -1,6 +1,6 @@
 import { test } from "@fedify/fixture";
 import { deepEqual, equal } from "node:assert";
-import { throws } from "node:assert/strict";
+import { ok, throws } from "node:assert/strict";
 import {
   createFixedTemplateMatchTest,
   createFixedTemplateTest,
@@ -111,4 +111,25 @@ test("parses reusable template instances", () => {
       vars: [{ name: "address", explode: true }],
     },
   ]);
+});
+
+// Regression for the `consumeUnnamed` minLength bug: when an unnamed expression
+// has more separated parts than variables, the matcher must let the *current*
+// variable absorb fewer parts than the naive `parts - remainingVars` formula
+// allows.  With `{x:5,y}` against `abc,def,ghi` the only round-trippable
+// binding has x consume one part (so prefix:5 truncation does not corrupt the
+// joined string); under the buggy minLength formula the matcher only reaches
+// the fallback `x undefined, y absorbs everything` decomposition, leaving
+// `m.x` undefined.
+test("Template#match — unnamed minLength must allow current var to consume one part", () => {
+  const template = new Template("{x:5,y}");
+  const m = template.match("abc,def,ghi");
+
+  ok(m != null, "matcher returned null for a round-trippable URI");
+  equal(template.expand(m), "abc,def,ghi");
+  equal(
+    m.x,
+    "abc",
+    "matcher should reach the binding with x consuming one part",
+  );
 });

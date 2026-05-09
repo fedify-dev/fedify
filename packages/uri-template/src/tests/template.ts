@@ -347,6 +347,7 @@ export function createMatchBench(
     };
   };
 }
+
 const mod = (i: number, j: number) => Math.floor(i / j);
 
 export function createMatchBenchTestCases(): readonly string[] {

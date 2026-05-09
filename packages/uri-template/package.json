@@ -64,5 +64,6 @@
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "sideEffects": false
 }
