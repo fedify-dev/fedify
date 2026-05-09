@@ -222,14 +222,7 @@ function* matchUnnamedFrom(
 
   const varSpec = vars[varIndex];
   for (
-    const consumed of consumeUnnamed(
-      varSpec,
-      spec,
-      parts,
-      partIndex,
-      vars,
-      varIndex,
-    )
+    const consumed of consumeUnnamed(varSpec, spec, parts, partIndex)
   ) {
     for (
       const rest of matchUnnamedFrom(
@@ -250,41 +243,24 @@ function* matchUnnamedFrom(
 
 /**
  * Enumerates every (binding, next-part-index) pair produced by letting one
- * unnamed variable consume between `minLength` and `maxLength` of the
- * remaining parts.
- *
- * The length range is intentionally broad — neither bound is tightened to the
- * exact count of variables remaining after the current one — and the
- * recursive matching in {@link matchUnnamedFrom} discards invalid
- * distributions.
+ * unnamed variable consume any number of remaining parts.
  */
 function* consumeUnnamed(
   varSpec: VarSpec,
   spec: OperatorSpec,
   parts: readonly string[],
   partIndex: number,
-  vars: readonly VarSpec[],
-  varIndex: number,
 ): Generator<ConsumedParts, void, unknown> {
   if (partIndex >= parts.length) return;
 
   const maxLength = parts.length - partIndex;
-  const minLength = Math.max(
-    1,
-    parts.length - partIndex - remainingVars(vars, varIndex),
-  );
-  for (let length = minLength; length <= maxLength; length++) {
+  for (let length = 1; length <= maxLength; length++) {
     const slice = parts.slice(partIndex, partIndex + length);
     for (const bindings of parseUnnamedValue(varSpec, spec, slice)) {
       yield { bindings, index: partIndex + length };
     }
   }
 }
-
-const remainingVars = (
-  vars: readonly VarSpec[],
-  varIndex: number,
-): number => Math.max(0, vars.length - varIndex - 1);
 
 /**
  * Yields every binding interpretation of a slice assigned to one unnamed
