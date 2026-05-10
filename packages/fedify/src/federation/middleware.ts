@@ -2962,6 +2962,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       kvPrefixes: this.federation.kvPrefixes,
       queue: this.federation.inboxQueue,
       span,
+      meterProvider: this.federation.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       idempotencyStrategy: this.federation.idempotencyStrategy,
     });

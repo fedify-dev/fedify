@@ -5505,6 +5505,61 @@ test({
   },
 });
 
+test({
+  name: "ContextImpl.routeActivity() forwards meterProvider to inbox enqueue",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const enqueued: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message): Promise<void> {
+        enqueued.push(message);
+        return Promise.resolve();
+      },
+      listen(): Promise<void> {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i");
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+    assertEquals(enqueued.length, 1);
+
+    const enqueuedMetrics = recorder.getMeasurements(
+      "fedify.queue.task.enqueued",
+    );
+    assertEquals(enqueuedMetrics.length, 1);
+    assertEquals(
+      enqueuedMetrics[0].attributes["fedify.queue.role"],
+      "inbox",
+    );
+    assertEquals(
+      enqueuedMetrics[0].attributes["fedify.queue.task.attempt"],
+      0,
+    );
+  },
+});
+
 test("ContextImpl.getCollectionUri()", () => {
   const federation = new FederationImpl({ kv: new MemoryKvStore() });
   const base = "https://example.com";
