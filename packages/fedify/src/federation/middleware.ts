@@ -527,11 +527,14 @@ export class FederationImpl<TContextData>
                 try {
                   await this.#listenFanoutMessage(contextData, message);
                 } catch (e) {
-                  outcome = isAbortError(e) ? "aborted" : "failed";
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
                   meter.recordQueueTaskOutcome(
@@ -580,11 +583,14 @@ export class FederationImpl<TContextData>
                 try {
                   await this.#listenOutboxMessage(contextData, message, span);
                 } catch (e) {
-                  outcome = isAbortError(e) ? "aborted" : "failed";
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
                   meter.recordQueueTaskOutcome(
@@ -632,11 +638,14 @@ export class FederationImpl<TContextData>
                     },
                   );
                 } catch (e) {
-                  outcome = isAbortError(e) ? "aborted" : "failed";
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
                   meter.recordQueueTaskOutcome(

@@ -44,6 +44,7 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
@@ -4292,6 +4293,7 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
     async () => {
       const kv = new MemoryKvStore();
       const [meterProvider, recorder] = createTestMeterProvider();
+      const [tracerProvider, exporter] = createTestTracerProvider();
       const queue: MessageQueue = {
         nativeRetrial: true,
         enqueue(_message, _options) {
@@ -4304,6 +4306,7 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
       const federation = new FederationImpl<void>({
         kv,
         meterProvider,
+        tracerProvider,
         queue,
       });
       federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
@@ -4351,6 +4354,12 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
         taskDurations[0].attributes["fedify.queue.task.result"],
         "aborted",
       );
+
+      // Per OpenTelemetry guidance, the inbox span should remain UNSET for
+      // cancellation and not flip into ERROR status.
+      const inboxSpans = exporter.getSpans("activitypub.inbox");
+      assertEquals(inboxSpans.length, 1);
+      assertEquals(inboxSpans[0].status.code, SpanStatusCode.UNSET);
     },
   );
 
