@@ -4,8 +4,32 @@ import {
   type Histogram,
   type MeterProvider,
   metrics,
+  type UpDownCounter,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
+import type { MessageQueue } from "./mq.ts";
+
+/**
+ * The role of a queued task, derived from the queued message's `type` field.
+ * @since 2.3.0
+ */
+export type QueueTaskRole = "fanout" | "outbox" | "inbox";
+
+/**
+ * The terminal result of a queued task processing attempt.
+ * @since 2.3.0
+ */
+export type QueueTaskResult = "completed" | "failed" | "aborted";
+
+/**
+ * Common attributes shared by all queue task metrics.
+ * @since 2.3.0
+ */
+export interface QueueTaskCommonAttributes {
+  role: QueueTaskRole;
+  queue?: MessageQueue;
+  activityType?: string;
+}
 
 class FederationMetrics {
   readonly deliverySent: Counter;
@@ -15,6 +39,12 @@ class FederationMetrics {
   readonly inboxProcessingDuration: Histogram;
   readonly httpServerRequestCount: Counter;
   readonly httpServerRequestDuration: Histogram;
+  readonly queueTaskEnqueued: Counter;
+  readonly queueTaskStarted: Counter;
+  readonly queueTaskCompleted: Counter;
+  readonly queueTaskFailed: Counter;
+  readonly queueTaskDuration: Histogram;
+  readonly queueTaskInFlight: UpDownCounter;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -84,6 +114,40 @@ class FederationMetrics {
         },
       },
     );
+    this.queueTaskEnqueued = meter.createCounter("fedify.queue.task.enqueued", {
+      description: "Tasks Fedify enqueued for inbox, outbox, or fanout work.",
+      unit: "{task}",
+    });
+    this.queueTaskStarted = meter.createCounter("fedify.queue.task.started", {
+      description: "Tasks Fedify began processing as a queue worker.",
+      unit: "{task}",
+    });
+    this.queueTaskCompleted = meter.createCounter(
+      "fedify.queue.task.completed",
+      {
+        description: "Queue tasks Fedify finished processing without throwing.",
+        unit: "{task}",
+      },
+    );
+    this.queueTaskFailed = meter.createCounter("fedify.queue.task.failed", {
+      description: "Queue tasks Fedify abandoned because processing threw.",
+      unit: "{task}",
+    });
+    this.queueTaskDuration = meter.createHistogram(
+      "fedify.queue.task.duration",
+      {
+        description: "Duration of queue task processing in Fedify workers.",
+        unit: "ms",
+      },
+    );
+    this.queueTaskInFlight = meter.createUpDownCounter(
+      "fedify.queue.task.in_flight",
+      {
+        description:
+          "Queue tasks currently being processed in this Fedify process.",
+        unit: "{task}",
+      },
+    );
   }
 
   recordDelivery(
@@ -151,6 +215,99 @@ class FederationMetrics {
     this.httpServerRequestCount.add(1, attributes);
     this.httpServerRequestDuration.record(durationMs, attributes);
   }
+
+  recordQueueTaskEnqueued(
+    common: QueueTaskCommonAttributes,
+    attempt: number,
+  ): void {
+    const attributes = buildQueueTaskAttributes(common);
+    attributes["fedify.queue.task.attempt"] = attempt;
+    this.queueTaskEnqueued.add(1, attributes);
+  }
+
+  recordQueueTaskStarted(common: QueueTaskCommonAttributes): void {
+    this.queueTaskStarted.add(1, buildQueueTaskAttributes(common));
+  }
+
+  incrementQueueTaskInFlight(common: QueueTaskCommonAttributes): void {
+    this.queueTaskInFlight.add(1, buildQueueTaskInFlightAttributes(common));
+  }
+
+  decrementQueueTaskInFlight(common: QueueTaskCommonAttributes): void {
+    this.queueTaskInFlight.add(-1, buildQueueTaskInFlightAttributes(common));
+  }
+
+  recordQueueTaskOutcome(
+    common: QueueTaskCommonAttributes,
+    result: QueueTaskResult,
+    durationMs: number,
+  ): void {
+    const attributes = buildQueueTaskAttributes(common);
+    attributes["fedify.queue.task.result"] = result;
+    if (result === "completed") {
+      this.queueTaskCompleted.add(1, attributes);
+    } else if (result === "failed") {
+      this.queueTaskFailed.add(1, attributes);
+    }
+    this.queueTaskDuration.record(durationMs, attributes);
+  }
+}
+
+function buildQueueTaskAttributes(
+  common: QueueTaskCommonAttributes,
+): Attributes {
+  const attributes: Attributes = {
+    "fedify.queue.role": common.role,
+  };
+  const backend = getQueueBackend(common.queue);
+  if (backend != null) {
+    attributes["fedify.queue.backend"] = backend;
+  }
+  const nativeRetrial = common.queue?.nativeRetrial;
+  if (typeof nativeRetrial === "boolean") {
+    attributes["fedify.queue.native_retrial"] = nativeRetrial;
+  }
+  if (common.activityType != null) {
+    attributes["activitypub.activity.type"] = common.activityType;
+  }
+  return attributes;
+}
+
+function buildQueueTaskInFlightAttributes(
+  common: QueueTaskCommonAttributes,
+): Attributes {
+  // The in-flight UpDownCounter is process-local and intentionally omits
+  // per-message attributes (activity type, attempt, result) so that
+  // increments and decrements pair up cleanly.
+  return buildQueueTaskAttributes({ role: common.role, queue: common.queue });
+}
+
+/**
+ * Returns the constructor name of the given message queue, when it is a
+ * meaningful identifier.  Used as a best-effort `fedify.queue.backend`
+ * attribute on queue task metrics; returns `undefined` for plain object
+ * literals (whose constructor is `Object`) so the attribute does not appear
+ * with a non-informative value.
+ * @since 2.3.0
+ */
+export function getQueueBackend(queue?: MessageQueue): string | undefined {
+  const name = queue?.constructor?.name;
+  if (name == null || name === "" || name === "Object") return undefined;
+  return name;
+}
+
+/**
+ * Whether the given thrown value is an `AbortError`.
+ *
+ * `processQueuedTask` distinguishes aborted tasks (recorded as
+ * `fedify.queue.task.result=aborted`) from other failures so that backend
+ * shutdown signals do not inflate the `fedify.queue.task.failed` counter.
+ * @since 2.3.0
+ */
+export function isAbortError(error: unknown): boolean {
+  if (error == null || typeof error !== "object") return false;
+  const name = (error as { name?: unknown }).name;
+  return typeof name === "string" && name === "AbortError";
 }
 
 const KNOWN_HTTP_METHODS: ReadonlySet<string> = new Set([

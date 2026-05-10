@@ -296,15 +296,21 @@ Instrumented metrics
 
 Fedify records the following OpenTelemetry metrics:
 
-| Metric name                                  | Instrument | Unit        | Description                                                     |
-| -------------------------------------------- | ---------- | ----------- | --------------------------------------------------------------- |
-| `activitypub.delivery.sent`                  | Counter    | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                  |
-| `activitypub.delivery.permanent_failure`     | Counter    | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.     |
-| `activitypub.delivery.duration`              | Histogram  | `ms`        | Measures outgoing ActivityPub delivery attempt duration.        |
-| `activitypub.inbox.processing_duration`      | Histogram  | `ms`        | Measures inbox listener processing duration.                    |
-| `activitypub.signature.verification_failure` | Counter    | `{failure}` | Counts failed signature verification for inbox requests.        |
-| `fedify.http.server.request.count`           | Counter    | `{request}` | Counts inbound HTTP requests handled by `Federation.fetch()`.   |
-| `fedify.http.server.request.duration`        | Histogram  | `ms`        | Measures inbound HTTP request duration in `Federation.fetch()`. |
+| Metric name                                  | Instrument    | Unit        | Description                                                     |
+| -------------------------------------------- | ------------- | ----------- | --------------------------------------------------------------- |
+| `activitypub.delivery.sent`                  | Counter       | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                  |
+| `activitypub.delivery.permanent_failure`     | Counter       | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.     |
+| `activitypub.delivery.duration`              | Histogram     | `ms`        | Measures outgoing ActivityPub delivery attempt duration.        |
+| `activitypub.inbox.processing_duration`      | Histogram     | `ms`        | Measures inbox listener processing duration.                    |
+| `activitypub.signature.verification_failure` | Counter       | `{failure}` | Counts failed signature verification for inbox requests.        |
+| `fedify.http.server.request.count`           | Counter       | `{request}` | Counts inbound HTTP requests handled by `Federation.fetch()`.   |
+| `fedify.http.server.request.duration`        | Histogram     | `ms`        | Measures inbound HTTP request duration in `Federation.fetch()`. |
+| `fedify.queue.task.enqueued`                 | Counter       | `{task}`    | Counts inbox, outbox, and fanout tasks Fedify enqueued.         |
+| `fedify.queue.task.started`                  | Counter       | `{task}`    | Counts queue tasks Fedify began processing as a worker.         |
+| `fedify.queue.task.completed`                | Counter       | `{task}`    | Counts queue tasks Fedify finished processing without throwing. |
+| `fedify.queue.task.failed`                   | Counter       | `{task}`    | Counts queue tasks Fedify abandoned because processing threw.   |
+| `fedify.queue.task.duration`                 | Histogram     | `ms`        | Measures queue task processing duration in Fedify workers.      |
+| `fedify.queue.task.in_flight`                | UpDownCounter | `{task}`    | Tracks queue tasks currently in flight in this Fedify process.  |
 
 ### Metric attributes
 
@@ -338,6 +344,60 @@ Fedify records the following OpenTelemetry metrics:
     is recorded when a route matched, and contains the [URI Template]
     parameter names (for example `/users/{identifier}`) rather than the
     matched parameter values.
+
+`fedify.queue.task.enqueued`, `fedify.queue.task.started`,
+`fedify.queue.task.completed`, `fedify.queue.task.failed`, and
+`fedify.queue.task.duration`
+:   `fedify.queue.role` (`inbox`, `outbox`, or `fanout`) is always present.
+    `fedify.queue.backend` is the queue implementation's constructor name
+    (for example `RedisMessageQueue`) when available; it is omitted for
+    queues whose constructor is the plain `Object` (for example,
+    `MessageQueue` instances built from an object literal).
+    `fedify.queue.native_retrial` reflects the queue backend's `nativeRetrial`
+    flag when set on the queue. `activitypub.activity.type` is recorded
+    whenever Fedify knows the activity type for the queued message; for inbox
+    tasks the type only becomes available after the activity is parsed, so the
+    *started* counter for inbox tasks may be recorded without it.
+    `fedify.queue.task.enqueued` additionally carries a zero-based
+    `fedify.queue.task.attempt` so that retry re-enqueues are distinguishable
+    from initial enqueues. `fedify.queue.task.completed`,
+    `fedify.queue.task.failed`, and `fedify.queue.task.duration` carry
+    `fedify.queue.task.result`, which is `completed` when processing returned
+    without throwing, `failed` when the worker re-threw a non-abort error, and
+    `aborted` when the worker re-threw an `AbortError` (for example, because a
+    graceful-shutdown `AbortSignal` interrupted processing).  When the queue
+    backend does not declare `nativeRetrial`, Fedify catches inbox listener and
+    outbox delivery errors itself; if its retry policy still allows another
+    attempt, it schedules a retry by re-enqueuing the message and returns from
+    the worker without re-throwing, so the worker boundary records
+    `result=completed`.  When the retry policy gives up, the worker also
+    returns normally (`result=completed`) without scheduling a retry.
+    Outbox-side activity failures remain observable through the
+    `activitypub.delivery.*` metrics and the `activitypub.delivery.failed`
+    span event, and any retry attempt — inbox or outbox — appears as a
+    `fedify.queue.task.enqueued` measurement with a non-zero
+    `fedify.queue.task.attempt`.  Inbox listener errors that the retry policy
+    abandons are visible through error logs and the inbox span's error status,
+    but not through a dedicated metric.
+
+`fedify.queue.task.in_flight`
+:   `fedify.queue.role` and `fedify.queue.backend` (when available), plus
+    `fedify.queue.native_retrial` when set on the queue.  Per-message
+    attributes such as `activitypub.activity.type`,
+    `fedify.queue.task.attempt`, and `fedify.queue.task.result` are
+    deliberately omitted so that increment and decrement operations always
+    pair up cleanly per attribute series.  This UpDownCounter is
+    process-local: it tracks tasks currently being processed *in this
+    Fedify process*, not cross-process totals.  Aggregate it across
+    replicas in your metrics backend.
+
+The `fedify.queue.task.*` metrics describe what Fedify's workers do with
+queued messages.  They complement the backend-side
+[`MessageQueue.getDepth()` API](./mq.md#queue-depth-reporting), which
+reports how many messages are currently waiting in the queue backend.
+Reading both signals together — task throughput plus backlog depth —
+makes it possible to distinguish a small, slow queue from a large, fast
+one and to set alerting thresholds for delivery latency under load.
 
 Fedify records `activitypub.remote.host` as the URL hostname only; ports, paths,
 and query strings are deliberately excluded to keep metric cardinality bounded.
@@ -407,6 +467,11 @@ for ActivityPub:
 | `fedify.object.values.{parameter}`       | string[] | The argument values of the object dispatcher.                                                                            | `["1", "2"]`                                                         |
 | `fedify.collection.cursor`               | string   | The cursor of the collection.                                                                                            | `"eyJpZCI6IjEiLCJ0eXBlIjoiT3JkZXJlZENvbGxlY3Rpb24ifQ=="`             |
 | `fedify.collection.items`                | number   | The number of items in the collection page.  It can be less than the total items.                                        | `10`                                                                 |
+| `fedify.queue.role`                      | string   | The Fedify queue role for the task: `inbox`, `outbox`, or `fanout`.                                                      | `"outbox"`                                                           |
+| `fedify.queue.backend`                   | string   | The queue implementation's constructor name (best-effort backend identifier).                                            | `"RedisMessageQueue"`                                                |
+| `fedify.queue.native_retrial`            | boolean  | Whether the queue backend declares `nativeRetrial`, meaning Fedify defers retry handling to the backend.                 | `true`                                                               |
+| `fedify.queue.task.attempt`              | int      | The zero-based attempt number recorded on `fedify.queue.task.enqueued`; non-zero for retry re-enqueues.                  | `1`                                                                  |
+| `fedify.queue.task.result`               | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                      | `"failed"`                                                           |
 | `http.redirect.url`                      | string   | The redirect URL when a document fetch results in a redirect.                                                            | `"https://example.com/new-location"`                                 |
 | `http.response.status_code`              | int      | The HTTP response status code.                                                                                           | `200`                                                                |
 | `http_signatures.signature`              | string   | The signature of the HTTP request in hexadecimal.                                                                        | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |

@@ -178,6 +178,10 @@ export async function routeActivity<TContextData>(
       });
       throw error;
     }
+    getFederationMetrics(meterProvider).recordQueueTaskEnqueued(
+      { role: "inbox", queue, activityType: getTypeId(activity).href },
+      0,
+    );
     logger.info(
       "Activity {activityId} is enqueued.",
       { activityId: activity.id?.href, activity: json, recipient },

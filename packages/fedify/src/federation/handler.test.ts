@@ -57,6 +57,7 @@ import {
 import { ActivityListenerSet } from "./activity-listener.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
+import type { MessageQueue } from "./mq.ts";
 
 const QUOTE_CONTEXT_TERMS = {
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
@@ -2449,6 +2450,102 @@ test("handleInbox() records OpenTelemetry span events", async () => {
   assertGreaterOrEqual(durations[0].value, 0);
   assertEquals(
     durations[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
+});
+
+test("handleInbox() records fedify.queue.task.enqueued when queued", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+  });
+
+  const activity = new Create({
+    id: new URL("https://example.com/activities/queued"),
+    actor: new URL("https://example.com/users/someone"),
+    object: new Note({
+      id: new URL("https://example.com/note-queued"),
+      content: "Queue me up",
+    }),
+  });
+
+  const request = new Request("https://example.com/users/someone/inbox", {
+    method: "POST",
+    headers: { "Content-Type": "application/activity+json" },
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const signed = await signRequest(
+    request,
+    rsaPrivateKey3,
+    new URL("https://example.com/users/someone#main-key"),
+  );
+
+  const context = createRequestContext<void>({
+    federation,
+    request: signed,
+    url: new URL(signed.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      name: "Someone",
+      inbox: new URL("https://example.com/users/someone/inbox"),
+      publicKey: rsaPublicKey2,
+    });
+  };
+
+  const queuedMessages: unknown[] = [];
+  const queue: MessageQueue = {
+    enqueue(message, _options) {
+      queuedMessages.push(message);
+      return Promise.resolve();
+    },
+    listen(_handler, _options) {
+      return Promise.resolve();
+    },
+  };
+
+  const response = await handleInbox(signed, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...context, clone: undefined });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["activityIdempotence"],
+      publicKey: ["publicKey"],
+      acceptSignatureNonce: ["acceptSignatureNonce"],
+    },
+    actorDispatcher,
+    inboxListeners: new ActivityListenerSet<InboxContext<void>>(),
+    inboxErrorHandler: undefined,
+    onNotFound: (_request) => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: false,
+    skipSignatureVerification: true,
+    queue,
+    meterProvider,
+  });
+
+  assertEquals(response.status, 202);
+  assertEquals(queuedMessages.length, 1);
+
+  const enqueued = recorder.getMeasurements("fedify.queue.task.enqueued");
+  assertEquals(enqueued.length, 1);
+  assertEquals(enqueued[0].attributes["fedify.queue.role"], "inbox");
+  assertEquals(enqueued[0].attributes["fedify.queue.task.attempt"], 0);
+  assertEquals(
+    enqueued[0].attributes["activitypub.activity.type"],
     "https://www.w3.org/ns/activitystreams#Create",
   );
 });

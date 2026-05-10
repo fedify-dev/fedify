@@ -51,10 +51,32 @@ To be released.
     deliberately exclude raw URLs, query strings, and identifier values to
     keep cardinality bounded.  [[#316], [#736], [#757]]
 
+ -  Added OpenTelemetry queue task metrics covering Fedify's enqueue and
+    worker boundaries for inbox, outbox, and fanout work:
+    `fedify.queue.task.enqueued` (Counter), `fedify.queue.task.started`
+    (Counter), `fedify.queue.task.completed` (Counter),
+    `fedify.queue.task.failed` (Counter), `fedify.queue.task.duration`
+    (Histogram), and `fedify.queue.task.in_flight` (UpDownCounter, process
+    local).  Instruments carry `fedify.queue.role`, best-effort
+    `fedify.queue.backend` (the queue implementation's constructor name),
+    and `fedify.queue.native_retrial`.  The enqueue/started/completed/
+    failed/duration instruments additionally carry
+    `activitypub.activity.type` whenever Fedify knows the activity type
+    for the queued message; the in-flight UpDownCounter deliberately
+    omits per-message attributes so that increment and decrement
+    operations always pair up cleanly per attribute series.  Enqueue
+    measurements additionally carry `fedify.queue.task.attempt` for
+    retries, and the completion-side instruments carry
+    `fedify.queue.task.result` (`completed`, `failed`, or `aborted`).
+    Together with `MessageQueue.getDepth()` reporting, these metrics let
+    operators distinguish a slow-draining queue from a queue that sees
+    less traffic.  [[#316], [#740]]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
+[#740]: https://github.com/fedify-dev/fedify/issues/740
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
