@@ -318,6 +318,30 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
 }
 
 /**
+ * Records `fedify.queue.task.enqueued` for an outgoing outbox enqueue.
+ *
+ * Both `Context.sendActivity()` and `OutboxContext.forwardActivity()` enqueue
+ * outbox messages with the same metric attributes (role, queue, activity
+ * type, attempt), so they share this helper rather than each defining a local
+ * closure.
+ * @since 2.3.0
+ */
+export function recordOutboxEnqueue(
+  meterProvider: MeterProvider | undefined,
+  outboxQueue: MessageQueue,
+  message: { readonly activityType: string; readonly attempt: number },
+): void {
+  getFederationMetrics(meterProvider).recordQueueTaskEnqueued(
+    {
+      role: "outbox",
+      queue: outboxQueue,
+      activityType: message.activityType,
+    },
+    message.attempt,
+  );
+}
+
+/**
  * Whether the given thrown value is an `AbortError`.
  *
  * `processQueuedTask` distinguishes aborted tasks (recorded as

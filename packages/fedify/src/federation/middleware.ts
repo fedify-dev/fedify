@@ -110,6 +110,7 @@ import {
   isAbortError,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
+  recordOutboxEnqueue,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
@@ -1384,16 +1385,6 @@ export class FederationImpl<TContextData>
       messages.push({ message, orderingKey: messageOrderingKey });
     }
     const { outboxQueue } = this;
-    const recordOutboxEnqueued = (message: OutboxMessage): void => {
-      getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
-        {
-          role: "outbox",
-          queue: outboxQueue,
-          activityType: message.activityType,
-        },
-        message.attempt,
-      );
-    };
     // enqueueMany does not support per-message orderingKey, so fall back to
     // individual enqueues whenever orderingKey is specified or the backend
     // does not implement enqueueMany.
@@ -1401,7 +1392,7 @@ export class FederationImpl<TContextData>
       const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
         messages.map(async (m) => {
           await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
-          recordOutboxEnqueued(m.message);
+          recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
       const errors = promises
@@ -1430,7 +1421,9 @@ export class FederationImpl<TContextData>
         );
         throw error;
       }
-      for (const m of messages) recordOutboxEnqueued(m.message);
+      for (const m of messages) {
+        recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
+      }
     }
   }
 
@@ -3355,21 +3348,15 @@ async function forwardActivityInternal<TContextData>(
     });
   }
   const { outboxQueue } = ctx.federation;
-  const recordOutboxEnqueued = (message: OutboxMessage): void => {
-    getFederationMetrics(ctx.federation.meterProvider).recordQueueTaskEnqueued(
-      {
-        role: "outbox",
-        queue: outboxQueue,
-        activityType: message.activityType,
-      },
-      message.attempt,
-    );
-  };
   if (outboxQueue.enqueueMany == null || orderingKey != null) {
     const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
       messages.map(async (m) => {
         await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
-        recordOutboxEnqueued(m.message);
+        recordOutboxEnqueue(
+          ctx.federation.meterProvider,
+          outboxQueue,
+          m.message,
+        );
       }),
     );
     const errors: unknown[] = promises
@@ -3398,7 +3385,13 @@ async function forwardActivityInternal<TContextData>(
       );
       throw error;
     }
-    for (const m of messages) recordOutboxEnqueued(m.message);
+    for (const m of messages) {
+      recordOutboxEnqueue(
+        ctx.federation.meterProvider,
+        outboxQueue,
+        m.message,
+      );
+    }
   }
   return true;
 }
