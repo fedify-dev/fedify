@@ -4403,69 +4403,80 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
     assertEquals(completed[0].attributes["fedify.queue.native_retrial"], true);
   });
 
-  await t.step("records outbox enqueue and worker metrics", async () => {
-    const kv = new MemoryKvStore();
-    const [meterProvider, recorder] = createTestMeterProvider();
-    const queue: MessageQueue = {
-      enqueue(_message, _options) {
-        return Promise.resolve();
-      },
-      listen(_handler, _options) {
-        return Promise.resolve();
-      },
-    };
-    const federation = new FederationImpl<void>({
-      kv,
-      meterProvider,
-      queue,
-    });
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+  await t.step(
+    "records outbox worker metrics on successful delivery",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
 
-    fetchMock.spyGlobal();
-    fetchMock.post("https://remote.example/inbox", { status: 202 });
-    try {
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "outbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          keys: [],
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://example.com/activities/1",
-            actor: "https://example.com/users/alice",
-            object: { type: "Note", content: "test" },
-          },
-          activityType: "https://www.w3.org/ns/activitystreams#Create",
-          inbox: "https://remote.example/inbox",
-          sharedInbox: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          headers: {},
-          traceContext: {},
-        } satisfies OutboxMessage,
+      fetchMock.spyGlobal();
+      fetchMock.post("https://remote.example/inbox", { status: 202 });
+      try {
+        await federation.processQueuedTask(
+          undefined,
+          {
+            type: "outbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            keys: [],
+            activity: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Create",
+              id: "https://example.com/activities/1",
+              actor: "https://example.com/users/alice",
+              object: { type: "Note", content: "test" },
+            },
+            activityType: "https://www.w3.org/ns/activitystreams#Create",
+            inbox: "https://remote.example/inbox",
+            sharedInbox: false,
+            started: new Date().toISOString(),
+            attempt: 0,
+            headers: {},
+            traceContext: {},
+          } satisfies OutboxMessage,
+        );
+      } finally {
+        fetchMock.hardReset();
+      }
+
+      const started = recorder.getMeasurements("fedify.queue.task.started");
+      assertEquals(started.length, 1);
+      assertEquals(started[0].attributes["fedify.queue.role"], "outbox");
+      assertEquals(
+        started[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
       );
-    } finally {
-      fetchMock.hardReset();
-    }
 
-    const started = recorder.getMeasurements("fedify.queue.task.started");
-    assertEquals(started.length, 1);
-    assertEquals(started[0].attributes["fedify.queue.role"], "outbox");
-    assertEquals(
-      started[0].attributes["activitypub.activity.type"],
-      "https://www.w3.org/ns/activitystreams#Create",
-    );
+      const completed = recorder.getMeasurements("fedify.queue.task.completed");
+      assertEquals(completed.length, 1);
+      assertEquals(
+        completed[0].attributes["fedify.queue.task.result"],
+        "completed",
+      );
 
-    const completed = recorder.getMeasurements("fedify.queue.task.completed");
-    assertEquals(completed.length, 1);
-    assertEquals(
-      completed[0].attributes["fedify.queue.task.result"],
-      "completed",
-    );
-  });
+      // Successful outbox delivery should not re-enqueue, so no enqueued
+      // measurement is expected on this path.  The guard catches accidental
+      // double-counting if the implementation ever changes.
+      assertEquals(
+        recorder.getMeasurements("fedify.queue.task.enqueued").length,
+        0,
+      );
+    },
+  );
 
   await t.step(
     "records started/completed for a fanout task with no recipients",

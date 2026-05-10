@@ -2542,12 +2542,16 @@ test("handleInbox() records fedify.queue.task.enqueued when queued", async () =>
 
   const enqueued = recorder.getMeasurements("fedify.queue.task.enqueued");
   assertEquals(enqueued.length, 1);
+  assertEquals(enqueued[0].type, "counter");
   assertEquals(enqueued[0].attributes["fedify.queue.role"], "inbox");
   assertEquals(enqueued[0].attributes["fedify.queue.task.attempt"], 0);
   assertEquals(
     enqueued[0].attributes["activitypub.activity.type"],
     "https://www.w3.org/ns/activitystreams#Create",
   );
+  // The queue here is an object literal, so getQueueBackend() should omit the
+  // backend attribute rather than emit "Object".
+  assertEquals(enqueued[0].attributes["fedify.queue.backend"], undefined);
 });
 
 test("handleInbox() records unverified HTTP signature details", async () => {
