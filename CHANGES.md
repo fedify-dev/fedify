@@ -53,16 +53,20 @@ To be released.
 
  -  Added OpenTelemetry queue task metrics covering Fedify's enqueue and
     worker boundaries for inbox, outbox, and fanout work:
-    `fedify.queue.task.enqueued` (Counter), `fedify.queue.task.started`
-    (Counter), `fedify.queue.task.completed` (Counter),
-    `fedify.queue.task.failed` (Counter), `fedify.queue.task.duration`
-    (Histogram), and `fedify.queue.task.in_flight` (UpDownCounter, process
-    local).  Instruments carry `fedify.queue.role`, best-effort
+
+     -  `fedify.queue.task.enqueued` (counter)
+     -  `fedify.queue.task.started` (counter)
+     -  `fedify.queue.task.completed` (counter)
+     -  `fedify.queue.task.failed` (counter)
+     -  `fedify.queue.task.duration` (histogram)
+     -  `fedify.queue.task.in_flight` (up/down counter, process local)
+
+    Instruments carry `fedify.queue.role`, best-effort
     `fedify.queue.backend` (the queue implementation's constructor name),
     and `fedify.queue.native_retrial`.  The enqueue/started/completed/
     failed/duration instruments additionally carry
     `activitypub.activity.type` whenever Fedify knows the activity type
-    for the queued message; the in-flight UpDownCounter deliberately
+    for the queued message; the in-flight up/down counter deliberately
     omits per-message attributes so that increment and decrement
     operations always pair up cleanly per attribute series.  Enqueue
     measurements additionally carry `fedify.queue.task.attempt` for
@@ -70,7 +74,7 @@ To be released.
     `fedify.queue.task.result` (`completed`, `failed`, or `aborted`).
     Together with `MessageQueue.getDepth()` reporting, these metrics let
     operators distinguish a slow-draining queue from a queue that sees
-    less traffic.  [[#316], [#740]]
+    less traffic.  [[#316], [#740], [#759]]
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
@@ -82,6 +86,7 @@ To be released.
 [#753]: https://github.com/fedify-dev/fedify/pull/753
 [#755]: https://github.com/fedify-dev/fedify/pull/755
 [#757]: https://github.com/fedify-dev/fedify/pull/757
+[#759]: https://github.com/fedify-dev/fedify/pull/759
 
 ### @fedify/fixture
 
