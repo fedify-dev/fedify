@@ -1394,7 +1394,10 @@ export class FederationImpl<TContextData>
         message.attempt,
       );
     };
-    if (outboxQueue.enqueueMany == null) {
+    // enqueueMany does not support per-message orderingKey, so fall back to
+    // individual enqueues whenever orderingKey is specified or the backend
+    // does not implement enqueueMany.
+    if (outboxQueue.enqueueMany == null || orderingKey != null) {
       const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
         messages.map(async (m) => {
           await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
@@ -1418,45 +1421,16 @@ export class FederationImpl<TContextData>
         throw errors[0];
       }
     } else {
-      // Note: enqueueMany does not support per-message orderingKey,
-      // so we fall back to individual enqueues when orderingKey is specified
-      if (orderingKey != null) {
-        const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
-          messages.map(async (m) => {
-            await outboxQueue.enqueue(m.message, {
-              orderingKey: m.orderingKey,
-            });
-            recordOutboxEnqueued(m.message);
-          }),
+      try {
+        await outboxQueue.enqueueMany(messages.map((m) => m.message));
+      } catch (error) {
+        logger.error(
+          "Failed to enqueue activity {activityId} to send later: {error}",
+          { activityId: activity.id!.href, error },
         );
-        const errors = promises
-          .filter((r) => r.status === "rejected")
-          .map((r) => (r as PromiseRejectedResult).reason);
-        if (errors.length > 0) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to send later: {errors}",
-            { activityId: activity.id!.href, errors },
-          );
-          if (errors.length > 1) {
-            throw new AggregateError(
-              errors,
-              `Failed to enqueue activity ${activityId} to send later.`,
-            );
-          }
-          throw errors[0];
-        }
-      } else {
-        try {
-          await outboxQueue.enqueueMany(messages.map((m) => m.message));
-        } catch (error) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to send later: {error}",
-            { activityId: activity.id!.href, error },
-          );
-          throw error;
-        }
-        for (const m of messages) recordOutboxEnqueued(m.message);
+        throw error;
       }
+      for (const m of messages) recordOutboxEnqueued(m.message);
     }
   }
 
