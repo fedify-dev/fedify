@@ -138,6 +138,27 @@ class FederationMetrics {
       {
         description: "Duration of queue task processing in Fedify workers.",
         unit: "ms",
+        advice: {
+          // Reuse the OpenTelemetry HTTP server semantic-conventions buckets
+          // since queue task durations span a similar 5 ms to 10 s range
+          // (network-bound outbox delivery dominates the tail).
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
       },
     );
     this.queueTaskInFlight = meter.createUpDownCounter(
