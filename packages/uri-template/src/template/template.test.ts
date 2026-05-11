@@ -1,6 +1,5 @@
 import { test } from "@fedify/fixture";
-import { deepEqual, equal } from "node:assert";
-import { ok, throws } from "node:assert/strict";
+import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import {
   createFixedTemplateMatchTest,
   createFixedTemplateTest,
@@ -17,6 +16,7 @@ import {
   wrongTestSuites,
 } from "../tests/mod.ts";
 import {
+  EmptyExpressionError,
   InvalidLiteralError,
   InvalidPrefixError,
   PrefixModifierNotApplicableError,
@@ -58,6 +58,17 @@ test("throws parse errors in strict mode", () => {
   throws(() => new Template("{var:0}"), InvalidPrefixError);
 });
 
+test("reports expression parse errors once in strict mode", () => {
+  const errors: Error[] = [];
+
+  throws(
+    () => new Template("{}", { report: (error: Error) => errors.push(error) }),
+    EmptyExpressionError,
+  );
+  equal(errors.length, 1);
+  equal(errors[0] instanceof EmptyExpressionError, true);
+});
+
 test("reports parse errors without throwing in non-strict mode", () => {
   const errors: Error[] = [];
   const template = new Template("{=bad}/{ok}", {
@@ -78,21 +89,6 @@ test("reports expansion errors without throwing in non-strict mode", () => {
   });
 
   equal(template.expand({ list: ["red"], ok: "value" }), "/value");
-  equal(errors.length, 1);
-  equal(errors[0] instanceof PrefixModifierNotApplicableError, true);
-});
-
-test("uses explicit expand options when provided", () => {
-  const errors: Error[] = [];
-  const template = new Template("{list:3}/{ok}");
-
-  equal(
-    template.expand(
-      { list: ["red"], ok: "value" },
-      { strict: false, report: (error: Error) => errors.push(error) },
-    ),
-    "/value",
-  );
   equal(errors.length, 1);
   equal(errors[0] instanceof PrefixModifierNotApplicableError, true);
 });

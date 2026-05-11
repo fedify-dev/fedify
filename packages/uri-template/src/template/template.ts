@@ -60,25 +60,17 @@ export default class Template {
   /**
    * Expands this template against a variable context.
    */
-  expand: (
+  expand: (context: ExpandContext) => string = (
     context: ExpandContext,
-    options?: TemplateOptions,
-  ) => string = (
-    context: ExpandContext,
-    options: TemplateOptions = this.#fullOptions,
-  ): string => expand(this.#tokens, context, options);
+  ): string => expand(this.#tokens, context, this.#fullOptions);
 
   /**
    * Matches a URI against this template, returning the variable context if the
    * URI matches or `null` if it does not.
    */
-  match: (
+  match: (uri: string) => ExpandContext | null = (
     uri: string,
-    options?: TemplateOptions,
-  ) => ExpandContext | null = (
-    uri: string,
-    options: TemplateOptions = this.#fullOptions,
-  ): ExpandContext | null => match(this.#tokens, uri, options);
+  ): ExpandContext | null => match(this.#tokens, uri, this.#fullOptions);
 
   toString = (): string => this.uriTemplate;
 }
