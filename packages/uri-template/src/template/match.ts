@@ -8,7 +8,7 @@ import type {
   Token,
   VarSpec,
 } from "../types.ts";
-import { encodeName, isVarcharAt, truncateValue } from "./encoding.ts";
+import { encodeName, truncateValue } from "./encoding.ts";
 import expand from "./expand.ts";
 
 /**
@@ -351,27 +351,12 @@ const isExplodedPairBoundary = (
   if (!body.startsWith(separator, index)) return false;
 
   const keyStart = index + separator.length;
-  const keyEnd = readPairKeyEnd(body, keyStart);
-  return keyEnd > keyStart && body[keyEnd] === "=";
-};
-
-function readPairKeyEnd(body: string, start: number): number {
-  let index = start;
-  let expectVarchar = true;
-  while (index < body.length) {
-    const varcharLength = isVarcharAt(body, index);
-    if (varcharLength > 0) {
-      index += varcharLength;
-      expectVarchar = false;
-      continue;
-    }
-    if (body[index] !== ".") break;
-    if (expectVarchar || isVarcharAt(body, index + 1) < 1) break;
-    index++;
-    expectVarchar = true;
+  for (let i = keyStart; i < body.length; i++) {
+    if (body[i] === "=") return i > keyStart;
+    if (body.startsWith(separator, i)) return false;
   }
-  return index;
-}
+  return false;
+};
 
 /**
  * Yields candidate readings of a single value string under non-exploded
