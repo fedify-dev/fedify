@@ -1,4 +1,5 @@
 import {
+  assertPath,
   isExpression,
   type Path,
   Router,
@@ -74,7 +75,8 @@ function validateSingleIdentifierVariablePath(
   path: string,
   errorMessage: string,
 ): void {
-  const pattern = Router.compile(path as Path);
+  assertPath(path);
+  const pattern = Router.compile(path);
   if (pattern.variables.size !== 1 || !pattern.variables.has("identifier")) {
     throw new RouterError(errorMessage);
   }
@@ -88,7 +90,7 @@ function validateSingleIdentifierVariablePath(
 
   const { operator, vars: [varSpec] } = expressions[0];
   if (
-    ["?", "&", "#"].includes(operator) ||
+    !(operator === "" || operator === "/") ||
     varSpec.explode ||
     varSpec.prefix != null
   ) {
