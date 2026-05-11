@@ -1,5 +1,5 @@
 import { OPERATORS } from "../const.ts";
-import type { Operator, TemplateOptions, Token, VarSpec } from "../types.ts";
+import type { Operator, Token, VarSpec } from "../types.ts";
 import { isVarcharAt } from "./encoding.ts";
 import {
   EmptyExpressionError,
@@ -24,28 +24,23 @@ export default function parseExpression(
   source: string,
   template: string,
   position: number,
-  { report }: TemplateOptions,
 ): Token {
-  const reportExpressionError = (error: Error): Token => {
-    report(error);
-    return {
-      kind: "literal",
-      text: template.slice(position, position + source.length + 2),
-    };
+  const raiseExpressionError = (error: Error): never => {
+    throw error;
   };
 
   if (source.length < 1) {
-    return reportExpressionError(new EmptyExpressionError(template, position));
+    return raiseExpressionError(new EmptyExpressionError(template, position));
   }
 
   const first = source[0];
   if (isReservedOperator(first)) {
-    return reportExpressionError(
+    return raiseExpressionError(
       new ReservedOperatorError(template, position + 1, first),
     );
   }
   if (!isOperator(first) && isVarcharAt(source, 0) < 1) {
-    return reportExpressionError(
+    return raiseExpressionError(
       new UnknownOperatorError(template, position + 1, first),
     );
   }

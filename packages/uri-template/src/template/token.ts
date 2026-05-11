@@ -50,7 +50,7 @@ export default function tokenize(
 
       const expression = template.slice(index + 1, closeIndex);
       try {
-        tokens.push(parseExpression(expression, template, index, options));
+        tokens.push(parseExpression(expression, template, index));
       } catch (error) {
         report(error instanceof Error ? error : new Error(String(error)));
         appendLiteral(template.slice(index, closeIndex + 1));
