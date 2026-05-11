@@ -180,6 +180,9 @@ export default class Router {
    */
   add = (pathOrPattern: Path | RouterPathPattern, name: string): void => {
     const pattern = resolvePathPattern(pathOrPattern);
+    const previous = this.#routesByName.get(name);
+    if (previous != null) this.#trie.remove(previous);
+
     const entry = createRouteEntry({ index: this.#nextIndex++, name, pattern });
 
     this.#routesByName.set(name, entry);
@@ -194,8 +197,18 @@ export default class Router {
    */
   register = (routes: Iterable<RouterRoute>): void => {
     const entries: RouteEntry[] = [];
+    const pendingByName = new Map<string, RouteEntry>();
 
     for (const [pathOrPattern, name] of routes) {
+      const pending = pendingByName.get(name);
+      if (pending != null) {
+        const index = entries.indexOf(pending);
+        if (index >= 0) entries.splice(index, 1);
+      } else {
+        const committed = this.#routesByName.get(name);
+        if (committed != null) this.#trie.remove(committed);
+      }
+
       const pattern = resolvePathPattern(pathOrPattern);
       const entry = createRouteEntry({
         index: this.#nextIndex++,
@@ -204,6 +217,7 @@ export default class Router {
       });
 
       this.#routesByName.set(name, entry);
+      pendingByName.set(name, entry);
       entries.push(entry);
     }
 
@@ -224,18 +238,8 @@ export default class Router {
     return retryUrl == null ? null : this.#route(retryUrl);
   };
 
-  /**
-   * Constructs a URL/path from a path name and values.
-   * @param name The name of the path.
-   * @param values The values to expand the path with.
-   * @returns The URL/path, if the name exists.  Otherwise, `null`.
-   */
-  build = (name: string, values: Record<string, string>): Path | null =>
-    (this.#routesByName.get(name)
-      ?.pattern.template.expand(values) ?? null) as Path | null;
-
   #route(url: Path): RouterRouteResult | null {
-    for (const entry of this.#trie.candidates(url, this.#isActiveEntry)) {
+    for (const entry of this.#trie.candidates(url)) {
       const context = entry.pattern.template.match(url);
       if (context == null) continue;
 
@@ -252,14 +256,20 @@ export default class Router {
     return null;
   }
 
+  /**
+   * Constructs a URL/path from a path name and values.
+   * @param name The name of the path.
+   * @param values The values to expand the path with.
+   * @returns The URL/path, if the name exists.  Otherwise, `null`.
+   */
+  build = (name: string, values: Record<string, string>): Path | null =>
+    (this.#routesByName.get(name)
+      ?.pattern.template.expand(values) ?? null) as Path | null;
+
   #activeEntries = (): RouterRoute[] =>
     Array.from(this.#routesByName.values())
       .sort((left, right) => left.index - right.index)
-      .filter(this.#isActiveEntry)
       .map((entry): RouterRoute => [entry.pattern, entry.name]);
-
-  #isActiveEntry = (entry: RouteEntry): boolean =>
-    this.#routesByName.get(entry.name) === entry;
 }
 
 interface CreateRouteEntryOptions {

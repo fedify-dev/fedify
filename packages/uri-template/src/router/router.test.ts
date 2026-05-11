@@ -173,6 +173,128 @@ test("Router constructor argument variants", async (t) => {
   });
 });
 
+test("Router treats re-registration as replacement", async (t) => {
+  await t.step("add() replaces a previous add() with the same name", () => {
+    const router = new Router();
+    router.add("/old/{id}" as Path, "user");
+    router.add("/new/{id}" as Path, "user");
+
+    equal(router.route("/old/1" as Path), null);
+    deepEqual(router.route("/new/1" as Path), {
+      name: "user",
+      template: "/new/{id}",
+      values: { id: "1" },
+    });
+    equal(router.build("user", { id: "1" }), "/new/1");
+  });
+
+  await t.step("register() replaces previously registered names", () => {
+    const router = new Router();
+    router.register([
+      ["/a/{id}" as Path, "user"],
+      ["/b/{id}" as Path, "post"],
+    ]);
+    router.register([
+      ["/c/{id}" as Path, "user"],
+      ["/d/{id}" as Path, "post"],
+    ]);
+
+    equal(router.route("/a/1" as Path), null);
+    equal(router.route("/b/1" as Path), null);
+    equal(router.route("/c/1" as Path)?.name, "user");
+    equal(router.route("/d/1" as Path)?.name, "post");
+  });
+
+  await t.step("register() de-duplicates names within a single call", () => {
+    const router = new Router();
+    router.register([
+      ["/a/{id}" as Path, "user"],
+      ["/b/{id}" as Path, "user"],
+    ]);
+
+    equal(router.route("/a/1" as Path), null);
+    deepEqual(router.route("/b/1" as Path), {
+      name: "user",
+      template: "/b/{id}",
+      values: { id: "1" },
+    });
+  });
+
+  await t.step("constructor de-duplicates names in the input iterable", () => {
+    const router = new Router([
+      ["/v1/{id}" as Path, "user"],
+      ["/v2/{id}" as Path, "user"],
+    ]);
+
+    equal(router.route("/v1/1" as Path), null);
+    equal(router.route("/v2/1" as Path)?.name, "user");
+  });
+
+  await t.step("only the latest survives repeated re-registration", () => {
+    const router = new Router();
+    for (let i = 0; i < 50; i++) {
+      router.add(`/v${i}/{id}` as Path, "user");
+    }
+
+    equal(router.route("/v0/1" as Path), null);
+    equal(router.route("/v25/1" as Path), null);
+    deepEqual(router.route("/v49/1" as Path), {
+      name: "user",
+      template: "/v49/{id}",
+      values: { id: "1" },
+    });
+  });
+
+  await t.step(
+    "mixed add() / register() preserves replacement semantics",
+    () => {
+      const router = new Router();
+      router.add("/old-a/{id}" as Path, "a");
+      router.add("/old-b/{id}" as Path, "b");
+      router.register([
+        ["/new-a/{id}" as Path, "a"],
+        ["/new-b/{id}" as Path, "b"],
+      ]);
+
+      equal(router.route("/old-a/1" as Path), null);
+      equal(router.route("/old-b/1" as Path), null);
+      equal(router.route("/new-a/1" as Path)?.name, "a");
+      equal(router.route("/new-b/1" as Path)?.name, "b");
+    },
+  );
+
+  await t.step("sibling routes survive re-registration of another name", () => {
+    const router = new Router();
+    router.register([
+      ["/users/{id}" as Path, "user"],
+      ["/posts/{id}" as Path, "post"],
+    ]);
+    router.add("/people/{id}" as Path, "user");
+
+    equal(router.route("/users/1" as Path), null);
+    equal(router.route("/people/1" as Path)?.name, "user");
+    equal(router.route("/posts/9" as Path)?.name, "post");
+  });
+
+  await t.step(
+    "clone() after re-registration reflects only active routes",
+    () => {
+      const router = new Router();
+      router.add("/old/{id}" as Path, "user");
+      router.add("/new/{id}" as Path, "user");
+
+      const cloned = router.clone();
+      equal(cloned.has("user"), true);
+      equal(cloned.route("/old/1" as Path), null);
+      deepEqual(cloned.route("/new/1" as Path), {
+        name: "user",
+        template: "/new/{id}",
+        values: { id: "1" },
+      });
+    },
+  );
+});
+
 test("Router.from() mirrors the constructor", async (t) => {
   await t.step("no arguments", () => {
     const router = Router.from();
