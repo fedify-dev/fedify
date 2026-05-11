@@ -3,8 +3,11 @@ import type { Operator } from "./const.ts";
 
 /**
  * Path-shaped URI Template accepted by the router.
+ *
+ * The empty path is accepted so trailing-slash-insensitive routing can retry
+ * the root path (`/`) as an empty path.
  */
-export type Path = `/${string}` | `{/${string}}${string}`;
+export type Path = "" | `/${string}` | `{/${string}}${string}`;
 
 /**
  * Primitive value accepted by {@link Template.expand}.

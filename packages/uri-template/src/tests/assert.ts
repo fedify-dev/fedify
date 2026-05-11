@@ -315,7 +315,7 @@ function assertPath(
   label: string,
 ): asserts value is Path {
   assertString(value, label);
-  if (!value.startsWith("/") && !/^\{\/[^}]+\}\//.test(value)) {
+  if (value !== "" && !value.startsWith("/") && !/^\{\/[^}]+\}/.test(value)) {
     throw new TypeError(`${label} must be a router path`);
   }
 }

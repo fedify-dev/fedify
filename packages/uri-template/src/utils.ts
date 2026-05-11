@@ -14,12 +14,14 @@ export const isLiteral = <T extends { kind: string }>(
  * Returns whether `path` is a path-shaped URI Template accepted by the
  * router.
  *
- * A path is either a literal string starting with `/`, or a path-expansion
- * expression (`{/var}`) followed by a literal segment that starts with `/`.
+ * A path is either an empty string, a literal string starting with `/`, or a
+ * path-expansion expression (`{/var}`).
  * Templates that fail to parse — and therefore could never be routed —
  * return `false`.
  */
 export function isPath(path: string): path is Path {
+  if (path === "") return true;
+
   try {
     const template = new Template(path);
 
@@ -36,7 +38,8 @@ export function isPath(path: string): path is Path {
 export function assertPath(path: string): asserts path is Path {
   if (!isPath(path)) {
     throw new RouterError(
-      `"${path}" is not looks like a path. Is this start with slash(\`//\`?)`,
+      `"${path}" is not a router path. It must be empty, start with ` +
+        "`/`, or start with a expression with slash(`/`) like `{/id}`.",
     );
   }
 }
