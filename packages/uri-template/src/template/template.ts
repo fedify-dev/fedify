@@ -1,4 +1,3 @@
-import { getLogger } from "@logtape/logtape";
 import type {
   ExpandContext,
   Reporter,
@@ -28,11 +27,11 @@ export default class Template {
     public readonly uriTemplate: string,
     /**
      * Options for parsing the template. By default, `strict` is `true` and
-     * `report` logs errors using the default logger. If `strict` is `true`, the
-     * first error encountered while parsing or expanding will be automatically
-     * thrown after being reported. If `strict` is `false`, errors will be
-     * reported but none will be thrown unless the `report` function itself
-     * throws. The rest of the part remains as literal text.
+     * `report` is a no-op. If `strict` is `true`, the first error encountered
+     * while parsing or expanding will be automatically thrown after being
+     * reported. If `strict` is `false`, errors will be reported but none will
+     * be thrown unless the `report` function itself throws. The rest of the
+     * part remains as literal text.
      */
     readonly options: Partial<TemplateOptions> = {},
   ) {
@@ -75,9 +74,7 @@ export default class Template {
   toString = (): string => this.uriTemplate;
 }
 
-const logger = getLogger(["fedify", "uri-template", "template"]);
-
-const defaultReporter: Reporter = (error: Error) => logger.error(error);
+const defaultReporter: Reporter = () => void 0;
 
 const fillOptions = (
   { strict, report }: Partial<TemplateOptions>,

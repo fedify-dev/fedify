@@ -78,8 +78,9 @@ export interface TemplateOptions {
   strict: boolean;
   /**
    * A function that will be called with any errors encountered while parsing
-   * or expanding.  By default, errors are logged using the default logger.
-   * In strict mode, they are still thrown after this reporter runs.
+   * or expanding.  Defaults to a no-op; pass a callback (for example, one
+   * backed by your application's logger) to observe diagnostics. In strict
+   * mode, errors are still thrown after this reporter runs.
    * @param error The error that was encountered while parsing or expanding the
    *              template.
    */
