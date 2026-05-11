@@ -133,6 +133,18 @@ test("Router accepts pre-parsed RouterPathPattern", async (t) => {
   });
 });
 
+test("Router trailing slash retry accepts empty root path", () => {
+  const router = new Router([["", "root"]], {
+    trailingSlashInsensitive: true,
+  });
+
+  deepEqual(router.route("/"), {
+    name: "root",
+    template: "",
+    values: {},
+  });
+});
+
 test("Router constructor argument variants", async (t) => {
   await t.step("no arguments builds an empty router", () => {
     const router = new Router();
