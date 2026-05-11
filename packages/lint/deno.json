@@ -3,7 +3,8 @@
   "version": "2.3.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./oxlint": "./src/oxlint.ts"
   },
   "imports": {
     "eslint": "npm:eslint@^9.0.0",
@@ -16,6 +17,6 @@
     ]
   },
   "tasks": {
-    "test": "deno test --allow-env"
+    "test": "deno test --allow-env --allow-read --allow-run --allow-sys --allow-write"
   }
 }

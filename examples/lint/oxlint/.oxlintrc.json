@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "jsPlugins": ["@fedify/lint/oxlint"],
+  "rules": {
+    "@fedify/lint/actor-id-required": "error",
+    "@fedify/lint/actor-id-mismatch": "error",
+    "@fedify/lint/actor-inbox-property-required": "warn",
+    "@fedify/lint/actor-outbox-property-required": "warn",
+    "@fedify/lint/actor-followers-property-required": "warn"
+  }
+}

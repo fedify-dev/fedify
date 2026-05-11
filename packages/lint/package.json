@@ -8,7 +8,9 @@
     "Fediverse",
     "Lint",
     "ESLint",
-    "ESLint Plugin"
+    "ESLint Plugin",
+    "oxlint",
+    "oxc"
   ],
   "author": {
     "name": "Chanhaeng Lee",
@@ -38,6 +40,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./oxlint": {
+      "types": "./dist/oxlint.d.ts",
+      "import": "./dist/oxlint.js",
+      "require": "./dist/oxlint.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -60,9 +67,11 @@
     "@typescript-eslint/utils": "^8.0.0"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:*",
     "@types/eslint": "^9.0.0",
     "@types/estree": "^1.0.8",
     "eslint": "^9.0.0",
+    "oxlint": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

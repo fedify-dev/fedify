@@ -1,0 +1,19 @@
+{
+  "name": "@fedify/example-lint-oxlint",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Example project demonstrating @fedify/lint with oxlint",
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint .",
+    "lint:fixed": "oxlint federation.fixed.ts"
+  },
+  "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^"
+  },
+  "devDependencies": {
+    "@fedify/lint": "workspace:^",
+    "oxlint": "catalog:"
+  }
+}
