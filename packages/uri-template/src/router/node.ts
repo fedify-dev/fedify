@@ -35,6 +35,12 @@ export default class Node<TEntry extends PrioritizedRouteEntry> {
     this.#entries.splice(this.#insertionIndex(entry), 0, entry);
   };
 
+  remove = (entry: TEntry): void => {
+    const index = this.#entries.indexOf(entry);
+    if (index < 0) return;
+    this.#entries.splice(index, 1);
+  };
+
   insertAll = (entries: TEntry[]): void => {
     if (entries.length === 0) return;
     if (entries.length === 1) {

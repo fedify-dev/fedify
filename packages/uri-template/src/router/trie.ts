@@ -26,6 +26,19 @@ export default class Trie<TEntry extends TrieEntry> {
     this.#dirty = true;
   };
 
+  remove = (entry: TEntry): void => {
+    let node = this.#root;
+
+    for (const char of entry.initialLiteralPrefix) {
+      const child = node.child(char);
+      if (child == null) return;
+      node = child;
+    }
+
+    node.remove(entry);
+    this.#dirty = true;
+  };
+
   insertAll = (entries: readonly TEntry[]): void => {
     if (entries.length === 0) return;
 
@@ -48,14 +61,11 @@ export default class Trie<TEntry extends TrieEntry> {
     this.#dirty = true;
   };
 
-  *candidates(
-    path: Path,
-    isActive: (entry: TEntry) => boolean,
-  ): Generator<TEntry, void, unknown> {
+  *candidates(path: Path): Generator<TEntry, void, unknown> {
     if (this.#dirty) this.#rebuildCandidates();
 
     for (const entry of this.#deepestNode(path).candidates) {
-      if (isActive(entry)) yield entry;
+      yield entry;
     }
   }
 
