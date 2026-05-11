@@ -348,7 +348,7 @@ export function createMatchBench(
   };
 }
 
-const mod = (i: number, j: number) => Math.floor(i / j);
+const div = (i: number, j: number) => Math.floor(i / j);
 
 export function createMatchBenchTestCases(): readonly string[] {
   let a = "/A";
@@ -364,7 +364,7 @@ export function createMatchBenchTestCases(): readonly string[] {
   }
   for (let i = 0; i < 676; i++) {
     a += "/" +
-      String.fromCharCode(0x61 + mod(i, 26)) +
+      String.fromCharCode(0x61 + div(i, 26)) +
       String.fromCharCode(0x61 + i % 26);
     b.push(a);
   }
