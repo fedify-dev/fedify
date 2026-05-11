@@ -252,6 +252,18 @@ test("FederationBuilder", async (t) => {
       RouterError,
     );
 
+    const builder3a = createFederationBuilder<void>();
+    assertThrows(
+      () => builder3a.setOutboxListeners("/users{;identifier}/outbox"),
+      RouterError,
+    );
+
+    const builder3b = createFederationBuilder<void>();
+    assertThrows(
+      () => builder3b.setOutboxListeners("/users{.identifier}/outbox"),
+      RouterError,
+    );
+
     const builder4 = createFederationBuilder<void>();
     assertThrows(
       () =>
