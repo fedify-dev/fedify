@@ -1,3 +1,5 @@
+// Add runtime validators only when tsc cannot verify a test suite JSON import
+// precisely enough to infer the exported type.
 import type { Path } from "../types.ts";
 import {
   assertHardTestSuite,
