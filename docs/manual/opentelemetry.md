@@ -374,7 +374,7 @@ Fedify records the following OpenTelemetry metrics:
     returns normally (`result=completed`) without scheduling a retry.
     Outbox-side activity failures remain observable through the
     `activitypub.delivery.*` metrics and the `activitypub.delivery.failed`
-    span event, and any retry attempt — inbox or outbox — appears as a
+    span event, and any retry attempt (inbox or outbox) appears as a
     `fedify.queue.task.enqueued` measurement with a non-zero
     `fedify.queue.task.attempt`.  Inbox listener errors that the retry policy
     abandons are visible through error logs and the inbox span's error status,
@@ -395,7 +395,7 @@ The `fedify.queue.task.*` metrics describe what Fedify's workers do with
 queued messages.  They complement the backend-side
 [`MessageQueue.getDepth()` API](./mq.md#queue-depth-reporting), which
 reports how many messages are currently waiting in the queue backend.
-Reading both signals together — task throughput plus backlog depth —
+Reading both signals together (task throughput plus backlog depth)
 makes it possible to distinguish a small, slow queue from a large, fast
 one and to set alerting thresholds for delivery latency under load.
 
