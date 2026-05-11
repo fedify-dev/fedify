@@ -129,3 +129,35 @@ test("Template#match — unnamed minLength must allow current var to consume one
     "matcher should reach the binding with x consuming one part",
   );
 });
+
+// Regression for PR #758 review item 36: `expand` encodes associative keys
+// with the full unreserved/reserved set, but `isExplodedPairBoundary` in
+// match.ts uses RFC 6570 varname rules to detect the next key. Keys that are
+// valid in URIs but outside the varname class (e.g. containing `-` or `~`)
+// expand cleanly yet fail to round-trip.
+test("Template#match — associative keys with non-varname characters round-trip", () => {
+  const template = new Template("{keys*}");
+  const uri = template.expand({ keys: { a: "1", "b-c": "2" } });
+  equal(uri, "a=1,b-c=2");
+  const m = template.match(uri);
+  ok(m != null, "matcher returned null for a round-trippable exploded URI");
+  deepEqual(m, { keys: { a: "1", "b-c": "2" } });
+});
+
+// Regression for PR #758 review item 37: the *wrong.json* fixtures for
+// "Invalid characters in literals" store double-escaped sequences such as
+// "\\u0000", which JSON-decode to 6-character backslash strings rather than
+// the 1-byte control characters they claim to test. The parser does reject
+// actual CTL bytes — this test pins that behavior directly, so future
+// refactors cannot silently regress on the CTL branch.
+test("Template — actual control-character literals throw InvalidLiteralError", () => {
+  for (const codePoint of [0x00, 0x01, 0x09, 0x0a, 0x0d, 0x1f, 0x7f]) {
+    throws(
+      () => new Template(String.fromCodePoint(codePoint)),
+      InvalidLiteralError,
+      `code point 0x${
+        codePoint.toString(16).padStart(2, "0")
+      } should be rejected`,
+    );
+  }
+});
