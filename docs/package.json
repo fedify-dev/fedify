@@ -46,7 +46,7 @@
     "@types/node": "catalog:",
     "amqplib": "catalog:",
     "better-sqlite3": "catalog:",
-    "dayjs": "^1.11.13",
+    "dayjs": "^1.11.20",
     "debug": "^4.4.1",
     "drizzle-orm": "catalog:",
     "express": "catalog:",

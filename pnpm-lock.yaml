@@ -323,8 +323,8 @@ importers:
         specifier: 'catalog:'
         version: 12.9.0
       dayjs:
-        specifier: ^1.11.13
-        version: 1.11.13
+        specifier: ^1.11.20
+        version: 1.11.20
       debug:
         specifier: ^4.4.1
         version: 4.4.1
@@ -7917,8 +7917,8 @@ packages:
   dax@0.45.0:
     resolution: {integrity: sha512-y/47GKisPkHCtkDQVr3yfJEtVTuXqMVXhU4Au8Xrzu4s+s9eQUBGuCFHBwrfUrsry0Or6NyusHl0DSi6qj7/4w==}
 
-  dayjs@1.11.13:
-    resolution: {integrity: sha512-oaMBel6gjolK862uaPQOVTA7q3TZhuSvuMQAAglQDOWYO9A91IrAOUJEyKVlqJlHE0vq5p5UXxzdPfMH/x6xNg==}
+  dayjs@1.11.20:
+    resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
 
   db0@0.3.4:
     resolution: {integrity: sha512-RiXXi4WaNzPTHEOu8UPQKMooIbqOEyqA1t7Z6MsdxSCeb8iUC9ko3LcmsLmeUt2SM5bctfArZKkRQggKZz7JNw==}
@@ -19824,7 +19824,7 @@ snapshots:
       '@deno/shim-deno': 0.19.2
       undici-types: 5.28.4
 
-  dayjs@1.11.13: {}
+  dayjs@1.11.20: {}
 
   db0@0.3.4(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20251221.0)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.2(@types/node@22.19.1))(postgres@3.4.7))(mysql2@3.22.2(@types/node@22.19.1)):
     optionalDependencies:
@@ -22430,7 +22430,7 @@ snapshots:
       d3: 7.9.0
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.11
-      dayjs: 1.11.13
+      dayjs: 1.11.20
       dompurify: 3.2.6
       katex: 0.16.22
       khroma: 2.1.0
