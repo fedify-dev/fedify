@@ -1344,7 +1344,7 @@ async function fetchDoubleKnockRequest(
   const maxAttempts = request.method === "GET" || request.method === "HEAD"
     ? 2
     : 1;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  for (let attempt = 1;; attempt++) {
     try {
       return await fetch(signedRequest, {
         // Since Bun has a bug that ignores the `Request.redirect` option,
@@ -1354,7 +1354,13 @@ async function fetchDoubleKnockRequest(
         signal,
       });
     } catch (error) {
-      if (isAbortError(error, signal, request.signal, signedRequest.signal)) {
+      const abortedSignal = getAbortedSignal(
+        signal,
+        request.signal,
+        signedRequest.signal,
+      );
+      if (abortedSignal != null) throw getAbortReason(abortedSignal);
+      if (isAbortError(error)) {
         throw error;
       }
       if (attempt >= maxAttempts) throw createFetchError(request.url, error);
@@ -1366,7 +1372,6 @@ async function fetchDoubleKnockRequest(
       );
     }
   }
-  throw new FetchError(request.url);
 }
 
 function createFetchError(url: string, cause: unknown): FetchError {
@@ -1376,14 +1381,8 @@ function createFetchError(url: string, cause: unknown): FetchError {
   return error;
 }
 
-function isAbortError(
-  error: unknown,
-  ...signals: (AbortSignal | undefined)[]
-): boolean {
-  return error instanceof Error && error.name === "AbortError" ||
-    signals.some((signal) =>
-      signal?.aborted === true && error === signal.reason
-    );
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 async function sleep(
@@ -1391,7 +1390,7 @@ async function sleep(
   ...signals: (AbortSignal | undefined)[]
 ): Promise<void> {
   const abortSignals = signals.filter((signal) => signal != null);
-  const abortedSignal = abortSignals.find((signal) => signal.aborted);
+  const abortedSignal = getAbortedSignal(...abortSignals);
   if (abortedSignal != null) throw getAbortReason(abortedSignal);
   if (abortSignals.length < 1) {
     await new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -1416,6 +1415,12 @@ async function sleep(
       signal.addEventListener("abort", handleAbort, { once: true });
     }
   });
+}
+
+function getAbortedSignal(
+  ...signals: (AbortSignal | undefined)[]
+): AbortSignal | undefined {
+  return signals.find((signal) => signal?.aborted);
 }
 
 function getAbortReason(signal: AbortSignal): unknown {
