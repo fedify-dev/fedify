@@ -8,7 +8,7 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: { neverBundle: [/^node:/] },
   }),
   defineConfig({
     outDir: "dist/tests",
@@ -16,6 +16,6 @@ export default [
       .map((f) => f.replace(sep, "/")),
     format: ["esm", "cjs"],
     platform: "node",
-    external: [/^node:/, "@fedify/fixture"],
+    deps: { neverBundle: [/^node:/, "@fedify/fixture"] },
   }),
 ];

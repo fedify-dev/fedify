@@ -107,6 +107,6 @@ catalog:
   mysql2: ^3.18.0
   nuxt: ^4.4.2
   postgres: ^3.4.7
-  tsdown: ^0.21.6
+  tsdown: ^0.22.0
   typescript: ^5.9.2
   urlpattern-polyfill: "^10.1.0"
