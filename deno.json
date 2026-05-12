@@ -36,7 +36,7 @@
     "./test/smoke/harness"
   ],
   "imports": {
-    "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
+    "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20260511.1",
     "@david/dax": "jsr:@david/dax@^0.46.1",
     "@fxts/core": "npm:@fxts/core@^1.21.1",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",

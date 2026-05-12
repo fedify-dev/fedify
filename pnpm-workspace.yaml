@@ -53,7 +53,7 @@ allowBuilds:
   workerd: true
 
 catalog:
-  "@cloudflare/workers-types": ^4.20250906.0
+  "@cloudflare/workers-types": ^4.20260511.1
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^2.0.7
