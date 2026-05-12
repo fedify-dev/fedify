@@ -68,13 +68,13 @@
     "jsr:@std/yaml@^1.0.8": "1.1.0",
     "jsr:@valibot/valibot@^1.4.0": "1.4.0",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
-    "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__yaml@2.9.0_yaml@2.9.0",
+    "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.0",
     "npm:@cfworker/json-schema@^4.1.1": "4.1.1",
     "npm:@cloudflare/vitest-pool-workers@~0.8.31": "0.8.71_vitest@3.2.4__@types+node@24.12.2__yaml@2.9.0_yaml@2.9.0",
     "npm:@cloudflare/workers-types@^4.20250529.0": "4.20260417.1",
     "npm:@cloudflare/workers-types@^4.20250906.0": "4.20260417.1",
-    "npm:@deno/astro-adapter@~0.3.2": "0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__yaml@2.9.0_yaml@2.9.0",
+    "npm:@deno/astro-adapter@~0.3.2": "0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@fxts/core@^1.21.1": "1.26.0",
     "npm:@hongminhee/localtunnel@0.3": "0.3.0",
     "npm:@inquirer/prompts@^7.8.4": "7.10.1_@types+node@24.12.2",
@@ -84,7 +84,7 @@
     "npm:@jsr/std__assert@0.226": "0.226.0",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.19_reflect-metadata@0.2.2_rxjs@7.8.2",
-    "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__yaml@2.9.0_yaml@2.9.0",
+    "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@nuxt/kit@4": "4.4.2",
     "npm:@nuxt/schema@4": "4.4.2",
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
@@ -98,7 +98,7 @@
     "npm:@preact/signals@^2.5.1": "2.9.0_preact@10.29.1",
     "npm:@prefresh/vite@^2.4.8": "2.4.12_preact@10.29.1_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0",
     "npm:@remix-run/node-fetch-server@0.12": "0.12.0",
-    "npm:@solidjs/start@^1.3.0": "1.3.2_yaml@2.9.0",
+    "npm:@solidjs/start@^1.3.0": "1.3.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@standard-schema/spec@^1.1.0": "1.1.0",
     "npm:@sveltejs/kit@2": "2.57.1_@opentelemetry+api@1.9.1_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0_yaml@2.9.0",
     "npm:@types/amqplib@*": "0.10.8",
@@ -113,7 +113,7 @@
     "npm:@typescript-eslint/utils@8": "8.58.2_eslint@9.39.4_typescript@6.0.3",
     "npm:amqplib@~0.10.9": "0.10.9",
     "npm:asn1js@^3.0.10": "3.0.10",
-    "npm:astro@^5.17.3": "5.18.1_yaml@2.9.0",
+    "npm:astro@^5.17.3": "5.18.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:byte-encodings@^1.0.11": "1.0.11",
     "npm:chalk@^5.6.2": "5.6.2",
     "npm:cli-highlight@^2.1.11": "2.1.11",
@@ -147,7 +147,7 @@
     "npm:jsonld@9": "9.0.0",
     "npm:koa@2": "2.16.4",
     "npm:miniflare@^4.20250523.0": "4.20250906.0",
-    "npm:mysql2@^3.18.0": "3.22.1_@types+node@24.12.2",
+    "npm:mysql2@^3.22.3": "3.22.3_@types+node@24.12.2",
     "npm:ora@^8.2.0": "8.2.0",
     "npm:pkijs@^3.2.5": "3.4.0",
     "npm:pkijs@^3.3.3": "3.4.0",
@@ -505,7 +505,7 @@
         "vfile"
       ]
     },
-    "@astrojs/node@10.0.5_astro@5.18.1__yaml@2.9.0_yaml@2.9.0": {
+    "@astrojs/node@10.0.5_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-rgZiU9nD7zmM3fdmOVuobcNHAyXWx2HXXDLTuxjVCTQ+QmHmL5zkZZhNIL5NjlQtDRAU1i5fVaXp7nAKdET30w==",
       "dependencies": [
         "@astrojs/internal-helpers@0.8.0",
@@ -851,7 +851,7 @@
         "@jridgewell/trace-mapping@0.3.9"
       ]
     },
-    "@deno/astro-adapter@0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__yaml@2.9.0_yaml@2.9.0": {
+    "@deno/astro-adapter@0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-nN0kQGobRs2XE3R+O/DWYQanEWpteJNsIf5TD65787qFEw2CrqkFNcNolZFJiKUF/2Y/TKyOLRjMS3F6auECVg==",
       "dependencies": [
         "@opentelemetry/api",
@@ -2444,7 +2444,7 @@
         "fastq"
       ]
     },
-    "@nurodev/astro-bun@2.1.2_astro@5.18.1__yaml@2.9.0_yaml@2.9.0": {
+    "@nurodev/astro-bun@2.1.2_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-CXzh0q+jOodmqtZ/YMyS7DTqmFC2zafv4C7GQMBDoBDRcx7CONzxCk/rK2uaKHoh3+AvSPo3hXnTp6oLfIpl5g==",
       "dependencies": [
         "astro",
@@ -3153,7 +3153,7 @@
     "@sindresorhus/merge-streams@4.0.0": {
       "integrity": "sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ=="
     },
-    "@solidjs/start@1.3.2_yaml@2.9.0": {
+    "@solidjs/start@1.3.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-tasDl3utVbtP0rr4InB3ntBIFV2upvEiFrOOCkRrAA3yBfjx9elpxnc94sJQXo65PNYdAAAkPIC6h93vLrtwHg==",
       "dependencies": [
         "@tanstack/server-functions-plugin",
@@ -3542,7 +3542,7 @@
       ],
       "bin": true
     },
-    "@vinxi/plugin-directives@0.5.1_vinxi@0.5.11__yaml@2.9.0_yaml@2.9.0": {
+    "@vinxi/plugin-directives@0.5.1_vinxi@0.5.11__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-pH/KIVBvBt7z7cXrUH/9uaqcdxjegFC7+zvkZkdOyWzs+kQD5KPf3cl8kC+5ayzXHT+OMlhGhyitytqN3cGmHg==",
       "dependencies": [
         "@babel/parser@7.29.2",
@@ -3557,7 +3557,7 @@
         "vinxi"
       ]
     },
-    "@vinxi/server-components@0.5.1_vinxi@0.5.11__yaml@2.9.0_yaml@2.9.0": {
+    "@vinxi/server-components@0.5.1_vinxi@0.5.11__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-0BsG95qac3dkhfdRZxqzqYWJE4NvPL7ILlV43B6K6ho1etXWB2e5b0IxsUAUbyqpqiXM7mSRivojuXjb2G4OsQ==",
       "dependencies": [
         "@vinxi/plugin-directives",
@@ -3836,7 +3836,7 @@
       "integrity": "sha512-LElXdjswlqjWrPpJFg1Fx4wpkOCxj1TDHlSV4PlaRxHGWko024xICaa97ZkMfs6DRKlCguiAI+rbXv5GWwXIkg==",
       "bin": true
     },
-    "astro-integration-kit@0.18.0_astro@5.18.1__yaml@2.9.0_yaml@2.9.0": {
+    "astro-integration-kit@0.18.0_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-Z0QW5IQjosuKQDEGYYkvUX6EhEtrmE4/oViqWz23QveV8U7AuyFsTdg00WRNPevWZl/5a4lLUeDpv4bCRynRRg==",
       "dependencies": [
         "astro",
@@ -3845,7 +3845,7 @@
       ],
       "deprecated": true
     },
-    "astro@5.18.1_yaml@2.9.0": {
+    "astro@5.18.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-m4VWilWZ+Xt6NPoYzC4CgGZim/zQUO7WFL0RHCH0AiEavF1153iC3+me2atDvXpf/yX4PyGUeD8wZLq1cirT3g==",
       "dependencies": [
         "@astrojs/compiler",
@@ -3904,7 +3904,7 @@
         "unstorage",
         "vfile",
         "vite@6.4.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0",
-        "vitefu@1.1.3_vite@6.4.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0_yaml@2.9.0",
+        "vitefu@1.1.3_vite@6.4.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0",
         "xxhash-wasm",
         "yargs-parser@21.1.1",
         "yocto-spinner",
@@ -4548,7 +4548,7 @@
         "undici-types@5.28.4"
       ]
     },
-    "db0@0.3.4_mysql2@3.22.1__@types+node@24.12.2_@types+node@24.12.2": {
+    "db0@0.3.4_mysql2@3.22.3__@types+node@24.12.2_@types+node@24.12.2": {
       "integrity": "sha512-RiXXi4WaNzPTHEOu8UPQKMooIbqOEyqA1t7Z6MsdxSCeb8iUC9ko3LcmsLmeUt2SM5bctfArZKkRQggKZz7JNw==",
       "dependencies": [
         "mysql2"
@@ -6782,8 +6782,8 @@
     "mute-stream@2.0.0": {
       "integrity": "sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA=="
     },
-    "mysql2@3.22.1_@types+node@24.12.2": {
-      "integrity": "sha512-48+9UXehKyxxiP2pqCxUq+MSFvX+v41jwsSpFDQO/jAoFuAELutBGJUhWJnDbe82/OBlIhSBMC82WeonmznT/Q==",
+    "mysql2@3.22.3_@types+node@24.12.2": {
+      "integrity": "sha512-uWWxvZSRvRhtBdh2CdcuK83YcOfPdmEeEYB069bAmPnV93QApDGVPuvCQOLjlh7tYHEWdgQPrn6kosDxHBVLkA==",
       "dependencies": [
         "@types/node@24.12.2",
         "aws-ssl-profiles",
@@ -6823,7 +6823,7 @@
     "neotraverse@0.6.18": {
       "integrity": "sha512-Z4SmBUweYa09+o6pG+eASabEpP6QkQ70yHj351pQoEXIs8uHbaU2DWVmzBANKgflPa47A50PtB2+NgRpQvr7vA=="
     },
-    "nitropack@2.13.3_rolldown@1.0.0": {
+    "nitropack@2.13.3_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-C8vO7RxkU0AQ3HbYUumuG6MVM5JjRaBchke/rYFOp3EvrLtTBHZYhDVGECdpa27vNuOYRzm3GtQMn2YDOjDJLA==",
       "dependencies": [
         "@cloudflare/kv-asset-handler@0.4.2",
@@ -8749,7 +8749,7 @@
         "webpack-virtual-modules"
       ]
     },
-    "unstorage@1.17.5_db0@0.3.4__mysql2@3.22.1___@types+node@24.12.2__@types+node@24.12.2_ioredis@5.10.1_@types+node@24.12.2_mysql2@3.22.1__@types+node@24.12.2": {
+    "unstorage@1.17.5_ioredis@5.10.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-0i3iqvRfx29hkNntHyQvJTpf5W9dQ9ZadSoRU8+xVlhVtT7jAX57fazYO9EHvcRCfBCyi5YRya7XCDOsbTgkPg==",
       "dependencies": [
         "anymatch",
@@ -8869,7 +8869,7 @@
         "vfile-message"
       ]
     },
-    "vinxi@0.5.11_yaml@2.9.0": {
+    "vinxi@0.5.11_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-82Qm+EG/b2PRFBvXBbz1lgWBGcd9totIL6SJhnrZYfakjloTVG9+5l6gfO6dbCCtztm5pqWFzLY0qpZ3H3ww/w==",
       "dependencies": [
         "@babel/core",
@@ -8979,8 +8979,14 @@
       ],
       "bin": true
     },
-    "vitefu@1.1.3_vite@6.4.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0_yaml@2.9.0": {
-      "integrity": "sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg=="
+    "vitefu@1.1.3_vite@6.4.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0": {
+      "integrity": "sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg==",
+      "dependencies": [
+        "vite@6.4.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0"
+      ],
+      "optionalPeers": [
+        "vite@6.4.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0"
+      ]
     },
     "vitefu@1.1.3_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0_yaml@2.9.0": {
       "integrity": "sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg==",
@@ -9343,7 +9349,7 @@
       "npm:h3@^1.15.0",
       "npm:ioredis@^5.8.2",
       "npm:json-preserve-indent@^1.1.3",
-      "npm:mysql2@^3.18.0",
+      "npm:mysql2@^3.22.3",
       "npm:postgres@^3.4.7",
       "npm:preact@10.19.6",
       "npm:tsdown@0.22"
