@@ -13,9 +13,10 @@ To be released.
  -  Fixed `doubleKnock()` so transient transport failures such as DNS hiccups
     no longer leak raw `TypeError`s.  Idempotent authenticated document
     fetches are retried once, and remaining transport failures are reported as
-    `FetchError` with the original error as the cause.  [[#762]]
+    `FetchError` with the original error as the cause.  [[#762], [#763]]
 
 [#762]: https://github.com/fedify-dev/fedify/issues/762
+[#763]: https://github.com/fedify-dev/fedify/pull/763
 
 
 Version 2.0.16
