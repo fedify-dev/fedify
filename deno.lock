@@ -105,7 +105,8 @@
     "npm:@types/amqplib@~0.10.7": "0.10.8",
     "npm:@types/babel__core@^7.20.5": "7.20.5",
     "npm:@types/eslint@9": "9.6.1",
-    "npm:@types/estree@^1.0.8": "1.0.8",
+    "npm:@types/estree@^1.0.8": "1.0.9",
+    "npm:@types/estree@^1.0.9": "1.0.9",
     "npm:@types/node@^22.16.0": "22.19.17",
     "npm:@types/node@^24.2.1": "24.12.2",
     "npm:@typescript-eslint/parser@^8.49.0": "8.58.2_eslint@9.39.4_typescript@6.0.3",
@@ -2918,7 +2919,7 @@
     "@rollup/pluginutils@5.3.0_rollup@4.60.1": {
       "integrity": "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==",
       "dependencies": [
-        "@types/estree",
+        "@types/estree@1.0.9",
         "estree-walker@2.0.2",
         "picomatch@4.0.4",
         "rollup"
@@ -3341,12 +3342,15 @@
     "@types/eslint@9.6.1": {
       "integrity": "sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==",
       "dependencies": [
-        "@types/estree",
+        "@types/estree@1.0.9",
         "@types/json-schema"
       ]
     },
     "@types/estree@1.0.8": {
       "integrity": "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="
+    },
+    "@types/estree@1.0.9": {
+      "integrity": "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="
     },
     "@types/glob-to-regexp@0.4.4": {
       "integrity": "sha512-nDKoaKJYbnn1MZxUY0cA1bPmmgZbg0cTq7Rh13d0KWYNOiKbqoR+2d89SnRPszGh7ROzSwZ/GOjZ4jPbmmZ6Eg=="
@@ -4961,7 +4965,7 @@
         "@humanfs/node",
         "@humanwhocodes/module-importer",
         "@humanwhocodes/retry",
-        "@types/estree",
+        "@types/estree@1.0.9",
         "ajv@6.14.0",
         "chalk@4.1.2",
         "cross-spawn",
@@ -5029,7 +5033,7 @@
     "estree-walker@3.0.3": {
       "integrity": "sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==",
       "dependencies": [
-        "@types/estree"
+        "@types/estree@1.0.9"
       ]
     },
     "esutils@2.0.3": {
@@ -5877,16 +5881,10 @@
       "integrity": "sha512-Ks/IoX00TtClbGQr4TWXemAnktAQvYB7HzcCxDGqEZU6oCmb2INHuOoKxbtR+HFkmYWBKv/dOZtGRiAjDhj92g=="
     },
     "is-reference@1.2.1": {
-      "integrity": "sha512-U82MsXXiFIrjCK4otLT+o2NA2Cd2g5MLoOVXUZjIOhLurrRxpEXzI8O0KZHr3IjLvlAH1kTPYSuqer5T9ZVBKQ==",
-      "dependencies": [
-        "@types/estree"
-      ]
+      "integrity": "sha512-U82MsXXiFIrjCK4otLT+o2NA2Cd2g5MLoOVXUZjIOhLurrRxpEXzI8O0KZHr3IjLvlAH1kTPYSuqer5T9ZVBKQ=="
     },
     "is-reference@3.0.3": {
-      "integrity": "sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw==",
-      "dependencies": [
-        "@types/estree"
-      ]
+      "integrity": "sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw=="
     },
     "is-regex@1.2.1": {
       "integrity": "sha512-MjYsKHO5O7mCsmRGxWcLWheFqN9DJ/2TmngvjKXihe6efViPqc274+Fx/4fYj/r03+ESvBdTXK0V6tA3rgez1g==",
@@ -7725,7 +7723,7 @@
     "rollup@4.60.1": {
       "integrity": "sha512-VmtB2rFU/GroZ4oL8+ZqXgSA38O6GR8KSIvWmEFv63pQ0G6KaBH9s07PO8XTXP4vI+3UJUEypOfjkGfmSBBR0w==",
       "dependencies": [
-        "@types/estree"
+        "@types/estree@1.0.8"
       ],
       "optionalDependencies": [
         "@rollup/rollup-android-arm-eabi",
@@ -8276,7 +8274,6 @@
         "@jridgewell/remapping",
         "@jridgewell/sourcemap-codec",
         "@sveltejs/acorn-typescript",
-        "@types/estree",
         "@types/trusted-types",
         "acorn@8.16.0",
         "aria-query@5.3.1",
@@ -9538,7 +9535,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@types/eslint@9",
-            "npm:@types/estree@^1.0.8",
+            "npm:@types/estree@^1.0.9",
             "npm:@typescript-eslint/parser@^8.49.0",
             "npm:@typescript-eslint/utils@8",
             "npm:eslint@9"
