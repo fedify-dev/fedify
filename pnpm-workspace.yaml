@@ -59,14 +59,14 @@ catalog:
   "@logtape/file": ^2.0.7
   "@logtape/logtape": ^2.0.7
   "@multiformats/base-x": ^4.0.1
-  "@opentelemetry/api": ^1.9.0
+  "@opentelemetry/api": ^1.9.1
   "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
-  "@opentelemetry/context-async-hooks": ^2.5.0
-  "@opentelemetry/core": ^2.5.0
+  "@opentelemetry/context-async-hooks": ^2.7.1
+  "@opentelemetry/core": ^2.7.1
   "@opentelemetry/sdk-node": ^0.211.0
-  "@opentelemetry/sdk-metrics": 2.5.0
-  "@opentelemetry/sdk-trace-base": ^2.5.0
-  "@opentelemetry/semantic-conventions": ^1.39.0
+  "@opentelemetry/sdk-metrics": 2.7.1
+  "@opentelemetry/sdk-trace-base": ^2.7.1
+  "@opentelemetry/semantic-conventions": ^1.40.0
   "@optique/config": ^1.0.2
   "@optique/core": ^1.0.2
   "@optique/run": ^1.0.2
