@@ -114,14 +114,11 @@ The important differences are:
     active route entries directly, which keeps the implementation independent
     and dependency-free at runtime.
 
-The old implementation differences can be checked by running the compatibility
-tests in *old/url-template.test.ts* and *old/uri-template-router.test.ts*.
-These tests intentionally run Fedify's expected behavior against the old
-libraries, so the failing cases show the gaps:
-
-~~~~ bash
-deno task test:old
-~~~~
+The concrete differences from the previous [url-template] and
+[uri-template-router] libraries are encoded as compatibility tests under
+*packages/uri-template/old/* in the package's source repository.  Refer to
+those tests for behavior comparisons against the older libraries; they are
+not shipped in the published package.
 
 
 Features

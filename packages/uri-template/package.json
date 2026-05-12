@@ -45,6 +45,11 @@
     "test:bun": "bun test src/**/*.test.ts",
     "test": "node --experimental-transform-types --test src/**/*.test.ts"
   },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
   "keywords": [
     "Fedify",
     "URI Template",

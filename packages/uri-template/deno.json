@@ -20,6 +20,7 @@
     "exclude": [
       "**/*.bench.ts",
       "**/*.test.ts",
+      "old/",
       "src/tests/",
       "summary.txt",
       "tsdown.config.ts"
