@@ -116,7 +116,16 @@ To be released.
  -  Replaced Fedify's internal federation routing with
     *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
-    available for compatibility.  [[#418]]
+    available for compatibility.  [[#418], [#758] by ChanHaeng Lee]
+
+ -  *Breaking change*: Tightened the deprecated `Router` shim from
+    *@fedify/fedify/federation*: `route()` now throws `RouterError` for
+    inputs that are not router paths (previously such inputs returned `null`
+    on non-match), and `trailingSlashInsensitive` is no longer mutable
+    post-construction (assignments after construction create an inert own
+    property; the flag must be passed to the constructor).  Callers should
+    validate inputs and pass options at construction, or migrate to `Router`
+    from *@fedify/uri-template*.  [[#418], [#758] by ChanHaeng Lee]
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
@@ -131,6 +140,7 @@ To be released.
 [#753]: https://github.com/fedify-dev/fedify/pull/753
 [#755]: https://github.com/fedify-dev/fedify/pull/755
 [#757]: https://github.com/fedify-dev/fedify/pull/757
+[#758]: https://github.com/fedify-dev/fedify/pull/758
 [#759]: https://github.com/fedify-dev/fedify/pull/759
 [#769]: https://github.com/fedify-dev/fedify/pull/769
 [#770]: https://github.com/fedify-dev/fedify/pull/770
@@ -152,8 +162,6 @@ To be released.
     implementation for expansion, variable extraction, and round-trip route
     matching.  This package replaces Fedify's previous direct use of
     *url-template* and *uri-template-router*.  [[#418], [#758] by ChanHaeng Lee]
-
-[#758]: https://github.com/fedify-dev/fedify/pull/758
 
 ### @fedify/amqp
 
