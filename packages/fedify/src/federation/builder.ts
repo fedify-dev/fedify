@@ -71,15 +71,23 @@ import type {
 
 export const ACTOR_ALIAS_PREFIX = "actorAlias:";
 
-function validateSingleIdentifierVariablePath(
+function assertIdentifierPath(
   path: string,
   errorMessage: string,
-): void {
+): asserts path is Path {
   assertPath(path);
-  const pattern = Router.compile(path);
-  if (pattern.variables.size !== 1 || !pattern.variables.has("identifier")) {
+  const variables = Router.variables(path);
+  if (variables.size !== 1 || !variables.has("identifier")) {
     throw new RouterError(errorMessage);
   }
+}
+
+function assertStrictIdentifierPath(
+  path: string,
+  errorMessage: string,
+): asserts path is Path {
+  assertIdentifierPath(path, errorMessage);
+  const pattern = Router.compile(path);
   const expressions = pattern.template.tokens
     .filter(isExpression)
     .filter((token) => token.vars.some(({ name }) => name === "identifier"));
@@ -258,7 +266,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("actor")) {
       throw new RouterError("Actor dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for actor dispatcher must have one variable: {identifier}",
     );
@@ -716,7 +724,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      validateSingleIdentifierVariablePath(
+      assertIdentifierPath(
         path,
         "Path for inbox dispatcher must have one variable: {identifier}",
       );
@@ -790,7 +798,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      validateSingleIdentifierVariablePath(
+      assertStrictIdentifierPath(
         path,
         "Path for outbox dispatcher must have one variable: {identifier}",
       );
@@ -854,7 +862,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      validateSingleIdentifierVariablePath(
+      assertStrictIdentifierPath(
         outboxPath,
         "Path for outbox must have one variable: {identifier}",
       );
@@ -905,7 +913,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("following")) {
       throw new RouterError("Following collection dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for following collection dispatcher must have one variable: " +
         "{identifier}",
@@ -967,7 +975,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("followers")) {
       throw new RouterError("Followers collection dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for followers collection dispatcher must have one variable: " +
         "{identifier}",
@@ -1025,7 +1033,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("liked")) {
       throw new RouterError("Liked collection dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for liked collection dispatcher must have one variable: " +
         "{identifier}",
@@ -1091,7 +1099,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("featured")) {
       throw new RouterError("Featured collection dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for featured collection dispatcher must have one variable: " +
         "{identifier}",
@@ -1157,7 +1165,7 @@ export class FederationBuilderImpl<TContextData>
     if (this.router.has("featuredTags")) {
       throw new RouterError("Featured tags collection dispatcher already set.");
     }
-    validateSingleIdentifierVariablePath(
+    assertIdentifierPath(
       path,
       "Path for featured tags collection dispatcher must have one " +
         "variable: {identifier}",
@@ -1221,7 +1229,7 @@ export class FederationBuilderImpl<TContextData>
         );
       }
     } else {
-      validateSingleIdentifierVariablePath(
+      assertIdentifierPath(
         inboxPath,
         "Path for inbox must have one variable: {identifier}",
       );
