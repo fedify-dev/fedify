@@ -4,7 +4,7 @@
   "license": "MIT",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.13",
-    "es-toolkit": "npm:es-toolkit@^1.30.0"
+    "es-toolkit": "npm:es-toolkit@^1.46.1"
   },
   "exports": {
     ".": "./src/mod.ts"

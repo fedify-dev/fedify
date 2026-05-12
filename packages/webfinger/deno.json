@@ -12,7 +12,7 @@
     "url": "https://hongminhee.org/"
   },
   "imports": {
-    "es-toolkit": "npm:es-toolkit@^1.42.0",
+    "es-toolkit": "npm:es-toolkit@^1.46.1",
     "fetch-mock": "npm:fetch-mock@^12.5.4"
   },
   "exclude": [

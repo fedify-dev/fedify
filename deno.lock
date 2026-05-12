@@ -120,11 +120,7 @@
     "npm:cli-table3@~0.6.5": "0.6.5",
     "npm:dax@~0.46.1": "0.46.1",
     "npm:enquirer@^2.4.1": "2.4.1",
-    "npm:es-toolkit@^1.30.0": "1.45.1",
-    "npm:es-toolkit@^1.31.0": "1.45.1",
-    "npm:es-toolkit@^1.39.10": "1.45.1",
-    "npm:es-toolkit@^1.42.0": "1.45.1",
-    "npm:es-toolkit@^1.43.0": "1.45.1",
+    "npm:es-toolkit@^1.46.1": "1.46.1",
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
     "npm:esbuild@0.25.7": "0.25.7",
     "npm:esbuild@~0.25.5": "0.25.12",
@@ -4784,8 +4780,8 @@
         "es-errors"
       ]
     },
-    "es-toolkit@1.45.1": {
-      "integrity": "sha512-/jhoOj/Fx+A+IIyDNOvO3TItGmlMKhtX8ISAHKE90c4b/k1tqaqEZ+uUqfpU8DMnW5cgNJv606zS55jGvza0Xw=="
+    "es-toolkit@1.46.1": {
+      "integrity": "sha512-5eNtXOs3tbfxXOj04tjjseeWkRWaoCjdEI+96DgwzZoe6c9juL49pXlzAFTI72aWC9Y8p7168g6XIKjh7k6pyQ=="
     },
     "esbuild-wasm@0.25.12": {
       "integrity": "sha512-rZqkjL3Y6FwLpSHzLnaEy8Ps6veCNo1kZa9EOfJvmWtBq5dJH4iVjfmOO6Mlkv9B0tt9WFPFmb/VxlgJOnueNg==",
@@ -9345,7 +9341,7 @@
       "npm:astro@^5.17.3",
       "npm:byte-encodings@^1.0.11",
       "npm:chalk@^5.6.2",
-      "npm:es-toolkit@^1.43.0",
+      "npm:es-toolkit@^1.46.1",
       "npm:h3@^1.15.0",
       "npm:ioredis@^5.8.2",
       "npm:json-preserve-indent@^1.1.3",
@@ -9454,7 +9450,7 @@
       "packages/denokv": {
         "dependencies": [
           "jsr:@std/assert@^1.0.13",
-          "npm:es-toolkit@^1.30.0"
+          "npm:es-toolkit@^1.46.1"
         ]
       },
       "packages/express": {
@@ -9556,7 +9552,7 @@
       "packages/sqlite": {
         "packageJson": {
           "dependencies": [
-            "npm:es-toolkit@^1.31.0"
+            "npm:es-toolkit@^1.46.1"
           ]
         }
       },
@@ -9601,14 +9597,14 @@
         "packageJson": {
           "dependencies": [
             "npm:@cfworker/json-schema@^4.1.1",
-            "npm:es-toolkit@^1.39.10",
+            "npm:es-toolkit@^1.46.1",
             "npm:yaml@^2.9.0"
           ]
         }
       },
       "packages/webfinger": {
         "dependencies": [
-          "npm:es-toolkit@^1.42.0",
+          "npm:es-toolkit@^1.46.1",
           "npm:fetch-mock@^12.5.4"
         ],
         "packageJson": {
