@@ -66,7 +66,7 @@
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.1",
     "jsr:@std/yaml@^1.0.8": "1.1.0",
-    "jsr:@valibot/valibot@^1.2.0": "1.4.0",
+    "jsr:@valibot/valibot@^1.4.0": "1.4.0",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__yaml@2.9.0_yaml@2.9.0",
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.0",
@@ -166,7 +166,7 @@
     "npm:tsx@^4.21.0": "4.21.0",
     "npm:uri-template-router@1": "1.0.0",
     "npm:url-template@^3.1.1": "3.1.1",
-    "npm:valibot@^1.2.0": "1.3.1_typescript@6.0.3",
+    "npm:valibot@^1.4.0": "1.4.0",
     "npm:vite@^7.1.3": "7.3.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0",
     "npm:vite@^7.1.4": "7.3.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0",
     "npm:vitest@3.2": "3.2.4_@types+node@24.12.2_yaml@2.9.0",
@@ -8842,14 +8842,8 @@
     "utils-merge@1.0.1": {
       "integrity": "sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA=="
     },
-    "valibot@1.3.1_typescript@6.0.3": {
-      "integrity": "sha512-sfdRir/QFM0JaF22hqTroPc5xy4DimuGQVKFrzF1YfGwaS1nJot3Y8VqMdLO2Lg27fMzat2yD3pY5PbAYO39Gg==",
-      "dependencies": [
-        "typescript"
-      ],
-      "optionalPeers": [
-        "typescript"
-      ]
+    "valibot@1.4.0": {
+      "integrity": "sha512-iC/x7fVcSyOwlm/VSt7RlHnzNGLGvR9GnxdifUeWoCJo0q4ZZvrVkIHC6faTlkxG47I2Y4UrFquPuVHCrOnrLg=="
     },
     "vary@1.1.2": {
       "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="
@@ -9412,7 +9406,7 @@
         "dependencies": [
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
-          "jsr:@valibot/valibot@^1.2.0",
+          "jsr:@valibot/valibot@^1.4.0",
           "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.1",
           "npm:@jimp/wasm-webp@^1.6.1",
@@ -9447,7 +9441,7 @@
             "npm:shiki@^1.6.4",
             "npm:smol-toml@^1.6.1",
             "npm:srvx@~0.8.7",
-            "npm:valibot@^1.2.0"
+            "npm:valibot@^1.4.0"
           ]
         }
       },

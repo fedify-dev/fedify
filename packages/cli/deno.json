@@ -19,7 +19,7 @@
     "shiki": "npm:shiki@^1.6.4",
     "smol-toml": "npm:smol-toml@^1.6.1",
     "srvx": "npm:srvx@^0.8.7",
-    "valibot": "jsr:@valibot/valibot@^1.2.0",
+    "valibot": "jsr:@valibot/valibot@^1.4.0",
     "#kv": "./src/kv.node.ts"
   },
   "exclude": [

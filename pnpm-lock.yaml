@@ -846,7 +846,7 @@ importers:
         version: 0.10.8
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -862,7 +862,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -881,7 +881,7 @@ importers:
         version: 0.8.71(@cloudflare/workers-types@4.20251221.0)(@vitest/runner@3.2.4)(@vitest/snapshot@3.2.4)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0))
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1006,8 +1006,8 @@ importers:
         specifier: ^0.8.7
         version: 0.8.16
       valibot:
-        specifier: ^1.2.0
-        version: 1.2.0(typescript@5.9.3)
+        specifier: ^1.4.0
+        version: 1.4.0(typescript@5.9.3)
     devDependencies:
       '@types/bun':
         specifier: 'catalog:'
@@ -1017,7 +1017,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1042,7 +1042,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1076,7 +1076,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1095,7 +1095,7 @@ importers:
         version: 1.2.19(@types/react@19.1.8)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1117,7 +1117,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1139,7 +1139,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1224,7 +1224,7 @@ importers:
         version: 4.20250617.4
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -1258,7 +1258,7 @@ importers:
         version: 0.5.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1277,7 +1277,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1293,7 +1293,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1333,7 +1333,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1355,7 +1355,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1386,7 +1386,7 @@ importers:
         version: 9.32.0(jiti@2.6.1)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1417,7 +1417,7 @@ importers:
         version: link:../testing
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1442,7 +1442,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1458,7 +1458,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1489,7 +1489,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1520,7 +1520,7 @@ importers:
         version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1554,7 +1554,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1579,7 +1579,7 @@ importers:
         version: link:../vocab-runtime
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1598,7 +1598,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1626,7 +1626,7 @@ importers:
         version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1642,7 +1642,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1670,7 +1670,7 @@ importers:
         version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1725,7 +1725,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1762,7 +1762,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1787,7 +1787,7 @@ importers:
         version: 22.19.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1818,7 +1818,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+        version: 0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -12649,8 +12649,8 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
-  valibot@1.2.0:
-    resolution: {integrity: sha512-mm1rxUsmOxzrwnX5arGS+U4T25RdvpPjPN4yR0u9pUBov9+zGVtO84tif1eY4r6zWxVxu3KzIyknJy3rxfRZZg==}
+  valibot@1.4.0:
+    resolution: {integrity: sha512-iC/x7fVcSyOwlm/VSt7RlHnzNGLGvR9GnxdifUeWoCJo0q4ZZvrVkIHC6faTlkxG47I2Y4UrFquPuVHCrOnrLg==}
     peerDependencies:
       typescript: '>=5'
     peerDependenciesMeta:
@@ -25453,7 +25453,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)):
+  tsdown@0.22.0(tsx@4.21.0)(typescript@5.9.3)(unrun@0.2.34):
     dependencies:
       ansis: 4.3.0
       cac: 7.0.0
@@ -25922,7 +25922,7 @@ snapshots:
 
   uuid@11.1.0: {}
 
-  valibot@1.2.0(typescript@5.9.3):
+  valibot@1.4.0(typescript@5.9.3):
     optionalDependencies:
       typescript: 5.9.3
 

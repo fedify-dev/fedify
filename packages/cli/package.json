@@ -109,7 +109,7 @@
     "shiki": "^1.6.4",
     "smol-toml": "^1.6.1",
     "srvx": "^0.8.7",
-    "valibot": "^1.2.0"
+    "valibot": "^1.4.0"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
