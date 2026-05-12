@@ -1,17 +1,11 @@
 import type { Path } from "../types.ts";
 import Node from "./node.ts";
-
-interface TrieEntry {
-  readonly index: number;
-  readonly initialLiteralPrefix: string;
-  readonly literalLength: number;
-  readonly variableCount: number;
-}
+import type { PrioritizedRouteEntry } from "./priority.ts";
 
 /**
  * Prefix trie for registered route candidates.
  */
-export default class Trie<TEntry extends TrieEntry> {
+export default class Trie<TEntry extends PrioritizedRouteEntry> {
   readonly #root = new Node<TEntry>();
   #dirty = true;
 
