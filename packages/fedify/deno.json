@@ -17,7 +17,6 @@
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
     "@std/assert": "jsr:@std/assert@^0.226.0",
     "@std/url": "jsr:@std/url@^0.225.1",
-    "asn1js": "npm:asn1js@^3.0.7",
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
     "json-canon": "npm:json-canon@^1.0.1",

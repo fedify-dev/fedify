@@ -63,6 +63,7 @@
     "@std/yaml": "jsr:@std/yaml@^1.0.8",
     "@types/node": "npm:@types/node@^22.16.0",
     "amqplib": "npm:amqplib@^0.10.9",
+    "asn1js": "npm:asn1js@^3.0.10",
     "@solidjs/start/middleware": "npm:@solidjs/start@^1.3.0/middleware",
     "@solidjs/start/server": "npm:@solidjs/start@^1.3.0/server",
     "astro": "npm:astro@^5.17.3",

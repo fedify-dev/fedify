@@ -86,7 +86,7 @@ catalog:
   "@nuxt/schema": ^4.4.2
   astro: ^5.0.0
   amqplib: ^0.10.9
-  asn1js: ^3.0.6
+  asn1js: ^3.0.10
   better-sqlite3: ^12.9.0
   byte-encodings: ^1.0.11
   chalk: ^5.6.2

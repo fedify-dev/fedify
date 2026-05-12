@@ -14,7 +14,6 @@
   },
   "imports": {
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
-    "asn1js": "npm:asn1js@^3.0.6",
     "byte-encodings": "npm:byte-encodings@^1.0.11",
     "fetch-mock": "npm:fetch-mock@^12.5.4",
     "jsonld": "npm:jsonld@^9.0.0",
