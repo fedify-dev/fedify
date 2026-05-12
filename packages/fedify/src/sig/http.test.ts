@@ -1827,6 +1827,62 @@ test("doubleKnock() does not retry non-idempotent transport errors", async () =>
   }
 });
 
+test("doubleKnock() preserves Request signal abort reasons", async () => {
+  const controller = new AbortController();
+  const abortReason = "request aborted";
+  controller.abort(abortReason);
+
+  const request = new Request("https://example.com/request-abort", {
+    signal: controller.signal,
+  });
+  const error = await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+      ),
+  );
+
+  assertEquals(error, abortReason);
+});
+
+test("doubleKnock() preserves Request signal aborts during retry delay", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const controller = new AbortController();
+    const abortReason = "retry aborted";
+    fetchMock.get("https://example.com/aborted-retry", () => {
+      requestCount++;
+      setTimeout(() => controller.abort(abortReason));
+      throw new TypeError("temporary DNS failure");
+    });
+
+    const request = new Request("https://example.com/aborted-retry", {
+      signal: controller.signal,
+    });
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+    );
+
+    assertEquals(error, abortReason);
+    assertEquals(requestCount, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
 test("doubleKnock() async specDeterminer test", async () => {
   // Install mock fetch handler
   fetchMock.spyGlobal();

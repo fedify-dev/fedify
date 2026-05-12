@@ -1354,9 +1354,16 @@ async function fetchDoubleKnockRequest(
         signal,
       });
     } catch (error) {
-      if (isAbortError(error, signal)) throw error;
+      if (isAbortError(error, signal, request.signal, signedRequest.signal)) {
+        throw error;
+      }
       if (attempt >= maxAttempts) throw createFetchError(request.url, error);
-      await sleep(DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS, signal);
+      await sleep(
+        DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS,
+        signal,
+        request.signal,
+        signedRequest.signal,
+      );
     }
   }
   throw new FetchError(request.url);
@@ -1369,28 +1376,45 @@ function createFetchError(url: string, cause: unknown): FetchError {
   return error;
 }
 
-function isAbortError(error: unknown, signal?: AbortSignal): boolean {
+function isAbortError(
+  error: unknown,
+  ...signals: (AbortSignal | undefined)[]
+): boolean {
   return error instanceof Error && error.name === "AbortError" ||
-    signal?.aborted === true && error === signal.reason;
+    signals.some((signal) =>
+      signal?.aborted === true && error === signal.reason
+    );
 }
 
-async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  if (signal == null) {
+async function sleep(
+  ms: number,
+  ...signals: (AbortSignal | undefined)[]
+): Promise<void> {
+  const abortSignals = signals.filter((signal) => signal != null);
+  const abortedSignal = abortSignals.find((signal) => signal.aborted);
+  if (abortedSignal != null) throw getAbortReason(abortedSignal);
+  if (abortSignals.length < 1) {
     await new Promise<void>((resolve) => setTimeout(resolve, ms));
     return;
   }
-  const retrySignal = signal;
-  if (retrySignal.aborted) throw getAbortReason(retrySignal);
   await new Promise<void>((resolve, reject) => {
+    const removeAbortListeners = () => {
+      for (const signal of abortSignals) {
+        signal.removeEventListener("abort", handleAbort);
+      }
+    };
     const timeout = setTimeout(() => {
-      retrySignal.removeEventListener("abort", handleAbort);
+      removeAbortListeners();
       resolve();
     }, ms);
-    function handleAbort() {
+    function handleAbort(event: Event) {
       clearTimeout(timeout);
-      reject(getAbortReason(retrySignal));
+      removeAbortListeners();
+      reject(getAbortReason(event.currentTarget as AbortSignal));
     }
-    retrySignal.addEventListener("abort", handleAbort, { once: true });
+    for (const signal of abortSignals) {
+      signal.addEventListener("abort", handleAbort, { once: true });
+    }
   });
 }
 
