@@ -1,6 +1,6 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import type { CryptographicKey, Multikey } from "@fedify/vocab";
-import { exportSpki } from "@fedify/vocab-runtime";
+import { exportSpki, FetchError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -1723,6 +1723,108 @@ test("doubleKnock() detects redirect loops", async () => {
   assertEquals(requestCount, 2);
 
   fetchMock.hardReset();
+});
+
+test("doubleKnock() retries idempotent request transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    fetchMock.get("https://example.com/flaky-document", () => {
+      requestCount++;
+      if (requestCount === 1) {
+        throw new TypeError("temporary DNS failure");
+      }
+      return new Response("Success", { status: 200 });
+    });
+
+    const request = new Request("https://example.com/flaky-document");
+    const response = await doubleKnock(
+      request,
+      {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      },
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(await response.text(), "Success");
+    assertEquals(requestCount, 2);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() wraps repeated transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const failure = new TypeError("DNS lookup failed");
+    fetchMock.get("https://example.com/unreachable-document", () => {
+      requestCount++;
+      throw failure;
+    });
+
+    const request = new Request("https://example.com/unreachable-document");
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+      FetchError,
+      "DNS lookup failed",
+    );
+
+    assertEquals(error.url.href, "https://example.com/unreachable-document");
+    assertEquals(error.cause, failure);
+    assertEquals(requestCount, 2);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() does not retry non-idempotent transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const failure = new TypeError("connection reset");
+    fetchMock.post("https://example.com/flaky-inbox", () => {
+      requestCount++;
+      throw failure;
+    });
+
+    const request = new Request("https://example.com/flaky-inbox", {
+      method: "POST",
+      body: "Test activity content",
+      headers: {
+        "Content-Type": "application/activity+json",
+      },
+    });
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+      FetchError,
+      "connection reset",
+    );
+
+    assertEquals(error.url.href, "https://example.com/flaky-inbox");
+    assertEquals(error.cause, failure);
+    assertEquals(requestCount, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
 });
 
 test("doubleKnock() async specDeterminer test", async () => {

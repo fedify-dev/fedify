@@ -24,6 +24,7 @@ import metadata from "../../deno.json" with { type: "json" };
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
 
 const DEFAULT_MAX_REDIRECTION = 20;
+const DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS = 100;
 
 /**
  * The standard to use for signing and verifying HTTP signatures.
@@ -1335,6 +1336,69 @@ function createRedirectRequest(
   });
 }
 
+async function fetchDoubleKnockRequest(
+  request: Request,
+  signedRequest: Request,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const maxAttempts = request.method === "GET" || request.method === "HEAD"
+    ? 2
+    : 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetch(signedRequest, {
+        // Since Bun has a bug that ignores the `Request.redirect` option,
+        // to work around it we specify `redirect: "manual"` here too:
+        // https://github.com/oven-sh/bun/issues/10754
+        redirect: "manual",
+        signal,
+      });
+    } catch (error) {
+      if (isAbortError(error, signal)) throw error;
+      if (attempt >= maxAttempts) throw createFetchError(request.url, error);
+      await sleep(DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS, signal);
+    }
+  }
+  throw new FetchError(request.url);
+}
+
+function createFetchError(url: string, cause: unknown): FetchError {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const error = new FetchError(url, message);
+  error.cause = cause;
+  return error;
+}
+
+function isAbortError(error: unknown, signal?: AbortSignal): boolean {
+  return error instanceof Error && error.name === "AbortError" ||
+    signal?.aborted === true && error === signal.reason;
+}
+
+async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal == null) {
+    await new Promise<void>((resolve) => setTimeout(resolve, ms));
+    return;
+  }
+  const retrySignal = signal;
+  if (retrySignal.aborted) throw getAbortReason(retrySignal);
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      retrySignal.removeEventListener("abort", handleAbort);
+      resolve();
+    }, ms);
+    function handleAbort() {
+      clearTimeout(timeout);
+      reject(getAbortReason(retrySignal));
+    }
+    retrySignal.addEventListener("abort", handleAbort, { once: true });
+  });
+}
+
+function getAbortReason(signal: AbortSignal): unknown {
+  return signal.reason ??
+    new DOMException("The operation was aborted.", "AbortError");
+}
+
 /**
  * Performs a double-knock request to the given URL.  For the details of
  * double-knocking, see
@@ -1381,13 +1445,7 @@ async function doubleKnockInternal(
     { spec: firstTrySpec, tracerProvider, body },
   );
   log?.(signedRequest);
-  let response = await fetch(signedRequest, {
-    // Since Bun has a bug that ignores the `Request.redirect` option,
-    // to work around it we specify `redirect: "manual"` here too:
-    // https://github.com/oven-sh/bun/issues/10754
-    redirect: "manual",
-    signal,
-  });
+  let response = await fetchDoubleKnockRequest(request, signedRequest, signal);
   // Follow redirects manually to get the final URL:
   if (
     response.status >= 300 && response.status < 400 &&
@@ -1444,13 +1502,7 @@ async function doubleKnockInternal(
       { spec, tracerProvider, body },
     );
     log?.(signedRequest);
-    response = await fetch(signedRequest, {
-      // Since Bun has a bug that ignores the `Request.redirect` option,
-      // to work around it we specify `redirect: "manual"` here too:
-      // https://github.com/oven-sh/bun/issues/10754
-      redirect: "manual",
-      signal,
-    });
+    response = await fetchDoubleKnockRequest(request, signedRequest, signal);
     // Follow redirects manually to get the final URL:
     if (
       response.status >= 300 && response.status < 400 &&
