@@ -55,9 +55,6 @@ export class TemplateParseError extends Error {
     super(`${message} (at position ${position}): ${hint}`);
     this.name = "TemplateParseError";
   }
-  throw(): never {
-    throw this;
-  }
 }
 
 /**
