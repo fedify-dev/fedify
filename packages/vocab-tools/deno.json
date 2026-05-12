@@ -12,7 +12,7 @@
   },
   "imports": {
     "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
-    "yaml": "npm:yaml@^2.8.1"
+    "yaml": "npm:yaml@^2.9.0"
   },
   "exclude": [
     "dist",

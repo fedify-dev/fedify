@@ -71,6 +71,6 @@
     "@cfworker/json-schema": "^4.1.1",
     "byte-encodings": "catalog:",
     "es-toolkit": "^1.39.10",
-    "yaml": "^2.8.1"
+    "yaml": "^2.9.0"
   }
 }
