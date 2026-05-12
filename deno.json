@@ -37,7 +37,7 @@
   ],
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20250529.0",
-    "@david/dax": "jsr:@david/dax@^0.43.2",
+    "@david/dax": "jsr:@david/dax@^0.46.1",
     "@fxts/core": "npm:@fxts/core@^1.21.1",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "@js-temporal/polyfill": "npm:@js-temporal/polyfill@^0.5.1",
