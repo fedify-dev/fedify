@@ -160,7 +160,7 @@
     "npm:preact@^10.29.1": "10.29.1",
     "npm:rollup@^4.55.1": "4.60.1",
     "npm:shiki@^1.6.4": "1.29.2",
-    "npm:smol-toml@^1.6.0": "1.6.1",
+    "npm:smol-toml@^1.6.1": "1.6.1",
     "npm:srvx@~0.8.7": "0.8.16",
     "npm:structured-field-values@^2.0.4": "2.0.4",
     "npm:tsdown@0.22": "0.22.0_tsx@4.21.0",
@@ -9424,7 +9424,7 @@
           "npm:inquirer-toggle@^1.0.1",
           "npm:ora@^8.2.0",
           "npm:shiki@^1.6.4",
-          "npm:smol-toml@^1.6.0",
+          "npm:smol-toml@^1.6.1",
           "npm:srvx@~0.8.7"
         ],
         "packageJson": {
@@ -9445,7 +9445,7 @@
             "npm:jimp@^1.6.0",
             "npm:ora@^8.2.0",
             "npm:shiki@^1.6.4",
-            "npm:smol-toml@^1.6.0",
+            "npm:smol-toml@^1.6.1",
             "npm:srvx@~0.8.7",
             "npm:valibot@^1.2.0"
           ]
