@@ -46,10 +46,10 @@ export default [
         .map((f) => f.replace(sep, "/")),
     ],
     deps: {
-      neverBundle: (id: string, importer: string | undefined) => {
+      neverBundle: (id: string, parentId?: string) => {
         if (id.startsWith("node:")) return true;
         if (id !== "@fedify/fixture") return;
-        return !isTestingHelperImporter(importer);
+        return !isTestingHelperImporter(parentId);
       },
       // Bundle @fedify/fixture back in for src/testing/ files (needed for
       // cfworkers), while keeping it external for test files so that
