@@ -33,8 +33,9 @@ Check [fetch\_reviews.sh](./fetch_reviews.sh) to fetch the reviews
 and save them in a JSON file:
 
  -  Replace `$VARIABLES` with the actual values or variables in the command.
- -  If already saved reviews existed, use `after: $LAST_REVIEW_ID` instead of
-    `first: $NUMBER_OF_THREADS` to fetch new reviews.
+ -  For incremental fetches, save `pageInfo.endCursor` from the previous
+    fetch and pass it as `after: $LAST_CURSOR` (a base64 cursor, not a
+    review thread node ID) so the query returns only new review threads.
  -  Use `jq` to filter the reviews and information if necessary.
 
 The fetched JSON files in *plans/{PR\_NUMBER}/fetched/* contain the raw data
@@ -59,7 +60,7 @@ After fetching the PR and its reviews, organize the reviews.
      -  After applying or dismissing the review, move the file to
         *plans/{PR\_NUMBER}/reviews/resolved/{REVIEW\_ID}.md*.
      -  If the review file is too long, move the content to
-        \**plans/{PR\_NUMBER}/reviews/{REVIEW\_ID}/index.md*, and separate the
+        *plans/{PR\_NUMBER}/reviews/{REVIEW\_ID}/index.md*, and separate the
         content into multiple files in the same directory. In this case, after
         resolving the review, move the whole directory to
         *plans/{PR\_NUMBER}/reviews/resolved/{REVIEW\_ID}/*.
@@ -95,7 +96,7 @@ reviews based on the files.
 Categorize the reviews and the plans, and apply them at once by category.
 After applying the review, use [`/commit` skill](../commit/SKILL.md) to commit
 the changes. The commit message should include the related review links.
-`https://github.com/fedify-dev/fedify/pull/{PR_NUMBER}#discussion_r{REVIEW_THREAD.COMMENTS[0].DATABASE_ID})`
+`https://github.com/fedify-dev/fedify/pull/{PR_NUMBER}#discussion_r{REVIEW_THREAD.COMMENTS[0].DATABASE_ID}`
 
 After committing the changes, update the review file to include the commit hash
 and the comment section. If the review is dismissed, update the review file to
@@ -107,5 +108,5 @@ both languages, check for any discrepancies between the two. If differences
 exist between the two versions, review them based on the facts and revise
 the English version to match the content in the contributor's language.
 
-Post all of the review in English, even if the file written in the contributor's
-native language. The comments should be polite and constructive.
+Post all review comments in English, even if the file written in the
+contributor's native language. The comments should be polite and constructive.
