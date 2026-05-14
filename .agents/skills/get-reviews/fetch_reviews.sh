@@ -2,6 +2,27 @@ mkdir -p 'plans/$PR_NUMBER/fetched'
 gh api graphql -f query='query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
+      comments(first: $NUMBER_OF_PR_COMMENTS) {
+        nodes {
+          id
+          databaseId
+          author { login }
+          body
+          url
+          createdAt
+        }
+      }
+      reviews(first: $NUMBER_OF_REVIEWS) {
+        nodes {
+          id
+          databaseId
+          author { login }
+          body
+          state
+          url
+          createdAt
+        }
+      }
       reviewThreads(first: $NUMBER_OF_THREADS) {
         nodes {
           id
@@ -17,6 +38,10 @@ gh api graphql -f query='query($owner: String!, $repo: String!, $number: Int!) {
               body
               url
               createdAt
+              pullRequestReview {
+                id
+                databaseId
+              }
             }
           }
         }
