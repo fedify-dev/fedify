@@ -11,7 +11,8 @@ gh api graphql -f query='query(
   $prComments: Int!,
   $reviews: Int!,
   $threads: Int!,
-  $comments: Int!
+  $comments: Int!,
+  $after: String
 ) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
@@ -36,7 +37,11 @@ gh api graphql -f query='query(
           createdAt
         }
       }
-      reviewThreads(first: $threads) {
+      reviewThreads(first: $threads, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         nodes {
           id
           isResolved
@@ -69,6 +74,7 @@ gh api graphql -f query='query(
   -F reviews="$NUMBER_OF_REVIEWS" \
   -F threads="$NUMBER_OF_THREADS" \
   -F comments="$NUMBER_OF_COMMENTS_PER_THREAD" \
+  ${LAST_CURSOR:+-F after="$LAST_CURSOR"} \
   | jq . > "$FETCHED_FILE"
 
 # cspell: ignore MMDDHHMM
