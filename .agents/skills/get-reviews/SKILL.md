@@ -110,3 +110,10 @@ the English version to match the content in the contributor's language.
 
 Post all review comments in English, even if the file written in the
 contributor's native language. The comments should be polite and constructive.
+
+After resolving the reviews, pushing commits, posting comments, and updating
+the reviews as resolved, move the review files to
+*plans/{PR\_NUMBER}/reviews/resolved*. Before moving the files, check status and
+comments of the PR from GitHub. Use [fetch\_reviews.sh](./fetch_reviews.sh),
+but instead of fetching all reviews and attributes, fetch only the necessary
+attributes to check the review status and comments.
