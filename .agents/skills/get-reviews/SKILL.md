@@ -89,6 +89,7 @@ naming rules:
     the file so the context is preserved.
 
 The format of review files should be as [review.md](./review.md).
+Read the reviews and fill the format as a draft with the related information.
 The files should be written in the contributor's language. But the title of
 the item in the file (e.g., “Summary”, “Judgement”, “Plans”) should be in
 English for consistency.
