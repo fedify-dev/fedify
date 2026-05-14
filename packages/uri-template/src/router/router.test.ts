@@ -14,8 +14,8 @@ import {
   routerRouteTestSuites,
   routerVariablesCases,
 } from "../tests/mod.ts";
-import type { Path } from "../types.ts";
-import Router, { type RouterRoute } from "./router.ts";
+import type { ExpandContext, Path } from "../types.ts";
+import Router, { type RouterPathPattern, type RouterRoute } from "./router.ts";
 
 const runAddCases = createRouterAddTest(Router);
 test("Router.add()", runAddCases(routerRouteDefinitions));
@@ -57,6 +57,92 @@ const sampleRoutes: readonly RouterRoute[] = [
   ["/posts/{id}", "post"] as const,
   ["/users/{id}/posts/{postId}", "userPost"] as const,
 ];
+
+const createCountingPattern = (
+  path: Path,
+  calls: Map<Path, number>,
+): RouterPathPattern => {
+  const pattern = Router.compile(path);
+  const match = pattern.template.match;
+  pattern.template.match = (uri: string): ExpandContext | null => {
+    calls.set(path, (calls.get(path) ?? 0) + 1);
+    return match(uri);
+  };
+  return pattern;
+};
+
+test("Router indexes shared dynamic prefixes before template matching", () => {
+  const calls = new Map<Path, number>();
+  const routeDefinitions = [
+    ["/ap/{identifier}", "actor"],
+    ["/ap/{identifier}/inbox", "inbox"],
+    ["/ap/{identifier}/outbox", "outbox"],
+    ["/ap/{identifier}/followers", "followers"],
+    ["/ap/{identifier}/following", "following"],
+    ["/ap/{identifier}/featured", "featured"],
+  ] as const satisfies readonly RouterRoute[];
+  const routes = routeDefinitions.map(
+    ([path, name]): RouterRoute => [createCountingPattern(path, calls), name],
+  );
+  const router = new Router(routes);
+
+  deepEqual(router.route("/ap/alice/inbox"), {
+    name: "inbox",
+    template: "/ap/{identifier}/inbox",
+    values: { identifier: "alice" },
+  });
+  equal(calls.get("/ap/{identifier}/inbox"), 1);
+  for (const [path] of routeDefinitions) {
+    if (path !== "/ap/{identifier}/inbox") {
+      equal(calls.get(path) ?? 0, 0);
+    }
+  }
+});
+
+test(
+  "Router indexes root-adjacent dynamic prefixes before template matching",
+  () => {
+    const calls = new Map<Path, number>();
+    const routeDefinitions = [
+      ["/{identifier}/inbox", "inbox"],
+      ["/{identifier}/outbox", "outbox"],
+      ["/{identifier}/followers", "followers"],
+      ["/{tenant}/users/{identifier}/inbox", "tenantInbox"],
+      ["/{tenant}/users/{identifier}/outbox", "tenantOutbox"],
+    ] as const satisfies readonly RouterRoute[];
+    const routes = routeDefinitions.map(([path, name]): RouterRoute => [
+      createCountingPattern(path, calls),
+      name,
+    ]);
+    const router = new Router(routes);
+
+    deepEqual(router.route("/alice/outbox"), {
+      name: "outbox",
+      template: "/{identifier}/outbox",
+      values: { identifier: "alice" },
+    });
+    equal(calls.get("/{identifier}/outbox"), 1);
+    for (const [path] of routeDefinitions) {
+      if (path !== "/{identifier}/outbox") {
+        equal(calls.get(path) ?? 0, 0);
+      }
+    }
+  },
+);
+
+test("Router preserves priority across state and fallback tries", () => {
+  const router = new Router([
+    ["/{id}", "state"],
+    ["/@{identifier}", "state"],
+    ["/x{first,second}", "fallback"],
+  ]);
+
+  deepEqual(router.route("/xalice"), {
+    name: "fallback",
+    template: "/x{first,second}",
+    values: { first: "alice" },
+  });
+});
 
 test("Router#register() registers all routes in one call", async (t) => {
   const router = new Router();

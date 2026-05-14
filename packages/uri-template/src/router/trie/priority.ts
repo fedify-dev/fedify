@@ -1,20 +1,23 @@
-export interface PrioritizedRouteEntry {
+import type { Token } from "../../types.ts";
+
+export interface RouteEntry {
   readonly index: number;
   readonly initialLiteralPrefix: string;
   readonly literalLength: number;
+  readonly tokens: readonly Token[];
   readonly variableCount: number;
 }
 
 export const compareRouteEntries = (
-  left: PrioritizedRouteEntry,
-  right: PrioritizedRouteEntry,
+  left: RouteEntry,
+  right: RouteEntry,
 ): number =>
   right.literalLength - left.literalLength ||
   right.initialLiteralPrefix.length - left.initialLiteralPrefix.length ||
   left.variableCount - right.variableCount ||
   left.index - right.index;
 
-export const mergeRouteEntries = <TEntry extends PrioritizedRouteEntry>(
+export const mergeRouteEntries = <TEntry extends RouteEntry>(
   left: readonly TEntry[],
   right: readonly TEntry[],
 ): readonly TEntry[] => {
