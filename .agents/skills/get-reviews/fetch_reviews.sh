@@ -1,4 +1,8 @@
-mkdir -p 'plans/$PR_NUMBER/fetched'
+PR_PATH="plans/$PR_NUMBER"
+FETCHED_PATH="$PR_PATH/fetched"
+mkdir -p "$FETCHED_PATH"
+TIMESTAMP=$(date +"%m%d%H%M")
+FETCHED_FILE="$FETCHED_PATH/$TIMESTAMP.json"
 gh api graphql -f query='query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
@@ -49,6 +53,6 @@ gh api graphql -f query='query($owner: String!, $repo: String!, $number: Int!) {
     }
   }
 }' -F owner=fedify-dev -F repo=fedify -F number=$PR_NUMBER \
-> 'plans/$PR_NUMBER/fetched/$CURRENT_TIMESTAMP_MMDDHHMM.json'
+| jq . > "$FETCHED_FILE"
 
 # cspell: ignore MMDDHHMM
