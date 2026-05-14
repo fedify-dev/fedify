@@ -2,18 +2,19 @@
 id: REVIEW_ID
 description: summary of the review
 link: The link to the review on GitHub
-links:
- -  If there are multiple links related to the review, list all the links.
- -  Include links to related PR comments (issue comments) and review thread
- -  replies that provide additional context for this review. Use the `url`
- -  field of each comment from the fetched JSON.
- - `link`–`links` are mutually exclusive.
+# If more than one URL is relevant — related PR comments or review-thread
+# replies that provide additional context — use `links` instead of `link`.
+# Use the `url` field of each comment from the fetched JSON.
+# links:
+#  -  https://github.com/.../pull/123#discussion_r4567
+#  -  https://github.com/.../pull/123#discussion_r4568
 commit: The hash of commit after applying the review to add the comment
-commits:
- -  If the review applies to multiple commits, list the hashes of the commits
- -  after applying the review, update the list to include the new commit hash
- - `commit`–`commits` are mutually exclusive. `commit` and `commits` are
- - optional, and only used when the review is applied.
+# If the review was applied across multiple commits, use `commits` instead
+# of `commit`. Both fields are optional and only set after the review is
+# applied.
+# commits:
+#  -  abc1234
+#  -  def5678
 ---
 
 <!-- deno-fmt-ignore-file -->
@@ -49,7 +50,7 @@ Judgement
   - **NEEDS DISCUSSION**: If the review needs further discussion,
     such as about direction of the project or design choices.
   Try to use these words to indicate judgement status whenever possible,
-  but if you feel they are truly insufficient,use an appropriate word
+  but if you feel they are truly insufficient, use an appropriate word
   and then update this part of *SKILL.md*.
 
   After the first line, explain the judgement in more detail.
@@ -112,7 +113,7 @@ Comments
   on the **WRONG** part, and the correct parts based on the **CORRECT** part.
 
   If the review is judged as **NEEDS EVALUATION**, write the comments to
-  evaluate the review explain how to evaluate the review, the test results,
+  evaluate the review to explain how to evaluate the review, the test results,
   and the resulting application/rejection details.
   - If the results of the evaluation are the review is correct,
     write comments referring to the **CORRECT** part.
