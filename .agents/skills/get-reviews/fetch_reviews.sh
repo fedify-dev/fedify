@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+: "${PR_NUMBER:?PR_NUMBER is required}"
+: "${NUMBER_OF_PR_COMMENTS:?NUMBER_OF_PR_COMMENTS is required}"
+: "${NUMBER_OF_REVIEWS:?NUMBER_OF_REVIEWS is required}"
+: "${NUMBER_OF_THREADS:?NUMBER_OF_THREADS is required}"
+: "${NUMBER_OF_COMMENTS_PER_THREAD:?NUMBER_OF_COMMENTS_PER_THREAD is required}"
+
 PR_PATH="plans/$PR_NUMBER"
 FETCHED_PATH="$PR_PATH/fetched"
 mkdir -p "$FETCHED_PATH"
