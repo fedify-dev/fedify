@@ -37,6 +37,12 @@ and save them in a JSON file:
     `first: $NUMBER_OF_THREADS` to fetch new reviews.
  -  Use `jq` to filter the reviews and information if necessary.
 
+The fetched JSON files in *plans/{PR\_NUMBER}/fetched/* contain the raw data
+of PR comments, reviews, and review threads (with `pullRequestReview`
+back-references on thread comments). When more context is needed later
+(e.g., to resolve which review a thread belongs to, or to check the original
+body of a comment), refer back to these files instead of re-fetching.
+
 [gh]: https://cli.github.com/
 
 

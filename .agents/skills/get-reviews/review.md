@@ -5,6 +5,9 @@ link: the link to the review on GitHub
 links:
  -  If there are multiple links related to the review,
  -  list all the links.
+ -  Include links to related PR comments (issue comments) and review thread
+ -  replies that provide additional context for this review. Use the `url`
+ -  field of each comment from the fetched JSON.
  - `link`–`links` are mutually exclusive.
 commit: the hash of commit after applying the review to add the comment
 commits:
