@@ -1,5 +1,5 @@
 import type { Operator, Path, Token } from "../../types.ts";
-import { isExpression, isLiteral } from "../../utils.ts";
+import { isLiteral } from "../../utils.ts";
 import FallbackTrie from "./fallback/trie.ts";
 import { compareRouteEntries, type RouteEntry } from "./priority.ts";
 import StateTrie from "./state/trie.ts";
@@ -28,7 +28,7 @@ export default class Trie<TEntry extends RouteEntry> {
     }
   };
 
-  insertAll = (entries: readonly TEntry[]): void => {
+  insertAll = (entries: Iterable<TEntry>): void => {
     for (const entry of entries) this.insert(entry);
   };
 
@@ -48,11 +48,8 @@ const isIndexableRoute = (tokens: readonly Token[]): boolean => {
 
   for (const token of tokens) {
     if (isLiteral(token)) {
-      if (token.text !== "") previousWasExpression = false;
-      continue;
-    }
-
-    if (isExpression(token)) {
+      previousWasExpression = false;
+    } else {
       if (previousWasExpression) return false;
       if (!isIndexableExpression(token)) return false;
       previousWasExpression = true;

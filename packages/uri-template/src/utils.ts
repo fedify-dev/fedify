@@ -11,6 +11,40 @@ export const isLiteral = <T extends { kind: string }>(
 ): token is Extract<T, { kind: "literal" }> => token.kind === "literal";
 
 /**
+ * Reduces `iter` to a single value by applying `step` left-to-right, starting
+ * from `init`.
+ */
+export const fold = <Acc, Item>(
+  step: (acc: Acc, item: Item) => Acc,
+  init: Acc,
+  iter: Iterable<Item>,
+): Acc => {
+  let acc = init;
+  for (const item of iter) acc = step(acc, item);
+  return acc;
+};
+
+/**
+ * Variant of {@link fold} that stops as soon as `step` yields `null` or
+ * `undefined`, returning the last accumulator value that was defined. Useful
+ * for descending through a trie where missing children fall back to the
+ * deepest reachable node.
+ */
+export const foldWhileDefined = <Acc, Item>(
+  step: (acc: Acc, item: Item) => Acc | undefined | null,
+  init: Acc,
+  iter: Iterable<Item>,
+): Acc => {
+  let acc = init;
+  for (const item of iter) {
+    const next = step(acc, item);
+    if (next == null) break;
+    acc = next;
+  }
+  return acc;
+};
+
+/**
  * Returns whether `path` is a path-shaped URI Template accepted by the
  * router.
  *

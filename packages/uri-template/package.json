@@ -42,8 +42,8 @@
     "build": "pnpm --filter @fedify/uri-template... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test:bun": "bun test src/**/*.test.ts",
-    "test": "node --experimental-transform-types --test src/**/*.test.ts"
+    "test:bun": "bun test src/",
+    "test": "cd src && node --experimental-transform-types --test"
   },
   "files": [
     "dist",
