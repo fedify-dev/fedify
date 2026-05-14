@@ -1,8 +1,8 @@
 import { Template } from "../template/mod.ts";
 import type { ExpandContext, Path, Token } from "../types.ts";
-import { isExpression, isPath } from "../utils.ts";
+import { isExpression, isLiteral, isPath } from "../utils.ts";
 import { RouteTemplatePathError } from "./errors.ts";
-import Trie from "./trie.ts";
+import Trie from "./trie/mod.ts";
 
 /**
  * Options for the {@link Router}.
@@ -69,6 +69,7 @@ interface RouteEntry {
   readonly index: number;
   readonly name: string;
   readonly pattern: RouterPathPattern;
+  readonly tokens: readonly Token[];
   readonly initialLiteralPrefix: string;
   readonly literalLength: number;
   readonly variableCount: number;
@@ -190,9 +191,7 @@ export default class Router {
   };
 
   /**
-   * Registers multiple path rules at once.  Compared to calling {@link add}
-   * in a loop, this batches trie insertions into one sorted merge per
-   * affected node, which lowers the asymptotic cost of bulk registration.
+   * Registers multiple path rules at once.
    * @param routes Iterable of `[pathOrPattern, name]` pairs to register.
    */
   register = (routes: Iterable<RouterRoute>): void => {
@@ -286,6 +285,7 @@ const createRouteEntry = ({
   index,
   name,
   pattern,
+  tokens: pattern.template.tokens,
   initialLiteralPrefix: getInitialLiteralPrefix(pattern.template.tokens),
   literalLength: getLiteralLength(pattern.template.tokens),
   variableCount: pattern.variables.size,
@@ -318,11 +318,11 @@ const collectVariables = (tokens: readonly Token[]): Set<string> =>
   );
 
 const getInitialLiteralPrefix = (tokens: readonly Token[]): string =>
-  tokens[0]?.kind === "literal" ? tokens[0].text : "";
+  tokens[0] != null && isLiteral(tokens[0]) ? tokens[0].text : "";
 
 const getLiteralLength = (tokens: readonly Token[]): number =>
   tokens.reduce(
-    (sum, token) => token.kind === "literal" ? sum + token.text.length : sum,
+    (sum, token) => isLiteral(token) ? sum + token.text.length : sum,
     0,
   );
 
