@@ -32,10 +32,28 @@ Use the GraphQL API to fetch the reviews for a specific pull request.
 Check [fetch\_reviews.sh](./fetch_reviews.sh) to fetch the reviews
 and save them in a JSON file:
 
- -  Replace `$VARIABLES` with the actual values or variables in the command.
+ -  Fill the variables in the command and run the command to fetch the reviews:
+
+    ~~~~ bash
+    # Omit the new lines
+    PR_NUMBER= NUMBER_OF_PR_COMMENTS= NUMBER_OF_REVIEWS= \
+    NUMBER_OF_THREADS= NUMBER_OF_COMMENTS_PER_THREAD= LAST_CURSOR= \
+    bash .agents/skills/get-reviews/fetch_reviews.sh
+    ~~~~
+
+
+     -  `PR_NUMBER`: The number of the pull request to fetch reviews from.
+     -  `NUMBER_OF_PR_COMMENTS`: The number of PR comments to fetch.
+     -  `NUMBER_OF_REVIEWS`: The number of reviews to fetch.
+     -  `NUMBER_OF_THREADS`: The number of review threads to fetch.
+     -  `NUMBER_OF_COMMENTS_PER_THREAD`:
+        The number of comments per review thread to fetch.
+     -  `LAST_CURSOR`: The cursor for incremental fetches. Optional.
+
  -  For incremental fetches, save `pageInfo.endCursor` from the previous
     fetch and pass it as `after: $LAST_CURSOR` (a base64 cursor, not a
     review thread node ID) so the query returns only new review threads.
+
  -  Use `jq` to filter the reviews and information if necessary.
 
 The fetched JSON files in *plans/{PR\_NUMBER}/fetched/* contain the raw data
