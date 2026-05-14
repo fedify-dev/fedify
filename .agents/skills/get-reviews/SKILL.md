@@ -66,11 +66,22 @@ After fetching the PR and its reviews, organize the reviews.
  -  *plans/{PR\_NUMBER}/reviews/resolved/{REVIEW\_ID}.md*: The file for each
     review which is resolved.
 
+**Don't use the first comment of the review thread as the review ID.**
+The ID of the review thread starts with “PRRT\_”.
+Use the first comment ID of the review thread only on the link.
+
 The format of review files should be as [review.md](./review.md).
+The files should be written in the contributor's language. But the title of
+the item in the file (e.g., “Summary”, “Judgement”, “Plans”) should be in
+English for consistency.
+
+Empty the space between the “Title” and the “Summary” sections.
 
 All related information with the review should be stored in
 *plans/{PR\_NUMBER}/reviews/{REVIEW\_ID}.md* or the files in
 *plans/{PR\_NUMBER}/reviews/{REVIEW\_ID}/*.
+
+After organizing the reviews, show the links to the files to the contributor.
 
 
 Resolve the reviews
