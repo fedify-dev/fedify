@@ -1,4 +1,5 @@
 import type { Path } from "../../../types.ts";
+import { fold, foldWhileDefined } from "../../../utils.ts";
 import type { RouteEntry } from "../priority.ts";
 import FallbackNode from "./node.ts";
 
@@ -11,26 +12,20 @@ export default class FallbackTrie<TEntry extends RouteEntry> {
   #dirty = true;
 
   insert = (entry: TEntry): void => {
-    let node = this.#root;
-
-    for (const char of entry.initialLiteralPrefix) {
-      node = node.childOrInsert(char);
-    }
-
-    node.insert(entry);
+    fold(
+      (n: FallbackNode<TEntry>, char: string) => n.childOrInsert(char),
+      this.#root,
+      entry.initialLiteralPrefix,
+    ).insert(entry);
     this.#dirty = true;
   };
 
   remove = (entry: TEntry): void => {
-    let node = this.#root;
-
-    for (const char of entry.initialLiteralPrefix) {
-      const child = node.child(char);
-      if (child == null) return;
-      node = child;
-    }
-
-    node.remove(entry);
+    foldWhileDefined(
+      (node: FallbackNode<TEntry>, char: string) => node.child(char),
+      this.#root,
+      entry.initialLiteralPrefix,
+    ).remove(entry);
     this.#dirty = true;
   };
 
@@ -39,16 +34,12 @@ export default class FallbackTrie<TEntry extends RouteEntry> {
     yield* this.#deepestNode(path).candidates;
   }
 
-  #deepestNode(path: Path): FallbackNode<TEntry> {
-    let node = this.#root;
-
-    for (const char of path) {
-      const child = node.child(char);
-      if (child == null) break;
-      node = child;
-    }
-    return node;
-  }
+  #deepestNode = (path: Path): FallbackNode<TEntry> =>
+    foldWhileDefined(
+      (n: FallbackNode<TEntry>, char: string) => n.child(char),
+      this.#root,
+      path,
+    );
 
   #rebuildCandidates = (): void => {
     this.#root.rebuildCandidates([]);

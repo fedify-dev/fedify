@@ -133,12 +133,6 @@ export default class Router {
     return new Router(routesOrOptions as Iterable<RouterRoute>, options);
   }
 
-  clone = (): Router =>
-    new Router(
-      this.#activeEntries(),
-      { trailingSlashInsensitive: this.trailingSlashInsensitive },
-    );
-
   /**
    * Compiles a path template without registering it in a router.
    * @param path The path pattern.
@@ -195,15 +189,10 @@ export default class Router {
    * @param routes Iterable of `[pathOrPattern, name]` pairs to register.
    */
   register = (routes: Iterable<RouterRoute>): void => {
-    const entries: RouteEntry[] = [];
-    const pendingByName = new Map<string, RouteEntry>();
+    const pending = new Map<string, RouteEntry>();
 
     for (const [pathOrPattern, name] of routes) {
-      const pending = pendingByName.get(name);
-      if (pending != null) {
-        const index = entries.indexOf(pending);
-        if (index >= 0) entries.splice(index, 1);
-      } else {
+      if (!pending.has(name)) {
         const committed = this.#routesByName.get(name);
         if (committed != null) this.#trie.remove(committed);
       }
@@ -216,11 +205,10 @@ export default class Router {
       });
 
       this.#routesByName.set(name, entry);
-      pendingByName.set(name, entry);
-      entries.push(entry);
+      pending.set(name, entry);
     }
 
-    this.#trie.insertAll(entries);
+    this.#trie.insertAll(pending.values());
   };
 
   /**
@@ -233,8 +221,7 @@ export default class Router {
     const match = this.#route(url);
     if (match != null || !this.trailingSlashInsensitive) return match;
 
-    const retryUrl = toggleTrailingSlash(url);
-    return retryUrl == null ? null : this.#route(retryUrl);
+    return this.#route(toggleTrailingSlash(url));
   };
 
   #route(url: Path): RouterRouteResult | null {
@@ -265,10 +252,22 @@ export default class Router {
     (this.#routesByName.get(name)
       ?.pattern.template.expand(values) ?? null) as Path | null;
 
+  /**
+   * Creates a shallow clone of the router.  The clone shares the same route
+   * entries, but changes to the route set (adding, removing, or re-registering
+   * routes) do not affect the other router.
+   * @returns A new router with the same routes and options as this one.
+   */
+  clone = (): Router =>
+    new Router(
+      this.#activeEntries(),
+      { trailingSlashInsensitive: this.trailingSlashInsensitive },
+    );
+
   #activeEntries = (): RouterRoute[] =>
     Array.from(this.#routesByName.values())
       .sort((left, right) => left.index - right.index)
-      .map((entry): RouterRoute => [entry.pattern, entry.name]);
+      .map((entry) => [entry.pattern, entry.name]);
 }
 
 interface CreateRouteEntryOptions {
@@ -303,12 +302,8 @@ const isRoutesArgument = (
   typeof value === "object" &&
   Symbol.iterator in (value as object);
 
-const toggleTrailingSlash = (path: Path): Path | null => {
-  if (!path.endsWith("/")) return `${path}/`;
-
-  const trimmed = path.replace(/\/+$/, "");
-  return isPath(trimmed) ? trimmed : null;
-};
+const toggleTrailingSlash = (path: Path): Path =>
+  path.endsWith("/") ? (path.replace(/\/+$/, "") as Path) : `${path}/`;
 
 const collectVariables = (tokens: readonly Token[]): Set<string> =>
   new Set(
