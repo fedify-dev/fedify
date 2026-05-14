@@ -85,4 +85,4 @@ gh api graphql -f query='query(
   ${LAST_CURSOR:+-F after="$LAST_CURSOR"} \
   | jq . > "$FETCHED_FILE"
 
-# cspell: ignore MMDDHHMM
+echo "Fetched reviews and comments are saved to $FETCHED_FILE"
