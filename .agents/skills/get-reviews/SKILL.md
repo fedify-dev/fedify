@@ -71,6 +71,23 @@ After fetching the PR and its reviews, organize the reviews.
 The ID of the review thread starts with “PRRT\_”.
 Use the first comment ID of the review thread only on the link.
 
+Review threads aren't the only place that asks for changes. A PR-level
+comment (in `comments` of the fetched JSON, whose ID starts with “IC\_”)
+or the body of a review (in `reviews` of the fetched JSON, whose ID starts
+with “PRR\_”) can also point out things to fix. When such a comment or
+review body requests modifications, organize it as its own review file
+alongside the review-thread files, using the same directory layout and
+naming rules:
+
+ -  Use the node ID of the PR comment (“IC\_…”) or the review (“PRR\_…”)
+    as the `{REVIEW\_ID}` in the file path.
+ -  If a PR comment or review body only contains approval, general
+    impressions, questions without a modification request, or other content
+    with nothing to fix, skip it and do not create a file for it.
+ -  If only a part of a longer PR comment or review body requests changes,
+    create a file only for that request and quote the relevant excerpt in
+    the file so the context is preserved.
+
 The format of review files should be as [review.md](./review.md).
 The files should be written in the contributor's language. But the title of
 the item in the file (e.g., “Summary”, “Judgement”, “Plans”) should be in
