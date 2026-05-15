@@ -2,6 +2,7 @@ import { CryptographicKey } from "@fedify/vocab";
 import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
+  type MeterProvider,
   type Span,
   SpanStatusCode,
   trace,
@@ -653,6 +654,13 @@ export interface VerifyRequestOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider.  If omitted, the global meter provider
+   * is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -849,6 +857,7 @@ async function verifyRequestDraft(
     timeWindow,
     currentTime,
     keyCache,
+    meterProvider,
     tracerProvider,
   }: VerifyRequestOptions = {},
 ): Promise<VerifyRequestDetailedResult> {
@@ -1126,6 +1135,8 @@ async function verifyRequestDraft(
             get: () => Promise.resolve(undefined),
             set: async (keyId, key) => await keyCache?.set(keyId, key),
           },
+          meterProvider,
+          tracerProvider,
         },
       );
     }
@@ -1216,6 +1227,7 @@ async function verifyRequestRfc9421(
     timeWindow,
     currentTime,
     keyCache,
+    meterProvider,
     tracerProvider,
   }: VerifyRequestOptions = {},
 ): Promise<VerifyRequestDetailedResult> {
@@ -1481,6 +1493,8 @@ async function verifyRequestRfc9421(
               set: async (keyId, key) => await keyCache?.set(keyId, key),
             },
             spec: "rfc9421",
+            meterProvider,
+            tracerProvider,
           },
         );
       } else {

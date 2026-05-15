@@ -7,7 +7,12 @@ import {
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
-import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  type MeterProvider,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import metadata from "../../deno.json" with { type: "json" };
@@ -276,6 +281,13 @@ export interface VerifyProofOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider.  If omitted, the global meter provider
+   * is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**

@@ -2862,6 +2862,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       {
         contextLoader,
         documentLoader: options.documentLoader ?? this.documentLoader,
+        meterProvider: this.meterProvider,
         tracerProvider: options.tracerProvider ?? this.tracerProvider,
         keyCache,
       },
@@ -3089,6 +3090,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       contextLoader: options.contextLoader ?? this.contextLoader,
       documentLoader: options.documentLoader ?? this.documentLoader,
       timeWindow: this.federation.signatureTimeWindow,
+      meterProvider: this.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
     });
   }

@@ -2,7 +2,12 @@ import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
-import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  type MeterProvider,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { encodeHex } from "byte-encodings/hex";
 import metadata from "../../deno.json" with { type: "json" };
@@ -275,6 +280,13 @@ export interface VerifySignatureOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider.  If omitted, the global meter provider
+   * is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
