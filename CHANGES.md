@@ -41,6 +41,21 @@ To be released.
     attributes, and `TraceActivityRecord.activityJson` is present only when the
     span event includes full activity JSON.  [[#316], [#619], [#755]]
 
+ -  Added two OpenTelemetry histograms for signature verification:
+    `activitypub.signature.verification.duration` measures end-to-end
+    verification time for HTTP Signatures, Linked Data Signatures, and
+    Object Integrity Proofs (including local key lookup and remote key
+    fetches), and `activitypub.signature.key_fetch.duration` measures
+    public key lookup duration separately so operators can isolate
+    non-fetch verification work.  Both instruments carry
+    `activitypub.signature.kind` (`http`, `linked_data`, or
+    `object_integrity`) and bounded result attributes; the verification
+    histogram additionally carries spec-bounded
+    `http_signatures.algorithm`, `ld_signatures.type`, or
+    `object_integrity_proofs.cryptosuite` when known, plus
+    `http_signatures.failure_reason` on rejected HTTP rows.
+    [[#316], [#737]]
+
  -  Added OpenTelemetry HTTP server metrics for inbound requests handled by
     `Federation.fetch()`: `fedify.http.server.request.count` (Counter) and
     `fedify.http.server.request.duration` (Histogram).  Both instruments carry
@@ -80,6 +95,7 @@ To be released.
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
+[#737]: https://github.com/fedify-dev/fedify/issues/737
 [#740]: https://github.com/fedify-dev/fedify/issues/740
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
