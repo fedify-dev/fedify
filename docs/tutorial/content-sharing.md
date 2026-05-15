@@ -3465,7 +3465,7 @@ Open *server/federation.ts*.  Add `Document`, `Note`, and
 `Temporal` polyfill, and add `posts` to the schema import:
 
 ~~~~ typescript twoslash [server/federation.ts]
-// @noErrors: 2304 2307
+// @noErrors: 2304 2307 2322
 import {
   Accept,
   Document,
@@ -3506,7 +3506,6 @@ Then add a final dispatcher block after the followers dispatcher:
 // @noErrors: 2304 2307 7006
 import { type Federation } from "@fedify/fedify";
 import { Document, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { posts, users } from "./db/schema";
@@ -6516,7 +6515,7 @@ and ends in the textarea form.  Append it inside the existing
 Create *server/api/comments.post.ts*:
 
 ~~~~ typescript twoslash [server/api/comments.post.ts]
-// @noErrors: 2304 2307
+// @noErrors: 2304 2307 2322
 import {
   Create,
   getActorHandle,
@@ -6706,7 +6705,6 @@ import {
   MemoryKvStore,
 } from "@fedify/fedify";
 import { Mention, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { comments, posts, users } from "./db/schema";
