@@ -463,14 +463,18 @@ function getLdSignatureObject(
   jsonLd: unknown,
 ): Record<string, unknown> | undefined {
   if (
-    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd &&
-    typeof (jsonLd as { signature?: unknown }).signature === "object" &&
-    (jsonLd as { signature?: unknown }).signature != null &&
-    !Array.isArray((jsonLd as { signature?: unknown }).signature)
+    typeof jsonLd !== "object" || jsonLd == null || !("signature" in jsonLd)
   ) {
-    return (jsonLd as { signature: Record<string, unknown> }).signature;
+    return undefined;
   }
-  return undefined;
+  const { signature } = jsonLd as { signature: unknown };
+  if (
+    typeof signature !== "object" || signature == null ||
+    Array.isArray(signature)
+  ) {
+    return undefined;
+  }
+  return signature as Record<string, unknown>;
 }
 
 /**
