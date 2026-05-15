@@ -381,6 +381,57 @@ test("Router treats re-registration as replacement", async (t) => {
   );
 });
 
+test("Router#register() is failure-atomic", async (t) => {
+  await t.step(
+    "a throwing entry leaves the previous router state intact",
+    () => {
+      const router = new Router();
+      router.add("/old/{id}", "user");
+
+      // Batch with a valid replacement for "user" followed by an invalid
+      // template.  The invalid template makes resolvePathPattern() throw
+      // mid-batch.
+      throws(() =>
+        router.register([
+          ["/new/{id}", "user"],
+          ["/bad path", "broken"],
+        ])
+      );
+
+      // The previous "user" route must still resolve and build exactly as
+      // before the failed batch: no partial mutation may survive.
+      deepEqual(router.route("/old/1"), {
+        name: "user",
+        template: "/old/{id}",
+        values: { id: "1" },
+      });
+      equal(router.build("user", { id: "1" }), "/old/1");
+
+      // The aborted replacement and the unrelated invalid name must not leak.
+      equal(router.route("/new/1"), null);
+      equal(router.has("broken"), false);
+    },
+  );
+
+  await t.step(
+    "a throwing entry does not register any routes on an empty router",
+    () => {
+      const router = new Router();
+
+      throws(() =>
+        router.register([
+          ["/users/{id}", "user"],
+          ["foo" as Path, "relative"],
+        ])
+      );
+
+      equal(router.has("user"), false);
+      equal(router.has("relative"), false);
+      equal(router.route("/users/1"), null);
+    },
+  );
+});
+
 test("Router.from() mirrors the constructor", async (t) => {
   await t.step("no arguments", () => {
     const router = Router.from();
