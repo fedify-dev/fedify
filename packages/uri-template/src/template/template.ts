@@ -3,6 +3,7 @@ import type {
   Reporter,
   TemplateOptions,
   Token,
+  VarSpec,
 } from "../types.ts";
 import expand from "./expand.ts";
 import match from "./match.ts";
@@ -12,10 +13,10 @@ import tokenize from "./token.ts";
  * Parsed RFC 6570 URI Template that can be expanded repeatedly.
  *
  * This class owns tokenization and delegates expression expansion to the
- * expansion module.
+ * expansion module.  Instances are immutable after construction.
  */
 export default class Template {
-  readonly #tokens: Token[];
+  readonly #tokens: readonly Token[];
   readonly #fullOptions: TemplateOptions;
 
   constructor(
@@ -36,7 +37,8 @@ export default class Template {
     readonly options: Partial<TemplateOptions> = {},
   ) {
     this.#fullOptions = fillOptions(options);
-    this.#tokens = tokenize(uriTemplate, this.#fullOptions);
+    this.#tokens = freezeTokens(tokenize(uriTemplate, this.#fullOptions));
+    Object.freeze(this);
   }
 
   /**
@@ -50,7 +52,7 @@ export default class Template {
   }
 
   /**
-   * Parsed token stream for diagnostics and router integration.
+   * Immutable parsed token stream for diagnostics and router integration.
    */
   get tokens(): readonly Token[] {
     return this.#tokens;
@@ -59,7 +61,7 @@ export default class Template {
   /**
    * Expands this template against a variable context.
    */
-  expand: (context: ExpandContext) => string = (
+  readonly expand: (context: ExpandContext) => string = (
     context: ExpandContext,
   ): string => expand(this.#tokens, context, this.#fullOptions);
 
@@ -67,12 +69,31 @@ export default class Template {
    * Matches a URI against this template, returning the variable context if the
    * URI matches or `null` if it does not.
    */
-  match: (uri: string) => ExpandContext | null = (
+  readonly match: (uri: string) => ExpandContext | null = (
     uri: string,
   ): ExpandContext | null => match(this.#tokens, uri, this.#fullOptions);
 
-  toString = (): string => this.uriTemplate;
+  readonly toString = (): string => this.uriTemplate;
 }
+
+const freezeTokens = (tokens: Token[]): readonly Token[] =>
+  Object.freeze(tokens.map(freezeToken));
+
+const freezeToken = (token: Token): Token =>
+  token.kind === "literal"
+    ? Object.freeze({ kind: "literal", text: token.text })
+    : Object.freeze({
+      kind: "expression",
+      operator: token.operator,
+      vars: Object.freeze(token.vars.map(freezeVarSpec)),
+    });
+
+const freezeVarSpec = (varSpec: VarSpec): VarSpec =>
+  Object.freeze({
+    name: varSpec.name,
+    explode: varSpec.explode,
+    ...(varSpec.prefix == null ? {} : { prefix: varSpec.prefix }),
+  });
 
 const defaultReporter: Reporter = () => void 0;
 

@@ -160,6 +160,31 @@ test("FederationBuilder", async (t) => {
     },
   );
 
+  await t.step("should snapshot router state on build", async () => {
+    const builder = createFederationBuilder<void>();
+    const kv = new MemoryKvStore();
+    const noteRouteName = `object:${Note.typeId.href}`;
+
+    builder.setActorDispatcher("/users/{identifier}", () => null);
+    const federation1 = await builder.build({ kv });
+    const impl1 = federation1 as FederationImpl<void>;
+
+    builder.setObjectDispatcher(Note, "/notes/{id}", () => null);
+    assertEquals(impl1.router.route("/notes/1"), null);
+
+    const federation2 = await builder.build({ kv });
+    const impl2 = federation2 as FederationImpl<void>;
+    assertEquals(impl2.router.route("/notes/1")?.name, noteRouteName);
+
+    impl1.router.add("/leaked/{id}", "leaked");
+    assertEquals(impl1.router.route("/leaked/1")?.name, "leaked");
+    assertEquals(impl2.router.route("/leaked/1"), null);
+
+    const federation3 = await builder.build({ kv });
+    const impl3 = federation3 as FederationImpl<void>;
+    assertEquals(impl3.router.route("/leaked/1"), null);
+  });
+
   await t.step("should build with default options", async () => {
     const builder = createFederationBuilder<void>();
     const kv = new MemoryKvStore();

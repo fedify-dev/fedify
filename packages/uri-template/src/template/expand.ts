@@ -28,7 +28,7 @@ export default function expand(
 }
 
 function expandExpressions(
-  vars: VarSpec[],
+  vars: readonly VarSpec[],
   operator: keyof typeof operatorSpecs,
   context: ExpandContext,
   options: TemplateOptions,

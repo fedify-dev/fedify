@@ -23,7 +23,10 @@ export default function tokenize(
   const appendLiteral = (text: string): void => {
     const previous = tokens.at(-1);
     if (previous?.kind === "literal") {
-      previous.text += text;
+      tokens[tokens.length - 1] = {
+        kind: "literal",
+        text: previous.text + text,
+      };
     } else {
       tokens.push({ kind: "literal", text });
     }

@@ -36,6 +36,9 @@ export interface RouterRouteResult {
 
 /**
  * Parsed path template ready to be registered in a {@link Router}.
+ *
+ * Instances returned by {@link Router.compile} are immutable and may be shared
+ * safely between routers and router clones.
  */
 export interface RouterPathPattern {
   /**
@@ -143,11 +146,11 @@ export default class Router {
     }
 
     const template = Template.parse(path);
-    return {
+    return Object.freeze({
       path,
       template,
       variables: collectVariables(template.tokens),
-    };
+    });
   }
 
   /**
@@ -259,9 +262,10 @@ export default class Router {
       ?.pattern.template.expand(values) ?? null) as Path | null;
 
   /**
-   * Creates a shallow clone of the router.  The clone shares the same route
-   * entries, but changes to the route set (adding, removing, or re-registering
-   * routes) do not affect the other router.
+   * Creates a shallow clone of the router.  The clone shares immutable
+   * registered path patterns with the original, but changes to the route set
+   * (adding, removing, or re-registering routes) do not affect the other
+   * router.
    * @returns A new router with the same routes and options as this one.
    */
   clone = (): Router =>
@@ -311,12 +315,31 @@ const isRoutesArgument = (
 const toggleTrailingSlash = (path: Path): Path =>
   path.endsWith("/") ? (path.replace(/\/+$/, "") as Path) : `${path}/`;
 
-const collectVariables = (tokens: readonly Token[]): Set<string> =>
-  new Set(
+const collectVariables = (tokens: readonly Token[]): ImmutableSet<string> =>
+  new ImmutableSet(
     tokens
       .filter(isExpression)
       .flatMap((token) => token.vars.map((varSpec) => varSpec.name)),
   );
+
+class ImmutableSet<T> extends Set<T> implements ReadonlySet<T> {
+  constructor(values?: Iterable<T>) {
+    super();
+    if (values != null) { for (const value of values) super.add(value); }
+  }
+
+  override add(_value: T): this {
+    throw new TypeError("ImmutableSet cannot be mutated.");
+  }
+
+  override delete(_value: T): boolean {
+    throw new TypeError("ImmutableSet cannot be mutated.");
+  }
+
+  override clear(): void {
+    throw new TypeError("ImmutableSet cannot be mutated.");
+  }
+}
 
 const getInitialLiteralPrefix = (tokens: readonly Token[]): string =>
   tokens[0] != null && isLiteral(tokens[0]) ? tokens[0].text : "";
