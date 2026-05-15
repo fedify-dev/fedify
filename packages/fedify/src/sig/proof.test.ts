@@ -1,4 +1,8 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestMeterProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import {
   Create,
@@ -15,6 +19,7 @@ import {
   assert,
   assertEquals,
   assertFalse,
+  assertGreaterOrEqual,
   assertInstanceOf,
   assertRejects,
 } from "@std/assert";
@@ -561,6 +566,158 @@ test("verifyProof()", async () => {
     null,
   );
   assertFalse(contextLoaderCalls.includes("https://attacker.example/ctx"));
+});
+
+test("verifyProof() records verification duration metric", async (t) => {
+  const jsonLd = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://server.example/activities/1",
+    type: "Create",
+    actor: "https://server.example/users/alice",
+    object: {
+      id: "https://server.example/objects/1",
+      type: "Note",
+      attributedTo: "https://server.example/users/alice",
+      content: "Hello world",
+      location: {
+        type: "Place",
+        longitude: -71.184902,
+        latitude: 25.273962,
+      },
+    },
+  };
+  const proof = new DataIntegrityProof({
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: new URL(
+      "https://server.example/users/alice#ed25519-key",
+    ),
+    proofPurpose: "assertionMethod",
+    proofValue: decodeMultibase(
+      // cSpell: disable
+      "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
+      // cSpell: enable
+    ),
+    created: Temporal.Instant.from("2023-02-24T23:36:38Z"),
+  });
+
+  await t.step(
+    "verified path records result=verified with bounded cryptosuite",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const key = await verifyProof(jsonLd, proof, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(key != null);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      const m = measurements[0];
+      assertEquals(m.type, "histogram");
+      assertGreaterOrEqual(m.value, 0);
+      assertEquals(
+        m.attributes["activitypub.signature.kind"],
+        "object_integrity",
+      );
+      assertEquals(m.attributes["activitypub.signature.result"], "verified");
+      assertEquals(
+        m.attributes["object_integrity_proofs.cryptosuite"],
+        "eddsa-jcs-2022",
+      );
+    },
+  );
+
+  await t.step("rejected path records result=rejected", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const tampered = {
+      ...jsonLd,
+      object: { ...jsonLd.object, content: "bye" },
+    };
+    const key = await verifyProof(tampered, proof, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      meterProvider,
+    });
+    assertEquals(key, null);
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.verification.duration",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.result"],
+      "rejected",
+    );
+    assertEquals(
+      measurements[0].attributes["object_integrity_proofs.cryptosuite"],
+      "eddsa-jcs-2022",
+    );
+  });
+
+  await t.step("cached-key retry emits one measurement, not two", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const keyId = "https://server.example/users/alice#ed25519-key";
+    // Prime the cache with a wrong-algorithm key (the rsaPublicKey2 is RSA,
+    // not Ed25519) so that verifyProofInternal falls through to the
+    // fresh-fetch retry path.
+    const cache: Record<string, CryptographicKey | Multikey | null> = {
+      [keyId]: rsaPublicKey2,
+    };
+    const key = await verifyProof(jsonLd, proof, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      meterProvider,
+      keyCache: {
+        get(id) {
+          return Promise.resolve(cache[id.href]);
+        },
+        set(id, k) {
+          cache[id.href] = k;
+          return Promise.resolve();
+        },
+      } satisfies KeyCache,
+    });
+    assert(key != null);
+    assertEquals(
+      recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      ).length,
+      1,
+    );
+  });
+
+  await t.step(
+    "verifyObject() wrapper emits one measurement per inner verifyProof()",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const create = await verifyObject(Create, {
+        ...jsonLd,
+        proof: await proof.toJsonLd({
+          format: "compact",
+          contextLoader: mockDocumentLoader,
+        }),
+      }, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(create != null);
+      // The fixture has exactly one proof; the wrapper should not
+      // double-instrument.
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.verification.duration",
+        ).length,
+        1,
+      );
+    },
+  );
 });
 
 test("verifyObject()", async () => {

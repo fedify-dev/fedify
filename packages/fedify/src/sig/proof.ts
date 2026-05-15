@@ -19,11 +19,28 @@ import metadata from "../../deno.json" with { type: "json" };
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import {
+  getDurationMs,
+  getFederationMetrics,
+  type SignatureVerificationResult,
+} from "../federation/metrics.ts";
+import {
   fetchKey,
   type FetchKeyResult,
   type KeyCache,
   validateCryptoKey,
 } from "./key.ts";
+
+/**
+ * Known Object Integrity Proof `cryptosuite` values, used to keep
+ * `object_integrity_proofs.cryptosuite` on a bounded set of spec-defined
+ * string values.  Fedify currently signs and verifies only
+ * `eddsa-jcs-2022`; other values come in only from external proofs and are
+ * dropped from the metric attribute to avoid attacker-controlled
+ * cardinality.
+ */
+const OIP_KNOWN_CRYPTOSUITES: ReadonlySet<string> = new Set([
+  "eddsa-jcs-2022",
+]);
 
 const logger = getLogger(["fedify", "sig", "proof"]);
 
@@ -310,6 +327,13 @@ export async function verifyProof(
   return await tracer.startActiveSpan(
     "object_integrity_proofs.verify",
     async (span) => {
+      const start = performance.now();
+      let verified = false;
+      let threw = false;
+      const cryptosuite = proof.cryptosuite != null &&
+          OIP_KNOWN_CRYPTOSUITES.has(proof.cryptosuite)
+        ? proof.cryptosuite
+        : undefined;
       if (span.isRecording()) {
         if (proof.cryptosuite != null) {
           span.setAttribute(
@@ -333,14 +357,28 @@ export async function verifyProof(
       try {
         const key = await verifyProofInternal(jsonLd, proof, options);
         if (key == null) span.setStatus({ code: SpanStatusCode.ERROR });
+        else verified = true;
         return key;
       } catch (error) {
+        threw = true;
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
         });
         throw error;
       } finally {
+        const classified: SignatureVerificationResult = threw
+          ? "error"
+          : verified
+          ? "verified"
+          : "rejected";
+        getFederationMetrics(options.meterProvider)
+          .recordSignatureVerificationDuration(
+            getDurationMs(start),
+            "object_integrity",
+            classified,
+            { cryptosuite },
+          );
         span.end();
       }
     },
@@ -423,7 +461,10 @@ async function verifyProofInternal(
           "Ed25519 key:\n{keyId}; retrying with the freshly fetched key...",
         { proof, keyId: proof.verificationMethodId.href },
       );
-      return await verifyProof(jsonLd, proof, {
+      // Recurse into `verifyProofInternal()` (not `verifyProof()`) so the
+      // retry reuses the outer `object_integrity_proofs.verify` span and
+      // `activitypub.signature.verification.duration` measurement.
+      return await verifyProofInternal(jsonLd, proof, {
         ...options,
         keyCache: {
           // Returning `undefined` signals "nothing cached" and forces
@@ -479,7 +520,10 @@ async function verifyProofInternal(
         "with the freshly fetched key...",
       { keyId: proof.verificationMethodId.href, proof },
     );
-    return await verifyProof(jsonLd, proof, {
+    // Recurse into `verifyProofInternal()` (not `verifyProof()`) so the
+    // retry reuses the outer `object_integrity_proofs.verify` span and
+    // `activitypub.signature.verification.duration` measurement.
+    return await verifyProofInternal(jsonLd, proof, {
       ...options,
       keyCache: {
         get: () => Promise.resolve(undefined),
