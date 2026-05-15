@@ -81,7 +81,7 @@ interface RouteEntry {
 export default class Router {
   readonly #trie: Trie<RouteEntry>;
   readonly #routesByName: Map<string, RouteEntry>;
-  #nextIndex: number;
+  #prevIndex: number = -1;
 
   /**
    * Whether to ignore trailing slashes when matching paths.
@@ -113,7 +113,6 @@ export default class Router {
 
     this.#trie = new Trie();
     this.#routesByName = new Map();
-    this.#nextIndex = 0;
     this.trailingSlashInsensitive = options?.trailingSlashInsensitive ?? false;
 
     if (routes != null) this.register(routes);
@@ -178,7 +177,7 @@ export default class Router {
     const previous = this.#routesByName.get(name);
     if (previous != null) this.#trie.remove(previous);
 
-    const entry = createRouteEntry({ index: this.#nextIndex++, name, pattern });
+    const entry = createRouteEntry({ index: this.#index, name, pattern });
 
     this.#routesByName.set(name, entry);
     this.#trie.insert(entry);
@@ -189,27 +188,34 @@ export default class Router {
    * @param routes Iterable of `[pathOrPattern, name]` pairs to register.
    */
   register = (routes: Iterable<RouterRoute>): void => {
-    const pending = new Map<string, RouteEntry>();
-
-    for (const [pathOrPattern, name] of routes) {
-      if (!pending.has(name)) {
-        const committed = this.#routesByName.get(name);
-        if (committed != null) this.#trie.remove(committed);
-      }
-
-      const pattern = resolvePathPattern(pathOrPattern);
-      const entry = createRouteEntry({
-        index: this.#nextIndex++,
+    const resolved = Array.from(routes).map(
+      ([pathOrPattern, name]): [string, RouterPathPattern] => [
         name,
-        pattern,
-      });
+        resolvePathPattern(pathOrPattern),
+      ],
+    );
 
-      this.#routesByName.set(name, entry);
-      pending.set(name, entry);
+    const pending = new Map<string, RouteEntry>();
+    for (const [name, pattern] of resolved) {
+      pending.set(
+        name,
+        createRouteEntry({ index: this.#index, name, pattern }),
+      );
     }
+
+    for (const name of pending.keys()) {
+      const committed = this.#routesByName.get(name);
+      if (committed != null) this.#trie.remove(committed);
+    }
+
+    for (const [name, entry] of pending) this.#routesByName.set(name, entry);
 
     this.#trie.insertAll(pending.values());
   };
+
+  get #index(): number {
+    return this.#prevIndex++;
+  }
 
   /**
    * Resolves a path name and values from a URI, if any match.
