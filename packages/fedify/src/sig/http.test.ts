@@ -610,6 +610,120 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
   );
 
   await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertExists(key);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(measurements[0].type, "histogram");
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "http",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=hit when served from the key cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const cache: Record<string, CryptographicKey | Multikey | null> = {
+        "https://example.com/key2": rsaPublicKey2,
+      };
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          get(keyId) {
+            return Promise.resolve(cache[keyId.href]);
+          },
+          set(keyId, k) {
+            cache[keyId.href] = k;
+            return Promise.resolve();
+          },
+        } satisfies KeyCache,
+      });
+      assertExists(key);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=error when the remote key returns HTTP 410",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const keyId = new URL("https://gone.example/actors/alice#main-key");
+      const request = await signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/activity+json",
+            accept: "application/ld+json",
+          },
+          body: "{}",
+        }),
+        rsaPrivateKey2,
+        keyId,
+      );
+      const result = await verifyRequestDetailed(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader(url) {
+          if (url === keyId.href) {
+            throw new FetchError(
+              keyId,
+              `HTTP 410: ${keyId.href}`,
+              new Response(null, { status: 410 }),
+            );
+          }
+          return mockDocumentLoader(url);
+        },
+        meterProvider,
+      });
+      assertFalse(result.verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "error",
+      );
+    },
+  );
+
+  await t.step(
     "draft-cavage with unknown algorithm omits the algorithm metric attribute",
     async () => {
       const [meterProvider, recorder] = createTestMeterProvider();

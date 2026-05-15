@@ -450,6 +450,55 @@ test("verifyJsonLd() records verification duration metric", async (t) => {
   );
 
   await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "linked_data",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "missing signature emits no key_fetch measurement",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(document, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.key_fetch.duration",
+        ).length,
+        0,
+      );
+    },
+  );
+
+  await t.step(
     "unknown signature type omits the ld_signatures.type metric attribute",
     async () => {
       const [meterProvider, recorder] = createTestMeterProvider();

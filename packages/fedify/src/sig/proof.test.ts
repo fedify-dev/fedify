@@ -693,6 +693,78 @@ test("verifyProof() records verification duration metric", async (t) => {
   });
 
   await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const key = await verifyProof(jsonLd, proof, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(key != null);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "object_integrity",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=hit when served from the key cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const expectedKey = new Multikey({
+        id: new URL("https://server.example/users/alice#ed25519-key"),
+        controller: new URL("https://server.example/users/alice"),
+        publicKey: await importMultibaseKey(
+          "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+        ),
+      });
+      const cache: Record<string, CryptographicKey | Multikey | null> = {
+        "https://server.example/users/alice#ed25519-key": expectedKey,
+      };
+      const key = await verifyProof(jsonLd, proof, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          get(id) {
+            return Promise.resolve(cache[id.href]);
+          },
+          set(id, k) {
+            cache[id.href] = k;
+            return Promise.resolve();
+          },
+        } satisfies KeyCache,
+      });
+      assert(key != null);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+    },
+  );
+
+  await t.step(
     "verifyObject() wrapper emits one measurement per inner verifyProof()",
     async () => {
       const [meterProvider, recorder] = createTestMeterProvider();

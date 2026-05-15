@@ -318,10 +318,9 @@ export async function verifySignature(
     );
     return null;
   }
-  const { key, cached } = await fetchKey(
-    new URL(sig.creator),
-    CryptographicKey,
-    options,
+  const { key, cached } = await measureLdKeyFetch(
+    options.meterProvider,
+    () => fetchKey(new URL(sig.creator), CryptographicKey, options),
   );
   if (key == null) return null;
   const sigOpts: {
@@ -375,16 +374,16 @@ export async function verifySignature(
         "Retrying with the freshly fetched key...",
       { keyId: sig.creator, ...sig },
     );
-    const { key } = await fetchKey(
-      new URL(sig.creator),
-      CryptographicKey,
-      {
-        ...options,
-        keyCache: {
-          get: () => Promise.resolve(undefined),
-          set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-        },
-      },
+    const { key } = await measureLdKeyFetch(
+      options.meterProvider,
+      () =>
+        fetchKey(new URL(sig.creator), CryptographicKey, {
+          ...options,
+          keyCache: {
+            get: () => Promise.resolve(undefined),
+            set: async (keyId, key) => await options.keyCache?.set(keyId, key),
+          },
+        }),
     );
     if (key == null) return null;
     const verified = await crypto.subtle.verify(
@@ -409,6 +408,38 @@ export async function verifySignature(
  * Options for verifying JSON-LD documents.
  */
 export interface VerifyJsonLdOptions extends VerifySignatureOptions {
+}
+
+/**
+ * Times an awaited public key fetch and records exactly one
+ * `activitypub.signature.key_fetch.duration` measurement, classifying the
+ * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
+ * whether the returned key is non-null.  Errors thrown by the fetch are
+ * reported as `error` and rethrown, so verifier behavior is unchanged.
+ */
+async function measureLdKeyFetch<
+  T extends { cached: boolean; key: CryptographicKey | null },
+>(
+  meterProvider: MeterProvider | undefined,
+  fetch: () => Promise<T>,
+): Promise<T> {
+  const start = performance.now();
+  try {
+    const result = await fetch();
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      "linked_data",
+      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
+    );
+    return result;
+  } catch (error) {
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      "linked_data",
+      "error",
+    );
+    throw error;
+  }
 }
 
 /**

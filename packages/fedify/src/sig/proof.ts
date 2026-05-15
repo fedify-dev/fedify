@@ -42,6 +42,43 @@ const OIP_KNOWN_CRYPTOSUITES: ReadonlySet<string> = new Set([
   "eddsa-jcs-2022",
 ]);
 
+/**
+ * Times an awaited public key fetch and records exactly one
+ * `activitypub.signature.key_fetch.duration` measurement, classifying the
+ * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
+ * whether the returned key is non-null.  Errors thrown by the fetch are
+ * reported as `error` and rethrown, so verifier behavior is unchanged.
+ *
+ * The fetch is wrapped in its own async timer so the recorded duration
+ * covers only the key fetch itself, not the surrounding JCS canonicalization
+ * and SHA-256 digest work that runs concurrently in
+ * {@link verifyProofInternal}.
+ */
+function measureOipKeyFetch(
+  meterProvider: MeterProvider | undefined,
+  fetch: () => Promise<FetchKeyResult<Multikey>>,
+): Promise<FetchKeyResult<Multikey>> {
+  const start = performance.now();
+  return fetch().then(
+    (result) => {
+      getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+        getDurationMs(start),
+        "object_integrity",
+        result.key != null ? (result.cached ? "hit" : "fetched") : "error",
+      );
+      return result;
+    },
+    (error) => {
+      getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+        getDurationMs(start),
+        "object_integrity",
+        "error",
+      );
+      throw error;
+    },
+  );
+}
+
 const logger = getLogger(["fedify", "sig", "proof"]);
 
 /**
@@ -400,10 +437,9 @@ async function verifyProofInternal(
     proof.proofValue == null ||
     proof.created == null
   ) return null;
-  const publicKeyPromise = fetchKey(
-    proof.verificationMethodId,
-    Multikey,
-    options,
+  const publicKeyPromise = measureOipKeyFetch(
+    options.meterProvider,
+    () => fetchKey(proof.verificationMethodId!, Multikey, options),
   );
   const proofConfig = {
     // deno-lint-ignore no-explicit-any

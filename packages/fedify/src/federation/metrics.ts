@@ -62,6 +62,20 @@ export type SignatureVerificationResult =
   | "error";
 
 /**
+ * The terminal classification of a public key fetch performed as part of
+ * signature verification, used as the
+ * `activitypub.signature.key_fetch.result` metric attribute.
+ *
+ *  -  `hit`: the public key was served from the in-process key cache.
+ *  -  `fetched`: the public key required a network round trip and returned
+ *     a usable key.
+ *  -  `error`: the fetch attempt returned no usable key (HTTP failure,
+ *     invalid response body, cached negative entry, etc.).
+ * @since 2.3.0
+ */
+export type SignatureKeyFetchResult = "hit" | "fetched" | "error";
+
+/**
  * Optional attributes recorded alongside an
  * `activitypub.signature.verification.duration` measurement.  Each field is
  * scoped to the matching signature kind and is omitted when its value is not
@@ -89,6 +103,7 @@ class FederationMetrics {
   readonly deliveryPermanentFailure: Counter;
   readonly signatureVerificationFailure: Counter;
   readonly signatureVerificationDuration: Histogram;
+  readonly signatureKeyFetchDuration: Histogram;
   readonly deliveryDuration: Histogram;
   readonly inboxProcessingDuration: Histogram;
   readonly httpServerRequestCount: Counter;
@@ -126,6 +141,15 @@ class FederationMetrics {
         description:
           "Duration of ActivityPub signature verification, including local " +
           "key lookup and remote key fetches.",
+        unit: "ms",
+      },
+    );
+    this.signatureKeyFetchDuration = meter.createHistogram(
+      "activitypub.signature.key_fetch.duration",
+      {
+        description:
+          "Duration of public key lookup performed during ActivityPub " +
+          "signature verification.",
         unit: "ms",
       },
     );
@@ -294,6 +318,17 @@ class FederationMetrics {
       attributes["object_integrity_proofs.cryptosuite"] = extra.cryptosuite;
     }
     this.signatureVerificationDuration.record(durationMs, attributes);
+  }
+
+  recordSignatureKeyFetchDuration(
+    durationMs: number,
+    kind: SignatureVerificationKind,
+    result: SignatureKeyFetchResult,
+  ): void {
+    this.signatureKeyFetchDuration.record(durationMs, {
+      "activitypub.signature.kind": kind,
+      "activitypub.signature.key_fetch.result": result,
+    });
   }
 
   recordInboxProcessingDuration(
