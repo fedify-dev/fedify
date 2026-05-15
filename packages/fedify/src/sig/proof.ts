@@ -54,29 +54,31 @@ const OIP_KNOWN_CRYPTOSUITES: ReadonlySet<string> = new Set([
  * and SHA-256 digest work that runs concurrently in
  * {@link verifyProofInternal}.
  */
-function measureOipKeyFetch(
+async function measureOipKeyFetch(
   meterProvider: MeterProvider | undefined,
   fetch: () => Promise<FetchKeyResult<Multikey>>,
 ): Promise<FetchKeyResult<Multikey>> {
   const start = performance.now();
-  return fetch().then(
-    (result) => {
-      getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-        getDurationMs(start),
-        "object_integrity",
-        result.key != null ? (result.cached ? "hit" : "fetched") : "error",
-      );
-      return result;
-    },
-    (error) => {
-      getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-        getDurationMs(start),
-        "object_integrity",
-        "error",
-      );
-      throw error;
-    },
-  );
+  // The fetch closure is invoked synchronously here (before the first
+  // `await`), so the timing window stays tight and the caller still gets a
+  // Promise it can hold while running other work concurrently.
+  const pending = fetch();
+  try {
+    const result = await pending;
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      "object_integrity",
+      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
+    );
+    return result;
+  } catch (error) {
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      "object_integrity",
+      "error",
+    );
+    throw error;
+  }
 }
 
 const logger = getLogger(["fedify", "sig", "proof"]);
