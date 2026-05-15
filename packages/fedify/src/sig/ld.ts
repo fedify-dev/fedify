@@ -11,6 +11,11 @@ import {
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { encodeHex } from "byte-encodings/hex";
 import metadata from "../../deno.json" with { type: "json" };
+import {
+  getDurationMs,
+  getFederationMetrics,
+  type SignatureVerificationResult,
+} from "../federation/metrics.ts";
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
 
 const logger = getLogger(["fedify", "sig", "ld"]);
@@ -407,6 +412,37 @@ export interface VerifyJsonLdOptions extends VerifySignatureOptions {
 }
 
 /**
+ * Known Linked Data Signature `type` values, used to keep
+ * `ld_signatures.type` on a bounded set of spec-defined string values.
+ * Fedify only signs and verifies `RsaSignature2017`; other values come in
+ * only from external documents and are dropped from the metric attribute to
+ * avoid attacker-controlled cardinality.
+ */
+const LD_KNOWN_SIGNATURE_TYPES: ReadonlySet<string> = new Set([
+  "RsaSignature2017",
+]);
+
+function hasLdSignatureProperty(jsonLd: unknown): boolean {
+  return (
+    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd
+  );
+}
+
+function getLdSignatureObject(
+  jsonLd: unknown,
+): Record<string, unknown> | undefined {
+  if (
+    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd &&
+    typeof (jsonLd as { signature?: unknown }).signature === "object" &&
+    (jsonLd as { signature?: unknown }).signature != null &&
+    !Array.isArray((jsonLd as { signature?: unknown }).signature)
+  ) {
+    return (jsonLd as { signature: Record<string, unknown> }).signature;
+  }
+  return undefined;
+}
+
+/**
  * Verify the authenticity of the given JSON-LD document using Linked Data
  * Signatures.  If the document is signed, this function verifies the signature
  * and checks if the document is attributed to the owner of the public key.
@@ -424,40 +460,33 @@ export async function verifyJsonLd(
   return await tracer.startActiveSpan(
     "ld_signatures.verify",
     async (span) => {
+      const start = performance.now();
+      let verified = false;
+      let threw = false;
+      let signatureType: string | undefined;
+      // A `signature` property being present at all (even if it is `null` or a
+      // primitive) counts as "had signature" for classification, so malformed
+      // signatures are reported as `rejected` rather than as `missing`.
+      const hadSignature = hasLdSignatureProperty(jsonLd);
       try {
         const object = await Object.fromJsonLd(jsonLd, options);
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
         }
         span.setAttribute("activitypub.object.type", getTypeId(object).href);
-        if (
-          typeof jsonLd === "object" && jsonLd != null &&
-          "signature" in jsonLd && typeof jsonLd.signature === "object" &&
-          jsonLd.signature != null
-        ) {
-          if (
-            "creator" in jsonLd.signature &&
-            typeof jsonLd.signature.creator === "string"
-          ) {
-            span.setAttribute(
-              "ld_signatures.key_id",
-              jsonLd.signature.creator,
-            );
+        const sig = getLdSignatureObject(jsonLd);
+        if (sig != null) {
+          if (typeof sig.creator === "string") {
+            span.setAttribute("ld_signatures.key_id", sig.creator);
           }
-          if (
-            "signatureValue" in jsonLd.signature &&
-            typeof jsonLd.signature.signatureValue === "string"
-          ) {
-            span.setAttribute(
-              "ld_signatures.signature",
-              jsonLd.signature.signatureValue,
-            );
+          if (typeof sig.signatureValue === "string") {
+            span.setAttribute("ld_signatures.signature", sig.signatureValue);
           }
-          if (
-            "type" in jsonLd.signature &&
-            typeof jsonLd.signature.type === "string"
-          ) {
-            span.setAttribute("ld_signatures.type", jsonLd.signature.type);
+          if (typeof sig.type === "string") {
+            span.setAttribute("ld_signatures.type", sig.type);
+            if (LD_KNOWN_SIGNATURE_TYPES.has(sig.type)) {
+              signatureType = sig.type;
+            }
           }
         }
         const attributions = new Set(
@@ -481,14 +510,30 @@ export async function verifyJsonLd(
           );
           return false;
         }
+        verified = true;
         return true;
       } catch (error) {
+        threw = true;
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
         });
         throw error;
       } finally {
+        const classified: SignatureVerificationResult = threw
+          ? "error"
+          : verified
+          ? "verified"
+          : hadSignature
+          ? "rejected"
+          : "missing";
+        getFederationMetrics(options.meterProvider)
+          .recordSignatureVerificationDuration(
+            getDurationMs(start),
+            "linked_data",
+            classified,
+            { ldType: signatureType },
+          );
         span.end();
       }
     },
