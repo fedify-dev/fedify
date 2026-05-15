@@ -790,6 +790,53 @@ test("verifyProof() records verification duration metric", async (t) => {
       );
     },
   );
+
+  await t.step(
+    "unknown cryptosuite omits the cryptosuite metric attribute",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // `DataIntegrityProof`'s constructor and `clone()` reject any
+      // cryptosuite other than `eddsa-jcs-2022`, but `fromJsonLd()` does
+      // not, so build the exotic proof through the JSON-LD path to
+      // exercise the metric attribute whitelist on an inbound proof that
+      // the validator would later reject.
+      const exoticProof = await DataIntegrityProof.fromJsonLd({
+        "@context": "https://w3id.org/security/data-integrity/v1",
+        type: "DataIntegrityProof",
+        cryptosuite: "made-up-suite-9999",
+        verificationMethod: "https://server.example/users/alice#ed25519-key",
+        proofPurpose: "assertionMethod",
+        proofValue:
+          // cSpell: disable
+          "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
+        // cSpell: enable
+        created: "2023-02-24T23:36:38Z",
+      }, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      assertEquals(exoticProof.cryptosuite, "made-up-suite-9999");
+
+      const key = await verifyProof(jsonLd, exoticProof, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertEquals(key, null);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertFalse(
+        "object_integrity_proofs.cryptosuite" in measurements[0].attributes,
+      );
+    },
+  );
 });
 
 test("verifyObject()", async () => {
