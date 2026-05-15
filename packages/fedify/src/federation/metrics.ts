@@ -66,11 +66,17 @@ export type SignatureVerificationResult =
  * signature verification, used as the
  * `activitypub.signature.key_fetch.result` metric attribute.
  *
- *  -  `hit`: the public key was served from the in-process key cache.
- *  -  `fetched`: the public key required a network round trip and returned
- *     a usable key.
+ *  -  `hit`: the public key was served by the configured `KeyCache`.  The
+ *     `KeyCache` itself may be backed by a remote store such as Redis or a
+ *     database, in which case the measurement reflects whatever round trip
+ *     that backend incurs.
+ *  -  `fetched`: the public key was not in the cache and was loaded
+ *     through the document loader, returning a usable key.  This typically
+ *     corresponds to a network fetch, but a custom document loader that
+ *     serves from a local store will also fall in this bucket.
  *  -  `error`: the fetch attempt returned no usable key (HTTP failure,
- *     invalid response body, cached negative entry, etc.).
+ *     invalid response body, cached negative entry, thrown exception,
+ *     etc.).
  * @since 2.3.0
  */
 export type SignatureKeyFetchResult = "hit" | "fetched" | "error";
