@@ -499,6 +499,56 @@ test("verifyJsonLd() records verification duration metric", async (t) => {
   );
 
   await t.step(
+    "cached-key retry emits two key_fetch measurements: hit then fetched",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // Prime the cache with a wrong-but-valid RSA key for the signer's
+      // keyId.  The first verification attempt uses the stale cached key,
+      // fails, and falls through to the fresh-fetch retry path inside
+      // `verifySignature()`.  The retry must record its own key_fetch
+      // measurement separately from the cached attempt.
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          async get(keyId: URL) {
+            return new CryptographicKey({
+              id: keyId,
+              owner: new URL(
+                "https://activitypub.academy/users/brauca_darradiul",
+              ),
+              publicKey:
+                (await generateCryptoKeyPair("RSASSA-PKCS1-v1_5")).publicKey,
+            });
+          },
+          set(_keyId: URL, _key: CryptographicKey) {
+            return Promise.resolve();
+          },
+        },
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 2);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+      assertEquals(
+        measurements[1].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
     "unknown signature type omits the ld_signatures.type metric attribute",
     async () => {
       const [meterProvider, recorder] = createTestMeterProvider();
