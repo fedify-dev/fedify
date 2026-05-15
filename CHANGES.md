@@ -54,7 +54,7 @@ To be released.
     `http_signatures.algorithm`, `ld_signatures.type`, or
     `object_integrity_proofs.cryptosuite` when known, plus
     `http_signatures.failure_reason` on rejected HTTP rows.
-    [[#316], [#737]]
+    [[#316], [#737], [#769]]
 
  -  Added OpenTelemetry HTTP server metrics for inbound requests handled by
     `Federation.fetch()`: `fedify.http.server.request.count` (Counter) and
@@ -103,6 +103,7 @@ To be released.
 [#755]: https://github.com/fedify-dev/fedify/pull/755
 [#757]: https://github.com/fedify-dev/fedify/pull/757
 [#759]: https://github.com/fedify-dev/fedify/pull/759
+[#769]: https://github.com/fedify-dev/fedify/pull/769
 
 ### @fedify/fixture
 
