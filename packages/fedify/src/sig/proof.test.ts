@@ -663,11 +663,13 @@ test("verifyProof() records verification duration metric", async (t) => {
   await t.step("cached-key retry emits one measurement, not two", async () => {
     const [meterProvider, recorder] = createTestMeterProvider();
     const keyId = "https://server.example/users/alice#ed25519-key";
-    // Prime the cache with a wrong-algorithm key (the rsaPublicKey2 is RSA,
-    // not Ed25519) so that verifyProofInternal falls through to the
-    // fresh-fetch retry path.
+    // Prime the cache with a different valid Ed25519 Multikey for the same
+    // keyId.  fetchKey returns it as cached=true, the Ed25519 algorithm
+    // check passes, and verification fails because the key doesn't match
+    // the proof, so verifyProofInternal goes through its
+    // "signature failed with cached key" recursive retry.
     const cache: Record<string, CryptographicKey | Multikey | null> = {
-      [keyId]: rsaPublicKey2,
+      [keyId]: ed25519Multikey,
     };
     const key = await verifyProof(jsonLd, proof, {
       documentLoader: mockDocumentLoader,
@@ -689,6 +691,22 @@ test("verifyProof() records verification duration metric", async (t) => {
         "activitypub.signature.verification.duration",
       ).length,
       1,
+    );
+    // The retry path is observable as a per-fetch sequence on
+    // `activitypub.signature.key_fetch.duration`: a `hit` for the stale
+    // cached attempt, then a `fetched` for the fresh refetch.  Mirrors the
+    // LD cached-key retry test.
+    const keyFetches = recorder.getMeasurements(
+      "activitypub.signature.key_fetch.duration",
+    );
+    assertEquals(keyFetches.length, 2);
+    assertEquals(
+      keyFetches[0].attributes["activitypub.signature.key_fetch.result"],
+      "hit",
+    );
+    assertEquals(
+      keyFetches[1].attributes["activitypub.signature.key_fetch.result"],
+      "fetched",
     );
   });
 
