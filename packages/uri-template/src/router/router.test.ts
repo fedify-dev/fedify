@@ -1,5 +1,6 @@
 import { test } from "@fedify/fixture";
 import { deepEqual, equal, throws } from "node:assert/strict";
+import type Template from "../template/template.ts";
 import {
   createRouterAddTest,
   createRouterBuildTest,
@@ -64,11 +65,22 @@ const createCountingPattern = (
 ): RouterPathPattern => {
   const pattern = Router.compile(path);
   const match = pattern.template.match;
-  pattern.template.match = (uri: string): ExpandContext | null => {
-    calls.set(path, (calls.get(path) ?? 0) + 1);
-    return match(uri);
+  const template = {
+    get tokens(): typeof pattern.template.tokens {
+      return pattern.template.tokens;
+    },
+    expand: pattern.template.expand,
+    match: (uri: string): ExpandContext | null => {
+      calls.set(path, (calls.get(path) ?? 0) + 1);
+      return match(uri);
+    },
+    toString: pattern.template.toString,
+  } as unknown as Template;
+  return {
+    path: pattern.path,
+    template,
+    variables: pattern.variables,
   };
-  return pattern;
 };
 
 test("Router indexes shared dynamic prefixes before template matching", () => {
@@ -217,6 +229,93 @@ test("Router accepts pre-parsed RouterPathPattern", async (t) => {
     const router = Router.from([[pattern, "item"]]);
     equal(router.has("item"), true);
   });
+});
+
+test("Router.compile() returns immutable path patterns", async (t) => {
+  const pattern = Router.compile("/items/{id}");
+  const router = new Router([[pattern, "item"]]);
+
+  await t.step("blocks Template entry point reassignment", () => {
+    throws(() => {
+      (pattern.template as {
+        match: (uri: string) => ExpandContext | null;
+      }).match = () => null;
+    }, TypeError);
+    throws(() => {
+      (pattern.template as {
+        expand: (context: ExpandContext) => string;
+      }).expand = () => "/changed";
+    }, TypeError);
+  });
+
+  await t.step("blocks RouterPathPattern wrapper reassignment", () => {
+    const otherTemplate = Router.compile("/other/{id}").template;
+    throws(() => {
+      (pattern as { path: Path }).path = "/other/{id}";
+    }, TypeError);
+    throws(() => {
+      (pattern as { template: typeof otherTemplate }).template = otherTemplate;
+    }, TypeError);
+  });
+
+  await t.step("blocks variables mutation", () => {
+    throws(() => {
+      (pattern.variables as Set<string>).add("unexpected");
+    }, TypeError);
+    equal(pattern.variables.has("unexpected"), false);
+    equal(pattern.variables.size, 1);
+  });
+
+  await t.step("keeps registered routing behavior unchanged", () => {
+    deepEqual(router.route("/items/9"), {
+      name: "item",
+      template: "/items/{id}",
+      values: { id: "9" },
+    });
+    equal(router.build("item", { id: "9" }), "/items/9");
+  });
+});
+
+test("Router.clone() isolates route sets with shared pre-parsed patterns", () => {
+  const pattern = Router.compile("/items/{id}");
+  const original = new Router([[pattern, "item"]]);
+  const clone = original.clone();
+  const itemRoute = {
+    name: "item",
+    template: "/items/{id}",
+    values: { id: "9" },
+  };
+
+  deepEqual(original.route("/items/9"), itemRoute);
+  deepEqual(clone.route("/items/9"), itemRoute);
+
+  original.add("/posts/{postId}", "post");
+  equal(clone.route("/posts/3"), null);
+  deepEqual(original.route("/posts/3"), {
+    name: "post",
+    template: "/posts/{postId}",
+    values: { postId: "3" },
+  });
+
+  clone.add("/users/{userId}", "user");
+  equal(original.route("/users/5"), null);
+  deepEqual(clone.route("/users/5"), {
+    name: "user",
+    template: "/users/{userId}",
+    values: { userId: "5" },
+  });
+
+  original.add("/people/{id}", "item");
+  equal(original.route("/items/9"), null);
+  deepEqual(original.route("/people/9"), {
+    name: "item",
+    template: "/people/{id}",
+    values: { id: "9" },
+  });
+  equal(original.build("item", { id: "9" }), "/people/9");
+  deepEqual(clone.route("/items/9"), itemRoute);
+  equal(clone.route("/people/9"), null);
+  equal(clone.build("item", { id: "9" }), "/items/9");
 });
 
 test("Router trailing slash retry accepts empty root path", () => {

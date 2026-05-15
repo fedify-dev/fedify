@@ -48,11 +48,11 @@ export type ExpandContext = Record<string, ExpandValue>;
  */
 export interface VarSpec {
   /** Variable name to look up in the expansion context. */
-  name: string;
+  readonly name: string;
   /** Whether the varspec uses the Level 4 explode modifier (`*`). */
-  explode: boolean;
+  readonly explode: boolean;
   /** Prefix length from a Level 4 prefix modifier (`:N`), if present. */
-  prefix?: number;
+  readonly prefix?: number;
 }
 
 /**
@@ -62,8 +62,12 @@ export interface VarSpec {
  * context object.
  */
 export type Token =
-  | { kind: "literal"; text: string }
-  | { kind: "expression"; operator: Operator; vars: VarSpec[] };
+  | { readonly kind: "literal"; readonly text: string }
+  | {
+    readonly kind: "expression";
+    readonly operator: Operator;
+    readonly vars: readonly VarSpec[];
+  };
 
 /**
  * Options controlling URI Template parsing and expansion diagnostics.
