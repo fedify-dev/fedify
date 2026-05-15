@@ -105,10 +105,15 @@ The important differences are:
  -  `Router.variables()` and `Router.compile()` expose variable extraction
     without mutating a router.  The legacy `Router.add()` returned variables as
     a side effect of registering the route.
- -  Candidate lookup uses a prefix trie keyed by the initial literal prefix of
-    each route.  Candidates are ordered deterministically by literal length,
-    initial literal prefix length, variable count, and insertion order before
-    the round-trip matcher runs.
+ -  Candidate lookup combines a token-level state trie with a fallback prefix
+    trie.  Indexable path templates—those whose expressions each hold a single
+    variable with the `""`, `/`, or `+` operator and never sit directly
+    adjacent to another expression—are walked token by token in the state
+    trie.  Shapes that cannot be safely indexed fall back to a prefix trie
+    keyed by the initial literal prefix of each route.  Candidates from both
+    tries are merged, deduplicated, and ordered deterministically by literal
+    length, initial literal prefix length, variable count, and insertion order
+    before the round-trip matcher runs.
  -  Cloning and route replacement do not depend on copying private mutable
     state from [uri-template-router].  The router stores compiled templates and
     active route entries directly, which keeps the implementation independent
