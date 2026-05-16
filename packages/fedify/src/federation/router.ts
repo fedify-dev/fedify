@@ -4,6 +4,7 @@ import type {
 } from "@fedify/uri-template";
 import {
   assertPath,
+  isPath,
   Router as _Router,
   RouterError as _RouterError,
 } from "@fedify/uri-template";
@@ -112,11 +113,14 @@ export class Router {
    * @param url The URL to resolve.
    * @returns The name of the path and its values, if any match.  Otherwise,
    *          `null`.
-   * @deprecated Use `Router` from `@fedify/uri-template` instead.
+   * @deprecated Use `Router` from `@fedify/uri-template` instead.  Unlike the
+   *             stricter `@fedify/uri-template` router, this compatibility
+   *             method keeps the old Fedify 2.x contract of returning `null`
+   *             (rather than throwing) for inputs that are not router paths.
    */
   route(url: string): RouterRouteResult | null {
     return convertRouterError(() => {
-      assertPath(url);
+      if (!isPath(url)) return null;
       return this.#router.route(url);
     });
   }
