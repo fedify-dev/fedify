@@ -80,6 +80,15 @@ function assertIdentifierPath(
   if (variables.size !== 1 || !variables.has("identifier")) {
     throw new RouterError(errorMessage);
   }
+  const usesPathOperator = Router.compile(path).template.tokens
+    .filter(isExpression)
+    .some((token) =>
+      token.operator === "/" &&
+      token.vars.some(({ name }) => name === "identifier")
+    );
+  if (usesPathOperator) {
+    throw new RouterError(errorMessage);
+  }
 }
 
 function assertStrictIdentifierPath(
@@ -98,7 +107,7 @@ function assertStrictIdentifierPath(
 
   const { operator, vars: [varSpec] } = expressions[0];
   if (
-    !(operator === "" || operator === "/") ||
+    operator !== "" ||
     varSpec.explode ||
     varSpec.prefix != null
   ) {
