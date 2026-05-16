@@ -139,6 +139,16 @@ export class Router {
  */
 export class RouterError extends _RouterError {
   /**
+   * Treats every `RouterError` from `@fedify/uri-template` as an instance of
+   * this deprecated class.
+   *
+   * @deprecated Import `RouterError` from `@fedify/uri-template` instead.
+   */
+  static override [Symbol.hasInstance](instance: unknown): boolean {
+    return instance instanceof _RouterError;
+  }
+
+  /**
    * Create a new {@link RouterError}.
    * @param message The error message.
    * @deprecated Import `RouterError` from `@fedify/uri-template` instead.

@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { RouterError as UriTemplateRouterError } from "@fedify/uri-template";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Router, RouterError, type RouterOptions } from "./router.ts";
 
@@ -105,4 +106,13 @@ test("Router.build()", () => {
     router.build("post", { name: "alice", postId: "123" }),
     "/users/alice/posts/123",
   );
+});
+
+test("Compatibility between RouterErrors", () => {
+  const newError = new UriTemplateRouterError("boom");
+  assert(newError instanceof UriTemplateRouterError);
+  assert(newError instanceof RouterError);
+  const previousError = new RouterError("boom");
+  assert(previousError instanceof RouterError);
+  assert(previousError instanceof UriTemplateRouterError);
 });
