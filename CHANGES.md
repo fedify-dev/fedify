@@ -118,15 +118,6 @@ To be released.
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
     available for compatibility.  [[#418], [#758] by ChanHaeng Lee]
 
- -  *Breaking change*: Tightened the deprecated `Router` shim from
-    *@fedify/fedify/federation*: `route()` now throws `RouterError` for
-    inputs that are not router paths (previously such inputs returned `null`
-    on non-match), and `trailingSlashInsensitive` is no longer mutable
-    post-construction (assignments after construction create an inert own
-    property; the flag must be passed to the constructor).  Callers should
-    validate inputs and pass options at construction, or migrate to `Router`
-    from *@fedify/uri-template*.  [[#418], [#758] by ChanHaeng Lee]
-
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
 [#619]: https://github.com/fedify-dev/fedify/issues/619
