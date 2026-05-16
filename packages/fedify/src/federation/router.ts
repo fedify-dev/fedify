@@ -12,6 +12,17 @@ import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger(["fedify", "federation", "router", "deprecated"]);
 
+let deprecationWarned = false;
+
+function warnDeprecated(): void {
+  if (deprecationWarned) return;
+  deprecationWarned = true;
+  logger.warn(
+    "The `Router` and `RouterError` classes from `@fedify/fedify` are " +
+      "deprecated.  Please use `Router` from `@fedify/uri-template` instead.",
+  );
+}
+
 /**
  * Options for the {@link Router}.
  * @since 0.12.0
@@ -159,19 +170,13 @@ export class RouterError extends _RouterError {
    */
   constructor(message: string) {
     super(message);
-    logger.warn(
-      "The `RouterError` class from `@fedify/fedify` is deprecated." +
-        " Please use `Router` from `@fedify/uri-template` instead.",
-    );
+    warnDeprecated();
   }
 }
 
 function convertRouterError<T>(func: () => T): T {
   try {
-    logger.warn(
-      "The `Router` class from `@fedify/fedify` is deprecated." +
-        " Please use `Router` from `@fedify/uri-template` instead.",
-    );
+    warnDeprecated();
     return func();
   } catch (error) {
     if (error instanceof _RouterError) {
