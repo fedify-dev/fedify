@@ -108,6 +108,17 @@ test("Router.build()", () => {
   );
 });
 
+test("Router.route() returns null for non-path inputs", () => {
+  const router = setUp();
+  // The old Fedify 2.x `Router` returned `null` (not threw) when probed
+  // with non-path inputs such as absolute URLs.
+  assertEquals(router.route("https://example.com/users/alice"), null);
+  assertEquals(router.route("users/alice"), null);
+  assertEquals(router.route("not a path"), null);
+  // Valid paths that simply do not match still return null.
+  assertEquals(router.route("/unknown"), null);
+});
+
 test("Compatibility between RouterErrors", () => {
   const newError = new UriTemplateRouterError("boom");
   assert(newError instanceof UriTemplateRouterError);
