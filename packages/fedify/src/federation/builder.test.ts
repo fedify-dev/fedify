@@ -260,7 +260,7 @@ test("FederationBuilder", async (t) => {
     builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
 
     const builder2 = createFederationBuilder<void>();
-    builder2.setOutboxListeners("/users{/identifier}/outbox");
+    builder2.setOutboxListeners("/users/{identifier}/outbox");
 
     assertThrows(
       () =>
@@ -309,6 +309,65 @@ test("FederationBuilder", async (t) => {
       RouterError,
     );
   });
+
+  await t.step(
+    "should reject identifier paths that can match without an identifier",
+    () => {
+      // `{/identifier}` is path-style expansion that can match zero
+      // segments, so the route would match with an empty or missing
+      // `identifier`, violating the `identifier: string` callback contract.
+      // See https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      type IdPath = `${string}{identifier}${string}`;
+
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "{/identifier}" as IdPath,
+            () => null,
+          ),
+        RouterError,
+        "Path for actor dispatcher must have one variable: {identifier}",
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "/users{/identifier}" as IdPath,
+            () => null,
+          ),
+        RouterError,
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setInboxListeners(
+            "{/identifier}/inbox" as IdPath,
+          ),
+        RouterError,
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setInboxListeners(
+            "/users{/identifier}/inbox" as IdPath,
+          ),
+        RouterError,
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setOutboxListeners(
+            "/users{/identifier}/outbox" as IdPath,
+          ),
+        RouterError,
+      );
+
+      // Simple expansion `{identifier}` must keep working.
+      createFederationBuilder<void>().setActorDispatcher(
+        "/users/{identifier}",
+        () => null,
+      );
+      createFederationBuilder<void>().setInboxListeners(
+        "/users/{identifier}/inbox",
+      );
+    },
+  );
 
   await t.step("should pass build options correctly", async () => {
     const builder = createFederationBuilder<number>();
