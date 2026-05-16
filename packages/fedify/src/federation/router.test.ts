@@ -80,6 +80,24 @@ test("Router.route()", () => {
   });
 });
 
+test("Router.trailingSlashInsensitive (post-construction mutation)", () => {
+  const router = setUp();
+  assertFalse(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), null);
+
+  router.trailingSlashInsensitive = true;
+  assert(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), {
+    name: "user",
+    template: "/users/{name}",
+    values: { name: "bob" },
+  });
+
+  router.trailingSlashInsensitive = false;
+  assertFalse(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), null);
+});
+
 test("Router.build()", () => {
   const router = setUp();
   assertEquals(router.build("user", { name: "alice" }), "/users/alice");

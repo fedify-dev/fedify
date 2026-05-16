@@ -47,6 +47,21 @@ export class Router {
   }
 
   /**
+   * Whether to ignore trailing slashes when matching paths.
+   * @deprecated Use `Router` from `@fedify/uri-template` instead.  This
+   *             accessor forwards to the underlying `@fedify/uri-template`
+   *             router so that post-construction mutation keeps working as
+   *             in older Fedify code.
+   */
+  get trailingSlashInsensitive(): boolean {
+    return this.#router.trailingSlashInsensitive;
+  }
+
+  set trailingSlashInsensitive(value: boolean) {
+    this.#router.trailingSlashInsensitive = value;
+  }
+
+  /**
    * Clones this router.
    * @deprecated Use `Router` from `@fedify/uri-template` instead.
    */
