@@ -435,6 +435,16 @@ const LD_KNOWN_SIGNATURE_TYPES: ReadonlySet<string> = new Set([
   "RsaSignature2017",
 ]);
 
+/**
+ * Reports only whether a `signature` key is present on the document, with
+ * no shape check on its value.  This is intentionally looser than
+ * {@link hasSignature} (which validates a full `RsaSignature2017` shape)
+ * and {@link hasSignatureLike} (which structurally accepts several known
+ * suites): `verifyJsonLd` needs to tell a document with a malformed or
+ * unsupported signature payload (classified as `rejected`) apart from a
+ * truly unsigned document (classified as `missing`), and only this
+ * presence-only check captures both cases.
+ */
 function hasLdSignatureProperty(jsonLd: unknown): boolean {
   return (
     typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd
@@ -444,11 +454,7 @@ function hasLdSignatureProperty(jsonLd: unknown): boolean {
 function getLdSignatureObject(
   jsonLd: unknown,
 ): Record<string, unknown> | undefined {
-  if (
-    typeof jsonLd !== "object" || jsonLd == null || !("signature" in jsonLd)
-  ) {
-    return undefined;
-  }
+  if (!hasLdSignatureProperty(jsonLd)) return undefined;
   const { signature } = jsonLd as { signature: unknown };
   if (
     typeof signature !== "object" || signature == null ||
@@ -481,10 +487,6 @@ export async function verifyJsonLd(
       let verified = false;
       let threw = false;
       let signatureType: string | undefined;
-      // A `signature` property being present at all (even if it is `null` or a
-      // primitive) counts as "had signature" for classification, so malformed
-      // signatures are reported as `rejected` rather than as `missing`.
-      const hadSignature = hasLdSignatureProperty(jsonLd);
       try {
         const object = await Object.fromJsonLd(jsonLd, options);
         if (object.id != null) {
@@ -537,11 +539,15 @@ export async function verifyJsonLd(
         });
         throw error;
       } finally {
+        // A `signature` property being present at all (even if it is `null`
+        // or a primitive) counts as "had signature" for classification, so
+        // malformed signatures are reported as `rejected` rather than as
+        // `missing`.
         const classified: SignatureVerificationResult = threw
           ? "error"
           : verified
           ? "verified"
-          : hadSignature
+          : hasLdSignatureProperty(jsonLd)
           ? "rejected"
           : "missing";
         getFederationMetrics(options.meterProvider)
