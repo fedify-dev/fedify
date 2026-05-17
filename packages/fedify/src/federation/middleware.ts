@@ -110,6 +110,7 @@ import {
   isAbortError,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
+  recordFanoutRecipients,
   recordOutboxEnqueue,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
@@ -2724,6 +2725,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         activityType: message.activityType,
       },
       0,
+    );
+    recordFanoutRecipients(
+      this.federation.meterProvider,
+      message.activityType,
+      globalThis.Object.keys(message.inboxes).length,
     );
     return true;
   }

@@ -5367,6 +5367,78 @@ test("ContextImpl.sendActivity()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("ContextImpl.sendActivity() records fanout recipient metrics", async () => {
+  const kv = new MemoryKvStore();
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const queue: MessageQueue & { messages: Message[] } = {
+    messages: [],
+    enqueue(message) {
+      this.messages.push(message);
+      return Promise.resolve();
+    },
+    async listen() {},
+  };
+  const federation = new FederationImpl<void>({
+    kv,
+    contextLoaderFactory: () => mockDocumentLoader,
+    queue,
+    meterProvider,
+  });
+  federation
+    .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+      if (identifier !== "john") return null;
+      const keys = await ctx.getActorKeyPairs(identifier);
+      return new vocab.Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: "john",
+        publicKey: keys[0].cryptographicKey,
+        assertionMethods: keys.map((k) => k.multikey),
+      });
+    })
+    .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier !== "john") return [];
+      return [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        {
+          privateKey: ed25519PrivateKey,
+          publicKey: ed25519PublicKey.publicKey!,
+        },
+      ];
+    });
+  const ctx = new ContextImpl({
+    data: undefined,
+    federation,
+    url: new URL("https://example.com/"),
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const activity = new vocab.Create({
+    id: new URL("https://example.com/activity/1"),
+    actor: new URL("https://example.com/person"),
+  });
+  const recipients = Array.from({ length: 7 }, (_, i) => ({
+    id: new URL(`https://example${i + 1}.com/recipient`),
+    inboxId: new URL(`https://example${i + 1}.com/inbox`),
+  }));
+  await ctx.sendActivity({ username: "john" }, recipients, activity, {
+    fanout: "force",
+  });
+
+  assertEquals(queue.messages.length, 1);
+  assertEquals(queue.messages[0].type, "fanout");
+
+  const measurements = recorder.getMeasurements(
+    "activitypub.fanout.recipients",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "histogram");
+  assertEquals(measurements[0].value, recipients.length);
+  assertEquals(
+    measurements[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
+});
+
 test({
   name: "ContextImpl.routeActivity()",
   permissions: { env: true, read: true },
