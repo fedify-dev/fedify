@@ -1,8 +1,13 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestMeterProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { CryptographicKey } from "@fedify/vocab";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
+import { assertGreaterOrEqual } from "@std/assert/assert-greater-or-equal";
 import { assertRejects } from "@std/assert/assert-rejects";
 import { assertThrows } from "@std/assert/assert-throws";
 import { encodeBase64 } from "byte-encodings/base64";
@@ -336,6 +341,239 @@ test("verifyJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assertFalse(verified2);
+});
+
+test("verifyJsonLd() records verification duration metric", async (t) => {
+  await t.step(
+    "verified path records result=verified with bounded type",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      const m = measurements[0];
+      assertEquals(m.type, "histogram");
+      assertGreaterOrEqual(m.value, 0);
+      assertEquals(m.attributes["activitypub.signature.kind"], "linked_data");
+      assertEquals(m.attributes["activitypub.signature.result"], "verified");
+      assertEquals(m.attributes["ld_signatures.type"], "RsaSignature2017");
+    },
+  );
+
+  await t.step(
+    "missing signature records result=missing without type",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(document, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "linked_data",
+      );
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "missing",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
+
+  await t.step("invalid signature records result=rejected", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const tampered = {
+      ...testVector,
+      signature: {
+        ...testVector.signature,
+        signatureValue: encodeBase64(new Uint8Array([1, 2, 3, 4])),
+      },
+    };
+    const verified = await verifyJsonLd(tampered, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      meterProvider,
+    });
+    assertFalse(verified);
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.verification.duration",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.result"],
+      "rejected",
+    );
+    assertEquals(
+      measurements[0].attributes["ld_signatures.type"],
+      "RsaSignature2017",
+    );
+  });
+
+  await t.step(
+    "malformed (null) signature property records result=rejected, not missing",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const malformed = { ...document, signature: null };
+      const verified = await verifyJsonLd(malformed, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
+
+  await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "linked_data",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "missing signature emits no key_fetch measurement",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(document, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.key_fetch.duration",
+        ).length,
+        0,
+      );
+    },
+  );
+
+  await t.step(
+    "cached-key retry emits two key_fetch measurements: hit then fetched",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // Prime the cache with a wrong-but-valid RSA key for the signer's
+      // keyId.  The first verification attempt uses the stale cached key,
+      // fails, and falls through to the fresh-fetch retry path inside
+      // `verifySignature()`.  The retry must record its own key_fetch
+      // measurement separately from the cached attempt.
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          async get(keyId: URL) {
+            return new CryptographicKey({
+              id: keyId,
+              owner: new URL(
+                "https://activitypub.academy/users/brauca_darradiul",
+              ),
+              publicKey:
+                (await generateCryptoKeyPair("RSASSA-PKCS1-v1_5")).publicKey,
+            });
+          },
+          set(_keyId: URL, _key: CryptographicKey) {
+            return Promise.resolve();
+          },
+        },
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 2);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+      assertEquals(
+        measurements[1].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "unknown signature type omits the ld_signatures.type metric attribute",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const exotic = {
+        ...testVector,
+        signature: { ...testVector.signature, type: "MadeUpSignature9999" },
+      };
+      const verified = await verifyJsonLd(exotic, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
 });
 
 // cSpell: ignore ostatus

@@ -31,10 +31,138 @@ export interface QueueTaskCommonAttributes {
   activityType?: string;
 }
 
+/**
+ * The kind of ActivityPub signature verified, used as the
+ * `activitypub.signature.kind` metric attribute.
+ * @since 2.3.0
+ */
+export type SignatureVerificationKind =
+  | "http"
+  | "linked_data"
+  | "object_integrity";
+
+/**
+ * The terminal classification of a signature verification attempt, used as
+ * the `activitypub.signature.result` metric attribute.
+ *
+ *  -  `verified`: the signature was checked and accepted.
+ *  -  `rejected`: the signature was checked and refused (bad signature, key
+ *     fetch failure, owner mismatch, etc.).
+ *  -  `missing`: no signature was present.  Only HTTP Signatures and Linked
+ *     Data Signatures distinguish this from `rejected`; Object Integrity
+ *     Proofs never carry this value because callers decide whether to invoke
+ *     {@link import("../sig/proof.ts").verifyProof} at all.
+ *  -  `error`: verification threw an unexpected error.
+ * @since 2.3.0
+ */
+export type SignatureVerificationResult =
+  | "verified"
+  | "rejected"
+  | "missing"
+  | "error";
+
+/**
+ * The terminal classification of a public key fetch performed as part of
+ * signature verification, used as the
+ * `activitypub.signature.key_fetch.result` metric attribute.
+ *
+ *  -  `hit`: the public key was served by the configured `KeyCache`.  The
+ *     `KeyCache` itself may be backed by a remote store such as Redis or a
+ *     database, in which case the measurement reflects whatever round trip
+ *     that backend incurs.
+ *  -  `fetched`: the public key was not in the cache and was loaded
+ *     through the document loader, returning a usable key.  This typically
+ *     corresponds to a network fetch, but a custom document loader that
+ *     serves from a local store will also fall in this bucket.
+ *  -  `error`: the fetch attempt returned no usable key (HTTP failure,
+ *     invalid response body, cached negative entry, thrown exception,
+ *     etc.).
+ * @since 2.3.0
+ */
+export type SignatureKeyFetchResult = "hit" | "fetched" | "error";
+
+/**
+ * Bounded values recorded as `http_signatures.algorithm` on the signature
+ * verification duration histogram.  Covers both the draft-cavage parameter
+ * names and the RFC 9421 algorithm map keys; anything outside this set is
+ * dropped from the metric to keep cardinality safe.
+ * @since 2.3.0
+ */
+export type HttpSignatureMetricAlgorithm =
+  // draft-cavage `algorithm` parameter values:
+  | "ecdsa-sha256"
+  | "ecdsa-sha384"
+  | "ecdsa-sha512"
+  | "ed25519"
+  | "hs2019"
+  | "rsa-sha1"
+  | "rsa-sha256"
+  | "rsa-sha512"
+  // RFC 9421 algorithm map keys:
+  | "rsa-v1_5-sha256"
+  | "rsa-v1_5-sha512"
+  | "rsa-pss-sha512"
+  | "ecdsa-p256-sha256"
+  | "ecdsa-p384-sha384";
+
+/**
+ * Bounded values recorded as `http_signatures.failure_reason` on `rejected`
+ * HTTP signature verification rows.  `noSignature` is not included because
+ * missing-signature requests are recorded as
+ * `activitypub.signature.result=missing` and do not carry a failure reason.
+ * @since 2.3.0
+ */
+export type HttpSignatureMetricFailureReason =
+  | "invalidSignature"
+  | "keyFetchError";
+
+/**
+ * Bounded values recorded as `ld_signatures.type` on the signature
+ * verification duration histogram.  Fedify only signs and verifies
+ * `RsaSignature2017`; other types come in only from external documents and
+ * are dropped from the metric.
+ * @since 2.3.0
+ */
+export type LinkedDataSignatureMetricType = "RsaSignature2017";
+
+/**
+ * Bounded values recorded as `object_integrity_proofs.cryptosuite` on the
+ * signature verification duration histogram.  Fedify only signs and
+ * verifies `eddsa-jcs-2022`; other cryptosuites come in only from external
+ * proofs and are dropped from the metric.
+ * @since 2.3.0
+ */
+export type ObjectIntegrityProofMetricCryptosuite = "eddsa-jcs-2022";
+
+/**
+ * Optional attributes recorded alongside an
+ * `activitypub.signature.verification.duration` measurement.  Each field is
+ * scoped to the matching signature kind and is omitted when its value is not
+ * available; the field types are literal unions so the compiler enforces the
+ * spec-bounded value sets that keep metric cardinality safe.
+ * @since 2.3.0
+ */
+export interface SignatureVerificationExtraAttributes {
+  /** `http_signatures.algorithm` (HTTP Signatures only). */
+  algorithm?: HttpSignatureMetricAlgorithm;
+  /** `ld_signatures.type` (Linked Data Signatures only). */
+  ldType?: LinkedDataSignatureMetricType;
+  /** `object_integrity_proofs.cryptosuite` (Object Integrity Proofs only). */
+  cryptosuite?: ObjectIntegrityProofMetricCryptosuite;
+  /**
+   * `http_signatures.failure_reason`, recorded only on HTTP Signature
+   * failures so the histogram can be sliced by reason without exploding
+   * cardinality on success rows.
+   */
+  failureReason?: HttpSignatureMetricFailureReason;
+}
+
 class FederationMetrics {
   readonly deliverySent: Counter;
   readonly deliveryPermanentFailure: Counter;
   readonly signatureVerificationFailure: Counter;
+  readonly signatureVerificationDuration: Histogram;
+  readonly signatureKeyFetchDuration: Histogram;
   readonly deliveryDuration: Histogram;
   readonly inboxProcessingDuration: Histogram;
   readonly httpServerRequestCount: Counter;
@@ -64,6 +192,24 @@ class FederationMetrics {
       {
         description: "ActivityPub signature verification failures.",
         unit: "{failure}",
+      },
+    );
+    this.signatureVerificationDuration = meter.createHistogram(
+      "activitypub.signature.verification.duration",
+      {
+        description:
+          "Duration of ActivityPub signature verification, including local " +
+          "key lookup and remote key fetches.",
+        unit: "ms",
+      },
+    );
+    this.signatureKeyFetchDuration = meter.createHistogram(
+      "activitypub.signature.key_fetch.duration",
+      {
+        description:
+          "Duration of public key lookup performed during ActivityPub " +
+          "signature verification.",
+        unit: "ms",
       },
     );
     this.deliveryDuration = meter.createHistogram(
@@ -208,6 +354,42 @@ class FederationMetrics {
     this.signatureVerificationFailure.add(1, attributes);
   }
 
+  recordSignatureVerificationDuration(
+    durationMs: number,
+    kind: SignatureVerificationKind,
+    result: SignatureVerificationResult,
+    extra: SignatureVerificationExtraAttributes = {},
+  ): void {
+    const attributes: Attributes = {
+      "activitypub.signature.kind": kind,
+      "activitypub.signature.result": result,
+    };
+    if (extra.algorithm != null) {
+      attributes["http_signatures.algorithm"] = extra.algorithm;
+    }
+    if (extra.failureReason != null) {
+      attributes["http_signatures.failure_reason"] = extra.failureReason;
+    }
+    if (extra.ldType != null) {
+      attributes["ld_signatures.type"] = extra.ldType;
+    }
+    if (extra.cryptosuite != null) {
+      attributes["object_integrity_proofs.cryptosuite"] = extra.cryptosuite;
+    }
+    this.signatureVerificationDuration.record(durationMs, attributes);
+  }
+
+  recordSignatureKeyFetchDuration(
+    durationMs: number,
+    kind: SignatureVerificationKind,
+    result: SignatureKeyFetchResult,
+  ): void {
+    this.signatureKeyFetchDuration.record(durationMs, {
+      "activitypub.signature.kind": kind,
+      "activitypub.signature.key_fetch.result": result,
+    });
+  }
+
   recordInboxProcessingDuration(
     activityType: string,
     durationMs: number,
@@ -339,6 +521,44 @@ export function recordOutboxEnqueue(
     },
     message.attempt,
   );
+}
+
+/**
+ * Times an awaited public key fetch and records exactly one
+ * `activitypub.signature.key_fetch.duration` measurement, classifying the
+ * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
+ * whether the returned key is non-null.  Errors thrown by the fetch are
+ * reported as `error` and rethrown, so verifier behavior is unchanged.
+ *
+ * Shared by the three signature verifiers (HTTP, Linked Data, Object
+ * Integrity Proofs); the only per-call variation is the
+ * `activitypub.signature.kind` attribute value.
+ * @since 2.3.0
+ */
+export async function measureSignatureKeyFetch<
+  T extends { readonly cached: boolean; readonly key: unknown },
+>(
+  meterProvider: MeterProvider | undefined,
+  kind: SignatureVerificationKind,
+  fetch: () => Promise<T>,
+): Promise<T> {
+  const start = performance.now();
+  try {
+    const result = await fetch();
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      kind,
+      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
+    );
+    return result;
+  } catch (error) {
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      kind,
+      "error",
+    );
+    throw error;
+  }
 }
 
 /**

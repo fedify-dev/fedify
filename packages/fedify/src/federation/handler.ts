@@ -842,6 +842,7 @@ async function handleInboxInternal<TContextData>(
     signatureTimeWindow,
     skipSignatureVerification,
     inboxChallengePolicy,
+    meterProvider,
     tracerProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
@@ -913,6 +914,7 @@ async function handleInboxInternal<TContextData>(
       contextLoader: ctx.contextLoader,
       documentLoader: ctx.documentLoader,
       keyCache,
+      meterProvider,
       tracerProvider,
     });
   } catch (error) {
@@ -942,6 +944,7 @@ async function handleInboxInternal<TContextData>(
         contextLoader: ctx.contextLoader,
         documentLoader: ctx.documentLoader,
         keyCache,
+        meterProvider,
         tracerProvider,
       });
     } catch (error) {
@@ -991,6 +994,7 @@ async function handleInboxInternal<TContextData>(
         documentLoader: ctx.documentLoader,
         timeWindow: signatureTimeWindow,
         keyCache,
+        meterProvider,
         tracerProvider,
       });
       if (verification.verified === false) {

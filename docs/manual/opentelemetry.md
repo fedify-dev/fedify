@@ -296,21 +296,23 @@ Instrumented metrics
 
 Fedify records the following OpenTelemetry metrics:
 
-| Metric name                                  | Instrument    | Unit        | Description                                                     |
-| -------------------------------------------- | ------------- | ----------- | --------------------------------------------------------------- |
-| `activitypub.delivery.sent`                  | Counter       | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                  |
-| `activitypub.delivery.permanent_failure`     | Counter       | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.     |
-| `activitypub.delivery.duration`              | Histogram     | `ms`        | Measures outgoing ActivityPub delivery attempt duration.        |
-| `activitypub.inbox.processing_duration`      | Histogram     | `ms`        | Measures inbox listener processing duration.                    |
-| `activitypub.signature.verification_failure` | Counter       | `{failure}` | Counts failed signature verification for inbox requests.        |
-| `fedify.http.server.request.count`           | Counter       | `{request}` | Counts inbound HTTP requests handled by `Federation.fetch()`.   |
-| `fedify.http.server.request.duration`        | Histogram     | `ms`        | Measures inbound HTTP request duration in `Federation.fetch()`. |
-| `fedify.queue.task.enqueued`                 | Counter       | `{task}`    | Counts inbox, outbox, and fanout tasks Fedify enqueued.         |
-| `fedify.queue.task.started`                  | Counter       | `{task}`    | Counts queue tasks Fedify began processing as a worker.         |
-| `fedify.queue.task.completed`                | Counter       | `{task}`    | Counts queue tasks Fedify finished processing without throwing. |
-| `fedify.queue.task.failed`                   | Counter       | `{task}`    | Counts queue tasks Fedify abandoned because processing threw.   |
-| `fedify.queue.task.duration`                 | Histogram     | `ms`        | Measures queue task processing duration in Fedify workers.      |
-| `fedify.queue.task.in_flight`                | UpDownCounter | `{task}`    | Tracks queue tasks currently in flight in this Fedify process.  |
+| Metric name                                   | Instrument    | Unit        | Description                                                                                     |
+| --------------------------------------------- | ------------- | ----------- | ----------------------------------------------------------------------------------------------- |
+| `activitypub.delivery.sent`                   | Counter       | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                                                  |
+| `activitypub.delivery.permanent_failure`      | Counter       | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.                                     |
+| `activitypub.delivery.duration`               | Histogram     | `ms`        | Measures outgoing ActivityPub delivery attempt duration.                                        |
+| `activitypub.inbox.processing_duration`       | Histogram     | `ms`        | Measures inbox listener processing duration.                                                    |
+| `activitypub.signature.verification_failure`  | Counter       | `{failure}` | Counts failed signature verification for inbox requests.                                        |
+| `activitypub.signature.verification.duration` | Histogram     | `ms`        | Measures signature verification duration across HTTP, Linked Data, and Object Integrity Proofs. |
+| `activitypub.signature.key_fetch.duration`    | Histogram     | `ms`        | Measures public key lookup duration during signature verification.                              |
+| `fedify.http.server.request.count`            | Counter       | `{request}` | Counts inbound HTTP requests handled by `Federation.fetch()`.                                   |
+| `fedify.http.server.request.duration`         | Histogram     | `ms`        | Measures inbound HTTP request duration in `Federation.fetch()`.                                 |
+| `fedify.queue.task.enqueued`                  | Counter       | `{task}`    | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                         |
+| `fedify.queue.task.started`                   | Counter       | `{task}`    | Counts queue tasks Fedify began processing as a worker.                                         |
+| `fedify.queue.task.completed`                 | Counter       | `{task}`    | Counts queue tasks Fedify finished processing without throwing.                                 |
+| `fedify.queue.task.failed`                    | Counter       | `{task}`    | Counts queue tasks Fedify abandoned because processing threw.                                   |
+| `fedify.queue.task.duration`                  | Histogram     | `ms`        | Measures queue task processing duration in Fedify workers.                                      |
+| `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`    | Tracks queue tasks currently in flight in this Fedify process.                                  |
 
 ### Metric attributes
 
@@ -331,6 +333,81 @@ Fedify records the following OpenTelemetry metrics:
 `activitypub.signature.verification_failure`
 :   `activitypub.verification.failure_reason`, plus
     `activitypub.remote.host` when the failed signature includes a key ID.
+
+`activitypub.signature.verification.duration`
+:   `activitypub.signature.kind` is always present and is one of `http`,
+    `linked_data`, or `object_integrity`.  `activitypub.signature.result` is
+    always present and is one of:
+
+     -  `verified`: the signature was checked and accepted.
+     -  `rejected`: the signature was checked and refused (bad signature,
+        key fetch failure, owner mismatch, etc.).
+     -  `missing`: no signature was present.  Only `http` and `linked_data`
+        produce this value; `object_integrity` does not, because the caller
+        decides whether to invoke proof verification at all.
+     -  `error`: verification threw an unexpected error.
+
+    The duration covers the full verification path Fedify performs,
+    *including* local key lookup and remote key fetches; the separate
+    `activitypub.signature.key_fetch.duration` histogram lets operators
+    subtract key lookup latency from the total to isolate the rest of the
+    verification work (canonicalization, hashing, attribution and owner
+    checks, cryptographic verification, etc.).  Direct calls to
+    `verifyRequest()` / `verifyRequestDetailed()`, `verifyJsonLd()`, and
+    `verifyProof()` each emit exactly one measurement, even when the
+    implementation retries internally after a cache mismatch.  Wrappers
+    such as `verifyObject()` emit one measurement per inner `verifyProof()`
+    call (and none when the object has no proofs); higher-level inbox
+    handling can perform several verification attempts in series.
+
+    Kind-specific optional attributes are recorded only when the value
+    matches a small, spec-bounded set, to keep cardinality safe even when
+    attacker-supplied JSON-LD or signature headers reach the verifier:
+
+     -  `http_signatures.algorithm` (HTTP only) is recorded only when the
+        parsed algorithm value is one of `rsa-sha1`, `rsa-sha256`,
+        `rsa-sha512`, `ecdsa-sha256`, `ecdsa-sha384`, `ecdsa-sha512`,
+        `ed25519`, or `hs2019` (draft-cavage) or one of the keys of the
+        RFC 9421 algorithm map (`rsa-v1_5-sha256`, `rsa-v1_5-sha512`,
+        `rsa-pss-sha512`, `ecdsa-p256-sha256`, `ecdsa-p384-sha384`,
+        `ed25519`).
+     -  `http_signatures.failure_reason` (HTTP only, on `rejected` rows)
+        is one of `invalidSignature` or `keyFetchError`.  HTTP requests
+        with no signature header are reported as
+        `activitypub.signature.result=missing` and do not carry a
+        `http_signatures.failure_reason`.
+     -  `ld_signatures.type` (Linked Data only) is recorded only for the
+        spec-supported `RsaSignature2017` type.
+     -  `object_integrity_proofs.cryptosuite` (Object Integrity Proofs
+        only) is recorded only for the spec-supported `eddsa-jcs-2022`
+        cryptosuite.
+
+    Key IDs, actor IDs, request URLs, and object IDs are deliberately
+    excluded from this histogram.  They remain on the corresponding spans
+    (`http_signatures.verify`, `ld_signatures.verify`,
+    `object_integrity_proofs.verify`) for trace-level investigation.
+
+`activitypub.signature.key_fetch.duration`
+:   `activitypub.signature.kind` is always present (same values as above).
+    `activitypub.signature.key_fetch.result` is always present and is one
+    of:
+
+     -  `hit`: the public key was served by the configured `KeyCache`
+        (which may itself be backed by a remote store such as Redis or a
+        database; the measurement reflects whatever round trip that
+        backend incurs).
+     -  `fetched`: the key was not in the cache and was loaded through
+        the document loader, returning a usable key.  This typically
+        corresponds to a network fetch, but a custom document loader
+        that serves from a local store will also fall in this bucket.
+     -  `error`: no usable key came back (HTTP failure, invalid response
+        body, cached negative entry, thrown exception, etc.).
+
+    Unlike `activitypub.signature.verification.duration`, this histogram
+    is recorded *per fetch attempt*: a verification that retries after a
+    cache mismatch emits two key fetch measurements (typically one `hit`
+    for the stale attempt and one `fetched` for the freshly fetched retry)
+    alongside the single verification measurement that covers both.
 
 `fedify.http.server.request.count` and `fedify.http.server.request.duration`
 :   `http.request.method` and `fedify.endpoint` are always present.

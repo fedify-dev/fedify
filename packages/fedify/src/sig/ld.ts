@@ -2,10 +2,22 @@ import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
-import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  type MeterProvider,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
 import { decodeBase64, encodeBase64 } from "byte-encodings/base64";
 import { encodeHex } from "byte-encodings/hex";
 import metadata from "../../deno.json" with { type: "json" };
+import {
+  getDurationMs,
+  getFederationMetrics,
+  type LinkedDataSignatureMetricType,
+  measureSignatureKeyFetch,
+  type SignatureVerificationResult,
+} from "../federation/metrics.ts";
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
 
 const logger = getLogger(["fedify", "sig", "ld"]);
@@ -275,10 +287,28 @@ export interface VerifySignatureOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider.  If omitted, the global meter provider
+   * is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
  * Verifies Linked Data Signatures of the given JSON-LD document.
+ *
+ * This is a low-level utility that only checks the cryptographic signature
+ * and (optionally) the cached key.  It does not run the JSON-LD parsing,
+ * attribution, and owner checks that a complete inbound LD verification
+ * needs.  For incoming activities, prefer {@link verifyJsonLd}, which is
+ * the public verification entry point and the one that emits the
+ * `activitypub.signature.verification.duration` metric for the LD path.
+ * `verifySignature` itself only emits
+ * `activitypub.signature.key_fetch.duration`, since the rest of the work
+ * that the verification-duration metric is meant to cover happens in
+ * `verifyJsonLd`.
  * @param jsonLd The JSON-LD document to verify.
  * @param options Options for verifying the signature.
  * @returns The public key that signed the document or `null` if the signature
@@ -301,10 +331,10 @@ export async function verifySignature(
     );
     return null;
   }
-  const { key, cached } = await fetchKey(
-    new URL(sig.creator),
-    CryptographicKey,
-    options,
+  const { key, cached } = await measureSignatureKeyFetch(
+    options.meterProvider,
+    "linked_data",
+    () => fetchKey(new URL(sig.creator), CryptographicKey, options),
   );
   if (key == null) return null;
   const sigOpts: {
@@ -358,16 +388,17 @@ export async function verifySignature(
         "Retrying with the freshly fetched key...",
       { keyId: sig.creator, ...sig },
     );
-    const { key } = await fetchKey(
-      new URL(sig.creator),
-      CryptographicKey,
-      {
-        ...options,
-        keyCache: {
-          get: () => Promise.resolve(undefined),
-          set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-        },
-      },
+    const { key } = await measureSignatureKeyFetch(
+      options.meterProvider,
+      "linked_data",
+      () =>
+        fetchKey(new URL(sig.creator), CryptographicKey, {
+          ...options,
+          keyCache: {
+            get: () => Promise.resolve(undefined),
+            set: async (keyId, key) => await options.keyCache?.set(keyId, key),
+          },
+        }),
     );
     if (key == null) return null;
     const verified = await crypto.subtle.verify(
@@ -395,6 +426,47 @@ export interface VerifyJsonLdOptions extends VerifySignatureOptions {
 }
 
 /**
+ * Known Linked Data Signature `type` values, used to keep
+ * `ld_signatures.type` on a bounded set of spec-defined string values.
+ * Fedify only signs and verifies `RsaSignature2017`; other values come in
+ * only from external documents and are dropped from the metric attribute to
+ * avoid attacker-controlled cardinality.
+ */
+const LD_KNOWN_SIGNATURE_TYPES = new Set<string>(
+  ["RsaSignature2017"] satisfies readonly LinkedDataSignatureMetricType[],
+);
+
+/**
+ * Reports only whether a `signature` key is present on the document, with
+ * no shape check on its value.  This is intentionally looser than
+ * {@link hasSignature} (which validates a full `RsaSignature2017` shape)
+ * and {@link hasSignatureLike} (which structurally accepts several known
+ * suites): `verifyJsonLd` needs to tell a document with a malformed or
+ * unsupported signature payload (classified as `rejected`) apart from a
+ * truly unsigned document (classified as `missing`), and only this
+ * presence-only check captures both cases.
+ */
+function hasLdSignatureProperty(jsonLd: unknown): boolean {
+  return (
+    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd
+  );
+}
+
+function getLdSignatureObject(
+  jsonLd: unknown,
+): Record<string, unknown> | undefined {
+  if (!hasLdSignatureProperty(jsonLd)) return undefined;
+  const { signature } = jsonLd as { signature: unknown };
+  if (
+    typeof signature !== "object" || signature == null ||
+    Array.isArray(signature)
+  ) {
+    return undefined;
+  }
+  return signature as Record<string, unknown>;
+}
+
+/**
  * Verify the authenticity of the given JSON-LD document using Linked Data
  * Signatures.  If the document is signed, this function verifies the signature
  * and checks if the document is attributed to the owner of the public key.
@@ -412,40 +484,32 @@ export async function verifyJsonLd(
   return await tracer.startActiveSpan(
     "ld_signatures.verify",
     async (span) => {
+      const start = performance.now();
+      let verified = false;
+      let threw = false;
+      let signatureType: LinkedDataSignatureMetricType | undefined;
       try {
         const object = await Object.fromJsonLd(jsonLd, options);
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
         }
         span.setAttribute("activitypub.object.type", getTypeId(object).href);
-        if (
-          typeof jsonLd === "object" && jsonLd != null &&
-          "signature" in jsonLd && typeof jsonLd.signature === "object" &&
-          jsonLd.signature != null
-        ) {
-          if (
-            "creator" in jsonLd.signature &&
-            typeof jsonLd.signature.creator === "string"
-          ) {
-            span.setAttribute(
-              "ld_signatures.key_id",
-              jsonLd.signature.creator,
-            );
+        const sig = getLdSignatureObject(jsonLd);
+        if (sig != null) {
+          if (typeof sig.creator === "string") {
+            span.setAttribute("ld_signatures.key_id", sig.creator);
           }
-          if (
-            "signatureValue" in jsonLd.signature &&
-            typeof jsonLd.signature.signatureValue === "string"
-          ) {
-            span.setAttribute(
-              "ld_signatures.signature",
-              jsonLd.signature.signatureValue,
-            );
+          if (typeof sig.signatureValue === "string") {
+            span.setAttribute("ld_signatures.signature", sig.signatureValue);
           }
-          if (
-            "type" in jsonLd.signature &&
-            typeof jsonLd.signature.type === "string"
-          ) {
-            span.setAttribute("ld_signatures.type", jsonLd.signature.type);
+          if (typeof sig.type === "string") {
+            span.setAttribute("ld_signatures.type", sig.type);
+            if (LD_KNOWN_SIGNATURE_TYPES.has(sig.type)) {
+              // Cast is safe by construction: LD_KNOWN_SIGNATURE_TYPES is
+              // built from a `satisfies readonly
+              // LinkedDataSignatureMetricType[]` array.
+              signatureType = sig.type as LinkedDataSignatureMetricType;
+            }
           }
         }
         const attributions = new Set(
@@ -469,14 +533,34 @@ export async function verifyJsonLd(
           );
           return false;
         }
+        verified = true;
         return true;
       } catch (error) {
+        threw = true;
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
         });
         throw error;
       } finally {
+        // A `signature` property being present at all (even if it is `null`
+        // or a primitive) counts as "had signature" for classification, so
+        // malformed signatures are reported as `rejected` rather than as
+        // `missing`.
+        const classified: SignatureVerificationResult = threw
+          ? "error"
+          : verified
+          ? "verified"
+          : hasLdSignatureProperty(jsonLd)
+          ? "rejected"
+          : "missing";
+        getFederationMetrics(options.meterProvider)
+          .recordSignatureVerificationDuration(
+            getDurationMs(start),
+            "linked_data",
+            classified,
+            { ldType: signatureType },
+          );
         span.end();
       }
     },
