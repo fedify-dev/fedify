@@ -25,6 +25,7 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   getDurationMs,
   getFederationMetrics,
+  measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
 import {
@@ -750,39 +751,6 @@ interface HttpSignatureMetricsContext {
 }
 
 /**
- * Times an awaited public key fetch and records exactly one
- * `activitypub.signature.key_fetch.duration` measurement, classifying the
- * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
- * whether the returned key is non-null.  Errors thrown by the fetch are
- * reported as `error` and rethrown, so verifier behavior is unchanged.
- */
-async function measureKeyFetch<
-  T extends { cached: boolean; key?: unknown },
->(
-  kind: "http",
-  meterProvider: MeterProvider | undefined,
-  fetch: () => Promise<T>,
-): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await fetch();
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      kind,
-      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
-    );
-    return result;
-  } catch (error) {
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      kind,
-      "error",
-    );
-    throw error;
-  }
-}
-
-/**
  * Known draft-cavage `algorithm` parameter values, used to keep the
  * `http_signatures.algorithm` metric attribute on a bounded set.  The header
  * field is attacker-controlled and not used to select the verification
@@ -1166,9 +1134,9 @@ async function verifyRequestDraft(
       metricsContext.algorithm = normalizedAlgorithm;
     }
   }
-  const fetchResult = await measureKeyFetch(
-    "http",
+  const fetchResult = await measureSignatureKeyFetch(
     meterProvider,
+    "http",
     () =>
       fetchKeyDetailed(keyIdUrl, CryptographicKey, {
         documentLoader,
@@ -1517,9 +1485,9 @@ async function verifyRequestRfc9421(
       continue;
     }
 
-    const rfcFetchResult = await measureKeyFetch(
-      "http",
+    const rfcFetchResult = await measureSignatureKeyFetch(
       meterProvider,
+      "http",
       () =>
         fetchKeyDetailed(keyId, CryptographicKey, {
           documentLoader,

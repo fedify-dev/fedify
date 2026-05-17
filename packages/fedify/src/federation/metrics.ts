@@ -471,6 +471,44 @@ export function recordOutboxEnqueue(
 }
 
 /**
+ * Times an awaited public key fetch and records exactly one
+ * `activitypub.signature.key_fetch.duration` measurement, classifying the
+ * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
+ * whether the returned key is non-null.  Errors thrown by the fetch are
+ * reported as `error` and rethrown, so verifier behavior is unchanged.
+ *
+ * Shared by the three signature verifiers (HTTP, Linked Data, Object
+ * Integrity Proofs); the only per-call variation is the
+ * `activitypub.signature.kind` attribute value.
+ * @since 2.3.0
+ */
+export async function measureSignatureKeyFetch<
+  T extends { readonly cached: boolean; readonly key: unknown },
+>(
+  meterProvider: MeterProvider | undefined,
+  kind: SignatureVerificationKind,
+  fetch: () => Promise<T>,
+): Promise<T> {
+  const start = performance.now();
+  try {
+    const result = await fetch();
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      kind,
+      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
+    );
+    return result;
+  } catch (error) {
+    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
+      getDurationMs(start),
+      kind,
+      "error",
+    );
+    throw error;
+  }
+}
+
+/**
  * Whether the given thrown value is an `AbortError`.
  *
  * `processQueuedTask` distinguishes aborted tasks (recorded as

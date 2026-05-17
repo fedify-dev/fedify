@@ -21,6 +21,7 @@ import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.
 import {
   getDurationMs,
   getFederationMetrics,
+  measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
 import {
@@ -41,45 +42,6 @@ import {
 const OIP_KNOWN_CRYPTOSUITES: ReadonlySet<string> = new Set([
   "eddsa-jcs-2022",
 ]);
-
-/**
- * Times an awaited public key fetch and records exactly one
- * `activitypub.signature.key_fetch.duration` measurement, classifying the
- * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
- * whether the returned key is non-null.  Errors thrown by the fetch are
- * reported as `error` and rethrown, so verifier behavior is unchanged.
- *
- * The fetch is wrapped in its own async timer so the recorded duration
- * covers only the key fetch itself, not the surrounding JCS canonicalization
- * and SHA-256 digest work that runs concurrently in
- * {@link verifyProofInternal}.
- */
-async function measureOipKeyFetch(
-  meterProvider: MeterProvider | undefined,
-  fetch: () => Promise<FetchKeyResult<Multikey>>,
-): Promise<FetchKeyResult<Multikey>> {
-  const start = performance.now();
-  // The fetch closure is invoked synchronously here (before the first
-  // `await`), so the timing window stays tight and the caller still gets a
-  // Promise it can hold while running other work concurrently.
-  const pending = fetch();
-  try {
-    const result = await pending;
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      "object_integrity",
-      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
-    );
-    return result;
-  } catch (error) {
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      "object_integrity",
-      "error",
-    );
-    throw error;
-  }
-}
 
 const logger = getLogger(["fedify", "sig", "proof"]);
 
@@ -439,8 +401,14 @@ async function verifyProofInternal(
     proof.proofValue == null ||
     proof.created == null
   ) return null;
-  const publicKeyPromise = measureOipKeyFetch(
+  // Start the key fetch eagerly so it overlaps with the JCS
+  // canonicalization and SHA-256 digest work below.  `measureSignatureKeyFetch`
+  // is an async function whose body runs synchronously up to the first
+  // `await`, so invoking it here actually begins the fetch immediately and
+  // returns a Promise the caller can hold and await later.
+  const publicKeyPromise = measureSignatureKeyFetch(
     options.meterProvider,
+    "object_integrity",
     () => fetchKey(proof.verificationMethodId!, Multikey, options),
   );
   const proofConfig = {

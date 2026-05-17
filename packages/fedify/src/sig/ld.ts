@@ -14,6 +14,7 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   getDurationMs,
   getFederationMetrics,
+  measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
 import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
@@ -329,8 +330,9 @@ export async function verifySignature(
     );
     return null;
   }
-  const { key, cached } = await measureLdKeyFetch(
+  const { key, cached } = await measureSignatureKeyFetch(
     options.meterProvider,
+    "linked_data",
     () => fetchKey(new URL(sig.creator), CryptographicKey, options),
   );
   if (key == null) return null;
@@ -385,8 +387,9 @@ export async function verifySignature(
         "Retrying with the freshly fetched key...",
       { keyId: sig.creator, ...sig },
     );
-    const { key } = await measureLdKeyFetch(
+    const { key } = await measureSignatureKeyFetch(
       options.meterProvider,
+      "linked_data",
       () =>
         fetchKey(new URL(sig.creator), CryptographicKey, {
           ...options,
@@ -419,38 +422,6 @@ export async function verifySignature(
  * Options for verifying JSON-LD documents.
  */
 export interface VerifyJsonLdOptions extends VerifySignatureOptions {
-}
-
-/**
- * Times an awaited public key fetch and records exactly one
- * `activitypub.signature.key_fetch.duration` measurement, classifying the
- * outcome as `hit`, `fetched`, or `error` based on the `cached` flag and
- * whether the returned key is non-null.  Errors thrown by the fetch are
- * reported as `error` and rethrown, so verifier behavior is unchanged.
- */
-async function measureLdKeyFetch<
-  T extends { cached: boolean; key: CryptographicKey | null },
->(
-  meterProvider: MeterProvider | undefined,
-  fetch: () => Promise<T>,
-): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await fetch();
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      "linked_data",
-      result.key != null ? (result.cached ? "hit" : "fetched") : "error",
-    );
-    return result;
-  } catch (error) {
-    getFederationMetrics(meterProvider).recordSignatureKeyFetchDuration(
-      getDurationMs(start),
-      "linked_data",
-      "error",
-    );
-    throw error;
-  }
 }
 
 /**
