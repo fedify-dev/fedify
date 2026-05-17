@@ -16,11 +16,11 @@ catalogs:
       specifier: ^0.5.1
       version: 0.5.1
     '@logtape/file':
-      specifier: ^2.0.7
-      version: 2.0.7
+      specifier: ^2.1.0
+      version: 2.1.0
     '@logtape/logtape':
-      specifier: ^2.0.7
-      version: 2.0.7
+      specifier: ^2.1.0
+      version: 2.1.0
     '@multiformats/base-x':
       specifier: ^4.0.1
       version: 4.0.1
@@ -270,10 +270,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.0.7(@logtape/logtape@2.0.7)
+        version: 2.1.0(@logtape/logtape@2.1.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.4(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -467,7 +467,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       express:
         specifier: 'catalog:'
         version: 4.21.2
@@ -520,7 +520,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       koa:
         specifier: 'catalog:'
         version: 2.16.2
@@ -600,7 +600,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       next:
         specifier: ^14.0.0
         version: 14.2.30(@opentelemetry/api@1.9.1)(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
@@ -701,7 +701,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       h3:
         specifier: 'catalog:'
         version: 1.15.11
@@ -938,10 +938,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.0.7(@logtape/logtape@2.0.7)
+        version: 2.1.0(@logtape/logtape@2.1.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@optique/config':
         specifier: 'catalog:'
         version: 1.0.2(@standard-schema/spec@1.1.0)
@@ -1057,7 +1057,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1160,7 +1160,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1242,7 +1242,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1311,7 +1311,7 @@ importers:
         version: 7.10.1(@types/node@22.19.1)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@optique/core':
         specifier: 'catalog:'
         version: 1.0.2
@@ -1401,7 +1401,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1
@@ -1504,7 +1504,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -1535,7 +1535,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       ioredis:
         specifier: 'catalog:'
         version: 5.10.1
@@ -1572,7 +1572,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
     devDependencies:
       '@fedify/vocab-runtime':
         specifier: workspace:^
@@ -1613,7 +1613,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       es-toolkit:
         specifier: ^1.46.1
         version: 1.46.1
@@ -1691,7 +1691,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1737,7 +1737,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1802,7 +1802,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.0.7
+        version: 2.1.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -3824,16 +3824,16 @@ packages:
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
 
-  '@logtape/file@2.0.7':
-    resolution: {integrity: sha512-xLTtspMP0Nax6r8FdCo5K5fljf42/CR8joS+xxqrWiGi1wRfuqWZ+lhk560hWznSLblB1nIOtkruNI83cV3l+Q==}
+  '@logtape/file@2.1.0':
+    resolution: {integrity: sha512-sUHLrpsUayPKTe7y4tidMGkCxTpvBqm0EHIo222wftWUC0W5D4etga9Jly02CwySDkxDkkgAkEyWFyYXCHupNQ==}
     peerDependencies:
-      '@logtape/logtape': ^2.0.7
+      '@logtape/logtape': ^2.1.0
 
   '@logtape/logtape@1.3.8':
     resolution: {integrity: sha512-iGk5CJFL0s/nTLmxCsVia/x1D/3oAFfw+40AaNMserTEwJf8m9eKV+R7RVWCXCcgYp41KLwk0/M0xiBvI0AFmA==}
 
-  '@logtape/logtape@2.0.7':
-    resolution: {integrity: sha512-SUkjkEIfQ3zCadlLi8rfGfe4l/JRKNbp248bfLeowyUFs9KZME/k8y+5sugWYZet/gMYnmwCc9xa3J+kjDjSSQ==}
+  '@logtape/logtape@2.1.0':
+    resolution: {integrity: sha512-KpKQBeLJSlFtkGr9Dpi03ld96nqBEG8WiD5lTrwE33oaKdQXOcO5oJAr28hsCQ1RnZ0U8xaVvxwopNDgjFNYuw==}
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -15181,13 +15181,13 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
-  '@logtape/file@2.0.7(@logtape/logtape@2.0.7)':
+  '@logtape/file@2.1.0(@logtape/logtape@2.1.0)':
     dependencies:
-      '@logtape/logtape': 2.0.7
+      '@logtape/logtape': 2.1.0
 
   '@logtape/logtape@1.3.8': {}
 
-  '@logtape/logtape@2.0.7': {}
+  '@logtape/logtape@2.1.0': {}
 
   '@lukeed/csprng@1.1.0': {}
 
@@ -20386,7 +20386,7 @@ snapshots:
       eslint: 9.32.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.32.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.32.0(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.1.1(eslint@9.32.0(jiti@2.6.1))
@@ -20423,7 +20423,7 @@ snapshots:
       tinyglobby: 0.2.16
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -20548,7 +20548,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9

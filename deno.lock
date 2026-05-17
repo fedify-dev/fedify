@@ -21,9 +21,9 @@
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
     "jsr:@hono/hono@^4.7.1": "4.12.18",
     "jsr:@hono/hono@^4.8.3": "4.12.18",
-    "jsr:@logtape/file@^2.0.7": "2.0.7",
+    "jsr:@logtape/file@^2.1.0": "2.1.0",
     "jsr:@logtape/logtape@^1.0.4": "1.3.8",
-    "jsr:@logtape/logtape@^2.0.7": "2.0.7",
+    "jsr:@logtape/logtape@^2.1.0": "2.1.0",
     "jsr:@optique/config@^1.0.2": "1.0.2",
     "jsr:@optique/core@^1.0.2": "1.0.2",
     "jsr:@optique/run@^1.0.2": "1.0.2",
@@ -31,6 +31,7 @@
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
     "jsr:@std/assert@^1.0.13": "1.0.19",
+    "jsr:@std/async@0.224": "0.224.2",
     "jsr:@std/async@^1.0.13": "1.3.0",
     "jsr:@std/bytes@^1.0.6": "1.0.6",
     "jsr:@std/data-structures@0.224": "0.224.1",
@@ -57,6 +58,7 @@
     "jsr:@std/net@^1.0.6": "1.0.6",
     "jsr:@std/path@0.224": "0.224.0",
     "jsr:@std/path@1": "1.1.4",
+    "jsr:@std/path@^1.0.4": "1.1.4",
     "jsr:@std/path@^1.0.6": "1.1.4",
     "jsr:@std/path@^1.1.0": "1.1.4",
     "jsr:@std/path@^1.1.1": "1.1.4",
@@ -64,11 +66,13 @@
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/semver@^1.0.6": "1.0.8",
     "jsr:@std/testing@0.224": "0.224.0",
+    "jsr:@std/url@~0.225.1": "0.225.1",
     "jsr:@std/uuid@^1.0.9": "1.1.1",
     "jsr:@std/yaml@^1.0.8": "1.1.0",
     "jsr:@valibot/valibot@^1.4.0": "1.4.0",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
+    "npm:@babel/core@^7.28.0": "7.29.0",
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.0",
     "npm:@cfworker/json-schema@^4.1.1": "4.1.1",
     "npm:@cloudflare/vitest-pool-workers@~0.8.31": "0.8.71_vitest@3.2.4__@types+node@24.12.2__yaml@2.9.0_@cloudflare+workers-types@4.20260511.1",
@@ -262,6 +266,7 @@
         "jsr:@std/fmt@^1.0.7",
         "jsr:@std/media-types@1",
         "jsr:@std/path@1",
+        "npm:@babel/core",
         "npm:@babel/preset-react",
         "npm:@prefresh/vite",
         "npm:@remix-run/node-fetch-server",
@@ -282,10 +287,10 @@
     "@hono/hono@4.12.18": {
       "integrity": "854fd0628abd7703a1583807f1ae8f99399604b9452b6a2a777fd3e097977b8c"
     },
-    "@logtape/file@2.0.7": {
-      "integrity": "bdf21880817ae06a7549da84212063e3c564d2479f9b35003db6138654af6869",
+    "@logtape/file@2.1.0": {
+      "integrity": "b984fdc47385c05259bbf69a3733ef2b80d3ab65fb81505ae6bdb84e8874ef44",
       "dependencies": [
-        "jsr:@logtape/logtape@^2.0.7",
+        "jsr:@logtape/logtape@^2.1.0",
         "jsr:@std/path@^1.1.0"
       ]
     },
@@ -295,8 +300,8 @@
     "@logtape/logtape@1.3.8": {
       "integrity": "926f7ca8b2a6fc69f915fef6f1f228a802ec936c270d3e37fb80567dfb333e0e"
     },
-    "@logtape/logtape@2.0.7": {
-      "integrity": "2092395af4f2f6c12acd85e569c2539055b39fd936861348c23db59206a8ed4f"
+    "@logtape/logtape@2.1.0": {
+      "integrity": "8117d9afcd9ba1f2bb81b237d2ae452b8982e397aeabc9f05f58d7be452c15e2"
     },
     "@optique/config@1.0.2": {
       "integrity": "9ba458a3cb2f00f83d36a70f942782cd2c622fd72c527f59e5f8234c780c4b30",
@@ -335,6 +340,9 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.12"
       ]
+    },
+    "@std/async@0.224.2": {
+      "integrity": "4d277d6e165df43d5e061ba0ef3edfddb8e8d558f5b920e3e6b1d2614b44d074"
     },
     "@std/async@1.2.0": {
       "integrity": "c059c6f6d95ca7cc012ae8e8d7164d1697113d54b0b679e4372b354b11c2dee5"
@@ -434,10 +442,17 @@
       "integrity": "371b8a929aa7132240d5dd766a439be8f780ef5c176ab194e0bcab72370c761e",
       "dependencies": [
         "jsr:@std/assert@0.224",
+        "jsr:@std/async@0.224",
         "jsr:@std/data-structures@0.224",
         "jsr:@std/fmt@0.224",
         "jsr:@std/fs@0.224",
         "jsr:@std/path@0.224"
+      ]
+    },
+    "@std/url@0.225.1": {
+      "integrity": "7961f62f0a3cd2c7aa5b785822874132760b50bbf5ed0ccfded8668f203e7a95",
+      "dependencies": [
+        "jsr:@std/path@^1.0.4"
       ]
     },
     "@std/uuid@1.1.1": {
@@ -9289,8 +9304,8 @@
       "jsr:@david/dax@~0.46.1",
       "jsr:@hongminhee/localtunnel@0.3",
       "jsr:@hono/hono@^4.8.3",
-      "jsr:@logtape/file@^2.0.7",
-      "jsr:@logtape/logtape@^2.0.7",
+      "jsr:@logtape/file@^2.1.0",
+      "jsr:@logtape/logtape@^2.1.0",
       "jsr:@optique/config@^1.0.2",
       "jsr:@optique/core@^1.0.2",
       "jsr:@optique/run@^1.0.2",
