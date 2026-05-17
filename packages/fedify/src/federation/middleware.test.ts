@@ -3656,6 +3656,123 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
   });
 
+  await t.step(
+    "records activitypub.outbox.activity retry on transient failure",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "retried",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.outbox.activity abandoned when retry policy gives up",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+        outboxRetryPolicy: () => null,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Follow",
+            actor: "https://example.com/users/alice",
+            object: "https://remote.example/users/bob",
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Follow",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "abandoned",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Follow",
+      );
+    },
+  );
+
   await t.step("records queued inbox processing duration", async () => {
     const kv = new MemoryKvStore();
     const [meterProvider, recorder] = createTestMeterProvider();

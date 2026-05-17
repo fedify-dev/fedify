@@ -111,6 +111,7 @@ import {
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
   recordFanoutRecipients,
+  recordOutboxActivity,
   recordOutboxEnqueue,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
@@ -900,12 +901,22 @@ export class FederationImpl<TContextData>
             },
             retryMessage.attempt,
           );
+          recordOutboxActivity(
+            this.meterProvider,
+            "retried",
+            retryMessage.activityType,
+          );
         }
       } else {
         logger.error(
           "Failed to send activity {activityId} to {inbox} after {attempt} " +
             "attempts; giving up:\n{error}",
           { ...logData, error },
+        );
+        recordOutboxActivity(
+          this.meterProvider,
+          "abandoned",
+          message.activityType,
         );
       }
       return;

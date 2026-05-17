@@ -612,12 +612,17 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
 }
 
 /**
- * Records `fedify.queue.task.enqueued` for an outgoing outbox enqueue.
+ * Records `fedify.queue.task.enqueued` for an outgoing outbox enqueue and,
+ * for the initial attempt, also records
+ * `activitypub.outbox.activity{queued}`.
  *
  * Both `Context.sendActivity()` and `OutboxContext.forwardActivity()` enqueue
  * outbox messages with the same metric attributes (role, queue, activity
  * type, attempt), so they share this helper rather than each defining a local
- * closure.
+ * closure.  Retry enqueues (attempt > 0) intentionally do not record a
+ * second `activitypub.outbox.activity{queued}`; retries are reported as
+ * `result=retried` from the retry-scheduling site, which has the failure
+ * context.
  * @since 2.3.0
  */
 export function recordOutboxEnqueue(
@@ -625,7 +630,8 @@ export function recordOutboxEnqueue(
   outboxQueue: MessageQueue,
   message: { readonly activityType: string; readonly attempt: number },
 ): void {
-  getFederationMetrics(meterProvider).recordQueueTaskEnqueued(
+  const metrics = getFederationMetrics(meterProvider);
+  metrics.recordQueueTaskEnqueued(
     {
       role: "outbox",
       queue: outboxQueue,
@@ -633,6 +639,9 @@ export function recordOutboxEnqueue(
     },
     message.attempt,
   );
+  if (message.attempt === 0) {
+    metrics.recordOutboxActivity("queued", message.activityType);
+  }
 }
 
 /**

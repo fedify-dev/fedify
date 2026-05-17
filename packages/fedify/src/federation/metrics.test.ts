@@ -1,10 +1,21 @@
 import { createTestMeterProvider, test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
+import type { MessageQueue } from "./mq.ts";
 import {
   recordFanoutRecipients,
   recordInboxActivity,
   recordOutboxActivity,
+  recordOutboxEnqueue,
 } from "./metrics.ts";
+
+const noopQueue: MessageQueue = {
+  enqueue() {
+    return Promise.resolve();
+  },
+  listen() {
+    return Promise.resolve();
+  },
+};
 
 test("recordFanoutRecipients() records the recipient count with activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
@@ -84,6 +95,37 @@ test("recordInboxActivity() omits activity type when unknown", () => {
   assertEquals(
     "activitypub.activity.type" in measurements[0].attributes,
     false,
+  );
+});
+
+test("recordOutboxEnqueue() also records activitypub.outbox.activity{queued} on initial enqueue", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordOutboxEnqueue(meterProvider, noopQueue, {
+    activityType: "https://www.w3.org/ns/activitystreams#Create",
+    attempt: 0,
+  });
+  const queued = recorder.getMeasurements("activitypub.outbox.activity");
+  assertEquals(queued.length, 1);
+  assertEquals(queued[0].type, "counter");
+  assertEquals(
+    queued[0].attributes["activitypub.processing.result"],
+    "queued",
+  );
+  assertEquals(
+    queued[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
+});
+
+test("recordOutboxEnqueue() does not record outbox.activity{queued} on retry enqueues", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordOutboxEnqueue(meterProvider, noopQueue, {
+    activityType: "https://www.w3.org/ns/activitystreams#Create",
+    attempt: 1,
+  });
+  assertEquals(
+    recorder.getMeasurements("activitypub.outbox.activity").length,
+    0,
   );
 });
 
