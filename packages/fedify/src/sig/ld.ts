@@ -14,6 +14,7 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   getDurationMs,
   getFederationMetrics,
+  type LinkedDataSignatureMetricType,
   measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
@@ -431,9 +432,9 @@ export interface VerifyJsonLdOptions extends VerifySignatureOptions {
  * only from external documents and are dropped from the metric attribute to
  * avoid attacker-controlled cardinality.
  */
-const LD_KNOWN_SIGNATURE_TYPES: ReadonlySet<string> = new Set([
-  "RsaSignature2017",
-]);
+const LD_KNOWN_SIGNATURE_TYPES = new Set<string>(
+  ["RsaSignature2017"] satisfies readonly LinkedDataSignatureMetricType[],
+);
 
 /**
  * Reports only whether a `signature` key is present on the document, with
@@ -486,7 +487,7 @@ export async function verifyJsonLd(
       const start = performance.now();
       let verified = false;
       let threw = false;
-      let signatureType: string | undefined;
+      let signatureType: LinkedDataSignatureMetricType | undefined;
       try {
         const object = await Object.fromJsonLd(jsonLd, options);
         if (object.id != null) {
@@ -504,7 +505,10 @@ export async function verifyJsonLd(
           if (typeof sig.type === "string") {
             span.setAttribute("ld_signatures.type", sig.type);
             if (LD_KNOWN_SIGNATURE_TYPES.has(sig.type)) {
-              signatureType = sig.type;
+              // Cast is safe by construction: LD_KNOWN_SIGNATURE_TYPES is
+              // built from a `satisfies readonly
+              // LinkedDataSignatureMetricType[]` array.
+              signatureType = sig.type as LinkedDataSignatureMetricType;
             }
           }
         }

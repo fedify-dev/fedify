@@ -82,26 +82,79 @@ export type SignatureVerificationResult =
 export type SignatureKeyFetchResult = "hit" | "fetched" | "error";
 
 /**
+ * Bounded values recorded as `http_signatures.algorithm` on the signature
+ * verification duration histogram.  Covers both the draft-cavage parameter
+ * names and the RFC 9421 algorithm map keys; anything outside this set is
+ * dropped from the metric to keep cardinality safe.
+ * @since 2.3.0
+ */
+export type HttpSignatureMetricAlgorithm =
+  // draft-cavage `algorithm` parameter values:
+  | "ecdsa-sha256"
+  | "ecdsa-sha384"
+  | "ecdsa-sha512"
+  | "ed25519"
+  | "hs2019"
+  | "rsa-sha1"
+  | "rsa-sha256"
+  | "rsa-sha512"
+  // RFC 9421 algorithm map keys:
+  | "rsa-v1_5-sha256"
+  | "rsa-v1_5-sha512"
+  | "rsa-pss-sha512"
+  | "ecdsa-p256-sha256"
+  | "ecdsa-p384-sha384";
+
+/**
+ * Bounded values recorded as `http_signatures.failure_reason` on `rejected`
+ * HTTP signature verification rows.  `noSignature` is not included because
+ * missing-signature requests are recorded as
+ * `activitypub.signature.result=missing` and do not carry a failure reason.
+ * @since 2.3.0
+ */
+export type HttpSignatureMetricFailureReason =
+  | "invalidSignature"
+  | "keyFetchError";
+
+/**
+ * Bounded values recorded as `ld_signatures.type` on the signature
+ * verification duration histogram.  Fedify only signs and verifies
+ * `RsaSignature2017`; other types come in only from external documents and
+ * are dropped from the metric.
+ * @since 2.3.0
+ */
+export type LinkedDataSignatureMetricType = "RsaSignature2017";
+
+/**
+ * Bounded values recorded as `object_integrity_proofs.cryptosuite` on the
+ * signature verification duration histogram.  Fedify only signs and
+ * verifies `eddsa-jcs-2022`; other cryptosuites come in only from external
+ * proofs and are dropped from the metric.
+ * @since 2.3.0
+ */
+export type ObjectIntegrityProofMetricCryptosuite = "eddsa-jcs-2022";
+
+/**
  * Optional attributes recorded alongside an
  * `activitypub.signature.verification.duration` measurement.  Each field is
  * scoped to the matching signature kind and is omitted when its value is not
- * available; values are expected to come from small, spec-bounded sets so
- * they do not inflate metric cardinality.
+ * available; the field types are literal unions so the compiler enforces the
+ * spec-bounded value sets that keep metric cardinality safe.
  * @since 2.3.0
  */
 export interface SignatureVerificationExtraAttributes {
   /** `http_signatures.algorithm` (HTTP Signatures only). */
-  algorithm?: string;
+  algorithm?: HttpSignatureMetricAlgorithm;
   /** `ld_signatures.type` (Linked Data Signatures only). */
-  ldType?: string;
+  ldType?: LinkedDataSignatureMetricType;
   /** `object_integrity_proofs.cryptosuite` (Object Integrity Proofs only). */
-  cryptosuite?: string;
+  cryptosuite?: ObjectIntegrityProofMetricCryptosuite;
   /**
    * `http_signatures.failure_reason`, recorded only on HTTP Signature
    * failures so the histogram can be sliced by reason without exploding
    * cardinality on success rows.
    */
-  failureReason?: string;
+  failureReason?: HttpSignatureMetricFailureReason;
 }
 
 class FederationMetrics {

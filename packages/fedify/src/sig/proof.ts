@@ -22,6 +22,7 @@ import {
   getDurationMs,
   getFederationMetrics,
   measureSignatureKeyFetch,
+  type ObjectIntegrityProofMetricCryptosuite,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
 import {
@@ -39,9 +40,9 @@ import {
  * dropped from the metric attribute to avoid attacker-controlled
  * cardinality.
  */
-const OIP_KNOWN_CRYPTOSUITES: ReadonlySet<string> = new Set([
-  "eddsa-jcs-2022",
-]);
+const OIP_KNOWN_CRYPTOSUITES = new Set<string>(
+  ["eddsa-jcs-2022"] satisfies readonly ObjectIntegrityProofMetricCryptosuite[],
+);
 
 const logger = getLogger(["fedify", "sig", "proof"]);
 
@@ -331,10 +332,11 @@ export async function verifyProof(
       const start = performance.now();
       let verified = false;
       let threw = false;
-      const cryptosuite = proof.cryptosuite != null &&
+      const cryptosuite: ObjectIntegrityProofMetricCryptosuite | undefined =
+        proof.cryptosuite != null &&
           OIP_KNOWN_CRYPTOSUITES.has(proof.cryptosuite)
-        ? proof.cryptosuite
-        : undefined;
+          ? proof.cryptosuite
+          : undefined;
       if (span.isRecording()) {
         if (proof.cryptosuite != null) {
           span.setAttribute(

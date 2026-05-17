@@ -25,6 +25,8 @@ import metadata from "../../deno.json" with { type: "json" };
 import {
   getDurationMs,
   getFederationMetrics,
+  type HttpSignatureMetricAlgorithm,
+  type HttpSignatureMetricFailureReason,
   measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
@@ -747,7 +749,7 @@ function getKeyFetchErrorName(error: Error): string {
 }
 
 interface HttpSignatureMetricsContext {
-  algorithm?: string;
+  algorithm?: HttpSignatureMetricAlgorithm;
 }
 
 /**
@@ -757,16 +759,18 @@ interface HttpSignatureMetricsContext {
  * algorithm, so unknown values are dropped from the metric to prevent
  * cardinality blow-up.
  */
-const DRAFT_KNOWN_ALGORITHMS: ReadonlySet<string> = new Set([
-  "ecdsa-sha256",
-  "ecdsa-sha384",
-  "ecdsa-sha512",
-  "ed25519",
-  "hs2019",
-  "rsa-sha1",
-  "rsa-sha256",
-  "rsa-sha512",
-]);
+const DRAFT_KNOWN_ALGORITHMS = new Set<string>(
+  [
+    "ecdsa-sha256",
+    "ecdsa-sha384",
+    "ecdsa-sha512",
+    "ed25519",
+    "hs2019",
+    "rsa-sha1",
+    "rsa-sha256",
+    "rsa-sha512",
+  ] satisfies readonly HttpSignatureMetricAlgorithm[],
+);
 
 function classifyHttpVerifyResult(
   result: VerifyRequestDetailedResult,
@@ -894,10 +898,16 @@ export async function verifyRequestDetailed(
         const classified: SignatureVerificationResult = threw
           ? "error"
           : classifyHttpVerifyResult(result!);
-        const failureReason = classified === "rejected" && result != null &&
-            !result.verified
-          ? result.reason.type
-          : undefined;
+        // `noSignature` is excluded explicitly so the narrowing flows
+        // through to `HttpSignatureMetricFailureReason`
+        // (`invalidSignature | keyFetchError`), matching the rule that
+        // `missing` rows do not carry a `http_signatures.failure_reason`
+        // attribute.
+        const failureReason: HttpSignatureMetricFailureReason | undefined =
+          result != null && !result.verified &&
+            result.reason.type !== "noSignature"
+            ? result.reason.type
+            : undefined;
         getFederationMetrics(options.meterProvider)
           .recordSignatureVerificationDuration(
             getDurationMs(start),
@@ -1131,7 +1141,11 @@ async function verifyRequestDraft(
     span?.setAttribute("http_signatures.algorithm", sigValues.algorithm);
     const normalizedAlgorithm = sigValues.algorithm.toLowerCase();
     if (DRAFT_KNOWN_ALGORITHMS.has(normalizedAlgorithm)) {
-      metricsContext.algorithm = normalizedAlgorithm;
+      // Cast is safe by construction: DRAFT_KNOWN_ALGORITHMS is built from
+      // an array that `satisfies readonly HttpSignatureMetricAlgorithm[]`,
+      // so every member of the set is a member of that literal union.
+      metricsContext.algorithm =
+        normalizedAlgorithm as HttpSignatureMetricAlgorithm;
     }
   }
   const fetchResult = await measureSignatureKeyFetch(
@@ -1372,14 +1386,14 @@ async function verifyRequestRfc9421(
   // signature actually returned rather than an earlier candidate that
   // happened to carry a bounded algorithm but was overwritten by a later
   // unsupported candidate.
-  let failureAlgorithm: string | undefined;
+  let failureAlgorithm: HttpSignatureMetricAlgorithm | undefined;
 
   // `setFailure` keeps the failure result and its bounded algorithm in sync;
   // every continue-out-of-iteration path goes through it so a later candidate
   // cannot inherit an earlier candidate's algorithm.
   const setFailure = (
     result: VerifyRequestDetailedResult,
-    algorithm?: string,
+    algorithm?: HttpSignatureMetricAlgorithm,
   ): void => {
     failure = result;
     failureAlgorithm = algorithm;
@@ -1534,8 +1548,11 @@ async function verifyRequestRfc9421(
     const algorithm = alg && rfc9421AlgorithmMap[alg];
     // Only record the algorithm metric attribute after the value matches the
     // RFC 9421 algorithm map, so attacker-supplied `alg` strings cannot
-    // inflate `http_signatures.algorithm` cardinality.
-    const candidateAlgorithm = algorithm ? alg : undefined;
+    // inflate `http_signatures.algorithm` cardinality.  The cast is safe by
+    // construction: every key of `rfc9421AlgorithmMap` is a member of
+    // `HttpSignatureMetricAlgorithm`.
+    const candidateAlgorithm: HttpSignatureMetricAlgorithm | undefined =
+      algorithm ? (alg as HttpSignatureMetricAlgorithm) : undefined;
     if (!algorithm) {
       logger.debug(
         "Failed to verify; unsupported algorithm: {algorithm}",
