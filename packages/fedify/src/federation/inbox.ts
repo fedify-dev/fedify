@@ -22,7 +22,11 @@ import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage } from "./queue.ts";
 import type { ActivityListenerSet } from "./activity-listener.ts";
-import { getDurationMs, getFederationMetrics } from "./metrics.ts";
+import {
+  getDurationMs,
+  getFederationMetrics,
+  recordInboxActivity,
+} from "./metrics.ts";
 
 export interface RouteActivityParameters<TContextData> {
   context: Context<TContextData>;
@@ -141,12 +145,18 @@ export async function routeActivity<TContextData>(
         code: SpanStatusCode.UNSET,
         message: `Activity ${activity.id?.href} has already been processed.`,
       });
+      recordInboxActivity(
+        meterProvider,
+        "rejected",
+        getTypeId(activity).href,
+      );
       return "alreadyProcessed";
     }
   }
   if (activity.actorId == null) {
     logger.error("Missing actor.", { activity: json });
     span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
+    recordInboxActivity(meterProvider, "rejected", getTypeId(activity).href);
     return "missingActor";
   }
   span.setAttribute("activitypub.actor.id", activity.actorId.href);
@@ -182,6 +192,7 @@ export async function routeActivity<TContextData>(
       { role: "inbox", queue, activityType: getTypeId(activity).href },
       0,
     );
+    recordInboxActivity(meterProvider, "queued", getTypeId(activity).href);
     logger.info(
       "Activity {activityId} is enqueued.",
       { activityId: activity.id?.href, activity: json, recipient },
@@ -204,6 +215,11 @@ export async function routeActivity<TContextData>(
           code: SpanStatusCode.UNSET,
           message: `Unsupported activity type: ${getTypeId(activity!).href}`,
         });
+        recordInboxActivity(
+          meterProvider,
+          "rejected",
+          getTypeId(activity!).href,
+        );
         span.end();
         return "unsupportedActivity";
       }
@@ -252,9 +268,19 @@ export async function routeActivity<TContextData>(
           },
         );
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+        recordInboxActivity(
+          meterProvider,
+          "rejected",
+          getTypeId(activity!).href,
+        );
         span.end();
         return "error";
       }
+      recordInboxActivity(
+        meterProvider,
+        "processed",
+        getTypeId(activity!).href,
+      );
       if (cacheKey != null) {
         await kv.set(cacheKey, true, {
           ttl: Temporal.Duration.from({ days: 1 }),

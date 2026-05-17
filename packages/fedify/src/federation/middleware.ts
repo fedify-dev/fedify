@@ -111,6 +111,7 @@ import {
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
   recordFanoutRecipients,
+  recordInboxActivity,
   recordOutboxActivity,
   recordOutboxEnqueue,
 } from "./metrics.ts";
@@ -972,6 +973,7 @@ export class FederationImpl<TContextData>
           activity: message.activity,
           recipient: message.identifier,
         });
+        recordInboxActivity(this.meterProvider, "rejected", activityType);
         return;
       }
     }
@@ -994,6 +996,7 @@ export class FederationImpl<TContextData>
             code: SpanStatusCode.ERROR,
             message: `Unsupported activity type: ${activityType}`,
           });
+          recordInboxActivity(this.meterProvider, "rejected", activityType);
           span.end();
           return;
         }
@@ -1018,6 +1021,7 @@ export class FederationImpl<TContextData>
                 getDurationMs(started),
               );
           }
+          recordInboxActivity(this.meterProvider, "processed", activityType);
         } catch (error) {
           try {
             await this.inboxErrorHandler?.(context, error as Error);
@@ -1092,6 +1096,7 @@ export class FederationImpl<TContextData>
                 },
                 retryMessage.attempt,
               );
+              recordInboxActivity(this.meterProvider, "retried", activityType);
             }
           } else {
             logger.error(
@@ -1104,6 +1109,7 @@ export class FederationImpl<TContextData>
                 recipient: message.identifier,
               },
             );
+            recordInboxActivity(this.meterProvider, "abandoned", activityType);
           }
           span.setStatus({
             code: SpanStatusCode.ERROR,
