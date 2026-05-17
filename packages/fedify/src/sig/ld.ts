@@ -296,6 +296,17 @@ export interface VerifySignatureOptions {
 
 /**
  * Verifies Linked Data Signatures of the given JSON-LD document.
+ *
+ * This is a low-level utility that only checks the cryptographic signature
+ * and (optionally) the cached key.  It does not run the JSON-LD parsing,
+ * attribution, and owner checks that a complete inbound LD verification
+ * needs.  For incoming activities, prefer {@link verifyJsonLd}, which is
+ * the public verification entry point and the one that emits the
+ * `activitypub.signature.verification.duration` metric for the LD path.
+ * `verifySignature` itself only emits
+ * `activitypub.signature.key_fetch.duration`, since the rest of the work
+ * that the verification-duration metric is meant to cover happens in
+ * `verifyJsonLd`.
  * @param jsonLd The JSON-LD document to verify.
  * @param options Options for verifying the signature.
  * @returns The public key that signed the document or `null` if the signature
