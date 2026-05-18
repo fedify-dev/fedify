@@ -107,6 +107,7 @@ import {
   getDurationMs,
   getFederationMetrics,
   getRemoteHost,
+  instrumentDocumentLoader,
   isAbortError,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
@@ -369,24 +370,78 @@ export class FederationImpl<TContextData>
     }
     const { allowPrivateAddress, userAgent } = options;
     this.allowPrivateAddress = allowPrivateAddress ?? false;
-    this.documentLoaderFactory = options.documentLoaderFactory ??
-      ((opts) => {
-        return kvCache({
-          loader: getDocumentLoader({
-            allowPrivateAddress: opts?.allowPrivateAddress ??
-              allowPrivateAddress,
-            userAgent: opts?.userAgent ?? userAgent,
-          }),
-          kv: options.kv,
-          prefix: this.kvPrefixes.remoteDocument,
-        });
+    // The loader factory closures below read `this._meterProvider` at
+    // call time, not when they are created.  Factories are only invoked
+    // after the constructor has assigned `_meterProvider` (see below), so
+    // the lookup is safe; no eager assignment is needed here.
+    const userDocumentLoaderFactory = options.documentLoaderFactory;
+    const userContextLoaderFactory = options.contextLoaderFactory;
+    const userAuthFactory = options.authenticatedDocumentLoaderFactory;
+    const builtinDocumentLoaderFactory: DocumentLoaderFactory = (opts) =>
+      kvCache({
+        loader: getDocumentLoader({
+          allowPrivateAddress: opts?.allowPrivateAddress ??
+            allowPrivateAddress,
+          userAgent: opts?.userAgent ?? userAgent,
+        }),
+        kv: options.kv,
+        prefix: this.kvPrefixes.remoteDocument,
+        meterProvider: this._meterProvider,
+        kind: "object",
       });
-    this.contextLoaderFactory = options.contextLoaderFactory ??
-      this.documentLoaderFactory;
-    this.authenticatedDocumentLoaderFactory =
-      options.authenticatedDocumentLoaderFactory ??
-        ((identity) =>
-          getAuthenticatedDocumentLoader(identity, {
+    const builtinContextLoaderFactory: DocumentLoaderFactory = (opts) =>
+      kvCache({
+        loader: getDocumentLoader({
+          allowPrivateAddress: opts?.allowPrivateAddress ??
+            allowPrivateAddress,
+          userAgent: opts?.userAgent ?? userAgent,
+        }),
+        kv: options.kv,
+        prefix: this.kvPrefixes.remoteDocument,
+        meterProvider: this._meterProvider,
+        kind: "context",
+      });
+    // Only the built-in factories use `kvCache()`, so we can confidently
+    // record `activitypub.cache.enabled=true` for them; user-supplied
+    // factories may or may not cache, so the attribute is omitted.
+    this.documentLoaderFactory = (opts) =>
+      instrumentDocumentLoader(
+        (userDocumentLoaderFactory ?? builtinDocumentLoaderFactory)(opts),
+        {
+          meterProvider: this._meterProvider,
+          kind: "object",
+          cacheEnabled: userDocumentLoaderFactory == null ? true : undefined,
+        },
+      );
+    // When the user customises `documentLoaderFactory` but not
+    // `contextLoaderFactory`, Fedify has historically fallen back to the
+    // (customised) document factory rather than the built-in one so
+    // context fetches inherit the user's settings.  Preserve that
+    // semantic, just with a separate instrumentation kind so the metric
+    // attributes reflect the call-site intent.
+    const resolvedContextLoaderFactory: DocumentLoaderFactory =
+      userContextLoaderFactory ?? userDocumentLoaderFactory ??
+        builtinContextLoaderFactory;
+    this.contextLoaderFactory = (opts) =>
+      instrumentDocumentLoader(
+        resolvedContextLoaderFactory(opts),
+        {
+          meterProvider: this._meterProvider,
+          kind: "context",
+          cacheEnabled: (userContextLoaderFactory == null &&
+              userDocumentLoaderFactory == null)
+            ? true
+            : undefined,
+        },
+      );
+    this.authenticatedDocumentLoaderFactory = (identity, factoryOpts) =>
+      instrumentDocumentLoader(
+        userAuthFactory != null
+          // Forward `factoryOpts` so user-supplied factories receive the
+          // per-call `DocumentLoaderFactoryOptions` (allowPrivateAddress,
+          // userAgent) just like they did before this wrapper was added.
+          ? userAuthFactory(identity, factoryOpts)
+          : getAuthenticatedDocumentLoader(identity, {
             allowPrivateAddress,
             userAgent,
             specDeterminer: new KvSpecDeterminer(
@@ -395,7 +450,14 @@ export class FederationImpl<TContextData>
               options.firstKnock,
             ),
             tracerProvider: this.tracerProvider,
-          }));
+          }),
+        {
+          meterProvider: this._meterProvider,
+          kind: "object",
+          // The authenticated document loader does not cache.
+          cacheEnabled: userAuthFactory == null ? false : undefined,
+        },
+      );
     this.userAgent = userAgent;
     this.onOutboxError = options.onOutboxError;
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
