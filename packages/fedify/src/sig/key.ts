@@ -11,12 +11,19 @@ import {
 } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
+  type MeterProvider,
   SpanKind,
   SpanStatusCode,
   trace,
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
+import {
+  classifyFetchError,
+  getDurationMs,
+  type KeyLookupResult,
+  recordKeyLookup,
+} from "../federation/metrics.ts";
 
 /**
  * Checks if the given key is valid and supported.  No-op if the key is valid,
@@ -176,6 +183,14 @@ export interface FetchKeyOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider to use for recording
+   * `activitypub.key.lookup` and `activitypub.key.lookup.duration`.  If
+   * omitted, the global meter provider is used.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -538,45 +553,74 @@ async function fetchKeyWithResult<
     logger: ReturnType<typeof getLogger>,
   ) => Promise<TResult> | TResult,
 ): Promise<TResult> {
-  const logger = getLogger(["fedify", "sig", "key"]);
-  const keyId = cacheKey.href;
-  const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
-  const cached = await getCachedFetchKey(
-    cacheKey,
-    keyId,
-    cls,
-    keyCache,
-    logger,
-  );
-  if (cached?.key === null && cached.cached) {
-    return await onCachedUnavailable(cacheKey, keyId, keyCache, logger);
-  }
-  if (cached != null) return cached as TResult;
-  logger.debug("Fetching key {keyId} to verify signature...", { keyId });
-  let document: unknown;
+  const start = performance.now();
+  let outcome: { result: KeyLookupResult; statusCode?: number } = {
+    result: "error",
+  };
   try {
-    const remoteDocument =
-      await (options.documentLoader ?? getDocumentLoader())(
-        keyId,
-      );
-    document = remoteDocument.document;
-  } catch (error) {
-    return await onFetchError(
-      error,
+    const logger = getLogger(["fedify", "sig", "key"]);
+    const keyId = cacheKey.href;
+    const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
+    const cached = await getCachedFetchKey(
       cacheKey,
       keyId,
+      cls,
       keyCache,
       logger,
     );
+    if (cached?.key === null && cached.cached) {
+      const cachedUnavailable = await onCachedUnavailable(
+        cacheKey,
+        keyId,
+        keyCache,
+        logger,
+      );
+      outcome = { result: "hit" };
+      return cachedUnavailable;
+    }
+    if (cached != null) {
+      outcome = { result: "hit" };
+      return cached as TResult;
+    }
+    logger.debug("Fetching key {keyId} to verify signature...", { keyId });
+    let document: unknown;
+    try {
+      const remoteDocument =
+        await (options.documentLoader ?? getDocumentLoader())(
+          keyId,
+        );
+      document = remoteDocument.document;
+    } catch (error) {
+      const classified = classifyFetchError(error);
+      const errored = await onFetchError(
+        error,
+        cacheKey,
+        keyId,
+        keyCache,
+        logger,
+      );
+      outcome = classified;
+      return errored;
+    }
+    const resolved = await resolveFetchedKey(
+      document,
+      cacheKey,
+      keyId,
+      cls,
+      options,
+      logger,
+    );
+    outcome = { result: resolved.key != null ? "fetched" : "invalid" };
+    return resolved as TResult;
+  } finally {
+    recordKeyLookup(options.meterProvider, {
+      durationMs: getDurationMs(start),
+      result: outcome.result,
+      remoteUrl: cacheKey,
+      cacheEnabled: options.keyCache != null,
+      statusCode: outcome.statusCode,
+    });
   }
-  return await resolveFetchedKey(
-    document,
-    cacheKey,
-    keyId,
-    cls,
-    options,
-    logger,
-  ) as TResult;
 }
 
 async function fetchKeyInternal<T extends CryptographicKey | Multikey>(

@@ -1,10 +1,11 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
 import { CryptographicKey, Multikey } from "@fedify/vocab";
-import { FetchError } from "@fedify/vocab-runtime";
+import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
   ed25519Multikey,
@@ -456,4 +457,161 @@ test("fetchKeyDetailed() returns detailed fetch errors", async () => {
     throw new Error("Expected non-HTTP fetch error details.");
   }
   assertEquals(detailedError.error, failure);
+});
+
+test("fetchKey() records activitypub.key.lookup with hit on cached key", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const cache: Record<string, CryptographicKey | Multikey | null> = {};
+  const keyCache: KeyCache = {
+    get(keyId) {
+      return Promise.resolve(cache[keyId.href]);
+    },
+    set(keyId, key) {
+      cache[keyId.href] = key;
+      return Promise.resolve();
+    },
+  };
+  const options: FetchKeyOptions = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    keyCache,
+    meterProvider,
+  };
+
+  // Warm the cache.
+  await fetchKey("https://example.com/key", CryptographicKey, options);
+  recorder.clear();
+
+  // Subsequent call should hit the cache.
+  const result = await fetchKey(
+    "https://example.com/key",
+    CryptographicKey,
+    options,
+  );
+  assertEquals(result.cached, true);
+
+  const counters = recorder.getMeasurements("activitypub.key.lookup");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "public_key");
+  assertEquals(counters[0].attributes["activitypub.lookup.result"], "hit");
+  assertEquals(counters[0].attributes["activitypub.cache.enabled"], true);
+  assertEquals(
+    counters[0].attributes["activitypub.remote.host"],
+    "example.com",
+  );
+
+  const duration = recorder.getMeasurement("activitypub.key.lookup.duration");
+  assertEquals(duration?.type, "histogram");
+  assertEquals(duration?.attributes["activitypub.lookup.result"], "hit");
+});
+
+test("fetchKey() records activitypub.key.lookup with fetched on cache miss", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const result = await fetchKey(
+    "https://example.com/key",
+    CryptographicKey,
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      meterProvider,
+    },
+  );
+  assertEquals(result.cached, false);
+
+  const counter = recorder.getMeasurement("activitypub.key.lookup");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "fetched");
+  assertEquals(counter?.attributes["activitypub.cache.enabled"], false);
+  assertEquals(counter?.attributes["activitypub.remote.host"], "example.com");
+
+  const duration = recorder.getMeasurement("activitypub.key.lookup.duration");
+  assertEquals(duration?.attributes["activitypub.lookup.result"], "fetched");
+});
+
+test("fetchKey() records not_found and status code on HTTP 404", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const missingKeyId = new URL("https://example.com/missing-key");
+  const documentLoader: DocumentLoader = (url) => {
+    if (url === missingKeyId.href) {
+      throw new FetchError(
+        missingKeyId,
+        `HTTP 404: ${missingKeyId.href}`,
+        new Response(null, { status: 404 }),
+      );
+    }
+    return mockDocumentLoader(url);
+  };
+
+  const result = await fetchKey(missingKeyId, CryptographicKey, {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    meterProvider,
+  });
+  assertEquals(result.key, null);
+
+  const counter = recorder.getMeasurement("activitypub.key.lookup");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "not_found");
+  assertEquals(counter?.attributes["http.response.status_code"], 404);
+  assertEquals(counter?.attributes["activitypub.cache.enabled"], false);
+  assertEquals(
+    counter?.attributes["activitypub.remote.host"],
+    "example.com",
+  );
+});
+
+test("fetchKey() records network_error on TypeError from the document loader", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const documentLoader: DocumentLoader = () => {
+    throw new TypeError("connect failed");
+  };
+
+  await fetchKey("https://example.com/key", CryptographicKey, {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    meterProvider,
+  });
+
+  const counter = recorder.getMeasurement("activitypub.key.lookup");
+  assertEquals(
+    counter?.attributes["activitypub.lookup.result"],
+    "network_error",
+  );
+  assertEquals("http.response.status_code" in counter!.attributes, false);
+});
+
+test("fetchKeyDetailed() records activitypub.key.lookup with the same taxonomy", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const goneKeyId = new URL("https://example.com/gone-key");
+  const documentLoader: DocumentLoader = (url) => {
+    if (url === goneKeyId.href) {
+      throw new FetchError(
+        goneKeyId,
+        `HTTP 410: ${goneKeyId.href}`,
+        new Response(null, { status: 410 }),
+      );
+    }
+    return mockDocumentLoader(url);
+  };
+
+  await fetchKeyDetailed(goneKeyId, CryptographicKey, {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    meterProvider,
+  });
+
+  const counter = recorder.getMeasurement("activitypub.key.lookup");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "not_found");
+  assertEquals(counter?.attributes["http.response.status_code"], 410);
+});
+
+test("fetchKey() omits the meter provider has no effect on behavior", async () => {
+  // Sanity: omitting meterProvider keeps fetchKey functional.
+  const result = await fetchKey(
+    "https://example.com/key",
+    CryptographicKey,
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  assertEquals(result.cached, false);
 });

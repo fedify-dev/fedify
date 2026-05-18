@@ -1157,6 +1157,7 @@ async function verifyRequestDraft(
         contextLoader,
         keyCache,
         tracerProvider,
+        meterProvider,
       }),
   );
   const { key, cached, fetchError } = fetchResult;
@@ -1508,6 +1509,7 @@ async function verifyRequestRfc9421(
           contextLoader,
           keyCache,
           tracerProvider,
+          meterProvider,
         }),
     );
     const { key, cached, fetchError } = rfcFetchResult;
