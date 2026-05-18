@@ -173,6 +173,26 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+> [!NOTE]
+> The document and context loader metrics
+> (`activitypub.document.fetch[.duration]` and
+> `activitypub.document.cache`) are opt-in inside Fedify: they are
+> emitted only when `meterProvider` is explicitly configured on
+> `createFederation()`.  Omitting it preserves strict reference identity
+> for `Context.documentLoader`, `Context.contextLoader`, and the
+> authenticated document loader (`ctx.documentLoader === userLoader`),
+> so existing test code that asserts identity on a user-supplied
+> factory's output continues to work.  The other metrics (delivery,
+> inbox, outbox, fanout, queue, HTTP server, signature verification,
+> signature key fetch, public key lookup, and `lookupObject` actor
+> classification) follow the standard “fall back to the global
+> [`MeterProvider`]” behavior described above.  Calling
+> `lookupObject()` directly from `@fedify/vocab` (without going through
+> a `Context`) still requires an explicit
+> `LookupObjectOptions.meterProvider` to emit
+> `activitypub.object.lookup`; `Context.lookupObject()` threads the
+> Federation's meter provider through automatically.
+
 [`MeterProvider`]: https://open-telemetry.github.io/opentelemetry-js/interfaces/_opentelemetry_api._opentelemetry_api.MeterProvider.html
 
 
