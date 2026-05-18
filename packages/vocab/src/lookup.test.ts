@@ -855,6 +855,7 @@ test("lookupObject() records activitypub.object.lookup counter", {
   );
 
   fetchMock.removeRoutes();
+  fetchMock.hardReset();
 });
 
 // cSpell: ignore gildong
