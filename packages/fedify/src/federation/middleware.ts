@@ -2497,6 +2497,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       contextLoader: options.contextLoader ?? this.contextLoader,
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      meterProvider: options.meterProvider ?? this.meterProvider,
       // @ts-ignore: `allowPrivateAddress` is not in the type definition.
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
