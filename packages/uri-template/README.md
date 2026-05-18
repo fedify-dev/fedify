@@ -120,10 +120,11 @@ The important differences are:
     and dependency-free at runtime.
 
 The concrete differences from the previous [url-template] and
-[uri-template-router] libraries are encoded as compatibility tests under
-*packages/uri-template/old/* in the package's source repository.  Refer to
-those tests for behavior comparisons against the older libraries; they are
-not shipped in the published package.
+[uri-template-router] libraries are encoded as repository-only compatibility
+tests under *packages/uri-template/old/* in the package's source repository.
+Those tests intentionally fail when run with `deno task test:old` because they
+execute the older libraries against Fedify's expected behavior and document the
+known legacy gaps.
 
 
 Features
