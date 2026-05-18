@@ -22,7 +22,11 @@ import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage } from "./queue.ts";
 import type { ActivityListenerSet } from "./activity-listener.ts";
-import { getDurationMs, getFederationMetrics } from "./metrics.ts";
+import {
+  getDurationMs,
+  getFederationMetrics,
+  recordInboxActivity,
+} from "./metrics.ts";
 
 export interface RouteActivityParameters<TContextData> {
   context: Context<TContextData>;
@@ -141,12 +145,18 @@ export async function routeActivity<TContextData>(
         code: SpanStatusCode.UNSET,
         message: `Activity ${activity.id?.href} has already been processed.`,
       });
+      recordInboxActivity(
+        meterProvider,
+        "rejected",
+        getTypeId(activity).href,
+      );
       return "alreadyProcessed";
     }
   }
   if (activity.actorId == null) {
     logger.error("Missing actor.", { activity: json });
     span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
+    recordInboxActivity(meterProvider, "rejected", getTypeId(activity).href);
     return "missingActor";
   }
   span.setAttribute("activitypub.actor.id", activity.actorId.href);
@@ -182,6 +192,7 @@ export async function routeActivity<TContextData>(
       { role: "inbox", queue, activityType: getTypeId(activity).href },
       0,
     );
+    recordInboxActivity(meterProvider, "queued", getTypeId(activity).href);
     logger.info(
       "Activity {activityId} is enqueued.",
       { activityId: activity.id?.href, activity: json, recipient },
@@ -194,7 +205,7 @@ export async function routeActivity<TContextData>(
     "activitypub.dispatch_inbox_listener",
     { kind: SpanKind.INTERNAL },
     async (span) => {
-      const dispatched = inboxListeners?.dispatchWithClass(activity!);
+      const dispatched = inboxListeners?.dispatchWithClass(activity);
       if (dispatched == null) {
         logger.error(
           "Unsupported activity type:\n{activity}",
@@ -202,25 +213,30 @@ export async function routeActivity<TContextData>(
         );
         span.setStatus({
           code: SpanStatusCode.UNSET,
-          message: `Unsupported activity type: ${getTypeId(activity!).href}`,
+          message: `Unsupported activity type: ${getTypeId(activity).href}`,
         });
+        recordInboxActivity(
+          meterProvider,
+          "rejected",
+          getTypeId(activity).href,
+        );
         span.end();
         return "unsupportedActivity";
       }
       const { class: cls, listener } = dispatched;
       span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
       try {
-        const activityType = getTypeId(activity!).href;
+        const activityType = getTypeId(activity).href;
         const started = performance.now();
         try {
           await listener(
             inboxContextFactory(
               recipient,
               json,
-              activity?.id?.href,
+              activity.id?.href,
               activityType,
             ),
-            activity!,
+            activity,
           );
         } finally {
           getFederationMetrics(meterProvider).recordInboxProcessingDuration(
@@ -236,7 +252,7 @@ export async function routeActivity<TContextData>(
             "An unexpected error occurred in inbox error handler:\n{error}",
             {
               error,
-              activityId: activity!.id?.href,
+              activityId: activity.id?.href,
               activity: json,
               recipient,
             },
@@ -246,15 +262,25 @@ export async function routeActivity<TContextData>(
           "Failed to process the incoming activity {activityId}:\n{error}",
           {
             error,
-            activityId: activity!.id?.href,
+            activityId: activity.id?.href,
             activity: json,
             recipient,
           },
         );
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+        recordInboxActivity(
+          meterProvider,
+          "rejected",
+          getTypeId(activity).href,
+        );
         span.end();
         return "error";
       }
+      recordInboxActivity(
+        meterProvider,
+        "processed",
+        getTypeId(activity).href,
+      );
       if (cacheKey != null) {
         await kv.set(cacheKey, true, {
           ttl: Temporal.Duration.from({ days: 1 }),
@@ -262,7 +288,7 @@ export async function routeActivity<TContextData>(
       }
       logger.info(
         "Activity {activityId} has been processed.",
-        { activityId: activity!.id?.href, activity: json, recipient },
+        { activityId: activity.id?.href, activity: json, recipient },
       );
       span.end();
       return "success";

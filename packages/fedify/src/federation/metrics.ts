@@ -22,6 +22,58 @@ export type QueueTaskRole = "fanout" | "outbox" | "inbox";
 export type QueueTaskResult = "completed" | "failed" | "aborted";
 
 /**
+ * The lifecycle event classification recorded on
+ * `activitypub.inbox.activity` as the `activitypub.processing.result`
+ * attribute.  Tracks Fedify-managed events at the activity level, separate
+ * from the per-delivery and per-queue-task metrics.
+ *
+ *  -  `queued`: the activity was accepted at the inbox endpoint and
+ *     enqueued for background processing.
+ *  -  `processed`: the registered listener finished without throwing.
+ *  -  `retried`: Fedify scheduled a retry after the listener threw.
+ *  -  `rejected`: Fedify refused to process the activity (missing actor,
+ *     duplicate, unsupported type, or no-queue listener error).
+ *  -  `abandoned`: the inbox retry policy gave up after exhausted attempts.
+ *
+ * Native-retry message queue backends will not record `retried` or
+ * `abandoned` because Fedify defers retry handling to the backend.
+ * @since 2.3.0
+ */
+export type InboxActivityResult =
+  | "queued"
+  | "processed"
+  | "retried"
+  | "rejected"
+  | "abandoned";
+
+/**
+ * The lifecycle event classification recorded on
+ * `activitypub.outbox.activity` as the `activitypub.processing.result`
+ * attribute.  Tracks Fedify-managed events at the outbox-task level,
+ * separate from the per-delivery counters defined in #619.
+ *
+ *  -  `queued`: an initial outbox task was enqueued for delivery.
+ *     Recorded once per recipient inbox: fanned-out activities are
+ *     counted as each per-recipient outbox task is enqueued by the
+ *     fanout worker, not at the fanout-task enqueue itself.  Retry
+ *     re-enqueues are recorded as `retried`, not `queued`.
+ *  -  `retried`: Fedify scheduled a retry after a delivery failure.
+ *  -  `abandoned`: Fedify gave up on the recipient.  Recorded both
+ *     when the outbox retry policy returns `null` after exhausted
+ *     attempts and when the remote responded with a permanent-failure
+ *     status code (`permanentFailureStatusCodes`, by default `404` or
+ *     `410`); the per-recipient permanent-failure detail still lives
+ *     on `activitypub.delivery.permanent_failure`.
+ *
+ * The per-recipient `sent`/`failed` view lives on
+ * `activitypub.delivery.sent` and `activitypub.delivery.permanent_failure`
+ * and is not duplicated here.  Native-retry backends will not record
+ * `retried` or `abandoned`.
+ * @since 2.3.0
+ */
+export type OutboxActivityResult = "queued" | "retried" | "abandoned";
+
+/**
  * Common attributes shared by all queue task metrics.
  * @since 2.3.0
  */
@@ -173,6 +225,9 @@ class FederationMetrics {
   readonly queueTaskFailed: Counter;
   readonly queueTaskDuration: Histogram;
   readonly queueTaskInFlight: UpDownCounter;
+  readonly fanoutRecipients: Histogram;
+  readonly inboxActivity: Counter;
+  readonly outboxActivity: Counter;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -315,6 +370,28 @@ class FederationMetrics {
         unit: "{task}",
       },
     );
+    this.fanoutRecipients = meter.createHistogram(
+      "activitypub.fanout.recipients",
+      {
+        description:
+          "Number of recipient inboxes produced by an ActivityPub fanout " +
+          "task.",
+        unit: "{recipient}",
+      },
+    );
+    this.inboxActivity = meter.createCounter("activitypub.inbox.activity", {
+      description:
+        "ActivityPub activities observed at the inbox lifecycle level: " +
+        "queued, processed, retried, rejected, or abandoned.",
+      unit: "{activity}",
+    });
+    this.outboxActivity = meter.createCounter("activitypub.outbox.activity", {
+      description:
+        "ActivityPub activities observed at the outbox lifecycle level: " +
+        "queued, retried, or abandoned.  Per-recipient delivery counters " +
+        "live on `activitypub.delivery.*`.",
+      unit: "{activity}",
+    });
   }
 
   recordDelivery(
@@ -454,6 +531,47 @@ class FederationMetrics {
     }
     this.queueTaskDuration.record(durationMs, attributes);
   }
+
+  recordFanoutRecipients(recipientCount: number, activityType?: string): void {
+    const attributes: Attributes = {};
+    if (activityType != null) {
+      attributes["activitypub.activity.type"] = activityType;
+    }
+    this.fanoutRecipients.record(recipientCount, attributes);
+  }
+
+  recordInboxActivity(
+    result: InboxActivityResult,
+    activityType?: string,
+  ): void {
+    this.inboxActivity.add(
+      1,
+      buildActivityLifecycleAttributes(result, activityType),
+    );
+  }
+
+  recordOutboxActivity(
+    result: OutboxActivityResult,
+    activityType?: string,
+  ): void {
+    this.outboxActivity.add(
+      1,
+      buildActivityLifecycleAttributes(result, activityType),
+    );
+  }
+}
+
+function buildActivityLifecycleAttributes(
+  result: InboxActivityResult | OutboxActivityResult,
+  activityType?: string,
+): Attributes {
+  const attributes: Attributes = {
+    "activitypub.processing.result": result,
+  };
+  if (activityType != null) {
+    attributes["activitypub.activity.type"] = activityType;
+  }
+  return attributes;
 }
 
 function buildQueueTaskAttributes(
@@ -500,12 +618,17 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
 }
 
 /**
- * Records `fedify.queue.task.enqueued` for an outgoing outbox enqueue.
+ * Records `fedify.queue.task.enqueued` for an outgoing outbox enqueue and,
+ * for the initial attempt, also records
+ * `activitypub.outbox.activity{queued}`.
  *
  * Both `Context.sendActivity()` and `OutboxContext.forwardActivity()` enqueue
  * outbox messages with the same metric attributes (role, queue, activity
  * type, attempt), so they share this helper rather than each defining a local
- * closure.
+ * closure.  Retry enqueues (attempt > 0) intentionally do not record a
+ * second `activitypub.outbox.activity{queued}`; retries are reported as
+ * `result=retried` from the retry-scheduling site, which has the failure
+ * context.
  * @since 2.3.0
  */
 export function recordOutboxEnqueue(
@@ -513,13 +636,68 @@ export function recordOutboxEnqueue(
   outboxQueue: MessageQueue,
   message: { readonly activityType: string; readonly attempt: number },
 ): void {
-  getFederationMetrics(meterProvider).recordQueueTaskEnqueued(
+  const metrics = getFederationMetrics(meterProvider);
+  metrics.recordQueueTaskEnqueued(
     {
       role: "outbox",
       queue: outboxQueue,
       activityType: message.activityType,
     },
     message.attempt,
+  );
+  if (message.attempt === 0) {
+    metrics.recordOutboxActivity("queued", message.activityType);
+  }
+}
+
+/**
+ * Records `activitypub.fanout.recipients` with the number of recipient
+ * inboxes a single fanout produced.  The histogram is unitless count
+ * (one measurement per fanout enqueue).  Recipient URLs are deliberately
+ * not recorded; only the activity type, when known.
+ * @since 2.3.0
+ */
+export function recordFanoutRecipients(
+  meterProvider: MeterProvider | undefined,
+  recipientCount: number,
+  activityType?: string,
+): void {
+  getFederationMetrics(meterProvider).recordFanoutRecipients(
+    recipientCount,
+    activityType,
+  );
+}
+
+/**
+ * Records one `activitypub.inbox.activity` measurement.  The
+ * `activitypub.processing.result` attribute is always present;
+ * `activitypub.activity.type` is recorded only when Fedify already knows
+ * the activity type.
+ * @since 2.3.0
+ */
+export function recordInboxActivity(
+  meterProvider: MeterProvider | undefined,
+  result: InboxActivityResult,
+  activityType?: string,
+): void {
+  getFederationMetrics(meterProvider).recordInboxActivity(result, activityType);
+}
+
+/**
+ * Records one `activitypub.outbox.activity` measurement.  The
+ * `activitypub.processing.result` attribute is always present;
+ * `activitypub.activity.type` is recorded only when Fedify already knows
+ * the activity type (it is always known for outbox lifecycle events).
+ * @since 2.3.0
+ */
+export function recordOutboxActivity(
+  meterProvider: MeterProvider | undefined,
+  result: OutboxActivityResult,
+  activityType?: string,
+): void {
+  getFederationMetrics(meterProvider).recordOutboxActivity(
+    result,
+    activityType,
   );
 }
 

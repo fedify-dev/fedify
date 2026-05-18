@@ -3656,6 +3656,297 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
   });
 
+  await t.step(
+    "records activitypub.outbox.activity retry on transient failure",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "retried",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.outbox.activity abandoned when retry policy gives up",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+        outboxRetryPolicy: () => null,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Follow",
+            actor: "https://example.com/users/alice",
+            object: "https://remote.example/users/bob",
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Follow",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "abandoned",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Follow",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity processed on successful queued dispatch",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {});
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-processed",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(inboxLifecycle[0].type, "counter");
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "processed",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity retried on transient listener failure",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-retried",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "retried",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity abandoned when retry policy gives up",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+        inboxRetryPolicy: () => null,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-abandoned",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "abandoned",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
   await t.step("records queued inbox processing duration", async () => {
     const kv = new MemoryKvStore();
     const [meterProvider, recorder] = createTestMeterProvider();
@@ -3904,6 +4195,19 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     assertEquals(
       failures[0].attributes["http.response.status_code"],
       410,
+    );
+
+    const abandoned = recorder.getMeasurements(
+      "activitypub.outbox.activity",
+    );
+    assertEquals(abandoned.length, 1);
+    assertEquals(
+      abandoned[0].attributes["activitypub.processing.result"],
+      "abandoned",
+    );
+    assertEquals(
+      abandoned[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
     );
 
     const events = exporter.getEvents(
@@ -5367,6 +5671,78 @@ test("ContextImpl.sendActivity()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("ContextImpl.sendActivity() records fanout recipient metrics", async () => {
+  const kv = new MemoryKvStore();
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const queue: MessageQueue & { messages: Message[] } = {
+    messages: [],
+    enqueue(message) {
+      this.messages.push(message);
+      return Promise.resolve();
+    },
+    async listen() {},
+  };
+  const federation = new FederationImpl<void>({
+    kv,
+    contextLoaderFactory: () => mockDocumentLoader,
+    queue,
+    meterProvider,
+  });
+  federation
+    .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+      if (identifier !== "john") return null;
+      const keys = await ctx.getActorKeyPairs(identifier);
+      return new vocab.Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: "john",
+        publicKey: keys[0].cryptographicKey,
+        assertionMethods: keys.map((k) => k.multikey),
+      });
+    })
+    .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier !== "john") return [];
+      return [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        {
+          privateKey: ed25519PrivateKey,
+          publicKey: ed25519PublicKey.publicKey!,
+        },
+      ];
+    });
+  const ctx = new ContextImpl({
+    data: undefined,
+    federation,
+    url: new URL("https://example.com/"),
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const activity = new vocab.Create({
+    id: new URL("https://example.com/activity/1"),
+    actor: new URL("https://example.com/person"),
+  });
+  const recipients = Array.from({ length: 7 }, (_, i) => ({
+    id: new URL(`https://example${i + 1}.com/recipient`),
+    inboxId: new URL(`https://example${i + 1}.com/inbox`),
+  }));
+  await ctx.sendActivity({ username: "john" }, recipients, activity, {
+    fanout: "force",
+  });
+
+  assertEquals(queue.messages.length, 1);
+  assertEquals(queue.messages[0].type, "fanout");
+
+  const measurements = recorder.getMeasurements(
+    "activitypub.fanout.recipients",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "histogram");
+  assertEquals(measurements[0].value, recipients.length);
+  assertEquals(
+    measurements[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
+});
+
 test({
   name: "ContextImpl.routeActivity()",
   permissions: { env: true, read: true },
@@ -5576,6 +5952,163 @@ test({
     assertEquals(
       enqueuedMetrics[0].attributes["fedify.queue.task.attempt"],
       0,
+    );
+  },
+});
+
+test({
+  name: "ContextImpl.routeActivity() records inbox.activity lifecycle metrics",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const queue: MessageQueue = {
+      enqueue(): Promise<void> {
+        return Promise.resolve();
+      },
+      listen(): Promise<void> {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i");
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-queued"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+
+    const queued = recorder.getMeasurements("activitypub.inbox.activity");
+    assertEquals(queued.length, 1);
+    assertEquals(queued[0].type, "counter");
+    assertEquals(
+      queued[0].attributes["activitypub.processing.result"],
+      "queued",
+    );
+    assertEquals(
+      queued[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
+    );
+  },
+});
+
+test({
+  name:
+    "ContextImpl.routeActivity() records inbox.activity processed without queue",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i")
+      .on(vocab.Offer, () => {});
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-processed"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+
+    const processed = recorder.getMeasurements("activitypub.inbox.activity");
+    assertEquals(processed.length, 1);
+    assertEquals(
+      processed[0].attributes["activitypub.processing.result"],
+      "processed",
+    );
+    assertEquals(
+      processed[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
+    );
+  },
+});
+
+test({
+  name:
+    "ContextImpl.routeActivity() records inbox.activity rejected for unsupported type and duplicates",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i")
+      .on(vocab.Offer, () => {});
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    // Unsupported activity type (Create has no listener).
+    const signedCreate = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/create-unsupported"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedCreate));
+
+    // Duplicate Offer activity (re-route same id → idempotency cache hit).
+    const dupOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-duplicate"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, dupOffer));
+    assert(await ctx.routeActivity(null, dupOffer));
+
+    const measurements = recorder.getMeasurements("activitypub.inbox.activity");
+    const rejected = measurements.filter((m) =>
+      m.attributes["activitypub.processing.result"] === "rejected"
+    );
+    // One for the unsupported Create, one for the duplicate Offer.
+    assertEquals(rejected.length, 2);
+    assertEquals(
+      rejected[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+    assertEquals(
+      rejected[1].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
     );
   },
 });

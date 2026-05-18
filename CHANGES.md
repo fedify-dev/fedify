@@ -91,12 +91,35 @@ To be released.
     operators distinguish a slow-draining queue from a queue that sees
     less traffic.  [[#316], [#740], [#759]]
 
+ -  Added OpenTelemetry metrics for ActivityPub fanout and activity
+    lifecycle events, complementing the per-recipient
+    `activitypub.delivery.*` counters and the per-task
+    `fedify.queue.task.*` metrics with an activity-level view of inbox
+    and outbox pressure:
+
+     -  `activitypub.fanout.recipients` (histogram) records the number of
+        recipient inboxes produced by a single fanout enqueue.
+     -  `activitypub.inbox.activity` (counter) classifies an inbound
+        activity via the new `activitypub.processing.result` attribute
+        as `queued`, `processed`, `retried`, `rejected`, or `abandoned`.
+     -  `activitypub.outbox.activity` (counter) classifies an outbound
+        activity as `queued`, `retried`, or `abandoned`.  Per-recipient
+        `sent`/`failed` rows remain on `activitypub.delivery.sent` and
+        `activitypub.delivery.permanent_failure` and are not duplicated.
+
+    The lifecycle counters cover only Fedify-managed events: queue
+    backends with `nativeRetrial` defer retry handling and therefore do
+    not record `retried` or `abandoned`.  Recipient URLs, actor IDs,
+    and other high-cardinality identifiers are deliberately excluded
+    from the fanout histogram.  [[#316], [#742], [#770]]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
 [#737]: https://github.com/fedify-dev/fedify/issues/737
 [#740]: https://github.com/fedify-dev/fedify/issues/740
+[#742]: https://github.com/fedify-dev/fedify/issues/742
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
@@ -104,6 +127,7 @@ To be released.
 [#757]: https://github.com/fedify-dev/fedify/pull/757
 [#759]: https://github.com/fedify-dev/fedify/pull/759
 [#769]: https://github.com/fedify-dev/fedify/pull/769
+[#770]: https://github.com/fedify-dev/fedify/pull/770
 
 ### @fedify/fixture
 
