@@ -5,12 +5,17 @@ import type {
 } from "@fedify/vocab-runtime";
 import { preloadedContexts } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
+import type { MeterProvider } from "@opentelemetry/api";
 import type {
   KvKey,
   KvStore,
   KvStoreListEntry,
   KvStoreSetOptions,
 } from "../federation/kv.ts";
+import {
+  type DocumentFetchKind,
+  recordDocumentCache,
+} from "../federation/metrics.ts";
 
 const logger = getLogger(["fedify", "utils", "kv-cache"]);
 
@@ -80,6 +85,26 @@ export interface KvCacheParameters {
     string | URL | URLPattern,
     Temporal.Duration | Temporal.DurationLike,
   ][];
+
+  /**
+   * The OpenTelemetry meter provider used to record
+   * `activitypub.document.cache` measurements.  When omitted, the wrapper
+   * does not emit any metric measurements, preserving the previous
+   * unobserved-cache behavior.
+   * @since 2.3.0
+   */
+  readonly meterProvider?: MeterProvider;
+
+  /**
+   * The lookup kind to record on the `activitypub.lookup.kind` attribute of
+   * `activitypub.document.cache` measurements.  Defaults to `"object"` so
+   * the generic document loader case does not require an explicit option.
+   * Set to `"context"` for context-loader wrappers; the
+   * authenticated-loader path does not use `kvCache()` and is therefore
+   * out of scope.
+   * @since 2.3.0
+   */
+  readonly kind?: DocumentFetchKind;
 }
 
 /**
@@ -88,7 +113,7 @@ export interface KvCacheParameters {
  * @returns The decorated document loader which is cache-enabled.
  */
 export function kvCache(
-  { loader, kv, prefix, rules }: KvCacheParameters,
+  { loader, kv, prefix, rules, meterProvider, kind }: KvCacheParameters,
 ): DocumentLoader {
   const keyPrefix = prefix ?? ["_fedify", "remoteDocument"];
   rules ??= [
@@ -103,6 +128,25 @@ export function kvCache(
             : p.toString()),
       );
     }
+  }
+  const lookupKind: DocumentFetchKind = kind ?? "object";
+
+  function emitCacheMetric(
+    url: string,
+    result: "hit" | "miss",
+  ): void {
+    if (meterProvider == null) return;
+    let remoteUrl: URL | undefined;
+    try {
+      remoteUrl = new URL(url);
+    } catch {
+      remoteUrl = undefined;
+    }
+    recordDocumentCache(meterProvider, {
+      kind: lookupKind,
+      result,
+      remoteUrl,
+    });
   }
 
   return async (
@@ -132,6 +176,7 @@ export function kvCache(
       }
     }
     if (cache == null) {
+      emitCacheMetric(url, "miss");
       const remoteDoc = await loader(url, options);
       try {
         await kv.set(key, remoteDoc, { ttl: match });
@@ -143,6 +188,7 @@ export function kvCache(
       }
       return remoteDoc;
     }
+    emitCacheMetric(url, "hit");
     return cache;
   };
 }

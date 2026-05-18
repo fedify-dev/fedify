@@ -1,4 +1,8 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestMeterProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { preloadedContexts } from "@fedify/vocab-runtime";
 import { deepStrictEqual, throws } from "node:assert";
@@ -189,6 +193,122 @@ test("kvCache()", async (t) => {
       },
     });
   });
+
+  await t.step(
+    "records activitypub.document.cache with miss then hit",
+    async () => {
+      const kv = new MockKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const loader = kvCache({
+        kv,
+        loader: mockDocumentLoader,
+        rules: [["https://example.com/object", { days: 1 }]],
+        prefix: ["_test", "doc-cache"],
+        meterProvider,
+        kind: "object",
+      });
+
+      await loader("https://example.com/object");
+      const afterMiss = recorder.getMeasurements("activitypub.document.cache");
+      deepStrictEqual(afterMiss.length, 1);
+      deepStrictEqual(afterMiss[0].type, "counter");
+      deepStrictEqual(afterMiss[0].value, 1);
+      deepStrictEqual(
+        afterMiss[0].attributes["activitypub.lookup.kind"],
+        "object",
+      );
+      deepStrictEqual(
+        afterMiss[0].attributes["activitypub.lookup.result"],
+        "miss",
+      );
+      deepStrictEqual(
+        afterMiss[0].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+
+      await loader("https://example.com/object");
+      const all = recorder.getMeasurements("activitypub.document.cache");
+      deepStrictEqual(all.length, 2);
+      deepStrictEqual(all[1].attributes["activitypub.lookup.result"], "hit");
+      deepStrictEqual(
+        all[1].attributes["activitypub.lookup.kind"],
+        "object",
+      );
+      deepStrictEqual(
+        all[1].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+    },
+  );
+
+  await t.step(
+    "preloaded contexts emit no activitypub.document.cache",
+    async () => {
+      const kv = new MockKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const loader = kvCache({
+        kv,
+        loader: mockDocumentLoader,
+        prefix: ["_test", "doc-cache-preloaded"],
+        meterProvider,
+        kind: "context",
+      });
+
+      await loader("https://www.w3.org/ns/activitystreams");
+      deepStrictEqual(
+        recorder.getMeasurements("activitypub.document.cache").length,
+        0,
+        "preloaded contexts must bypass the KV cache and the cache metric",
+      );
+    },
+  );
+
+  await t.step(
+    "no cache rule match emits no activitypub.document.cache",
+    async () => {
+      const kv = new MockKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const loader = kvCache({
+        kv,
+        loader: mockDocumentLoader,
+        rules: [],
+        prefix: ["_test", "doc-cache-no-rule"],
+        meterProvider,
+        kind: "object",
+      });
+
+      await loader("https://example.com/object");
+      deepStrictEqual(
+        recorder.getMeasurements("activitypub.document.cache").length,
+        0,
+      );
+    },
+  );
+
+  await t.step(
+    "omitting meterProvider records no cache measurements",
+    async () => {
+      const kv = new MockKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // Do not pass meterProvider; the meterProvider here is only used to
+      // assert that NOTHING was recorded against this isolated test provider.
+      const loader = kvCache({
+        kv,
+        loader: mockDocumentLoader,
+        rules: [["https://example.com/object", { days: 1 }]],
+        prefix: ["_test", "doc-cache-no-mp"],
+      });
+
+      await loader("https://example.com/object");
+      await loader("https://example.com/object");
+      deepStrictEqual(
+        recorder.getMeasurements("activitypub.document.cache").length,
+        0,
+      );
+      // Reference meterProvider to avoid unused-variable lint complaints.
+      deepStrictEqual(typeof meterProvider.getMeter, "function");
+    },
+  );
 
   await t.step("preloaded contexts bypass cache", async () => {
     const kv = new MockKvStore();
