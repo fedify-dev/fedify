@@ -111,7 +111,7 @@ To be released.
     backends with `nativeRetrial` defer retry handling and therefore do
     not record `retried` or `abandoned`.  Recipient URLs, actor IDs,
     and other high-cardinality identifiers are deliberately excluded
-    from the fanout histogram.  [[#316], [#742]]
+    from the fanout histogram.  [[#316], [#742], [#770]]
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
@@ -127,6 +127,7 @@ To be released.
 [#757]: https://github.com/fedify-dev/fedify/pull/757
 [#759]: https://github.com/fedify-dev/fedify/pull/759
 [#769]: https://github.com/fedify-dev/fedify/pull/769
+[#770]: https://github.com/fedify-dev/fedify/pull/770
 
 ### @fedify/fixture
 
