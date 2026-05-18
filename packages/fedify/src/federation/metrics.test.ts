@@ -1,9 +1,11 @@
 import { createTestMeterProvider, test } from "@fedify/fixture";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
+import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
 import { FetchError } from "@fedify/vocab-runtime";
 import type { MessageQueue } from "./mq.ts";
 import {
   classifyFetchError,
+  instrumentDocumentLoader,
   recordDocumentCache,
   recordDocumentFetch,
   recordFanoutRecipients,
@@ -375,4 +377,141 @@ test("classifyFetchError() classifies any other thrown value as error", () => {
   assertEquals(classifyFetchError(new Error("nope")), { result: "error" });
   assertEquals(classifyFetchError("string error"), { result: "error" });
   assertEquals(classifyFetchError(undefined), { result: "error" });
+});
+
+test("instrumentDocumentLoader() records fetched on success", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const inner: DocumentLoader = (url) =>
+    Promise.resolve(
+      {
+        contextUrl: null,
+        documentUrl: url,
+        document: { ok: true },
+      } satisfies RemoteDocument,
+    );
+  const wrapped = instrumentDocumentLoader(inner, {
+    meterProvider,
+    kind: "object",
+    cacheEnabled: true,
+  });
+
+  const result = await wrapped("https://example.com/o");
+  assertEquals(result.document, { ok: true });
+
+  const counter = recorder.getMeasurement("activitypub.document.fetch");
+  assertEquals(counter?.attributes["activitypub.lookup.kind"], "object");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "fetched");
+  assertEquals(counter?.attributes["activitypub.remote.host"], "example.com");
+  assertEquals(counter?.attributes["activitypub.cache.enabled"], true);
+  assertEquals("http.response.status_code" in counter!.attributes, false);
+
+  const duration = recorder.getMeasurement(
+    "activitypub.document.fetch.duration",
+  );
+  assertEquals(duration?.type, "histogram");
+  assertEquals(duration?.attributes["activitypub.lookup.result"], "fetched");
+});
+
+test("instrumentDocumentLoader() records not_found on FetchError 404", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const inner: DocumentLoader = (url) =>
+    Promise.reject(
+      new FetchError(
+        url,
+        "HTTP 404",
+        new Response("", { status: 404 }),
+      ),
+    );
+  const wrapped = instrumentDocumentLoader(inner, {
+    meterProvider,
+    kind: "context",
+    cacheEnabled: false,
+  });
+
+  await assertRejects(
+    () => wrapped("https://example.com/missing"),
+    FetchError,
+  );
+
+  const counter = recorder.getMeasurement("activitypub.document.fetch");
+  assertEquals(counter?.attributes["activitypub.lookup.kind"], "context");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "not_found");
+  assertEquals(counter?.attributes["activitypub.remote.host"], "example.com");
+  assertEquals(counter?.attributes["activitypub.cache.enabled"], false);
+  assertEquals(counter?.attributes["http.response.status_code"], 404);
+});
+
+test("instrumentDocumentLoader() records network_error on TypeError", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const inner: DocumentLoader = () =>
+    Promise.reject(new TypeError("fetch failed"));
+  const wrapped = instrumentDocumentLoader(inner, {
+    meterProvider,
+    kind: "object",
+  });
+
+  await assertRejects(
+    () => wrapped("https://example.com/o"),
+    TypeError,
+  );
+
+  const counter = recorder.getMeasurement("activitypub.document.fetch");
+  assertEquals(
+    counter?.attributes["activitypub.lookup.result"],
+    "network_error",
+  );
+  assertEquals("activitypub.cache.enabled" in counter!.attributes, false);
+});
+
+test("instrumentDocumentLoader() returns inner loader unchanged when meterProvider is omitted", async () => {
+  const [, recorder] = createTestMeterProvider();
+  let callCount = 0;
+  const inner: DocumentLoader = (url) => {
+    callCount++;
+    return Promise.resolve(
+      {
+        contextUrl: null,
+        documentUrl: url,
+        document: { ok: true },
+      } satisfies RemoteDocument,
+    );
+  };
+  const wrapped = instrumentDocumentLoader(inner, { kind: "object" });
+
+  // No-instrumentation short-circuit returns the original function reference.
+  assertEquals(wrapped, inner);
+
+  await wrapped("https://example.com/o");
+  assertEquals(callCount, 1);
+  assertEquals(
+    recorder.getMeasurements("activitypub.document.fetch").length,
+    0,
+  );
+  assertEquals(
+    recorder.getMeasurements("activitypub.document.fetch.duration").length,
+    0,
+  );
+});
+
+test("instrumentDocumentLoader() omits remote.host when URL is unparseable", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const inner: DocumentLoader = (url) =>
+    Promise.resolve(
+      {
+        contextUrl: null,
+        documentUrl: url,
+        document: {},
+      } satisfies RemoteDocument,
+    );
+  const wrapped = instrumentDocumentLoader(inner, {
+    meterProvider,
+    kind: "other",
+  });
+
+  await wrapped("not a url");
+
+  const counter = recorder.getMeasurement("activitypub.document.fetch");
+  assertEquals(counter?.attributes["activitypub.lookup.kind"], "other");
+  assertEquals(counter?.attributes["activitypub.lookup.result"], "fetched");
+  assertEquals("activitypub.remote.host" in counter!.attributes, false);
 });

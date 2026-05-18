@@ -1,3 +1,4 @@
+import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { FetchError } from "@fedify/vocab-runtime";
 import {
   type Attributes,
@@ -1022,11 +1023,11 @@ export function recordDocumentCache(
  */
 export function classifyFetchError(
   error: unknown,
-): { result: LookupResult; statusCode?: number } {
+): { result: DocumentFetchResult; statusCode?: number } {
   if (error instanceof FetchError) {
     if (error.response != null) {
       const status = error.response.status;
-      const result: LookupResult = status === 404 || status === 410
+      const result: DocumentFetchResult = status === 404 || status === 410
         ? "not_found"
         : "error";
       return { result, statusCode: status };
@@ -1036,6 +1037,91 @@ export function classifyFetchError(
   if (isAbortError(error)) return { result: "network_error" };
   if (error instanceof TypeError) return { result: "network_error" };
   return { result: "error" };
+}
+
+/**
+ * Options for {@link instrumentDocumentLoader}.
+ * @since 2.3.0
+ */
+export interface InstrumentDocumentLoaderOptions {
+  /**
+   * The OpenTelemetry meter provider used to record
+   * `activitypub.document.fetch` and `activitypub.document.fetch.duration`
+   * measurements.  When omitted, the wrapper records nothing and simply
+   * delegates to the wrapped loader.
+   */
+  meterProvider?: MeterProvider;
+
+  /**
+   * The lookup kind recorded on `activitypub.lookup.kind`.  Set to
+   * `"object"` for the generic document loader, `"context"` for the
+   * context loader, and `"other"` for callers that do not fit the
+   * generic-object classification.
+   */
+  kind: DocumentFetchKind;
+
+  /**
+   * Whether the wrapped loader is cache-backed (for example via
+   * {@link import("../utils/kv-cache.ts").kvCache}).  Recorded as
+   * `activitypub.cache.enabled` on every measurement; omitted from the
+   * attribute set when the option is not set.
+   */
+  cacheEnabled?: boolean;
+}
+
+/**
+ * Wraps a {@link DocumentLoader} so each invocation records one
+ * measurement on `activitypub.document.fetch` (counter) and one on
+ * `activitypub.document.fetch.duration` (histogram), classifying the
+ * outcome via {@link classifyFetchError} when the wrapped loader throws
+ * and as `fetched` on success.  The wrapper rethrows whatever the
+ * wrapped loader throws so caller behavior is unchanged.
+ *
+ * The wrapper records the hostname of the requested URL on
+ * `activitypub.remote.host` when the URL parses; full URLs, paths, and
+ * query strings are deliberately excluded to keep cardinality bounded.
+ * HTTP status codes are recorded only when the failure carries a
+ * `Response` (currently, when the wrapped loader throws a
+ * {@link FetchError} with a non-`null` `response`).
+ * @since 2.3.0
+ */
+export function instrumentDocumentLoader(
+  loader: DocumentLoader,
+  options: InstrumentDocumentLoaderOptions,
+): DocumentLoader {
+  const meterProvider = options.meterProvider;
+  if (meterProvider == null) return loader;
+  return async (url, opts) => {
+    const start = performance.now();
+    let remoteUrl: URL | undefined;
+    try {
+      remoteUrl = new URL(url);
+    } catch {
+      remoteUrl = undefined;
+    }
+    try {
+      const result = await loader(url, opts);
+      recordDocumentFetch(meterProvider, {
+        durationMs: getDurationMs(start),
+        kind: options.kind,
+        result: "fetched",
+        remoteUrl,
+        cacheEnabled: options.cacheEnabled,
+      });
+      return result;
+    } catch (error) {
+      const classified = classifyFetchError(error);
+      recordDocumentFetch(meterProvider, {
+        durationMs: getDurationMs(start),
+        kind: options.kind,
+        result: classified.result,
+        remoteUrl,
+        cacheEnabled: options.cacheEnabled,
+        statusCode: classified.statusCode,
+      });
+      throw error;
+    }
+  };
 }
 
 /**
