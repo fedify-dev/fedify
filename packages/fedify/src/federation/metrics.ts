@@ -1,3 +1,4 @@
+import { FetchError } from "@fedify/vocab-runtime";
 import {
   type Attributes,
   type Counter,
@@ -187,6 +188,134 @@ export type LinkedDataSignatureMetricType = "RsaSignature2017";
 export type ObjectIntegrityProofMetricCryptosuite = "eddsa-jcs-2022";
 
 /**
+ * The kind of remote ActivityPub lookup, recorded as
+ * `activitypub.lookup.kind` on the public-key lookup and remote document
+ * fetch metric families.
+ *
+ *  -  `public_key`: a public key lookup performed by `fetchKey` /
+ *     `fetchKeyDetailed` (always recorded on `activitypub.key.lookup*`).
+ *  -  `actor`: a document fetch whose resolved value is an Actor.  The
+ *     bucket exists in the taxonomy for future actor-aware call sites;
+ *     today, actor documents fetched through Fedify's generic document
+ *     loader are still classified as `object` because the kind is decided
+ *     at the loader boundary, before the response is parsed.
+ *  -  `object`: a generic ActivityPub object fetch through Fedify's
+ *     document loader.  This is the default classification for
+ *     `documentLoader` invocations that do not match a more specific
+ *     bucket.
+ *  -  `context`: a JSON-LD `@context` document fetch through Fedify's
+ *     context loader.
+ *  -  `other`: a fetch that does not fit any of the above classifications.
+ * @since 2.3.0
+ */
+export type LookupKind =
+  | "public_key"
+  | "actor"
+  | "object"
+  | "context"
+  | "other";
+
+/**
+ * The terminal classification of a public-key lookup or remote document
+ * fetch, recorded as `activitypub.lookup.result` on the lookup metric
+ * families.
+ *
+ *  -  `hit`: served from a cache without going to the network.
+ *  -  `miss`: a cache was consulted and returned no entry; only used on
+ *     `activitypub.document.cache`.
+ *  -  `fetched`: the remote document or key was loaded successfully.
+ *  -  `not_found`: the remote responded with HTTP `404 Not Found` or
+ *     `410 Gone`, or otherwise reported the resource is absent.
+ *  -  `invalid`: the remote responded with content Fedify could not parse
+ *     into the expected shape.
+ *  -  `network_error`: no HTTP response was received (DNS failure, connect
+ *     timeout, abort, redirect loop, etc.).
+ *  -  `error`: any other unexpected failure.
+ * @since 2.3.0
+ */
+export type LookupResult =
+  | "hit"
+  | "miss"
+  | "fetched"
+  | "not_found"
+  | "invalid"
+  | "network_error"
+  | "error";
+
+/**
+ * The {@link LookupKind} values that can appear on remote document fetch
+ * metrics.  `public_key` lookups are reported on the
+ * `activitypub.key.lookup` metric family instead, so it is excluded here.
+ * @since 2.3.0
+ */
+export type DocumentFetchKind = Exclude<LookupKind, "public_key">;
+
+/**
+ * The {@link LookupResult} values that can appear on the
+ * `activitypub.document.fetch` and `activitypub.document.fetch.duration`
+ * metrics.  Cache `hit` / `miss` outcomes are reported on
+ * `activitypub.document.cache`, so they are excluded here.
+ * @since 2.3.0
+ */
+export type DocumentFetchResult = Exclude<LookupResult, "hit" | "miss">;
+
+/**
+ * The {@link LookupResult} values that can appear on the
+ * `activitypub.key.lookup` and `activitypub.key.lookup.duration` metrics.
+ * `miss` is a cache-internal classification that surfaces on
+ * `activitypub.document.cache` only and is not a terminal key lookup
+ * outcome, so it is excluded here.
+ * @since 2.3.0
+ */
+export type KeyLookupResult = Exclude<LookupResult, "miss">;
+
+/**
+ * Attributes accepted by {@link recordKeyLookup}.  `remoteUrl` is taken as
+ * a `URL` so that the helper can derive the hostname-only
+ * `activitypub.remote.host` attribute internally and refuse to record
+ * high-cardinality values such as full key IDs or actor URLs.
+ * @since 2.3.0
+ */
+export interface KeyLookupAttributes {
+  /** The terminal lookup result. */
+  result: KeyLookupResult;
+  /** Elapsed lookup duration in milliseconds. */
+  durationMs: number;
+  /** URL of the key, used to derive `activitypub.remote.host`. */
+  remoteUrl?: URL;
+  /** Whether the lookup path had a `KeyCache` configured. */
+  cacheEnabled: boolean;
+  /** The HTTP response status code, when an HTTP response was received. */
+  statusCode?: number;
+}
+
+/**
+ * Attributes accepted by {@link recordDocumentFetch}.
+ * @since 2.3.0
+ */
+export interface DocumentFetchAttributes {
+  kind: DocumentFetchKind;
+  result: DocumentFetchResult;
+  /** URL of the fetched document, used to derive `activitypub.remote.host`. */
+  remoteUrl?: URL;
+  /** Elapsed fetch duration in milliseconds. */
+  durationMs: number;
+  cacheEnabled?: boolean;
+  statusCode?: number;
+}
+
+/**
+ * Attributes accepted by {@link recordDocumentCache}.
+ * @since 2.3.0
+ */
+export interface DocumentCacheAttributes {
+  kind: DocumentFetchKind;
+  result: "hit" | "miss";
+  /** URL of the looked-up document, used to derive `activitypub.remote.host`. */
+  remoteUrl?: URL;
+}
+
+/**
  * Optional attributes recorded alongside an
  * `activitypub.signature.verification.duration` measurement.  Each field is
  * scoped to the matching signature kind and is omitted when its value is not
@@ -228,6 +357,11 @@ class FederationMetrics {
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
+  readonly keyLookup: Counter;
+  readonly keyLookupDuration: Histogram;
+  readonly documentFetch: Counter;
+  readonly documentFetchDuration: Histogram;
+  readonly documentCache: Counter;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -391,6 +525,81 @@ class FederationMetrics {
         "queued, retried, or abandoned.  Per-recipient delivery counters " +
         "live on `activitypub.delivery.*`.",
       unit: "{activity}",
+    });
+    this.keyLookup = meter.createCounter("activitypub.key.lookup", {
+      description:
+        "Public-key lookup attempts performed by Fedify, including both " +
+        "cache hits and remote fetches.",
+      unit: "{lookup}",
+    });
+    this.keyLookupDuration = meter.createHistogram(
+      "activitypub.key.lookup.duration",
+      {
+        description:
+          "Duration of public-key lookups performed by Fedify, including " +
+          "any remote fetch.",
+        unit: "ms",
+        advice: {
+          // Reuse the OpenTelemetry HTTP server semantic-conventions buckets
+          // since key lookups span the same 5 ms to 10 s range that other
+          // network-bound histograms in this package already use.
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
+      },
+    );
+    this.documentFetch = meter.createCounter("activitypub.document.fetch", {
+      description:
+        "Remote JSON-LD document loader invocations made by Fedify-wrapped " +
+        "loaders.",
+      unit: "{fetch}",
+    });
+    this.documentFetchDuration = meter.createHistogram(
+      "activitypub.document.fetch.duration",
+      {
+        description:
+          "Duration of remote JSON-LD document loader invocations made by " +
+          "Fedify-wrapped loaders.",
+        unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
+      },
+    );
+    this.documentCache = meter.createCounter("activitypub.document.cache", {
+      description:
+        "KV-backed document loader cache lookups, with `hit` or `miss` " +
+        "classification.",
+      unit: "{lookup}",
     });
   }
 
@@ -559,6 +768,51 @@ class FederationMetrics {
       buildActivityLifecycleAttributes(result, activityType),
     );
   }
+
+  recordKeyLookup(attrs: KeyLookupAttributes): void {
+    const attributes: Attributes = {
+      "activitypub.lookup.kind": "public_key",
+      "activitypub.lookup.result": attrs.result,
+      "activitypub.cache.enabled": attrs.cacheEnabled,
+    };
+    if (attrs.remoteUrl != null) {
+      attributes["activitypub.remote.host"] = getRemoteHost(attrs.remoteUrl);
+    }
+    if (attrs.statusCode != null) {
+      attributes["http.response.status_code"] = attrs.statusCode;
+    }
+    this.keyLookup.add(1, attributes);
+    this.keyLookupDuration.record(attrs.durationMs, attributes);
+  }
+
+  recordDocumentFetch(attrs: DocumentFetchAttributes): void {
+    const attributes: Attributes = {
+      "activitypub.lookup.kind": attrs.kind,
+      "activitypub.lookup.result": attrs.result,
+    };
+    if (attrs.remoteUrl != null) {
+      attributes["activitypub.remote.host"] = getRemoteHost(attrs.remoteUrl);
+    }
+    if (attrs.cacheEnabled != null) {
+      attributes["activitypub.cache.enabled"] = attrs.cacheEnabled;
+    }
+    if (attrs.statusCode != null) {
+      attributes["http.response.status_code"] = attrs.statusCode;
+    }
+    this.documentFetch.add(1, attributes);
+    this.documentFetchDuration.record(attrs.durationMs, attributes);
+  }
+
+  recordDocumentCache(attrs: DocumentCacheAttributes): void {
+    const attributes: Attributes = {
+      "activitypub.lookup.kind": attrs.kind,
+      "activitypub.lookup.result": attrs.result,
+    };
+    if (attrs.remoteUrl != null) {
+      attributes["activitypub.remote.host"] = getRemoteHost(attrs.remoteUrl);
+    }
+    this.documentCache.add(1, attributes);
+  }
 }
 
 function buildActivityLifecycleAttributes(
@@ -699,6 +953,89 @@ export function recordOutboxActivity(
     result,
     activityType,
   );
+}
+
+/**
+ * Records one measurement on `activitypub.key.lookup` (counter) and
+ * `activitypub.key.lookup.duration` (histogram) for a public-key lookup.
+ *
+ * `activitypub.lookup.kind` is always recorded as `public_key`; the result
+ * classification, remote host, HTTP status code (when an HTTP response was
+ * received), and `activitypub.cache.enabled` are recorded as attributes on
+ * both measurements.  Full key URLs and key IDs are deliberately omitted to
+ * keep cardinality bounded.
+ * @since 2.3.0
+ */
+export function recordKeyLookup(
+  meterProvider: MeterProvider | undefined,
+  attrs: KeyLookupAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordKeyLookup(attrs);
+}
+
+/**
+ * Records one measurement each on `activitypub.document.fetch` (counter)
+ * and `activitypub.document.fetch.duration` (histogram) for one remote
+ * JSON-LD document loader invocation, with bounded
+ * `activitypub.lookup.kind` and `activitypub.lookup.result` attributes
+ * plus the optional remote-host, cache-enabled, and HTTP status-code
+ * attributes.  Counter and histogram are always recorded together so
+ * aggregate rate and latency views stay in sync.
+ * @since 2.3.0
+ */
+export function recordDocumentFetch(
+  meterProvider: MeterProvider | undefined,
+  attrs: DocumentFetchAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordDocumentFetch(attrs);
+}
+
+/**
+ * Records one `activitypub.document.cache` measurement, classifying the
+ * lookup as `hit` (the cache returned an entry) or `miss` (the cache was
+ * consulted and returned nothing, prompting a delegate fetch).
+ * @since 2.3.0
+ */
+export function recordDocumentCache(
+  meterProvider: MeterProvider | undefined,
+  attrs: DocumentCacheAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordDocumentCache(attrs);
+}
+
+/**
+ * Classifies a thrown value from a key or document fetch into the bounded
+ * {@link LookupResult} taxonomy and, when an HTTP response was received,
+ * surfaces its status code.
+ *
+ *  -  `FetchError` with a `Response` whose status is `404` or `410`:
+ *     `result=not_found` and the response status code.
+ *  -  `FetchError` with any other `Response`: `result=error` and the
+ *     response status code.
+ *  -  `FetchError` without a `Response`: `result=network_error`.
+ *  -  An `AbortError` (typically from a cancelled fetch): `result=network_error`.
+ *  -  A bare `TypeError` (the shape native `fetch()` raises on DNS, connect,
+ *     and TLS failures before any response is observed):
+ *     `result=network_error`.
+ *  -  Any other value: `result=error`.
+ * @since 2.3.0
+ */
+export function classifyFetchError(
+  error: unknown,
+): { result: LookupResult; statusCode?: number } {
+  if (error instanceof FetchError) {
+    if (error.response != null) {
+      const status = error.response.status;
+      const result: LookupResult = status === 404 || status === 410
+        ? "not_found"
+        : "error";
+      return { result, statusCode: status };
+    }
+    return { result: "network_error" };
+  }
+  if (isAbortError(error)) return { result: "network_error" };
+  if (error instanceof TypeError) return { result: "network_error" };
+  return { result: "error" };
 }
 
 /**
