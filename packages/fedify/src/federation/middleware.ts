@@ -441,9 +441,14 @@ export class FederationImpl<TContextData>
           // per-call `DocumentLoaderFactoryOptions` (allowPrivateAddress,
           // userAgent) just like they did before this wrapper was added.
           ? userAuthFactory(identity, factoryOpts)
+          // The built-in default honors per-call `factoryOpts` overrides
+          // the same way `documentLoaderFactory` / `contextLoaderFactory`
+          // do above, falling back to the constructor-level settings when
+          // the caller did not supply an override.
           : getAuthenticatedDocumentLoader(identity, {
-            allowPrivateAddress,
-            userAgent,
+            allowPrivateAddress: factoryOpts?.allowPrivateAddress ??
+              allowPrivateAddress,
+            userAgent: factoryOpts?.userAgent ?? userAgent,
             specDeterminer: new KvSpecDeterminer(
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
