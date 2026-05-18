@@ -52,9 +52,11 @@ export type InboxActivityResult =
  * attribute.  Tracks Fedify-managed events at the outbox-task level,
  * separate from the per-delivery counters defined in #619.
  *
- *  -  `queued`: an outbox or fanout task was enqueued for the activity
- *     (initial enqueue only; subsequent retry enqueues are recorded as
- *     `retried`).
+ *  -  `queued`: an initial outbox task was enqueued for delivery.
+ *     Recorded once per recipient inbox: fanned-out activities are
+ *     counted as each per-recipient outbox task is enqueued by the
+ *     fanout worker, not at the fanout-task enqueue itself.  Retry
+ *     re-enqueues are recorded as `retried`, not `queued`.
  *  -  `retried`: Fedify scheduled a retry after a delivery failure.
  *  -  `abandoned`: the outbox retry policy gave up after exhausted
  *     attempts.
