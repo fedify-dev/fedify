@@ -21,8 +21,8 @@ test("recordFanoutRecipients() records the recipient count with activity type", 
   const [meterProvider, recorder] = createTestMeterProvider();
   recordFanoutRecipients(
     meterProvider,
-    "https://www.w3.org/ns/activitystreams#Create",
     7,
+    "https://www.w3.org/ns/activitystreams#Create",
   );
   const measurements = recorder.getMeasurements(
     "activitypub.fanout.recipients",
@@ -38,7 +38,7 @@ test("recordFanoutRecipients() records the recipient count with activity type", 
 
 test("recordFanoutRecipients() omits activity type when unknown", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
-  recordFanoutRecipients(meterProvider, undefined, 0);
+  recordFanoutRecipients(meterProvider, 0);
   const measurements = recorder.getMeasurements(
     "activitypub.fanout.recipients",
   );

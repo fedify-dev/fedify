@@ -2745,8 +2745,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     );
     recordFanoutRecipients(
       this.federation.meterProvider,
-      message.activityType,
       globalThis.Object.keys(message.inboxes).length,
+      message.activityType,
     );
     return true;
   }

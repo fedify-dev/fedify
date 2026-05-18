@@ -655,8 +655,8 @@ export function recordOutboxEnqueue(
  */
 export function recordFanoutRecipients(
   meterProvider: MeterProvider | undefined,
-  activityType: string | undefined,
   recipientCount: number,
+  activityType?: string,
 ): void {
   getFederationMetrics(meterProvider).recordFanoutRecipients(
     recipientCount,
