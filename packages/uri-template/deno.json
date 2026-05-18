@@ -29,6 +29,9 @@
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check",
     "test": "deno test --allow-env",
-    "test:old": "OLD=true deno test --allow-env old/"
+    "test:old": {
+      "command": "OLD=true deno test --allow-env old/",
+      "description": "Repository-only compatibility comparison against older libraries; expected to fail for known legacy gaps."
+    }
   }
 }
