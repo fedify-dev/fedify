@@ -149,7 +149,7 @@ To be released.
     `activitypub.key.lookup.duration` is the general-purpose
     histogram that covers non-signature key fetches as well and adds
     `http.response.status_code` and a richer
-    `activitypub.lookup.result` taxonomy.  [[#316], [#738]]
+    `activitypub.lookup.result` taxonomy.  [[#316], [#738], [#771]]
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
@@ -167,6 +167,7 @@ To be released.
 [#759]: https://github.com/fedify-dev/fedify/pull/759
 [#769]: https://github.com/fedify-dev/fedify/pull/769
 [#770]: https://github.com/fedify-dev/fedify/pull/770
+[#771]: https://github.com/fedify-dev/fedify/pull/771
 
 ### @fedify/fixture
 
