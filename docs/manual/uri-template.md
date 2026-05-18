@@ -13,7 +13,19 @@ listeners, object dispatchers, and more.  Understanding the different expansion
 types is crucial for handling identifiers correctly, especially when they
 contain special characters or URIs.
 
+Fedify's URI Template engine is published as a standalone
+package—[`@fedify/uri-template`][@fedify/uri-template]—which you can use
+independently of Fedify.  If you only need RFC 6570 expansion and round-trip
+matching, jump to [Standalone `@fedify/uri-template`
+package](#uri-template-package) below.
+
+<!-- 
+  If you don't need visualization of web page, refer text-only links:
+  https://www.rfc-editor.org/rfc/rfc6570.txt
+-->
+
 [RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
+[@fedify/uri-template]: https://jsr.io/@fedify/uri-template
 
 
 What are URI Templates?
@@ -414,11 +426,162 @@ federation.setActorDispatcher(
 ~~~~
 
 
+Standalone `@fedify/uri-template` package {#uri-template-package}
+-----------------------------------------------------------------
+
+The routing engine described above is published on its own as the
+[`@fedify/uri-template`][@fedify/uri-template] package.  It has zero runtime
+dependencies and works on Deno, Node.js, and Bun, so you can use it for plain
+[RFC 6570] URI Template expansion and matching even outside a Fedify
+application.
+
+Install it with your package manager:
+
+~~~~ bash
+deno add jsr:@fedify/uri-template  # Deno
+npm  add     @fedify/uri-template  # npm
+pnpm add     @fedify/uri-template  # pnpm
+yarn add     @fedify/uri-template  # Yarn
+bun  add     @fedify/uri-template  # Bun
+~~~~
+
+### Expanding and matching with `Template`
+
+A `Template` parses a URI Template string once and can then be reused.  Call
+`expand()` to turn variables into a URI, and `match()` to recover the variables
+from a URI (it returns `null` when the URI does not match):
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+const template = new Template("/users/{identifier}");
+
+template.expand({ identifier: "alice" });
+// → "/users/alice"
+
+template.match("/users/alice");
+// → { identifier: "alice" }
+
+template.match("/posts/42");
+// → null
+~~~~
+
+The standalone `Template` supports every RFC 6570 operator (`{var}`, `{+var}`,
+`{#var}`, `{.var}`, `{/var}`, `{;var}`, `{?var}`, and `{&var}`), so it is not
+limited to the patterns recommended for Fedify dispatchers.
+
+### Round-trip matching
+
+`match()` does not merely decode a URI—it returns variables only when expanding
+them again reproduces the *exact* input URI.  This rejects URIs that look
+plausible after decoding but could never have been produced by the template:
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+const template = new Template("/users/{identifier}");
+
+// Simple expansion percent-encodes the slash:
+template.expand({ identifier: "a/b" });
+// → "/users/a%2Fb"
+
+// The encoded form round-trips, so it matches:
+template.match("/users/a%2Fb");
+// → { identifier: "a/b" }
+
+// A literal slash could never be produced here, so there is no match:
+template.match("/users/a/b");
+// → null
+~~~~
+
+This is the same guarantee Fedify relies on to map an incoming request path
+back to a dispatcher identifier, which is why the
+[expansion type](#expansion-types) you choose matters.
+
+### Strict vs. lenient parsing
+
+By default a `Template` is *strict*: the first parse or expansion error is
+reported and then thrown.  Pass `strict: false` to collect diagnostics through
+a `report` callback without throwing.  This is useful when you want to accept
+looser input or surface warnings through your own logger:
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+// Strict (the default): the unclosed expression throws.
+try {
+  new Template("/users/{identifier");
+} catch (error) {
+  console.error(error);  // an UnclosedExpressionError
+}
+
+// Lenient: errors are reported but not thrown.
+const diagnostics: Error[] = [];
+const lenient = new Template("/users/{identifier", {
+  strict: false,
+  report: (error) => diagnostics.push(error),
+});
+lenient.expand({ identifier: "alice" });
+console.log(diagnostics);  // contains the reported parse error
+~~~~
+
+### Routing with `Router`
+
+`Router` maps many templates to names.  Register routes, resolve a URI to a
+route with `route()`, and reverse the mapping with `build()`:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.add("/users/{identifier}", "actor");
+router.add("/users/{identifier}/followers", "followers");
+
+router.route("/users/alice");
+// → { name: "actor",
+//     template: "/users/{identifier}",
+//     values: { identifier: "alice" } }
+
+router.route("/users/alice/followers");
+// → { name: "followers", … }
+
+router.build("actor", { identifier: "alice" });
+// → "/users/alice"
+~~~~
+
+Register several routes at once with `register()`, and inspect a template
+without registering it through `Router.compile()` or `Router.variables()`:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.register([
+  ["/users/{identifier}", "actor"],
+  ["/users/{identifier}/inbox", "inbox"],
+] as const);
+
+Router.variables("/users/{identifier}/posts/{id}");
+// → Set { "identifier", "id" }
+~~~~
+
+> [!NOTE]
+> The standalone `Template` and `Router` accept every RFC 6570 operator.
+> When you use URI Templates for Fedify dispatchers, however, required
+> identifiers must be bound from the request path, so follow the
+> recommendations in [Expansion types](#expansion-types) and [Common use
+> cases in Fedify](#common-use-cases-in-fedify) above rather than every
+> operator the package can parse.
+
+
 Further reading
 ---------------
 
 [RFC 6570]: URI Template
 :   The official specification
+
+[`@fedify/uri-template`][@fedify/uri-template]
+:   The standalone RFC 6570 package powering Fedify's router
 
 [Actor dispatcher](./actor.md)
 :   Learn about actor routing in Fedify
