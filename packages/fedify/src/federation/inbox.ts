@@ -205,7 +205,7 @@ export async function routeActivity<TContextData>(
     "activitypub.dispatch_inbox_listener",
     { kind: SpanKind.INTERNAL },
     async (span) => {
-      const dispatched = inboxListeners?.dispatchWithClass(activity!);
+      const dispatched = inboxListeners?.dispatchWithClass(activity);
       if (dispatched == null) {
         logger.error(
           "Unsupported activity type:\n{activity}",
@@ -213,12 +213,12 @@ export async function routeActivity<TContextData>(
         );
         span.setStatus({
           code: SpanStatusCode.UNSET,
-          message: `Unsupported activity type: ${getTypeId(activity!).href}`,
+          message: `Unsupported activity type: ${getTypeId(activity).href}`,
         });
         recordInboxActivity(
           meterProvider,
           "rejected",
-          getTypeId(activity!).href,
+          getTypeId(activity).href,
         );
         span.end();
         return "unsupportedActivity";
@@ -226,17 +226,17 @@ export async function routeActivity<TContextData>(
       const { class: cls, listener } = dispatched;
       span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
       try {
-        const activityType = getTypeId(activity!).href;
+        const activityType = getTypeId(activity).href;
         const started = performance.now();
         try {
           await listener(
             inboxContextFactory(
               recipient,
               json,
-              activity?.id?.href,
+              activity.id?.href,
               activityType,
             ),
-            activity!,
+            activity,
           );
         } finally {
           getFederationMetrics(meterProvider).recordInboxProcessingDuration(
@@ -252,7 +252,7 @@ export async function routeActivity<TContextData>(
             "An unexpected error occurred in inbox error handler:\n{error}",
             {
               error,
-              activityId: activity!.id?.href,
+              activityId: activity.id?.href,
               activity: json,
               recipient,
             },
@@ -262,7 +262,7 @@ export async function routeActivity<TContextData>(
           "Failed to process the incoming activity {activityId}:\n{error}",
           {
             error,
-            activityId: activity!.id?.href,
+            activityId: activity.id?.href,
             activity: json,
             recipient,
           },
@@ -271,7 +271,7 @@ export async function routeActivity<TContextData>(
         recordInboxActivity(
           meterProvider,
           "rejected",
-          getTypeId(activity!).href,
+          getTypeId(activity).href,
         );
         span.end();
         return "error";
@@ -279,7 +279,7 @@ export async function routeActivity<TContextData>(
       recordInboxActivity(
         meterProvider,
         "processed",
-        getTypeId(activity!).href,
+        getTypeId(activity).href,
       );
       if (cacheKey != null) {
         await kv.set(cacheKey, true, {
@@ -288,7 +288,7 @@ export async function routeActivity<TContextData>(
       }
       logger.info(
         "Activity {activityId} has been processed.",
-        { activityId: activity!.id?.href, activity: json, recipient },
+        { activityId: activity.id?.href, activity: json, recipient },
       );
       span.end();
       return "success";
