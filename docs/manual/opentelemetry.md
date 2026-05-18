@@ -363,8 +363,13 @@ Fedify records the following OpenTelemetry metrics:
         `queued`.
      -  `retried`: Fedify enqueued a retry message after a delivery
         failed and the configured `outboxRetryPolicy` returned a delay.
-     -  `abandoned`: the outbox retry policy returned `null` and Fedify
-        gave up on the recipient.
+     -  `abandoned`: Fedify gave up on the recipient.  Recorded both
+        when the outbox retry policy returned `null` after exhausted
+        attempts and when the remote responded with a permanent-failure
+        status code listed in `permanentFailureStatusCodes` (`404` and
+        `410` by default).  The per-recipient permanent-failure detail
+        (remote host, status code) stays on
+        [`activitypub.delivery.permanent_failure`](#instrumented-metrics).
 
     `activitypub.activity.type` is always present.  Per-recipient
     `sent`/`failed` views live on

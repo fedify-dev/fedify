@@ -856,6 +856,11 @@ export class FederationImpl<TContextData>
             );
           }
         }
+        recordOutboxActivity(
+          this.meterProvider,
+          "abandoned",
+          message.activityType,
+        );
         return;
       }
 

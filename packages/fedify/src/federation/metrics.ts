@@ -58,8 +58,12 @@ export type InboxActivityResult =
  *     fanout worker, not at the fanout-task enqueue itself.  Retry
  *     re-enqueues are recorded as `retried`, not `queued`.
  *  -  `retried`: Fedify scheduled a retry after a delivery failure.
- *  -  `abandoned`: the outbox retry policy gave up after exhausted
- *     attempts.
+ *  -  `abandoned`: Fedify gave up on the recipient.  Recorded both
+ *     when the outbox retry policy returns `null` after exhausted
+ *     attempts and when the remote responded with a permanent-failure
+ *     status code (`permanentFailureStatusCodes`, by default `404` or
+ *     `410`); the per-recipient permanent-failure detail still lives
+ *     on `activitypub.delivery.permanent_failure`.
  *
  * The per-recipient `sent`/`failed` view lives on
  * `activitypub.delivery.sent` and `activitypub.delivery.permanent_failure`

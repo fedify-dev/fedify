@@ -4197,6 +4197,19 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
       410,
     );
 
+    const abandoned = recorder.getMeasurements(
+      "activitypub.outbox.activity",
+    );
+    assertEquals(abandoned.length, 1);
+    assertEquals(
+      abandoned[0].attributes["activitypub.processing.result"],
+      "abandoned",
+    );
+    assertEquals(
+      abandoned[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+
     const events = exporter.getEvents(
       "activitypub.outbox",
       "activitypub.delivery.failed",
