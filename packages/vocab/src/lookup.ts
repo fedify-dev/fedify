@@ -212,6 +212,13 @@ export async function lookupObject(
       let kind: ObjectLookupKind = "other";
       try {
         const result = await lookupObjectInternal(identifier, options);
+        // Classify the result as soon as `lookupObjectInternal` returns,
+        // so that any subsequent throw (for example from
+        // `result.toJsonLd(options)` while building the span event) does
+        // not roll `kind` back to `"other"` in the `finally` block.
+        if (result != null) {
+          kind = isActor(result) ? "actor" : "object";
+        }
         if (result == null) span.setStatus({ code: SpanStatusCode.ERROR });
         else {
           if (result.id != null) {
@@ -232,8 +239,6 @@ export async function lookupObject(
               await result.toJsonLd(options),
             ),
           });
-
-          kind = isActor(result) ? "actor" : "object";
         }
         return result;
       } catch (error) {
