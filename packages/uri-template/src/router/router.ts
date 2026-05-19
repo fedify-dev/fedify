@@ -1,82 +1,19 @@
 import { Template } from "../template/mod.ts";
-import type { ExpandContext, Path, Token } from "../types.ts";
+import type { ExpandContext, ExpandValue, Path, Token } from "../types.ts";
 import { isExpression, isLiteral, isPath } from "../utils.ts";
 import { RouteTemplatePathError } from "./errors.ts";
+import { fillRouteOptions } from "./fill.ts";
 import Trie from "./trie/mod.ts";
-
-/**
- * Options for the {@link Router}.
- */
-export interface RouterOptions {
-  /**
-   * Whether to ignore trailing slashes when matching paths.
-   */
-  trailingSlashInsensitive?: boolean;
-}
-
-/**
- * The result of {@link Router.route}.
- */
-export interface RouterRouteResult {
-  /**
-   * The matched route name.
-   */
-  name: string;
-
-  /**
-   * The URI template of the matched route.
-   */
-  template: Path;
-
-  /**
-   * The values extracted from the URI.
-   */
-  values: Record<string, string>;
-}
-
-/**
- * Parsed path template ready to be registered in a {@link Router}.
- *
- * Instances returned by {@link Router.compile} are immutable and may be shared
- * safely between routers and router clones.
- */
-export interface RouterPathPattern {
-  /**
-   * The original path template string.
-   */
-  readonly path: Path;
-
-  /**
-   * Parsed URI Template.
-   */
-  readonly template: Template;
-
-  /**
-   * Variable names found in the template.
-   */
-  readonly variables: ReadonlySet<string>;
-}
-
-/**
- * Route definition accepted by {@link Router#register}, the {@link Router}
- * constructor, and {@link Router.from}.  The first element is either a path
- * template string or a pre-parsed {@link RouterPathPattern} from
- * {@link Router.compile}; the second element is the route name.
- */
-export type RouterRoute = readonly [
-  pathOrPattern: Path | RouterPathPattern,
-  name: string,
-];
-
-interface RouteEntry {
-  readonly index: number;
-  readonly name: string;
-  readonly pattern: RouterPathPattern;
-  readonly tokens: readonly Token[];
-  readonly initialLiteralPrefix: string;
-  readonly literalLength: number;
-  readonly variableCount: number;
-}
+import type {
+  PartialRouterRoute,
+  RouteEntry,
+  RouteOptions,
+  RouterOptions,
+  RouterPathPattern,
+  RouterRoute,
+  RouterRouteResult,
+  VariableConstraint,
+} from "./types.ts";
 
 /**
  * Router that resolves URIs against registered RFC 6570 templates.
@@ -101,10 +38,10 @@ export default class Router {
    * @param routes Routes to register on the new router.
    * @param options Options for the router.
    */
-  constructor(routes: Iterable<RouterRoute>, options?: RouterOptions);
+  constructor(routes: Iterable<PartialRouterRoute>, options?: RouterOptions);
   constructor(options?: RouterOptions);
   constructor(
-    routesOrOptions?: Iterable<RouterRoute> | RouterOptions,
+    routesOrOptions?: Iterable<PartialRouterRoute> | RouterOptions,
     maybeOptions?: RouterOptions,
   ) {
     const routes = isRoutesArgument(routesOrOptions)
@@ -126,10 +63,13 @@ export default class Router {
    * interface and is provided for ergonomic call sites that prefer a
    * static factory over `new`.
    */
-  static from(routes: Iterable<RouterRoute>, options?: RouterOptions): Router;
+  static from(
+    routes: Iterable<PartialRouterRoute>,
+    options?: RouterOptions,
+  ): Router;
   static from(options?: RouterOptions): Router;
   static from(
-    routesOrOptions?: Iterable<RouterRoute> | RouterOptions,
+    routesOrOptions?: Iterable<PartialRouterRoute> | RouterOptions,
     options?: RouterOptions,
   ): Router {
     return new Router(routesOrOptions as Iterable<RouterRoute>, options);
@@ -174,13 +114,23 @@ export default class Router {
    *                      {@link RouterPathPattern} produced by
    *                      {@link Router.compile}.
    * @param name The name of the path.
+   * @param options Per-route options, including per-variable constraints.
    */
-  add = (pathOrPattern: Path | RouterPathPattern, name: string): void => {
+  add: (...args: PartialRouterRoute) => void = (
+    pathOrPattern,
+    name,
+    options?,
+  ): void => {
     const pattern = resolvePathPattern(pathOrPattern);
     const previous = this.#routesByName.get(name);
     if (previous != null) this.#trie.remove(previous);
 
-    const entry = createRouteEntry({ index: this.#index, name, pattern });
+    const entry = createRouteEntry({
+      index: this.#index,
+      name,
+      pattern,
+      options: fillRouteOptions(options, pattern),
+    });
 
     this.#routesByName.set(name, entry);
     this.#trie.insert(entry);
@@ -190,21 +140,23 @@ export default class Router {
    * Registers multiple path rules at once.
    * @param routes Iterable of `[pathOrPattern, name]` pairs to register.
    */
-  register = (routes: Iterable<RouterRoute>): void => {
-    const resolved = Array.from(routes).map(
-      ([pathOrPattern, name]): [string, RouterPathPattern] => [
-        name,
-        resolvePathPattern(pathOrPattern),
-      ],
-    );
-
-    const pending = new Map<string, RouteEntry>();
-    for (const [name, pattern] of resolved) {
-      pending.set(
-        name,
-        createRouteEntry({ index: this.#index, name, pattern }),
+  register = (routes: Iterable<PartialRouterRoute>): void => {
+    const resolved = Iterator.from(routes)
+      .map(([pathOrPattern, name, options]) =>
+        [resolvePathPattern(pathOrPattern), name, options] as const
+      ).map(([pattern, name, options]) =>
+        [
+          name,
+          createRouteEntry({
+            index: this.#index,
+            name,
+            pattern,
+            options: fillRouteOptions(options, pattern),
+          }),
+        ] as const
       );
-    }
+
+    const pending = new Map<string, RouteEntry>(resolved);
 
     for (const name of pending.keys()) {
       const committed = this.#routesByName.get(name);
@@ -226,25 +178,31 @@ export default class Router {
    * @returns The name of the path and its values, if any match.  Otherwise,
    *          `null`.
    */
-  route = (url: Path): RouterRouteResult | null => {
-    const match = this.#route(url);
-    if (match != null || !this.trailingSlashInsensitive) return match;
+  route = <
+    TConstraints extends Record<string, VariableConstraint> = Record<
+      never,
+      never
+    >,
+  >(url: Path): RouterRouteResult<TConstraints> | null =>
+    this.#route(url) ??
+      (this.trailingSlashInsensitive
+        ? this.#route(toggleTrailingSlash(url))
+        : null);
 
-    return this.#route(toggleTrailingSlash(url));
-  };
-
-  #route(url: Path): RouterRouteResult | null {
+  #route<
+    TConstraints extends Record<string, VariableConstraint>,
+  >(url: Path): RouterRouteResult<TConstraints> | null {
     for (const entry of this.#trie.candidates(url)) {
       const context = entry.pattern.template.match(url);
       if (context == null) continue;
 
-      const values = toRouteValues(context);
+      const values = resolveValues(context, entry);
       if (values == null) continue;
 
       return {
         name: entry.name,
         template: entry.pattern.path,
-        values,
+        values: values as RouterRouteResult<TConstraints>["values"],
       };
     }
 
@@ -257,7 +215,15 @@ export default class Router {
    * @param values The values to expand the path with.
    * @returns The URL/path, if the name exists.  Otherwise, `null`.
    */
-  build = (name: string, values: Record<string, string>): Path | null =>
+  build = <
+    TConstraints extends Record<string, VariableConstraint> = Record<
+      never,
+      never
+    >,
+  >(
+    name: string,
+    values: RouterRouteResult<TConstraints>["values"],
+  ): Path | null =>
     (this.#routesByName.get(name)
       ?.pattern.template.expand(values) ?? null) as Path | null;
 
@@ -277,20 +243,20 @@ export default class Router {
   #activeEntries = (): RouterRoute[] =>
     Array.from(this.#routesByName.values())
       .sort((left, right) => left.index - right.index)
-      .map((entry) => [entry.pattern, entry.name]);
-}
-
-interface CreateRouteEntryOptions {
-  readonly index: number;
-  readonly name: string;
-  readonly pattern: RouterPathPattern;
+      .map((entry) => [entry.pattern, entry.name, entry.options]);
 }
 
 const createRouteEntry = ({
   index,
   name,
   pattern,
-}: CreateRouteEntryOptions): RouteEntry => ({
+  options,
+}: {
+  readonly index: number;
+  readonly name: string;
+  readonly pattern: RouterPathPattern;
+  readonly options: RouteOptions;
+}): RouteEntry => ({
   index,
   name,
   pattern,
@@ -298,6 +264,8 @@ const createRouteEntry = ({
   initialLiteralPrefix: getInitialLiteralPrefix(pattern.template.tokens),
   literalLength: getLiteralLength(pattern.template.tokens),
   variableCount: pattern.variables.size,
+  options,
+  constraints: new Map(Object.entries(options.variables)),
 });
 
 const resolvePathPattern = (
@@ -306,8 +274,8 @@ const resolvePathPattern = (
   typeof value === "string" ? Router.compile(value) : value;
 
 const isRoutesArgument = (
-  value: Iterable<RouterRoute> | RouterOptions | undefined,
-): value is Iterable<RouterRoute> =>
+  value: Iterable<PartialRouterRoute> | RouterOptions | undefined,
+): value is Iterable<PartialRouterRoute> =>
   value != null &&
   typeof value === "object" &&
   Symbol.iterator in (value as object);
@@ -350,15 +318,50 @@ const getLiteralLength = (tokens: readonly Token[]): number =>
     0,
   );
 
-const toRouteValues = (
+/**
+ * Applies the resolved per-variable constraints to a matched context,
+ * producing the route values or `null` when a constraint rejects the match
+ * (so the caller falls back to the next candidate).
+ */
+const resolveValues = (
   context: ExpandContext,
-): Record<string, string> | null => {
-  const values: Record<string, string> = {};
+  entry: RouteEntry,
+): Record<string, string | readonly string[]> | null => {
+  const values: Record<string, string | readonly string[]> = {};
 
-  for (const [key, value] of Object.entries(context)) {
-    if (typeof value !== "string") return null;
-    values[key] = value;
+  for (const [name, constraint] of entry.constraints) {
+    const raw: ExpandValue | undefined = context[name];
+
+    if (constraint.multiple) {
+      const list = toStringList(raw);
+      if (list == null) return null;
+      const empty = list.length < 1 || list.every((item) => item === "");
+      if (empty && !constraint.nullable) return null;
+      values[name] = list;
+      continue;
+    }
+
+    if (typeof raw === "string") {
+      if (raw === "" && !constraint.nullable) return null;
+      values[name] = raw;
+    } else if (!constraint.nullable) {
+      // Unbound, or bound to a list/associative value: not a scalar match.
+      return null;
+    }
   }
 
   return values;
+};
+
+const toStringList = (
+  value: ExpandValue | undefined,
+): readonly string[] | null => {
+  if (value === undefined) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    return value.every((item) => typeof item === "string")
+      ? (value as readonly string[])
+      : null;
+  }
+  return null;
 };

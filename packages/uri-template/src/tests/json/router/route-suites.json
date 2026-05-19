@@ -305,7 +305,13 @@
     "routeDefinitions": [
       [
         "/search{?q,page}",
-        "search"
+        "search",
+        {
+          "variables": {
+            "q": { "nullable": true },
+            "page": { "nullable": true }
+          }
+        }
       ]
     ],
     "cases": [

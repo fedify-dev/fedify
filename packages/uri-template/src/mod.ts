@@ -6,12 +6,25 @@
  * @module
  */
 
-export { Router, RouterError, RouteTemplatePathError } from "./router/mod.ts";
+export {
+  ConflictingVarSpecError,
+  DisallowedOperatorError,
+  DisallowedVarSpecModifierError,
+  DuplicateRouteVariableError,
+  Router,
+  RouterError,
+  RouteTemplateOptionsNotMatchedError,
+  RouteTemplatePathError,
+} from "./router/mod.ts";
 export type {
+  ConstraintValue,
+  RouteOptions,
   RouterOptions,
   RouterPathPattern,
   RouterRoute,
   RouterRouteResult,
+  RouteValues,
+  VariableConstraint,
 } from "./router/mod.ts";
 export {
   EmptyExpressionError,

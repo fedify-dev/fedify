@@ -149,15 +149,19 @@ function validateMatchCase(c: unknown): void {
 
 function validateRouteDefinition(value: unknown): void {
   if (
-    !Array.isArray(value) || value.length !== 2 ||
+    !Array.isArray(value) || value.length < 2 || value.length > 3 ||
     typeof value[1] !== "string"
   ) {
     throw new TypeError(
-      "each route definition must be a [path: string, name: string] tuple",
+      "each route definition must be a [path: string, name: string, " +
+        "options?: object] tuple",
     );
   }
 
   assertPath(value[0], "router route definition path");
+  if (value.length === 3 && value[2] !== undefined) {
+    assertObject(value[2], "router route definition options");
+  }
 }
 
 function validateRouterBuildCase(value: unknown): void {

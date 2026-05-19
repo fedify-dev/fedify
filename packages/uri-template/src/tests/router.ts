@@ -1,5 +1,6 @@
 import { deepEqual, equal, throws } from "node:assert/strict";
 import * as ERROR_CLASSES from "../router/errors.ts";
+import type { VariableConstraint } from "../router/mod.ts";
 import type { Path } from "../types.ts";
 
 type ErrorName = keyof typeof ERROR_CLASSES;
@@ -14,8 +15,15 @@ interface RouterRouteResult {
   readonly values: Record<string, string>;
 }
 
+type RouteOptionsInput = {
+  readonly variables?: Readonly<
+    Record<string, Partial<VariableConstraint>>
+  >;
+  readonly exact?: boolean;
+};
+
 interface RouterInstance<TPattern> {
-  add(pattern: Path, name: string): void;
+  add(pattern: Path, name: string, options?: RouteOptionsInput): void;
   build(name: string, values: Record<string, string>): Path | null;
   has(name: string): boolean;
   route(path: Path): RouterRouteResult | null;
@@ -32,7 +40,11 @@ interface RouterExtendedConstructor<TPattern>
   variables(path: Path): Set<string>;
 }
 
-export type RouterRouteDefinition = readonly [path: Path, name: string];
+export type RouterRouteDefinition = readonly [
+  path: Path,
+  name: string,
+  options?: RouteOptionsInput,
+];
 
 export type RouterBuildCase = readonly [
   routeName: string,
@@ -218,8 +230,8 @@ const createRouterFromDefinitions = <TPattern>(
 ): RouterInstance<TPattern> => {
   const router = new Router(options);
 
-  for (const [path, name] of definitions) {
-    router.add(path, name);
+  for (const [path, name, routeOptions] of definitions) {
+    router.add(path, name, routeOptions);
   }
 
   return router;
@@ -236,9 +248,9 @@ export function createRouterAddTest<TPattern>(
   async (t: Deno.TestContext): Promise<void> => {
     const router = new Router();
 
-    for (const [path, name] of definitions) {
+    for (const [path, name, routeOptions] of definitions) {
       await t.step(`${path} as ${name}`, () => {
-        equal(router.add(path, name), undefined);
+        equal(router.add(path, name, routeOptions), undefined);
         equal(router.has(name), true);
       });
     }
@@ -365,13 +377,13 @@ export function createRouterCloneTest<TPattern>(
     for (const suite of suites) {
       await t.step(suite.name, () => {
         const original = new Router(suite.options);
-        for (const [path, name] of suite.routeDefinitions) {
-          original.add(path, name);
+        for (const [path, name, routeOptions] of suite.routeDefinitions) {
+          original.add(path, name, routeOptions);
         }
         const clone = original.clone();
 
-        for (const [path, name] of suite.clonedRouteDefinitions) {
-          clone.add(path, name);
+        for (const [path, name, routeOptions] of suite.clonedRouteDefinitions) {
+          clone.add(path, name, routeOptions);
         }
         for (const [, name] of suite.routeDefinitions) {
           equal(original.has(name), true);

@@ -16,7 +16,16 @@ import {
   routerVariablesCases,
 } from "../tests/mod.ts";
 import type { ExpandContext, Path } from "../types.ts";
-import Router, { type RouterPathPattern, type RouterRoute } from "./router.ts";
+import {
+  ConflictingVarSpecError,
+  DisallowedOperatorError,
+  DisallowedVarSpecModifierError,
+  DuplicateRouteVariableError,
+  RouterError,
+  RouteTemplateOptionsNotMatchedError,
+} from "./errors.ts";
+import Router from "./router.ts";
+import type { PartialRouterRoute, RouterPathPattern } from "./types.ts";
 
 const runAddCases = createRouterAddTest(Router);
 test("Router.add()", runAddCases(routerRouteDefinitions));
@@ -53,7 +62,7 @@ for (
   );
 }
 
-const sampleRoutes: readonly RouterRoute[] = [
+const sampleRoutes: readonly PartialRouterRoute[] = [
   ["/users/{id}", "user"] as const,
   ["/posts/{id}", "post"] as const,
   ["/users/{id}/posts/{postId}", "userPost"] as const,
@@ -92,9 +101,12 @@ test("Router indexes shared dynamic prefixes before template matching", () => {
     ["/ap/{identifier}/followers", "followers"],
     ["/ap/{identifier}/following", "following"],
     ["/ap/{identifier}/featured", "featured"],
-  ] as const satisfies readonly RouterRoute[];
+  ] as const satisfies readonly PartialRouterRoute[];
   const routes = routeDefinitions.map(
-    ([path, name]): RouterRoute => [createCountingPattern(path, calls), name],
+    ([path, name]): PartialRouterRoute => [
+      createCountingPattern(path, calls),
+      name,
+    ],
   );
   const router = new Router(routes);
 
@@ -121,8 +133,8 @@ test(
       ["/{identifier}/followers", "followers"],
       ["/{tenant}/users/{identifier}/inbox", "tenantInbox"],
       ["/{tenant}/users/{identifier}/outbox", "tenantOutbox"],
-    ] as const satisfies readonly RouterRoute[];
-    const routes = routeDefinitions.map(([path, name]): RouterRoute => [
+    ] as const satisfies readonly PartialRouterRoute[];
+    const routes = routeDefinitions.map(([path, name]): PartialRouterRoute => [
       createCountingPattern(path, calls),
       name,
     ]);
@@ -146,7 +158,10 @@ test("Router preserves priority across state and fallback tries", () => {
   const router = new Router([
     ["/{id}", "state"],
     ["/@{identifier}", "state"],
-    ["/x{first,second}", "fallback"],
+    ["/x{first,second}", "fallback", {
+      exact: false,
+      variables: { second: { nullable: true } },
+    }],
   ]);
 
   deepEqual(router.route("/xalice"), {
@@ -191,7 +206,7 @@ test("Router#register() registers all routes in one call", async (t) => {
   });
 
   await t.step("accepts non-array iterables", () => {
-    function* iter(): Generator<RouterRoute> {
+    function* iter(): Generator<PartialRouterRoute> {
       for (const route of sampleRoutes) yield route;
     }
     const fromGenerator = new Router();
@@ -556,3 +571,465 @@ test("Router.from() mirrors the constructor", async (t) => {
     equal(router.trailingSlashInsensitive, true);
   });
 });
+
+test("Router applies the default nullable:false constraint", async (t) => {
+  const router = new Router([["/users/{id}", "user"]]);
+
+  await t.step("non-empty single binding matches", () => {
+    deepEqual(router.route("/users/alice"), {
+      name: "user",
+      template: "/users/{id}",
+      values: { id: "alice" },
+    });
+  });
+
+  await t.step("empty segment does not match", () => {
+    equal(router.route("/users/"), null);
+  });
+
+  await t.step("optional operator registers but no-matches unbound", () => {
+    const optional = new Router([["/users{?id}", "user"]]);
+    equal(optional.route("/users"), null);
+    deepEqual(optional.route("/users?id=alice"), {
+      name: "user",
+      template: "/users{?id}",
+      values: { id: "alice" },
+    });
+  });
+});
+
+test(
+  "Router registers every optional operator but no-matches when unbound",
+  async (t) => {
+    // CuHf6 plan item 5: each optional RFC 6570 operator must register
+    // successfully yet, under the default nullable:false constraint,
+    // produce a runtime no-match when the variable is left unbound.
+    const operators: ReadonlyArray<{
+      readonly operator: string;
+      readonly template: Path;
+      readonly unbound: readonly Path[];
+      readonly bound: Path;
+    }> = [
+      {
+        operator: "{?identifier}",
+        template: "/users{?identifier}",
+        unbound: ["/users"],
+        bound: "/users?identifier=alice",
+      },
+      {
+        operator: "{;identifier}",
+        template: "/users{;identifier}",
+        unbound: ["/users"],
+        bound: "/users;identifier=alice",
+      },
+      {
+        operator: "{.identifier}",
+        template: "/users{.identifier}",
+        unbound: ["/users"],
+        bound: "/users.alice",
+      },
+      {
+        operator: "{/identifier}",
+        template: "/users{/identifier}",
+        unbound: ["/users", "/users/"],
+        bound: "/users/alice",
+      },
+      {
+        operator: "{&identifier}",
+        template: "/users?fixed=true{&identifier}",
+        unbound: ["/users?fixed=true"],
+        bound: "/users?fixed=true&identifier=alice",
+      },
+      {
+        operator: "{#identifier}",
+        template: "/users{#identifier}",
+        unbound: ["/users"],
+        bound: "/users#alice",
+      },
+    ];
+
+    for (const { operator, template, unbound, bound } of operators) {
+      await t.step(operator, () => {
+        // Registration succeeds for every RFC 6570 operator.
+        const router = new Router([[template, "user"]]);
+        // The default nullable:false constraint rejects the unbound form.
+        for (const url of unbound) equal(router.route(url), null);
+        // A bound value still matches.
+        deepEqual(router.route(bound), {
+          name: "user",
+          template,
+          values: { identifier: "alice" },
+        });
+      });
+    }
+  },
+);
+
+test("Router honors nullable:true override", () => {
+  const router = new Router([
+    ["/users{?id}", "user", { variables: { id: { nullable: true } } }],
+  ]);
+
+  deepEqual(router.route("/users"), {
+    name: "user",
+    template: "/users{?id}",
+    values: {},
+  });
+  deepEqual(router.route("/users?id=alice"), {
+    name: "user",
+    template: "/users{?id}",
+    values: { id: "alice" },
+  });
+});
+
+test("Router falls back past constraint-rejected candidates", () => {
+  const router = new Router([
+    ["/users/{id}", "strict"],
+    [
+      "/users/{rest}",
+      "loose",
+      { variables: { rest: { nullable: true } } },
+    ],
+  ]);
+
+  // "/users/" fails the strict route (empty id) and falls through to the
+  // nullable route registered for the same shape.
+  deepEqual(router.route("/users/"), {
+    name: "loose",
+    template: "/users/{rest}",
+    values: { rest: "" },
+  });
+});
+
+test("Router derives multiple from the varspec", async (t) => {
+  await t.step("explode requires explodable opt-in", () => {
+    throws(() => new Router([["/tags/{tags*}", "tags"]]), RouterError);
+  });
+
+  await t.step("explode binds a readonly string list", () => {
+    const router = new Router([
+      ["/tags/{tags*}", "tags", { variables: { tags: { explodable: true } } }],
+    ]);
+    deepEqual(router.route("/tags/a,b,c"), {
+      name: "tags",
+      template: "/tags/{tags*}",
+      values: { tags: ["a", "b", "c"] },
+    });
+  });
+
+  await t.step("explode rejects multiple:false", () => {
+    throws(
+      () =>
+        new Router([
+          ["/tags/{tags*}", "tags", {
+            variables: { tags: { explodable: true, multiple: false } },
+          }],
+        ]),
+      RouterError,
+    );
+  });
+
+  await t.step("prefix requires prefixable opt-in", () => {
+    throws(() => new Router([["/u/{id:3}", "u"]]), RouterError);
+  });
+
+  await t.step("prefix rejects multiple:true", () => {
+    throws(
+      () =>
+        new Router([
+          [
+            "/u/{id:3}",
+            "u",
+            { variables: { id: { prefixable: true, multiple: true } } },
+          ],
+        ]),
+      RouterError,
+    );
+  });
+
+  await t.step("empty list does not match", () => {
+    const router = new Router([
+      ["/tags{?tags*}", "tags", { variables: { tags: { explodable: true } } }],
+    ]);
+    equal(router.route("/tags"), null);
+  });
+});
+
+test("Router rejects unknown option variables", () => {
+  throws(
+    () =>
+      new Router([
+        ["/users/{id}", "user", { variables: { nope: { nullable: true } } }],
+      ]),
+    RouterError,
+  );
+});
+
+test("Router.add() rejects an option variable absent from the path", () => {
+  const router = new Router();
+  throws(
+    () =>
+      router.add("/users/{id}", "user", {
+        variables: { identifier: { nullable: false } },
+      }),
+    RouterError,
+  );
+  // The failed add() must not register the route.
+  equal(router.has("user"), false);
+});
+
+test("Router reports every mismatched option variable under exact", () => {
+  let caught: unknown;
+  try {
+    // `who` is unknown; the template variable `id` is missing.
+    new Router([
+      ["/users/{id}/{kind}", "user", {
+        variables: { kind: { nullable: true }, who: { nullable: true } },
+      }],
+    ]);
+  } catch (error) {
+    caught = error;
+  }
+  if (!(caught instanceof RouteTemplateOptionsNotMatchedError)) {
+    throw new Error("expected RouteTemplateOptionsNotMatchedError");
+  }
+  equal(caught.template, "/users/{id}/{kind}");
+  deepEqual([...caught.variable].sort(), ["id", "who"]);
+});
+
+test("Router.add() with exact:false ignores absent option variables", () => {
+  const router = new Router();
+  router.add("/users/{id}", "user", {
+    exact: false,
+    variables: { nope: { nullable: true }, id: { nullable: true } },
+  });
+  equal(router.has("user"), true);
+  // The bogus `nope` key is ignored; the real `id` override still applies.
+  deepEqual(router.route("/users/"), {
+    name: "user",
+    template: "/users/{id}",
+    values: { id: "" },
+  });
+});
+
+test("Router rejects contradictory varspecs for one name", () => {
+  let caught: unknown;
+  try {
+    new Router([["/x/{x}/{x*}", "x"]]);
+  } catch (error) {
+    caught = error;
+  }
+  if (!(caught instanceof ConflictingVarSpecError)) {
+    throw new Error("expected ConflictingVarSpecError");
+  }
+  equal(caught.template, "/x/{x}/{x*}");
+  equal(caught.variable, "x");
+});
+
+test("Router rejects a duplicated variable unless duplicable:true", () => {
+  throws(
+    () => new Router([["/x/{x}/y/{x}", "x"]]),
+    DuplicateRouteVariableError,
+  );
+
+  // Opting in allows the repeated occurrence; bindings must still agree.
+  const router = new Router([
+    ["/x/{x}/y/{x}", "x", { variables: { x: { duplicable: true } } }],
+  ]);
+  deepEqual(router.route("/x/a/y/a"), {
+    name: "x",
+    template: "/x/{x}/y/{x}",
+    values: { x: "a" },
+  });
+  equal(router.route("/x/a/y/b"), null);
+});
+
+test("Router gates explode/prefix behind explodable/prefixable", () => {
+  throws(
+    () => new Router([["/u/{id:3}", "u"]]),
+    DisallowedVarSpecModifierError,
+  );
+  throws(
+    () => new Router([["/t/{tags*}", "t"]]),
+    DisallowedVarSpecModifierError,
+  );
+
+  let caught: unknown;
+  try {
+    new Router([["/u/{id:3}", "u"]]);
+  } catch (error) {
+    caught = error;
+  }
+  if (!(caught instanceof DisallowedVarSpecModifierError)) {
+    throw new Error("expected DisallowedVarSpecModifierError");
+  }
+  equal(caught.modifier, "prefix");
+  equal(caught.variable, "id");
+
+  // Opting in registers; prefix yields a single truncated scalar.
+  const prefixed = new Router([
+    ["/u/{id:3}", "u", { variables: { id: { prefixable: true } } }],
+  ]);
+  equal(prefixed.has("u"), true);
+
+  const exploded = new Router([
+    ["/t/{tags*}", "t", { variables: { tags: { explodable: true } } }],
+  ]);
+  deepEqual(exploded.route("/t/a,b"), {
+    name: "t",
+    template: "/t/{tags*}",
+    values: { tags: ["a", "b"] },
+  });
+});
+
+test("Router restricts operators via the operatables allow-list", () => {
+  // Empty allow-list (the default) permits any operator.
+  const any = new Router([["/users{/id}", "any"]]);
+  deepEqual(any.route("/users/alice"), {
+    name: "any",
+    template: "/users{/id}",
+    values: { id: "alice" },
+  });
+
+  // A non-empty allow-list rejects operators outside it at registration.
+  let caught: unknown;
+  try {
+    new Router([
+      ["/users{/id}", "x", { variables: { id: { operatables: [""] } } }],
+    ]);
+  } catch (error) {
+    caught = error;
+  }
+  if (!(caught instanceof DisallowedOperatorError)) {
+    throw new Error("expected DisallowedOperatorError");
+  }
+  equal(caught.template, "/users{/id}");
+  equal(caught.variable, "id");
+  equal(caught.operator, "/");
+
+  // The operator is accepted when it is in the allow-list.
+  const allowed = new Router([
+    ["/users{/id}", "x", { variables: { id: { operatables: ["/"] } } }],
+  ]);
+  deepEqual(allowed.route("/users/alice"), {
+    name: "x",
+    template: "/users{/id}",
+    values: { id: "alice" },
+  });
+
+  // Plain `{id}` uses the "" operator; allow-listing only "/" rejects it.
+  throws(
+    () =>
+      new Router([
+        ["/users/{id}", "y", { variables: { id: { operatables: ["/"] } } }],
+      ]),
+    DisallowedOperatorError,
+  );
+});
+
+test("Router treats a comma segment as no-match, %2C as the value", () => {
+  const router = new Router([["/notes/{id}", "note"]]);
+  equal(router.route("/notes/a,b"), null);
+  deepEqual(router.route("/notes/a%2Cb"), {
+    name: "note",
+    template: "/notes/{id}",
+    values: { id: "a,b" },
+  });
+});
+
+test("Router.clone() preserves resolved constraints", () => {
+  const router = new Router([
+    ["/users{?id}", "user", { variables: { id: { nullable: true } } }],
+  ]);
+  const clone = router.clone();
+
+  deepEqual(clone.route("/users"), {
+    name: "user",
+    template: "/users{?id}",
+    values: {},
+  });
+});
+
+test("Router.route() narrows values via the type argument", () => {
+  const router = new Router([
+    ["/tags/{tags*}", "tags", { variables: { tags: { explodable: true } } }],
+  ]);
+  const result = router.route<
+    {
+      tags: {
+        nullable: false;
+        multiple: true;
+        duplicable: false;
+        prefixable: false;
+        explodable: true;
+        operatables: [];
+      };
+    }
+  >("/tags/a,b");
+  if (result == null) throw new Error("expected a match");
+  const tags: readonly string[] = result.values.tags;
+  deepEqual(tags, ["a", "b"]);
+});
+
+test("DisallowedVarSpecModifierError", () => {
+  const router = new Router();
+  throws(
+    () => router.add("/users/{identifier*}/outbox", "outbox"),
+    DisallowedVarSpecModifierError,
+  );
+  throws(
+    () => router.add("/users/{identifier:3}/outbox", "outbox"),
+    DisallowedVarSpecModifierError,
+  );
+});
+
+test(
+  "Router supports leading path expansion that Fedify's builder rejects",
+  async (t) => {
+    // The standalone `@fedify/uri-template` Router supports leading path
+    // expansion such as `{/identifier}/inbox`, even though Fedify's
+    // required-identifier builder routes reject it (the callback contract
+    // needs a non-empty `identifier`).  This test pins the affirmative
+    // half of that split so the README/manual claim cannot go stale.  See
+    // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+    await t.step("registers and matches a bound leading segment", () => {
+      const router = new Router([["{/identifier}/inbox", "inbox"]]);
+      deepEqual(router.route("/alice/inbox"), {
+        name: "inbox",
+        template: "{/identifier}/inbox",
+        values: { identifier: "alice" },
+      });
+      // Round-trip: a successful match expands back to the same URI.
+      equal(router.build("inbox", { identifier: "alice" }), "/alice/inbox");
+    });
+
+    await t.step("default nullable:false no-matches the unbound form", () => {
+      const router = new Router([["{/identifier}/inbox", "inbox"]]);
+      // `{/identifier}` with no binding expands to nothing, so the URI
+      // collapses to `/inbox`; the default constraint rejects it instead
+      // of invoking a handler with a missing identifier.
+      equal(router.route("/inbox"), null);
+      equal(router.route("//inbox"), null);
+    });
+
+    await t.step("nullable:true opts the unbound form back in", () => {
+      const router = new Router([
+        [
+          "{/identifier}/inbox",
+          "inbox",
+          { variables: { identifier: { nullable: true } } },
+        ],
+      ]);
+      deepEqual(router.route("/inbox"), {
+        name: "inbox",
+        template: "{/identifier}/inbox",
+        values: {},
+      });
+      deepEqual(router.route("/alice/inbox"), {
+        name: "inbox",
+        template: "{/identifier}/inbox",
+        values: { identifier: "alice" },
+      });
+    });
+  },
+);

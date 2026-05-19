@@ -100,8 +100,15 @@ The important differences are:
     Unicode text.  Those values do not round-trip to the original URI under the
     same template.
  -  Path templates are validated by `Router.compile()` before registration.
-    The new router supports ordinary slash-prefixed paths and the leading path
-    expansion form used by Fedify routes, such as `{/identifier}/inbox`.
+    The standalone router accepts ordinary slash-prefixed paths and the
+    leading path-expansion form—a template that begins with a `{/var}`
+    expression, such as `{/identifier}/inbox`.  Accepting that shape is a
+    standalone-router capability and is independent of Fedify: Fedify's own
+    dispatcher routes apply a non-empty constraint to required identifiers
+    (`nullable` defaults to `false`), so a leading path-expansion route
+    registers but only matches when the variable is actually bound, and the
+    Fedify builder may reject such a shape for routes whose callback
+    contract requires a concrete `identifier`.
  -  `Router.variables()` and `Router.compile()` expose variable extraction
     without mutating a router.  The legacy `Router.add()` returned variables as
     a side effect of registering the route.
@@ -135,8 +142,111 @@ Features
     `{&var}`)
  -  Round-trip pattern matching that mirrors expansion: when `match(uri)`
     returns values, `expand(values) === uri`
+ -  Per-variable matching constraints (`nullable`, `multiple`) with safe
+    defaults
  -  Strict TypeScript types with no `any` in the public surface
  -  Zero runtime dependencies
+
+
+Route variable constraints
+--------------------------
+
+`Router` registers every RFC 6570 operator, but matching is constrained
+per template variable.  `Router.add()`, `Router.register()`, the
+constructor, and `Router.from()` accept the route as a
+`[pathOrPattern, name, options?]` tuple, where the optional third element
+is the per-route options object:
+
+~~~~ typescript
+import { Router } from "@fedify/uri-template";
+
+const router = new Router();
+router.add("/users/{identifier}", "actor");
+router.add("/search{?q}", "search", {
+  variables: { q: { nullable: true } },
+});
+~~~~
+
+`options.variables` maps a variable name to a partial constraint; any
+field you omit falls back to its default, and any template variable you
+do not list is still constrained with the all-default constraint.  The
+constraint fields are:
+
+ -  **`nullable`** defaults to `false`: a variable that is unbound or binds
+    to an empty value makes the route a no-match (the router falls back to
+    the next candidate).  Pass `{ nullable: true }` to opt out, so an
+    optional operator such as `{?q}` may match with `q` absent.  Because
+    of this default, optional-operator and leading-path-expansion routes
+    register successfully but only match when the variable is actually
+    present and non-empty.
+ -  **`multiple`** is derived from the variable specification: explode
+    (`{tags*}`) implies `true` and binds `readonly string[]`; a prefix
+    modifier (`{id:3}`) implies `false`; a plain variable defaults to
+    `false` (binding `string`) but may be set either way.  Specifying a
+    `multiple` that contradicts the derived value, or using the same
+    variable name with conflicting explode/prefix modifiers (`{x}` and
+    `{x*}`), throws `ConflictingVarSpecError` at registration time.
+ -  **`duplicable`** defaults to `false`: a variable that appears in more
+    than one variable specification within the same template throws
+    `DuplicateRouteVariableError` at registration time.  Set it to `true`
+    to allow repeated occurrences; their bindings must still agree when a
+    URI is matched.
+ -  **`prefixable`** defaults to `false`: a `{var:N}` prefix-modifier
+    specification throws `DisallowedVarSpecModifierError` unless the
+    variable is marked `{ prefixable: true }`.
+ -  **`explodable`** defaults to `false`: a `{var*}` explode-modifier
+    specification throws `DisallowedVarSpecModifierError` unless the
+    variable is marked `{ explodable: true }`.  Because explode forces
+    `multiple: true`, opting in also binds `readonly string[]`.
+ -  **`operatables`** defaults to `[]`, which permits every operator.
+    When set to a non-empty list of operators (`""`, `"+"`, `"#"`, `"."`,
+    `"/"`, `";"`, `"?"`, `"&"`), using the variable under any operator
+    outside the list throws `DisallowedOperatorError` at registration
+    time.
+
+The options object also accepts **`exact`**, which defaults to `true`:
+when you supply a `variables` object, its keys must match the template's
+variables exactly—every template variable must be listed and no unknown
+key may appear, otherwise registration throws
+`RouteTemplateOptionsNotMatchedError`.  Set `{ exact: false }` to relax
+this so unlisted variables keep their defaults and unknown keys are
+ignored.  Routes registered without a `variables` object are unaffected
+and keep every default.
+
+~~~~ typescript
+const router = new Router();
+
+// Throws RouteTemplateOptionsNotMatchedError: `id` is not listed.
+router.add("/posts/{slug}/{id}", "post", {
+  variables: { slug: { nullable: true } },
+});
+
+// OK: opt out of the exact-keys check.
+router.add("/posts/{slug}/{id}", "post", {
+  exact: false,
+  variables: { slug: { nullable: true } },
+});
+
+// OK: explode requires opting in.
+router.add("/tags{/tags*}", "tags", {
+  variables: { tags: { explodable: true } },
+});
+~~~~
+
+`Router.route()` is generic over the constraint map, so `values` narrows
+accordingly:
+
+~~~~ typescript
+const constraints = {
+  identifier: { nullable: false, multiple: false },
+} as const;
+router.add("/users/{identifier}", "actor", { variables: constraints });
+
+const matched = router.route<typeof constraints>("/users/alice");
+if (matched != null) {
+  const id: string = matched.values.identifier;
+}
+~~~~
 
 
 Installation
