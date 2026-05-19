@@ -321,7 +321,10 @@
         "expected": {
           "name": "search",
           "template": "/search{?q,page}",
-          "values": {}
+          "values": {
+            "q": null,
+            "page": null
+          }
         }
       },
       {
@@ -331,7 +334,8 @@
           "name": "search",
           "template": "/search{?q,page}",
           "values": {
-            "q": "fedify"
+            "q": "fedify",
+            "page": null
           }
         }
       },
@@ -342,6 +346,7 @@
           "name": "search",
           "template": "/search{?q,page}",
           "values": {
+            "q": null,
             "page": "2"
           }
         }

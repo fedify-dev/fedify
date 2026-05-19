@@ -5,6 +5,7 @@ import { RouteTemplatePathError } from "./errors.ts";
 import { fillRouteOptions } from "./fill.ts";
 import Trie from "./trie/mod.ts";
 import type {
+  MinimalConstraint,
   PartialRouterRoute,
   RouteEntry,
   RouteOptions,
@@ -179,7 +180,7 @@ export default class Router {
    *          `null`.
    */
   route = <
-    TConstraints extends Record<string, VariableConstraint> = Record<
+    TConstraints extends Record<string, MinimalConstraint> = Record<
       never,
       never
     >,
@@ -190,7 +191,7 @@ export default class Router {
         : null);
 
   #route<
-    TConstraints extends Record<string, VariableConstraint>,
+    TConstraints extends Record<string, MinimalConstraint>,
   >(url: Path): RouterRouteResult<TConstraints> | null {
     for (const entry of this.#trie.candidates(url)) {
       const context = entry.pattern.template.match(url);
@@ -223,9 +224,8 @@ export default class Router {
   >(
     name: string,
     values: RouterRouteResult<TConstraints>["values"],
-  ): Path | null =>
-    (this.#routesByName.get(name)
-      ?.pattern.template.expand(values) ?? null) as Path | null;
+  ): Path | null => (this.#routesByName.get(name)
+    ?.pattern.template.expand(values as ExpandContext) as Path ?? null);
 
   /**
    * Creates a shallow clone of the router.  The clone shares immutable
@@ -326,8 +326,8 @@ const getLiteralLength = (tokens: readonly Token[]): number =>
 const resolveValues = (
   context: ExpandContext,
   entry: RouteEntry,
-): Record<string, string | readonly string[]> | null => {
-  const values: Record<string, string | readonly string[]> = {};
+): Record<string, string | readonly string[] | null> | null => {
+  const values: Record<string, string | readonly string[] | null> = {};
 
   for (const [name, constraint] of entry.constraints) {
     const raw: ExpandValue | undefined = context[name];
@@ -347,6 +347,11 @@ const resolveValues = (
     } else if (!constraint.nullable) {
       // Unbound, or bound to a list/associative value: not a scalar match.
       return null;
+    } else {
+      // Nullable scalar with no scalar binding: present the key as `null`
+      // so the result matches its declared `string | null` type instead of
+      // omitting the key entirely.
+      values[name] = null;
     }
   }
 

@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { ok } from "node:assert";
 import { deepEqual, equal, throws } from "node:assert/strict";
 import type Template from "../template/template.ts";
 import {
@@ -167,7 +168,7 @@ test("Router preserves priority across state and fallback tries", () => {
   deepEqual(router.route("/xalice"), {
     name: "fallback",
     template: "/x{first,second}",
-    values: { first: "alice" },
+    values: { first: "alice", second: null },
   });
 });
 
@@ -673,7 +674,7 @@ test("Router honors nullable:true override", () => {
   deepEqual(router.route("/users"), {
     name: "user",
     template: "/users{?id}",
-    values: {},
+    values: { id: null },
   });
   deepEqual(router.route("/users?id=alice"), {
     name: "user",
@@ -946,7 +947,7 @@ test("Router.clone() preserves resolved constraints", () => {
   deepEqual(clone.route("/users"), {
     name: "user",
     template: "/users{?id}",
-    values: {},
+    values: { id: null },
   });
 });
 
@@ -971,6 +972,51 @@ test("Router.route() narrows values via the type argument", () => {
   deepEqual(tags, ["a", "b"]);
 });
 
+test(
+  "Router.route() binds an unbound nullable scalar as `null`, matching its " +
+    "declared type",
+  () => {
+    const variables = { q: { nullable: true } };
+    const router = new Router([
+      ["/search{?q}", "search", { variables }],
+    ]);
+    const result = router.route<typeof variables>("/search");
+    ok(result != null);
+
+    // The declared type is `string | null`; the runtime value must be one
+    // of those, i.e. `null` here — not an absent key / `undefined`.
+    const typed = result.values.q;
+    equal("q" in result.values, true);
+    equal(typed, null);
+    deepEqual(result.values, { q: null });
+
+    // A bound value still round-trips as the string.
+    const bound = router.route<typeof variables>("/search?q=hello");
+    ok(bound != null);
+    equal(bound.values.q, "hello");
+
+    if (bound.values.q != null) {
+      const narrowed: string = bound.values.q;
+      equal(narrowed, "hello");
+    }
+
+    // For contrast, a nullable *multiple* variable already behaves
+    // consistently: the key is present as an empty array.
+    const tagsVars = {
+      tags: { nullable: true, multiple: true, explodable: true },
+    } as const;
+    const arrRouter = new Router([
+      ["/tags{?tags*}", "tags", { variables: tagsVars }],
+    ]);
+    const abcdef = arrRouter.route<typeof tagsVars>("/tags?tags=abc&tags=def");
+    console.log(abcdef);
+    ok(abcdef?.values != null);
+    const { tags } = abcdef.values;
+    ok(tags != null);
+    deepEqual(tags, ["abc", "def"]);
+  },
+);
+
 test("DisallowedVarSpecModifierError", () => {
   const router = new Router();
   throws(
@@ -989,9 +1035,7 @@ test(
     // The standalone `@fedify/uri-template` Router supports leading path
     // expansion such as `{/identifier}/inbox`, even though Fedify's
     // required-identifier builder routes reject it (the callback contract
-    // needs a non-empty `identifier`).  This test pins the affirmative
-    // half of that split so the README/manual claim cannot go stale.  See
-    // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+    // needs a non-empty `identifier`).
     await t.step("registers and matches a bound leading segment", () => {
       const router = new Router([["{/identifier}/inbox", "inbox"]]);
       deepEqual(router.route("/alice/inbox"), {
@@ -1023,7 +1067,7 @@ test(
       deepEqual(router.route("/inbox"), {
         name: "inbox",
         template: "{/identifier}/inbox",
-        values: {},
+        values: { identifier: null },
       });
       deepEqual(router.route("/alice/inbox"), {
         name: "inbox",
