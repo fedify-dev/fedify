@@ -255,10 +255,16 @@ export type DocumentFetchKind = Exclude<LookupKind, "public_key">;
  * The {@link LookupResult} values that can appear on the
  * `activitypub.document.fetch` and `activitypub.document.fetch.duration`
  * metrics.  Cache `hit` / `miss` outcomes are reported on
- * `activitypub.document.cache`, so they are excluded here.
+ * `activitypub.document.cache`, and `invalid` is reserved for the
+ * key-lookup metrics (where the parser can decide that a successful
+ * HTTP response still does not contain a usable key), so all three are
+ * excluded here.
  * @since 2.3.0
  */
-export type DocumentFetchResult = Exclude<LookupResult, "hit" | "miss">;
+export type DocumentFetchResult = Exclude<
+  LookupResult,
+  "hit" | "miss" | "invalid"
+>;
 
 /**
  * The {@link LookupResult} values that can appear on the
