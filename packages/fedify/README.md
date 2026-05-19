@@ -123,6 +123,7 @@ Here is the list of packages:
 | [@fedify/sqlite](/packages/sqlite/)               | [JSR][jsr:@fedify/sqlite]        | [npm][npm:@fedify/sqlite]        | SQLite driver                            |
 | [@fedify/sveltekit](/packages/sveltekit/)         | [JSR][jsr:@fedify/sveltekit]     | [npm][npm:@fedify/sveltekit]     | SvelteKit integration                    |
 | [@fedify/testing](/packages/testing/)             | [JSR][jsr:@fedify/testing]       | [npm][npm:@fedify/testing]       | Testing utilities                        |
+| [@fedify/uri-template](/packages/uri-template/)   | [JSR][jsr:@fedify/uri-template]  | [npm][npm:@fedify/uri-template]  | RFC 6570 URI Template library            |
 | [@fedify/vocab](/packages/vocab/)                 | [JSR][jsr:@fedify/vocab]         | [npm][npm:@fedify/vocab]         | Activity Vocabulary library              |
 | [@fedify/vocab-runtime](/packages/vocab-runtime/) | [JSR][jsr:@fedify/vocab-runtime] | [npm][npm:@fedify/vocab-runtime] | Runtime library for code-generated vocab |
 | [@fedify/vocab-tools](/packages/vocab-tools/)     | [JSR][jsr:@fedify/vocab-tools]   | [npm][npm:@fedify/vocab-tools]   | Code generation tools for Activity Vocab |
@@ -176,6 +177,8 @@ Here is the list of packages:
 [npm:@fedify/sveltekit]: https://www.npmjs.com/package/@fedify/sveltekit
 [jsr:@fedify/testing]: https://jsr.io/@fedify/testing
 [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing
+[jsr:@fedify/uri-template]: https://jsr.io/@fedify/uri-template
+[npm:@fedify/uri-template]: https://www.npmjs.com/package/@fedify/uri-template
 [jsr:@fedify/vocab]: https://jsr.io/@fedify/vocab
 [npm:@fedify/vocab]: https://www.npmjs.com/package/@fedify/vocab
 [jsr:@fedify/vocab-runtime]: https://jsr.io/@fedify/vocab-runtime

@@ -52,14 +52,17 @@ depends = [
 
 [tasks."check:fmt"]
 description = "Check code formatting"
+wait_for = ["install"]
 run = "deno fmt --check"
 
 [tasks."check:lint"]
 description = "Check code linting"
+wait_for = ["install"]
 run = "deno lint"
 
 [tasks."check:types"]
 description = "Check TypeScript types"
+wait_for = ["install"]
 run = "deno check $(deno eval 'import m from \"./deno.json\" with { type: \"json\" }; for (let p of m.workspace) console.log(p)')"
 
 [tasks."check:md"]
@@ -69,6 +72,7 @@ run = "hongdown --check"
 [tasks.check-versions]
 description = "Check that all package versions are consistent across the monorepo"
 usage = 'flag "--fix" help="Automatically fix version mismatches"'
+wait_for = ["install"]
 run = '''
 if [ "${usage_fix}" = "true" ]; then
   deno run --allow-read --allow-write scripts/check_versions.ts --fix
@@ -79,6 +83,7 @@ fi
 
 [tasks."check:fixture-usage"]
 description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
+wait_for = ["install"]
 run = "deno run --allow-read scripts/check_fixture_usage.ts"
 
 [tasks."check:manifest:workspace-protocol"]

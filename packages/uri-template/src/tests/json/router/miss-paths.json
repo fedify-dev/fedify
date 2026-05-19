@@ -1,0 +1,15 @@
+[
+  "/.well-known/host-meta",
+  "/users",
+  "/users/alice/statuses",
+  "/users/alice/statuses/2026050501/context",
+  "/users/alice/media",
+  "/objects/note",
+  "/collections/public",
+  "/tags",
+  "/search",
+  "/files",
+  "/bob",
+  "/bob/liked",
+  "/bob/collections"
+]

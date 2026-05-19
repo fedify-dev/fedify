@@ -1,0 +1,48 @@
+[
+  {
+    "name": "Section 1.1 — Introductory Examples (Form-style with Undef Cases)",
+    "template": "http://www.example.com/foo{?query,number}",
+    "cases": [
+      {
+        "name": "query=mycelium, number=100",
+        "context": {
+          "query": "mycelium",
+          "number": 100
+        },
+        "expected": "http://www.example.com/foo?query=mycelium&number=100"
+      },
+      {
+        "name": "query undefined, number=100",
+        "context": {
+          "query": null,
+          "number": 100
+        },
+        "expected": "http://www.example.com/foo?number=100"
+      },
+      {
+        "name": "query and number both undefined",
+        "context": {
+          "query": null,
+          "number": null
+        },
+        "expected": "http://www.example.com/foo"
+      }
+    ]
+  },
+  {
+    "name": "Section 2.4.2 — Composite Address Example",
+    "template": "/mapper{?address*}",
+    "cases": [
+      {
+        "name": "address with city and state",
+        "context": {
+          "address": {
+            "city": "Newport Beach",
+            "state": "CA"
+          }
+        },
+        "expected": "/mapper?city=Newport%20Beach&state=CA"
+      }
+    ]
+  }
+]

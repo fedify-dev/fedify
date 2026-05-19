@@ -13,7 +13,19 @@ listeners, object dispatchers, and more.  Understanding the different expansion
 types is crucial for handling identifiers correctly, especially when they
 contain special characters or URIs.
 
+Fedify's URI Template engine is published as a standalone
+package—[`@fedify/uri-template`][@fedify/uri-template]—which you can use
+independently of Fedify.  If you only need RFC 6570 expansion and round-trip
+matching, jump to [Standalone `@fedify/uri-template`
+package](#uri-template-package) below.
+
+<!-- 
+  If you don't need visualization of web page, refer text-only links:
+  https://www.rfc-editor.org/rfc/rfc6570.txt
+-->
+
 [RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
+[@fedify/uri-template]: https://jsr.io/@fedify/uri-template
 
 
 What are URI Templates?
@@ -108,7 +120,36 @@ federation.setActorDispatcher(
 > If you're getting double-encoding issues (e.g., `%253A` instead of `%3A`),
 > switch from `{identifier}` to `{+identifier}`.
 
+> [!CAUTION]
+> Reserved expansion is an *advanced* choice, not the general recommendation
+> for Fedify dispatcher paths.  Because `{+identifier}` keeps `/` literal, it
+> does not stop at a path-segment boundary: it can consume extra segments and
+> overlap with more specific routes.  For example, `/users/{+identifier}`
+> also matches `/users/alice/inbox` and binds `identifier` to the value
+> `alice/inbox`, shadowing a dedicated `/users/{identifier}/inbox` route.
+>
+> The common ActivityPub route families—`/users/{identifier}`,
+> `/users/{identifier}/inbox`, and `/users/{identifier}/outbox`—rely on
+> segment-bounded identifiers, so keep the plain `{identifier}` form for
+> them.  Reach for `{+identifier}` only when the identifier itself genuinely
+> contains slashes (such as an embedded URI), and add explicit validation in
+> the dispatcher to reject unexpected path separators (see [Matching issues
+> with `{+identifier}`](#matching-issues-with-identifier)).  Some APIs
+> additionally forbid reserved expansion: a writable outbox requires the
+> strict single-segment `{identifier}` shape (see the note under [Expansion
+> versus matching](#expansion-versus-matching) below).
+
 ### Path segment expansion: `{/var}`
+
+> [!CAUTION]
+> `{/var}`, `{?var}`, and `{&var}` below are general [RFC 6570] operators
+> that `@fedify/uri-template` supports for expansion and matching.  They are
+> **not** appropriate for required Fedify dispatcher identifiers: a Fedify
+> dispatcher exposes a non-optional `identifier: string` (or `values`)
+> callback contract, and these operators can all match without binding a
+> concrete value.  Use `{identifier}` or `{+identifier}` for dispatcher
+> paths—see [Expansion versus matching](#expansion-versus-matching) and the
+> [Decision guide](#decision-guide).
 
 Path expansion automatically prefixes the value with a `/` character.
 It's useful for optional path segments.  When the variable is empty or
@@ -139,6 +180,46 @@ to add more:
 | Template               | Value   | Result                     |
 | ---------------------- | ------- | -------------------------- |
 | `/search?type=all{&q}` | `hello` | `/search?type=all&q=hello` |
+
+### Expansion versus matching
+
+The standalone `@fedify/uri-template` `Router` supports every RFC 6570
+operator above for both expansion and matching, with no registration-time
+operator constraints.
+
+Fedify's dispatcher routes are stricter, and the rule differs by API:
+
+ -  **Fixed-identifier routes** (`setActorDispatcher()`,
+    `setInboxDispatcher/Listeners()`, `setFollowingDispatcher()`,
+    `setFollowersDispatcher()`, `setLikedDispatcher()`,
+    `setFeaturedDispatcher()`, `setFeaturedTagsDispatcher()`) accept only
+    `{identifier}` or `{+identifier}`.  Any other operator
+    (`{/identifier}`, `{?identifier}`, `{;identifier}`, `{.identifier}`,
+    `{#identifier}`, `{&identifier}`) is rejected at registration time with
+    a `DisallowedOperatorError`.  The explode (`{identifier*}`) and prefix
+    (`{identifier:3}`) modifiers keep the simple operator but change the
+    binding shape, so they are instead rejected with a
+    `DisallowedVarSpecModifierError`.  Use segment-boundary `{identifier}`
+    for ordinary identifiers and `{+identifier}` only when the identifier
+    itself contains slashes.
+
+ -  **Outbox routes** (`setOutboxDispatcher()` and `setOutboxListeners()`)
+    are stricter still: both register with the same options and accept only
+    the single segment-boundary `{identifier}`.  Reserved expansion
+    (`{+identifier}`), path-style expansion (`{/identifier}`), optional
+    operators (`{?identifier}`, `{;identifier}`, `{.identifier}`), explode
+    (`{identifier*}`), and prefix (`{identifier:3}`) are all rejected at
+    registration time.  This matches *[Outbox](./outbox.md)*, which notes
+    that a writable outbox cannot use reserved expansion.
+
+ -  **Generic routes** whose variable name is not fixed
+    (`setObjectDispatcher()` and custom collection dispatchers) apply no
+    registration-time operator constraint, but every template variable
+    carries a default *non-empty* constraint.  An optional-operator or
+    path-expansion route such as `/objects{/id}` or `/objects{?id}`
+    registers successfully but only matches when `id` is actually present
+    and non-empty; an empty or missing binding is a runtime *Not Found*
+    rather than a registration error.
 
 
 Common use cases in Fedify
@@ -335,36 +416,43 @@ federation.setActorDispatcher(
 Decision guide
 --------------
 
-Use this guide to choose the right expansion type:
+This guide is for **Fedify dispatcher paths**, where the identifier is a
+required value that must be bound from the request path.  `Federation.fetch()`
+routes against `URL.pathname`, so only two expansion types are valid choices
+here—`{identifier}` and `{+identifier}`:
 
 ~~~~ mermaid
 flowchart TD
-    Start[What kind of identifier?]
+    Start[Fedify dispatcher identifier]
     Start --> Simple{Simple string?<br/>e.g., username, UUID}
-    Start --> URI{Contains URI?<br/>e.g., https://...}
-    Start --> Path{Path segment?}
-    Start --> Query{Query parameter?}
+    Start --> URI{Contains a URI or slashes?<br/>e.g., https://...}
 
     Simple --> UseBraces["Use {identifier}"]
     URI --> UsePlus["Use {+identifier}"]
-    Path --> UseSlash["Use {/var}"]
-    Query --> UseQuestion["Use {?var} or {&var}"]
 
     UseBraces --> Example1["Example: /users/{identifier}"]
     UsePlus --> Example2["Example: /users/{+identifier}"]
-    UseSlash --> Example3["Example: /api{/version}"]
-    UseQuestion --> Example4["Example: /search{?q}"]
 ~~~~
 
-Quick reference:
+Quick reference for dispatcher identifiers:
 
-| If your identifier contains…   | Use                         |
-| ------------------------------ | --------------------------- |
-| Just letters, numbers, hyphens | `{identifier}`              |
-| UUIDs                          | `{identifier}`              |
-| URIs or URLs                   | `{+identifier}`             |
-| Special chars like `:`, `/`    | `{+identifier}`             |
-| Path segments                  | `{+identifier}` or `{/var}` |
+| If your identifier contains…   | Use             |
+| ------------------------------ | --------------- |
+| Just letters, numbers, hyphens | `{identifier}`  |
+| UUIDs                          | `{identifier}`  |
+| URIs or URLs                   | `{+identifier}` |
+| Special chars like `:`, `/`    | `{+identifier}` |
+| Path segments                  | `{+identifier}` |
+
+> [!NOTE]
+> The other RFC 6570 operators (`{/var}`, `{?var}`, `{&var}`, `{;var}`,
+> `{.var}`, `{#var}`) are fully supported by the standalone
+> `@fedify/uri-template` package for general expansion and matching, but
+> they are deliberately absent from this chart: a required dispatcher
+> identifier must never come from an optional path or query expansion that
+> can match without binding a value.  See [Standalone
+> `@fedify/uri-template` package](#uri-template-package) if you need them
+> outside a Fedify dispatcher.
 
 
 Troubleshooting
@@ -414,11 +502,213 @@ federation.setActorDispatcher(
 ~~~~
 
 
+Standalone `@fedify/uri-template` package {#uri-template-package}
+-----------------------------------------------------------------
+
+The routing engine described above is published on its own as the
+[`@fedify/uri-template`][@fedify/uri-template] package.  It has zero runtime
+dependencies and works on Deno, Node.js, and Bun, so you can use it for plain
+[RFC 6570] URI Template expansion and matching even outside a Fedify
+application.
+
+Install it with your package manager:
+
+~~~~ bash
+deno add jsr:@fedify/uri-template  # Deno
+npm  add     @fedify/uri-template  # npm
+pnpm add     @fedify/uri-template  # pnpm
+yarn add     @fedify/uri-template  # Yarn
+bun  add     @fedify/uri-template  # Bun
+~~~~
+
+### Expanding and matching with `Template`
+
+A `Template` parses a URI Template string once and can then be reused.  Call
+`expand()` to turn variables into a URI, and `match()` to recover the variables
+from a URI (it returns `null` when the URI does not match):
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+const template = new Template("/users/{identifier}");
+
+template.expand({ identifier: "alice" });
+// → "/users/alice"
+
+template.match("/users/alice");
+// → { identifier: "alice" }
+
+template.match("/posts/42");
+// → null
+~~~~
+
+The standalone `Template` supports every RFC 6570 operator (`{var}`, `{+var}`,
+`{#var}`, `{.var}`, `{/var}`, `{;var}`, `{?var}`, and `{&var}`), so it is not
+limited to the patterns recommended for Fedify dispatchers.
+
+### Round-trip matching
+
+`match()` does not merely decode a URI—it returns variables only when expanding
+them again reproduces the *exact* input URI.  This rejects URIs that look
+plausible after decoding but could never have been produced by the template:
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+const template = new Template("/users/{identifier}");
+
+// Simple expansion percent-encodes the slash:
+template.expand({ identifier: "a/b" });
+// → "/users/a%2Fb"
+
+// The encoded form round-trips, so it matches:
+template.match("/users/a%2Fb");
+// → { identifier: "a/b" }
+
+// A literal slash could never be produced here, so there is no match:
+template.match("/users/a/b");
+// → null
+~~~~
+
+This is the same guarantee Fedify relies on to map an incoming request path
+back to a dispatcher identifier, which is why the
+[expansion type](#expansion-types) you choose matters.
+
+### Strict vs. lenient parsing
+
+By default a `Template` is *strict*: the first parse or expansion error is
+reported and then thrown.  Pass `strict: false` to collect diagnostics through
+a `report` callback without throwing.  This is useful when you want to accept
+looser input or surface warnings through your own logger:
+
+~~~~ typescript twoslash
+import { Template } from "@fedify/uri-template";
+// ---cut-before---
+// Strict (the default): the unclosed expression throws.
+try {
+  new Template("/users/{identifier");
+} catch (error) {
+  console.error(error);  // an UnclosedExpressionError
+}
+
+// Lenient: errors are reported but not thrown.
+const diagnostics: Error[] = [];
+const lenient = new Template("/users/{identifier", {
+  strict: false,
+  report: (error) => diagnostics.push(error),
+});
+lenient.expand({ identifier: "alice" });
+console.log(diagnostics);  // contains the reported parse error
+~~~~
+
+### Routing with `Router`
+
+`Router` maps many templates to names.  Register routes, resolve a URI to a
+route with `route()`, and reverse the mapping with `build()`:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.add("/users/{identifier}", "actor");
+router.add("/users/{identifier}/followers", "followers");
+
+router.route("/users/alice");
+// → { name: "actor",
+//     template: "/users/{identifier}",
+//     values: { identifier: "alice" } }
+
+router.route("/users/alice/followers");
+// → { name: "followers", … }
+
+router.build("actor", { identifier: "alice" });
+// → "/users/alice"
+~~~~
+
+Register several routes at once with `register()`, and inspect a template
+without registering it through `Router.compile()` or `Router.variables()`:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.register([
+  ["/users/{identifier}", "actor"],
+  ["/users/{identifier}/inbox", "inbox"],
+] as const);
+
+Router.variables("/users/{identifier}/posts/{id}");
+// → Set { "identifier", "id" }
+~~~~
+
+### Per-route variable constraints
+
+Each route is a `[pathOrPattern, name, options?]` tuple.  The optional
+third element constrains matching per template variable through its
+`variables` field:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.add("/search{?q}", "search", {
+  variables: { q: { nullable: true } },
+});
+
+// `q` is nullable, so the bare path still matches:
+router.route("/search");
+// → { name: "search", template: "/search{?q}", values: { q: null } }
+~~~~
+
+The constraint defaults are deliberately strict so routes fail loudly at
+registration time rather than mis-matching at runtime:
+
+ -  `nullable` defaults to `false`: an unbound or empty variable is a
+    no-match (the router falls back to the next candidate).  This is why a
+    `/search{?q}` route does *not* match `/search` until `q` is marked
+    `nullable: true`.
+ -  `multiple` is derived from the specification (explode `{tags*}` ⇒
+    `true`, prefix `{id:3}` ⇒ `false`, plain ⇒ `false`).  A contradicting
+    `multiple`, or the same name carrying conflicting explode/prefix
+    modifiers, throws `ConflictingVarSpecError`.
+ -  `duplicable`, `prefixable`, and `explodable` all default to `false`:
+    a repeated variable, a `{var:N}` prefix, or a `{var*}` explode each
+    throws at registration time (`DuplicateRouteVariableError` and
+    `DisallowedVarSpecModifierError`) unless the matching flag is opted
+    in.
+ -  `operatables` defaults to `[]` (every operator allowed); set it to a
+    non-empty operator list to reject other operators with
+    `DisallowedOperatorError`.
+
+The options object also takes `exact` (default `true`): when a
+`variables` object is supplied its keys must match the template's
+variables exactly, otherwise registration throws
+`RouteTemplateOptionsNotMatchedError`.  Pass `{ exact: false }` to leave
+unlisted variables at their defaults and ignore unknown keys.  Routes
+registered without a `variables` object keep every default and are
+unaffected.
+
+`Router.route()` is generic over the constraint map, so the recovered
+`values` narrow to `string` or `readonly string[]` per variable when you
+pass the constraints at the call site.
+
+> [!NOTE]
+> The standalone `Template` and `Router` accept every RFC 6570 operator.
+> When you use URI Templates for Fedify dispatchers, however, required
+> identifiers must be bound from the request path, so follow the
+> recommendations in [Expansion types](#expansion-types) and [Common use
+> cases in Fedify](#common-use-cases-in-fedify) above rather than every
+> operator the package can parse.
+
+
 Further reading
 ---------------
 
 [RFC 6570]: URI Template
 :   The official specification
+
+[`@fedify/uri-template`][@fedify/uri-template]
+:   The standalone RFC 6570 package powering Fedify's router
 
 [Actor dispatcher](./actor.md)
 :   Learn about actor routing in Fedify

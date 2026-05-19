@@ -23,6 +23,7 @@
     "@fedify/sqlite": "workspace:^",
     "@fedify/sveltekit": "workspace:^",
     "@fedify/testing": "workspace:^",
+    "@fedify/uri-template": "workspace:^",
     "@fedify/vocab": "workspace:^",
     "@fedify/vocab-runtime": "workspace:^",
     "@hackmd/markdown-it-task-lists": "^2.1.4",

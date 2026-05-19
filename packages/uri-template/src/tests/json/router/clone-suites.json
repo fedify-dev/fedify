@@ -1,0 +1,41 @@
+[
+  {
+    "name": "clone keeps existing routes and isolates new routes",
+    "routeDefinitions": [
+      [
+        "/users/{name}",
+        "user"
+      ],
+      [
+        "/users/{name}/posts/{postId}",
+        "post"
+      ]
+    ],
+    "clonedRouteDefinitions": [
+      [
+        "/users/{name}/friends",
+        "friends"
+      ]
+    ],
+    "originalRouteCases": [
+      {
+        "name": "original does not match cloned route",
+        "path": "/users/alice/friends",
+        "expected": null
+      }
+    ],
+    "clonedRouteCases": [
+      {
+        "name": "clone matches cloned route",
+        "path": "/users/alice/friends",
+        "expected": {
+          "name": "friends",
+          "template": "/users/{name}/friends",
+          "values": {
+            "name": "alice"
+          }
+        }
+      }
+    ]
+  }
+]

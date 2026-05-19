@@ -53,9 +53,12 @@ follows the [URI Template] specification.
 
 > [!NOTE]
 > The URI Template syntax supports different expansion types like `{identifier}`
-> (simple expansion) and `{+identifier}` (reserved expansion).  If your
-> identifiers contain URIs or special characters, you may need to use
-> `{+identifier}` to avoid double-encoding issues.  See the
+> (simple expansion) and `{+identifier}` (reserved expansion).  Use the plain
+> `{identifier}` form for ordinary segment-bounded identifiers; `{+identifier}`
+> is an advanced choice reserved for identifiers that themselves contain
+> slashes (such as embedded URIs), since it keeps `/` literal and can consume
+> extra path segments.  Note that a writable outbox is further restricted to
+> the strict `{identifier}` shape and rejects `{+identifier}`.  See the
 > [*URI Template* guide](./uri-template.md) for details.
 
 Since the outbox is a collection of activities, the outbox dispatcher should
