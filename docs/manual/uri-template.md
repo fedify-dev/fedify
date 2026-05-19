@@ -120,7 +120,36 @@ federation.setActorDispatcher(
 > If you're getting double-encoding issues (e.g., `%253A` instead of `%3A`),
 > switch from `{identifier}` to `{+identifier}`.
 
+> [!CAUTION]
+> Reserved expansion is an *advanced* choice, not the general recommendation
+> for Fedify dispatcher paths.  Because `{+identifier}` keeps `/` literal, it
+> does not stop at a path-segment boundary: it can consume extra segments and
+> overlap with more specific routes.  For example, `/users/{+identifier}`
+> also matches `/users/alice/inbox` and binds `identifier` to the value
+> `alice/inbox`, shadowing a dedicated `/users/{identifier}/inbox` route.
+>
+> The common ActivityPub route families—`/users/{identifier}`,
+> `/users/{identifier}/inbox`, and `/users/{identifier}/outbox`—rely on
+> segment-bounded identifiers, so keep the plain `{identifier}` form for
+> them.  Reach for `{+identifier}` only when the identifier itself genuinely
+> contains slashes (such as an embedded URI), and add explicit validation in
+> the dispatcher to reject unexpected path separators (see [Matching issues
+> with `{+identifier}`](#matching-issues-with-identifier)).  Some APIs
+> additionally forbid reserved expansion: a writable outbox requires the
+> strict single-segment `{identifier}` shape (see the note under [Expansion
+> versus matching](#expansion-versus-matching) below).
+
 ### Path segment expansion: `{/var}`
+
+> [!CAUTION]
+> `{/var}`, `{?var}`, and `{&var}` below are general [RFC 6570] operators
+> that `@fedify/uri-template` supports for expansion and matching.  They are
+> **not** appropriate for required Fedify dispatcher identifiers: a Fedify
+> dispatcher exposes a non-optional `identifier: string` (or `values`)
+> callback contract, and these operators can all match without binding a
+> concrete value.  Use `{identifier}` or `{+identifier}` for dispatcher
+> paths—see [Expansion versus matching](#expansion-versus-matching) and the
+> [Decision guide](#decision-guide).
 
 Path expansion automatically prefixes the value with a `/` character.
 It's useful for optional path segments.  When the variable is empty or
@@ -151,6 +180,32 @@ to add more:
 | Template               | Value   | Result                     |
 | ---------------------- | ------- | -------------------------- |
 | `/search?type=all{&q}` | `hello` | `/search?type=all&q=hello` |
+
+### Expansion versus matching
+
+The standalone `@fedify/uri-template` `Router` supports every RFC 6570
+operator above for both expansion and matching.  Fedify's dispatcher
+routes, however, apply a default *non-empty* constraint to every template
+variable: an unbound or empty binding is a runtime no-match rather than a
+registration error.
+
+In practice this means an optional-operator or path-expansion route such
+as `/users{/identifier}` or `/users{?identifier}` registers successfully
+but only matches when `identifier` is actually present and non-empty;
+`/users/`, `/users//inbox`, and a missing identifier are *Not Found*.  Use
+segment-boundary `{identifier}` for ordinary identifiers and
+`{+identifier}` only when the identifier itself contains slashes.
+
+> [!NOTE]
+> The **outbox listener** is stricter still.  `setOutboxListeners()` enforces
+> a single segment-boundary `{identifier}`: it rejects reserved expansion
+> (`{+identifier}`), path-style expansion (`{/identifier}`), optional
+> operators (`{?identifier}`, `{;identifier}`, `{.identifier}`), explode
+> (`{identifier*}`), and prefix (`{identifier:3}`) at registration time.
+> The read-only outbox *dispatcher* itself still accepts `{+identifier}`, but
+> because the outbox dispatcher and outbox listener must share the same path,
+> any actor with a writable outbox is effectively limited to the strict
+> `{identifier}` shape.
 
 
 Common use cases in Fedify
@@ -347,36 +402,43 @@ federation.setActorDispatcher(
 Decision guide
 --------------
 
-Use this guide to choose the right expansion type:
+This guide is for **Fedify dispatcher paths**, where the identifier is a
+required value that must be bound from the request path.  `Federation.fetch()`
+routes against `URL.pathname`, so only two expansion types are valid choices
+here—`{identifier}` and `{+identifier}`:
 
 ~~~~ mermaid
 flowchart TD
-    Start[What kind of identifier?]
+    Start[Fedify dispatcher identifier]
     Start --> Simple{Simple string?<br/>e.g., username, UUID}
-    Start --> URI{Contains URI?<br/>e.g., https://...}
-    Start --> Path{Path segment?}
-    Start --> Query{Query parameter?}
+    Start --> URI{Contains a URI or slashes?<br/>e.g., https://...}
 
     Simple --> UseBraces["Use {identifier}"]
     URI --> UsePlus["Use {+identifier}"]
-    Path --> UseSlash["Use {/var}"]
-    Query --> UseQuestion["Use {?var} or {&var}"]
 
     UseBraces --> Example1["Example: /users/{identifier}"]
     UsePlus --> Example2["Example: /users/{+identifier}"]
-    UseSlash --> Example3["Example: /api{/version}"]
-    UseQuestion --> Example4["Example: /search{?q}"]
 ~~~~
 
-Quick reference:
+Quick reference for dispatcher identifiers:
 
-| If your identifier contains…   | Use                         |
-| ------------------------------ | --------------------------- |
-| Just letters, numbers, hyphens | `{identifier}`              |
-| UUIDs                          | `{identifier}`              |
-| URIs or URLs                   | `{+identifier}`             |
-| Special chars like `:`, `/`    | `{+identifier}`             |
-| Path segments                  | `{+identifier}` or `{/var}` |
+| If your identifier contains…   | Use             |
+| ------------------------------ | --------------- |
+| Just letters, numbers, hyphens | `{identifier}`  |
+| UUIDs                          | `{identifier}`  |
+| URIs or URLs                   | `{+identifier}` |
+| Special chars like `:`, `/`    | `{+identifier}` |
+| Path segments                  | `{+identifier}` |
+
+> [!NOTE]
+> The other RFC 6570 operators (`{/var}`, `{?var}`, `{&var}`, `{;var}`,
+> `{.var}`, `{#var}`) are fully supported by the standalone
+> `@fedify/uri-template` package for general expansion and matching, but
+> they are deliberately absent from this chart: a required dispatcher
+> identifier must never come from an optional path or query expansion that
+> can match without binding a value.  See [Standalone
+> `@fedify/uri-template` package](#uri-template-package) if you need them
+> outside a Fedify dispatcher.
 
 
 Troubleshooting
@@ -564,6 +626,57 @@ router.register([
 Router.variables("/users/{identifier}/posts/{id}");
 // → Set { "identifier", "id" }
 ~~~~
+
+### Per-route variable constraints
+
+Each route is a `[pathOrPattern, name, options?]` tuple.  The optional
+third element constrains matching per template variable through its
+`variables` field:
+
+~~~~ typescript twoslash
+import { Router } from "@fedify/uri-template";
+// ---cut-before---
+const router = new Router();
+router.add("/search{?q}", "search", {
+  variables: { q: { nullable: true } },
+});
+
+// `q` is nullable, so the bare path still matches:
+router.route("/search");
+// → { name: "search", template: "/search{?q}", values: {} }
+~~~~
+
+The constraint defaults are deliberately strict so routes fail loudly at
+registration time rather than mis-matching at runtime:
+
+ -  `nullable` defaults to `false`: an unbound or empty variable is a
+    no-match (the router falls back to the next candidate).  This is why a
+    `/search{?q}` route does *not* match `/search` until `q` is marked
+    `nullable: true`.
+ -  `multiple` is derived from the specification (explode `{tags*}` ⇒
+    `true`, prefix `{id:3}` ⇒ `false`, plain ⇒ `false`).  A contradicting
+    `multiple`, or the same name carrying conflicting explode/prefix
+    modifiers, throws `ConflictingVarSpecError`.
+ -  `duplicable`, `prefixable`, and `explodable` all default to `false`:
+    a repeated variable, a `{var:N}` prefix, or a `{var*}` explode each
+    throws at registration time (`DuplicateRouteVariableError` and
+    `DisallowedVarSpecModifierError`) unless the matching flag is opted
+    in.
+ -  `operatables` defaults to `[]` (every operator allowed); set it to a
+    non-empty operator list to reject other operators with
+    `DisallowedOperatorError`.
+
+The options object also takes `exact` (default `true`): when a
+`variables` object is supplied its keys must match the template's
+variables exactly, otherwise registration throws
+`RouteTemplateOptionsNotMatchedError`.  Pass `{ exact: false }` to leave
+unlisted variables at their defaults and ignore unknown keys.  Routes
+registered without a `variables` object keep every default and are
+unaffected.
+
+`Router.route()` is generic over the constraint map, so the recovered
+`values` narrow to `string` or `readonly string[]` per variable when you
+pass the constraints at the call site.
 
 > [!NOTE]
 > The standalone `Template` and `Router` accept every RFC 6570 operator.
