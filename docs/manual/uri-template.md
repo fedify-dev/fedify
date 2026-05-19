@@ -184,28 +184,42 @@ to add more:
 ### Expansion versus matching
 
 The standalone `@fedify/uri-template` `Router` supports every RFC 6570
-operator above for both expansion and matching.  Fedify's dispatcher
-routes, however, apply a default *non-empty* constraint to every template
-variable: an unbound or empty binding is a runtime no-match rather than a
-registration error.
+operator above for both expansion and matching, with no registration-time
+operator constraints.
 
-In practice this means an optional-operator or path-expansion route such
-as `/users{/identifier}` or `/users{?identifier}` registers successfully
-but only matches when `identifier` is actually present and non-empty;
-`/users/`, `/users//inbox`, and a missing identifier are *Not Found*.  Use
-segment-boundary `{identifier}` for ordinary identifiers and
-`{+identifier}` only when the identifier itself contains slashes.
+Fedify's dispatcher routes are stricter, and the rule differs by API:
 
-> [!NOTE]
-> The **outbox listener** is stricter still.  `setOutboxListeners()` enforces
-> a single segment-boundary `{identifier}`: it rejects reserved expansion
-> (`{+identifier}`), path-style expansion (`{/identifier}`), optional
-> operators (`{?identifier}`, `{;identifier}`, `{.identifier}`), explode
-> (`{identifier*}`), and prefix (`{identifier:3}`) at registration time.
-> The read-only outbox *dispatcher* itself still accepts `{+identifier}`, but
-> because the outbox dispatcher and outbox listener must share the same path,
-> any actor with a writable outbox is effectively limited to the strict
-> `{identifier}` shape.
+ -  **Fixed-identifier routes** (`setActorDispatcher()`,
+    `setInboxDispatcher/Listeners()`, `setFollowingDispatcher()`,
+    `setFollowersDispatcher()`, `setLikedDispatcher()`,
+    `setFeaturedDispatcher()`, `setFeaturedTagsDispatcher()`) accept only
+    `{identifier}` or `{+identifier}`.  Any other operator
+    (`{/identifier}`, `{?identifier}`, `{;identifier}`, `{.identifier}`,
+    `{#identifier}`, `{&identifier}`) is rejected at registration time with
+    a `DisallowedOperatorError`.  The explode (`{identifier*}`) and prefix
+    (`{identifier:3}`) modifiers keep the simple operator but change the
+    binding shape, so they are instead rejected with a
+    `DisallowedVarSpecModifierError`.  Use segment-boundary `{identifier}`
+    for ordinary identifiers and `{+identifier}` only when the identifier
+    itself contains slashes.
+
+ -  **Outbox routes** (`setOutboxDispatcher()` and `setOutboxListeners()`)
+    are stricter still: both register with the same options and accept only
+    the single segment-boundary `{identifier}`.  Reserved expansion
+    (`{+identifier}`), path-style expansion (`{/identifier}`), optional
+    operators (`{?identifier}`, `{;identifier}`, `{.identifier}`), explode
+    (`{identifier*}`), and prefix (`{identifier:3}`) are all rejected at
+    registration time.  This matches *[Outbox](./outbox.md)*, which notes
+    that a writable outbox cannot use reserved expansion.
+
+ -  **Generic routes** whose variable name is not fixed
+    (`setObjectDispatcher()` and custom collection dispatchers) apply no
+    registration-time operator constraint, but every template variable
+    carries a default *non-empty* constraint.  An optional-operator or
+    path-expansion route such as `/objects{/id}` or `/objects{?id}`
+    registers successfully but only matches when `id` is actually present
+    and non-empty; an empty or missing binding is a runtime *Not Found*
+    rather than a registration error.
 
 
 Common use cases in Fedify
@@ -643,7 +657,7 @@ router.add("/search{?q}", "search", {
 
 // `q` is nullable, so the bare path still matches:
 router.route("/search");
-// → { name: "search", template: "/search{?q}", values: {} }
+// → { name: "search", template: "/search{?q}", values: { q: null } }
 ~~~~
 
 The constraint defaults are deliberately strict so routes fail loudly at
