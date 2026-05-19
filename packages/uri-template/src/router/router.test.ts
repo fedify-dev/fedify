@@ -1009,11 +1009,22 @@ test(
       ["/tags{?tags*}", "tags", { variables: tagsVars }],
     ]);
     const abcdef = arrRouter.route<typeof tagsVars>("/tags?tags=abc&tags=def");
-    console.log(abcdef);
     ok(abcdef?.values != null);
-    const { tags } = abcdef.values;
+    const tags = abcdef.values.tags;
     ok(tags != null);
     deepEqual(tags, ["abc", "def"]);
+
+    const explodable = { explodable: { explodable: true } } as const;
+    const expRouter = new Router([
+      ["/explodable{?explodable*}", "explodable", { variables: explodable }],
+    ]);
+    const expResult = expRouter.route<typeof explodable>(
+      "/explodable?explodable=a&explodable=b",
+    );
+    ok(expResult?.values != null);
+    const expValues: readonly string[] = expResult.values.explodable;
+    ok(expValues != null);
+    deepEqual(expValues, ["a", "b"]);
   },
 );
 

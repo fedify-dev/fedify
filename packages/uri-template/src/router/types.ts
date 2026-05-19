@@ -96,6 +96,7 @@ export interface RouteOptions {
 export interface MinimalConstraint {
   readonly multiple?: boolean;
   readonly nullable?: boolean;
+  readonly explodable?: boolean;
 }
 
 /**
@@ -107,7 +108,8 @@ export interface MinimalConstraint {
  * TypeScript to evaluate the conditional union eagerly.
  */
 export type ConstraintValue<C extends MinimalConstraint> = (
-  | (C extends { multiple: true } ? readonly string[] : string)
+  | (C extends { multiple: true } | { explodable: true } ? readonly string[]
+    : string)
   | (C extends { nullable: true } ? null : never)
 ) extends infer R ? R : never;
 
