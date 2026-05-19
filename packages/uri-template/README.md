@@ -194,10 +194,15 @@ constraint fields are:
  -  **`prefixable`** defaults to `false`: a `{var:N}` prefix-modifier
     specification throws `DisallowedVarSpecModifierError` unless the
     variable is marked `{ prefixable: true }`.
- -  **`explodable`** defaults to `false`: a `{var*}` explode-modifier
-    specification throws `DisallowedVarSpecModifierError` unless the
-    variable is marked `{ explodable: true }`.  Because explode forces
-    `multiple: true`, opting in also binds `readonly string[]`.
+ -  **`explodable`** defaults to `false`: it is a *registration
+    permission*, not an output-shape declaration.  A `{var*}`
+    explode-modifier specification throws `DisallowedVarSpecModifierError`
+    unless the variable is marked `{ explodable: true }`; the option by
+    itself does not turn a value into a list.  A value becomes a
+    `readonly string[]` only when the template actually uses the explode
+    modifier (`{var*}`), because that varspec is what resolves `multiple`
+    to `true`.  The same `{ explodable: true }` set on a non-exploded spec
+    such as `/users/{id}` still binds a scalar `string` at runtime.
  -  **`operatables`** defaults to `[]`, which permits every operator.
     When set to a non-empty list of operators (`""`, `"+"`, `"#"`, `"."`,
     `"/"`, `";"`, `"?"`, `"&"`), using the variable under any operator
@@ -245,6 +250,24 @@ router.add("/users/{identifier}", "actor", { variables: constraints });
 const matched = router.route<typeof constraints>("/users/alice");
 if (matched != null) {
   const id: string = matched.values.identifier;
+}
+~~~~
+
+The narrowed type is derived from `multiple` and `nullable` only, never
+from `explodable`.  Since `explodable` governs registration rather than
+the resolved value shape, an exploded route must carry `multiple: true`
+in the type argument—not merely `explodable: true`—for `values` to narrow
+to `readonly string[]`:
+
+~~~~ typescript
+const tagConstraints = {
+  tags: { explodable: true, multiple: true },
+} as const;
+router.add("/tags{?tags*}", "tags", { variables: tagConstraints });
+
+const matched = router.route<typeof tagConstraints>("/tags?tags=a&tags=b");
+if (matched != null) {
+  const tags: readonly string[] = matched.values.tags;
 }
 ~~~~
 
