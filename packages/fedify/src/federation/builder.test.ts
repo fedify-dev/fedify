@@ -1,5 +1,11 @@
 import { test } from "@fedify/fixture";
-import { RouterError } from "@fedify/uri-template";
+import {
+  DisallowedOperatorError,
+  DisallowedVarSpecModifierError,
+  DuplicateRouteVariableError,
+  RouterError,
+  RouteTemplateOptionsNotMatchedError,
+} from "@fedify/uri-template";
 import { Activity, Note, Person } from "@fedify/vocab";
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import type { Protocol } from "../nodeinfo/types.ts";
@@ -234,28 +240,28 @@ test("FederationBuilder", async (t) => {
         builderAfterInvalid.setOutboxListeners(
           "/users/{identifier}/outbox/{extra}",
         ),
-      RouterError,
+      RouteTemplateOptionsNotMatchedError,
     );
     assertThrows(
       () =>
         builderAfterInvalid.setOutboxListeners(
           "/users/{identifier:3}/outbox" as `${string}{identifier}${string}`,
         ),
-      RouterError,
+      DisallowedVarSpecModifierError,
     );
     assertThrows(
       () =>
         builderAfterInvalid.setOutboxListeners(
           "/users/{identifier*}/outbox" as `${string}{identifier}${string}`,
         ),
-      RouterError,
+      DisallowedVarSpecModifierError,
     );
     assertThrows(
       () =>
         builderAfterInvalid.setOutboxListeners(
           "/users/{identifier,identifier}/outbox" as `${string}{identifier}${string}`,
         ),
-      RouterError,
+      DuplicateRouteVariableError,
     );
     builderAfterInvalid.setOutboxListeners("/users/{identifier}/outbox");
 
@@ -274,19 +280,19 @@ test("FederationBuilder", async (t) => {
     const builder3 = createFederationBuilder<void>();
     assertThrows(
       () => builder3.setOutboxListeners("/users{?identifier}/outbox"),
-      RouterError,
+      DisallowedOperatorError,
     );
 
     const builder3a = createFederationBuilder<void>();
     assertThrows(
       () => builder3a.setOutboxListeners("/users{;identifier}/outbox"),
-      RouterError,
+      DisallowedOperatorError,
     );
 
     const builder3b = createFederationBuilder<void>();
     assertThrows(
       () => builder3b.setOutboxListeners("/users{.identifier}/outbox"),
-      RouterError,
+      DisallowedOperatorError,
     );
 
     const builder4 = createFederationBuilder<void>();
@@ -296,7 +302,7 @@ test("FederationBuilder", async (t) => {
           "/users{?identifier}/outbox",
           () => ({ items: [] }),
         ),
-      RouterError,
+      DisallowedOperatorError,
     );
 
     const builder5 = createFederationBuilder<void>();
@@ -306,56 +312,92 @@ test("FederationBuilder", async (t) => {
           "/users/{identifier:3}/outbox" as `${string}{identifier}${string}`,
           () => ({ items: [] }),
         ),
-      RouterError,
+      DisallowedVarSpecModifierError,
     );
   });
 
   await t.step(
-    "should reject identifier paths that can match without an identifier",
+    "rejects non-segment-boundary identifier operators at registration " +
+      "for required-identifier routes",
     () => {
-      // `{/identifier}` is path-style expansion that can match zero
-      // segments, so the route would match with an empty or missing
-      // `identifier`, violating the `identifier: string` callback contract.
-      // See https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      // Fedify's actor/inbox/outbox/collection dispatchers expose a single
+      // required `identifier: string`.  Path-style expansion
+      // (`{/identifier}`), reserved expansion (`{+identifier}`), and the
+      // optional operators (`{?identifier}`, `{;identifier}`,
+      // `{.identifier}`) can all match without binding a concrete
+      // segment-bounded identifier, so they are rejected at registration
+      // time rather than relying on a runtime no-match.  See
+      // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
       type IdPath = `${string}{identifier}${string}`;
 
-      assertThrows(
-        () =>
-          createFederationBuilder<void>().setActorDispatcher(
-            "{/identifier}" as IdPath,
-            () => null,
-          ),
-        RouterError,
-        "Path for actor dispatcher must have one variable: {identifier}",
-      );
+      // Actor dispatcher.
       assertThrows(
         () =>
           createFederationBuilder<void>().setActorDispatcher(
             "/users{/identifier}" as IdPath,
             () => null,
           ),
-        RouterError,
+        DisallowedOperatorError,
       );
       assertThrows(
         () =>
-          createFederationBuilder<void>().setInboxListeners(
-            "{/identifier}/inbox" as IdPath,
+          createFederationBuilder<void>().setActorDispatcher(
+            "{/identifier}" as IdPath,
+            () => null,
           ),
-        RouterError,
+        DisallowedOperatorError,
       );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "/users/{/identifier}" as IdPath,
+            () => null,
+          ),
+        DisallowedOperatorError,
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "/users{?identifier}" as IdPath,
+            () => null,
+          ),
+        DisallowedOperatorError,
+      );
+
+      // Inbox listeners.
       assertThrows(
         () =>
           createFederationBuilder<void>().setInboxListeners(
             "/users{/identifier}/inbox" as IdPath,
           ),
-        RouterError,
+        DisallowedOperatorError,
       );
+
+      // Outbox listeners and dispatcher keep the same strict shape.
       assertThrows(
         () =>
           createFederationBuilder<void>().setOutboxListeners(
             "/users{/identifier}/outbox" as IdPath,
           ),
-        RouterError,
+        DisallowedOperatorError,
+      );
+
+      // Prefix and explode modifiers remain registration errors too.
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "/users/{identifier:3}" as IdPath,
+            () => null,
+          ),
+        DisallowedVarSpecModifierError,
+      );
+      assertThrows(
+        () =>
+          createFederationBuilder<void>().setActorDispatcher(
+            "/users/{identifier*}" as IdPath,
+            () => null,
+          ),
+        DisallowedVarSpecModifierError,
       );
 
       // Simple expansion `{identifier}` must keep working.
@@ -366,6 +408,259 @@ test("FederationBuilder", async (t) => {
       createFederationBuilder<void>().setInboxListeners(
         "/users/{identifier}/inbox",
       );
+    },
+  );
+
+  await t.step(
+    "every required-identifier setter rejects every omissible operator",
+    () => {
+      // The broader invariant from the review: a Fedify route whose callback
+      // contract exposes `identifier: string` must never match without a
+      // concrete identifier.  Path-style (`{/identifier}`) and the optional
+      // forms (`{?identifier}`, `{;identifier}`, `{.identifier}`) can all
+      // match without binding a segment-bounded value, so every setter that
+      // registers such a route must reject them at registration time, not
+      // just the `actor`/`outbox` ones spot-checked above.  See
+      // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      type IdPath = `${string}{identifier}${string}`;
+
+      // `op` is spliced where a plain `{identifier}` expression would go.
+      const omissibleExprs = [
+        "{/identifier}",
+        "{?identifier}",
+        "{;identifier}",
+        "{.identifier}",
+      ] as const;
+
+      // Each entry registers exactly one required-identifier route on a
+      // fresh builder so per-route "already set" guards never fire first.
+      const registrars: ReadonlyArray<
+        readonly [name: string, register: (expr: string) => void]
+      > = [
+        [
+          "setActorDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setActorDispatcher(
+              `/users${expr}` as IdPath,
+              () => null,
+            ),
+        ],
+        [
+          "setInboxListeners",
+          (expr) =>
+            createFederationBuilder<void>().setInboxListeners(
+              `/users${expr}/inbox` as IdPath,
+            ),
+        ],
+        [
+          "setOutboxListeners",
+          (expr) =>
+            createFederationBuilder<void>().setOutboxListeners(
+              `/users${expr}/outbox` as IdPath,
+            ),
+        ],
+        [
+          "setOutboxDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setOutboxDispatcher(
+              `/users${expr}/outbox` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+        [
+          "setFollowingDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setFollowingDispatcher(
+              `/users${expr}/following` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+        [
+          "setFollowersDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setFollowersDispatcher(
+              `/users${expr}/followers` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+        [
+          "setLikedDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setLikedDispatcher(
+              `/users${expr}/liked` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+        [
+          "setFeaturedDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setFeaturedDispatcher(
+              `/users${expr}/featured` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+        [
+          "setFeaturedTagsDispatcher",
+          (expr) =>
+            createFederationBuilder<void>().setFeaturedTagsDispatcher(
+              `/users${expr}/tags` as IdPath,
+              () => ({ items: [] }),
+            ),
+        ],
+      ];
+
+      for (const [name, register] of registrars) {
+        for (const expr of omissibleExprs) {
+          assertThrows(
+            () => register(expr),
+            DisallowedOperatorError,
+            undefined,
+            `${name} must reject ${expr} at registration`,
+          );
+        }
+        // Positive control: the plain expansion still registers.
+        register("{identifier}");
+      }
+    },
+  );
+
+  await t.step(
+    "empty or missing identifier segments produce a runtime no-match",
+    async () => {
+      // The default `nullable: false` constraint makes every dispatcher
+      // route reject empty/unbound bindings at match time, so the former
+      // `assertIdentifierPath` / `variables.size < 1` registration guards
+      // are no longer needed.
+      const kv = new MemoryKvStore();
+      const builder = createFederationBuilder<void>();
+      builder.setActorDispatcher("/users/{identifier}", () => null);
+      builder.setInboxListeners("/users/{identifier}/inbox");
+      builder.setOutboxDispatcher(
+        "/users/{identifier}/outbox",
+        () => ({ items: [] }),
+      );
+      builder.setObjectDispatcher(Note, "/notes/{id}", () => null);
+      const impl = (await builder.build({ kv })) as FederationImpl<void>;
+
+      // Sanity: non-empty bindings still match.
+      assertEquals(impl.router.route("/users/alice")?.name, "actor");
+      assertEquals(
+        impl.router.route("/users/alice/inbox")?.name,
+        "inbox",
+      );
+      assertEquals(
+        impl.router.route("/users/alice/outbox")?.name,
+        "outbox",
+      );
+      assertEquals(
+        impl.router.route("/notes/1")?.name,
+        `object:${Note.typeId.href}`,
+      );
+
+      // Empty/blank identifier segments no longer match.  The review
+      // explicitly calls out the actor/inbox/outbox callback contract
+      // (`identifier: string`), so all three are exercised here.
+      assertEquals(impl.router.route("/users/"), null);
+      assertEquals(impl.router.route("/users//inbox"), null);
+      assertEquals(impl.router.route("/users//outbox"), null);
+      // Object dispatcher with an empty variable.
+      assertEquals(impl.router.route("/notes/"), null);
+    },
+  );
+
+  await t.step(
+    "object dispatcher optional-operator routes no-match when unbound",
+    async () => {
+      // CuPEr: the review's own scenarios — `/notes{?id}`, `/notes{;id}`,
+      // `/notes{.id}` — must register but no-match the variable-less form
+      // instead of matching with an empty `values`.
+      const kv = new MemoryKvStore();
+      const objectName = `object:${Note.typeId.href}`;
+
+      const query = createFederationBuilder<void>();
+      query.setObjectDispatcher(Note, "/notes{?id}", () => null);
+      const queryImpl = (await query.build({ kv })) as FederationImpl<void>;
+      assertEquals(queryImpl.router.route("/notes"), null);
+      assertEquals(queryImpl.router.route("/notes?id=1")?.name, objectName);
+
+      const matrix = createFederationBuilder<void>();
+      matrix.setObjectDispatcher(Note, "/notes{;id}", () => null);
+      const matrixImpl = (await matrix.build({ kv })) as FederationImpl<void>;
+      assertEquals(matrixImpl.router.route("/notes"), null);
+      assertEquals(matrixImpl.router.route("/notes;id=1")?.name, objectName);
+
+      const label = createFederationBuilder<void>();
+      label.setObjectDispatcher(Note, "/notes{.id}", () => null);
+      const labelImpl = (await label.build({ kv })) as FederationImpl<void>;
+      assertEquals(labelImpl.router.route("/notes"), null);
+      assertEquals(labelImpl.router.route("/notes.1")?.name, objectName);
+    },
+  );
+
+  await t.step(
+    "custom collection routes no-match empty or unbound variables",
+    async () => {
+      // CuPEr plan item 3: the custom collection dispatcher must also
+      // reject empty-segment and unbound optional-operator bindings via
+      // the router's default nullable:false constraint.
+      const kv = new MemoryKvStore();
+      const builder = createFederationBuilder<void>();
+      builder.setCollectionDispatcher(
+        "samples",
+        Note,
+        "/groups/{id}",
+        () => ({ items: [] }),
+      );
+      builder.setCollectionDispatcher(
+        "optionals",
+        Note,
+        "/optional-groups{?id}",
+        () => ({ items: [] }),
+      );
+      // The review also names matrix and label operators, which share the
+      // same optional shape: `/matrix-groups{;id}` and `/label-groups{.id}`
+      // both reduce to their literal prefix when `id` is unbound.
+      builder.setCollectionDispatcher(
+        "matrixOptionals",
+        Note,
+        "/matrix-groups{;id}",
+        () => ({ items: [] }),
+      );
+      builder.setCollectionDispatcher(
+        "labelOptionals",
+        Note,
+        "/label-groups{.id}",
+        () => ({ items: [] }),
+      );
+      const impl = (await builder.build({ kv })) as FederationImpl<void>;
+
+      // Sanity: a bound segment still matches.
+      assertEquals(impl.router.route("/groups/1"), {
+        name: "collection:samples",
+        values: { id: "1" },
+        template: "/groups/{id}",
+      });
+      assertEquals(impl.router.route("/optional-groups?id=1"), {
+        name: "collection:optionals",
+        values: { id: "1" },
+        template: "/optional-groups{?id}",
+      });
+      assertEquals(impl.router.route("/matrix-groups;id=1"), {
+        name: "collection:matrixOptionals",
+        values: { id: "1" },
+        template: "/matrix-groups{;id}",
+      });
+      assertEquals(impl.router.route("/label-groups.1"), {
+        name: "collection:labelOptionals",
+        values: { id: "1" },
+        template: "/label-groups{.id}",
+      });
+
+      // Empty segment and unbound optional operators no-match.
+      assertEquals(impl.router.route("/groups/"), null);
+      assertEquals(impl.router.route("/optional-groups"), null);
+      assertEquals(impl.router.route("/matrix-groups"), null);
+      assertEquals(impl.router.route("/label-groups"), null);
     },
   );
 

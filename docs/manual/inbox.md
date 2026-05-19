@@ -182,10 +182,13 @@ multiple inbox listeners for different activity types.
 
 > [!NOTE]
 > The URI Template syntax supports different expansion types like `{identifier}`
-> (simple expansion) and `{+identifier}` (reserved expansion).  If your
-> identifiers contain URIs or special characters, you may need to use
-> `{+identifier}` to avoid double-encoding issues.  See the
-> [*URI Template* guide](./uri-template.md) for details.
+> (simple expansion) and `{+identifier}` (reserved expansion).  Use the plain
+> `{identifier}` form for ordinary segment-bounded identifiers such as
+> `/users/{identifier}/inbox`.  `{+identifier}` is an advanced choice reserved
+> for identifiers that themselves contain slashes (such as embedded URIs);
+> because it keeps `/` literal, it can consume extra path segments and overlap
+> with more specific routes, so add explicit validation when you use it.  See
+> the [*URI Template* guide](./uri-template.md) for details.
 
 > [!WARNING]
 > Activities of any type that are not registered with

@@ -1430,6 +1430,42 @@ test("Federation.fetch()", async (t) => {
     assertEquals(response.status, 404);
   });
 
+  await t.step(
+    "empty identifier segment is Not Found, dispatcher not invoked",
+    async () => {
+      // Regression for the bug fixed by this change: a request whose
+      // identifier segment is empty or missing (`/users/`, `/users//inbox`)
+      // must be treated as Not Found instead of invoking the dispatcher
+      // with an empty string, which would violate the `identifier: string`
+      // callback contract.  `Federation.fetch()` routes against
+      // `URL.pathname`, so this exercises the real HTTP path, not just
+      // `Router.route()`.  See
+      // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      const { federation, dispatches } = createTestContext();
+
+      const actorResponse = await federation.fetch(
+        new Request("https://example.com/users/", {
+          method: "GET",
+          headers: { "Accept": "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(actorResponse.status, 404);
+
+      const inboxResponse = await federation.fetch(
+        new Request("https://example.com/users//inbox", {
+          method: "POST",
+          headers: { "accept": "application/ld+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(inboxResponse.status, 404);
+
+      // The actor dispatcher must never have seen an empty identifier.
+      assertEquals(dispatches.includes(""), false);
+    },
+  );
+
   await t.step("onNotAcceptable with GET", async () => {
     const { federation } = createTestContext();
 
