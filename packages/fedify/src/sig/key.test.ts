@@ -603,7 +603,7 @@ test("fetchKeyDetailed() records activitypub.key.lookup with the same taxonomy",
   assertEquals(counter?.attributes["http.response.status_code"], 410);
 });
 
-test("fetchKey() omits the meter provider has no effect on behavior", async () => {
+test("fetchKey() works when meterProvider is omitted", async () => {
   // Sanity: omitting meterProvider keeps fetchKey functional.
   const result = await fetchKey(
     "https://example.com/key",
