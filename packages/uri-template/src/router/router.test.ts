@@ -967,10 +967,42 @@ test("Router.route() narrows values via the type argument", () => {
       };
     }
   >("/tags/a,b");
-  if (result == null) throw new Error("expected a match");
+  ok(result);
   const tags: readonly string[] = result.values.tags;
   deepEqual(tags, ["a", "b"]);
 });
+
+test(
+  "Router.route() typing follows multiple/nullable, not explodable",
+  () => {
+    // `explodable` is a registration permission, not an output-shape
+    // declaration.  On a non-exploded spec the runtime value is a scalar
+    // string, and the narrowed type must follow `multiple` (here `false`),
+    // not `explodable`.  The `const id: string` annotation pins this: if
+    // `explodable` ever drove the value type again this would stop
+    // compiling.
+    const scalar = { id: { explodable: true } } as const;
+    const scalarRouter = new Router([
+      ["/users/{id}", "user", { variables: scalar }],
+    ]);
+    const scalarResult = scalarRouter.route<typeof scalar>("/users/alice");
+    ok(scalarResult);
+    const id: string = scalarResult.values.id;
+    equal(id, "alice");
+
+    // To narrow an exploded route to `readonly string[]`, the constraint
+    // passed to route<T>() must carry `multiple: true` explicitly;
+    // `explodable: true` alone does not drive the value type.
+    const list = { tags: { explodable: true, multiple: true } } as const;
+    const listRouter = new Router([
+      ["/tags{?tags*}", "tags", { variables: list }],
+    ]);
+    const listResult = listRouter.route<typeof list>("/tags?tags=a&tags=b");
+    ok(listResult);
+    const tags: readonly string[] = listResult.values.tags;
+    deepEqual(tags, ["a", "b"]);
+  },
+);
 
 test(
   "Router.route() binds an unbound nullable scalar as `null`, matching its " +
@@ -1013,18 +1045,6 @@ test(
     const tags = abcdef.values.tags;
     ok(tags != null);
     deepEqual(tags, ["abc", "def"]);
-
-    const explodable = { explodable: { explodable: true } } as const;
-    const expRouter = new Router([
-      ["/explodable{?explodable*}", "explodable", { variables: explodable }],
-    ]);
-    const expResult = expRouter.route<typeof explodable>(
-      "/explodable?explodable=a&explodable=b",
-    );
-    ok(expResult?.values != null);
-    const expValues: readonly string[] = expResult.values.explodable;
-    ok(expValues != null);
-    deepEqual(expValues, ["a", "b"]);
   },
 );
 

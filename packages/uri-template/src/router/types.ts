@@ -93,6 +93,19 @@ export interface RouteOptions {
   readonly exact: boolean;
 }
 
+/**
+ * The subset of a per-variable constraint that {@link ConstraintValue}
+ * inspects to compute a matched value's static type.  Only `multiple` and
+ * `nullable` shape the value: `multiple: true` yields `readonly string[]`,
+ * `nullable: true` additionally admits `null`.
+ *
+ * `explodable` is a *registration permission* (it lets a varspec use the
+ * explode modifier `{var*}` without throwing) and deliberately does **not**
+ * affect the computed value type.  An exploded route still resolves
+ * `multiple` to `true` via {@link fillMultiple}, so callers that want the
+ * matched value narrowed to `readonly string[]` must pass `multiple: true`
+ * in the {@link Router.route} type argument, not merely `explodable: true`.
+ */
 export interface MinimalConstraint {
   readonly multiple?: boolean;
   readonly nullable?: boolean;
@@ -108,8 +121,7 @@ export interface MinimalConstraint {
  * TypeScript to evaluate the conditional union eagerly.
  */
 export type ConstraintValue<C extends MinimalConstraint> = (
-  | (C extends { multiple: true } | { explodable: true } ? readonly string[]
-    : string)
+  | (C extends { multiple: true } ? readonly string[] : string)
   | (C extends { nullable: true } ? null : never)
 ) extends infer R ? R : never;
 
