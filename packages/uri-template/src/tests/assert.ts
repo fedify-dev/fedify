@@ -267,7 +267,7 @@ function validateRouterRouteResult(value: unknown, label: string): void {
   assertObject(value, label);
   assertString(value.name, `${label}.name`);
   assertPath(value.template, `${label}.template`);
-  assertStringRecord(value.values, `${label}.values`);
+  assertRouteValuesRecord(value.values, `${label}.values`);
 }
 
 function assertString(
@@ -339,6 +339,17 @@ function assertStringOrNull(
   label: string,
 ): asserts value is string | null {
   if (value !== null) assertString(value, label);
+}
+
+function assertRouteValuesRecord(
+  value: unknown,
+  label: string,
+): asserts value is Record<string, string | string[] | null> {
+  assertObject(value, label);
+  for (const [key, item] of Object.entries(value)) {
+    if (item === null || typeof item === "string") continue;
+    assertStringArray(item, `${label}.${key}`);
+  }
 }
 
 const ERROR_NAMES: ReadonlySet<string> = new Set([

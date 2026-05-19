@@ -93,14 +93,23 @@ export interface RouteOptions {
   readonly exact: boolean;
 }
 
+export interface MinimalConstraint {
+  readonly multiple?: boolean;
+  readonly nullable?: boolean;
+}
+
 /**
  * Computes the value type of a single matched variable from its constraint:
  * `multiple: true` yields `readonly string[]`, otherwise `string`;
  * `nullable: true` additionally admits `null`.
+ *
+ * The trailing `extends infer R ? R : never` is an identity that forces
+ * TypeScript to evaluate the conditional union eagerly.
  */
-export type ConstraintValue<C> =
+export type ConstraintValue<C extends MinimalConstraint> = (
   | (C extends { multiple: true } ? readonly string[] : string)
-  | (C extends { nullable: true } ? null : never);
+  | (C extends { nullable: true } ? null : never)
+) extends infer R ? R : never;
 
 /**
  * Computes the `values` record type from a map of variable constraints.  An
@@ -108,7 +117,7 @@ export type ConstraintValue<C> =
  * matched route is not known at the type level.
  */
 export type RouteValues<
-  TConstraints extends Record<string, VariableConstraint>,
+  TConstraints extends Record<string, MinimalConstraint>,
 > = [keyof TConstraints] extends [never]
   ? Record<string, ConstraintValue<{ multiple: false; nullable: false }>>
   : { [K in keyof TConstraints]: ConstraintValue<TConstraints[K]> };
@@ -119,7 +128,7 @@ export type RouteValues<
  * `router.route<{ tags: { nullable: false; multiple: true } }>(...)`).
  */
 export interface RouterRouteResult<
-  TConstraints extends Record<string, VariableConstraint>,
+  TConstraints extends Record<string, MinimalConstraint>,
 > {
   /**
    * The matched route name.
