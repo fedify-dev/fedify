@@ -279,16 +279,23 @@ async function lookupWebFingerInternal(
     const atPos = resource.pathname.lastIndexOf("@");
     if (atPos < 0) return { resource: null, result: "invalid" };
     server = resource.pathname.substring(atPos + 1);
-    // Neither scheme allows a path, query, or fragment component in
-    // the resource URI.  The WHATWG URL parser routes a path into
-    // `pathname` (after the authority) and routes `?…` / `#…` into
-    // `search` / `hash`, so the three components live in different
-    // places and must be checked independently.  Reject any input
-    // that carries an extraneous component so a malformed value
-    // cannot pass through to a remote WebFinger lookup.
+    // The authority part of both schemes must be a bare host: no
+    // path, query, or fragment characters embedded in it.  The
+    // WHATWG URL parser routes anything after the first `?` or `#`
+    // into `search` / `hash`, so by the time we read `pathname` the
+    // only stray characters that can land in `server` are slashes.
+    // Reject those (along with an empty authority) for both schemes.
+    if (server === "" || /[/?#]/.test(server)) {
+      return { resource: null, result: "invalid" };
+    }
+    // `acct:` (RFC 7565 §3) is bare authority only: no `search` or
+    // `hash` allowed.  `mailto:` (RFC 6068 §2) explicitly permits
+    // `?hfields=…` header fields and fragment identifiers, so we
+    // forward those to the remote WebFinger lookup unchanged and
+    // only enforce the stricter shape for `acct:`.
     if (
-      server === "" || /[/?#]/.test(server) ||
-      resource.search !== "" || resource.hash !== ""
+      resource.protocol === "acct:" &&
+      (resource.search !== "" || resource.hash !== "")
     ) {
       return { resource: null, result: "invalid" };
     }

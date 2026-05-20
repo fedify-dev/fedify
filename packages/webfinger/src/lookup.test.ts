@@ -117,6 +117,28 @@ test({
         );
       });
 
+      const mailtoQueryExpected: ResourceDescriptor = {
+        subject: "mailto:juliet@example.com?subject=Hi",
+        links: [],
+      };
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=mailto%3Ajuliet%40example.com%3Fsubject%3DHi",
+        { body: mailtoQueryExpected },
+      );
+
+      await t.step("mailto with hfields", async () => {
+        // RFC 6068 §2 allows `mailto:` URIs to carry `?hfields=...`
+        // header fields and fragment identifiers.  Unlike `acct:`,
+        // those components are part of the grammar, so the lookup
+        // must accept them and forward the full resource URI to the
+        // WebFinger endpoint.
+        deepStrictEqual(
+          await lookupWebFinger("mailto:juliet@example.com?subject=Hi"),
+          mailtoQueryExpected,
+        );
+      });
+
       fetchMock.removeRoutes();
       fetchMock.get(
         "begin:https://example.com/.well-known/webfinger?",
