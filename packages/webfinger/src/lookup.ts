@@ -275,10 +275,16 @@ async function lookupWebFingerInternal(
     if (atPos < 0) return { resource: null, result: "invalid" };
     server = resource.pathname.substring(atPos + 1);
     // Per RFC 7565, an `acct:` URI's authority is bare `host`: no path,
-    // query, or fragment.  Reject any acct URI whose extracted authority
-    // carries those characters so a malformed input cannot redirect the
-    // WebFinger fetch to a non-standard path on the same host.
-    if (server === "" || /[/?#]/.test(server)) {
+    // query, or fragment.  The WHATWG URL parser routes a path into
+    // `pathname` (after the `user@host` authority) and routes `?…` /
+    // `#…` into `search` / `hash`, so the three components live in
+    // different places and must be checked independently.  Reject any
+    // acct URI that carries an extraneous component so a malformed
+    // input cannot pass through to a remote WebFinger lookup.
+    if (
+      server === "" || /[/?#]/.test(server) ||
+      resource.search !== "" || resource.hash !== ""
+    ) {
       return { resource: null, result: "invalid" };
     }
   } else {

@@ -15,10 +15,19 @@ test({
       deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe")), null);
       deepStrictEqual(await lookupWebFinger("acct:johndoe@"), null);
       deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe@")), null);
-      // Per RFC 7565, the acct: authority cannot carry a path component.
-      // Reject such inputs rather than fetching a non-standard URL.
+      // Per RFC 7565, the acct: authority is bare `host`: no path,
+      // query, or fragment is allowed.  Reject such inputs rather than
+      // forwarding them to a remote WebFinger lookup.
       deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com/exploit"),
+        null,
+      );
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com?x=1"),
+        null,
+      );
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com#frag"),
         null,
       );
     });
