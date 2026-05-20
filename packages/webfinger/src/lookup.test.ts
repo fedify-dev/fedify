@@ -1,7 +1,7 @@
-import { test } from "@fedify/fixture";
+import { createTestMeterProvider, test } from "@fedify/fixture";
 import { withTimeout } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual } from "node:assert/strict";
+import { deepStrictEqual, ok } from "node:assert/strict";
 import type { ResourceDescriptor } from "./jrd.ts";
 import { lookupWebFinger } from "./lookup.ts";
 
@@ -326,6 +326,375 @@ test({
 
     fetchMock.hardReset();
   },
+});
+
+test("lookupWebFinger() records webfinger.lookup counter and duration", {
+  sanitizeOps: false,
+  sanitizeResources: false,
+}, async (t) => {
+  fetchMock.spyGlobal();
+  try {
+    const expected: ResourceDescriptor = {
+      subject: "acct:johndoe@example.com",
+      links: [],
+    };
+
+    await t.step(
+      "records result=found for a successful acct lookup",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+          { body: expected },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const result = await lookupWebFinger("acct:johndoe@example.com", {
+          meterProvider,
+        });
+        deepStrictEqual(result, expected);
+
+        const counters = recorder.getMeasurements("webfinger.lookup");
+        deepStrictEqual(counters.length, 1);
+        deepStrictEqual(counters[0].type, "counter");
+        deepStrictEqual(counters[0].value, 1);
+        deepStrictEqual(
+          counters[0].attributes["webfinger.lookup.result"],
+          "found",
+        );
+        deepStrictEqual(
+          counters[0].attributes["webfinger.resource.scheme"],
+          "acct",
+        );
+        deepStrictEqual(
+          counters[0].attributes["activitypub.remote.host"],
+          "example.com",
+        );
+        deepStrictEqual(
+          counters[0].attributes["http.response.status_code"],
+          200,
+        );
+
+        const durations = recorder.getMeasurements("webfinger.lookup.duration");
+        deepStrictEqual(durations.length, 1);
+        deepStrictEqual(durations[0].type, "histogram");
+        deepStrictEqual(
+          durations[0].attributes["webfinger.lookup.result"],
+          "found",
+        );
+        deepStrictEqual(
+          durations[0].attributes["webfinger.resource.scheme"],
+          "acct",
+        );
+        ok(typeof durations[0].value === "number" && durations[0].value >= 0);
+      },
+    );
+
+    await t.step(
+      "records scheme=https for an https resource lookup",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "https://example.com/.well-known/webfinger?resource=https%3A%2F%2Fexample.com%2Ffoo",
+          { body: { subject: "https://example.com/foo", links: [] } },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("https://example.com/foo", { meterProvider });
+        const counters = recorder.getMeasurements("webfinger.lookup");
+        deepStrictEqual(counters.length, 1);
+        deepStrictEqual(
+          counters[0].attributes["webfinger.resource.scheme"],
+          "https",
+        );
+        deepStrictEqual(
+          counters[0].attributes["webfinger.lookup.result"],
+          "found",
+        );
+      },
+    );
+
+    await t.step("records result=not_found with status 404", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 404 },
+      );
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const result = await lookupWebFinger("acct:johndoe@example.com", {
+        meterProvider,
+      });
+      deepStrictEqual(result, null);
+
+      const counters = recorder.getMeasurements("webfinger.lookup");
+      deepStrictEqual(counters.length, 1);
+      deepStrictEqual(
+        counters[0].attributes["webfinger.lookup.result"],
+        "not_found",
+      );
+      deepStrictEqual(
+        counters[0].attributes["http.response.status_code"],
+        404,
+      );
+      deepStrictEqual(
+        counters[0].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+
+      const durations = recorder.getMeasurements("webfinger.lookup.duration");
+      deepStrictEqual(durations.length, 1);
+      deepStrictEqual(
+        durations[0].attributes["webfinger.lookup.result"],
+        "not_found",
+      );
+    });
+
+    await t.step("records result=not_found with status 410", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 410 },
+      );
+      const [meterProvider, recorder] = createTestMeterProvider();
+      await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+      const counter = recorder.getMeasurement("webfinger.lookup");
+      ok(counter != null);
+      deepStrictEqual(
+        counter.attributes["webfinger.lookup.result"],
+        "not_found",
+      );
+      deepStrictEqual(counter.attributes["http.response.status_code"], 410);
+    });
+
+    await t.step(
+      "records result=error for non-2xx, non-404/410 HTTP responses",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { status: 500 },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "error",
+        );
+        deepStrictEqual(counter.attributes["http.response.status_code"], 500);
+      },
+    );
+
+    await t.step(
+      "records result=invalid for malformed JSON bodies",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { body: "not json" },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "invalid",
+        );
+        deepStrictEqual(counter.attributes["http.response.status_code"], 200);
+      },
+    );
+
+    await t.step(
+      "records result=network_error when fetch never reaches the remote",
+      async () => {
+        fetchMock.removeRoutes();
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const result = await lookupWebFinger(
+          "acct:johndoe@fedify-test.internal",
+          { meterProvider },
+        );
+        deepStrictEqual(result, null);
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "network_error",
+        );
+        deepStrictEqual(
+          "http.response.status_code" in counter.attributes,
+          false,
+          "no HTTP response means no status code attribute",
+        );
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "fedify-test.internal",
+        );
+      },
+    );
+
+    await t.step(
+      "records result=invalid for malformed acct: resources",
+      async () => {
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const result = await lookupWebFinger("acct:johndoe", { meterProvider });
+        deepStrictEqual(result, null);
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "invalid",
+        );
+        deepStrictEqual(
+          counter.attributes["webfinger.resource.scheme"],
+          "acct",
+        );
+        deepStrictEqual(
+          "activitypub.remote.host" in counter.attributes,
+          false,
+          "a malformed acct resource has no usable remote host",
+        );
+      },
+    );
+
+    await t.step(
+      "records result=invalid when the redirect chain exceeds maxRedirection",
+      async () => {
+        fetchMock.removeRoutes();
+        // The redirect Location drops the original `?resource=...` query
+        // string, so the second hop's URL no longer contains a `?`.  The
+        // route pattern omits the trailing `?` so it still matches.
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger",
+          {
+            status: 302,
+            headers: { Location: "/.well-known/webfinger" },
+          },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const result = await withTimeout(
+          () =>
+            lookupWebFinger("acct:johndoe@example.com", {
+              meterProvider,
+              maxRedirection: 3,
+            }),
+          2000,
+        );
+        deepStrictEqual(result, null);
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "invalid",
+        );
+        deepStrictEqual(counter.attributes["http.response.status_code"], 302);
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "example.com",
+        );
+      },
+    );
+
+    await t.step(
+      "records result=invalid for cross-protocol redirects",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          {
+            status: 302,
+            headers: { Location: "ftp://example.com/" },
+          },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "invalid",
+        );
+        deepStrictEqual(counter.attributes["http.response.status_code"], 302);
+      },
+    );
+
+    await t.step(
+      "records result=network_error when a redirect points to a private address",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          {
+            status: 302,
+            headers: { Location: "https://localhost/" },
+          },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "network_error",
+        );
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "localhost",
+          "remote.host reflects the latest URL we attempted, even after a redirect",
+        );
+      },
+    );
+
+    await t.step(
+      "records result=invalid for malformed Location headers",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          {
+            status: 302,
+            headers: { Location: "http://[bad" },
+          },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.lookup.result"],
+          "invalid",
+        );
+        deepStrictEqual(counter.attributes["http.response.status_code"], 302);
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "example.com",
+        );
+      },
+    );
+
+    await t.step(
+      "omits measurements when no meterProvider is provided",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+          { body: expected },
+        );
+        const [_unused, recorder] = createTestMeterProvider();
+        await lookupWebFinger("acct:johndoe@example.com");
+        deepStrictEqual(
+          recorder.getMeasurements("webfinger.lookup").length,
+          0,
+        );
+        deepStrictEqual(
+          recorder.getMeasurements("webfinger.lookup.duration").length,
+          0,
+        );
+      },
+    );
+  } finally {
+    fetchMock.removeRoutes();
+    fetchMock.hardReset();
+  }
 });
 
 // cSpell: ignore johndoe
