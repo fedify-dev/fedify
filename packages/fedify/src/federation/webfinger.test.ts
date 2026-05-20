@@ -740,6 +740,34 @@ test("handleWebFinger() records webfinger.handle counter and duration", async (t
   });
 
   await t.step(
+    "records result=not_found when onNotFound returns 200",
+    async () => {
+      // A user-provided `onNotFound` callback can legally return any
+      // status code, including 200 with a fallback page.  The metric
+      // must still classify the request as `not_found` because the
+      // lookup did not actually resolve an actor.
+      const u = new URL(url);
+      u.searchParams.set("resource", "acct:absent@example.com");
+      const context = createContext(u);
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const response = await handleWebFinger(context.request, {
+        context,
+        actorDispatcher,
+        onNotFound: () => new Response("custom fallback", { status: 200 }),
+        meterProvider,
+      });
+      assertEquals(response.status, 200);
+
+      const counter = recorder.getMeasurement("webfinger.handle");
+      assertEquals(
+        counter?.attributes["webfinger.handle.result"],
+        "not_found",
+      );
+      assertEquals(counter?.attributes["http.response.status_code"], 200);
+    },
+  );
+
+  await t.step(
     "buckets unknown resource schemes as 'other' to keep metric cardinality bounded",
     async () => {
       const u = new URL(url);

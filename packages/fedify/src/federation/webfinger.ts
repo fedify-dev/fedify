@@ -101,17 +101,34 @@ export async function handleWebFinger<TContextData>(
   const start = meterProvider == null ? 0 : performance.now();
   const resource = options.context.url.searchParams.get("resource");
   const scheme = computeResourceScheme(resource);
+  // Track whether the response was produced by the caller's `onNotFound`
+  // callback so the `webfinger.handle.result` attribute classifies as
+  // `not_found` regardless of the status code that callback returned.
+  // Frameworks routinely answer 404s with a 200 OK fallback page; without
+  // this signal, every such response would skew the metric to `resolved`.
+  let notFoundResponse: Response | undefined;
+  const wrappedOptions: WebFingerHandlerParameters<TContextData> = {
+    ...options,
+    async onNotFound(req) {
+      const r = await options.onNotFound(req);
+      notFoundResponse = r;
+      return r;
+    },
+  };
   let response: Response | undefined;
   try {
     if (options.tracer == null) {
-      response = await handleWebFingerInternal(request, options);
+      response = await handleWebFingerInternal(request, wrappedOptions);
     } else {
       response = await options.tracer.startActiveSpan(
         "webfinger.handle",
         { kind: SpanKind.SERVER },
         async (span) => {
           try {
-            const inner = await handleWebFingerInternal(request, options);
+            const inner = await handleWebFingerInternal(
+              request,
+              wrappedOptions,
+            );
             span.setStatus({
               code: inner.ok ? SpanStatusCode.UNSET : SpanStatusCode.ERROR,
             });
@@ -133,7 +150,7 @@ export async function handleWebFinger<TContextData>(
     if (meterProvider != null) {
       recordWebFingerHandle(meterProvider, {
         durationMs: Math.max(0, performance.now() - start),
-        result: classifyWebFingerHandleResult(response),
+        result: classifyWebFingerHandleResult(response, notFoundResponse),
         scheme,
         statusCode: response?.status,
       });
@@ -169,8 +186,15 @@ function computeResourceScheme(
 
 function classifyWebFingerHandleResult(
   response: Response | undefined,
+  notFoundResponse: Response | undefined,
 ): WebFingerHandleResult {
   if (response == null) return "error";
+  // When the response was produced by the caller's `onNotFound`, the
+  // outcome is `not_found` regardless of the status code the callback
+  // chose (frameworks may return 200 with a fallback page).
+  if (notFoundResponse != null && response === notFoundResponse) {
+    return "not_found";
+  }
   switch (response.status) {
     case 200:
       return "resolved";
