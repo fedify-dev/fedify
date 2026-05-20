@@ -139,6 +139,7 @@
     }
   },
   "dependencies": {
+    "@fedify/uri-template": "workspace:*",
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/webfinger": "workspace:*",
@@ -153,8 +154,6 @@
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
     "structured-field-values": "^2.0.4",
-    "uri-template-router": "^1.0.0",
-    "url-template": "^3.1.1",
     "urlpattern-polyfill": "catalog:"
   },
   "devDependencies": {

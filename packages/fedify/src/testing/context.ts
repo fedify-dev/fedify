@@ -1,4 +1,5 @@
 import { mockDocumentLoader } from "@fedify/fixture";
+import { RouterError } from "@fedify/uri-template";
 import {
   lookupObject as globalLookupObject,
   traverseCollection as globalTraverseCollection,
@@ -12,7 +13,6 @@ import type {
   RequestContext,
 } from "../federation/context.ts";
 import type { Federation } from "../federation/federation.ts";
-import { RouterError } from "../federation/router.ts";
 
 export function createContext<TContextData>(
   values: Partial<Context<TContextData>> & {

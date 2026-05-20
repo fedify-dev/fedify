@@ -1,3 +1,4 @@
+import { type Path, RouterError } from "@fedify/uri-template";
 import type {
   Actor,
   Collection,
@@ -67,7 +68,7 @@ import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
-import { FederationBuilderImpl } from "./builder.ts";
+import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
 import type {
@@ -126,9 +127,6 @@ import type {
   SenderKeyJwkPair,
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
-import { RouterError } from "./router.ts";
-import { ACTOR_ALIAS_PREFIX } from "./builder.ts";
-
 import {
   extractInboxes,
   sendActivity,
@@ -1650,7 +1648,7 @@ export class FederationImpl<TContextData>
     onNotAcceptable ??= notAcceptable;
     onUnauthorized ??= unauthorized;
     const url = new URL(request.url);
-    const route = this.router.route(url.pathname);
+    const route = this.router.route(url.pathname as Path);
     if (route == null) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
@@ -2257,7 +2255,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (uri.origin !== this.origin && uri.origin !== this.canonicalOrigin) {
       return null;
     }
-    const route = this.federation.router.route(uri.pathname);
+    const route = this.federation.router.route(uri.pathname as Path);
     if (route == null) return null;
     else if (route.name === "sharedInbox") {
       return {

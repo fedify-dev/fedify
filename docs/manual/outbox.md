@@ -79,9 +79,14 @@ actor who owns the addressed outbox.
 > [!NOTE]
 > The URI Template syntax supports different expansion types like
 > `{identifier}` (simple expansion) and `{+identifier}` (reserved expansion).
-> If your identifiers contain URIs or special characters, you may need to use
-> `{+identifier}` to avoid double-encoding issues.  See the
-> [*URI Template* guide][uri-template-guide] for details.
+> Use the plain `{identifier}` form for ordinary segment-bounded identifiers;
+> `{+identifier}` is an advanced choice reserved for identifiers that
+> themselves contain slashes (such as embedded URIs).  The outbox is
+> additionally restricted: both `~Federatable.setOutboxDispatcher()` and
+> `~Federatable.setOutboxListeners()` require the strict single-segment
+> `{identifier}` shape and reject `{+identifier}` at registration time, so a
+> writable (or read-only) outbox cannot use reserved expansion.  See
+> the [*URI Template* guide][uri-template-guide] for details.
 
 [uri-template-guide]: ./uri-template.md
 

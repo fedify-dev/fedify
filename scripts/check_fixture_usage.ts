@@ -85,7 +85,7 @@ for await (
   })
 ) {
   const rel = relative(projectRoot, entry.path);
-  if (rel.endsWith(".test.ts")) continue;
+  if (rel.endsWith(".test.ts") || rel.endsWith(".bench.ts")) continue;
   if (allowed.has(rel)) continue;
 
   const content = await Deno.readTextFile(entry.path);

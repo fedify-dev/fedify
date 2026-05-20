@@ -1,0 +1,37 @@
+{
+  "name": "@fedify/uri-template",
+  "version": "2.3.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "description": "RFC 6570 URI Template expansion and round-trip pattern matching for Fedify",
+  "author": {
+    "name": "Chanhaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://chomu.dev"
+  },
+  "imports": {},
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.bench.ts",
+      "**/*.test.ts",
+      "old/",
+      "src/tests/",
+      "summary.txt",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check",
+    "test": "deno test --allow-env",
+    "test:old": {
+      "command": "OLD=true deno test --allow-env old/",
+      "description": "Repository-only compatibility comparison against older libraries; expected to fail for known legacy gaps."
+    }
+  }
+}

@@ -9467,9 +9467,7 @@
           "npm:json-canon@^1.0.1",
           "npm:jsonld@9",
           "npm:pkijs@^3.3.3",
-          "npm:structured-field-values@^2.0.4",
-          "npm:uri-template-router@1",
-          "npm:url-template@^3.1.1"
+          "npm:structured-field-values@^2.0.4"
         ],
         "packageJson": {
           "dependencies": [
@@ -9481,8 +9479,6 @@
             "npm:miniflare@^4.20250523.0",
             "npm:structured-field-values@^2.0.4",
             "npm:tsx@^4.21.0",
-            "npm:uri-template-router@1",
-            "npm:url-template@^3.1.1",
             "npm:wrangler@^4.17.0"
           ]
         }

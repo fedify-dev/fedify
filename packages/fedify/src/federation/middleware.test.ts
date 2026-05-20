@@ -4,6 +4,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import { RouterError } from "@fedify/uri-template";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
 import { getTypeId, lookupObject } from "@fedify/vocab";
@@ -59,7 +60,6 @@ import {
 } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
-import { RouterError } from "./router.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -1429,6 +1429,42 @@ test("Federation.fetch()", async (t) => {
     assertEquals(inbox, []);
     assertEquals(response.status, 404);
   });
+
+  await t.step(
+    "empty identifier segment is Not Found, dispatcher not invoked",
+    async () => {
+      // Regression for the bug fixed by this change: a request whose
+      // identifier segment is empty or missing (`/users/`, `/users//inbox`)
+      // must be treated as Not Found instead of invoking the dispatcher
+      // with an empty string, which would violate the `identifier: string`
+      // callback contract.  `Federation.fetch()` routes against
+      // `URL.pathname`, so this exercises the real HTTP path, not just
+      // `Router.route()`.  See
+      // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      const { federation, dispatches } = createTestContext();
+
+      const actorResponse = await federation.fetch(
+        new Request("https://example.com/users/", {
+          method: "GET",
+          headers: { "Accept": "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(actorResponse.status, 404);
+
+      const inboxResponse = await federation.fetch(
+        new Request("https://example.com/users//inbox", {
+          method: "POST",
+          headers: { "accept": "application/ld+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(inboxResponse.status, 404);
+
+      // The actor dispatcher must never have seen an empty identifier.
+      assertEquals(dispatches.includes(""), false);
+    },
+  );
 
   await t.step("onNotAcceptable with GET", async () => {
     const { federation } = createTestContext();
