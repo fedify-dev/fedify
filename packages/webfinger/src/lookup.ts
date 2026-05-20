@@ -212,6 +212,10 @@ export async function lookupWebFinger(
     async (span) => {
       const meterProvider = options.meterProvider;
       const start = meterProvider == null ? 0 : performance.now();
+      // Initialise the outcome with the `error` shape that the `finally`
+      // block records when `lookupWebFingerInternal()` itself rejects;
+      // the `try` body reassigns this to the actual outcome before any
+      // other statement runs, so the `catch` does not need to reassign.
       let outcome: WebFingerLookupOutcome = {
         resource: null,
         result: "error",
@@ -225,7 +229,6 @@ export async function lookupWebFinger(
         });
         return outcome.resource;
       } catch (error) {
-        outcome = { resource: null, result: "error" };
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
