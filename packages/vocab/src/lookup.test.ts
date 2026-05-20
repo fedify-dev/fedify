@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -691,6 +692,177 @@ test("lookupObject() records OpenTelemetry span events", async () => {
     event.attributes["activitypub.object.json"] as string,
   );
   deepStrictEqual(recordedObject.id, "https://example.com/object");
+});
+
+test("lookupObject() records activitypub.object.lookup counter", {
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, async (t) => {
+  fetchMock.spyGlobal();
+  // Cleanup must run even if a test step throws so the global `fetch`
+  // spy does not leak into subsequent tests.
+  try {
+    fetchMock.removeRoutes();
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger",
+      {
+        subject: "acct:johndoe@example.com",
+        links: [
+          {
+            rel: "self",
+            href: "https://example.com/person",
+            type: "application/activity+json",
+          },
+        ],
+      },
+    );
+
+    await t.step("records kind=actor for an actor result", async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const person = await lookupObject("@johndoe@example.com", {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertInstanceOf(person, Person);
+      const counters = recorder.getMeasurements("activitypub.object.lookup");
+      deepStrictEqual(counters.length, 1);
+      deepStrictEqual(counters[0].type, "counter");
+      deepStrictEqual(counters[0].value, 1);
+      deepStrictEqual(
+        counters[0].attributes["activitypub.lookup.kind"],
+        "actor",
+      );
+      deepStrictEqual(
+        counters[0].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+      // No `activitypub.document.fetch` measurement should be recorded by
+      // lookupObject itself; that lives on the document-loader path.
+      deepStrictEqual(
+        recorder.getMeasurements("activitypub.document.fetch").length,
+        0,
+      );
+    });
+
+    await t.step("records kind=object for a non-actor object", async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const object = await lookupObject("https://example.com/object", {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertInstanceOf(object, Object);
+      const counters = recorder.getMeasurements("activitypub.object.lookup");
+      deepStrictEqual(counters.length, 1);
+      deepStrictEqual(
+        counters[0].attributes["activitypub.lookup.kind"],
+        "object",
+      );
+      deepStrictEqual(
+        counters[0].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+    });
+
+    await t.step("records kind=other on null result", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get("begin:https://example.com/.well-known/webfinger", {
+        subject: "acct:janedoe@example.com",
+        links: [
+          {
+            rel: "self",
+            href: "https://example.com/404",
+            type: "application/activity+json",
+          },
+        ],
+      });
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const result = await lookupObject("janedoe@example.com", {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      deepStrictEqual(result, null);
+      const counters = recorder.getMeasurements("activitypub.object.lookup");
+      deepStrictEqual(counters.length, 1);
+      deepStrictEqual(
+        counters[0].attributes["activitypub.lookup.kind"],
+        "other",
+      );
+      deepStrictEqual(
+        counters[0].attributes["activitypub.remote.host"],
+        "example.com",
+      );
+    });
+
+    await t.step(
+      "omits counter when no meterProvider is provided",
+      async () => {
+        const [_unused, recorder] = createTestMeterProvider();
+        await lookupObject("https://example.com/object", {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        });
+        deepStrictEqual(
+          recorder.getMeasurements("activitypub.object.lookup").length,
+          0,
+        );
+      },
+    );
+
+    await t.step(
+      "extracts host from a URL acct: instance",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get("begin:https://example.com/.well-known/webfinger", {
+          subject: "acct:johndoe@example.com",
+          links: [
+            {
+              rel: "self",
+              href: "https://example.com/person",
+              type: "application/activity+json",
+            },
+          ],
+        });
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupObject(new URL("acct:johndoe@example.com"), {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        });
+        const counter = recorder.getMeasurement("activitypub.object.lookup");
+        deepStrictEqual(
+          counter?.attributes["activitypub.remote.host"],
+          "example.com",
+        );
+      },
+    );
+
+    await t.step(
+      "omits host when the identifier carries path/query characters",
+      async () => {
+        const [meterProvider, recorder] = createTestMeterProvider();
+        // The bare-handle parser must refuse to put a path-bearing string
+        // like "example.com/leak" into the metric attribute.
+        await lookupObject("johndoe@example.com/leak", {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        });
+        const counter = recorder.getMeasurement("activitypub.object.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          "activitypub.remote.host" in counter.attributes,
+          false,
+          "high-cardinality handle suffixes must not be recorded as remote.host",
+        );
+      },
+    );
+  } finally {
+    fetchMock.removeRoutes();
+    fetchMock.hardReset();
+  }
 });
 
 // cSpell: ignore gildong

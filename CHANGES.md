@@ -113,11 +113,50 @@ To be released.
     and other high-cardinality identifiers are deliberately excluded
     from the fanout histogram.  [[#316], [#742], [#770]]
 
+ -  Added OpenTelemetry metrics for public key lookups, remote JSON-LD
+    document fetches, and `lookupObject()` calls so operators can
+    observe how often Fedify hits the cache, how long remote fetches
+    take, and how `lookupObject()` resolutions split between actors,
+    non-actor objects, and unresolved lookups:
+
+     -  `activitypub.key.lookup` (counter) and
+        `activitypub.key.lookup.duration` (histogram) cover every
+        public key lookup performed by `fetchKey()` /
+        `fetchKeyDetailed()`, including signature verification paths.
+     -  `activitypub.document.fetch` (counter) and
+        `activitypub.document.fetch.duration` (histogram) cover every
+        Fedify-wrapped document or context loader invocation, including
+        the authenticated loader.
+     -  `activitypub.document.cache` (counter) records `hit` or `miss`
+        for each `kvCache()`-backed cache lookup.
+     -  `activitypub.object.lookup` (counter) records the
+        parsed-result classification of every `lookupObject()` call as
+        `actor`, `object`, or `other`.
+
+    Instruments share an `activitypub.lookup.kind` and (where
+    applicable) `activitypub.lookup.result` attribute drawn from small,
+    spec-bounded enumerations.  `activitypub.remote.host` records the
+    URL hostname only; `http.response.status_code` is recorded when an
+    HTTP response was observed; `activitypub.cache.enabled` is
+    recorded on the key and document fetch metrics whenever Fedify can
+    confidently report the cache layer's presence.  Key IDs, actor
+    IDs, object IDs, JSON-LD context URLs, full URLs, and fediverse
+    handles are deliberately excluded so attacker-controlled remotes
+    cannot inflate metric cardinality.  The existing
+    `activitypub.signature.key_fetch.duration` histogram (introduced in
+    Fedify 2.3 for signature-scoped key-fetch latency, sliced by
+    `activitypub.signature.kind`) remains in place; the new
+    `activitypub.key.lookup.duration` is the general-purpose
+    histogram that covers non-signature key fetches as well and adds
+    `http.response.status_code` and a richer
+    `activitypub.lookup.result` taxonomy.  [[#316], [#738], [#771]]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
 [#737]: https://github.com/fedify-dev/fedify/issues/737
+[#738]: https://github.com/fedify-dev/fedify/issues/738
 [#740]: https://github.com/fedify-dev/fedify/issues/740
 [#742]: https://github.com/fedify-dev/fedify/issues/742
 [#748]: https://github.com/fedify-dev/fedify/pull/748
@@ -128,6 +167,7 @@ To be released.
 [#759]: https://github.com/fedify-dev/fedify/pull/759
 [#769]: https://github.com/fedify-dev/fedify/pull/769
 [#770]: https://github.com/fedify-dev/fedify/pull/770
+[#771]: https://github.com/fedify-dev/fedify/pull/771
 
 ### @fedify/fixture
 

@@ -421,6 +421,21 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
     assertFalse(
       "http_signatures.failure_reason" in measurement.attributes,
     );
+
+    // The HTTP draft-cavage verifier must also forward `meterProvider`
+    // through to `fetchKeyDetailed` so the generic
+    // `activitypub.key.lookup*` metrics land on the test provider rather
+    // than the global default.
+    const keyLookups = recorder.getMeasurements("activitypub.key.lookup");
+    assertEquals(keyLookups.length, 1);
+    assertEquals(
+      keyLookups[0].attributes["activitypub.lookup.kind"],
+      "public_key",
+    );
+    assertEquals(
+      keyLookups[0].attributes["activitypub.lookup.result"],
+      "fetched",
+    );
   });
 
   await t.step("missing signature is recorded as result=missing", async () => {

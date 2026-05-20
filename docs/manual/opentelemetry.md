@@ -173,6 +173,26 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+> [!NOTE]
+> The document and context loader metrics
+> (`activitypub.document.fetch[.duration]` and
+> `activitypub.document.cache`) are opt-in inside Fedify: they are
+> emitted only when `meterProvider` is explicitly configured on
+> `createFederation()`.  Omitting it preserves strict reference identity
+> for `Context.documentLoader`, `Context.contextLoader`, and the
+> authenticated document loader (`ctx.documentLoader === userLoader`),
+> so existing test code that asserts identity on a user-supplied
+> factory's output continues to work.  The other metrics (delivery,
+> inbox, outbox, fanout, queue, HTTP server, signature verification,
+> signature key fetch, public key lookup, and `lookupObject` actor
+> classification) follow the standard “fall back to the global
+> [`MeterProvider`]” behavior described above.  Calling
+> `lookupObject()` directly from `@fedify/vocab` (without going through
+> a `Context`) still requires an explicit
+> `LookupObjectOptions.meterProvider` to emit
+> `activitypub.object.lookup`; `Context.lookupObject()` threads the
+> Federation's meter provider through automatically.
+
 [`MeterProvider`]: https://open-telemetry.github.io/opentelemetry-js/interfaces/_opentelemetry_api._opentelemetry_api.MeterProvider.html
 
 
@@ -308,6 +328,12 @@ Fedify records the following OpenTelemetry metrics:
 | `activitypub.signature.verification_failure`  | Counter       | `{failure}`   | Counts failed signature verification for inbox requests.                                        |
 | `activitypub.signature.verification.duration` | Histogram     | `ms`          | Measures signature verification duration across HTTP, Linked Data, and Object Integrity Proofs. |
 | `activitypub.signature.key_fetch.duration`    | Histogram     | `ms`          | Measures public key lookup duration during signature verification.                              |
+| `activitypub.key.lookup`                      | Counter       | `{lookup}`    | Counts public key lookups performed by `fetchKey()` / `fetchKeyDetailed()`.                     |
+| `activitypub.key.lookup.duration`             | Histogram     | `ms`          | Measures public key lookup duration, including cache hits and remote fetches.                   |
+| `activitypub.document.fetch`                  | Counter       | `{fetch}`     | Counts remote JSON-LD document loader invocations made by Fedify-wrapped loaders.               |
+| `activitypub.document.fetch.duration`         | Histogram     | `ms`          | Measures remote JSON-LD document loader invocation duration.                                    |
+| `activitypub.document.cache`                  | Counter       | `{lookup}`    | Counts KV-backed document loader cache lookups, classified as `hit` or `miss`.                  |
+| `activitypub.object.lookup`                   | Counter       | `{lookup}`    | Counts `lookupObject()` calls, classified by whether the resolved value is an Actor.            |
 | `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                   |
 | `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                 |
 | `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                         |
@@ -473,6 +499,113 @@ Fedify records the following OpenTelemetry metrics:
     for the stale attempt and one `fetched` for the freshly fetched retry)
     alongside the single verification measurement that covers both.
 
+`activitypub.key.lookup` and `activitypub.key.lookup.duration`
+:   `activitypub.lookup.kind` is always `public_key` on these metrics; the
+    enumeration also covers `actor`, `object`, `context`, and `other` for
+    the document-fetch and lookup-object families described below.
+    `activitypub.lookup.result` is always present and is one of:
+
+     -  `hit`: the key was served from the configured `KeyCache`, either
+        a valid cached key or a cached negative entry recording a prior
+        failed fetch.
+     -  `fetched`: the key was not in the cache and was loaded through
+        the document loader, returning a usable key.
+     -  `not_found`: the remote responded with `404 Not Found` or
+        `410 Gone`.  Recorded together with `http.response.status_code`.
+     -  `invalid`: the remote responded with a payload Fedify could not
+        parse into a `CryptographicKey` or `Multikey`.
+     -  `network_error`: no HTTP response was received.  DNS, connect,
+        TLS, redirect-loop, or aborted-fetch failures all fall into this
+        bucket via the shared error classifier.
+     -  `error`: any other unexpected failure (non-2xx HTTP response that
+        is neither `404` nor `410`, thrown exceptions that are not
+        recognised as transport failures, etc.).
+
+    `activitypub.cache.enabled` is always present and is `true` when the
+    caller passed a `KeyCache`, `false` otherwise.  `activitypub.remote.host`
+    is the hostname of the key URL.  `http.response.status_code` is
+    present only when an HTTP response was observed.  Key IDs, full key
+    URLs, and actor IDs are deliberately excluded from these metrics;
+    they remain on the `activitypub.fetch_key` span for trace-level
+    investigation.
+
+    These metrics complement
+    [`activitypub.signature.key_fetch.duration`](#instrumented-metrics).
+    The signature-scoped histogram keeps an `activitypub.signature.kind`
+    dimension and is the right metric to slice signature verification
+    latency by `http` / `linked_data` / `object_integrity`; the new
+    `activitypub.key.lookup*` metrics cover *every* key lookup performed
+    by Fedify (including non-signature uses such as direct `fetchKey()`
+    calls) and add a bounded HTTP `status_code` and richer
+    `lookup.result` taxonomy.
+
+`activitypub.document.fetch` and `activitypub.document.fetch.duration`
+:   `activitypub.lookup.kind` is always present and is one of `object`
+    (Fedify's generic document loader), `context` (the JSON-LD context
+    loader), or `other` (callers that supply a custom kind hint).
+    Actor documents fetched through the generic loader are still
+    classified as `object` at this layer because the kind is decided at
+    the loader boundary, *before* the response is parsed; the
+    [`activitypub.object.lookup`](#instrumented-metrics) counter
+    provides the parsed-result actor / object split.
+
+    `activitypub.lookup.result` is always present and is one of
+    `fetched`, `not_found` (with `http.response.status_code`),
+    `network_error`, or `error`.  The shared error classifier only
+    surfaces these four values at the loader boundary; `invalid` is
+    reserved for the key lookup metrics, where the parser can decide
+    that a successful HTTP response still does not contain a usable
+    key.  `activitypub.remote.host` records the hostname of the
+    fetched URL when the URL parses; otherwise it is omitted.
+    `activitypub.cache.enabled` is `true` for Fedify's built-in
+    `kvCache()`-backed document and context loaders and `false` for the
+    authenticated document loader; for user-supplied factories Fedify
+    cannot introspect caching behavior, so the attribute is omitted
+    rather than recorded as a confident `true` or `false`.
+
+    Counter and histogram are always emitted together for one wrapped
+    loader call, so dashboards can compute average duration as
+    `duration_sum / counter`.  Document IDs, JSON-LD context URLs, and
+    full request URLs are deliberately excluded; the
+    `activitypub.fetch_document` span keeps the full URL for sampled
+    traces.
+
+`activitypub.document.cache`
+:   `activitypub.lookup.kind` is always present (same values as
+    `activitypub.document.fetch`).  `activitypub.lookup.result` is
+    `hit` when the KV cache returned a `RemoteDocument` and `miss`
+    when it did not.  Cache lookups that bypass the KV cache entirely
+    (preloaded JSON-LD contexts and call sites without a matching cache
+    rule) emit no measurement.  `activitypub.remote.host` records the
+    hostname of the looked-up URL when it parses.
+
+`activitypub.object.lookup`
+:   `activitypub.lookup.kind` is always present and is one of:
+
+     -  `actor`: `lookupObject()` resolved to an `Actor` subtype
+        (`Application`, `Group`, `Organization`, `Person`, `Service`).
+     -  `object`: `lookupObject()` resolved to a non-actor
+        `Object` subtype.
+     -  `other`: `lookupObject()` returned `null` (the document could
+        not be fetched, the response could not be parsed, or the
+        cross-origin check rejected the resolved object) **or** the
+        call threw before resolving an object.  The metric is emitted
+        in a `finally` block, so a thrown error is still counted with
+        `kind=other`.
+
+    `activitypub.remote.host` is the hostname extracted from the
+    identifier: a parsed `URL`, an `acct:user@host` URI, or a bare
+    `@user@host` / `user@host` handle.  Inputs that do not reduce
+    cleanly to an authority (paths, query strings, fragments, or
+    whitespace mixed in with the handle suffix) result in the
+    attribute being omitted, rather than recording a high-cardinality
+    value.  This counter has no companion histogram: `lookupObject()`
+    drives `activitypub.document.fetch.duration` through the document
+    loader, and emitting another duration here would double-count
+    latency.  Use `activitypub.object.lookup` for the parsed-result
+    classification and `activitypub.document.fetch[.duration]` for
+    the loader-level rate and latency.
+
 `fedify.http.server.request.count` and `fedify.http.server.request.duration`
 :   `http.request.method` and `fedify.endpoint` are always present.
     `http.request.method` is normalized to one of the standard HTTP methods
@@ -556,6 +689,19 @@ Fedify records `activitypub.remote.host` as the URL hostname only; ports, paths,
 and query strings are deliberately excluded to keep metric cardinality bounded.
 Activity types use the same qualified URI form as Fedify's trace attributes,
 for example `https://www.w3.org/ns/activitystreams#Create`.
+
+The key lookup, document fetch, document cache, and object lookup metrics
+share an `activitypub.lookup.kind` and (where applicable)
+`activitypub.lookup.result` attribute taxonomy.  Both are drawn from small
+fixed enumerations (`kind` ∈ `{public_key, actor, object, context, other}`
+and `result` ∈
+`{hit, miss, fetched, not_found, invalid, network_error, error}`), so an
+attacker-controlled remote cannot inflate cardinality by returning arbitrary
+status codes, content types, or thrown exceptions. Full URLs, key IDs, actor
+IDs, object IDs, JSON-LD context URLs, and fediverse handles are deliberately
+excluded; they remain on the corresponding spans (`activitypub.fetch_key`,
+`activitypub.fetch_document`, `activitypub.lookup_object`) for trace-level
+investigation.
 
 The HTTP server request metrics deliberately exclude high-cardinality fields
 such as the full URL, raw path, query string, actor identifier, and inbox

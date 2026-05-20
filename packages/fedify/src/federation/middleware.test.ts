@@ -6491,3 +6491,97 @@ test("KvSpecDeterminer", async (t) => {
     assertEquals(spec, "rfc9421");
   });
 });
+
+test("createFederation() instruments documentLoader with activitypub.document.fetch", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  await ctx.documentLoader("https://example.com/object");
+
+  const counters = recorder.getMeasurements("activitypub.document.fetch");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "object");
+  assertEquals(counters[0].attributes["activitypub.lookup.result"], "fetched");
+  assertEquals(
+    counters[0].attributes["activitypub.remote.host"],
+    "example.com",
+  );
+  // User-supplied factory: cacheEnabled is unknown, attribute is omitted.
+  assertFalse("activitypub.cache.enabled" in counters[0].attributes);
+});
+
+test("createFederation() records kind=context on contextLoader fetches", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  await ctx.contextLoader("https://example.com/object");
+
+  const counters = recorder.getMeasurements("activitypub.document.fetch");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "context");
+});
+
+test("createFederation() forwards DocumentLoaderFactoryOptions to a user-supplied authenticatedDocumentLoaderFactory", () => {
+  const kv = new MemoryKvStore();
+  const seen: Array<unknown> = [];
+  const federation = createFederation<void>({
+    kv,
+    authenticatedDocumentLoaderFactory: (_identity, opts) => {
+      seen.push(opts);
+      return mockDocumentLoader;
+    },
+  });
+  // FederationImpl exposes the factory directly on the instance.
+  const impl = federation as unknown as {
+    authenticatedDocumentLoaderFactory: (
+      identity: { keyId: URL; privateKey: CryptoKey },
+      opts?: { allowPrivateAddress?: boolean; userAgent?: string },
+    ) => unknown;
+  };
+  impl.authenticatedDocumentLoaderFactory(
+    {
+      keyId: new URL("https://example.com/users/alice#main-key"),
+      // deno-lint-ignore no-explicit-any
+      privateKey: {} as any,
+    },
+    { allowPrivateAddress: true, userAgent: "test-ua" },
+  );
+  assertEquals(seen.length, 1);
+  assertEquals(seen[0], { allowPrivateAddress: true, userAgent: "test-ua" });
+});
+
+test("createFederation() omits instrumentation when no meterProvider is set", () => {
+  // Sanity: without a meterProvider, ctx.documentLoader must be the same
+  // function reference as the user-supplied loader, so the wrapper is a
+  // true no-op for non-OTel users.
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  assertStrictEquals(ctx.documentLoader, mockDocumentLoader);
+  assertStrictEquals(ctx.contextLoader, mockDocumentLoader);
+});
