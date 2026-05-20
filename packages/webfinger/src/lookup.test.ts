@@ -44,102 +44,95 @@ test({
     });
 
     fetchMock.spyGlobal();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      { status: 404 },
-    );
-
-    await t.step("not found", async () => {
-      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
-      deepStrictEqual(await lookupWebFinger("https://example.com/foo"), null);
-    });
-
-    const expected: ResourceDescriptor = {
-      subject: "acct:johndoe@example.com",
-      links: [],
-    };
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
-      { body: expected },
-    );
-
-    await t.step("acct", async () => {
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com"),
-        expected,
+    // Wrap the rest of the outer test in try/finally so the global
+    // `fetch` spy is torn down even if a t.step assertion below
+    // throws.  Matches the cleanup pattern of the metrics test
+    // further down in this file.
+    try {
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 404 },
       );
-    });
 
-    const expected2: ResourceDescriptor = {
-      subject: "https://example.com/foo",
-      links: [],
-    };
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "https://example.com/.well-known/webfinger?resource=https%3A%2F%2Fexample.com%2Ffoo",
-      { body: expected2 },
-    );
+      await t.step("not found", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          null,
+        );
+        deepStrictEqual(await lookupWebFinger("https://example.com/foo"), null);
+      });
 
-    await t.step("https", async () => {
-      deepStrictEqual(
-        await lookupWebFinger("https://example.com/foo"),
-        expected2,
+      const expected: ResourceDescriptor = {
+        subject: "acct:johndoe@example.com",
+        links: [],
+      };
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+        { body: expected },
       );
-    });
 
-    const mailtoExpected: ResourceDescriptor = {
-      subject: "mailto:juliet@example.com",
-      links: [],
-    };
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "https://example.com/.well-known/webfinger?resource=mailto%3Ajuliet%40example.com",
-      { body: mailtoExpected },
-    );
+      await t.step("acct", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          expected,
+        );
+      });
 
-    await t.step("mailto", async () => {
-      // RFC 7033 permits any URI as a WebFinger resource, and RFC 7565
-      // explicitly references `mailto:` as an example.  The opaque-path
-      // host extraction (after the last `@`) applies to `mailto:` just
-      // like `acct:`.
-      deepStrictEqual(
-        await lookupWebFinger("mailto:juliet@example.com"),
-        mailtoExpected,
+      const expected2: ResourceDescriptor = {
+        subject: "https://example.com/foo",
+        links: [],
+      };
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=https%3A%2F%2Fexample.com%2Ffoo",
+        { body: expected2 },
       );
-    });
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      { body: "not json" },
-    );
+      await t.step("https", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("https://example.com/foo"),
+          expected2,
+        );
+      });
 
-    await t.step("invalid response", async () => {
-      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
-    });
+      const mailtoExpected: ResourceDescriptor = {
+        subject: "mailto:juliet@example.com",
+        links: [],
+      };
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=mailto%3Ajuliet%40example.com",
+        { body: mailtoExpected },
+      );
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://localhost/.well-known/webfinger?",
-      {
-        subject: "acct:test@localhost",
-        links: [
-          {
-            rel: "self",
-            type: "application/activity+json",
-            href: "https://localhost/actor",
-          },
-        ],
-      },
-    );
+      await t.step("mailto", async () => {
+        // RFC 7033 permits any URI as a WebFinger resource, and RFC 7565
+        // explicitly references `mailto:` as an example.  The opaque-path
+        // host extraction (after the last `@`) applies to `mailto:` just
+        // like `acct:`.
+        deepStrictEqual(
+          await lookupWebFinger("mailto:juliet@example.com"),
+          mailtoExpected,
+        );
+      });
 
-    await t.step("private address", async () => {
-      deepStrictEqual(await lookupWebFinger("acct:test@localhost"), null);
-      deepStrictEqual(
-        await lookupWebFinger("acct:test@localhost", {
-          allowPrivateAddress: true,
-        }),
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { body: "not json" },
+      );
+
+      await t.step("invalid response", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          null,
+        );
+      });
+
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://localhost/.well-known/webfinger?",
         {
           subject: "acct:test@localhost",
           links: [
@@ -151,281 +144,310 @@ test({
           ],
         },
       );
-    });
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      {
-        status: 302,
-        headers: { Location: "/.well-known/webfinger2" },
-      },
-    );
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger2",
-      { body: expected },
-    );
+      await t.step("private address", async () => {
+        deepStrictEqual(await lookupWebFinger("acct:test@localhost"), null);
+        deepStrictEqual(
+          await lookupWebFinger("acct:test@localhost", {
+            allowPrivateAddress: true,
+          }),
+          {
+            subject: "acct:test@localhost",
+            links: [
+              {
+                rel: "self",
+                type: "application/activity+json",
+                href: "https://localhost/actor",
+              },
+            ],
+          },
+        );
+      });
 
-    await t.step("redirection", async () => {
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com"),
-        expected,
-      );
-    });
-
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      {
-        status: 302,
-        headers: { Location: "/.well-known/webfinger" },
-      },
-    );
-
-    await t.step("infinite redirection", async () => {
-      const result = await withTimeout(
-        () => lookupWebFinger("acct:johndoe@example.com"),
-        2000,
-      );
-      deepStrictEqual(result, null);
-    });
-
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      {
-        status: 302,
-        headers: { Location: "ftp://example.com/" },
-      },
-    );
-
-    await t.step("redirection to different protocol", async () => {
-      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
-    });
-
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      {
-        status: 302,
-        headers: { Location: "https://localhost/" },
-      },
-    );
-
-    await t.step("redirection to private address", async () => {
-      deepStrictEqual(await lookupWebFinger("acct:johndoe@example.com"), null);
-    });
-
-    fetchMock.removeRoutes();
-    let redirectCount = 0;
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger",
-      () => {
-        redirectCount++;
-        if (redirectCount < 3) {
-          return {
-            status: 302,
-            headers: {
-              Location: `/.well-known/webfinger?redirect=${redirectCount}`,
-            },
-          };
-        }
-        return { body: expected };
-      },
-    );
-
-    await t.step("custom maxRedirection", async () => {
-      // Test with maxRedirection: 1 (should fail; mock has 2 redirects)
-      redirectCount = 0;
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com", {
-          maxRedirection: 1,
-        }),
-        null,
-      );
-
-      // Test with maxRedirection: 2 (should succeed; mock has exactly 2
-      // redirects, and `maxRedirection: N` follows up to N redirects)
-      redirectCount = 0;
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com", {
-          maxRedirection: 2,
-        }),
-        expected,
-      );
-
-      // Test with maxRedirection: 3 (should succeed)
-      redirectCount = 0;
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com", {
-          maxRedirection: 3,
-        }),
-        expected,
-      );
-
-      // Test with default maxRedirection: 5 (should succeed)
-      redirectCount = 0;
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com"),
-        expected,
-      );
-    });
-
-    // Regression: `maxRedirection: 1` must allow exactly one 302 to be
-    // followed.  An earlier implementation incremented the counter before
-    // the `>=` check, so `maxRedirection: 1` rejected the first redirect
-    // instead of following it.  The expected semantics is "follow up to
-    // N redirects".
-    await t.step("maxRedirection: 1 follows exactly one redirect", async () => {
-      // Mock with a single redirect: 302 → 200.  Under the corrected
-      // semantics, `maxRedirection: 1` follows it and reaches the body.
       fetchMock.removeRoutes();
-      let count = 0;
       fetchMock.get(
-        "begin:https://example.com/.well-known/webfinger",
-        () => {
-          count++;
-          return count < 2
-            ? {
-              status: 302,
-              headers: { Location: "/.well-known/webfinger?after=1" },
-            }
-            : { body: expected };
+        "begin:https://example.com/.well-known/webfinger?",
+        {
+          status: 302,
+          headers: { Location: "/.well-known/webfinger2" },
         },
       );
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com", {
-          maxRedirection: 1,
-        }),
-        expected,
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger2",
+        { body: expected },
       );
 
-      // Mock with two redirects.  `maxRedirection: 1` rejects the
-      // second redirect.
+      await t.step("redirection", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          expected,
+        );
+      });
+
       fetchMock.removeRoutes();
-      count = 0;
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        {
+          status: 302,
+          headers: { Location: "/.well-known/webfinger" },
+        },
+      );
+
+      await t.step("infinite redirection", async () => {
+        const result = await withTimeout(
+          () => lookupWebFinger("acct:johndoe@example.com"),
+          2000,
+        );
+        deepStrictEqual(result, null);
+      });
+
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        {
+          status: 302,
+          headers: { Location: "ftp://example.com/" },
+        },
+      );
+
+      await t.step("redirection to different protocol", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          null,
+        );
+      });
+
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        {
+          status: 302,
+          headers: { Location: "https://localhost/" },
+        },
+      );
+
+      await t.step("redirection to private address", async () => {
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          null,
+        );
+      });
+
+      fetchMock.removeRoutes();
+      let redirectCount = 0;
       fetchMock.get(
         "begin:https://example.com/.well-known/webfinger",
         () => {
-          count++;
-          return count < 3
-            ? {
+          redirectCount++;
+          if (redirectCount < 3) {
+            return {
               status: 302,
               headers: {
-                Location: `/.well-known/webfinger?after=${count}`,
+                Location: `/.well-known/webfinger?redirect=${redirectCount}`,
               },
-            }
-            : { body: expected };
+            };
+          }
+          return { body: expected };
         },
       );
-      deepStrictEqual(
-        await lookupWebFinger("acct:johndoe@example.com", {
-          maxRedirection: 1,
-        }),
-        null,
+
+      await t.step("custom maxRedirection", async () => {
+        // Test with maxRedirection: 1 (should fail; mock has 2 redirects)
+        redirectCount = 0;
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com", {
+            maxRedirection: 1,
+          }),
+          null,
+        );
+
+        // Test with maxRedirection: 2 (should succeed; mock has exactly 2
+        // redirects, and `maxRedirection: N` follows up to N redirects)
+        redirectCount = 0;
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com", {
+            maxRedirection: 2,
+          }),
+          expected,
+        );
+
+        // Test with maxRedirection: 3 (should succeed)
+        redirectCount = 0;
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com", {
+            maxRedirection: 3,
+          }),
+          expected,
+        );
+
+        // Test with default maxRedirection: 5 (should succeed)
+        redirectCount = 0;
+        deepStrictEqual(
+          await lookupWebFinger("acct:johndoe@example.com"),
+          expected,
+        );
+      });
+
+      // Regression: `maxRedirection: 1` must allow exactly one 302 to be
+      // followed.  An earlier implementation incremented the counter before
+      // the `>=` check, so `maxRedirection: 1` rejected the first redirect
+      // instead of following it.  The expected semantics is "follow up to
+      // N redirects".
+      await t.step(
+        "maxRedirection: 1 follows exactly one redirect",
+        async () => {
+          // Mock with a single redirect: 302 → 200.  Under the corrected
+          // semantics, `maxRedirection: 1` follows it and reaches the body.
+          fetchMock.removeRoutes();
+          let count = 0;
+          fetchMock.get(
+            "begin:https://example.com/.well-known/webfinger",
+            () => {
+              count++;
+              return count < 2
+                ? {
+                  status: 302,
+                  headers: { Location: "/.well-known/webfinger?after=1" },
+                }
+                : { body: expected };
+            },
+          );
+          deepStrictEqual(
+            await lookupWebFinger("acct:johndoe@example.com", {
+              maxRedirection: 1,
+            }),
+            expected,
+          );
+
+          // Mock with two redirects.  `maxRedirection: 1` rejects the
+          // second redirect.
+          fetchMock.removeRoutes();
+          count = 0;
+          fetchMock.get(
+            "begin:https://example.com/.well-known/webfinger",
+            () => {
+              count++;
+              return count < 3
+                ? {
+                  status: 302,
+                  headers: {
+                    Location: `/.well-known/webfinger?after=${count}`,
+                  },
+                }
+                : { body: expected };
+            },
+          );
+          deepStrictEqual(
+            await lookupWebFinger("acct:johndoe@example.com", {
+              maxRedirection: 1,
+            }),
+            null,
+          );
+        },
       );
-    });
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      () =>
-        new Promise((resolve) => {
-          const timeoutId = setTimeout(() => {
-            resolve({ body: expected });
-          }, 1000);
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        () =>
+          new Promise((resolve) => {
+            const timeoutId = setTimeout(() => {
+              resolve({ body: expected });
+            }, 1000);
 
-          return () => clearTimeout(timeoutId);
-        }),
-    );
+            return () => clearTimeout(timeoutId);
+          }),
+      );
 
-    await t.step("request cancellation", async () => {
-      // Test cancelling a request immediately using AbortController
-      const controller = new AbortController();
-      const promise = lookupWebFinger("acct:johndoe@example.com", {
-        signal: controller.signal,
-      });
-
-      // Abort the request right after starting it
-      controller.abort();
-      deepStrictEqual(await promise, null);
-    });
-
-    fetchMock.removeRoutes();
-    let redirectCount2 = 0;
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger",
-      () => {
-        redirectCount2++;
-        if (redirectCount2 === 1) {
-          return {
-            status: 302,
-            headers: { Location: "/.well-known/webfinger2" },
-          };
-        }
-        return new Promise((resolve) => {
-          const timeoutId = setTimeout(() => {
-            resolve({ body: expected });
-          }, 1000);
-
-          return () => clearTimeout(timeoutId);
+      await t.step("request cancellation", async () => {
+        // Test cancelling a request immediately using AbortController
+        const controller = new AbortController();
+        const promise = lookupWebFinger("acct:johndoe@example.com", {
+          signal: controller.signal,
         });
-      },
-    );
 
-    await t.step("cancellation during redirection", async () => {
-      // Test cancelling a request during redirection process
-      const controller = new AbortController();
-      const promise = lookupWebFinger("acct:johndoe@example.com", {
-        signal: controller.signal,
+        // Abort the request right after starting it
+        controller.abort();
+        deepStrictEqual(await promise, null);
       });
 
-      // Cancel during the delayed second request after redirection
-      setTimeout(() => controller.abort(), 100);
-      deepStrictEqual(await promise, null);
-    });
+      fetchMock.removeRoutes();
+      let redirectCount2 = 0;
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger",
+        () => {
+          redirectCount2++;
+          if (redirectCount2 === 1) {
+            return {
+              status: 302,
+              headers: { Location: "/.well-known/webfinger2" },
+            };
+          }
+          return new Promise((resolve) => {
+            const timeoutId = setTimeout(() => {
+              resolve({ body: expected });
+            }, 1000);
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      () =>
-        new Promise((resolve) => {
-          const timeoutId = setTimeout(() => {
-            resolve({ body: expected });
-          }, 500);
+            return () => clearTimeout(timeoutId);
+          });
+        },
+      );
 
-          return () => clearTimeout(timeoutId);
-        }),
-    );
+      await t.step("cancellation during redirection", async () => {
+        // Test cancelling a request during redirection process
+        const controller = new AbortController();
+        const promise = lookupWebFinger("acct:johndoe@example.com", {
+          signal: controller.signal,
+        });
 
-    await t.step("cancellation with immediate abort", async () => {
-      // Test starting a request with an already aborted AbortController
-      const controller = new AbortController();
-      controller.abort();
-
-      // Use a signal that was already aborted before starting the request
-      const result = await lookupWebFinger("acct:johndoe@example.com", {
-        signal: controller.signal,
+        // Cancel during the delayed second request after redirection
+        setTimeout(() => controller.abort(), 100);
+        deepStrictEqual(await promise, null);
       });
-      deepStrictEqual(result, null);
-    });
 
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger?",
-      { body: expected },
-    );
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        () =>
+          new Promise((resolve) => {
+            const timeoutId = setTimeout(() => {
+              resolve({ body: expected });
+            }, 500);
 
-    await t.step("successful request with signal", async () => {
-      // Test successful request with a normal AbortController signal
-      const controller = new AbortController();
-      const result = await lookupWebFinger("acct:johndoe@example.com", {
-        signal: controller.signal,
+            return () => clearTimeout(timeoutId);
+          }),
+      );
+
+      await t.step("cancellation with immediate abort", async () => {
+        // Test starting a request with an already aborted AbortController
+        const controller = new AbortController();
+        controller.abort();
+
+        // Use a signal that was already aborted before starting the request
+        const result = await lookupWebFinger("acct:johndoe@example.com", {
+          signal: controller.signal,
+        });
+        deepStrictEqual(result, null);
       });
-      deepStrictEqual(result, expected);
-    });
 
-    fetchMock.hardReset();
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { body: expected },
+      );
+
+      await t.step("successful request with signal", async () => {
+        // Test successful request with a normal AbortController signal
+        const controller = new AbortController();
+        const result = await lookupWebFinger("acct:johndoe@example.com", {
+          signal: controller.signal,
+        });
+        deepStrictEqual(result, expected);
+      });
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
   },
 });
 
