@@ -14,6 +14,7 @@ import type { RequestContext } from "./context.ts";
 import {
   recordWebFingerHandle,
   type WebFingerHandleResult,
+  type WebFingerResourceScheme,
 } from "./metrics.ts";
 
 const logger = getLogger(["fedify", "webfinger", "server"]);
@@ -146,21 +147,24 @@ export async function handleWebFinger<TContextData>(
 // (RFC 7565 + ActivityPub), with anything else bucketed as `other`.  This
 // keeps metric cardinality bounded even when a client probes Fedify with
 // arbitrary, very long, or control-character-bearing prefixes.
-const WEBFINGER_HANDLE_SCHEME_WHITELIST: ReadonlySet<string> = new Set([
-  "acct",
-  "http",
-  "https",
-  "mailto",
-]);
+const WEBFINGER_HANDLE_SCHEME_WHITELIST: ReadonlySet<
+  Exclude<WebFingerResourceScheme, "other">
+> = new Set(["acct", "http", "https", "mailto"]);
+
+function isAllowedResourceScheme(
+  scheme: string,
+): scheme is Exclude<WebFingerResourceScheme, "other"> {
+  return (WEBFINGER_HANDLE_SCHEME_WHITELIST as ReadonlySet<string>).has(scheme);
+}
 
 function computeResourceScheme(
   resource: string | null,
-): string | undefined {
+): WebFingerResourceScheme | undefined {
   if (resource == null) return undefined;
   const colon = resource.indexOf(":");
   if (colon <= 0) return undefined;
   const candidate = resource.substring(0, colon).toLowerCase();
-  return WEBFINGER_HANDLE_SCHEME_WHITELIST.has(candidate) ? candidate : "other";
+  return isAllowedResourceScheme(candidate) ? candidate : "other";
 }
 
 function classifyWebFingerHandleResult(

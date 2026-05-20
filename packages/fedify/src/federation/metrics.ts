@@ -370,6 +370,22 @@ export type WebFingerHandleResult =
   | "error";
 
 /**
+ * The bounded value set recorded as `webfinger.resource.scheme` on the
+ * `webfinger.handle` counter and `webfinger.handle.duration` histogram.
+ * The set covers the schemes WebFinger / fediverse clients legitimately use
+ * (RFC 7565 + ActivityPub).  Anything outside that set is bucketed as
+ * `other` at the call site so attacker-controlled query strings cannot
+ * inflate metric cardinality.
+ * @since 2.3.0
+ */
+export type WebFingerResourceScheme =
+  | "acct"
+  | "http"
+  | "https"
+  | "mailto"
+  | "other";
+
+/**
  * Attributes accepted by {@link recordWebFingerHandle}.
  * @since 2.3.0
  */
@@ -379,11 +395,13 @@ export interface WebFingerHandleAttributes {
   /** Elapsed handler duration in milliseconds. */
   durationMs: number;
   /**
-   * The scheme of the queried resource URI, when it parsed.  Omitted when
-   * Fedify could not extract a scheme (no resource parameter, unparseable
-   * URI, or thrown exception before parsing).
+   * The scheme of the queried resource URI, restricted to the bounded
+   * {@link WebFingerResourceScheme} set so the metric attribute stays
+   * cardinality-safe.  Omitted when Fedify could not extract a scheme
+   * (no resource parameter, unparseable URI, or thrown exception before
+   * parsing).
    */
-  scheme?: string;
+  scheme?: WebFingerResourceScheme;
   /**
    * The HTTP response status code Fedify produced.  Omitted only when the
    * handler threw before constructing a response.
