@@ -812,6 +812,42 @@ test("lookupObject() records activitypub.object.lookup counter", {
     );
 
     await t.step(
+      "propagates meterProvider into the nested webfinger.lookup",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger",
+          {
+            subject: "acct:johndoe@example.com",
+            links: [
+              {
+                rel: "self",
+                href: "https://example.com/person",
+                type: "application/activity+json",
+              },
+            ],
+          },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupObject("@johndoe@example.com", {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        });
+        const webFingerCounter = recorder.getMeasurement("webfinger.lookup");
+        ok(webFingerCounter != null);
+        deepStrictEqual(
+          webFingerCounter.attributes["webfinger.lookup.result"],
+          "found",
+        );
+        deepStrictEqual(
+          webFingerCounter.attributes["activitypub.remote.host"],
+          "example.com",
+        );
+      },
+    );
+
+    await t.step(
       "extracts host from a URL acct: instance",
       async () => {
         fetchMock.removeRoutes();

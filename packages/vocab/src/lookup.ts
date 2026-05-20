@@ -286,6 +286,7 @@ async function lookupObjectInternal(
     const jrd = await lookupWebFinger(identifier, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
+      meterProvider: options.meterProvider,
       allowPrivateAddress: "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
       signal: options.signal,
