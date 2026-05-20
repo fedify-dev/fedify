@@ -339,7 +339,13 @@ async function lookupWebFingerInternal(
     ) {
       redirected++;
       const maxRedirection = options.maxRedirection ?? DEFAULT_MAX_REDIRECTION;
-      if (redirected >= maxRedirection) {
+      // `maxRedirection: N` is documented as "the maximum number of
+      // redirections to follow", so the Nth redirect must still be
+      // followed and the (N+1)th rejected.  An earlier version used
+      // `>=` here, which drifted by one from the documented semantics
+      // and from the sibling code in @fedify/vocab-runtime's document
+      // loader.
+      if (redirected > maxRedirection) {
         logger.error(
           "Too many redirections ({redirections}) while fetching WebFinger " +
             "resource descriptor.",

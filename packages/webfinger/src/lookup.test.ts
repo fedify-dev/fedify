@@ -214,13 +214,23 @@ test({
     );
 
     await t.step("custom maxRedirection", async () => {
-      // Test with maxRedirection: 2 (should fail)
+      // Test with maxRedirection: 1 (should fail; mock has 2 redirects)
+      redirectCount = 0;
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com", {
+          maxRedirection: 1,
+        }),
+        null,
+      );
+
+      // Test with maxRedirection: 2 (should succeed; mock has exactly 2
+      // redirects, and `maxRedirection: N` follows up to N redirects)
       redirectCount = 0;
       deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com", {
           maxRedirection: 2,
         }),
-        null,
+        expected,
       );
 
       // Test with maxRedirection: 3 (should succeed)
@@ -237,6 +247,61 @@ test({
       deepStrictEqual(
         await lookupWebFinger("acct:johndoe@example.com"),
         expected,
+      );
+    });
+
+    // Regression: `maxRedirection: 1` must allow exactly one 302 to be
+    // followed.  An earlier implementation incremented the counter before
+    // the `>=` check, so `maxRedirection: 1` rejected the first redirect
+    // instead of following it.  The expected semantics is "follow up to
+    // N redirects".
+    await t.step("maxRedirection: 1 follows exactly one redirect", async () => {
+      // Mock with a single redirect: 302 → 200.  Under the corrected
+      // semantics, `maxRedirection: 1` follows it and reaches the body.
+      fetchMock.removeRoutes();
+      let count = 0;
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger",
+        () => {
+          count++;
+          return count < 2
+            ? {
+              status: 302,
+              headers: { Location: "/.well-known/webfinger?after=1" },
+            }
+            : { body: expected };
+        },
+      );
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com", {
+          maxRedirection: 1,
+        }),
+        expected,
+      );
+
+      // Mock with two redirects.  `maxRedirection: 1` rejects the
+      // second redirect.
+      fetchMock.removeRoutes();
+      count = 0;
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger",
+        () => {
+          count++;
+          return count < 3
+            ? {
+              status: 302,
+              headers: {
+                Location: `/.well-known/webfinger?after=${count}`,
+              },
+            }
+            : { body: expected };
+        },
+      );
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com", {
+          maxRedirection: 1,
+        }),
+        null,
       );
     });
 
