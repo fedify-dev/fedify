@@ -201,6 +201,7 @@ To be released.
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
+[#420]: https://github.com/fedify-dev/fedify/issues/420
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
@@ -231,6 +232,12 @@ To be released.
 
  -  Added a `meterProvider` option to `createFederation()` so mock contexts can
     expose a test OpenTelemetry meter provider.  [[#316], [#619], [#755]]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so URL string `icon` values are exposed
+    as `Link` instances instead of being dereferenced as remote `Image`
+    documents.  [[#420]]
 
 ### @fedify/uri-template
 
