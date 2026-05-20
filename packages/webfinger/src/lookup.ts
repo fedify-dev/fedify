@@ -270,17 +270,22 @@ async function lookupWebFingerInternal(
   if (typeof resource === "string") resource = new URL(resource);
   let protocol = "https:";
   let server: string;
-  if (resource.protocol === "acct:") {
+  if (resource.protocol === "acct:" || resource.protocol === "mailto:") {
+    // `acct:` (RFC 7565) and `mailto:` (RFC 6068, used as a WebFinger
+    // resource per RFC 7033 §4.5) are opaque-path schemes: their
+    // `user@host` authority lives in `pathname`, not in `host`.  The
+    // WebFinger host is extracted from the substring after the last
+    // `@`, and the lookup always goes to https on that host.
     const atPos = resource.pathname.lastIndexOf("@");
     if (atPos < 0) return { resource: null, result: "invalid" };
     server = resource.pathname.substring(atPos + 1);
-    // Per RFC 7565, an `acct:` URI's authority is bare `host`: no path,
-    // query, or fragment.  The WHATWG URL parser routes a path into
-    // `pathname` (after the `user@host` authority) and routes `?…` /
-    // `#…` into `search` / `hash`, so the three components live in
-    // different places and must be checked independently.  Reject any
-    // acct URI that carries an extraneous component so a malformed
-    // input cannot pass through to a remote WebFinger lookup.
+    // Neither scheme allows a path, query, or fragment component in
+    // the resource URI.  The WHATWG URL parser routes a path into
+    // `pathname` (after the authority) and routes `?…` / `#…` into
+    // `search` / `hash`, so the three components live in different
+    // places and must be checked independently.  Reject any input
+    // that carries an extraneous component so a malformed value
+    // cannot pass through to a remote WebFinger lookup.
     if (
       server === "" || /[/?#]/.test(server) ||
       resource.search !== "" || resource.hash !== ""

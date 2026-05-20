@@ -88,6 +88,27 @@ test({
       );
     });
 
+    const mailtoExpected: ResourceDescriptor = {
+      subject: "mailto:juliet@example.com",
+      links: [],
+    };
+    fetchMock.removeRoutes();
+    fetchMock.get(
+      "https://example.com/.well-known/webfinger?resource=mailto%3Ajuliet%40example.com",
+      { body: mailtoExpected },
+    );
+
+    await t.step("mailto", async () => {
+      // RFC 7033 permits any URI as a WebFinger resource, and RFC 7565
+      // explicitly references `mailto:` as an example.  The opaque-path
+      // host extraction (after the last `@`) applies to `mailto:` just
+      // like `acct:`.
+      deepStrictEqual(
+        await lookupWebFinger("mailto:juliet@example.com"),
+        mailtoExpected,
+      );
+    });
+
     fetchMock.removeRoutes();
     fetchMock.get(
       "begin:https://example.com/.well-known/webfinger?",
