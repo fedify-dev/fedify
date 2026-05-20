@@ -1,7 +1,7 @@
 import { Link as LinkObject, Tombstone } from "@fedify/vocab";
 import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
-import type { Span, Tracer } from "@opentelemetry/api";
+import type { MeterProvider, Span, Tracer } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { domainToASCII } from "node:url";
 import type {
@@ -11,6 +11,11 @@ import type {
   WebFingerLinksDispatcher,
 } from "./callback.ts";
 import type { RequestContext } from "./context.ts";
+import {
+  recordWebFingerHandle,
+  type WebFingerHandleResult,
+  type WebFingerResourceScheme,
+} from "./metrics.ts";
 
 const logger = getLogger(["fedify", "webfinger", "server"]);
 
@@ -69,6 +74,16 @@ export interface WebFingerHandlerParameters<TContextData> {
    * @since 1.3.0
    */
   span?: Span;
+
+  /**
+   * The OpenTelemetry meter provider used to record the `webfinger.handle`
+   * counter and `webfinger.handle.duration` histogram.  When omitted, no
+   * WebFinger-specific measurements are emitted (the request still
+   * contributes to `fedify.http.server.request.*` because that metric is
+   * recorded one layer up in `Federation.fetch`).
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -82,30 +97,116 @@ export async function handleWebFinger<TContextData>(
   request: Request,
   options: WebFingerHandlerParameters<TContextData>,
 ): Promise<Response> {
-  if (options.tracer == null) {
-    return await handleWebFingerInternal(request, options);
-  }
-  return await options.tracer.startActiveSpan(
-    "webfinger.handle",
-    { kind: SpanKind.SERVER },
-    async (span) => {
-      try {
-        const response = await handleWebFingerInternal(request, options);
-        span.setStatus({
-          code: response.ok ? SpanStatusCode.UNSET : SpanStatusCode.ERROR,
-        });
-        return response;
-      } catch (error) {
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: String(error),
-        });
-        throw error;
-      } finally {
-        span.end();
-      }
+  const meterProvider = options.meterProvider;
+  const start = meterProvider == null ? 0 : performance.now();
+  const resource = options.context.url.searchParams.get("resource");
+  const scheme = computeResourceScheme(resource);
+  // Track whether the response was produced by the caller's `onNotFound`
+  // callback so the `webfinger.handle.result` attribute classifies as
+  // `not_found` regardless of the status code that callback returned.
+  // Frameworks routinely answer 404s with a 200 OK fallback page; without
+  // this signal, every such response would skew the metric to `resolved`.
+  let notFoundResponse: Response | undefined;
+  const wrappedOptions: WebFingerHandlerParameters<TContextData> = {
+    ...options,
+    async onNotFound(req) {
+      const r = await options.onNotFound(req);
+      notFoundResponse = r;
+      return r;
     },
-  );
+  };
+  let response: Response | undefined;
+  try {
+    if (options.tracer == null) {
+      response = await handleWebFingerInternal(request, wrappedOptions);
+    } else {
+      response = await options.tracer.startActiveSpan(
+        "webfinger.handle",
+        { kind: SpanKind.SERVER },
+        async (span) => {
+          try {
+            const inner = await handleWebFingerInternal(
+              request,
+              wrappedOptions,
+            );
+            span.setStatus({
+              code: inner.ok ? SpanStatusCode.UNSET : SpanStatusCode.ERROR,
+            });
+            return inner;
+          } catch (error) {
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(error),
+            });
+            throw error;
+          } finally {
+            span.end();
+          }
+        },
+      );
+    }
+    return response;
+  } finally {
+    if (meterProvider != null) {
+      recordWebFingerHandle(meterProvider, {
+        durationMs: Math.max(0, performance.now() - start),
+        result: classifyWebFingerHandleResult(response, notFoundResponse),
+        scheme,
+        statusCode: response?.status,
+      });
+    }
+  }
+}
+
+// The scheme attribute is recorded on the `webfinger.handle` metric, whose
+// resource value comes from an attacker-controlled query string.  Buckets are
+// whitelisted to the schemes WebFinger / fediverse clients legitimately use
+// (RFC 7565 + ActivityPub), with anything else bucketed as `other`.  This
+// keeps metric cardinality bounded even when a client probes Fedify with
+// arbitrary, very long, or control-character-bearing prefixes.
+const WEBFINGER_HANDLE_SCHEME_WHITELIST: ReadonlySet<
+  Exclude<WebFingerResourceScheme, "other">
+> = new Set(["acct", "http", "https", "mailto"]);
+
+function isAllowedResourceScheme(
+  scheme: string,
+): scheme is Exclude<WebFingerResourceScheme, "other"> {
+  return (WEBFINGER_HANDLE_SCHEME_WHITELIST as ReadonlySet<string>).has(scheme);
+}
+
+function computeResourceScheme(
+  resource: string | null,
+): WebFingerResourceScheme | undefined {
+  if (resource == null) return undefined;
+  const colon = resource.indexOf(":");
+  if (colon <= 0) return undefined;
+  const candidate = resource.substring(0, colon).toLowerCase();
+  return isAllowedResourceScheme(candidate) ? candidate : "other";
+}
+
+function classifyWebFingerHandleResult(
+  response: Response | undefined,
+  notFoundResponse: Response | undefined,
+): WebFingerHandleResult {
+  if (response == null) return "error";
+  // When the response was produced by the caller's `onNotFound`, the
+  // outcome is `not_found` regardless of the status code the callback
+  // chose (frameworks may return 200 with a fallback page).
+  if (notFoundResponse != null && response === notFoundResponse) {
+    return "not_found";
+  }
+  switch (response.status) {
+    case 200:
+      return "resolved";
+    case 400:
+      return "invalid";
+    case 404:
+      return "not_found";
+    case 410:
+      return "tombstoned";
+    default:
+      return "error";
+  }
 }
 
 async function handleWebFingerInternal<TContextData>(

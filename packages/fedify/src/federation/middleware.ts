@@ -1671,6 +1671,12 @@ export class FederationImpl<TContextData>
           webFingerLinksDispatcher: this.webFingerLinksDispatcher,
           onNotFound,
           tracer,
+          // Use the raw field, not the `meterProvider` getter, so an
+          // application that omits `meterProvider` in createFederation()
+          // does not get the WebFinger metrics enabled implicitly via
+          // the global meter provider fallback.  The metric helpers are
+          // opt-in by design.
+          meterProvider: this._meterProvider,
         });
       case "nodeInfoJrd":
         return await handleNodeInfoJrd(request, context);
@@ -2552,6 +2558,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ...options,
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      // Default from the federation's raw field, not the
+      // `meterProvider` getter, so omitting `meterProvider` from
+      // createFederation() does not implicitly enable the
+      // `webfinger.lookup` metric through the global meter provider
+      // fallback.  The metric helper is opt-in by design.
+      meterProvider: options.meterProvider ?? this.federation._meterProvider,
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
   }

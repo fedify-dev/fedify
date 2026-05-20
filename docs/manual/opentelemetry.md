@@ -334,6 +334,12 @@ Fedify records the following OpenTelemetry metrics:
 | `activitypub.document.fetch.duration`         | Histogram     | `ms`          | Measures remote JSON-LD document loader invocation duration.                                    |
 | `activitypub.document.cache`                  | Counter       | `{lookup}`    | Counts KV-backed document loader cache lookups, classified as `hit` or `miss`.                  |
 | `activitypub.object.lookup`                   | Counter       | `{lookup}`    | Counts `lookupObject()` calls, classified by whether the resolved value is an Actor.            |
+| `activitypub.actor.discovery`                 | Counter       | `{discovery}` | Counts `getActorHandle()` actor handle discovery attempts.                                      |
+| `activitypub.actor.discovery.duration`        | Histogram     | `ms`          | Measures `getActorHandle()` discovery duration.                                                 |
+| `webfinger.lookup`                            | Counter       | `{lookup}`    | Counts outgoing WebFinger lookups performed by `lookupWebFinger()`.                             |
+| `webfinger.lookup.duration`                   | Histogram     | `ms`          | Measures outgoing WebFinger lookup duration.                                                    |
+| `webfinger.handle`                            | Counter       | `{request}`   | Counts inbound WebFinger requests handled by `Federation.fetch()`.                              |
+| `webfinger.handle.duration`                   | Histogram     | `ms`          | Measures inbound WebFinger request handling duration.                                           |
 | `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                   |
 | `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                 |
 | `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                         |
@@ -606,6 +612,99 @@ Fedify records the following OpenTelemetry metrics:
     classification and `activitypub.document.fetch[.duration]` for
     the loader-level rate and latency.
 
+`activitypub.actor.discovery` and `activitypub.actor.discovery.duration`
+:   `activitypub.actor.discovery.result` is always present and is one of:
+
+     -  `resolved`: `getActorHandle()` returned a handle.
+     -  `not_found`: WebFinger did not yield a usable `acct:` alias and
+        the `preferredUsername` fallback could not run (the call threw
+        the `Actor does not have enough information…` `TypeError`).
+     -  `error`: any other thrown exception bubbled up from the
+        discovery (including `TypeError`s from a malformed alias URL or
+        an invalid `preferredUsername`).
+
+    `activitypub.remote.host` records `actor.id.hostname` when known
+    and is omitted otherwise.  Actor IDs and handle strings are
+    deliberately excluded so attacker-controlled actor data cannot
+    inflate metric cardinality.  Per-WebFinger-call failure detail
+    (HTTP status, parse failure, network failure, etc.) lives on
+    [`webfinger.lookup`](#instrumented-metrics) and is not duplicated
+    here; the meter provider passed to `getActorHandle()` is also
+    forwarded to the nested WebFinger lookups, so one discovery emits
+    both an `activitypub.actor.discovery` measurement and one or two
+    `webfinger.lookup` measurements.  When cross-origin actor handle
+    verification runs, the second lookup goes to a different host
+    than the first, so the two `webfinger.lookup` measurements may
+    record different `activitypub.remote.host` values.
+
+`webfinger.lookup` and `webfinger.lookup.duration`
+:   `webfinger.lookup.result` is always present and is one of:
+
+     -  `found`: a `ResourceDescriptor` was returned to the caller.
+     -  `not_found`: the remote responded with HTTP `404 Not Found` or
+        `410 Gone`; recorded together with `http.response.status_code`.
+     -  `invalid`: the remote responded with content Fedify could not
+        parse (JSON parse failure), the redirect chain exceeded
+        `maxRedirection`, the remote redirected to a different
+        protocol, the `Location` header itself was unparseable, or the
+        queried `acct:` resource was malformed.
+     -  `network_error`: no HTTP response was observed.  `fetch()`
+        threw, `validatePublicUrl()` rejected the URL (including
+        redirects to private addresses), or an `AbortError` cancelled
+        the request.
+     -  `error`: the remote returned a non-2xx HTTP response that is
+        neither `404` nor `410`, or any other unexpected failure
+        bubbled up from the lookup.
+
+    `webfinger.resource.scheme` is always present and bucketed to a
+    small allow-list (`acct`, `http`, `https`, `mailto`); resources
+    that carry any other scheme are recorded as `other` so that an
+    attacker-controlled remote cannot inflate cardinality by
+    redirecting to an unusual scheme.  The corresponding span
+    attribute (`webfinger.resource.scheme` on the `webfinger.lookup`
+    span) still records the raw scheme for trace-level investigation.
+    `activitypub.remote.host` records the hostname of the latest URL
+    Fedify attempted, so an operator can see who actually returned a
+    failure even after one or more redirects; it is omitted only when
+    the resource itself was malformed before any URL could be built.
+    `http.response.status_code` is recorded only when an HTTP response
+    was observed (including non-2xx errors and redirects that exceeded
+    `maxRedirection`).  Full resource URIs, lookup URLs, and remote
+    paths are deliberately excluded; they remain on the
+    `webfinger.lookup` span for trace-level investigation.
+
+`webfinger.handle` and `webfinger.handle.duration`
+:   `webfinger.handle.result` is always present and is one of:
+
+     -  `resolved`: Fedify returned a `200 OK` response with a JRD.
+     -  `invalid`: Fedify returned `400 Bad Request` because the queried
+        `resource` parameter was missing or unparseable.
+     -  `not_found`: Fedify returned `404 Not Found` because no actor
+        dispatcher matched the queried resource, the actor identifier
+        was not recognised, or the queried `acct:` host did not match
+        the server.
+     -  `tombstoned`: Fedify returned `410 Gone` because the actor
+        dispatcher resolved to a `Tombstone`.
+     -  `error`: the handler threw before producing a response, or a
+        custom `onNotFound` callback returned a status code outside
+        the `{200, 400, 404, 410}` set.
+
+    `webfinger.resource.scheme` is bucketed to the same allow-list as
+    on `webfinger.lookup` (`acct`, `http`, `https`, `mailto`, or
+    `other`) and is omitted when the request had no `resource`
+    parameter.  `http.response.status_code` is always recorded except
+    when the handler threw before constructing a response.  The
+    queried resource string itself is deliberately not a metric
+    attribute (it is attacker-controlled); the full resource remains
+    on the `webfinger.handle` span for trace-level investigation.
+    These metrics complement
+    [`fedify.http.server.request.count`](#instrumented-metrics) and
+    [`fedify.http.server.request.duration`](#instrumented-metrics):
+    the HTTP metrics carry the bounded `fedify.endpoint=webfinger`
+    bucket, while these WebFinger-specific metrics expose
+    discovery-oriented outcome buckets (`tombstoned`, `not_found`,
+    etc.) and the queried scheme.
+
 `fedify.http.server.request.count` and `fedify.http.server.request.duration`
 :   `http.request.method` and `fedify.endpoint` are always present.
     `http.request.method` is normalized to one of the standard HTTP methods
@@ -742,6 +841,7 @@ for ActivityPub:
 | `activitypub.delivery.attempt`           | int      | The zero-based delivery attempt number for a queued outgoing activity.                                                   | `0`                                                                  |
 | `activitypub.delivery.permanent_failure` | boolean  | Whether an outgoing delivery failure will be abandoned instead of retried.                                               | `true`                                                               |
 | `activitypub.processing.result`          | string   | Lifecycle outcome of an inbox or outbox activity: `queued`, `processed`, `retried`, `rejected`, or `abandoned`.          | `"retried"`                                                          |
+| `activitypub.actor.discovery.result`     | string   | Terminal outcome of `getActorHandle()`: `resolved`, `not_found`, or `error`.                                             | `"resolved"`                                                         |
 | `activitypub.actor.id`                   | string   | The URI of the actor object.                                                                                             | `"https://example.com/actor/1"`                                      |
 | `activitypub.actor.key.cached`           | boolean  | Whether the actor's public keys are cached.                                                                              | `true`                                                               |
 | `activitypub.actor.type`                 | string[] | The qualified URI(s) of the actor type(s).                                                                               | `["https://www.w3.org/ns/activitystreams#Person"]`                   |
@@ -789,8 +889,10 @@ for ActivityPub:
 | `object_integrity_proofs.key_id`         | string   | The public key ID of the object integrity proof.                                                                         | `"https://example.com/actor/1#main-key"`                             |
 | `object_integrity_proofs.signature`      | string   | The integrity proof of the object in hexadecimal.                                                                        | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
 | `url.full`                               | string   | The full URL being fetched by the document loader.                                                                       | `"https://example.com/actor/1"`                                      |
+| `webfinger.handle.result`                | string   | Terminal outcome of an incoming WebFinger request: `resolved`, `invalid`, `not_found`, `tombstoned`, or `error`.         | `"resolved"`                                                         |
+| `webfinger.lookup.result`                | string   | Terminal outcome of an outgoing WebFinger lookup: `found`, `not_found`, `invalid`, `network_error`, or `error`.          | `"found"`                                                            |
 | `webfinger.resource`                     | string   | The queried resource URI.                                                                                                | `"acct:fedify@hollo.social"`                                         |
-| `webfinger.resource.scheme`              | string   | The scheme of the queried resource URI.                                                                                  | `"acct"`                                                             |
+| `webfinger.resource.scheme`              | string   | The scheme of the queried resource URI.  Metric attribute is bucketed to `acct`, `http`, `https`, `mailto`, or `other`.  | `"acct"`                                                             |
 
 [attributes]: https://opentelemetry.io/docs/specs/otel/common/#attribute
 [OpenTelemetry Semantic Conventions]: https://opentelemetry.io/docs/specs/semconv/
