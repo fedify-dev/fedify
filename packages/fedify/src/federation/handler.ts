@@ -9,7 +9,16 @@ import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import type { DocumentLoader } from "../runtime/docloader.ts";
 import { verifyRequest } from "../sig/http.ts";
-import { detachSignature, verifyJsonLd } from "../sig/ld.ts";
+import {
+  compactJsonLd,
+  detachSignature,
+  getNormalizationContextLoader,
+  hasSignature,
+  InvalidContextReferenceError,
+  isClearlyMalformedContextReference,
+  verifyCompactJsonLd,
+  wrapContextLoaderForJsonLd,
+} from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { verifyObject } from "../sig/proof.ts";
 import type { Recipient } from "../vocab/actor.ts";
@@ -49,6 +58,76 @@ import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
 import { preferredMediaTypes } from "./negotiation.ts";
+import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+
+export const rawInboxContextFactorySymbol = Symbol(
+  "fedify.rawInboxContextFactory",
+);
+
+function isRemoteContextLoadingFailure(error: unknown): boolean {
+  return error instanceof Error &&
+    typeof (error as Error & { details?: { code?: unknown } }).details ===
+      "object" &&
+    (error as Error & { details?: { code?: unknown } }).details != null &&
+    (error as Error & { details: { code?: unknown } }).details.code ===
+      "loading remote context failed";
+}
+
+function isPermanentRemoteContextError(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name !== "jsonld.InvalidUrl") {
+    return false;
+  }
+  const details = (error as Error & {
+    details?: { code?: unknown; url?: unknown };
+  }).details;
+  if (details?.code === "invalid remote context") {
+    return true;
+  }
+  return isRemoteContextLoadingFailure(error) &&
+    typeof details?.url === "string" &&
+    !URL.canParse(details.url) &&
+    isClearlyMalformedContextReference(details.url);
+}
+
+function isInvalidJsonLdError(error: unknown): error is Error {
+  if (!(error instanceof Error)) return false;
+  const name = error.name;
+  return name === "UnsafeJsonLdError" ||
+    error instanceof InvalidContextReferenceError ||
+    isPermanentRemoteContextError(error) ||
+    (name === "jsonld.SyntaxError" &&
+      !isRemoteContextLoadingFailure(error));
+}
+
+function isValidationTypeError(error: unknown): error is TypeError {
+  return error instanceof TypeError &&
+    /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid URL)/
+      .test(error.message);
+}
+
+function isPermanentActivityParseError(error: unknown): error is Error {
+  // jsonld.InvalidUrl is only treated as permanent for upstream
+  // "invalid remote context" failures or for clearly malformed non-URL
+  // context strings such as values containing whitespace/control characters.
+  // Opaque or relative context ids may be valid for deployment-specific
+  // loaders, so loading failures for other non-parseable ids stay
+  // retryable/fallback-capable instead of being forced into the malformed
+  // bucket.  jsonld.SyntaxError is similarly only permanent when it is local
+  // to the payload rather than a remote-context loading failure.  Raw loader
+  // TypeErrors for @context resolution are normalized earlier at the
+  // context-loading layer, so any remaining "Invalid URL ..." here comes from
+  // sender-controlled ActivityPub IRI fields and stays permanent.
+  return isInvalidJsonLdError(error) || isValidationTypeError(error);
+}
+
+function hasHttpSignatureHeaders(request: Request): boolean {
+  return request.headers.has("Signature") ||
+    request.headers.has("Signature-Input");
+}
+
+function hasObjectIntegrityProof(json: unknown): boolean {
+  return typeof json === "object" && json != null && "proof" in json;
+}
 
 export function acceptsJsonLd(request: Request): boolean {
   const accept = request.headers.get("Accept");
@@ -687,29 +766,155 @@ async function handleInboxInternal<TContextData>(
     });
   }
   const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, ctx);
-  let ldSigVerified: boolean;
-  try {
-    ldSigVerified = await verifyJsonLd(json, {
-      contextLoader: ctx.contextLoader,
-      documentLoader: ctx.documentLoader,
-      keyCache,
-      tracerProvider,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "jsonld.SyntaxError") {
-      logger.error("Failed to parse JSON-LD:\n{error}", { recipient, error });
-      return new Response("Invalid JSON-LD.", {
-        status: 400,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
-    }
-    ldSigVerified = false;
-  }
   const jsonWithoutSig = detachSignature(json);
+  const hasLdSignature = hasSignature(json);
+  const canAttemptAlternateAuthAfterLdSignatureFailure =
+    skipSignatureVerification ||
+    hasHttpSignatureHeaders(request) ||
+    hasObjectIntegrityProof(jsonWithoutSig);
+  let deferredLdSignatureError: unknown = undefined;
+  const respondInvalidActivity = async (error: unknown): Promise<Response> => {
+    logger.error("Failed to parse activity:\n{error}", {
+      recipient,
+      activity: json,
+      error,
+    });
+    try {
+      await inboxErrorHandler?.(ctx, error as Error);
+    } catch (error) {
+      logger.error(
+        "An unexpected error occurred in inbox error handler:\n{error}",
+        { error, activity: json, recipient },
+      );
+    }
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: `Failed to parse activity:\n${error}`,
+    });
+    return new Response("Invalid activity.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  };
+  let compactedJson = json;
+  let compactedJsonWithoutSig = jsonWithoutSig;
+  let ldSigVerified = false;
+  if (hasLdSignature) {
+    try {
+      compactedJson = await compactJsonLd(json, ctx.contextLoader);
+    } catch (error) {
+      if (isInvalidJsonLdError(error)) {
+        logger.error("Failed to parse JSON-LD:\n{error}", { recipient, error });
+        return new Response("Invalid JSON-LD.", {
+          status: 400,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+      if (!canAttemptAlternateAuthAfterLdSignatureFailure) throw error;
+      // The presence of a proof block or HTTP signature headers is not enough
+      // to discard a transient LDS normalization failure.  Keep that error
+      // alive until another authentication path actually verifies, otherwise a
+      // stale proof or invalid HTTP signature could turn a retriable remote
+      // context outage into a permanent 400/401 response.
+      if (!skipSignatureVerification) deferredLdSignatureError = error;
+      logger.debug(
+        "Failed to normalize JSON-LD for Linked Data Signatures; " +
+          "deferring to another authentication path only if it verifies:\n" +
+          "{error}",
+        { recipient, error },
+      );
+    }
+    if (compactedJson !== json) {
+      compactedJsonWithoutSig = detachSignature(compactedJson);
+      try {
+        ldSigVerified = await verifyCompactJsonLd(compactedJson, {
+          contextLoader: ctx.contextLoader,
+          documentLoader: ctx.documentLoader,
+          keyCache,
+          tracerProvider,
+        });
+      } catch (error) {
+        if (
+          error instanceof RangeError &&
+          await hasMalformedKnownTemporalLiteral(
+            compactedJsonWithoutSig,
+            ctx.contextLoader,
+          )
+        ) {
+          return await respondInvalidActivity(error);
+        }
+        if (isInvalidJsonLdError(error)) {
+          logger.error("Failed to parse JSON-LD:\n{error}", {
+            recipient,
+            error,
+          });
+          return new Response("Invalid JSON-LD.", {
+            status: 400,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+        if (!canAttemptAlternateAuthAfterLdSignatureFailure) throw error;
+        if (!skipSignatureVerification) {
+          try {
+            await Object.fromJsonLd(compactedJson, {
+              contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+              documentLoader: ctx.documentLoader,
+              tracerProvider,
+            });
+          } catch (parseError) {
+            if (
+              parseError instanceof RangeError &&
+              await hasMalformedKnownTemporalLiteral(
+                compactedJsonWithoutSig,
+                ctx.contextLoader,
+              )
+            ) {
+              return await respondInvalidActivity(parseError);
+            }
+            if (isInvalidJsonLdError(parseError)) {
+              logger.error("Failed to parse JSON-LD:\n{error}", {
+                recipient,
+                error: parseError,
+              });
+              return new Response("Invalid JSON-LD.", {
+                status: 400,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+              });
+            }
+            // verifyCompactJsonLd() covers both payload parsing and signature
+            // verification.  Only keep a deferred error when reparsing the
+            // sender's compacted payload still fails for a retryable reason;
+            // otherwise unauthenticated requests could turn transient LDS key
+            // lookup / parsing failures into retryable 5xxs instead of
+            // falling through to the established 401 path.
+            deferredLdSignatureError = parseError;
+          }
+        }
+        ldSigVerified = false;
+      }
+    }
+  }
   let activity: Activity | null = null;
   if (ldSigVerified) {
     logger.debug("Linked Data Signatures are verified.", { recipient, json });
-    activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
+    try {
+      activity = await Activity.fromJsonLd(compactedJsonWithoutSig, {
+        ...ctx,
+        contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+      });
+    } catch (error) {
+      if (
+        error instanceof RangeError &&
+        await hasMalformedKnownTemporalLiteral(
+          compactedJsonWithoutSig,
+          ctx.contextLoader,
+        )
+      ) {
+        return await respondInvalidActivity(error);
+      }
+      if (!isPermanentActivityParseError(error)) throw error;
+      return await respondInvalidActivity(error);
+    }
   } else {
     logger.debug(
       "Linked Data Signatures are not verified.",
@@ -717,12 +922,33 @@ async function handleInboxInternal<TContextData>(
     );
     try {
       activity = await verifyObject(Activity, jsonWithoutSig, {
-        contextLoader: ctx.contextLoader,
+        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
         documentLoader: ctx.documentLoader,
         keyCache,
         tracerProvider,
       });
     } catch (error) {
+      if (
+        error instanceof RangeError &&
+        await hasMalformedKnownTemporalLiteral(
+          jsonWithoutSig,
+          ctx.contextLoader,
+        )
+      ) {
+        // A deferred LDS loader failure is still retriable, but it must not
+        // hide a payload that this boundary can already prove is permanently
+        // malformed.  Preserve the established 400/drop behavior first.
+        return await respondInvalidActivity(error);
+      }
+      if (deferredLdSignatureError != null) {
+        logger.debug(
+          "Object Integrity Proof fallback did not supersede a deferred " +
+            "Linked Data Signature failure:\n{error}",
+          { recipient, error },
+        );
+        activity = null;
+      }
+      if (!isPermanentActivityParseError(error)) throw error;
       logger.error("Failed to parse activity:\n{error}", {
         recipient,
         activity: json,
@@ -768,6 +994,7 @@ async function handleInboxInternal<TContextData>(
         tracerProvider,
       });
       if (key == null) {
+        if (deferredLdSignatureError != null) throw deferredLdSignatureError;
         logger.error(
           "Failed to verify the request's HTTP Signatures.",
           { recipient },
@@ -789,7 +1016,15 @@ async function handleInboxInternal<TContextData>(
       }
       httpSigKey = key;
     }
-    activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
+    try {
+      activity = await Activity.fromJsonLd(jsonWithoutSig, {
+        ...ctx,
+        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+      });
+    } catch (error) {
+      if (!isPermanentActivityParseError(error)) throw error;
+      return await respondInvalidActivity(error);
+    }
   }
   if (activity.id != null) {
     span.setAttribute("activitypub.activity.id", activity.id.href);
@@ -798,6 +1033,7 @@ async function handleInboxInternal<TContextData>(
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
+    if (deferredLdSignatureError != null) throw deferredLdSignatureError;
     logger.error(
       "The signer ({keyId}) and the actor ({actorId}) do not match.",
       {
@@ -819,11 +1055,36 @@ async function handleInboxInternal<TContextData>(
   }
   const routeResult = await routeActivity({
     context: ctx,
+    // Direct handleInbox() consumers may later forward the payload from the
+    // InboxContext returned by their public inboxContextFactory hook.  Favor
+    // preserving the sender's exact signed body here; callers that need the
+    // normalized representation can inspect the parsed Activity or compact the
+    // payload explicitly.
     json,
+    // Preserve the original payload for queue messages and for internal
+    // InboxContextImpl instances that may forward the activity later.
+    originalJson: json,
+    // Queue workers may run later under stricter network or loader rules.
+    // Keep any producer-side compaction result for signed payloads on the
+    // queued message so workers can reuse the successful normalization without
+    // re-fetching remote custom contexts.  This parse cache is intentionally
+    // separate from ldSignatureVerified: fallback-authenticated traffic and
+    // backlog messages from older producers can still depend on it, while the
+    // raw payload stays preserved separately for forwarding and low-level
+    // hooks.
+    normalizedActivity: hasLdSignature && compactedJson !== json
+      ? compactedJson
+      : undefined,
+    ldSignatureVerified: hasLdSignature ? ldSigVerified : undefined,
     activity,
     recipient,
     inboxListeners,
     inboxContextFactory,
+    listenerInboxContextFactory: ldSigVerified
+      ? (inboxContextFactory as typeof inboxContextFactory & {
+        [rawInboxContextFactorySymbol]?: typeof inboxContextFactory;
+      })[rawInboxContextFactorySymbol]
+      : undefined,
     inboxErrorHandler,
     kv,
     kvPrefixes,

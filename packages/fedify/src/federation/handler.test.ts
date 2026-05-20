@@ -1,5 +1,6 @@
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
+import { compactJsonLd, signJsonLd } from "../sig/ld.ts";
 import {
   createInboxContext,
   createRequestContext,
@@ -44,6 +45,8 @@ import {
 import { InboxListenerSet } from "./inbox.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
+import type { MessageQueue } from "./mq.ts";
+import type { InboxMessage } from "./queue.ts";
 
 test("acceptsJsonLd()", () => {
   assert(acceptsJsonLd(
@@ -1178,6 +1181,16 @@ test("handleInbox()", async () => {
     if (identifier !== "someone") return null;
     return new Person({ name: "Someone" });
   };
+  const restrictiveContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (
+      url === "https://www.w3.org/ns/activitystreams" ||
+      url === "https://w3id.org/identity/v1"
+    ) {
+      return await mockDocumentLoader(url);
+    }
+    throw new Error(`Unexpected context: ${url}`);
+  };
   const inboxOptions = {
     kv: new MemoryKvStore(),
     kvPrefixes: {
@@ -1244,6 +1257,57 @@ test("handleInbox()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(response.status, 401);
 
+  const malformedProofCreatedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/invalid-proof-created",
+      type: "Create",
+      actor: "https://example.com/person2",
+      object: {
+        id: "https://example.com/notes/invalid-proof-created",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+      proof: {
+        type: "DataIntegrityProof",
+        cryptosuite: "eddsa-jcs-2022",
+        verificationMethod: "https://example.com/person2#main-key",
+        proofPurpose: "assertionMethod",
+        created: { "@value": "not-a-date" },
+        proofValue:
+          "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
+      },
+    }),
+  });
+  const malformedProofCreatedContext = createRequestContext({
+    federation,
+    request: malformedProofCreatedRequest,
+    url: new URL(malformedProofCreatedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(malformedProofCreatedRequest, {
+    recipient: null,
+    context: malformedProofCreatedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedProofCreatedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid activity.",
+  ]);
+
   onNotFoundCalled = null;
   const signedRequest = await signRequest(
     unsignedRequest.clone() as Request,
@@ -1268,6 +1332,1242 @@ test("handleInbox()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals([response.status, await response.text()], [202, ""]);
 
+  const ldSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(
+      await signJsonLd(
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/identity/v1",
+            "https://w3id.org/security/v1",
+            "https://w3id.org/security/data-integrity/v1",
+          ],
+          id: "https://example.com/activities/ld-signed",
+          type: "Create",
+          actor: "https://example.com/person2",
+          object: {
+            id: "https://example.com/notes/ld-signed",
+            type: "Note",
+            attributedTo: "https://example.com/person2",
+            content: "Hello, world!",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      ),
+    ),
+  });
+  const ldSignedContext = createRequestContext({
+    federation,
+    request: ldSignedRequest,
+    url: new URL(ldSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: restrictiveContextLoader,
+  });
+  response = await handleInbox(ldSignedRequest, {
+    recipient: null,
+    context: ldSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...ldSignedContext, clone: undefined });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+
+  const remoteContextUrl = "https://remote.example/contexts/ext";
+  let failRemoteContextOnce = true;
+  const flakyContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (url === remoteContextUrl) {
+      if (failRemoteContextOnce) {
+        failRemoteContextOnce = false;
+        throw new Error(`Unexpected context: ${url}`);
+      }
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            ext: "https://example.com/ext",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  const httpSignedLdBody = {
+    "@context": [
+      remoteContextUrl,
+      "https://www.w3.org/ns/activitystreams",
+    ],
+    id: "https://example.com/activities/http-signed-ld",
+    type: "Create",
+    actor: "https://example.com/person2",
+    ext: "preserve-me",
+    object: {
+      id: "https://example.com/notes/http-signed-ld",
+      type: "Note",
+      attributedTo: "https://example.com/person2",
+      content: "Hello, world!",
+    },
+    signature: {
+      type: "RsaSignature2017",
+      creator: rsaPublicKey3.id!.href,
+      created: "2024-01-01T00:00:00Z",
+      signatureValue: "bogus",
+    },
+  };
+  const httpSignedLdRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(httpSignedLdBody),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const httpSignedLdContext = createRequestContext({
+    federation,
+    request: httpSignedLdRequest,
+    url: new URL(httpSignedLdRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: flakyContextLoader,
+  });
+  response = await handleInbox(httpSignedLdRequest, {
+    recipient: null,
+    context: httpSignedLdContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...httpSignedLdContext, clone: undefined });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+
+  const ldSignedOnlyBody = await signJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/ld-only-transient",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      object: {
+        id: "https://example.com/notes/ld-only-transient",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    {
+      contextLoader: async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                ext: "https://example.com/ext",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      },
+    },
+  );
+  const malformedTemporalLdSignedBody = await signJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/activities/ld-only-invalid-published",
+      type: "Create",
+      actor: "https://example.com/person2",
+      published: { "@value": "not-a-date" },
+      object: {
+        id: "https://example.com/notes/ld-only-invalid-published",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    {
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  const malformedTemporalLdSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(malformedTemporalLdSignedBody),
+  });
+  const malformedTemporalLdSignedContext = createRequestContext({
+    federation,
+    request: malformedTemporalLdSignedRequest,
+    url: new URL(malformedTemporalLdSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(malformedTemporalLdSignedRequest, {
+    recipient: null,
+    context: malformedTemporalLdSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedTemporalLdSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid activity.",
+  ]);
+  const malformedClosedLdSignedBody = await signJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/questions/ld-only-invalid-closed",
+      type: "Question",
+      closed: "2024-02-31T00:00:00Z",
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    {
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  const malformedClosedLdSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(malformedClosedLdSignedBody),
+  });
+  const malformedClosedLdSignedContext = createRequestContext({
+    federation,
+    request: malformedClosedLdSignedRequest,
+    url: new URL(malformedClosedLdSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(malformedClosedLdSignedRequest, {
+    recipient: null,
+    context: malformedClosedLdSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedClosedLdSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid activity.",
+  ]);
+
+  const malformedIriHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "http://[",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-invalid-iri",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const malformedIriHttpSignedContext = createRequestContext({
+    federation,
+    request: malformedIriHttpSignedRequest,
+    url: new URL(malformedIriHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(malformedIriHttpSignedRequest, {
+    recipient: null,
+    context: malformedIriHttpSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedIriHttpSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid activity.",
+  ]);
+
+  const ldSignedOnlyRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(ldSignedOnlyBody),
+  });
+  const ldSignedOnlyContext = createRequestContext({
+    federation,
+    request: ldSignedOnlyRequest,
+    url: new URL(ldSignedOnlyRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        throw new Error(`Unexpected context: ${url}`);
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(ldSignedOnlyRequest, {
+        recipient: null,
+        context: ldSignedOnlyContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...ldSignedOnlyContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  failRemoteContextOnce = true;
+  const invalidHttpFallbackRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(ldSignedOnlyBody),
+    headers: { Signature: "bogus" },
+  });
+  const invalidHttpFallbackContext = createRequestContext({
+    federation,
+    request: invalidHttpFallbackRequest,
+    url: new URL(invalidHttpFallbackRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: flakyContextLoader,
+  });
+  await assertRejects(
+    () =>
+      handleInbox(invalidHttpFallbackRequest, {
+        recipient: null,
+        context: invalidHttpFallbackContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...invalidHttpFallbackContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const transientKeyContextUrl = "https://remote.example/contexts/key";
+  const transientCreatorUrl = "https://remote.example/keys/transient#main-key";
+  const verificationFailureLdSignedBody = await signJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/activities/ld-key-fetch-transient",
+      type: "Create",
+      actor: "https://example.com/person2",
+      object: {
+        id: "https://example.com/notes/ld-key-fetch-transient",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    new URL(transientCreatorUrl),
+    {
+      contextLoader: mockDocumentLoader,
+    },
+  );
+  const verificationFailureLdSignedRequest = new Request(
+    "https://example.com/",
+    {
+      method: "POST",
+      body: JSON.stringify(verificationFailureLdSignedBody),
+      headers: { Signature: "bogus" },
+    },
+  );
+  const verificationFailureLdSignedContext = createRequestContext({
+    federation,
+    request: verificationFailureLdSignedRequest,
+    url: new URL(verificationFailureLdSignedRequest.url),
+    data: undefined,
+    documentLoader: async (resource: string) => {
+      if (resource === transientCreatorUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": [transientKeyContextUrl],
+            id: resource,
+          },
+        };
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+    contextLoader: async (resource: string) => {
+      if (resource === transientKeyContextUrl) {
+        throw new Error(`Transient key context failure: ${resource}`);
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  response = await handleInbox(verificationFailureLdSignedRequest, {
+    recipient: null,
+    context: verificationFailureLdSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...verificationFailureLdSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    401,
+    "Failed to verify the request signature.",
+  ]);
+
+  failRemoteContextOnce = true;
+  const deferredMalformedTemporalLdSignedBody = await signJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/deferred-invalid-published",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      published: { "@value": "not-a-date" },
+      object: {
+        id: "https://example.com/notes/deferred-invalid-published",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    {
+      contextLoader: async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                ext: "https://example.com/ext",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      },
+    },
+  );
+  const deferredMalformedTemporalLdSignedRequest = new Request(
+    "https://example.com/",
+    {
+      method: "POST",
+      body: JSON.stringify(deferredMalformedTemporalLdSignedBody),
+      headers: { Signature: "bogus" },
+    },
+  );
+  const deferredMalformedTemporalLdSignedContext = createRequestContext({
+    federation,
+    request: deferredMalformedTemporalLdSignedRequest,
+    url: new URL(deferredMalformedTemporalLdSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: flakyContextLoader,
+  });
+  response = await handleInbox(deferredMalformedTemporalLdSignedRequest, {
+    recipient: null,
+    context: deferredMalformedTemporalLdSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...deferredMalformedTemporalLdSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid activity.",
+  ]);
+
+  const malformedLdSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify({
+      ...ldSignedOnlyBody,
+      "@context": [
+        "not a url",
+        "https://www.w3.org/ns/activitystreams",
+      ],
+    }),
+  });
+  const malformedLdSignedContext = createRequestContext({
+    federation,
+    request: malformedLdSignedRequest,
+    url: new URL(malformedLdSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(malformedLdSignedRequest, {
+    recipient: null,
+    context: malformedLdSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedLdSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals([response.status, await response.text()], [
+    400,
+    "Invalid JSON-LD.",
+  ]);
+
+  const dualSignedInvalidCreatorRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        ...httpSignedLdBody,
+        signature: {
+          ...httpSignedLdBody.signature,
+          creator: "not a url",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const dualSignedInvalidCreatorContext = createRequestContext({
+    federation,
+    request: dualSignedInvalidCreatorRequest,
+    url: new URL(dualSignedInvalidCreatorRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: flakyContextLoader,
+  });
+  response = await handleInbox(dualSignedInvalidCreatorRequest, {
+    recipient: null,
+    context: dualSignedInvalidCreatorContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...dualSignedInvalidCreatorContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(onNotFoundCalled, null);
+  assertEquals([response.status, await response.text()], [202, ""]);
+
+  const invalidUrlHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-invalid-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          id: "https://example.com/notes/http-signed-invalid-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const invalidUrlHttpSignedContext = createRequestContext({
+    federation,
+    request: invalidUrlHttpSignedRequest,
+    url: new URL(invalidUrlHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        const error = new Error(
+          `Transient remote context failure: ${url}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(invalidUrlHttpSignedRequest, {
+        recipient: null,
+        context: invalidUrlHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...invalidUrlHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const opaqueContextIdHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "app-context",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-opaque-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-opaque-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const opaqueContextIdHttpSignedContext = createRequestContext({
+    federation,
+    request: opaqueContextIdHttpSignedRequest,
+    url: new URL(opaqueContextIdHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "app-context") {
+        const error = new Error(
+          `Opaque context backend is unavailable: ${resource}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url: resource,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(opaqueContextIdHttpSignedRequest, {
+        recipient: null,
+        context: opaqueContextIdHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...opaqueContextIdHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const opaqueContextTypeErrorHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "app:context",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-opaque-typeerror",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-opaque-typeerror",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const opaqueContextTypeErrorHttpSignedContext = createRequestContext({
+    federation,
+    request: opaqueContextTypeErrorHttpSignedRequest,
+    url: new URL(opaqueContextTypeErrorHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "app:context") {
+        throw new TypeError(`Invalid URL: ${resource}`);
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(opaqueContextTypeErrorHttpSignedRequest, {
+        recipient: null,
+        context: opaqueContextTypeErrorHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...opaqueContextTypeErrorHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const networkPathContextHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "//cdn.example/ctx",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-network-path-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-network-path-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const networkPathContextHttpSignedContext = createRequestContext({
+    federation,
+    request: networkPathContextHttpSignedRequest,
+    url: new URL(networkPathContextHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "//cdn.example/ctx") {
+        const error = new Error(
+          `Network-path context backend is unavailable: ${resource}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url: resource,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(networkPathContextHttpSignedRequest, {
+        recipient: null,
+        context: networkPathContextHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...networkPathContextHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const malformedNetworkPathContextHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "//[",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id:
+          "https://example.com/activities/http-signed-malformed-network-path-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id:
+            "https://example.com/notes/http-signed-malformed-network-path-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const malformedNetworkPathContextHttpSignedContext = createRequestContext({
+    federation,
+    request: malformedNetworkPathContextHttpSignedRequest,
+    url: new URL(malformedNetworkPathContextHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "//[") {
+        const error = new Error(
+          `Malformed network-path context: ${resource}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url: resource,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  response = await handleInbox(
+    malformedNetworkPathContextHttpSignedRequest,
+    {
+      recipient: null,
+      context: malformedNetworkPathContextHttpSignedContext,
+      inboxContextFactory(_activity) {
+        return createInboxContext({
+          ...malformedNetworkPathContextHttpSignedContext,
+          clone: undefined,
+        });
+      },
+      ...inboxOptions,
+    },
+  );
+  assertEquals(response.status, 400);
+
+  const malformedUrlLikeContextHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "http://[",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id:
+          "https://example.com/activities/http-signed-malformed-url-like-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id:
+            "https://example.com/notes/http-signed-malformed-url-like-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const malformedUrlLikeContextHttpSignedContext = createRequestContext({
+    federation,
+    request: malformedUrlLikeContextHttpSignedRequest,
+    url: new URL(malformedUrlLikeContextHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "http://[") {
+        const error = new Error(
+          `Invalid remote context URL: ${resource}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url: resource,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  response = await handleInbox(malformedUrlLikeContextHttpSignedRequest, {
+    recipient: null,
+    context: malformedUrlLikeContextHttpSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedUrlLikeContextHttpSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(response.status, 400);
+
+  const malformedContextUrlHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          "not a url",
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-malformed-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-malformed-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const malformedContextUrlHttpSignedContext = createRequestContext({
+    federation,
+    request: malformedContextUrlHttpSignedRequest,
+    url: new URL(malformedContextUrlHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      if (resource === "not a url") {
+        const error = new Error(
+          `Invalid remote context URL: ${resource}`,
+        ) as Error & { details?: { code: string; url: string } };
+        error.name = "jsonld.InvalidUrl";
+        error.details = {
+          code: "loading remote context failed",
+          url: resource,
+        };
+        throw error;
+      }
+      return await mockDocumentLoader(new URL(resource).href);
+    },
+  });
+  response = await handleInbox(malformedContextUrlHttpSignedRequest, {
+    recipient: null,
+    context: malformedContextUrlHttpSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedContextUrlHttpSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(response.status, 400);
+
+  const invalidRemoteContextHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-invalid-remote-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: {
+          id: "https://example.com/notes/http-signed-invalid-remote-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const invalidRemoteContextHttpSignedContext = createRequestContext({
+    federation,
+    request: invalidRemoteContextHttpSignedRequest,
+    url: new URL(invalidRemoteContextHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: ["not", "an", "object"],
+        };
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  response = await handleInbox(invalidRemoteContextHttpSignedRequest, {
+    recipient: null,
+    context: invalidRemoteContextHttpSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...invalidRemoteContextHttpSignedContext,
+        clone: undefined,
+      });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(response.status, 400);
+
+  const invalidUrlAbsoluteContextHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-invalid-url-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          id: "https://example.com/notes/http-signed-invalid-url-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const invalidUrlAbsoluteContextHttpSignedContext = createRequestContext({
+    federation,
+    request: invalidUrlAbsoluteContextHttpSignedRequest,
+    url: new URL(invalidUrlAbsoluteContextHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        throw new TypeError(`Invalid URL: ${url}`);
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(invalidUrlAbsoluteContextHttpSignedRequest, {
+        recipient: null,
+        context: invalidUrlAbsoluteContextHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...invalidUrlAbsoluteContextHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const typeErrorHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-typeerror-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          id: "https://example.com/notes/http-signed-typeerror-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const typeErrorHttpSignedContext = createRequestContext({
+    federation,
+    request: typeErrorHttpSignedRequest,
+    url: new URL(typeErrorHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        throw new TypeError(`The remote context host timed out: ${url}`);
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(typeErrorHttpSignedRequest, {
+        recipient: null,
+        context: typeErrorHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...typeErrorHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const rangeErrorHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-rangeerror-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          id: "https://example.com/notes/http-signed-rangeerror-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const rangeErrorHttpSignedContext = createRequestContext({
+    federation,
+    request: rangeErrorHttpSignedRequest,
+    url: new URL(rangeErrorHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        throw new RangeError(
+          `Temporary remote context cache window exceeded: ${url}`,
+        );
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(rangeErrorHttpSignedRequest, {
+        recipient: null,
+        context: rangeErrorHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...rangeErrorHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
+  const syntaxErrorHttpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/http-signed-syntax-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          id: "https://example.com/notes/http-signed-syntax-context",
+          type: "Note",
+          attributedTo: "https://example.com/person2",
+          content: "Hello, world!",
+        },
+      }),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const syntaxErrorHttpSignedContext = createRequestContext({
+    federation,
+    request: syntaxErrorHttpSignedRequest,
+    url: new URL(syntaxErrorHttpSignedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        const error = new Error(
+          `Transient syntax failure: ${url}`,
+        ) as Error & { details?: { code: string } };
+        error.name = "jsonld.SyntaxError";
+        error.details = { code: "loading remote context failed" };
+        throw error;
+      }
+      return await mockDocumentLoader(url);
+    },
+  });
+  await assertRejects(
+    () =>
+      handleInbox(syntaxErrorHttpSignedRequest, {
+        recipient: null,
+        context: syntaxErrorHttpSignedContext,
+        inboxContextFactory(_activity) {
+          return createInboxContext({
+            ...syntaxErrorHttpSignedContext,
+            clone: undefined,
+          });
+        },
+        ...inboxOptions,
+      }),
+    Error,
+  );
+
   response = await handleInbox(signedRequest, {
     recipient: "someone",
     context: signedContext,
@@ -1310,6 +2610,76 @@ test("handleInbox()", async () => {
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(response.status, 202);
+
+  const unsafeJson = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      { rev: "@reverse" },
+    ],
+    id: "https://example.com/activities/unsafe",
+    type: "Announce",
+    actor: "https://example.com/person2",
+    object: "https://example.com/notes/1",
+    rev: {
+      object: {
+        id: "https://example.com/activities/undo",
+        type: "Undo",
+        actor: "https://example.com/person2",
+      },
+    },
+  };
+  const unsafeRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(unsafeJson),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const unsafeContext = createRequestContext({
+    federation,
+    request: unsafeRequest,
+    url: new URL(unsafeRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(unsafeRequest, {
+    recipient: null,
+    context: unsafeContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...unsafeContext, clone: undefined });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(response.status, 202);
+
+  const unsafeLdRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(
+      await signJsonLd(
+        unsafeJson,
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      ),
+    ),
+  });
+  const unsafeLdContext = createRequestContext({
+    federation,
+    request: unsafeLdRequest,
+    url: new URL(unsafeLdRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  response = await handleInbox(unsafeLdRequest, {
+    recipient: null,
+    context: unsafeLdContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...unsafeLdContext, clone: undefined });
+    },
+    ...inboxOptions,
+  });
+  assertEquals(response.status, 400);
 
   const invalidRequest = new Request("https://example.com/", {
     method: "POST",
@@ -1347,6 +2717,329 @@ test("handleInbox()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(response.status, 400);
 });
+
+test("handleInbox() preserves the raw signed payload for inboxContextFactory", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const remoteContextUrl = "https://remote.example/contexts/ext";
+  const sourceContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (url === remoteContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            ext: "https://example.com/ext",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  const signed = await signJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/preserve-raw",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      object: {
+        id: "https://example.com/notes/preserve-raw",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { contextLoader: sourceContextLoader },
+  );
+  const request = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(signed),
+  });
+  const context = createRequestContext({
+    federation,
+    request,
+    url: new URL(request.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: sourceContextLoader,
+  });
+  let receivedRaw: unknown = null;
+  let receivedTyped: Create | null = null;
+  const inboxListeners = new InboxListenerSet<void>();
+  inboxListeners.add(Create, (ctx, activity) => {
+    receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+    receivedTyped = activity;
+  });
+  const response = await handleInbox(request, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(recipient, activity, activityId, activityType) {
+      return {
+        ...createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient,
+        }),
+        activity,
+        activityId,
+        activityType,
+      };
+    },
+    kv: new MemoryKvStore(),
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+    },
+    actorDispatcher: (_ctx, identifier) =>
+      identifier === "someone" ? new Person({ name: "Someone" }) : null,
+    inboxListeners,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+  });
+  assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(receivedRaw, signed);
+  const delivered = receivedTyped;
+  assert(delivered != null);
+  const deliveredCreate = delivered as Create;
+  assertEquals(
+    deliveredCreate.id?.href,
+    "https://example.com/activities/preserve-raw",
+  );
+});
+
+test("handleInbox() enqueues normalizedActivity for LD-signed inbox work", async () => {
+  const remoteContextUrl = "https://remote.example/contexts/ext";
+  const sourceContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (url === remoteContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            ext: "https://example.com/ext",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  let queuedMessage: InboxMessage | null = null;
+  const queue: MessageQueue = {
+    enqueue(message) {
+      queuedMessage = message as InboxMessage;
+      return Promise.resolve();
+    },
+    async listen() {
+    },
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue,
+  });
+  const signed = await signJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/enqueued-normalized",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      object: {
+        id: "https://example.com/notes/enqueued-normalized",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { contextLoader: sourceContextLoader },
+  );
+  const request = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(signed),
+  });
+  const context = createRequestContext({
+    federation,
+    request,
+    url: new URL(request.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: sourceContextLoader,
+  });
+  const response = await handleInbox(request, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(recipient, activity, activityId, activityType) {
+      return {
+        ...createInboxContext({
+          ...context,
+          clone: undefined,
+          recipient,
+        }),
+        activity,
+        activityId,
+        activityType,
+      };
+    },
+    kv: new MemoryKvStore(),
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+    },
+    queue,
+    actorDispatcher: (_ctx, identifier) =>
+      identifier === "someone" ? new Person({ name: "Someone" }) : null,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+  });
+  assertEquals([response.status, await response.text()], [
+    202,
+    "Activity is enqueued.",
+  ]);
+  const enqueued = queuedMessage;
+  assert(enqueued != null);
+  const inboxMessage = enqueued as InboxMessage;
+  assertEquals(inboxMessage.activity, signed);
+  assertEquals(
+    inboxMessage.normalizedActivity,
+    await compactJsonLd(signed, sourceContextLoader),
+  );
+  assertEquals(inboxMessage.ldSignatureVerified, true);
+});
+
+test(
+  "handleInbox() caches normalizedActivity for queued signature-bearing " +
+    "fallback traffic",
+  async () => {
+    const remoteContextUrl = "https://remote.example/contexts/ext";
+    let queuedMessage: InboxMessage | null = null;
+    const queue: MessageQueue = {
+      enqueue(message) {
+        queuedMessage = message as InboxMessage;
+        return Promise.resolve();
+      },
+      async listen() {
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      queue,
+    });
+    const sourceContextLoader = async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": {
+              ext: "https://example.com/ext",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(url);
+    };
+    const unsignedBody = {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/non-lds-queued-signature",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      object: {
+        id: "https://example.com/notes/non-lds-queued-signature",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+      signature: {
+        type: "RsaSignature2017",
+        creator: "not a url",
+        created: "2024-09-12T16:50:46Z",
+        signatureValue: "Zm9v",
+      },
+    };
+    const request = await signRequest(
+      new Request("https://example.com/", {
+        method: "POST",
+        body: JSON.stringify(unsignedBody),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    );
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: sourceContextLoader,
+    });
+    const response = await handleInbox(request, {
+      recipient: "someone",
+      context,
+      inboxContextFactory(recipient, activity, activityId, activityType) {
+        return {
+          ...createInboxContext({
+            ...context,
+            clone: undefined,
+            recipient,
+          }),
+          activity,
+          activityId,
+          activityType,
+        };
+      },
+      kv: new MemoryKvStore(),
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+      },
+      queue,
+      actorDispatcher: (_ctx, identifier) =>
+        identifier === "someone" ? new Person({ name: "Someone" }) : null,
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+    });
+    assertEquals([response.status, await response.text()], [
+      202,
+      "Activity is enqueued.",
+    ]);
+    if (queuedMessage == null) throw new Error("Inbox message not queued.");
+    const inboxMessage = queuedMessage as InboxMessage;
+    assertEquals(inboxMessage, {
+      type: "inbox",
+      id: inboxMessage.id,
+      baseUrl: "https://example.com",
+      activity: unsignedBody,
+      normalizedActivity: await compactJsonLd(
+        unsignedBody,
+        sourceContextLoader,
+      ),
+      ldSignatureVerified: false,
+      started: inboxMessage.started,
+      attempt: 0,
+      identifier: "someone",
+      traceContext: inboxMessage.traceContext,
+    });
+  },
+);
 
 test("respondWithObject()", async () => {
   const response = await respondWithObject(

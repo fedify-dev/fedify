@@ -585,9 +585,12 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    * Forwards a received activity to the recipients' inboxes.  The forwarded
    * activity will be signed in HTTP Signatures by the forwarder, but its
    * payload will not be modified, i.e., Linked Data Signatures and Object
-   * Integrity Proofs will not be added.  Therefore, if the activity is not
-   * signed (i.e., it has neither Linked Data Signatures nor Object Integrity
-   * Proofs), the recipient probably will not trust the activity.
+   * Integrity Proofs will not be added.  Even when Fedify internally
+   * normalizes a Linked Data Signature activity for parsing, this method still
+   * forwards the original received payload so the sender's signatures/proofs
+   * are preserved as-is.  Therefore, if the activity is not signed (i.e., it
+   * has neither Linked Data Signatures nor Object Integrity Proofs), the
+   * recipient probably will not trust the activity.
    * @param forwarder The forwarder's identifier or the forwarder's username
    *                  or the forwarder's key pair(s).
    * @param recipients The recipients of the activity.
@@ -609,9 +612,12 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    * Forwards a received activity to the recipients' inboxes.  The forwarded
    * activity will be signed in HTTP Signatures by the forwarder, but its
    * payload will not be modified, i.e., Linked Data Signatures and Object
-   * Integrity Proofs will not be added.  Therefore, if the activity is not
-   * signed (i.e., it has neither Linked Data Signatures nor Object Integrity
-   * Proofs), the recipient probably will not trust the activity.
+   * Integrity Proofs will not be added.  Even when Fedify internally
+   * normalizes a Linked Data Signature activity for parsing, this method still
+   * forwards the original received payload so the sender's signatures/proofs
+   * are preserved as-is.  Therefore, if the activity is not signed (i.e., it
+   * has neither Linked Data Signatures nor Object Integrity Proofs), the
+   * recipient probably will not trust the activity.
    * @param forwarder The forwarder's identifier or the forwarder's username.
    * @param recipients In this case, it must be `"followers"`.
    * @param options Options for forwarding the activity.
