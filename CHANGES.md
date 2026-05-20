@@ -8,6 +8,14 @@ Version 2.0.18
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+[CVE-2026-42462]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9rfg-v8g9-9367
+
 
 Version 2.0.17
 --------------
@@ -986,6 +994,18 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.10
+---------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+
 Version 1.10.9
 --------------
 
@@ -1219,6 +1239,18 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.11
+--------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
 
 
 Version 1.9.10
