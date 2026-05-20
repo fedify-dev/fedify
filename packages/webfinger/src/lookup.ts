@@ -274,7 +274,13 @@ async function lookupWebFingerInternal(
     const atPos = resource.pathname.lastIndexOf("@");
     if (atPos < 0) return { resource: null, result: "invalid" };
     server = resource.pathname.substring(atPos + 1);
-    if (server === "") return { resource: null, result: "invalid" };
+    // Per RFC 7565, an `acct:` URI's authority is bare `host`: no path,
+    // query, or fragment.  Reject any acct URI whose extracted authority
+    // carries those characters so a malformed input cannot redirect the
+    // WebFinger fetch to a non-standard path on the same host.
+    if (server === "" || /[/?#]/.test(server)) {
+      return { resource: null, result: "invalid" };
+    }
   } else {
     protocol = resource.protocol;
     server = resource.host;

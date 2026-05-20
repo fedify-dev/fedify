@@ -15,6 +15,12 @@ test({
       deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe")), null);
       deepStrictEqual(await lookupWebFinger("acct:johndoe@"), null);
       deepStrictEqual(await lookupWebFinger(new URL("acct:johndoe@")), null);
+      // Per RFC 7565, the acct: authority cannot carry a path component.
+      // Reject such inputs rather than fetching a non-standard URL.
+      deepStrictEqual(
+        await lookupWebFinger("acct:johndoe@example.com/exploit"),
+        null,
+      );
     });
 
     await t.step("connection refused", async () => {
