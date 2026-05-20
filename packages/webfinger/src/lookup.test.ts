@@ -672,6 +672,28 @@ test("lookupWebFinger() records webfinger.lookup counter and duration", {
     );
 
     await t.step(
+      "buckets unknown resource schemes as 'other' to keep metric cardinality bounded",
+      async () => {
+        // Lookups whose redirect chain ends on an unusual scheme (or a
+        // resource the caller passes with a non-fediverse scheme) must
+        // not leak that scheme into the metric attribute.
+        fetchMock.removeRoutes();
+        const [meterProvider, recorder] = createTestMeterProvider();
+        // `ssh:` is not a WebFinger scheme; lookupWebFingerInternal will
+        // attempt to build a host from the URL, fail, and return null.
+        // The metric still records, and its scheme attribute must be
+        // bucketed as `other`.
+        await lookupWebFinger("ssh://example.com/foo", { meterProvider });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["webfinger.resource.scheme"],
+          "other",
+        );
+      },
+    );
+
+    await t.step(
       "omits measurements when no meterProvider is provided",
       async () => {
         fetchMock.removeRoutes();

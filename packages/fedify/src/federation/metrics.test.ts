@@ -13,6 +13,7 @@ import {
   recordKeyLookup,
   recordOutboxActivity,
   recordOutboxEnqueue,
+  recordWebFingerHandle,
 } from "./metrics.ts";
 
 const noopQueue: MessageQueue = {
@@ -314,6 +315,78 @@ test("recordDocumentCache() records hit and miss as a counter", () => {
   assertEquals(
     measurements[1].attributes["activitypub.remote.host"],
     "w3id.org",
+  );
+});
+
+test("recordWebFingerHandle() records counter and duration with all attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordWebFingerHandle(meterProvider, {
+    durationMs: 17,
+    result: "resolved",
+    scheme: "acct",
+    statusCode: 200,
+  });
+
+  const counters = recorder.getMeasurements("webfinger.handle");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].type, "counter");
+  assertEquals(counters[0].value, 1);
+  assertEquals(counters[0].attributes["webfinger.handle.result"], "resolved");
+  assertEquals(counters[0].attributes["webfinger.resource.scheme"], "acct");
+  assertEquals(counters[0].attributes["http.response.status_code"], 200);
+
+  const durations = recorder.getMeasurements("webfinger.handle.duration");
+  assertEquals(durations.length, 1);
+  assertEquals(durations[0].type, "histogram");
+  assertEquals(durations[0].value, 17);
+  assertEquals(durations[0].attributes["webfinger.handle.result"], "resolved");
+  assertEquals(durations[0].attributes["webfinger.resource.scheme"], "acct");
+  assertEquals(durations[0].attributes["http.response.status_code"], 200);
+});
+
+test("recordWebFingerHandle() records each non-resolved result with the matching status code", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  for (
+    const [result, statusCode] of [
+      ["invalid", 400],
+      ["not_found", 404],
+      ["tombstoned", 410],
+    ] as const
+  ) {
+    recordWebFingerHandle(meterProvider, {
+      durationMs: 1,
+      result,
+      scheme: "acct",
+      statusCode,
+    });
+  }
+  const counters = recorder.getMeasurements("webfinger.handle");
+  assertEquals(counters.length, 3);
+  assertEquals(
+    counters.map((m) => m.attributes["webfinger.handle.result"]),
+    ["invalid", "not_found", "tombstoned"],
+  );
+  assertEquals(
+    counters.map((m) => m.attributes["http.response.status_code"]),
+    [400, 404, 410],
+  );
+});
+
+test("recordWebFingerHandle() omits optional attributes when not provided", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordWebFingerHandle(meterProvider, {
+    durationMs: 0,
+    result: "error",
+  });
+  const counter = recorder.getMeasurement("webfinger.handle");
+  assertEquals(counter?.attributes["webfinger.handle.result"], "error");
+  assertEquals(
+    "webfinger.resource.scheme" in (counter?.attributes ?? {}),
+    false,
+  );
+  assertEquals(
+    "http.response.status_code" in (counter?.attributes ?? {}),
+    false,
   );
 });
 

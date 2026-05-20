@@ -1,7 +1,7 @@
-import { test } from "@fedify/fixture";
+import { createTestMeterProvider, test } from "@fedify/fixture";
 import type { Actor } from "@fedify/vocab";
 import { Image, Link, Person, Tombstone } from "@fedify/vocab";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -612,4 +612,170 @@ test("handleWebFinger()", async (t) => {
 
     assertEquals(result, expectedWithCustomLinks);
   });
+});
+
+test("handleWebFinger() records webfinger.handle counter and duration", async (t) => {
+  const url = new URL("https://example.com/.well-known/webfinger");
+  const actorDispatcher: ActorDispatcher<void> = (ctx, identifier) => {
+    if (identifier === "gone") {
+      return new Tombstone({ id: ctx.getActorUri(identifier) });
+    }
+    if (identifier !== "someone") return null;
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: "someone",
+    });
+  };
+  const onNotFound = () => new Response("Not found", { status: 404 });
+
+  function createContext(u: URL): RequestContext<void> {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    return createRequestContext<void>({
+      federation,
+      url: u,
+      data: undefined,
+      getActorUri(identifier) {
+        return new URL(`${u.origin}/users/${identifier}`);
+      },
+      async getActor(handle) {
+        const actor = await actorDispatcher(
+          this as RequestContext<void>,
+          handle,
+        );
+        return actor instanceof Tombstone ? null : actor;
+      },
+      parseUri(uri) {
+        if (uri == null) return null;
+        if (uri.protocol === "acct:") return null;
+        if (!uri.pathname.startsWith("/users/")) return null;
+        const identifier = uri.pathname.split("/").pop()!;
+        return { type: "actor", identifier };
+      },
+    });
+  }
+
+  await t.step("records result=resolved for a 200 response", async () => {
+    const u = new URL(url);
+    u.searchParams.set("resource", "acct:someone@example.com");
+    const context = createContext(u);
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const response = await handleWebFinger(context.request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+      meterProvider,
+    });
+    assertEquals(response.status, 200);
+
+    const counter = recorder.getMeasurement("webfinger.handle");
+    assertNotEquals(counter, undefined);
+    assertEquals(counter?.type, "counter");
+    assertEquals(counter?.value, 1);
+    assertEquals(counter?.attributes["webfinger.handle.result"], "resolved");
+    assertEquals(counter?.attributes["webfinger.resource.scheme"], "acct");
+    assertEquals(counter?.attributes["http.response.status_code"], 200);
+
+    const duration = recorder.getMeasurement("webfinger.handle.duration");
+    assertNotEquals(duration, undefined);
+    assertEquals(duration?.type, "histogram");
+    assertEquals(duration?.attributes["webfinger.handle.result"], "resolved");
+  });
+
+  await t.step("records result=invalid for a 400 response", async () => {
+    const context = createContext(new URL(url));
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const response = await handleWebFinger(context.request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+      meterProvider,
+    });
+    assertEquals(response.status, 400);
+
+    const counter = recorder.getMeasurement("webfinger.handle");
+    assertEquals(counter?.attributes["webfinger.handle.result"], "invalid");
+    assertEquals(counter?.attributes["http.response.status_code"], 400);
+    assertEquals(
+      "webfinger.resource.scheme" in (counter?.attributes ?? {}),
+      false,
+      "missing resource has no scheme attribute",
+    );
+  });
+
+  await t.step("records result=not_found for a 404 response", async () => {
+    const u = new URL(url);
+    u.searchParams.set("resource", "acct:absent@example.com");
+    const context = createContext(u);
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const response = await handleWebFinger(context.request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+      meterProvider,
+    });
+    assertEquals(response.status, 404);
+
+    const counter = recorder.getMeasurement("webfinger.handle");
+    assertEquals(counter?.attributes["webfinger.handle.result"], "not_found");
+    assertEquals(counter?.attributes["http.response.status_code"], 404);
+    assertEquals(counter?.attributes["webfinger.resource.scheme"], "acct");
+  });
+
+  await t.step("records result=tombstoned for a 410 response", async () => {
+    const u = new URL(url);
+    u.searchParams.set("resource", "acct:gone@example.com");
+    const context = createContext(u);
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const response = await handleWebFinger(context.request, {
+      context,
+      actorDispatcher,
+      onNotFound,
+      meterProvider,
+    });
+    assertEquals(response.status, 410);
+
+    const counter = recorder.getMeasurement("webfinger.handle");
+    assertEquals(counter?.attributes["webfinger.handle.result"], "tombstoned");
+    assertEquals(counter?.attributes["http.response.status_code"], 410);
+  });
+
+  await t.step(
+    "buckets unknown resource schemes as 'other' to keep metric cardinality bounded",
+    async () => {
+      const u = new URL(url);
+      // An attacker-controlled `resource` value with an unusual scheme
+      // must not inflate the `webfinger.resource.scheme` attribute set.
+      u.searchParams.set("resource", "ssh:nobody@example.com");
+      const context = createContext(u);
+      const [meterProvider, recorder] = createTestMeterProvider();
+      await handleWebFinger(context.request, {
+        context,
+        actorDispatcher,
+        onNotFound,
+        meterProvider,
+      });
+      const counter = recorder.getMeasurement("webfinger.handle");
+      assertEquals(counter?.attributes["webfinger.resource.scheme"], "other");
+    },
+  );
+
+  await t.step(
+    "omits measurements when no meterProvider is provided",
+    async () => {
+      const u = new URL(url);
+      u.searchParams.set("resource", "acct:someone@example.com");
+      const context = createContext(u);
+      const [_unused, recorder] = createTestMeterProvider();
+      await handleWebFinger(context.request, {
+        context,
+        actorDispatcher,
+        onNotFound,
+      });
+      assertEquals(recorder.getMeasurements("webfinger.handle").length, 0);
+      assertEquals(
+        recorder.getMeasurements("webfinger.handle.duration").length,
+        0,
+      );
+    },
+  );
 });

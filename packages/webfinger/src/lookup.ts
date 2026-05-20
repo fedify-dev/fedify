@@ -104,6 +104,25 @@ function getResourceScheme(resource: URL | string): string {
   return resource.protocol.replace(/:$/, "").toLowerCase();
 }
 
+// The scheme attribute is recorded on the `webfinger.lookup` metric.  Even
+// though most call sites pass scheme-controlled resources (Fedify code and
+// library users), `lookupObject()` accepts user-supplied identifiers that
+// flow into here, so the metric attribute is bucketed to the schemes
+// WebFinger / fediverse clients legitimately use (RFC 7565 +
+// ActivityPub).  Anything else is bucketed as `other`, keeping metric
+// cardinality bounded even when a remote returns redirects whose target
+// scheme is unusual.
+const WEBFINGER_LOOKUP_SCHEME_WHITELIST: ReadonlySet<string> = new Set([
+  "acct",
+  "http",
+  "https",
+  "mailto",
+]);
+
+function getMetricResourceScheme(scheme: string): string {
+  return WEBFINGER_LOOKUP_SCHEME_WHITELIST.has(scheme) ? scheme : "other";
+}
+
 interface WebFingerLookupOutcome {
   resource: ResourceDescriptor | null;
   result: WebFingerLookupResult;
@@ -231,7 +250,7 @@ function recordWebFingerLookup(
 ): void {
   const attributes: Attributes = {
     "webfinger.lookup.result": outcome.result,
-    "webfinger.resource.scheme": scheme,
+    "webfinger.resource.scheme": getMetricResourceScheme(scheme),
   };
   if (outcome.remoteHost != null) {
     attributes["activitypub.remote.host"] = outcome.remoteHost;

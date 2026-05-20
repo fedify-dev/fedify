@@ -1,7 +1,7 @@
 import { Link as LinkObject, Tombstone } from "@fedify/vocab";
 import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
-import type { Span, Tracer } from "@opentelemetry/api";
+import type { MeterProvider, Span, Tracer } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { domainToASCII } from "node:url";
 import type {
@@ -11,6 +11,10 @@ import type {
   WebFingerLinksDispatcher,
 } from "./callback.ts";
 import type { RequestContext } from "./context.ts";
+import {
+  recordWebFingerHandle,
+  type WebFingerHandleResult,
+} from "./metrics.ts";
 
 const logger = getLogger(["fedify", "webfinger", "server"]);
 
@@ -69,6 +73,16 @@ export interface WebFingerHandlerParameters<TContextData> {
    * @since 1.3.0
    */
   span?: Span;
+
+  /**
+   * The OpenTelemetry meter provider used to record the `webfinger.handle`
+   * counter and `webfinger.handle.duration` histogram.  When omitted, no
+   * WebFinger-specific measurements are emitted (the request still
+   * contributes to `fedify.http.server.request.*` because that metric is
+   * recorded one layer up in `Federation.fetch`).
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -82,30 +96,89 @@ export async function handleWebFinger<TContextData>(
   request: Request,
   options: WebFingerHandlerParameters<TContextData>,
 ): Promise<Response> {
-  if (options.tracer == null) {
-    return await handleWebFingerInternal(request, options);
+  const meterProvider = options.meterProvider;
+  const start = meterProvider == null ? 0 : performance.now();
+  const resource = options.context.url.searchParams.get("resource");
+  const scheme = computeResourceScheme(resource);
+  let response: Response | undefined;
+  try {
+    if (options.tracer == null) {
+      response = await handleWebFingerInternal(request, options);
+    } else {
+      response = await options.tracer.startActiveSpan(
+        "webfinger.handle",
+        { kind: SpanKind.SERVER },
+        async (span) => {
+          try {
+            const inner = await handleWebFingerInternal(request, options);
+            span.setStatus({
+              code: inner.ok ? SpanStatusCode.UNSET : SpanStatusCode.ERROR,
+            });
+            return inner;
+          } catch (error) {
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(error),
+            });
+            throw error;
+          } finally {
+            span.end();
+          }
+        },
+      );
+    }
+    return response;
+  } finally {
+    if (meterProvider != null) {
+      recordWebFingerHandle(meterProvider, {
+        durationMs: Math.max(0, performance.now() - start),
+        result: classifyWebFingerHandleResult(response),
+        scheme,
+        statusCode: response?.status,
+      });
+    }
   }
-  return await options.tracer.startActiveSpan(
-    "webfinger.handle",
-    { kind: SpanKind.SERVER },
-    async (span) => {
-      try {
-        const response = await handleWebFingerInternal(request, options);
-        span.setStatus({
-          code: response.ok ? SpanStatusCode.UNSET : SpanStatusCode.ERROR,
-        });
-        return response;
-      } catch (error) {
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: String(error),
-        });
-        throw error;
-      } finally {
-        span.end();
-      }
-    },
-  );
+}
+
+// The scheme attribute is recorded on the `webfinger.handle` metric, whose
+// resource value comes from an attacker-controlled query string.  Buckets are
+// whitelisted to the schemes WebFinger / fediverse clients legitimately use
+// (RFC 7565 + ActivityPub), with anything else bucketed as `other`.  This
+// keeps metric cardinality bounded even when a client probes Fedify with
+// arbitrary, very long, or control-character-bearing prefixes.
+const WEBFINGER_HANDLE_SCHEME_WHITELIST: ReadonlySet<string> = new Set([
+  "acct",
+  "http",
+  "https",
+  "mailto",
+]);
+
+function computeResourceScheme(
+  resource: string | null,
+): string | undefined {
+  if (resource == null) return undefined;
+  const colon = resource.indexOf(":");
+  if (colon <= 0) return undefined;
+  const candidate = resource.substring(0, colon).toLowerCase();
+  return WEBFINGER_HANDLE_SCHEME_WHITELIST.has(candidate) ? candidate : "other";
+}
+
+function classifyWebFingerHandleResult(
+  response: Response | undefined,
+): WebFingerHandleResult {
+  if (response == null) return "error";
+  switch (response.status) {
+    case 200:
+      return "resolved";
+    case 400:
+      return "invalid";
+    case 404:
+      return "not_found";
+    case 410:
+      return "tombstoned";
+    default:
+      return "error";
+  }
 }
 
 async function handleWebFingerInternal<TContextData>(

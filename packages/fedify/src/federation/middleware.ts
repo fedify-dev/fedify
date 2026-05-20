@@ -1671,6 +1671,7 @@ export class FederationImpl<TContextData>
           webFingerLinksDispatcher: this.webFingerLinksDispatcher,
           onNotFound,
           tracer,
+          meterProvider: this.meterProvider,
         });
       case "nodeInfoJrd":
         return await handleNodeInfoJrd(request, context);
@@ -2552,6 +2553,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ...options,
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      meterProvider: options.meterProvider ?? this.meterProvider,
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
   }

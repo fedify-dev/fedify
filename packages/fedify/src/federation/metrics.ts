@@ -345,6 +345,52 @@ export interface SignatureVerificationExtraAttributes {
   failureReason?: HttpSignatureMetricFailureReason;
 }
 
+/**
+ * The terminal classification of an incoming WebFinger request handled by
+ * Fedify, recorded as the `webfinger.handle.result` attribute on the
+ * `webfinger.handle` counter and `webfinger.handle.duration` histogram.
+ *
+ *  -  `resolved`: Fedify returned a `200 OK` response with a JRD.
+ *  -  `invalid`: Fedify returned `400 Bad Request` because the queried
+ *     `resource` parameter was missing or unparseable.
+ *  -  `not_found`: Fedify returned `404 Not Found` because no actor
+ *     dispatcher matched the queried resource, the actor identifier was
+ *     not recognised, or the queried `acct:` host did not match the
+ *     server.
+ *  -  `tombstoned`: Fedify returned `410 Gone` because the actor
+ *     dispatcher resolved to a {@link import("@fedify/vocab").Tombstone}.
+ *  -  `error`: the handler threw before producing a response.
+ * @since 2.3.0
+ */
+export type WebFingerHandleResult =
+  | "resolved"
+  | "invalid"
+  | "not_found"
+  | "tombstoned"
+  | "error";
+
+/**
+ * Attributes accepted by {@link recordWebFingerHandle}.
+ * @since 2.3.0
+ */
+export interface WebFingerHandleAttributes {
+  /** The terminal handling outcome. */
+  result: WebFingerHandleResult;
+  /** Elapsed handler duration in milliseconds. */
+  durationMs: number;
+  /**
+   * The scheme of the queried resource URI, when it parsed.  Omitted when
+   * Fedify could not extract a scheme (no resource parameter, unparseable
+   * URI, or thrown exception before parsing).
+   */
+  scheme?: string;
+  /**
+   * The HTTP response status code Fedify produced.  Omitted only when the
+   * handler threw before constructing a response.
+   */
+  statusCode?: number;
+}
+
 class FederationMetrics {
   readonly deliverySent: Counter;
   readonly deliveryPermanentFailure: Counter;
@@ -369,6 +415,8 @@ class FederationMetrics {
   readonly documentFetch: Counter;
   readonly documentFetchDuration: Histogram;
   readonly documentCache: Counter;
+  readonly webFingerHandle: Counter;
+  readonly webFingerHandleDuration: Histogram;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -608,6 +656,41 @@ class FederationMetrics {
         "classification.",
       unit: "{lookup}",
     });
+    this.webFingerHandle = meter.createCounter("webfinger.handle", {
+      description:
+        "Incoming WebFinger requests handled by Fedify, classified by " +
+        "terminal outcome.",
+      unit: "{request}",
+    });
+    this.webFingerHandleDuration = meter.createHistogram(
+      "webfinger.handle.duration",
+      {
+        description:
+          "Duration of incoming WebFinger request handling in Fedify.",
+        unit: "ms",
+        advice: {
+          // Reuse the OpenTelemetry HTTP server semantic-conventions buckets
+          // since WebFinger requests follow the same 5 ms to 10 s range as
+          // the rest of Fedify's request path.
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
+      },
+    );
   }
 
   recordDelivery(
@@ -820,6 +903,20 @@ class FederationMetrics {
     }
     this.documentCache.add(1, attributes);
   }
+
+  recordWebFingerHandle(attrs: WebFingerHandleAttributes): void {
+    const attributes: Attributes = {
+      "webfinger.handle.result": attrs.result,
+    };
+    if (attrs.scheme != null) {
+      attributes["webfinger.resource.scheme"] = attrs.scheme;
+    }
+    if (attrs.statusCode != null) {
+      attributes["http.response.status_code"] = attrs.statusCode;
+    }
+    this.webFingerHandle.add(1, attributes);
+    this.webFingerHandleDuration.record(attrs.durationMs, attributes);
+  }
 }
 
 function buildActivityLifecycleAttributes(
@@ -1008,6 +1105,23 @@ export function recordDocumentCache(
   attrs: DocumentCacheAttributes,
 ): void {
   getFederationMetrics(meterProvider).recordDocumentCache(attrs);
+}
+
+/**
+ * Records one measurement on `webfinger.handle` (counter) and
+ * `webfinger.handle.duration` (histogram) for an incoming WebFinger
+ * request handled by Fedify.  Counter and histogram are always recorded
+ * together, with `webfinger.handle.result` set to one of `resolved`,
+ * `invalid`, `not_found`, `tombstoned`, or `error`.  The queried
+ * resource string is deliberately excluded; it remains on the
+ * `webfinger.handle` span for trace-level investigation.
+ * @since 2.3.0
+ */
+export function recordWebFingerHandle(
+  meterProvider: MeterProvider | undefined,
+  attrs: WebFingerHandleAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordWebFingerHandle(attrs);
 }
 
 /**
