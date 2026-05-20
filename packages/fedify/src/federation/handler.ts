@@ -16,6 +16,7 @@ import {
   hasSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
+  isInvalidUrlTypeError,
   verifyCompactJsonLd,
   wrapContextLoaderForJsonLd,
 } from "../sig/ld.ts";
@@ -101,8 +102,9 @@ function isInvalidJsonLdError(error: unknown): error is Error {
 
 function isValidationTypeError(error: unknown): error is TypeError {
   return error instanceof TypeError &&
-    /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid URL)/
-      .test(error.message);
+    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+      .test(error.message) ||
+      isInvalidUrlTypeError(error));
 }
 
 function isPermanentActivityParseError(error: unknown): error is Error {
@@ -115,8 +117,8 @@ function isPermanentActivityParseError(error: unknown): error is Error {
   // bucket.  jsonld.SyntaxError is similarly only permanent when it is local
   // to the payload rather than a remote-context loading failure.  Raw loader
   // TypeErrors for @context resolution are normalized earlier at the
-  // context-loading layer, so any remaining "Invalid URL ..." here comes from
-  // sender-controlled ActivityPub IRI fields and stays permanent.
+  // context-loading layer, so any remaining invalid-URL TypeError here comes
+  // from sender-controlled ActivityPub IRI fields and stays permanent.
   return isInvalidJsonLdError(error) || isValidationTypeError(error);
 }
 

@@ -21,12 +21,28 @@ import {
   compactJsonLd,
   createSignature,
   detachSignature,
+  isInvalidUrlTypeError,
   type Signature,
   signJsonLd,
   UnsafeJsonLdError,
   verifyJsonLd,
   verifySignature,
 } from "./ld.ts";
+
+test("isInvalidUrlTypeError()", () => {
+  assert(isInvalidUrlTypeError(new TypeError("Invalid URL: http://[")));
+  assert(
+    isInvalidUrlTypeError(
+      new TypeError('"http://[" cannot be parsed as a URL.'),
+    ),
+  );
+  const error = new TypeError("Failed to parse URL") as TypeError & {
+    code?: string;
+  };
+  error.code = "ERR_INVALID_URL";
+  assert(isInvalidUrlTypeError(error));
+  assertFalse(isInvalidUrlTypeError(new TypeError("Failed to fetch")));
+});
 
 test("attachSignature()", () => {
   const sig: Signature = {

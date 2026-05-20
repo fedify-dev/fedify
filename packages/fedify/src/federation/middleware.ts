@@ -46,6 +46,7 @@ import {
   hasSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
+  isInvalidUrlTypeError,
   signJsonLd,
   wrapContextLoaderForJsonLd,
 } from "../sig/ld.ts";
@@ -157,8 +158,8 @@ function isPermanentInboxParseError(error: unknown): error is Error {
   // metadata URL failures.  jsonld.SyntaxError is similarly only permanent
   // when it is local to the payload rather than a remote-context loading
   // failure.  Raw loader TypeErrors for @context resolution are normalized
-  // earlier at the context-loading layer, so any remaining "Invalid URL ..."
-  // here comes from sender-controlled ActivityPub IRI fields and stays
+  // earlier at the context-loading layer, so any remaining invalid-URL
+  // TypeError here comes from sender-controlled ActivityPub IRI fields and stays
   // permanent instead of churning the retry queue.
   return (error instanceof Error &&
     (error.name === "UnsafeJsonLdError" ||
@@ -167,8 +168,9 @@ function isPermanentInboxParseError(error: unknown): error is Error {
       (error.name === "jsonld.SyntaxError" &&
         !isRemoteContextLoadingFailure(error)))) ||
     (error instanceof TypeError &&
-      /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid URL)/
-        .test(error.message));
+      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+        .test(error.message) ||
+        isInvalidUrlTypeError(error)));
 }
 
 /**

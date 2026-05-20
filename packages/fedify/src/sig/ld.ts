@@ -392,9 +392,13 @@ function normalizeContextReference(
   return URL.canParse(reference) ? new URL(reference).href : reference;
 }
 
-function isInvalidUrlTypeError(error: unknown): error is TypeError {
+/** @internal */
+export function isInvalidUrlTypeError(error: unknown): error is TypeError {
+  const code = (error as { code?: unknown }).code;
   return error instanceof TypeError &&
-    /^Invalid URL(?::|$)/.test(error.message);
+    (code === "ERR_INVALID_URL" ||
+      /^Invalid URL(?::|$)/.test(error.message) ||
+      / cannot be parsed as a URL\.?$/.test(error.message));
 }
 
 async function applyGraphAliasContext(
