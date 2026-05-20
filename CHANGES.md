@@ -192,7 +192,7 @@ To be released.
     discovery measurement and the underlying `webfinger.lookup`
     measurements (one for the actor ID host, plus a second for the
     alias host when cross-origin verification runs).
-    [[#316], [#739]]
+    [[#316], [#739], [#772]]
 
  -  Replaced Fedify's internal federation routing with
     *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
@@ -219,6 +219,7 @@ To be released.
 [#769]: https://github.com/fedify-dev/fedify/pull/769
 [#770]: https://github.com/fedify-dev/fedify/pull/770
 [#771]: https://github.com/fedify-dev/fedify/pull/771
+[#772]: https://github.com/fedify-dev/fedify/pull/772
 
 ### @fedify/fixture
 
