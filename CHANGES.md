@@ -151,6 +151,49 @@ To be released.
     `http.response.status_code` and a richer
     `activitypub.lookup.result` taxonomy.  [[#316], [#738], [#771]]
 
+ -  Added OpenTelemetry metrics for the WebFinger and actor handle
+    discovery paths so operators can graph aggregate discovery rate,
+    latency, and outcome mix without sampling spans:
+
+     -  `webfinger.lookup` (counter) and `webfinger.lookup.duration`
+        (histogram) cover outgoing `lookupWebFinger()` calls.
+     -  `webfinger.handle` (counter) and `webfinger.handle.duration`
+        (histogram) cover incoming WebFinger requests handled by
+        `Federation.fetch()`.
+     -  `activitypub.actor.discovery` (counter) and
+        `activitypub.actor.discovery.duration` (histogram) cover
+        `getActorHandle()` actor handle discovery.
+
+    Each family carries a bounded result attribute
+    (`webfinger.lookup.result`, `webfinger.handle.result`, or
+    `activitypub.actor.discovery.result`) so operators can slice
+    discovery failures by terminal outcome (found / not\_found /
+    invalid / network\_error / error for outgoing lookups;
+    resolved / invalid / not\_found / tombstoned / error for incoming
+    requests; resolved / not\_found / error for actor discovery).
+    `webfinger.resource.scheme` is bucketed to a small allow list
+    (`acct`, `http`, `https`, `mailto`, or `other`) so an
+    attacker-controlled query string cannot inflate metric
+    cardinality; `activitypub.remote.host` records the URL hostname
+    only.  Full resource URIs, lookup URLs, and handle strings are
+    deliberately excluded; they remain on the corresponding spans
+    (`webfinger.lookup`, `webfinger.handle`,
+    `activitypub.get_actor_handle`) for trace-level investigation.
+
+    `lookupWebFinger()` and `getActorHandle()` follow the opt-in
+    `lookupObject()` pattern: omitting the new `meterProvider` option
+    emits no measurement.  Applications that pass a `meterProvider`
+    to `createFederation()` get the inbound `webfinger.handle` family
+    and the federation-bound `Context.lookupWebFinger()` family wired
+    up automatically.  Direct `getActorHandle()` calls remain opt-in:
+    pass `meterProvider` through `GetActorHandleOptions` to enable
+    the discovery metrics, and the option is forwarded into the
+    nested WebFinger lookups so one discovery emits both the
+    discovery measurement and the underlying `webfinger.lookup`
+    measurements (one for the actor ID host, plus a second for the
+    alias host when cross-origin verification runs).
+    [[#316], [#739]]
+
  -  Replaced Fedify's internal federation routing with
     *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
@@ -163,6 +206,7 @@ To be released.
 [#736]: https://github.com/fedify-dev/fedify/issues/736
 [#737]: https://github.com/fedify-dev/fedify/issues/737
 [#738]: https://github.com/fedify-dev/fedify/issues/738
+[#739]: https://github.com/fedify-dev/fedify/issues/739
 [#740]: https://github.com/fedify-dev/fedify/issues/740
 [#742]: https://github.com/fedify-dev/fedify/issues/742
 [#748]: https://github.com/fedify-dev/fedify/pull/748
