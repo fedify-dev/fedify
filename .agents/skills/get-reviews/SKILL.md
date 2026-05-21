@@ -70,6 +70,7 @@ Organize the reviews
 
 After fetching the PR and its reviews, organize the reviews.
 [*plans* directory in the root](../../../plans/) is a good place to store them.
+*plans/* is already ignored in `.gitignore`, so don't check that it is ignored.
 
  -  *plans/{PR\_NUMBER}/index.md*: The main file for the PR.
      -  The body of the PR
@@ -107,7 +108,7 @@ naming rules:
     the file so the context is preserved.
 
 The format of review files should be as [review.md](./review.md).
-Read the reviews and fill the format as a draft with the related information.
+Read the review and draft the format based on the relevant information.
 The files should be written in the contributor's language. But the title of
 the item in the file (e.g., “Summary”, “Judgement”, “Plans”) should be in
 English for consistency.
