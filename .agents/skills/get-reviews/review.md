@@ -72,6 +72,15 @@ Plans
   - If the review is judged as **PARTIAL**, what are the modifications to apply?
   - Why the plans can apply the review correctly?
 
+  If the review is judged as **WRONG**, write plans to why the reviewer
+  misunderstood the code and how to prevent similar misunderstandings
+  in the future.
+  - What are the reasons for the misunderstanding?
+  - How to prevent similar misunderstandings in the future?
+  - Consider adding comments to the code, improving documentation,
+    renaming variables or functions for clarity,
+    or refactoring the code to make it more understandable.
+
   If the review is judged as **NEEDS EVALUATION**,
   write the plans to evaluate the review, such as testing plans.
   - How to test or evaluate?
@@ -95,14 +104,20 @@ Comments
 <!--
   Prepare the response comments in advance after applying the review or
   judging the review as wrong. The comments should be polite and constructive.
+  Do not use conversational fillers (e.g. "You're right.") Avoid using personal
+  pronouns such as "I," "we," or "you." Focus on describing how the code has
+  changed rather than stating "I did something."
 
-  If the contributor don't use English, separate this section into two parts,
+  If there is a language that the contributor is more comfortable using than
+  English, separate this section into two parts,
   - the language of the contributor using
   - English, ready to be posted as a response
 
+  Even if it's not what the review requested, if the related code has changed,
+  start with: "Addressed in {COMMIT_HASH}."
+
   If the review is judged as **CORRECT**, write comments to apply the review
-  to explain how to apply the review and why it is correct. The comments to
-  applied reviews should be started with "Addressed in {COMMIT_HASH}.".
+  to explain how to apply the review.
 
   If the review is judged as **WRONG**, write comments to dismiss the review
   to explain why the review is wrong and should be dismissed.
