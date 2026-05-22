@@ -2,6 +2,7 @@
   "workspace": [
     "./packages/amqp",
     "./packages/astro",
+    "./packages/backfill",
     "./packages/cfworkers",
     "./packages/cli",
     "./packages/debugger",
