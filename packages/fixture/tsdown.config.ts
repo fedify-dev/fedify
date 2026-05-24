@@ -16,7 +16,7 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: { neverBundle: [/^node:/] },
     hooks: {
       "build:done": async (ctx) => {
         for await (const file of glob("src/fixtures/**/*.json")) {
@@ -35,10 +35,12 @@ export default [
     dts: false,
     format: ["esm", "cjs"],
     platform: "node",
-    external: [
-      /^node:/,
-      "@fedify/vocab-runtime",
-    ],
+    deps: {
+      neverBundle: [
+        /^node:/,
+        "@fedify/vocab-runtime",
+      ],
+    },
   }),
 ];
 

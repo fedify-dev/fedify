@@ -19,10 +19,15 @@ export async function validatePublicUrl(url: string): Promise<void> {
   }
   let hostname = parsed.hostname;
   if (hostname.startsWith("[") && hostname.endsWith("]")) {
-    hostname = hostname.substring(1, hostname.length - 2);
+    hostname = hostname.slice(1, -1);
   }
   if (hostname === "localhost") {
     throw new UrlError("Localhost is not allowed");
+  }
+  const hostnameFamily = isIP(hostname);
+  if (hostnameFamily !== 0) {
+    validatePublicIpAddress(hostname, hostnameFamily);
+    return;
   }
   if ("Deno" in globalThis && !isIP(hostname)) {
     // If the `net` permission is not granted, we can't resolve the hostname.
@@ -50,14 +55,18 @@ export async function validatePublicUrl(url: string): Promise<void> {
     addresses = [];
   }
   for (const { address, family } of addresses) {
-    if (
-      family === 4 && !isValidPublicIPv4Address(address) ||
-      family === 6 && !isValidPublicIPv6Address(address) ||
-      family < 4 || family === 5 || family > 6
-    ) {
-      throw new UrlError(`Invalid or private address: ${address}`);
-    }
+    validatePublicIpAddress(address, family);
   }
+}
+
+function validatePublicIpAddress(address: string, family: number): void {
+  if (
+    family === 4 && isValidPublicIPv4Address(address) ||
+    family === 6 && isValidPublicIPv6Address(address)
+  ) {
+    return;
+  }
+  throw new UrlError(`Invalid or private address: ${address}`);
 }
 
 export function isValidPublicIPv4Address(address: string): boolean {

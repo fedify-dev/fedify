@@ -144,9 +144,9 @@ remote follow arrives, an unfollow occurs, etc.), the server pushes an
 event so the page can update without a full reload.
 
 The server maintains a set of active SSE connections.  Whenever the
-follower or following store is mutated — inside inbox listeners or after a
-local follow/unfollow request — it broadcasts an event to every open
-connection.
+follower or following store is mutated—inside inbox listeners or after a
+local follow/unfollow request—it broadcasts an event to every open
+SSE connection.
 
 The client listens on an `EventSource` and replaces the relevant DOM
 section with the received data.

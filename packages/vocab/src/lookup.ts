@@ -6,12 +6,94 @@ import {
 } from "@fedify/vocab-runtime";
 import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
-import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  type Attributes,
+  type Counter,
+  type MeterProvider,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
 import { delay } from "es-toolkit";
 import metadata from "../deno.json" with { type: "json" };
+import { isActor } from "./actor.ts";
 import { toAcctUrl } from "./handle.ts";
 import { getTypeId } from "./type.ts";
 import { type Collection, type Link, Object } from "./vocab.ts";
+
+/**
+ * The classification of an ActivityStreams lookup performed by
+ * {@link lookupObject}, recorded as `activitypub.lookup.kind` on the
+ * `activitypub.object.lookup` counter.
+ *
+ *  -  `actor`: the resolved object is an {@link import("./actor.ts").Actor}.
+ *  -  `object`: the resolved object is a non-actor ActivityStreams object.
+ *  -  `other`: the lookup did not resolve to an object (not found, network
+ *     failure, parse failure).
+ * @since 2.3.0
+ */
+export type ObjectLookupKind = "actor" | "object" | "other";
+
+const objectLookupCounters = new WeakMap<MeterProvider, Counter>();
+
+function getObjectLookupCounter(meterProvider: MeterProvider): Counter {
+  let counter = objectLookupCounters.get(meterProvider);
+  if (counter == null) {
+    counter = meterProvider
+      .getMeter(metadata.name, metadata.version)
+      .createCounter("activitypub.object.lookup", {
+        description:
+          "ActivityStreams object lookups via lookupObject(), classified " +
+          "by whether the resolved value is an Actor.",
+        unit: "{lookup}",
+      });
+    objectLookupCounters.set(meterProvider, counter);
+  }
+  return counter;
+}
+
+function getLookupRemoteHost(identifier: string | URL): string | undefined {
+  let url: URL | undefined;
+  if (identifier instanceof URL) {
+    url = identifier;
+  } else {
+    try {
+      url = new URL(identifier);
+    } catch {
+      // Not a URL — try to interpret as a bare fediverse handle below.
+      const stripped = identifier.startsWith("@")
+        ? identifier.slice(1)
+        : identifier;
+      return extractHandleHost(stripped);
+    }
+  }
+  if (url.hostname !== "") return url.hostname;
+  // `acct:` URIs are opaque (no `//host` form), so the URL hostname is
+  // empty.  The user and authority live in `url.pathname` as
+  // `user@host`; reuse the same handle-extraction logic, which both
+  // takes only the substring after the last `@` and refuses to record
+  // anything that looks like a path / query / fragment rather than a
+  // bare hostname.
+  if (url.protocol === "acct:") return extractHandleHost(url.pathname);
+  return undefined;
+}
+
+function extractHandleHost(handle: string): string | undefined {
+  const at = handle.lastIndexOf("@");
+  if (at < 0 || at >= handle.length - 1) return undefined;
+  const candidate = handle.slice(at + 1);
+  // Reject anything that is not just an authority — paths, queries,
+  // fragments, and spaces would all leak high-cardinality metadata into
+  // the metric attribute, so we drop the host entirely in those cases.
+  if (/[/?#\s]/.test(candidate)) return undefined;
+  // Round-trip through `URL` so the parser validates the authority and
+  // strips any port/userinfo before we record it.
+  try {
+    return new URL(`https://${candidate}`).hostname || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const logger = getLogger(["fedify", "vocab", "lookup"]);
 
@@ -68,6 +150,15 @@ export interface LookupObjectOptions {
   tracerProvider?: TracerProvider;
 
   /**
+   * The OpenTelemetry meter provider used to record the
+   * `activitypub.object.lookup` counter.  If omitted, the counter is not
+   * emitted at all (the helper is opt-in to avoid touching the global
+   * meter provider for callers that do not use OpenTelemetry).
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
+
+  /**
    * AbortSignal for cancelling the request.
    * @since 1.8.0
    */
@@ -118,8 +209,16 @@ export async function lookupObject(
   return await tracer.startActiveSpan(
     "activitypub.lookup_object",
     async (span) => {
+      let kind: ObjectLookupKind = "other";
       try {
         const result = await lookupObjectInternal(identifier, options);
+        // Classify the result as soon as `lookupObjectInternal` returns,
+        // so that any subsequent throw (for example from
+        // `result.toJsonLd(options)` while building the span event) does
+        // not roll `kind` back to `"other"` in the `finally` block.
+        if (result != null) {
+          kind = isActor(result) ? "actor" : "object";
+        }
         if (result == null) span.setStatus({ code: SpanStatusCode.ERROR });
         else {
           if (result.id != null) {
@@ -150,6 +249,14 @@ export async function lookupObject(
         });
         throw error;
       } finally {
+        if (options.meterProvider != null) {
+          const attributes: Attributes = {
+            "activitypub.lookup.kind": kind,
+          };
+          const host = getLookupRemoteHost(identifier);
+          if (host != null) attributes["activitypub.remote.host"] = host;
+          getObjectLookupCounter(options.meterProvider).add(1, attributes);
+        }
         span.end();
       }
     },
@@ -179,6 +286,7 @@ async function lookupObjectInternal(
     const jrd = await lookupWebFinger(identifier, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
+      meterProvider: options.meterProvider,
       allowPrivateAddress: "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
       signal: options.signal,

@@ -215,12 +215,12 @@ nodeTest(
     });
 
     try {
-      // Do NOT call initialize() ahead of time — let listen() and enqueue()
+      // Do NOT call initialize() ahead of time—let listen() and enqueue()
       // race to initialize concurrently.
       const messages: string[] = [];
       const controller = new AbortController();
 
-      // Start listen() WITHOUT awaiting — it will call initialize() internally
+      // Start listen() WITHOUT awaiting—it will call initialize() internally
       const listening = mq.listen(
         (message: string) => {
           messages.push(message);
@@ -228,7 +228,7 @@ nodeTest(
         { signal: controller.signal },
       );
 
-      // Immediately enqueue — this also calls initialize(), racing with
+      // Immediately enqueue—this also calls initialize(), racing with
       // listen()'s initialize().  With the bug (no promise caching), both
       // would run DDL concurrently.
       await mq.enqueue("concurrent-init-test");
@@ -289,7 +289,7 @@ nodeTest(
 
 // Regression test for poll serialization ensuring no messages are lost.
 // When multiple messages are enqueued BEFORE listen() starts, there are no
-// NOTIFY signals to trigger immediate polling — the listener must discover
+// NOTIFY signals to trigger immediate polling—the listener must discover
 // all messages through its periodic poll cycle alone.
 //
 // This is a deterministic test: by inserting messages before listen() starts,
@@ -315,14 +315,14 @@ nodeTest(
     try {
       await mq.initialize();
 
-      // Enqueue messages BEFORE starting the listener — no NOTIFY will be
+      // Enqueue messages BEFORE starting the listener—no NOTIFY will be
       // received by the listener for these messages.
       const count = 20;
       for (let i = 0; i < count; i++) {
         await mq.enqueue(`pre-enqueued-${i}`);
       }
 
-      // Now start listening — messages can only be found through polling
+      // Now start listening—messages can only be found through polling
       const messages: string[] = [];
       const controller = new AbortController();
 
@@ -397,7 +397,7 @@ nodeTest(
       // Wait for the listener to establish its LISTEN subscription
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Fire off many enqueue() calls concurrently — each one sends a
+      // Fire off many enqueue() calls concurrently—each one sends a
       // NOTIFY, creating a burst that stresses the serialization logic
       const count = 30;
       const enqueues: Promise<void>[] = [];
@@ -981,7 +981,7 @@ nodeTest(
     try {
       await mq.initialize();
 
-      // Enqueue two messages — the handler will hang on the first one
+      // Enqueue two messages—the handler will hang on the first one
       await mq.enqueue("hang");
       await mq.enqueue("normal");
 

@@ -19,6 +19,11 @@ test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("https://localhost"), UrlError);
   await rejects(() => validatePublicUrl("https://127.0.0.1"), UrlError);
   await rejects(() => validatePublicUrl("https://[::1]"), UrlError);
+  await rejects(
+    () => validatePublicUrl("http://[::ffff:7f00:1]/"),
+    UrlError,
+  );
+  await validatePublicUrl("https://[2001:db8::1]");
 });
 
 test("isValidPublicIPv4Address()", () => {
@@ -37,6 +42,7 @@ test("isValidPublicIPv6Address()", () => {
   ok(!isValidPublicIPv6Address("fe80::1")); // link-local
   ok(!isValidPublicIPv6Address("ff00::1")); // multicast
   ok(!isValidPublicIPv6Address("::")); // unspecified
+  ok(!isValidPublicIPv6Address("::ffff:7f00:1")); // IPv4-mapped
 });
 
 test("expandIPv6Address()", () => {

@@ -96,7 +96,7 @@ async function getLatestVersion(
   if (latestMajor !== currentMajor) {
     console.warn(
       `  ⚠  ${cleanPkg}: latest ${latest} has different major ` +
-        `(current ^${currentMajor}.x) — skipped`,
+        `(current ^${currentMajor}.x)—skipped`,
     );
     return undefined;
   }

@@ -4,9 +4,10 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import { RouterError } from "@fedify/uri-template";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
-import { getTypeId, lookupObject } from "@fedify/vocab";
+import { Create, getTypeId, lookupObject, Offer, Person } from "@fedify/vocab";
 import {
   assert,
   assertEquals,
@@ -31,7 +32,12 @@ import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.js
 };
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
-import { detachSignature, signJsonLd, verifyJsonLd } from "../sig/ld.ts";
+import {
+  compactJsonLd,
+  detachSignature,
+  signJsonLd,
+  verifyJsonLd,
+} from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
 import {
@@ -44,6 +50,7 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
@@ -58,7 +65,6 @@ import {
 } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
-import { RouterError } from "./router.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -1429,6 +1435,42 @@ test("Federation.fetch()", async (t) => {
     assertEquals(response.status, 404);
   });
 
+  await t.step(
+    "empty identifier segment is Not Found, dispatcher not invoked",
+    async () => {
+      // Regression for the bug fixed by this change: a request whose
+      // identifier segment is empty or missing (`/users/`, `/users//inbox`)
+      // must be treated as Not Found instead of invoking the dispatcher
+      // with an empty string, which would violate the `identifier: string`
+      // callback contract.  `Federation.fetch()` routes against
+      // `URL.pathname`, so this exercises the real HTTP path, not just
+      // `Router.route()`.  See
+      // https://github.com/fedify-dev/fedify/pull/758#discussion_r3252548632
+      const { federation, dispatches } = createTestContext();
+
+      const actorResponse = await federation.fetch(
+        new Request("https://example.com/users/", {
+          method: "GET",
+          headers: { "Accept": "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(actorResponse.status, 404);
+
+      const inboxResponse = await federation.fetch(
+        new Request("https://example.com/users//inbox", {
+          method: "POST",
+          headers: { "accept": "application/ld+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(inboxResponse.status, 404);
+
+      // The actor dispatcher must never have seen an empty identifier.
+      assertEquals(dispatches.includes(""), false);
+    },
+  );
+
   await t.step("onNotAcceptable with GET", async () => {
     const { federation } = createTestContext();
 
@@ -1735,7 +1777,7 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
       }),
       { contextData: undefined },
     );
-    // Without an actor dispatcher signature verification fails — but the
+    // Without an actor dispatcher signature verification fails—but the
     // routing classification has already happened, which is what we assert.
     assert(response.status >= 400);
 
@@ -1806,7 +1848,7 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
           new vocab.Person({ id: ctx.getActorUri(identifier) }),
       );
 
-      // Should not throw — the no-op meter provider absorbs the calls.
+      // Should not throw—the no-op meter provider absorbs the calls.
       const response = await federation.fetch(
         new Request("https://example.com/users/alice", {
           method: "GET",
@@ -3129,9 +3171,11 @@ test("Federation.setOutboxListeners()", async (t) => {
           return Promise.resolve();
         },
       };
+      const [meterProvider, recorder] = createTestMeterProvider();
       const federation = new FederationImpl<void>({
         kv,
         contextLoaderFactory: () => mockDocumentLoader,
+        meterProvider,
         queue,
       });
       federation
@@ -3180,7 +3224,96 @@ test("Federation.setOutboxListeners()", async (t) => {
       assertEquals((enqueued[0] as OutboxMessage).actorIds, [
         "https://remote.example/users/alice",
       ]);
+
+      const enqueuedMetrics = recorder.getMeasurements(
+        "fedify.queue.task.enqueued",
+      );
+      assertEquals(enqueuedMetrics.length, 1);
+      assertEquals(
+        enqueuedMetrics[0].attributes["fedify.queue.role"],
+        "outbox",
+      );
+      assertEquals(
+        enqueuedMetrics[0].attributes["fedify.queue.task.attempt"],
+        0,
+      );
     },
+  );
+});
+
+test("Federation.fetch() preserves original LD-signed payload for InboxContextImpl.activity", async () => {
+  const remoteContextUrl = "https://remote.example/contexts/ext";
+  const sourceContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (url === remoteContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            ext: "https://example.com/ext",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => sourceContextLoader,
+  });
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => identifier === "someone" ? new Person({}) : null,
+  );
+  let receivedRaw: unknown = null;
+  let receivedTyped: Create | null = null;
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, (ctx, activity) => {
+      receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+      receivedTyped = activity;
+    });
+  const signed = await signJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/preserve-raw",
+      type: "Create",
+      actor: "https://example.com/person2",
+      ext: "preserve-me",
+      object: {
+        id: "https://example.com/notes/preserve-raw",
+        type: "Note",
+        attributedTo: "https://example.com/person2",
+        content: "Hello, world!",
+      },
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { contextLoader: sourceContextLoader },
+  );
+  const response = await federation.fetch(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body: JSON.stringify(signed),
+    }),
+    { contextData: undefined },
+  );
+  assertEquals([response.status, await response.text()], [202, ""]);
+  assertEquals(receivedRaw, signed);
+  assertNotEquals(
+    receivedRaw,
+    await compactJsonLd(signed, sourceContextLoader),
+  );
+  const delivered = receivedTyped;
+  assert(delivered != null);
+  assertEquals(
+    (delivered as Create).id?.href,
+    "https://example.com/activities/preserve-raw",
   );
 });
 
@@ -3640,6 +3773,297 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
   });
 
+  await t.step(
+    "records activitypub.outbox.activity retry on transient failure",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "retried",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.outbox.activity abandoned when retry policy gives up",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+        outboxRetryPolicy: () => null,
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Follow",
+            actor: "https://example.com/users/alice",
+            object: "https://remote.example/users/bob",
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Follow",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage,
+      );
+
+      const outboxLifecycle = recorder.getMeasurements(
+        "activitypub.outbox.activity",
+      );
+      assertEquals(outboxLifecycle.length, 1);
+      assertEquals(outboxLifecycle[0].type, "counter");
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.processing.result"],
+        "abandoned",
+      );
+      assertEquals(
+        outboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Follow",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity processed on successful queued dispatch",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {});
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-processed",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(inboxLifecycle[0].type, "counter");
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "processed",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity retried on transient listener failure",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-retried",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "retried",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records activitypub.inbox.activity abandoned when retry policy gives up",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+        inboxRetryPolicy: () => null,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/queued-abandoned",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+
+      const inboxLifecycle = recorder.getMeasurements(
+        "activitypub.inbox.activity",
+      );
+      assertEquals(inboxLifecycle.length, 1);
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.processing.result"],
+        "abandoned",
+      );
+      assertEquals(
+        inboxLifecycle[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
   await t.step("records queued inbox processing duration", async () => {
     const kv = new MemoryKvStore();
     const [meterProvider, recorder] = createTestMeterProvider();
@@ -3694,7 +4118,2025 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       durations[0].attributes["activitypub.activity.type"],
       "https://www.w3.org/ns/activitystreams#Create",
     );
+
+    const started = recorder.getMeasurements("fedify.queue.task.started");
+    assertEquals(started.length, 1);
+    assertEquals(started[0].attributes["fedify.queue.role"], "inbox");
+
+    const completed = recorder.getMeasurements("fedify.queue.task.completed");
+    assertEquals(completed.length, 1);
+    assertEquals(completed[0].attributes["fedify.queue.role"], "inbox");
+    assertEquals(
+      completed[0].attributes["fedify.queue.task.result"],
+      "completed",
+    );
+    assertEquals(
+      completed[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+
+    assertEquals(
+      recorder.getMeasurements("fedify.queue.task.failed").length,
+      0,
+    );
+
+    const taskDurations = recorder.getMeasurements(
+      "fedify.queue.task.duration",
+    );
+    assertEquals(taskDurations.length, 1);
+    assertEquals(taskDurations[0].type, "histogram");
+    assertEquals(taskDurations[0].attributes["fedify.queue.role"], "inbox");
+    assertEquals(
+      taskDurations[0].attributes["fedify.queue.task.result"],
+      "completed",
+    );
+
+    const inFlight = recorder.getMeasurements("fedify.queue.task.in_flight");
+    assertEquals(inFlight.length, 2);
+    assertEquals(inFlight[0].type, "upDownCounter");
+    assertEquals(inFlight[0].value, 1);
+    assertEquals(inFlight[1].value, -1);
+    // The increment and decrement attribute bags must match exactly so that
+    // the in-flight gauge always nets to zero per attribute series.
+    assertEquals(inFlight[0].attributes, inFlight[1].attributes);
+    assertEquals(inFlight[0].attributes["fedify.queue.role"], "inbox");
+    assertEquals(
+      inFlight[0].attributes["activitypub.activity.type"],
+      undefined,
+    );
   });
+
+  await t.step(
+    "with restrictive context loader and normalized LD-signed inbox activity",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const sourceContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                ext: "https://example.com/ext",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      };
+      const restrictiveContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://www.w3.org/ns/activitystreams" ||
+          url === "https://w3id.org/identity/v1"
+        ) {
+          return await mockDocumentLoader(url);
+        }
+        throw new Error(`Unexpected context: ${url}`);
+      };
+      const kv = new MemoryKvStore();
+      let receivedCount = 0;
+      let received: Create | null = null;
+      let receivedRaw: unknown = null;
+      const federation = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => restrictiveContextLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, (ctx, activity) => {
+          receivedCount++;
+          receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+          received = activity;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/1",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/1",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello, world!",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: sourceContextLoader },
+      );
+      const normalizedActivity = await compactJsonLd(
+        signed,
+        sourceContextLoader,
+      );
+      const messageId = crypto.randomUUID();
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: messageId,
+          baseUrl: "https://example.com",
+          activity: signed,
+          normalizedActivity,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      const delivered = received;
+      assert(delivered != null);
+      const deliveredCreate = delivered as Create;
+      assertInstanceOf(deliveredCreate, Create);
+      assertEquals(
+        deliveredCreate.id?.href,
+        "https://remote.example/activities/1",
+      );
+      assertEquals(receivedRaw, signed);
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: messageId,
+          baseUrl: "https://example.com",
+          activity: signed,
+          normalizedActivity,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(receivedCount, 1);
+    },
+  );
+
+  await t.step(
+    "cached normalizedActivity is rechecked for unsafe JSON-LD keywords",
+    async () => {
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      let receivedCount = 0;
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          receivedCount++;
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/activities/unsafe-normalized-cache",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/unsafe-normalized-cache",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from unsafe normalized cache",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const normalizedActivity = await compactJsonLd(
+        signed,
+        mockDocumentLoader,
+      );
+      const tamperedNormalizedActivity = {
+        ...(normalizedActivity as Record<string, unknown>),
+        signature: {
+          ...((normalizedActivity as { signature: Record<string, unknown> })
+            .signature),
+          "@included": [
+            {
+              id: "https://remote.example/activities/inside-signature",
+              type: "Undo",
+            },
+          ],
+        },
+      };
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: signed,
+          normalizedActivity: tamperedNormalizedActivity,
+          ldSignatureVerified: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(receivedCount, 0);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "old queued LDS inbox messages without normalizedActivity still work",
+    async () => {
+      const restrictiveContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://www.w3.org/ns/activitystreams" ||
+          url === "https://w3id.org/identity/v1"
+        ) {
+          return await mockDocumentLoader(url);
+        }
+        throw new Error(`Unexpected context: ${url}`);
+      };
+      const kv = new MemoryKvStore();
+      let received: Create | null = null;
+      const federation = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => restrictiveContextLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, (_ctx, activity) => {
+          received = activity;
+        });
+      const compacted = await compactJsonLd(
+        await signJsonLd(
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://remote.example/activities/legacy",
+            type: "Create",
+            actor: "https://remote.example/users/alice",
+            object: {
+              id: "https://remote.example/notes/legacy",
+              type: "Note",
+              attributedTo: "https://remote.example/users/alice",
+              content: "Hello from legacy queue",
+            },
+          },
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+          { contextLoader: mockDocumentLoader },
+        ),
+        restrictiveContextLoader,
+      );
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: compacted,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assert(received != null);
+      assertEquals(
+        (received as Create).id?.href,
+        "https://remote.example/activities/legacy",
+      );
+    },
+  );
+
+  await t.step(
+    "queued signature-bearing non-LDS inbox messages keep parse-time normalization contexts",
+    async () => {
+      const signingContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://www.w3.org/ns/activitystreams" ||
+          url === "https://w3id.org/identity/v1" ||
+          url === "https://w3id.org/security/v1" ||
+          url === "https://w3id.org/security/data-integrity/v1"
+        ) {
+          return await mockDocumentLoader(url);
+        }
+        throw new Error(`Unexpected context: ${url}`);
+      };
+      const processingContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://w3id.org/identity/v1" ||
+          url === "https://w3id.org/security/v1" ||
+          url === "https://w3id.org/security/data-integrity/v1"
+        ) {
+          throw new Error(
+            "queued non-LDS signed payloads should parse with the normalization loader's built-in signature contexts",
+          );
+        }
+        return await signingContextLoader(resource);
+      };
+      const kv = new MemoryKvStore();
+      let received: Create | null = null;
+      let receivedRaw: unknown = null;
+      const federation = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => processingContextLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, (ctx, activity) => {
+          receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+          received = activity;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/v1",
+          ],
+          id: "https://remote.example/activities/non-lds-queued-signature",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/non-lds-queued-signature",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from non-LDS queued signature",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: signingContextLoader },
+      );
+      const signedPayload = signed as Record<string, unknown>;
+      assert(
+        Array.isArray(signedPayload["@context"]) &&
+          signedPayload["@context"].includes("https://w3id.org/security/v1"),
+      );
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: signed,
+          ldSignatureVerified: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      if (received == null) throw new Error("Inbox activity not delivered.");
+      const delivered = received as Create;
+      assertEquals(
+        delivered.id?.href,
+        "https://remote.example/activities/non-lds-queued-signature",
+      );
+      assertEquals(receivedRaw, signed);
+    },
+  );
+
+  await t.step(
+    "queued signature-bearing non-LDS inbox messages reuse normalizedActivity for custom contexts",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const sourceContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                ext: "https://example.com/ext",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      };
+      const restrictiveContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://www.w3.org/ns/activitystreams" ||
+          url === "https://w3id.org/identity/v1"
+        ) {
+          return await mockDocumentLoader(url);
+        }
+        throw new Error(`Unexpected context: ${url}`);
+      };
+      const kv = new MemoryKvStore();
+      let received: Create | null = null;
+      let receivedRaw: unknown = null;
+      const federation = new FederationImpl<void>({
+        kv,
+        contextLoaderFactory: () => restrictiveContextLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, (ctx, activity) => {
+          receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+          received = activity;
+        });
+      const unsignedBody = {
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/v1",
+        ],
+        id: "https://remote.example/activities/non-lds-queued-custom-context",
+        type: "Create",
+        actor: "https://remote.example/users/alice",
+        ext: "preserve-me",
+        object: {
+          id: "https://remote.example/notes/non-lds-queued-custom-context",
+          type: "Note",
+          attributedTo: "https://remote.example/users/alice",
+          content: "Hello from non-LDS queued custom context",
+        },
+        signature: {
+          type: "RsaSignature2017",
+          creator: "not a url",
+          created: "2024-09-12T16:50:46Z",
+          signatureValue: "Zm9v",
+        },
+      };
+      const normalizedActivity = await compactJsonLd(
+        unsignedBody,
+        sourceContextLoader,
+      );
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: unsignedBody,
+          normalizedActivity,
+          ldSignatureVerified: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      if (received == null) throw new Error("Inbox activity not delivered.");
+      const delivered = received as Create;
+      assertEquals(
+        delivered.id?.href,
+        "https://remote.example/activities/non-lds-queued-custom-context",
+      );
+      assertEquals(receivedRaw, unsignedBody);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages without normalizedActivity retry through worker error handling",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const restrictiveContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (
+          url === "https://www.w3.org/ns/activitystreams" ||
+          url === "https://w3id.org/identity/v1"
+        ) {
+          return await mockDocumentLoader(url);
+        }
+        throw new Error(`Unexpected context: ${url}`);
+      };
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => restrictiveContextLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-raw",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-raw",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from raw legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages.length, 1);
+      const retried = queuedMessages[0] as InboxMessage;
+      assertEquals(retried.attempt, 1);
+      assertEquals(retried.activity, inboxMessage.activity);
+    },
+  );
+
+  await t.step(
+    "without inbox queue retriable inbox parse failures bubble to caller",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const sourceContextLoader = async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                ext: "https://example.com/ext",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      };
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            throw new Error(`Transient remote context failure: ${url}`);
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/manual-retry",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/manual-retry",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from manual retry queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: sourceContextLoader },
+      );
+      await assertRejects(
+        () =>
+          federation.processQueuedTask(
+            undefined,
+            {
+              type: "inbox",
+              id: crypto.randomUUID(),
+              baseUrl: "https://example.com",
+              activity: signed,
+              started: new Date().toISOString(),
+              attempt: 0,
+              identifier: null,
+              traceContext: {},
+            } satisfies InboxMessage,
+          ),
+        Error,
+      );
+      assertEquals(errorCount, 1);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with transient InvalidUrl failures retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            const error = new Error(
+              `Transient remote context failure: ${url}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url,
+            };
+            throw error;
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-invalid-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-invalid-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from invalid legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages.length, 1);
+      const retried = queuedMessages[0] as InboxMessage;
+      assertEquals(retried.attempt, 1);
+      assertEquals(retried.activity, inboxMessage.activity);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with opaque context ids retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "app-context") {
+            const error = new Error(
+              `Opaque context backend is unavailable: ${resource}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url: resource,
+            };
+            throw error;
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/activities/legacy-malformed-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/legacy-malformed-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from malformed legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "app-context",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with Invalid URL TypeErrors retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "app:context") {
+            throw new TypeError(`Invalid URL: ${resource}`);
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/activities/legacy-typeerror-invalid-url",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/legacy-typeerror-invalid-url",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from invalid-url typeerror queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "app:context",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages.length, 1);
+      const retried = queuedMessages[0] as InboxMessage;
+      assertEquals(retried.attempt, 1);
+      assertEquals(retried.activity, inboxMessage.activity);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with malformed absolute context refs do not retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "http:/[") {
+            throw new TypeError(`Invalid URL: ${resource}`);
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id:
+            "https://remote.example/activities/legacy-malformed-absolute-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id:
+              "https://remote.example/notes/legacy-malformed-absolute-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from malformed absolute context queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "http:/[",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "malformed IRI fields are permanent queued inbox parse errors",
+    async () => {
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "http://[",
+            type: "Create",
+            actor: "https://remote.example/users/alice",
+            object: {
+              id: "https://remote.example/notes/invalid-iri",
+              type: "Note",
+              attributedTo: "https://remote.example/users/alice",
+              content: "Hello from invalid IRI queue",
+            },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with network-path context ids retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "//cdn.example/ctx") {
+            const error = new Error(
+              `Network-path context backend is unavailable: ${resource}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url: resource,
+            };
+            throw error;
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/activities/legacy-network-path-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/legacy-network-path-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from network-path legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "//cdn.example/ctx",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with malformed network-path refs do not retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "//[") {
+            const error = new Error(
+              `Malformed network-path context: ${resource}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url: resource,
+            };
+            throw error;
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id:
+            "https://remote.example/activities/legacy-malformed-network-path-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id:
+              "https://remote.example/notes/legacy-malformed-network-path-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from malformed network-path legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "//[",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with malformed context URLs do not retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "not a url") {
+            const error = new Error(
+              `Invalid remote context URL: ${resource}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url: resource,
+            };
+            throw error;
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/activities/legacy-malformed-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/legacy-malformed-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from malformed legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "not a url",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with invalid percent escapes do not retry",
+    async () => {
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          if (resource === "foo%zz") {
+            const error = new Error(
+              `Invalid remote context URL: ${resource}`,
+            ) as Error & { details?: { code: string; url: string } };
+            error.name = "jsonld.InvalidUrl";
+            error.details = {
+              code: "loading remote context failed",
+              url: resource,
+            };
+            throw error;
+          }
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          throw new Error(`Unexpected context: ${resource}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id:
+            "https://remote.example/activities/legacy-malformed-percent-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/legacy-malformed-percent-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from malformed percent legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          ...signed,
+          "@context": [
+            "foo%zz",
+            "https://www.w3.org/ns/activitystreams",
+          ],
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with invalid remote contexts do not retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            return {
+              contextUrl: null,
+              documentUrl: url,
+              document: ["not", "an", "object"],
+            };
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-invalid-remote-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-invalid-remote-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from invalid remote context queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with string remote contexts retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            return {
+              contextUrl: null,
+              documentUrl: url,
+              document: "{not valid json",
+            };
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-string-remote-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-string-remote-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from string remote context queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with loader TypeErrors retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            throw new TypeError(
+              `Cannot initialize remote context loader: ${url}`,
+            );
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-typeerror-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-typeerror-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from typeerror legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with syntax errors in remote contexts retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            const error = new Error(
+              `Transient syntax failure: ${url}`,
+            ) as Error & { details?: { code: string } };
+            error.name = "jsonld.SyntaxError";
+            error.details = { code: "loading remote context failed" };
+            throw error;
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-syntax-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-syntax-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from syntax legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "legacy raw LDS inbox messages with loader RangeErrors retry",
+    async () => {
+      const remoteContextUrl = "https://remote.example/contexts/ext";
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      const queuedMessages: Message[] = [];
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        contextLoaderFactory: () => async (resource: string) => {
+          const url = new URL(resource).href;
+          if (
+            url === "https://www.w3.org/ns/activitystreams" ||
+            url === "https://w3id.org/identity/v1"
+          ) {
+            return await mockDocumentLoader(url);
+          }
+          if (url === remoteContextUrl) {
+            throw new RangeError(
+              `Temporary remote context cache window exceeded: ${url}`,
+            );
+          }
+          throw new Error(`Unexpected context: ${url}`);
+        },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      const signed = await signJsonLd(
+        {
+          "@context": [
+            remoteContextUrl,
+            "https://www.w3.org/ns/activitystreams",
+          ],
+          id: "https://remote.example/activities/legacy-rangeerror-context",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          ext: "preserve-me",
+          object: {
+            id: "https://remote.example/notes/legacy-rangeerror-context",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from rangeerror legacy queue",
+          },
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        {
+          contextLoader: async (resource: string) => {
+            const url = new URL(resource).href;
+            if (url === remoteContextUrl) {
+              return {
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": {
+                    ext: "https://example.com/ext",
+                  },
+                },
+              };
+            }
+            return await mockDocumentLoader(url);
+          },
+        },
+      );
+      const inboxMessage = {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage;
+      await federation.processQueuedTask(undefined, inboxMessage);
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, [{ ...inboxMessage, attempt: 1 }]);
+    },
+  );
+
+  await t.step(
+    "permanent queued inbox parse errors do not re-enqueue poison messages",
+    async () => {
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://remote.example/objects/not-an-activity",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Not an activity",
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
+    "malformed Temporal fields are permanent queued inbox parse errors",
+    async () => {
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/data-integrity/v1",
+            ],
+            id: "https://remote.example/activities/invalid-proof-created",
+            type: "Create",
+            actor: "https://remote.example/users/alice",
+            object: {
+              id: "https://remote.example/notes/invalid-proof-created",
+              type: "Note",
+              attributedTo: "https://remote.example/users/alice",
+              content: "Hello, world!",
+            },
+            proof: {
+              type: "DataIntegrityProof",
+              cryptosuite: "eddsa-jcs-2022",
+              verificationMethod:
+                "https://remote.example/users/alice#ed25519-key",
+              proofPurpose: "assertionMethod",
+              created: { "@value": "not-a-date" },
+              proofValue:
+                "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
+            },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
 });
 
 test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
@@ -3842,6 +6284,19 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     assertEquals(
       failures[0].attributes["http.response.status_code"],
       410,
+    );
+
+    const abandoned = recorder.getMeasurements(
+      "activitypub.outbox.activity",
+    );
+    assertEquals(abandoned.length, 1);
+    assertEquals(
+      abandoned[0].attributes["activitypub.processing.result"],
+      "abandoned",
+    );
+    assertEquals(
+      abandoned[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
     );
 
     const events = exporter.getEvents(
@@ -4074,6 +6529,422 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
+  await t.step(
+    "records failed result when worker re-throws (nativeRetrial)",
+    async () => {
+      // With nativeRetrial=true the worker leaves retry handling to the queue
+      // backend, so an inbox listener exception propagates back out of
+      // processQueuedTask and is recorded as a failed outcome.
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        nativeRetrial: true,
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await assertRejects(
+        () =>
+          federation.processQueuedTask(
+            undefined,
+            {
+              type: "inbox",
+              id: crypto.randomUUID(),
+              baseUrl: "https://example.com",
+              activity: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Create",
+                id: "https://remote.example/activities/2",
+                actor: "https://remote.example/users/alice",
+                object: { type: "Note", content: "Hello world" },
+              },
+              started: new Date().toISOString(),
+              attempt: 0,
+              identifier: null,
+              traceContext: {},
+            } satisfies InboxMessage,
+          ),
+        Error,
+      );
+
+      assertEquals(
+        recorder.getMeasurements("fedify.queue.task.completed").length,
+        0,
+      );
+      const failed = recorder.getMeasurements("fedify.queue.task.failed");
+      assertEquals(failed.length, 1);
+      assertEquals(failed[0].attributes["fedify.queue.role"], "inbox");
+      assertEquals(failed[0].attributes["fedify.queue.task.result"], "failed");
+      assertEquals(failed[0].attributes["fedify.queue.native_retrial"], true);
+      assertEquals(
+        failed[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+
+      const taskDurations = recorder.getMeasurements(
+        "fedify.queue.task.duration",
+      );
+      assertEquals(taskDurations.length, 1);
+      assertEquals(
+        taskDurations[0].attributes["fedify.queue.task.result"],
+        "failed",
+      );
+
+      const inFlight = recorder.getMeasurements("fedify.queue.task.in_flight");
+      assertEquals(inFlight.length, 2);
+      assertEquals(inFlight[0].value, 1);
+      assertEquals(inFlight[1].value, -1);
+      assertEquals(inFlight[0].attributes, inFlight[1].attributes);
+    },
+  );
+
+  await t.step(
+    "records completed when retry handler swallows listener error",
+    async () => {
+      // With nativeRetrial=false the worker schedules a retry and returns
+      // normally, so processQueuedTask records a completed outcome and a
+      // separate retry enqueue.
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new Error("Intended error for testing");
+        });
+
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://remote.example/activities/retry",
+            actor: "https://remote.example/users/alice",
+            object: { type: "Note", content: "Hello world" },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(queuedMessages.length, 1);
+
+      const completed = recorder.getMeasurements("fedify.queue.task.completed");
+      assertEquals(completed.length, 1);
+      assertEquals(
+        completed[0].attributes["fedify.queue.task.result"],
+        "completed",
+      );
+
+      const enqueued = recorder.getMeasurements("fedify.queue.task.enqueued");
+      assertEquals(enqueued.length, 1);
+      assertEquals(enqueued[0].attributes["fedify.queue.role"], "inbox");
+      assertEquals(enqueued[0].attributes["fedify.queue.task.attempt"], 1);
+      assertEquals(
+        enqueued[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+    },
+  );
+
+  await t.step(
+    "records aborted result when worker re-throws AbortError",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const queue: MessageQueue = {
+        nativeRetrial: true,
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        tracerProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, () => {
+          throw new DOMException("aborted", "AbortError");
+        });
+
+      await assertRejects(
+        () =>
+          federation.processQueuedTask(
+            undefined,
+            {
+              type: "inbox",
+              id: crypto.randomUUID(),
+              baseUrl: "https://example.com",
+              activity: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Create",
+                id: "https://remote.example/activities/3",
+                actor: "https://remote.example/users/alice",
+                object: { type: "Note", content: "Hello world" },
+              },
+              started: new Date().toISOString(),
+              attempt: 0,
+              identifier: null,
+              traceContext: {},
+            } satisfies InboxMessage,
+          ),
+        DOMException,
+      );
+
+      assertEquals(
+        recorder.getMeasurements("fedify.queue.task.failed").length,
+        0,
+      );
+      assertEquals(
+        recorder.getMeasurements("fedify.queue.task.completed").length,
+        0,
+      );
+      const taskDurations = recorder.getMeasurements(
+        "fedify.queue.task.duration",
+      );
+      assertEquals(taskDurations.length, 1);
+      assertEquals(
+        taskDurations[0].attributes["fedify.queue.task.result"],
+        "aborted",
+      );
+
+      // Per OpenTelemetry guidance, the inbox span should remain UNSET for
+      // cancellation and not flip into ERROR status.
+      const inboxSpans = exporter.getSpans("activitypub.inbox");
+      assertEquals(inboxSpans.length, 1);
+      assertEquals(inboxSpans[0].status.code, SpanStatusCode.UNSET);
+    },
+  );
+
+  await t.step("records native_retrial and backend attributes", async () => {
+    const kv = new MemoryKvStore();
+    const [meterProvider, recorder] = createTestMeterProvider();
+    class TestMessageQueue implements MessageQueue {
+      readonly nativeRetrial = true;
+      enqueue(_message: unknown, _options?: unknown): Promise<void> {
+        return Promise.resolve();
+      }
+      listen(_handler: unknown, _options?: unknown): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+    const federation = new FederationImpl<void>({
+      kv,
+      meterProvider,
+      queue: new TestMessageQueue(),
+    });
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(vocab.Create, () => {});
+
+    await federation.processQueuedTask(
+      undefined,
+      {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/4",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage,
+    );
+
+    const completed = recorder.getMeasurements("fedify.queue.task.completed");
+    assertEquals(completed.length, 1);
+    assertEquals(
+      completed[0].attributes["fedify.queue.backend"],
+      "TestMessageQueue",
+    );
+    assertEquals(completed[0].attributes["fedify.queue.native_retrial"], true);
+  });
+
+  await t.step(
+    "records outbox worker metrics on successful delivery",
+    async () => {
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+      fetchMock.spyGlobal();
+      fetchMock.post("https://remote.example/inbox", { status: 202 });
+      try {
+        await federation.processQueuedTask(
+          undefined,
+          {
+            type: "outbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            keys: [],
+            activity: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Create",
+              id: "https://example.com/activities/1",
+              actor: "https://example.com/users/alice",
+              object: { type: "Note", content: "test" },
+            },
+            activityType: "https://www.w3.org/ns/activitystreams#Create",
+            inbox: "https://remote.example/inbox",
+            sharedInbox: false,
+            started: new Date().toISOString(),
+            attempt: 0,
+            headers: {},
+            traceContext: {},
+          } satisfies OutboxMessage,
+        );
+      } finally {
+        fetchMock.hardReset();
+      }
+
+      const started = recorder.getMeasurements("fedify.queue.task.started");
+      assertEquals(started.length, 1);
+      assertEquals(started[0].attributes["fedify.queue.role"], "outbox");
+      assertEquals(
+        started[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+
+      const completed = recorder.getMeasurements("fedify.queue.task.completed");
+      assertEquals(completed.length, 1);
+      assertEquals(
+        completed[0].attributes["fedify.queue.task.result"],
+        "completed",
+      );
+
+      // Successful outbox delivery should not re-enqueue, so no enqueued
+      // measurement is expected on this path.  The guard catches accidental
+      // double-counting if the implementation ever changes.
+      assertEquals(
+        recorder.getMeasurements("fedify.queue.task.enqueued").length,
+        0,
+      );
+    },
+  );
+
+  await t.step(
+    "records started/completed for a fanout task with no recipients",
+    async () => {
+      // A fanout task with no inboxes drops out before sendActivity validates
+      // keys, so the worker still completes successfully.
+      const kv = new MemoryKvStore();
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const exportedKey = await crypto.subtle.exportKey(
+        "jwk",
+        rsaPrivateKey3,
+      );
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        meterProvider,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+      await federation.processQueuedTask(undefined, {
+        type: "fanout",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        keys: [
+          {
+            keyId: "https://example.com/users/alice#main-key",
+            privateKey: exportedKey,
+          },
+        ],
+        inboxes: {},
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activities/1",
+          actor: "https://example.com/users/alice",
+          object: { type: "Note", content: "test" },
+        },
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        traceContext: {},
+      });
+
+      const started = recorder.getMeasurements("fedify.queue.task.started");
+      assertEquals(started.length, 1);
+      assertEquals(started[0].attributes["fedify.queue.role"], "fanout");
+      assertEquals(
+        started[0].attributes["activitypub.activity.type"],
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+
+      const completed = recorder.getMeasurements("fedify.queue.task.completed");
+      assertEquals(completed.length, 1);
+      assertEquals(completed[0].attributes["fedify.queue.role"], "fanout");
+      assertEquals(
+        completed[0].attributes["fedify.queue.task.result"],
+        "completed",
+      );
+    },
+  );
 });
 
 test("ContextImpl.lookupObject()", async (t) => {
@@ -4889,6 +7760,78 @@ test("ContextImpl.sendActivity()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("ContextImpl.sendActivity() records fanout recipient metrics", async () => {
+  const kv = new MemoryKvStore();
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const queue: MessageQueue & { messages: Message[] } = {
+    messages: [],
+    enqueue(message) {
+      this.messages.push(message);
+      return Promise.resolve();
+    },
+    async listen() {},
+  };
+  const federation = new FederationImpl<void>({
+    kv,
+    contextLoaderFactory: () => mockDocumentLoader,
+    queue,
+    meterProvider,
+  });
+  federation
+    .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+      if (identifier !== "john") return null;
+      const keys = await ctx.getActorKeyPairs(identifier);
+      return new vocab.Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: "john",
+        publicKey: keys[0].cryptographicKey,
+        assertionMethods: keys.map((k) => k.multikey),
+      });
+    })
+    .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier !== "john") return [];
+      return [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        {
+          privateKey: ed25519PrivateKey,
+          publicKey: ed25519PublicKey.publicKey!,
+        },
+      ];
+    });
+  const ctx = new ContextImpl({
+    data: undefined,
+    federation,
+    url: new URL("https://example.com/"),
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const activity = new vocab.Create({
+    id: new URL("https://example.com/activity/1"),
+    actor: new URL("https://example.com/person"),
+  });
+  const recipients = Array.from({ length: 7 }, (_, i) => ({
+    id: new URL(`https://example${i + 1}.com/recipient`),
+    inboxId: new URL(`https://example${i + 1}.com/inbox`),
+  }));
+  await ctx.sendActivity({ username: "john" }, recipients, activity, {
+    fanout: "force",
+  });
+
+  assertEquals(queue.messages.length, 1);
+  assertEquals(queue.messages[0].type, "fanout");
+
+  const measurements = recorder.getMeasurements(
+    "activitypub.fanout.recipients",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "histogram");
+  assertEquals(measurements[0].value, recipients.length);
+  assertEquals(
+    measurements[0].attributes["activitypub.activity.type"],
+    "https://www.w3.org/ns/activitystreams#Create",
+  );
+});
+
 test({
   name: "ContextImpl.routeActivity()",
   permissions: { env: true, read: true },
@@ -5045,6 +7988,260 @@ test({
       ],
     );
   },
+});
+
+test({
+  name: "ContextImpl.routeActivity() forwards meterProvider to inbox enqueue",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const enqueued: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message): Promise<void> {
+        enqueued.push(message);
+        return Promise.resolve();
+      },
+      listen(): Promise<void> {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i");
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+    assertEquals(enqueued.length, 1);
+
+    const enqueuedMetrics = recorder.getMeasurements(
+      "fedify.queue.task.enqueued",
+    );
+    assertEquals(enqueuedMetrics.length, 1);
+    assertEquals(
+      enqueuedMetrics[0].attributes["fedify.queue.role"],
+      "inbox",
+    );
+    assertEquals(
+      enqueuedMetrics[0].attributes["fedify.queue.task.attempt"],
+      0,
+    );
+  },
+});
+
+test({
+  name: "ContextImpl.routeActivity() records inbox.activity lifecycle metrics",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const queue: MessageQueue = {
+      enqueue(): Promise<void> {
+        return Promise.resolve();
+      },
+      listen(): Promise<void> {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i");
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-queued"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+
+    const queued = recorder.getMeasurements("activitypub.inbox.activity");
+    assertEquals(queued.length, 1);
+    assertEquals(queued[0].type, "counter");
+    assertEquals(
+      queued[0].attributes["activitypub.processing.result"],
+      "queued",
+    );
+    assertEquals(
+      queued[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
+    );
+  },
+});
+
+test({
+  name:
+    "ContextImpl.routeActivity() records inbox.activity processed without queue",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i")
+      .on(vocab.Offer, () => {});
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    const signedOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-processed"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedOffer));
+
+    const processed = recorder.getMeasurements("activitypub.inbox.activity");
+    assertEquals(processed.length, 1);
+    assertEquals(
+      processed[0].attributes["activitypub.processing.result"],
+      "processed",
+    );
+    assertEquals(
+      processed[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
+    );
+  },
+});
+
+test({
+  name:
+    "ContextImpl.routeActivity() records inbox.activity rejected for unsupported type and duplicates",
+  permissions: { env: true, read: true },
+  async fn() {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+    });
+    federation.setInboxListeners("/u/{identifier}/i", "/i")
+      .on(vocab.Offer, () => {});
+
+    const ctx = new ContextImpl({
+      url: new URL("https://example.com/"),
+      federation,
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: documentLoader,
+    });
+
+    // Unsupported activity type (Create has no listener).
+    const signedCreate = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/create-unsupported"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, signedCreate));
+
+    // Duplicate Offer activity (re-route same id → idempotency cache hit).
+    const dupOffer = await signObject(
+      new vocab.Offer({
+        id: new URL("https://example.com/offer-duplicate"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+    );
+    assert(await ctx.routeActivity(null, dupOffer));
+    assert(await ctx.routeActivity(null, dupOffer));
+
+    const measurements = recorder.getMeasurements("activitypub.inbox.activity");
+    const rejected = measurements.filter((m) =>
+      m.attributes["activitypub.processing.result"] === "rejected"
+    );
+    // One for the unsupported Create, one for the duplicate Offer.
+    assertEquals(rejected.length, 2);
+    assertEquals(
+      rejected[0].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Create",
+    );
+    assertEquals(
+      rejected[1].attributes["activitypub.activity.type"],
+      "https://www.w3.org/ns/activitystreams#Offer",
+    );
+  },
+});
+
+test("ContextImpl.routeActivity() marks queued signed activities as non-LDS", async () => {
+  let queuedMessage: InboxMessage | null = null;
+  const queue: MessageQueue = {
+    enqueue(message) {
+      queuedMessage = message as InboxMessage;
+      return Promise.resolve();
+    },
+    async listen() {
+    },
+  };
+  const federation = new FederationImpl({
+    kv: new MemoryKvStore(),
+    queue,
+  });
+  federation
+    .setInboxListeners("/u/{identifier}/i", "/i")
+    .on(Offer, () => {
+      throw new Error("listener should not run for queued routeActivity");
+    });
+
+  const ctx = new ContextImpl({
+    url: new URL("https://example.com/"),
+    federation,
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: documentLoader,
+  });
+
+  const signedOffer = await signObject(
+    new Offer({
+      actor: new URL("https://example.com/person2"),
+    }),
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+  );
+  assert(await ctx.routeActivity(null, signedOffer));
+  if (queuedMessage == null) throw new Error("Inbox message not queued.");
+  const inboxMessage = queuedMessage as InboxMessage;
+  assertEquals(inboxMessage.ldSignatureVerified, false);
+  assertEquals(inboxMessage.normalizedActivity, undefined);
 });
 
 test("ContextImpl.getCollectionUri()", () => {
@@ -5424,4 +8621,98 @@ test("KvSpecDeterminer", async (t) => {
     spec = await determiner.determineSpec("example.com");
     assertEquals(spec, "rfc9421");
   });
+});
+
+test("createFederation() instruments documentLoader with activitypub.document.fetch", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  await ctx.documentLoader("https://example.com/object");
+
+  const counters = recorder.getMeasurements("activitypub.document.fetch");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "object");
+  assertEquals(counters[0].attributes["activitypub.lookup.result"], "fetched");
+  assertEquals(
+    counters[0].attributes["activitypub.remote.host"],
+    "example.com",
+  );
+  // User-supplied factory: cacheEnabled is unknown, attribute is omitted.
+  assertFalse("activitypub.cache.enabled" in counters[0].attributes);
+});
+
+test("createFederation() records kind=context on contextLoader fetches", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    meterProvider,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  await ctx.contextLoader("https://example.com/object");
+
+  const counters = recorder.getMeasurements("activitypub.document.fetch");
+  assertEquals(counters.length, 1);
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "context");
+});
+
+test("createFederation() forwards DocumentLoaderFactoryOptions to a user-supplied authenticatedDocumentLoaderFactory", () => {
+  const kv = new MemoryKvStore();
+  const seen: Array<unknown> = [];
+  const federation = createFederation<void>({
+    kv,
+    authenticatedDocumentLoaderFactory: (_identity, opts) => {
+      seen.push(opts);
+      return mockDocumentLoader;
+    },
+  });
+  // FederationImpl exposes the factory directly on the instance.
+  const impl = federation as unknown as {
+    authenticatedDocumentLoaderFactory: (
+      identity: { keyId: URL; privateKey: CryptoKey },
+      opts?: { allowPrivateAddress?: boolean; userAgent?: string },
+    ) => unknown;
+  };
+  impl.authenticatedDocumentLoaderFactory(
+    {
+      keyId: new URL("https://example.com/users/alice#main-key"),
+      // deno-lint-ignore no-explicit-any
+      privateKey: {} as any,
+    },
+    { allowPrivateAddress: true, userAgent: "test-ua" },
+  );
+  assertEquals(seen.length, 1);
+  assertEquals(seen[0], { allowPrivateAddress: true, userAgent: "test-ua" });
+});
+
+test("createFederation() omits instrumentation when no meterProvider is set", () => {
+  // Sanity: without a meterProvider, ctx.documentLoader must be the same
+  // function reference as the user-supplied loader, so the wrapper is a
+  // true no-op for non-OTel users.
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({
+    kv,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  assertStrictEquals(ctx.documentLoader, mockDocumentLoader);
+  assertStrictEquals(ctx.contextLoader, mockDocumentLoader);
 });

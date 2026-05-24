@@ -1023,6 +1023,14 @@ outbox, and fanout work, observability code should report that queue once as a
 shared queue.  Reporting the same `getDepth()` result separately for each
 logical role would double- or triple-count the backlog.
 
+Queue depth covers only the *backend* side of the queue.  To see what
+Fedify's workers are doing with the dequeued messages (enqueue rate, task
+processing duration, completion versus failure, and how many tasks are in
+flight per process), read the matching [`fedify.queue.task.*` OpenTelemetry
+metrics](./opentelemetry.md#instrumented-metrics).  Backlog depth and task
+throughput together let you tell a slowly draining queue apart from one
+that simply sees less traffic.
+
 [^amqp-depth]: `AmqpMessageQueue` can count the configured ready queues and
                delayed queues created by the same `AmqpMessageQueue` instance.
                AMQP 0-9-1 does not provide a portable queue-listing API, so

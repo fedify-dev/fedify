@@ -3144,7 +3144,7 @@ npm add @js-temporal/polyfill
 
 Open the *src/federation.ts* file and `import` the installed package:
 
-~~~~ typescript twoslash [src/federation.ts]
+~~~~ typescript [src/federation.ts]
 import { Temporal } from "@js-temporal/polyfill";
 ~~~~
 
@@ -3199,7 +3199,6 @@ federation.setObjectDispatcher(
 Let's modify this as follows:
 
 ~~~~ typescript twoslash [src/federation.ts]
-import { Temporal } from "@js-temporal/polyfill";
 import { type Federation } from "@fedify/fedify";
 import { Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;

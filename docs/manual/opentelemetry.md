@@ -173,6 +173,26 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+> [!NOTE]
+> The document and context loader metrics
+> (`activitypub.document.fetch[.duration]` and
+> `activitypub.document.cache`) are opt-in inside Fedify: they are
+> emitted only when `meterProvider` is explicitly configured on
+> `createFederation()`.  Omitting it preserves strict reference identity
+> for `Context.documentLoader`, `Context.contextLoader`, and the
+> authenticated document loader (`ctx.documentLoader === userLoader`),
+> so existing test code that asserts identity on a user-supplied
+> factory's output continues to work.  The other metrics (delivery,
+> inbox, outbox, fanout, queue, HTTP server, signature verification,
+> signature key fetch, public key lookup, and `lookupObject` actor
+> classification) follow the standard “fall back to the global
+> [`MeterProvider`]” behavior described above.  Calling
+> `lookupObject()` directly from `@fedify/vocab` (without going through
+> a `Context`) still requires an explicit
+> `LookupObjectOptions.meterProvider` to emit
+> `activitypub.object.lookup`; `Context.lookupObject()` threads the
+> Federation's meter provider through automatically.
+
 [`MeterProvider`]: https://open-telemetry.github.io/opentelemetry-js/interfaces/_opentelemetry_api._opentelemetry_api.MeterProvider.html
 
 
@@ -296,15 +316,38 @@ Instrumented metrics
 
 Fedify records the following OpenTelemetry metrics:
 
-| Metric name                                  | Instrument | Unit        | Description                                                     |
-| -------------------------------------------- | ---------- | ----------- | --------------------------------------------------------------- |
-| `activitypub.delivery.sent`                  | Counter    | `{attempt}` | Counts outgoing ActivityPub delivery attempts.                  |
-| `activitypub.delivery.permanent_failure`     | Counter    | `{failure}` | Counts outgoing deliveries abandoned as permanent failures.     |
-| `activitypub.delivery.duration`              | Histogram  | `ms`        | Measures outgoing ActivityPub delivery attempt duration.        |
-| `activitypub.inbox.processing_duration`      | Histogram  | `ms`        | Measures inbox listener processing duration.                    |
-| `activitypub.signature.verification_failure` | Counter    | `{failure}` | Counts failed signature verification for inbox requests.        |
-| `fedify.http.server.request.count`           | Counter    | `{request}` | Counts inbound HTTP requests handled by `Federation.fetch()`.   |
-| `fedify.http.server.request.duration`        | Histogram  | `ms`        | Measures inbound HTTP request duration in `Federation.fetch()`. |
+| Metric name                                   | Instrument    | Unit          | Description                                                                                     |
+| --------------------------------------------- | ------------- | ------------- | ----------------------------------------------------------------------------------------------- |
+| `activitypub.delivery.sent`                   | Counter       | `{attempt}`   | Counts outgoing ActivityPub delivery attempts.                                                  |
+| `activitypub.delivery.permanent_failure`      | Counter       | `{failure}`   | Counts outgoing deliveries abandoned as permanent failures.                                     |
+| `activitypub.delivery.duration`               | Histogram     | `ms`          | Measures outgoing ActivityPub delivery attempt duration.                                        |
+| `activitypub.inbox.activity`                  | Counter       | `{activity}`  | Classifies inbound activities by lifecycle outcome.                                             |
+| `activitypub.inbox.processing_duration`       | Histogram     | `ms`          | Measures inbox listener processing duration.                                                    |
+| `activitypub.outbox.activity`                 | Counter       | `{activity}`  | Classifies outbound activities by lifecycle outcome.                                            |
+| `activitypub.fanout.recipients`               | Histogram     | `{recipient}` | Records the recipient inbox count produced by a single fanout enqueue.                          |
+| `activitypub.signature.verification_failure`  | Counter       | `{failure}`   | Counts failed signature verification for inbox requests.                                        |
+| `activitypub.signature.verification.duration` | Histogram     | `ms`          | Measures signature verification duration across HTTP, Linked Data, and Object Integrity Proofs. |
+| `activitypub.signature.key_fetch.duration`    | Histogram     | `ms`          | Measures public key lookup duration during signature verification.                              |
+| `activitypub.key.lookup`                      | Counter       | `{lookup}`    | Counts public key lookups performed by `fetchKey()` / `fetchKeyDetailed()`.                     |
+| `activitypub.key.lookup.duration`             | Histogram     | `ms`          | Measures public key lookup duration, including cache hits and remote fetches.                   |
+| `activitypub.document.fetch`                  | Counter       | `{fetch}`     | Counts remote JSON-LD document loader invocations made by Fedify-wrapped loaders.               |
+| `activitypub.document.fetch.duration`         | Histogram     | `ms`          | Measures remote JSON-LD document loader invocation duration.                                    |
+| `activitypub.document.cache`                  | Counter       | `{lookup}`    | Counts KV-backed document loader cache lookups, classified as `hit` or `miss`.                  |
+| `activitypub.object.lookup`                   | Counter       | `{lookup}`    | Counts `lookupObject()` calls, classified by whether the resolved value is an Actor.            |
+| `activitypub.actor.discovery`                 | Counter       | `{discovery}` | Counts `getActorHandle()` actor handle discovery attempts.                                      |
+| `activitypub.actor.discovery.duration`        | Histogram     | `ms`          | Measures `getActorHandle()` discovery duration.                                                 |
+| `webfinger.lookup`                            | Counter       | `{lookup}`    | Counts outgoing WebFinger lookups performed by `lookupWebFinger()`.                             |
+| `webfinger.lookup.duration`                   | Histogram     | `ms`          | Measures outgoing WebFinger lookup duration.                                                    |
+| `webfinger.handle`                            | Counter       | `{request}`   | Counts inbound WebFinger requests handled by `Federation.fetch()`.                              |
+| `webfinger.handle.duration`                   | Histogram     | `ms`          | Measures inbound WebFinger request handling duration.                                           |
+| `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                   |
+| `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                 |
+| `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                         |
+| `fedify.queue.task.started`                   | Counter       | `{task}`      | Counts queue tasks Fedify began processing as a worker.                                         |
+| `fedify.queue.task.completed`                 | Counter       | `{task}`      | Counts queue tasks Fedify finished processing without throwing.                                 |
+| `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                   |
+| `fedify.queue.task.duration`                  | Histogram     | `ms`          | Measures queue task processing duration in Fedify workers.                                      |
+| `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`      | Tracks queue tasks currently in flight in this Fedify process.                                  |
 
 ### Metric attributes
 
@@ -319,12 +362,348 @@ Fedify records the following OpenTelemetry metrics:
 :   `activitypub.remote.host`, `activitypub.delivery.success`, and
     `activitypub.activity.type` when Fedify knows the activity type.
 
+`activitypub.inbox.activity`
+:   `activitypub.processing.result` is always present, and is one of:
+
+     -  `queued`: the activity was accepted at the inbox endpoint and
+        enqueued for background processing.
+     -  `processed`: the registered listener returned without throwing.
+        Recorded once per successful dispatch, immediately after the
+        listener completes and before the idempotency cache write so
+        a `kv.set()` failure does not lose the event.
+     -  `retried`: Fedify enqueued a retry message after the listener
+        threw and the configured `inboxRetryPolicy` returned a delay.
+     -  `rejected`: Fedify refused the activity at the routing layer
+        (idempotency cache hit, missing actor) or at processing time
+        (no listener for the activity type, no-queue listener error).
+     -  `abandoned`: the inbox retry policy returned `null` and Fedify
+        gave up on the activity.
+
+    `activitypub.activity.type` is recorded whenever Fedify knows the
+    activity type, which is at every site listed above.  Queue backends
+    that declare `nativeRetrial` are not represented in `retried` or
+    `abandoned` because Fedify defers retry handling to the backend
+    instead of re-enqueuing itself.
+
+`activitypub.outbox.activity`
+:   `activitypub.processing.result` is always present, and is one of:
+
+     -  `queued`: an outbox task was enqueued for an initial delivery
+        attempt (`attempt = 0`).  Each recipient inbox enqueues its own
+        task, so fanned-out activities increment this counter once per
+        recipient.  Retry re-enqueues are reported as `retried`, not
+        `queued`.
+     -  `retried`: Fedify enqueued a retry message after a delivery
+        failed and the configured `outboxRetryPolicy` returned a delay.
+     -  `abandoned`: Fedify gave up on the recipient.  Recorded both
+        when the outbox retry policy returned `null` after exhausted
+        attempts and when the remote responded with a permanent-failure
+        status code listed in `permanentFailureStatusCodes` (`404` and
+        `410` by default).  The per-recipient permanent-failure detail
+        (remote host, status code) stays on
+        [`activitypub.delivery.permanent_failure`](#instrumented-metrics).
+
+    `activitypub.activity.type` is always present.  Per-recipient
+    `sent`/`failed` views live on
+    [`activitypub.delivery.sent`](#instrumented-metrics) (with the
+    `activitypub.delivery.success` attribute) and
+    [`activitypub.delivery.permanent_failure`](#instrumented-metrics);
+    they are not duplicated on this counter.  Native-retrial backends
+    do not record `retried` or `abandoned`.
+
+`activitypub.fanout.recipients`
+:   `activitypub.activity.type` is recorded whenever known.  The
+    histogram value is the number of recipient inboxes the fanout task
+    expanded into (after shared-inbox grouping); one measurement per
+    fanout enqueue.  Recipient URLs, actor IDs, and shared-inbox flags
+    are deliberately omitted to keep cardinality bounded.  With the
+    default `fanout: "auto"` strategy, activities below the fanout
+    threshold (`< 5` recipients) are delivered directly without a
+    fanout task and do not appear in this histogram; passing
+    `fanout: "force"` always enqueues a fanout task, and
+    `fanout: "skip"` bypasses fanout regardless of recipient count.
+
 `activitypub.inbox.processing_duration`
 :   `activitypub.activity.type`.
 
 `activitypub.signature.verification_failure`
 :   `activitypub.verification.failure_reason`, plus
     `activitypub.remote.host` when the failed signature includes a key ID.
+
+`activitypub.signature.verification.duration`
+:   `activitypub.signature.kind` is always present and is one of `http`,
+    `linked_data`, or `object_integrity`.  `activitypub.signature.result` is
+    always present and is one of:
+
+     -  `verified`: the signature was checked and accepted.
+     -  `rejected`: the signature was checked and refused (bad signature,
+        key fetch failure, owner mismatch, etc.).
+     -  `missing`: no signature was present.  Only `http` and `linked_data`
+        produce this value; `object_integrity` does not, because the caller
+        decides whether to invoke proof verification at all.
+     -  `error`: verification threw an unexpected error.
+
+    The duration covers the full verification path Fedify performs,
+    *including* local key lookup and remote key fetches; the separate
+    `activitypub.signature.key_fetch.duration` histogram lets operators
+    subtract key lookup latency from the total to isolate the rest of the
+    verification work (canonicalization, hashing, attribution and owner
+    checks, cryptographic verification, etc.).  Direct calls to
+    `verifyRequest()` / `verifyRequestDetailed()`, `verifyJsonLd()`, and
+    `verifyProof()` each emit exactly one measurement, even when the
+    implementation retries internally after a cache mismatch.  Wrappers
+    such as `verifyObject()` emit one measurement per inner `verifyProof()`
+    call (and none when the object has no proofs); higher-level inbox
+    handling can perform several verification attempts in series.
+
+    Kind-specific optional attributes are recorded only when the value
+    matches a small, spec-bounded set, to keep cardinality safe even when
+    attacker-supplied JSON-LD or signature headers reach the verifier:
+
+     -  `http_signatures.algorithm` (HTTP only) is recorded only when the
+        parsed algorithm value is one of `rsa-sha1`, `rsa-sha256`,
+        `rsa-sha512`, `ecdsa-sha256`, `ecdsa-sha384`, `ecdsa-sha512`,
+        `ed25519`, or `hs2019` (draft-cavage) or one of the keys of the
+        RFC 9421 algorithm map (`rsa-v1_5-sha256`, `rsa-v1_5-sha512`,
+        `rsa-pss-sha512`, `ecdsa-p256-sha256`, `ecdsa-p384-sha384`,
+        `ed25519`).
+     -  `http_signatures.failure_reason` (HTTP only, on `rejected` rows)
+        is one of `invalidSignature` or `keyFetchError`.  HTTP requests
+        with no signature header are reported as
+        `activitypub.signature.result=missing` and do not carry a
+        `http_signatures.failure_reason`.
+     -  `ld_signatures.type` (Linked Data only) is recorded only for the
+        spec-supported `RsaSignature2017` type.
+     -  `object_integrity_proofs.cryptosuite` (Object Integrity Proofs
+        only) is recorded only for the spec-supported `eddsa-jcs-2022`
+        cryptosuite.
+
+    Key IDs, actor IDs, request URLs, and object IDs are deliberately
+    excluded from this histogram.  They remain on the corresponding spans
+    (`http_signatures.verify`, `ld_signatures.verify`,
+    `object_integrity_proofs.verify`) for trace-level investigation.
+
+`activitypub.signature.key_fetch.duration`
+:   `activitypub.signature.kind` is always present (same values as above).
+    `activitypub.signature.key_fetch.result` is always present and is one
+    of:
+
+     -  `hit`: the public key was served by the configured `KeyCache`
+        (which may itself be backed by a remote store such as Redis or a
+        database; the measurement reflects whatever round trip that
+        backend incurs).
+     -  `fetched`: the key was not in the cache and was loaded through
+        the document loader, returning a usable key.  This typically
+        corresponds to a network fetch, but a custom document loader
+        that serves from a local store will also fall in this bucket.
+     -  `error`: no usable key came back (HTTP failure, invalid response
+        body, cached negative entry, thrown exception, etc.).
+
+    Unlike `activitypub.signature.verification.duration`, this histogram
+    is recorded *per fetch attempt*: a verification that retries after a
+    cache mismatch emits two key fetch measurements (typically one `hit`
+    for the stale attempt and one `fetched` for the freshly fetched retry)
+    alongside the single verification measurement that covers both.
+
+`activitypub.key.lookup` and `activitypub.key.lookup.duration`
+:   `activitypub.lookup.kind` is always `public_key` on these metrics; the
+    enumeration also covers `actor`, `object`, `context`, and `other` for
+    the document-fetch and lookup-object families described below.
+    `activitypub.lookup.result` is always present and is one of:
+
+     -  `hit`: the key was served from the configured `KeyCache`, either
+        a valid cached key or a cached negative entry recording a prior
+        failed fetch.
+     -  `fetched`: the key was not in the cache and was loaded through
+        the document loader, returning a usable key.
+     -  `not_found`: the remote responded with `404 Not Found` or
+        `410 Gone`.  Recorded together with `http.response.status_code`.
+     -  `invalid`: the remote responded with a payload Fedify could not
+        parse into a `CryptographicKey` or `Multikey`.
+     -  `network_error`: no HTTP response was received.  DNS, connect,
+        TLS, redirect-loop, or aborted-fetch failures all fall into this
+        bucket via the shared error classifier.
+     -  `error`: any other unexpected failure (non-2xx HTTP response that
+        is neither `404` nor `410`, thrown exceptions that are not
+        recognised as transport failures, etc.).
+
+    `activitypub.cache.enabled` is always present and is `true` when the
+    caller passed a `KeyCache`, `false` otherwise.  `activitypub.remote.host`
+    is the hostname of the key URL.  `http.response.status_code` is
+    present only when an HTTP response was observed.  Key IDs, full key
+    URLs, and actor IDs are deliberately excluded from these metrics;
+    they remain on the `activitypub.fetch_key` span for trace-level
+    investigation.
+
+    These metrics complement
+    [`activitypub.signature.key_fetch.duration`](#instrumented-metrics).
+    The signature-scoped histogram keeps an `activitypub.signature.kind`
+    dimension and is the right metric to slice signature verification
+    latency by `http` / `linked_data` / `object_integrity`; the new
+    `activitypub.key.lookup*` metrics cover *every* key lookup performed
+    by Fedify (including non-signature uses such as direct `fetchKey()`
+    calls) and add a bounded HTTP `status_code` and richer
+    `lookup.result` taxonomy.
+
+`activitypub.document.fetch` and `activitypub.document.fetch.duration`
+:   `activitypub.lookup.kind` is always present and is one of `object`
+    (Fedify's generic document loader), `context` (the JSON-LD context
+    loader), or `other` (callers that supply a custom kind hint).
+    Actor documents fetched through the generic loader are still
+    classified as `object` at this layer because the kind is decided at
+    the loader boundary, *before* the response is parsed; the
+    [`activitypub.object.lookup`](#instrumented-metrics) counter
+    provides the parsed-result actor / object split.
+
+    `activitypub.lookup.result` is always present and is one of
+    `fetched`, `not_found` (with `http.response.status_code`),
+    `network_error`, or `error`.  The shared error classifier only
+    surfaces these four values at the loader boundary; `invalid` is
+    reserved for the key lookup metrics, where the parser can decide
+    that a successful HTTP response still does not contain a usable
+    key.  `activitypub.remote.host` records the hostname of the
+    fetched URL when the URL parses; otherwise it is omitted.
+    `activitypub.cache.enabled` is `true` for Fedify's built-in
+    `kvCache()`-backed document and context loaders and `false` for the
+    authenticated document loader; for user-supplied factories Fedify
+    cannot introspect caching behavior, so the attribute is omitted
+    rather than recorded as a confident `true` or `false`.
+
+    Counter and histogram are always emitted together for one wrapped
+    loader call, so dashboards can compute average duration as
+    `duration_sum / counter`.  Document IDs, JSON-LD context URLs, and
+    full request URLs are deliberately excluded; the
+    `activitypub.fetch_document` span keeps the full URL for sampled
+    traces.
+
+`activitypub.document.cache`
+:   `activitypub.lookup.kind` is always present (same values as
+    `activitypub.document.fetch`).  `activitypub.lookup.result` is
+    `hit` when the KV cache returned a `RemoteDocument` and `miss`
+    when it did not.  Cache lookups that bypass the KV cache entirely
+    (preloaded JSON-LD contexts and call sites without a matching cache
+    rule) emit no measurement.  `activitypub.remote.host` records the
+    hostname of the looked-up URL when it parses.
+
+`activitypub.object.lookup`
+:   `activitypub.lookup.kind` is always present and is one of:
+
+     -  `actor`: `lookupObject()` resolved to an `Actor` subtype
+        (`Application`, `Group`, `Organization`, `Person`, `Service`).
+     -  `object`: `lookupObject()` resolved to a non-actor
+        `Object` subtype.
+     -  `other`: `lookupObject()` returned `null` (the document could
+        not be fetched, the response could not be parsed, or the
+        cross-origin check rejected the resolved object) **or** the
+        call threw before resolving an object.  The metric is emitted
+        in a `finally` block, so a thrown error is still counted with
+        `kind=other`.
+
+    `activitypub.remote.host` is the hostname extracted from the
+    identifier: a parsed `URL`, an `acct:user@host` URI, or a bare
+    `@user@host` / `user@host` handle.  Inputs that do not reduce
+    cleanly to an authority (paths, query strings, fragments, or
+    whitespace mixed in with the handle suffix) result in the
+    attribute being omitted, rather than recording a high-cardinality
+    value.  This counter has no companion histogram: `lookupObject()`
+    drives `activitypub.document.fetch.duration` through the document
+    loader, and emitting another duration here would double-count
+    latency.  Use `activitypub.object.lookup` for the parsed-result
+    classification and `activitypub.document.fetch[.duration]` for
+    the loader-level rate and latency.
+
+`activitypub.actor.discovery` and `activitypub.actor.discovery.duration`
+:   `activitypub.actor.discovery.result` is always present and is one of:
+
+     -  `resolved`: `getActorHandle()` returned a handle.
+     -  `not_found`: WebFinger did not yield a usable `acct:` alias and
+        the `preferredUsername` fallback could not run (the call threw
+        the `Actor does not have enough information…` `TypeError`).
+     -  `error`: any other thrown exception bubbled up from the
+        discovery (including `TypeError`s from a malformed alias URL or
+        an invalid `preferredUsername`).
+
+    `activitypub.remote.host` records `actor.id.hostname` when known
+    and is omitted otherwise.  Actor IDs and handle strings are
+    deliberately excluded so attacker-controlled actor data cannot
+    inflate metric cardinality.  Per-WebFinger-call failure detail
+    (HTTP status, parse failure, network failure, etc.) lives on
+    [`webfinger.lookup`](#instrumented-metrics) and is not duplicated
+    here; the meter provider passed to `getActorHandle()` is also
+    forwarded to the nested WebFinger lookups, so one discovery emits
+    both an `activitypub.actor.discovery` measurement and one or two
+    `webfinger.lookup` measurements.  When cross-origin actor handle
+    verification runs, the second lookup goes to a different host
+    than the first, so the two `webfinger.lookup` measurements may
+    record different `activitypub.remote.host` values.
+
+`webfinger.lookup` and `webfinger.lookup.duration`
+:   `webfinger.lookup.result` is always present and is one of:
+
+     -  `found`: a `ResourceDescriptor` was returned to the caller.
+     -  `not_found`: the remote responded with HTTP `404 Not Found` or
+        `410 Gone`; recorded together with `http.response.status_code`.
+     -  `invalid`: the remote responded with content Fedify could not
+        parse (JSON parse failure), the redirect chain exceeded
+        `maxRedirection`, the remote redirected to a different
+        protocol, the `Location` header itself was unparseable, or the
+        queried `acct:` resource was malformed.
+     -  `network_error`: no HTTP response was observed.  `fetch()`
+        threw, `validatePublicUrl()` rejected the URL (including
+        redirects to private addresses), or an `AbortError` cancelled
+        the request.
+     -  `error`: the remote returned a non-2xx HTTP response that is
+        neither `404` nor `410`, or any other unexpected failure
+        bubbled up from the lookup.
+
+    `webfinger.resource.scheme` is always present and bucketed to a
+    small allow-list (`acct`, `http`, `https`, `mailto`); resources
+    that carry any other scheme are recorded as `other` so that an
+    attacker-controlled remote cannot inflate cardinality by
+    redirecting to an unusual scheme.  The corresponding span
+    attribute (`webfinger.resource.scheme` on the `webfinger.lookup`
+    span) still records the raw scheme for trace-level investigation.
+    `activitypub.remote.host` records the hostname of the latest URL
+    Fedify attempted, so an operator can see who actually returned a
+    failure even after one or more redirects; it is omitted only when
+    the resource itself was malformed before any URL could be built.
+    `http.response.status_code` is recorded only when an HTTP response
+    was observed (including non-2xx errors and redirects that exceeded
+    `maxRedirection`).  Full resource URIs, lookup URLs, and remote
+    paths are deliberately excluded; they remain on the
+    `webfinger.lookup` span for trace-level investigation.
+
+`webfinger.handle` and `webfinger.handle.duration`
+:   `webfinger.handle.result` is always present and is one of:
+
+     -  `resolved`: Fedify returned a `200 OK` response with a JRD.
+     -  `invalid`: Fedify returned `400 Bad Request` because the queried
+        `resource` parameter was missing or unparseable.
+     -  `not_found`: Fedify returned `404 Not Found` because no actor
+        dispatcher matched the queried resource, the actor identifier
+        was not recognised, or the queried `acct:` host did not match
+        the server.
+     -  `tombstoned`: Fedify returned `410 Gone` because the actor
+        dispatcher resolved to a `Tombstone`.
+     -  `error`: the handler threw before producing a response, or a
+        custom `onNotFound` callback returned a status code outside
+        the `{200, 400, 404, 410}` set.
+
+    `webfinger.resource.scheme` is bucketed to the same allow-list as
+    on `webfinger.lookup` (`acct`, `http`, `https`, `mailto`, or
+    `other`) and is omitted when the request had no `resource`
+    parameter.  `http.response.status_code` is always recorded except
+    when the handler threw before constructing a response.  The
+    queried resource string itself is deliberately not a metric
+    attribute (it is attacker-controlled); the full resource remains
+    on the `webfinger.handle` span for trace-level investigation.
+    These metrics complement
+    [`fedify.http.server.request.count`](#instrumented-metrics) and
+    [`fedify.http.server.request.duration`](#instrumented-metrics):
+    the HTTP metrics carry the bounded `fedify.endpoint=webfinger`
+    bucket, while these WebFinger-specific metrics expose
+    discovery-oriented outcome buckets (`tombstoned`, `not_found`,
+    etc.) and the queried scheme.
 
 `fedify.http.server.request.count` and `fedify.http.server.request.duration`
 :   `http.request.method` and `fedify.endpoint` are always present.
@@ -339,10 +718,89 @@ Fedify records the following OpenTelemetry metrics:
     parameter names (for example `/users/{identifier}`) rather than the
     matched parameter values.
 
+`fedify.queue.task.enqueued`, `fedify.queue.task.started`,
+`fedify.queue.task.completed`, `fedify.queue.task.failed`, and
+`fedify.queue.task.duration`
+:   `fedify.queue.role` (`inbox`, `outbox`, or `fanout`) is always present.
+    `fedify.queue.backend` is the queue implementation's constructor name
+    (for example `RedisMessageQueue`) when available; it is omitted for
+    queues whose constructor is the plain `Object` (for example,
+    `MessageQueue` instances built from an object literal).
+    `fedify.queue.native_retrial` reflects the queue backend's `nativeRetrial`
+    flag when set on the queue. `activitypub.activity.type` is recorded
+    whenever Fedify knows the activity type for the queued message; for inbox
+    tasks the type only becomes available after the activity is parsed, so the
+    *started* counter for inbox tasks may be recorded without it.
+    `fedify.queue.task.enqueued` additionally carries a zero-based
+    `fedify.queue.task.attempt` so that retry re-enqueues are distinguishable
+    from initial enqueues. `fedify.queue.task.completed`,
+    `fedify.queue.task.failed`, and `fedify.queue.task.duration` carry
+    `fedify.queue.task.result`, which is `completed` when processing returned
+    without throwing, `failed` when the worker re-threw a non-abort error, and
+    `aborted` when the worker re-threw an `AbortError` (for example, because a
+    graceful-shutdown `AbortSignal` interrupted processing).  When the queue
+    backend does not declare `nativeRetrial`, Fedify catches inbox listener and
+    outbox delivery errors itself; if its retry policy still allows another
+    attempt, it schedules a retry by re-enqueuing the message and returns from
+    the worker without re-throwing, so the worker boundary records
+    `result=completed`.  When the retry policy gives up, the worker also
+    returns normally (`result=completed`) without scheduling a retry.
+    Outbox-side activity failures remain observable through the
+    `activitypub.delivery.*` metrics and the `activitypub.delivery.failed`
+    span event, and any retry attempt (inbox or outbox) appears as a
+    `fedify.queue.task.enqueued` measurement with a non-zero
+    `fedify.queue.task.attempt`.  Inbox listener errors that the retry policy
+    abandons are visible through error logs and the inbox span's error status,
+    but not through a dedicated metric.
+
+`fedify.queue.task.in_flight`
+:   `fedify.queue.role` and `fedify.queue.backend` (when available), plus
+    `fedify.queue.native_retrial` when set on the queue.  Per-message
+    attributes such as `activitypub.activity.type`,
+    `fedify.queue.task.attempt`, and `fedify.queue.task.result` are
+    deliberately omitted so that increment and decrement operations always
+    pair up cleanly per attribute series.  This UpDownCounter is
+    process-local: it tracks tasks currently being processed *in this
+    Fedify process*, not cross-process totals.  Aggregate it across
+    replicas in your metrics backend.
+
+The `fedify.queue.task.*` metrics describe what Fedify's workers do with
+queued messages.  They complement the backend-side
+[`MessageQueue.getDepth()` API](./mq.md#queue-depth-reporting), which
+reports how many messages are currently waiting in the queue backend.
+Reading both signals together (task throughput plus backlog depth)
+makes it possible to distinguish a small, slow queue from a large, fast
+one and to set alerting thresholds for delivery latency under load.
+
+The `activitypub.inbox.activity`, `activitypub.outbox.activity`, and
+`activitypub.fanout.recipients` metrics describe what is happening at
+the *activity* level, complementing the per-recipient
+`activitypub.delivery.*` counters and the per-task `fedify.queue.task.*`
+metrics.  Use them when you need to understand whether the pressure on
+a slow queue comes from fanout size, retry volume, or activity-type
+mix.  Concrete per-task counts (initial enqueue vs. retry re-enqueue,
+or processed-task throughput) remain available on `fedify.queue.task.enqueued`
+(via the `fedify.queue.task.attempt` attribute) and
+`fedify.queue.task.completed`; the activity-level counters are
+intentionally not a queue-mechanism replacement.
+
 Fedify records `activitypub.remote.host` as the URL hostname only; ports, paths,
 and query strings are deliberately excluded to keep metric cardinality bounded.
 Activity types use the same qualified URI form as Fedify's trace attributes,
 for example `https://www.w3.org/ns/activitystreams#Create`.
+
+The key lookup, document fetch, document cache, and object lookup metrics
+share an `activitypub.lookup.kind` and (where applicable)
+`activitypub.lookup.result` attribute taxonomy.  Both are drawn from small
+fixed enumerations (`kind` ∈ `{public_key, actor, object, context, other}`
+and `result` ∈
+`{hit, miss, fetched, not_found, invalid, network_error, error}`), so an
+attacker-controlled remote cannot inflate cardinality by returning arbitrary
+status codes, content types, or thrown exceptions. Full URLs, key IDs, actor
+IDs, object IDs, JSON-LD context URLs, and fediverse handles are deliberately
+excluded; they remain on the corresponding spans (`activitypub.fetch_key`,
+`activitypub.fetch_document`, `activitypub.lookup_object`) for trace-level
+investigation.
 
 The HTTP server request metrics deliberately exclude high-cardinality fields
 such as the full URL, raw path, query string, actor identifier, and inbox
@@ -382,6 +840,8 @@ for ActivityPub:
 | `activitypub.activity.retries`           | int      | The ordinal number of activity resending attempt (if and only if it's retried).                                          | `3`                                                                  |
 | `activitypub.delivery.attempt`           | int      | The zero-based delivery attempt number for a queued outgoing activity.                                                   | `0`                                                                  |
 | `activitypub.delivery.permanent_failure` | boolean  | Whether an outgoing delivery failure will be abandoned instead of retried.                                               | `true`                                                               |
+| `activitypub.processing.result`          | string   | Lifecycle outcome of an inbox or outbox activity: `queued`, `processed`, `retried`, `rejected`, or `abandoned`.          | `"retried"`                                                          |
+| `activitypub.actor.discovery.result`     | string   | Terminal outcome of `getActorHandle()`: `resolved`, `not_found`, or `error`.                                             | `"resolved"`                                                         |
 | `activitypub.actor.id`                   | string   | The URI of the actor object.                                                                                             | `"https://example.com/actor/1"`                                      |
 | `activitypub.actor.key.cached`           | boolean  | Whether the actor's public keys are cached.                                                                              | `true`                                                               |
 | `activitypub.actor.type`                 | string[] | The qualified URI(s) of the actor type(s).                                                                               | `["https://www.w3.org/ns/activitystreams#Person"]`                   |
@@ -407,6 +867,11 @@ for ActivityPub:
 | `fedify.object.values.{parameter}`       | string[] | The argument values of the object dispatcher.                                                                            | `["1", "2"]`                                                         |
 | `fedify.collection.cursor`               | string   | The cursor of the collection.                                                                                            | `"eyJpZCI6IjEiLCJ0eXBlIjoiT3JkZXJlZENvbGxlY3Rpb24ifQ=="`             |
 | `fedify.collection.items`                | number   | The number of items in the collection page.  It can be less than the total items.                                        | `10`                                                                 |
+| `fedify.queue.role`                      | string   | The Fedify queue role for the task: `inbox`, `outbox`, or `fanout`.                                                      | `"outbox"`                                                           |
+| `fedify.queue.backend`                   | string   | The queue implementation's constructor name (best-effort backend identifier).                                            | `"RedisMessageQueue"`                                                |
+| `fedify.queue.native_retrial`            | boolean  | Whether the queue backend declares `nativeRetrial`, meaning Fedify defers retry handling to the backend.                 | `true`                                                               |
+| `fedify.queue.task.attempt`              | int      | The zero-based attempt number recorded on `fedify.queue.task.enqueued`; non-zero for retry re-enqueues.                  | `1`                                                                  |
+| `fedify.queue.task.result`               | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                      | `"failed"`                                                           |
 | `http.redirect.url`                      | string   | The redirect URL when a document fetch results in a redirect.                                                            | `"https://example.com/new-location"`                                 |
 | `http.response.status_code`              | int      | The HTTP response status code.                                                                                           | `200`                                                                |
 | `http_signatures.signature`              | string   | The signature of the HTTP request in hexadecimal.                                                                        | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
@@ -424,8 +889,10 @@ for ActivityPub:
 | `object_integrity_proofs.key_id`         | string   | The public key ID of the object integrity proof.                                                                         | `"https://example.com/actor/1#main-key"`                             |
 | `object_integrity_proofs.signature`      | string   | The integrity proof of the object in hexadecimal.                                                                        | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
 | `url.full`                               | string   | The full URL being fetched by the document loader.                                                                       | `"https://example.com/actor/1"`                                      |
+| `webfinger.handle.result`                | string   | Terminal outcome of an incoming WebFinger request: `resolved`, `invalid`, `not_found`, `tombstoned`, or `error`.         | `"resolved"`                                                         |
+| `webfinger.lookup.result`                | string   | Terminal outcome of an outgoing WebFinger lookup: `found`, `not_found`, `invalid`, `network_error`, or `error`.          | `"found"`                                                            |
 | `webfinger.resource`                     | string   | The queried resource URI.                                                                                                | `"acct:fedify@hollo.social"`                                         |
-| `webfinger.resource.scheme`              | string   | The scheme of the queried resource URI.                                                                                  | `"acct"`                                                             |
+| `webfinger.resource.scheme`              | string   | The scheme of the queried resource URI.  Metric attribute is bucketed to `acct`, `http`, `https`, `mailto`, or `other`.  | `"acct"`                                                             |
 
 [attributes]: https://opentelemetry.io/docs/specs/otel/common/#attribute
 [OpenTelemetry Semantic Conventions]: https://opentelemetry.io/docs/specs/semconv/

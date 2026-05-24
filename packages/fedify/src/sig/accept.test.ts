@@ -282,7 +282,7 @@ test("fulfillAcceptSignature(): compatible alg and keyid", () => {
     "rsa-v1_5-sha256",
   );
 
-  // Components must be exactly what the challenger requested — no additions.
+  // Components must be exactly what the challenger requested—no additions.
   deepStrictEqual(result, {
     label: "sig1",
     components: [

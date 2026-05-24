@@ -342,7 +342,7 @@ test(
     const controller = new AbortController();
     const received: string[] = [];
     try {
-      // Start listen() and enqueue() simultaneously — both will trigger
+      // Start listen() and enqueue() simultaneously—both will trigger
       // initialize() concurrently
       const listening = mq.listen(
         (msg: string) => {
@@ -710,7 +710,7 @@ test(
         async (msg: string) => {
           calls++;
           if (calls === 1) {
-            // Hang forever — the timeout must kick us out
+            // Hang forever—the timeout must kick us out
             await new Promise<void>(() => {});
           }
           received.push(msg);
@@ -754,7 +754,7 @@ test(
         async (msg: string) => {
           calls++;
           if (calls === 1) {
-            // Hang forever — the timeout must release the ordering-key lock
+            // Hang forever—the timeout must release the ordering-key lock
             await new Promise<void>(() => {});
           }
           received.push(msg);
@@ -833,7 +833,7 @@ test(
   async () => {
     if (dbUrl == null) return;
     // A 200-char ordering key combined with a 20-char table name produces a
-    // raw lock name that is 221 chars — well over MySQL's 64-char limit.
+    // raw lock name that is 221 chars—well over MySQL's 64-char limit.
     // The lock name hashing logic must shorten it before calling GET_LOCK,
     // otherwise MySQL returns an error or NULL.
     const pool = mysql.createPool(dbUrl!);
@@ -1042,7 +1042,7 @@ test(
   async () => {
     if (dbUrl == null) return;
     // getRandomKey returns names like "fedify_test_mq_<uuid>" which may contain
-    // hyphens — unsuitable for MySQL identifiers.  Users must replace hyphens.
+    // hyphens—unsuitable for MySQL identifiers.  Users must replace hyphens.
     const rawKey = getRandomKey("mq");
     const tableName = rawKey.replace(/-/g, "_").slice(0, 46);
 

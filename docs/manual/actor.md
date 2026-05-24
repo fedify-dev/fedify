@@ -98,10 +98,13 @@ should fall through to the next middleware or `onNotFound` handler.
 
 > [!NOTE]
 > The URI Template syntax supports different expansion types like `{identifier}`
-> (simple expansion) and `{+identifier}` (reserved expansion).  Choosing the
-> right expansion type is important to avoid encoding issues.  See the
-> [*URI Template* guide](./uri-template.md) for details on when to use
-> each type.
+> (simple expansion) and `{+identifier}` (reserved expansion).  Use the plain
+> `{identifier}` form for ordinary segment-bounded identifiers such as
+> `/users/{identifier}`.  `{+identifier}` is an advanced choice reserved for
+> identifiers that themselves contain slashes (such as embedded URIs); because
+> it keeps `/` literal, it can consume extra path segments and overlap with
+> more specific routes.  See the [*URI Template* guide](./uri-template.md) for
+> details on when to use each type.
 
 [actors]: https://www.w3.org/TR/activitystreams-core/#actors
 [activities]: https://www.w3.org/TR/activitystreams-core/#activities

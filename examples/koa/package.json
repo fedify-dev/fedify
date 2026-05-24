@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/koa": "catalog:",
     "@types/node": "^22.5.1",
-    "tsx": "^4.19.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.5.4"
   },
   "dependencies": {

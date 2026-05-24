@@ -24,7 +24,7 @@ Reference documents
 -------------------
 
 Two reference documents describe what the example must do and how it must
-look.  Both are references only — do not create these files in the actual
+look.  Both are references only—do not create these files in the actual
 generated example app.
 
 ### [ARCHITECTURE.md](./ARCHITECTURE.md)

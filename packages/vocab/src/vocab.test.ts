@@ -160,6 +160,43 @@ test("new Object()", () => {
   );
 });
 
+test(
+  // Regression test for
+  // https://github.com/fedify-dev/fedify/issues/767:
+  // values produced by a `Temporal` implementation other than the one bundled
+  // with Fedify (e.g. Node.js 26+ native `Temporal`) must be accepted as
+  // long as they conform to the spec-mandated `Symbol.toStringTag`.
+  "new Object() accepts foreign Temporal.Instant (issue #767)",
+  () => {
+    const foreignInstant = globalThis.Object.create(
+      globalThis.Object.prototype,
+      {
+        [Symbol.toStringTag]: { value: "Temporal.Instant" },
+        epochNanoseconds: { value: 0n },
+        toString: { value: () => "1970-01-01T00:00:00Z" },
+      },
+    ) as Temporal.Instant;
+    const obj = new Object({ published: foreignInstant });
+    ok(obj.published === foreignInstant);
+  },
+);
+
+test(
+  "Object.clone() accepts foreign Temporal.Instant (issue #767)",
+  () => {
+    const foreignInstant = globalThis.Object.create(
+      globalThis.Object.prototype,
+      {
+        [Symbol.toStringTag]: { value: "Temporal.Instant" },
+        epochNanoseconds: { value: 0n },
+        toString: { value: () => "1970-01-01T00:00:00Z" },
+      },
+    ) as Temporal.Instant;
+    const obj = new Object({}).clone({ published: foreignInstant });
+    ok(obj.published === foreignInstant);
+  },
+);
+
 test("Object.clone()", () => {
   const obj = new Object({
     id: new URL("https://example.com/"),

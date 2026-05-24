@@ -656,7 +656,7 @@ Create the file *src/lib/store.ts*:
 ~~~~ typescript twoslash [src/lib/store.ts]
 // In-memory store for key pairs and followers.
 // Uses globalThis to persist across Astro module reloads in dev mode.
-// This data is lost when the server restarts — we'll fix that in a later
+// This data is lost when the server restarts—we'll fix that in a later
 // chapter when we introduce SQLite.
 
 declare global {
@@ -775,18 +775,35 @@ with `404 Not Found`.
 
 The `Person` object we return carries:
 
- -  `id` — the canonical URL of the actor, obtained via
+`id`
+:   The canonical URL of the actor, obtained via
     `ctx.getActorUri(identifier)`.
- -  `preferredUsername` — the short handle that ActivityPub software displays
+
+`preferredUsername`
+:   The short handle that ActivityPub software displays
     (e.g., `@blog@example.com`).
- -  `name`, `summary` — display name and description.
- -  `url` — the human-readable profile URL (the blog home page).
- -  `inbox` — where other servers deliver activities (follows, replies, etc.).
+
+`name`
+`summary`
+:   Display name and description.
+
+`url`
+:   The human-readable profile URL (the blog home page).
+
+`inbox`
+:   Where other servers deliver activities (follows, replies, etc.).
     We register the inbox path below.
- -  `endpoints.sharedInbox` — a single inbox URL shared across all actors on
+
+`endpoints.sharedInbox`
+:   A single inbox URL shared across all actors on
     this server.  Most servers prefer to send bulk deliveries here.
- -  `followers` — the URL of the followers collection.
- -  `publicKey`, `assertionMethods` — cryptographic keys used to verify that
+
+`followers`
+:   The URL of the followers collection.
+
+`publicKey`
+`assertionMethods`
+:   Cryptographic keys used to verify that
     activities truly came from this actor.
 
 **`setKeyPairsDispatcher`** generates and caches two key pairs: one
@@ -1825,15 +1842,28 @@ posts produce no activity.
 In ActivityPub, a blog post is represented as an `Article` object.  The
 vocabulary defines several standard properties for it:
 
- -  **`id`** — the ActivityPub object ID (also the URL that content-negotiates
-    between HTML and JSON-LD)
- -  **`attribution`** — the actor who wrote the post
- -  **`name`** — the post title
- -  **`summary`** — a short description
- -  **`content`** — an HTML representation of the post (in this tutorial,
-    just the description wrapped in `<p>` tags rather than the full body)
- -  **`url`** — the canonical URL of the HTML page (same as `id` in our case)
- -  **`published`** — the publication date as a `Temporal.Instant`
+`id`
+:   The ActivityPub object ID (also the URL that content-negotiates
+    between HTML and JSON-LD).
+
+`attribution`
+:   The actor who wrote the post.
+
+`name`
+:   The post title.
+
+`summary`
+:   A short description.
+
+`content`
+:   An HTML representation of the post (in this tutorial,
+    just the description wrapped in `<p>` tags rather than the full body).
+
+`url`
+:   The canonical URL of the HTML page (same as `id` in our case).
+
+`published`
+:   The publication date as a `Temporal.Instant`.
 
 ### Adding the posts table
 

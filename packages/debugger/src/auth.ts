@@ -10,11 +10,16 @@ import { timingSafeEqual } from "node:crypto";
  *
  * The debug dashboard can be protected using one of three authentication modes:
  *
- * - `"password"` — Shows a password-only login form.
- * - `"usernamePassword"` — Shows a username + password login form.
- * - `"request"` — Authenticates based on the incoming request (e.g., IP
- *   address).  No login form is shown; unauthenticated requests receive a
- *   403 response.
+ * `"password"`
+ * :   Shows a password-only login form.
+ *
+ * `"usernamePassword"`
+ * :   Shows a username + password login form.
+ *
+ * `"request"`
+ * :   Authenticates based on the incoming request (e.g., IP
+ *     address).  No login form is shown; unauthenticated requests receive a
+ *     403 response.
  *
  * Each mode supports either a static credential check or a callback function.
  */

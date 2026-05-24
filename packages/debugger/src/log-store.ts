@@ -69,7 +69,7 @@ export class LogStore {
       }`,
     ] as unknown as KvKey;
     // Errors are swallowed so a single failed write cannot poison the
-    // chain or cause an unhandled rejection — logging is best-effort.
+    // chain or cause an unhandled rejection—logging is best-effort.
     this.#pending = this.#pending.then(
       () => this.#kv.set(key, record),
     ).catch(() => {});

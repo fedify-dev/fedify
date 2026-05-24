@@ -3524,7 +3524,7 @@ export async function castVote(
 Two important bits:
 
  -  `const VoteClass = kind === "Like" ? Like : Dislike;` +
-    `new VoteClass(...)` — both activity classes have the same field
+    `new VoteClass(...)`—both activity classes have the same field
     shape, so constructing them generically is just a conditional.
  -  `ccs: [PUBLIC_COLLECTION, ctx.getFollowersUri(slug)]` — even
     though a vote is sent to a specific community, adding the

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "relative path template",
+    "path": "foo",
+    "expected": [
+      "RouterError",
+      "RouteTemplatePathError"
+    ]
+  },
+  {
+    "name": "invalid URI template literal",
+    "path": "/bad path",
+    "expected": [
+      "TemplateParseError",
+      "InvalidLiteralError"
+    ]
+  }
+]

@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { RouterError as UriTemplateRouterError } from "@fedify/uri-template";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Router, RouterError, type RouterOptions } from "./router.ts";
 
@@ -80,6 +81,24 @@ test("Router.route()", () => {
   });
 });
 
+test("Router.trailingSlashInsensitive (post-construction mutation)", () => {
+  const router = setUp();
+  assertFalse(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), null);
+
+  router.trailingSlashInsensitive = true;
+  assert(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), {
+    name: "user",
+    template: "/users/{name}",
+    values: { name: "bob" },
+  });
+
+  router.trailingSlashInsensitive = false;
+  assertFalse(router.trailingSlashInsensitive);
+  assertEquals(router.route("/users/bob/"), null);
+});
+
 test("Router.build()", () => {
   const router = setUp();
   assertEquals(router.build("user", { name: "alice" }), "/users/alice");
@@ -87,4 +106,24 @@ test("Router.build()", () => {
     router.build("post", { name: "alice", postId: "123" }),
     "/users/alice/posts/123",
   );
+});
+
+test("Router.route() returns null for non-path inputs", () => {
+  const router = setUp();
+  // The old Fedify 2.x `Router` returned `null` (not threw) when probed
+  // with non-path inputs such as absolute URLs.
+  assertEquals(router.route("https://example.com/users/alice"), null);
+  assertEquals(router.route("users/alice"), null);
+  assertEquals(router.route("not a path"), null);
+  // Valid paths that simply do not match still return null.
+  assertEquals(router.route("/unknown"), null);
+});
+
+test("Compatibility between RouterErrors", () => {
+  const newError = new UriTemplateRouterError("boom");
+  assert(newError instanceof UriTemplateRouterError);
+  assert(newError instanceof RouterError);
+  const previousError = new RouterError("boom");
+  assert(previousError instanceof RouterError);
+  assert(previousError instanceof UriTemplateRouterError);
 });

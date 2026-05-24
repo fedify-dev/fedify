@@ -1,3 +1,4 @@
+import { type Path, RouterError } from "@fedify/uri-template";
 import type {
   Actor,
   Collection,
@@ -62,12 +63,24 @@ import {
   verifyRequest,
 } from "../sig/http.ts";
 import { exportJwk, importJwk, validateCryptoKey } from "../sig/key.ts";
-import { hasSignatureLike, signJsonLd } from "../sig/ld.ts";
+import {
+  assertSafeJsonLd,
+  compactJsonLd,
+  detachSignature,
+  getNormalizationContextLoader,
+  hasSignature,
+  hasSignatureLike,
+  InvalidContextReferenceError,
+  isClearlyMalformedContextReference,
+  isInvalidUrlTypeError,
+  signJsonLd,
+  wrapContextLoaderForJsonLd,
+} from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
-import { FederationBuilderImpl } from "./builder.ts";
+import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
 import type {
@@ -99,6 +112,7 @@ import {
   handleObject,
   handleOrderedCollection,
   handleOutbox,
+  rawInboxContextFactorySymbol,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
@@ -107,6 +121,14 @@ import {
   getDurationMs,
   getFederationMetrics,
   getRemoteHost,
+  instrumentDocumentLoader,
+  isAbortError,
+  type QueueTaskCommonAttributes,
+  type QueueTaskResult,
+  recordFanoutRecipients,
+  recordInboxActivity,
+  recordOutboxActivity,
+  recordOutboxEnqueue,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
@@ -118,9 +140,6 @@ import type {
   SenderKeyJwkPair,
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
-import { RouterError } from "./router.ts";
-import { ACTOR_ALIAS_PREFIX } from "./builder.ts";
-
 import {
   extractInboxes,
   sendActivity,
@@ -128,6 +147,70 @@ import {
   type SenderKeyPair,
 } from "./send.ts";
 import { handleWebFinger } from "./webfinger.ts";
+import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+
+function isRemoteContextLoadingFailure(error: unknown): boolean {
+  return error instanceof Error &&
+    typeof (error as Error & { details?: { code?: unknown } }).details ===
+      "object" &&
+    (error as Error & { details?: { code?: unknown } }).details != null &&
+    (error as Error & { details: { code?: unknown } }).details.code ===
+      "loading remote context failed";
+}
+
+function isPermanentRemoteContextError(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name !== "jsonld.InvalidUrl") {
+    return false;
+  }
+  const details = (error as Error & {
+    details?: { code?: unknown; url?: unknown };
+  }).details;
+  if (details?.code === "invalid remote context") {
+    return true;
+  }
+  return isRemoteContextLoadingFailure(error) &&
+    typeof details?.url === "string" &&
+    !URL.canParse(details.url) &&
+    isClearlyMalformedContextReference(details.url);
+}
+
+function isPermanentInboxParseError(error: unknown): error is Error {
+  // jsonld.InvalidUrl is only treated as permanent for upstream
+  // "invalid remote context" failures or for clearly malformed non-URL
+  // context strings such as values containing whitespace/control characters.
+  // Opaque or relative context ids may be valid for deployment-specific
+  // loaders, so loading failures for other non-parseable ids stay retriable
+  // instead of being forced into the malformed bucket.  compactJsonLd()
+  // separately tags malformed raw @context/@import references with
+  // InvalidContextReferenceError so the queue worker can drop sender-side
+  // defects without conflating them with loader outages or LD signature
+  // metadata URL failures.  jsonld.SyntaxError is similarly only permanent
+  // when it is local to the payload rather than a remote-context loading
+  // failure.  Raw loader TypeErrors for @context resolution are normalized
+  // earlier at the context-loading layer, so any remaining invalid-URL
+  // TypeError here comes from sender-controlled ActivityPub IRI fields and stays
+  // permanent instead of churning the retry queue.
+  return (error instanceof Error &&
+    (error.name === "UnsafeJsonLdError" ||
+      error instanceof InvalidContextReferenceError ||
+      isPermanentRemoteContextError(error) ||
+      (error.name === "jsonld.SyntaxError" &&
+        !isRemoteContextLoadingFailure(error)))) ||
+    (error instanceof TypeError &&
+      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+        .test(error.message) ||
+        isInvalidUrlTypeError(error)));
+}
+
+/**
+ * Options for {@link createFederation} function.
+ * @template TContextData The type of the context data.
+ * @since 0.10.0
+ * @deprecated Use {@link FederationOptions} instead.
+ */
+export interface CreateFederationOptions<TContextData>
+  extends FederationOptions<TContextData> {
+}
 
 /**
  * Configures the task queues for sending and receiving activities.
@@ -362,33 +445,99 @@ export class FederationImpl<TContextData>
     }
     const { allowPrivateAddress, userAgent } = options;
     this.allowPrivateAddress = allowPrivateAddress ?? false;
-    this.documentLoaderFactory = options.documentLoaderFactory ??
-      ((opts) => {
-        return kvCache({
-          loader: getDocumentLoader({
-            allowPrivateAddress: opts?.allowPrivateAddress ??
-              allowPrivateAddress,
-            userAgent: opts?.userAgent ?? userAgent,
-          }),
-          kv: options.kv,
-          prefix: this.kvPrefixes.remoteDocument,
-        });
-      });
-    this.contextLoaderFactory = options.contextLoaderFactory ??
-      this.documentLoaderFactory;
-    this.authenticatedDocumentLoaderFactory =
-      options.authenticatedDocumentLoaderFactory ??
-        ((identity) =>
-          getAuthenticatedDocumentLoader(identity, {
+    // The loader factory closures below read `this._meterProvider` at
+    // call time, not when they are created.  Factories are only invoked
+    // after the constructor has assigned `_meterProvider` (see below), so
+    // the lookup is safe; no eager assignment is needed here.
+    const userDocumentLoaderFactory = options.documentLoaderFactory;
+    const userContextLoaderFactory = options.contextLoaderFactory;
+    const userAuthFactory = options.authenticatedDocumentLoaderFactory;
+    const builtinDocumentLoaderFactory: DocumentLoaderFactory = (opts) =>
+      kvCache({
+        loader: getDocumentLoader({
+          allowPrivateAddress: opts?.allowPrivateAddress ??
             allowPrivateAddress,
-            userAgent,
+          userAgent: opts?.userAgent ?? userAgent,
+        }),
+        kv: options.kv,
+        prefix: this.kvPrefixes.remoteDocument,
+        meterProvider: this._meterProvider,
+        kind: "object",
+      });
+    const builtinContextLoaderFactory: DocumentLoaderFactory = (opts) =>
+      kvCache({
+        loader: getDocumentLoader({
+          allowPrivateAddress: opts?.allowPrivateAddress ??
+            allowPrivateAddress,
+          userAgent: opts?.userAgent ?? userAgent,
+        }),
+        kv: options.kv,
+        prefix: this.kvPrefixes.remoteDocument,
+        meterProvider: this._meterProvider,
+        kind: "context",
+      });
+    // Only the built-in factories use `kvCache()`, so we can confidently
+    // record `activitypub.cache.enabled=true` for them; user-supplied
+    // factories may or may not cache, so the attribute is omitted.
+    this.documentLoaderFactory = (opts) =>
+      instrumentDocumentLoader(
+        (userDocumentLoaderFactory ?? builtinDocumentLoaderFactory)(opts),
+        {
+          meterProvider: this._meterProvider,
+          kind: "object",
+          cacheEnabled: userDocumentLoaderFactory == null ? true : undefined,
+        },
+      );
+    // When the user customises `documentLoaderFactory` but not
+    // `contextLoaderFactory`, Fedify has historically fallen back to the
+    // (customised) document factory rather than the built-in one so
+    // context fetches inherit the user's settings.  Preserve that
+    // semantic, just with a separate instrumentation kind so the metric
+    // attributes reflect the call-site intent.
+    const resolvedContextLoaderFactory: DocumentLoaderFactory =
+      userContextLoaderFactory ?? userDocumentLoaderFactory ??
+        builtinContextLoaderFactory;
+    this.contextLoaderFactory = (opts) =>
+      instrumentDocumentLoader(
+        resolvedContextLoaderFactory(opts),
+        {
+          meterProvider: this._meterProvider,
+          kind: "context",
+          cacheEnabled: (userContextLoaderFactory == null &&
+              userDocumentLoaderFactory == null)
+            ? true
+            : undefined,
+        },
+      );
+    this.authenticatedDocumentLoaderFactory = (identity, factoryOpts) =>
+      instrumentDocumentLoader(
+        userAuthFactory != null
+          // Forward `factoryOpts` so user-supplied factories receive the
+          // per-call `DocumentLoaderFactoryOptions` (allowPrivateAddress,
+          // userAgent) just like they did before this wrapper was added.
+          ? userAuthFactory(identity, factoryOpts)
+          // The built-in default honors per-call `factoryOpts` overrides
+          // the same way `documentLoaderFactory` / `contextLoaderFactory`
+          // do above, falling back to the constructor-level settings when
+          // the caller did not supply an override.
+          : getAuthenticatedDocumentLoader(identity, {
+            allowPrivateAddress: factoryOpts?.allowPrivateAddress ??
+              allowPrivateAddress,
+            userAgent: factoryOpts?.userAgent ?? userAgent,
             specDeterminer: new KvSpecDeterminer(
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
               options.firstKnock,
             ),
             tracerProvider: this.tracerProvider,
-          }));
+          }),
+        {
+          meterProvider: this._meterProvider,
+          kind: "object",
+          // The authenticated document loader does not cache.
+          cacheEnabled: userAuthFactory == null ? false : undefined,
+        },
+      );
     this.userAgent = userAgent;
     this.onOutboxError = options.onOutboxError;
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
@@ -488,8 +637,14 @@ export class FederationImpl<TContextData>
       context.active(),
       message.traceContext,
     );
+    const meter = getFederationMetrics(this.meterProvider);
     return withContext({ messageId: message.id }, async () => {
       if (message.type === "fanout") {
+        const common: QueueTaskCommonAttributes = {
+          role: "fanout",
+          queue: this.fanoutQueue,
+          activityType: message.activityType,
+        };
         await tracer.startActiveSpan(
           "activitypub.fanout",
           {
@@ -510,15 +665,29 @@ export class FederationImpl<TContextData>
                     message.activityId,
                   );
                 }
+                meter.recordQueueTaskStarted(common);
+                meter.incrementQueueTaskInFlight(common);
+                const startedAt = performance.now();
+                let outcome: QueueTaskResult = "completed";
                 try {
                   await this.#listenFanoutMessage(contextData, message);
                 } catch (e) {
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
+                  meter.recordQueueTaskOutcome(
+                    common,
+                    outcome,
+                    getDurationMs(startedAt),
+                  );
+                  meter.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -526,6 +695,11 @@ export class FederationImpl<TContextData>
           },
         );
       } else if (message.type === "outbox") {
+        const common: QueueTaskCommonAttributes = {
+          role: "outbox",
+          queue: this.outboxQueue,
+          activityType: message.activityType,
+        };
         await tracer.startActiveSpan(
           "activitypub.outbox",
           {
@@ -547,15 +721,29 @@ export class FederationImpl<TContextData>
                     message.activityId,
                   );
                 }
+                meter.recordQueueTaskStarted(common);
+                meter.incrementQueueTaskInFlight(common);
+                const startedAt = performance.now();
+                let outcome: QueueTaskResult = "completed";
                 try {
                   await this.#listenOutboxMessage(contextData, message, span);
                 } catch (e) {
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
+                  meter.recordQueueTaskOutcome(
+                    common,
+                    outcome,
+                    getDurationMs(startedAt),
+                  );
+                  meter.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -563,6 +751,10 @@ export class FederationImpl<TContextData>
           },
         );
       } else if (message.type === "inbox") {
+        const common: QueueTaskCommonAttributes = {
+          role: "inbox",
+          queue: this.inboxQueue,
+        };
         await tracer.startActiveSpan(
           "activitypub.inbox",
           {
@@ -577,15 +769,36 @@ export class FederationImpl<TContextData>
             return await withContext(
               { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
               async () => {
+                meter.recordQueueTaskStarted(common);
+                meter.incrementQueueTaskInFlight(common);
+                const startedAt = performance.now();
+                let outcome: QueueTaskResult = "completed";
                 try {
-                  await this.#listenInboxMessage(contextData, message, span);
+                  await this.#listenInboxMessage(
+                    contextData,
+                    message,
+                    span,
+                    (activityType) => {
+                      common.activityType = activityType;
+                    },
+                  );
                 } catch (e) {
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: String(e),
-                  });
+                  const aborted = isAbortError(e);
+                  outcome = aborted ? "aborted" : "failed";
+                  if (!aborted) {
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: String(e),
+                    });
+                  }
                   throw e;
                 } finally {
+                  meter.recordQueueTaskOutcome(
+                    common,
+                    outcome,
+                    getDurationMs(startedAt),
+                  );
+                  meter.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -785,6 +998,11 @@ export class FederationImpl<TContextData>
             );
           }
         }
+        recordOutboxActivity(
+          this.meterProvider,
+          "abandoned",
+          message.activityType,
+        );
         return;
       }
 
@@ -809,22 +1027,44 @@ export class FederationImpl<TContextData>
             "#{attempt}); retry...:\n{error}",
           { ...logData, error },
         );
-        await this.outboxQueue?.enqueue(
-          {
-            ...message,
-            attempt: message.attempt + 1,
-          } satisfies OutboxMessage,
-          {
-            delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-              ? Temporal.Duration.from({ seconds: 0 })
-              : delay,
-          },
-        );
+        const retryMessage = {
+          ...message,
+          attempt: message.attempt + 1,
+        } satisfies OutboxMessage;
+        const { outboxQueue } = this;
+        if (outboxQueue != null) {
+          await outboxQueue.enqueue(
+            retryMessage,
+            {
+              delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
+                ? Temporal.Duration.from({ seconds: 0 })
+                : delay,
+            },
+          );
+          getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+            {
+              role: "outbox",
+              queue: outboxQueue,
+              activityType: retryMessage.activityType,
+            },
+            retryMessage.attempt,
+          );
+          recordOutboxActivity(
+            this.meterProvider,
+            "retried",
+            retryMessage.activityType,
+          );
+        }
       } else {
         logger.error(
           "Failed to send activity {activityId} to {inbox} after {attempt} " +
             "attempts; giving up:\n{error}",
           { ...logData, error },
+        );
+        recordOutboxActivity(
+          this.meterProvider,
+          "abandoned",
+          message.activityType,
         );
       }
       return;
@@ -839,6 +1079,7 @@ export class FederationImpl<TContextData>
     ctxData: TContextData,
     message: InboxMessage,
     span: Span,
+    onActivityType?: (activityType: string) => void,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const baseUrl = new URL(message.baseUrl);
@@ -859,32 +1100,282 @@ export class FederationImpl<TContextData>
         });
       }
     }
-    const activity = await Activity.fromJsonLd(message.activity, context);
-    span.setAttribute("activitypub.activity.type", getTypeId(activity).href);
-    if (activity.id != null) {
-      span.setAttribute("activitypub.activity.id", activity.id.href);
-    }
-    const cacheKey = activity.id == null ? null : [
-      ...this.kvPrefixes.activityIdempotence,
-      context.origin,
-      activity.id.href,
-    ] satisfies KvKey;
-    if (cacheKey != null) {
-      const cached = await this.kv.get(cacheKey);
-      if (cached === true) {
-        logger.debug("Activity {activityId} has already been processed.", {
-          activityId: activity.id?.href,
-          activity: message.activity,
-          recipient: message.identifier,
-        });
-        return;
-      }
-    }
     await this._getTracer().startActiveSpan(
       "activitypub.dispatch_inbox_listener",
       { kind: SpanKind.INTERNAL },
-      async (span) => {
-        const dispatched = this.inboxListeners?.dispatchWithClass(activity);
+      async (listenerSpan) => {
+        let activity: Activity | null = null;
+        let cacheKey: KvKey | null = null;
+        let activityType: string | undefined;
+        const reportInboxError = async (error: unknown) => {
+          try {
+            await this.inboxErrorHandler?.(context, error as Error);
+          } catch (error) {
+            logger.error(
+              "An unexpected error occurred in inbox error handler:\n{error}",
+              {
+                error,
+                trial: message.attempt,
+                activityId: activity?.id?.href,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+          }
+        };
+        const handleRetriableFailure = async (error: unknown) => {
+          await reportInboxError(error);
+          // Skip retry logic if the message queue backend handles retries automatically
+          if (this.inboxQueue?.nativeRetrial) {
+            logger.error(
+              "Failed to process the incoming activity {activityId}; backend will handle retry:\n{error}",
+              {
+                error,
+                activityId: activity?.id?.href,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            listenerSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(error),
+            });
+            listenerSpan.end();
+            throw error;
+          }
+
+          const delay = this.inboxRetryPolicy({
+            elapsedTime: Temporal.Instant.from(message.started).until(
+              Temporal.Now.instant(),
+            ),
+            attempts: message.attempt,
+          });
+          if (delay != null) {
+            logger.error(
+              "Failed to process the incoming activity {activityId} (attempt " +
+                "#{attempt}); retry...:\n{error}",
+              {
+                error,
+                attempt: message.attempt,
+                activityId: activity?.id?.href,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            if (this.inboxQueue == null) {
+              // processQueuedTask() can be called directly without a configured
+              // inbox queue.  In that manual-processing mode the caller owns
+              // ack/retry semantics, so retriable failures must bubble out
+              // instead of being silently acknowledged here.
+              listenerSpan.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(error),
+              });
+              listenerSpan.end();
+              throw error;
+            }
+            const retryMessage = {
+              ...message,
+              attempt: message.attempt + 1,
+            } satisfies InboxMessage;
+            await this.inboxQueue.enqueue(
+              retryMessage,
+              {
+                delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
+                  ? Temporal.Duration.from({ seconds: 0 })
+                  : delay,
+              },
+            );
+            if (activityType != null) {
+              getFederationMetrics(this.meterProvider)
+                .recordQueueTaskEnqueued(
+                  {
+                    role: "inbox",
+                    queue: this.inboxQueue,
+                    activityType,
+                  },
+                  retryMessage.attempt,
+                );
+              recordInboxActivity(
+                this.meterProvider,
+                "retried",
+                activityType,
+              );
+            }
+          } else {
+            logger.error(
+              "Failed to process the incoming activity {activityId} after " +
+                "{trial} attempts; giving up:\n{error}",
+              {
+                error,
+                activityId: activity?.id?.href,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            if (activityType != null) {
+              recordInboxActivity(
+                this.meterProvider,
+                "abandoned",
+                activityType,
+              );
+            }
+          }
+          listenerSpan.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          listenerSpan.end();
+        };
+
+        let dispatched:
+          | ReturnType<
+            NonNullable<typeof this.inboxListeners>["dispatchWithClass"]
+          >
+          | null
+          | undefined;
+        let parseInput: unknown = undefined;
+        let parseContextLoader = context.contextLoader;
+        try {
+          const hasSignatureField = hasSignature(message.activity);
+          const shouldParseFromNormalizedSignedPayload =
+            message.ldSignatureVerified === true ||
+            message.normalizedActivity != null ||
+            (message.ldSignatureVerified == null && hasSignatureField);
+          const parseContext = hasSignatureField
+            ? {
+              ...context,
+              // Verified LDS replay, fallback-authenticated queue items with a
+              // producer-side normalized cache, and legacy queued LDS
+              // messages may still reference Fedify's built-in signature
+              // contexts at the root after we detach the signature object, so
+              // keep the normalization loader shortcut available whenever a
+              // signature block remains.  Authentication provenance lives in
+              // ldSignatureVerified; normalizedActivity is a separate parse
+              // cache that rolling upgrades and stricter worker loaders may
+              // still depend on.
+              contextLoader: getNormalizationContextLoader(
+                context.contextLoader,
+              ),
+            }
+            : {
+              ...context,
+              contextLoader: wrapContextLoaderForJsonLd(
+                context.contextLoader,
+              ),
+            };
+          parseContextLoader = parseContext.contextLoader;
+          let normalizedActivity: unknown | undefined;
+          if (shouldParseFromNormalizedSignedPayload) {
+            normalizedActivity = message.normalizedActivity ??
+              await compactJsonLd(message.activity, context.contextLoader);
+            // Queue backends are trusted in the normal deployment model, but a
+            // cached normalized payload should still satisfy the same JSON-LD
+            // safety invariants as a freshly compacted one before the worker
+            // strips the signature block and parses it.
+            assertSafeJsonLd(normalizedActivity);
+          }
+          parseInput = shouldParseFromNormalizedSignedPayload
+            ? detachSignature(normalizedActivity)
+            : hasSignatureField
+            ? detachSignature(message.activity)
+            : message.activity;
+          activity = await Activity.fromJsonLd(
+            parseInput,
+            parseContext,
+          );
+          activityType = getTypeId(activity).href;
+          span.setAttribute("activitypub.activity.type", activityType);
+          listenerSpan.setAttribute("activitypub.activity.type", activityType);
+          onActivityType?.(activityType);
+          if (activity.id != null) {
+            span.setAttribute("activitypub.activity.id", activity.id.href);
+            listenerSpan.setAttribute(
+              "activitypub.activity.id",
+              activity.id.href,
+            );
+          }
+          cacheKey = activity.id == null ? null : [
+            ...this.kvPrefixes.activityIdempotence,
+            context.origin,
+            activity.id.href,
+          ] satisfies KvKey;
+          if (cacheKey != null) {
+            const cached = await this.kv.get(cacheKey);
+            if (cached === true) {
+              logger.debug(
+                "Activity {activityId} has already been processed.",
+                {
+                  activityId: activity.id?.href,
+                  activity: message.activity,
+                  recipient: message.identifier,
+                },
+              );
+              recordInboxActivity(
+                this.meterProvider,
+                "rejected",
+                activityType,
+              );
+              listenerSpan.end();
+              return;
+            }
+          }
+          dispatched = this.inboxListeners?.dispatchWithClass(activity);
+        } catch (error) {
+          if (
+            activity == null &&
+            error instanceof RangeError &&
+            await hasMalformedKnownTemporalLiteral(
+              parseInput,
+              parseContextLoader,
+            )
+          ) {
+            // Patch releases must not change parser exception types to signal
+            // malformed Temporal literals.  Instead, the queue worker keeps
+            // loader/KV RangeErrors retriable by default and only restores the
+            // old drop semantics when the raw/normalized payload at this
+            // boundary already shows a malformed ActivityPub / proof temporal
+            // field.
+            await reportInboxError(error);
+            logger.error(
+              "Failed to parse the queued incoming activity {activityId}:\n{error}",
+              {
+                error,
+                trial: message.attempt,
+                activityId: null,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            listenerSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(error),
+            });
+            listenerSpan.end();
+            return;
+          }
+          if (isPermanentInboxParseError(error)) {
+            await reportInboxError(error);
+            logger.error(
+              "Failed to parse the queued incoming activity {activityId}:\n{error}",
+              {
+                error,
+                trial: message.attempt,
+                activityId: activity?.id?.href,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            listenerSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(error),
+            });
+            listenerSpan.end();
+            return;
+          }
+          await handleRetriableFailure(error);
+          return;
+        }
         if (dispatched == null) {
           logger.error(
             "Unsupported activity type:\n{activity}",
@@ -895,17 +1386,19 @@ export class FederationImpl<TContextData>
               trial: message.attempt,
             },
           );
-          span.setStatus({
+          listenerSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: `Unsupported activity type: ${getTypeId(activity).href}`,
+            message: `Unsupported activity type: ${activityType}`,
           });
-          span.end();
+          recordInboxActivity(this.meterProvider, "rejected", activityType);
+          listenerSpan.end();
           return;
         }
         const { class: cls, listener } = dispatched;
-        span.updateName(`activitypub.dispatch_inbox_listener ${cls.name}`);
+        listenerSpan.updateName(
+          `activitypub.dispatch_inbox_listener ${cls.name}`,
+        );
         try {
-          const activityType = getTypeId(activity).href;
           const started = performance.now();
           try {
             await listener(
@@ -924,86 +1417,9 @@ export class FederationImpl<TContextData>
                 getDurationMs(started),
               );
           }
+          recordInboxActivity(this.meterProvider, "processed", activityType);
         } catch (error) {
-          try {
-            await this.inboxErrorHandler?.(context, error as Error);
-          } catch (error) {
-            logger.error(
-              "An unexpected error occurred in inbox error handler:\n{error}",
-              {
-                error,
-                trial: message.attempt,
-                activityId: activity.id?.href,
-                activity: message.activity,
-                recipient: message.identifier,
-              },
-            );
-          }
-          // Skip retry logic if the message queue backend handles retries automatically
-          if (this.inboxQueue?.nativeRetrial) {
-            logger.error(
-              "Failed to process the incoming activity {activityId}; backend will handle retry:\n{error}",
-              {
-                error,
-                activityId: activity.id?.href,
-                activity: message.activity,
-                recipient: message.identifier,
-              },
-            );
-            span.setStatus({
-              code: SpanStatusCode.ERROR,
-              message: String(error),
-            });
-            span.end();
-            throw error;
-          }
-
-          const delay = this.inboxRetryPolicy({
-            elapsedTime: Temporal.Instant.from(message.started).until(
-              Temporal.Now.instant(),
-            ),
-            attempts: message.attempt,
-          });
-          if (delay != null) {
-            logger.error(
-              "Failed to process the incoming activity {activityId} (attempt " +
-                "#{attempt}); retry...:\n{error}",
-              {
-                error,
-                attempt: message.attempt,
-                activityId: activity.id?.href,
-                activity: message.activity,
-                recipient: message.identifier,
-              },
-            );
-            await this.inboxQueue?.enqueue(
-              {
-                ...message,
-                attempt: message.attempt + 1,
-              } satisfies InboxMessage,
-              {
-                delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-                  ? Temporal.Duration.from({ seconds: 0 })
-                  : delay,
-              },
-            );
-          } else {
-            logger.error(
-              "Failed to process the incoming activity {activityId} after " +
-                "{trial} attempts; giving up:\n{error}",
-              {
-                error,
-                activityId: activity.id?.href,
-                activity: message.activity,
-                recipient: message.identifier,
-              },
-            );
-          }
-          span.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: String(error),
-          });
-          span.end();
+          await handleRetriableFailure(error);
           return;
         }
         if (cacheKey != null) {
@@ -1014,12 +1430,12 @@ export class FederationImpl<TContextData>
         logger.info(
           "Activity {activityId} has been processed.",
           {
-            activityId: activity.id?.href,
+            activityId: activity?.id?.href,
             activity: message.activity,
             recipient: message.identifier,
           },
         );
-        span.end();
+        listenerSpan.end();
       },
     );
   }
@@ -1300,12 +1716,17 @@ export class FederationImpl<TContextData>
       messages.push({ message, orderingKey: messageOrderingKey });
     }
     const { outboxQueue } = this;
-    if (outboxQueue.enqueueMany == null) {
-      const promises: Promise<void>[] = messages.map((m) =>
-        outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+    // enqueueMany does not support per-message orderingKey, so fall back to
+    // individual enqueues whenever orderingKey is specified or the backend
+    // does not implement enqueueMany.
+    if (outboxQueue.enqueueMany == null || orderingKey != null) {
+      const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
+        messages.map(async (m) => {
+          await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+          recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
+        }),
       );
-      const results = await Promise.allSettled(promises);
-      const errors = results
+      const errors = promises
         .filter((r) => r.status === "rejected")
         .map((r) => (r as PromiseRejectedResult).reason);
       if (errors.length > 0) {
@@ -1322,39 +1743,17 @@ export class FederationImpl<TContextData>
         throw errors[0];
       }
     } else {
-      // Note: enqueueMany does not support per-message orderingKey,
-      // so we fall back to individual enqueues when orderingKey is specified
-      if (orderingKey != null) {
-        const promises: Promise<void>[] = messages.map((m) =>
-          outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+      try {
+        await outboxQueue.enqueueMany(messages.map((m) => m.message));
+      } catch (error) {
+        logger.error(
+          "Failed to enqueue activity {activityId} to send later: {error}",
+          { activityId: activity.id!.href, error },
         );
-        const results = await Promise.allSettled(promises);
-        const errors = results
-          .filter((r) => r.status === "rejected")
-          .map((r) => (r as PromiseRejectedResult).reason);
-        if (errors.length > 0) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to send later: {errors}",
-            { activityId: activity.id!.href, errors },
-          );
-          if (errors.length > 1) {
-            throw new AggregateError(
-              errors,
-              `Failed to enqueue activity ${activityId} to send later.`,
-            );
-          }
-          throw errors[0];
-        }
-      } else {
-        try {
-          await outboxQueue.enqueueMany(messages.map((m) => m.message));
-        } catch (error) {
-          logger.error(
-            "Failed to enqueue activity {activityId} to send later: {error}",
-            { activityId: activity.id!.href, error },
-          );
-          throw error;
-        }
+        throw error;
+      }
+      for (const m of messages) {
+        recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
       }
     }
   }
@@ -1483,7 +1882,7 @@ export class FederationImpl<TContextData>
     onNotAcceptable ??= notAcceptable;
     onUnauthorized ??= unauthorized;
     const url = new URL(request.url);
-    const route = this.router.route(url.pathname);
+    const route = this.router.route(url.pathname as Path);
     if (route == null) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
@@ -1506,6 +1905,12 @@ export class FederationImpl<TContextData>
           webFingerLinksDispatcher: this.webFingerLinksDispatcher,
           onNotFound,
           tracer,
+          // Use the raw field, not the `meterProvider` getter, so an
+          // application that omits `meterProvider` in createFederation()
+          // does not get the WebFinger metrics enabled implicitly via
+          // the global meter provider fallback.  The metric helpers are
+          // opt-in by design.
+          meterProvider: this._meterProvider,
         });
       case "nodeInfoJrd":
         return await handleNodeInfoJrd(request, context);
@@ -1608,7 +2013,7 @@ export class FederationImpl<TContextData>
           }),
         });
         // falls through
-      case "sharedInbox":
+      case "sharedInbox": {
         if (routeName !== "inbox" && this.sharedInboxKeyDispatcher != null) {
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
@@ -1620,10 +2025,17 @@ export class FederationImpl<TContextData>
           }
         }
         if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
+        const inboxContextFactory = context.toInboxContext.bind(context) as
+          & typeof context.toInboxContext
+          & {
+            [rawInboxContextFactorySymbol]?: typeof context.toInboxContext;
+          };
+        inboxContextFactory[rawInboxContextFactorySymbol] = context
+          .toInboxContext.bind(context);
         return await handleInbox(request, {
           recipient: route.values.identifier ?? null,
           context,
-          inboxContextFactory: context.toInboxContext.bind(context),
+          inboxContextFactory,
           kv: this.kv,
           kvPrefixes: this.kvPrefixes,
           queue: this.inboxQueue,
@@ -1639,6 +2051,7 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
           idempotencyStrategy: this.idempotencyStrategy,
         });
+      }
       case "following":
         return await handleCollection(request, {
           name: "following",
@@ -2090,7 +2503,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (uri.origin !== this.origin && uri.origin !== this.canonicalOrigin) {
       return null;
     }
-    const route = this.federation.router.route(uri.pathname);
+    const route = this.federation.router.route(uri.pathname as Path);
     if (route == null) return null;
     else if (route.name === "sharedInbox") {
       return {
@@ -2335,6 +2748,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       contextLoader: options.contextLoader ?? this.contextLoader,
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      meterProvider: options.meterProvider ?? this.meterProvider,
       // @ts-ignore: `allowPrivateAddress` is not in the type definition.
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
@@ -2386,6 +2800,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ...options,
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      // Default from the federation's raw field, not the
+      // `meterProvider` getter, so omitting `meterProvider` from
+      // createFederation() does not implicitly enable the
+      // `webfinger.lookup` metric through the global meter provider
+      // fallback.  The metric helper is opt-in by design.
+      meterProvider: options.meterProvider ?? this.federation._meterProvider,
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
   }
@@ -2640,6 +3060,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       message,
       { orderingKey: options.orderingKey },
     );
+    getFederationMetrics(this.federation.meterProvider).recordQueueTaskEnqueued(
+      {
+        role: "fanout",
+        queue: this.federation.fanoutQueue,
+        activityType: message.activityType,
+      },
+      0,
+    );
+    recordFanoutRecipients(
+      this.federation.meterProvider,
+      globalThis.Object.keys(message.inboxes).length,
+      message.activityType,
+    );
     return true;
   }
 
@@ -2777,6 +3210,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       {
         contextLoader,
         documentLoader: options.documentLoader ?? this.documentLoader,
+        meterProvider: this.meterProvider,
         tracerProvider: options.tracerProvider ?? this.tracerProvider,
         keyCache,
       },
@@ -2844,6 +3278,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const routeResult = await routeActivity({
       context: this,
       json,
+      // Programmatic routeActivity() may serialize an Activity that still
+      // carries a signature block, but this path only authenticated the input
+      // through proof/dereference rules above. Mark queued work explicitly so
+      // the worker does not mistake a preserved signature field for verified
+      // LDS replay.
+      ldSignatureVerified: false,
       activity,
       recipient,
       inboxListeners: this.federation.inboxListeners,
@@ -2853,6 +3293,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       kvPrefixes: this.federation.kvPrefixes,
       queue: this.federation.inboxQueue,
       span,
+      meterProvider: this.federation.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       idempotencyStrategy: this.federation.idempotencyStrategy,
     });
@@ -3003,6 +3444,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       contextLoader: options.contextLoader ?? this.contextLoader,
       documentLoader: options.documentLoader ?? this.documentLoader,
       timeWindow: this.federation.signatureTimeWindow,
+      meterProvider: this.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
     });
   }
@@ -3272,11 +3714,17 @@ async function forwardActivityInternal<TContextData>(
   }
   const { outboxQueue } = ctx.federation;
   if (outboxQueue.enqueueMany == null || orderingKey != null) {
-    const promises: Promise<void>[] = messages.map((m) =>
-      outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+    const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
+      messages.map(async (m) => {
+        await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+        recordOutboxEnqueue(
+          ctx.federation.meterProvider,
+          outboxQueue,
+          m.message,
+        );
+      }),
     );
-    const results = await Promise.allSettled(promises);
-    const errors: unknown[] = results
+    const errors: unknown[] = promises
       .filter((r) => r.status === "rejected")
       .map((r) => (r as PromiseRejectedResult).reason);
     if (errors.length > 0) {
@@ -3302,6 +3750,13 @@ async function forwardActivityInternal<TContextData>(
       );
       throw error;
     }
+    for (const m of messages) {
+      recordOutboxEnqueue(
+        ctx.federation.meterProvider,
+        outboxQueue,
+        m.message,
+      );
+    }
   }
   return true;
 }
@@ -3309,6 +3764,14 @@ async function forwardActivityInternal<TContextData>(
 export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
   implements InboxContext<TContextData> {
   readonly recipient: string | null;
+  /**
+   * The original received activity payload.
+   *
+   * Fedify may normalize a Linked Data Signature payload internally for safe
+   * parsing, but forwarding must keep the sender's payload unchanged so
+   * third-party signatures/proofs remain intact.
+   * @internal
+   */
   readonly activity: unknown;
   readonly activityId?: string;
   readonly activityType: string;

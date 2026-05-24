@@ -227,7 +227,7 @@ export class MysqlKvStore implements KvStore {
       // Including `AND (expires IS NULL OR expires > NOW(6))` in the WHERE
       // would cause MySQL to skip (and therefore not lock) physically-present
       // but expired rows, allowing two concurrent `cas(key, undefined, ...)`
-      // calls to both pass the expected-value check and both insert — a CAS
+      // calls to both pass the expected-value check and both insert—a CAS
       // atomicity violation.
       //
       // NOTE: Under InnoDB REPEATABLE READ (the default isolation level), a

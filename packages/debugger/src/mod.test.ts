@@ -395,7 +395,7 @@ test("traces list page escapes pathPrefix in inline script", async () => {
     );
   } else {
     // If the request was delegated to the inner federation instead of
-    // matching the debug route, the XSS vector is not reachable — the
+    // matching the debug route, the XSS vector is not reachable—the
     // malicious path never appears in any rendered HTML.
     ok(
       !body.includes("onerror=alert(1)>"),
@@ -1103,7 +1103,7 @@ test("sink ignores log records without traceId", async () => {
   const { exporter, kv } = createMockExporter();
   const dbg = createFederationDebugger(federation, { exporter, kv });
 
-  // Log without traceId — should be silently ignored
+  // Log without traceId—should be silently ignored
   dbg.sink({
     category: ["app"],
     level: "debug",
@@ -1231,7 +1231,7 @@ test("trace detail page handles invalid log timestamp gracefully", async () => {
   const request = new Request(
     `https://example.com/__debug__/traces/${traceId}`,
   );
-  // Should not throw — the page must render without crashing
+  // Should not throw—the page must render without crashing
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
   const html = await response.text();

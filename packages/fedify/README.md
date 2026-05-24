@@ -36,9 +36,12 @@ If you want to know more about the project, please take a look at the following
 resources:
 
  -  [Installation]
- -  Tutorials:
-    [Learning the basics] &
-    [Creating a microblog]
+ -  Tutorials
+     -  [Learning the basics of Fedify]
+     -  [Creating your own federated microblog]
+     -  [Creating a federated image sharing service]
+     -  [Building a federated blog]
+     -  [Building a threadiverse community platform]
  -  [Migrating from other libraries]
  -  [API reference][JSR]
  -  [Examples]
@@ -71,8 +74,11 @@ in the fediverse!
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [NodeInfo]: https://nodeinfo.diaspora.software/
 [Installation]: https://fedify.dev/install
-[Learning the basics]: https://fedify.dev/tutorial/basics
-[Creating a microblog]: https://fedify.dev/tutorial/microblog
+[Learning the basics of Fedify]: https://fedify.dev/tutorial/basics
+[Creating your own federated microblog]: https://fedify.dev/tutorial/microblog
+[Creating a federated image sharing service]: https://fedify.dev/tutorial/content-sharing
+[Building a federated blog]: https://fedify.dev/tutorial/astro-blog
+[Building a threadiverse community platform]: https://fedify.dev/tutorial/threadiverse
 [Migrating from other libraries]: https://fedify.dev/manual/migrate
 [Examples]: https://github.com/fedify-dev/fedify/tree/main/examples
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions
@@ -123,6 +129,7 @@ Here is the list of packages:
 | [@fedify/sqlite](/packages/sqlite/)               | [JSR][jsr:@fedify/sqlite]        | [npm][npm:@fedify/sqlite]        | SQLite driver                            |
 | [@fedify/sveltekit](/packages/sveltekit/)         | [JSR][jsr:@fedify/sveltekit]     | [npm][npm:@fedify/sveltekit]     | SvelteKit integration                    |
 | [@fedify/testing](/packages/testing/)             | [JSR][jsr:@fedify/testing]       | [npm][npm:@fedify/testing]       | Testing utilities                        |
+| [@fedify/uri-template](/packages/uri-template/)   | [JSR][jsr:@fedify/uri-template]  | [npm][npm:@fedify/uri-template]  | RFC 6570 URI Template library            |
 | [@fedify/vocab](/packages/vocab/)                 | [JSR][jsr:@fedify/vocab]         | [npm][npm:@fedify/vocab]         | Activity Vocabulary library              |
 | [@fedify/vocab-runtime](/packages/vocab-runtime/) | [JSR][jsr:@fedify/vocab-runtime] | [npm][npm:@fedify/vocab-runtime] | Runtime library for code-generated vocab |
 | [@fedify/vocab-tools](/packages/vocab-tools/)     | [JSR][jsr:@fedify/vocab-tools]   | [npm][npm:@fedify/vocab-tools]   | Code generation tools for Activity Vocab |
@@ -176,6 +183,8 @@ Here is the list of packages:
 [npm:@fedify/sveltekit]: https://www.npmjs.com/package/@fedify/sveltekit
 [jsr:@fedify/testing]: https://jsr.io/@fedify/testing
 [npm:@fedify/testing]: https://www.npmjs.com/package/@fedify/testing
+[jsr:@fedify/uri-template]: https://jsr.io/@fedify/uri-template
+[npm:@fedify/uri-template]: https://www.npmjs.com/package/@fedify/uri-template
 [jsr:@fedify/vocab]: https://jsr.io/@fedify/vocab
 [npm:@fedify/vocab]: https://www.npmjs.com/package/@fedify/vocab
 [jsr:@fedify/vocab-runtime]: https://jsr.io/@fedify/vocab-runtime

@@ -24,7 +24,7 @@ async function parseRecipient(
   const [user, domain] = handle.split("@");
   const scheme = Deno.env.get("STRICT_MODE") ? "https" : "http";
 
-  // Try WebFinger resolution first — this discovers the correct actor URI
+  // Try WebFinger resolution first—this discovers the correct actor URI
   // regardless of server software (Mastodon, Sharkey, etc.)
   try {
     const wfUrl = `${scheme}://${domain}/.well-known/webfinger?resource=${

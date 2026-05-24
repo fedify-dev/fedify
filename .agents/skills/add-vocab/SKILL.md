@@ -29,11 +29,11 @@ fediverse. Specifically, verify:
     difference causes silent interoperability failures)
  -  The `defaultContext` is complete and all terms compact correctly (see
     “Ensuring Complete Compaction Coverage” below)
- -  The `entity` flag is correct — getting this wrong changes the entire
+ -  The `entity` flag is correct—getting this wrong changes the entire
     async/sync interface contract
- -  The `functional` flag is correct — marking a multi-valued property as
+ -  The `functional` flag is correct—marking a multi-valued property as
     functional silently drops values
- -  Every property `range` entry is accurate — wrong range types produce
+ -  Every property `range` entry is accurate—wrong range types produce
     incorrect TypeScript types
  -  The spec document (FEP or W3C spec) has been read in full, not just skimmed
 
@@ -84,9 +84,11 @@ $schema: ../../vocab-tools/schema.yaml
 | `defaultContext` | no       | JSON-LD context used by `toJsonLd()`. See below.                                                                                               |
 
 **Entity vs. value type (`entity` flag):**
+`entity: true`
+:   Property accessors are `async` and can fetch remote objects.
 
- -  `entity: true` — property accessors are `async` and can fetch remote objects
- -  `entity: false` — property accessors are synchronous; used for embedded
+`entity: false`
+:   Property accessors are synchronous; used for embedded values.
     value objects (e.g. `Endpoints`, `Source`, `Hashtag`)
 
 ### `defaultContext` format
@@ -125,37 +127,41 @@ Embedded context entries are YAML mappings where:
 The `defaultContext` must cover **every term that appears in the JSON-LD
 document produced by `toJsonLd()`**, including:
 
-1.  **The type's own `compactName`** — if the type has a `compactName`, the
-    context must map that name to the type's URI.
+**The type's own `compactName`**
+:   If the type has a `compactName`, the context must map that name to the
+    type's URI.
 
-2.  **All own property `compactName`s** — every property defined directly on
-    this type must have its `compactName` (or full URI fallback) resolvable via
-    the context.
+**All own property `compactName`s**
+:   Every property defined directly on this type must have its `compactName`
+    (or full URI fallback) resolvable via the context.
 
-3.  **Inherited properties** — properties from parent types are usually covered
-    by the parent's context URL (e.g., `https://www.w3.org/ns/activitystreams`
-    covers all core ActivityStreams properties). Verify that the parent's
-    context URL is included.
+**Inherited properties**
+:   Properties from parent types are usually covered by the parent's context
+    URL (e.g., `https://www.w3.org/ns/activitystreams` covers all core
+    ActivityStreams properties).  Verify that the parent's context URL is
+    included.
 
-4.  **Properties of embedded types** — when a property's value is an object type
-    that is **serialized inline** (not just referenced by URL), the context must
-    also cover all of that embedded type's properties. This is the most commonly
-    missed case.
+**Properties of embedded types**
+:   When a property's value is an object type that is **serialized inline**
+    (not just referenced by URL), the context must also cover all of that
+    embedded type's properties.  This is the most commonly missed case.
 
     Common embedded types and the context URLs that cover them:
 
-    | Embedded type                       | Context URL to include                        |
-    | ----------------------------------- | --------------------------------------------- |
-    | `DataIntegrityProof` (from `proof`) | `https://w3id.org/security/data-integrity/v1` |
-    | `Key` (from `publicKey`)            | `https://w3id.org/security/v1`                |
-    | `Multikey` (from `assertionMethod`) | `https://w3id.org/security/multikey/v1`       |
-    | `DidService` (from `service`)       | `https://www.w3.org/ns/did/v1`                |
-    | `PropertyValue` (from `attachment`) | schema.org terms in embedded context          |
+    | Embedded type                       | Context URL to
+    include                        | | —————————————————- |
+    ——————————————————————- | | `DataIntegrityProof` (from `proof`) |
+    `https://w3id.org/security/data-integrity/v1` | | `Key` (from
+    `publicKey`)            | `https://w3id.org/security/v1`                | |
+    `Multikey` (from `assertionMethod`) |
+    `https://w3id.org/security/multikey/v1`       | | `DidService` (from
+    `service`)       | `https://www.w3.org/ns/did/v1`                | |
+    `PropertyValue` (from `attachment`) | schema.org terms in embedded
+    context          |
 
-
-5.  **Redundant property `compactName`s** — if a property has
-    `redundantProperties`, all their `compactName`s must also be defined in the
-    context.
+**Redundant property `compactName`s**
+:   If a property has `redundantProperties`, all their `compactName`s must also
+    be defined in the context.
 
 **Practical rule:** look at an existing type with similar embedded relationships
 as a reference. For example, `Note` and `Article` include

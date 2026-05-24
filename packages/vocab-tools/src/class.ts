@@ -192,6 +192,10 @@ export async function* generateClasses(
   yield `import {\n    ${
     runtimeImports.join(",\n    ")
   }\n} from "@fedify/vocab-runtime";\n`;
+  yield `import {
+    isTemporalDuration,
+    isTemporalInstant,
+} from "@fedify/vocab-runtime/temporal";\n`;
   yield "\n\n";
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

@@ -158,7 +158,6 @@ The date joined is displayed in the profile page of the actor.
 
 ~~~~ typescript twoslash
 import { Person } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 new Person({
   name: "Fedify Demo",
@@ -550,7 +549,6 @@ below the choices.
 
 ~~~~ typescript twoslash
 import { Collection, Note, Question } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 new Question({
   content: "<p>Which pragmatics example should the manual explain first?</p>",  // [!code highlight]
@@ -588,7 +586,6 @@ Use `inclusiveOptions` for polls where a voter may choose more than one option.
 
 ~~~~ typescript twoslash
 import { Collection, Note, Question } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 new Question({
   content: "<p>Which pragmatics details should the manual cover next?</p>",  // [!code highlight]

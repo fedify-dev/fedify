@@ -1,10 +1,113 @@
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import { lookupWebFinger } from "@fedify/webfinger";
-import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
+import {
+  type Attributes,
+  type Counter,
+  type Histogram,
+  type MeterProvider,
+  SpanStatusCode,
+  trace,
+  type TracerProvider,
+} from "@opentelemetry/api";
 import { domainToASCII, domainToUnicode } from "node:url";
 import metadata from "../deno.json" with { type: "json" };
 import { getTypeId } from "./type.ts";
 import { Application, Group, Organization, Person, Service } from "./vocab.ts";
+
+/**
+ * The terminal classification of a {@link getActorHandle} call, recorded as
+ * the `activitypub.actor.discovery.result` attribute on the
+ * `activitypub.actor.discovery` counter and
+ * `activitypub.actor.discovery.duration` histogram.
+ *
+ *  -  `resolved`: a handle was returned to the caller.
+ *  -  `not_found`: WebFinger did not yield a usable `acct:` alias and the
+ *     `preferredUsername` fallback could not run.  This corresponds to the
+ *     `TypeError("Actor does not have enough information…")` path.
+ *  -  `error`: any other thrown exception bubbled up from the lookup.
+ *
+ * Per-WebFinger-call failure detail (HTTP status, parse failure, network
+ * failure, etc.) lives on `webfinger.lookup` and is intentionally not
+ * duplicated here.
+ * @since 2.3.0
+ */
+export type ActorDiscoveryResult = "resolved" | "not_found" | "error";
+
+interface ActorDiscoveryInstruments {
+  discovery: Counter;
+  discoveryDuration: Histogram;
+}
+
+const ACTOR_DISCOVERY_HISTOGRAM_BUCKETS: ReadonlyArray<number> = [
+  5,
+  10,
+  25,
+  50,
+  75,
+  100,
+  250,
+  500,
+  750,
+  1000,
+  2500,
+  5000,
+  7500,
+  10000,
+];
+
+const actorDiscoveryInstruments = new WeakMap<
+  MeterProvider,
+  ActorDiscoveryInstruments
+>();
+
+function getActorDiscoveryInstruments(
+  meterProvider: MeterProvider,
+): ActorDiscoveryInstruments {
+  let instruments = actorDiscoveryInstruments.get(meterProvider);
+  if (instruments == null) {
+    const meter = meterProvider.getMeter(metadata.name, metadata.version);
+    instruments = {
+      discovery: meter.createCounter("activitypub.actor.discovery", {
+        description: "Actor handle discovery attempts via getActorHandle(), " +
+          "classified by terminal outcome.",
+        unit: "{discovery}",
+      }),
+      discoveryDuration: meter.createHistogram(
+        "activitypub.actor.discovery.duration",
+        {
+          description: "Duration of getActorHandle() actor discovery calls.",
+          unit: "ms",
+          advice: {
+            explicitBucketBoundaries: [...ACTOR_DISCOVERY_HISTOGRAM_BUCKETS],
+          },
+        },
+      ),
+    };
+    actorDiscoveryInstruments.set(meterProvider, instruments);
+  }
+  return instruments;
+}
+
+function getActorDiscoveryRemoteHost(
+  actor: Actor | URL,
+): string | undefined {
+  const id = actor instanceof URL ? actor : actor.id;
+  if (id == null) return undefined;
+  return id.hostname === "" ? undefined : id.hostname;
+}
+
+// Subclass of TypeError that preserves the documented `throws {TypeError}`
+// API contract while letting the actor-discovery metric distinguish the
+// "actor lacks enough information to derive a handle" terminal path from
+// other TypeError-shaped failures that can come from malformed remote data
+// (e.g. an alias that does not parse as a URL, or an invalid preferred
+// username that breaks normalizeActorHandle).
+class ActorHandleNotFoundError extends TypeError {
+  constructor() {
+    super("Actor does not have enough information to get the handle.");
+    this.name = "ActorHandleNotFoundError";
+  }
+}
 
 /**
  * Actor types are {@link Object} types that are capable of performing
@@ -101,6 +204,19 @@ export interface GetActorHandleOptions extends NormalizeActorHandleOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+
+  /**
+   * The OpenTelemetry meter provider used to record the
+   * `activitypub.actor.discovery` counter and
+   * `activitypub.actor.discovery.duration` histogram.  When set, the same
+   * meter provider is also forwarded to the nested WebFinger lookups so
+   * each discovery emits both the actor-discovery measurements and the
+   * underlying `webfinger.lookup` measurements.  If omitted, no
+   * measurements are emitted (the helper is opt-in to avoid touching the
+   * global meter provider for callers that do not use OpenTelemetry).
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -145,15 +261,36 @@ export async function getActorHandle(
         }
         span.setAttribute("activitypub.actor.type", getTypeId(actor).href);
       }
+      const meterProvider = options.meterProvider;
+      const start = meterProvider == null ? 0 : performance.now();
+      let result: ActorDiscoveryResult = "error";
       try {
-        return await getActorHandleInternal(actor, options);
+        const handle = await getActorHandleInternal(actor, options);
+        result = "resolved";
+        return handle;
       } catch (error) {
+        result = error instanceof ActorHandleNotFoundError
+          ? "not_found"
+          : "error";
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
         });
         throw error;
       } finally {
+        if (meterProvider != null) {
+          const attributes: Attributes = {
+            "activitypub.actor.discovery.result": result,
+          };
+          const host = getActorDiscoveryRemoteHost(actor);
+          if (host != null) attributes["activitypub.remote.host"] = host;
+          const instruments = getActorDiscoveryInstruments(meterProvider);
+          instruments.discovery.add(1, attributes);
+          instruments.discoveryDuration.record(
+            Math.max(0, performance.now() - start),
+            attributes,
+          );
+        }
         span.end();
       }
     },
@@ -169,6 +306,7 @@ async function getActorHandleInternal(
     const result = await lookupWebFinger(actorId, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
+      meterProvider: options.meterProvider,
     });
     if (result != null) {
       const aliases = [...(result.aliases ?? [])];
@@ -184,6 +322,7 @@ async function getActorHandleInternal(
               alias,
               options.userAgent,
               options.tracerProvider,
+              options.meterProvider,
             )
           ) {
             continue;
@@ -202,9 +341,7 @@ async function getActorHandleInternal(
       options,
     );
   }
-  throw new TypeError(
-    "Actor does not have enough information to get the handle.",
-  );
+  throw new ActorHandleNotFoundError();
 }
 
 async function verifyCrossOriginActorHandle(
@@ -212,8 +349,13 @@ async function verifyCrossOriginActorHandle(
   alias: string,
   userAgent: GetUserAgentOptions | string | undefined,
   tracerProvider: TracerProvider | undefined,
+  meterProvider: MeterProvider | undefined,
 ): Promise<boolean> {
-  const response = await lookupWebFinger(alias, { userAgent, tracerProvider });
+  const response = await lookupWebFinger(alias, {
+    userAgent,
+    tracerProvider,
+    meterProvider,
+  });
   if (response == null) return false;
   for (const alias of response.aliases ?? []) {
     if (new URL(alias).href === actorId) return true;

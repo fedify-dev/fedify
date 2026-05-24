@@ -17,15 +17,12 @@
     "@multiformats/base-x": "npm:@multiformats/base-x@^4.0.1",
     "@std/assert": "jsr:@std/assert@^0.226.0",
     "@std/url": "jsr:@std/url@^0.225.1",
-    "asn1js": "npm:asn1js@^3.0.7",
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
     "json-canon": "npm:json-canon@^1.0.1",
     "jsonld": "npm:jsonld@^9.0.0",
     "pkijs": "npm:pkijs@^3.3.3",
-    "structured-field-values": "npm:structured-field-values@^2.0.4",
-    "uri-template-router": "npm:uri-template-router@^1.0.0",
-    "url-template": "npm:url-template@^3.1.1"
+    "structured-field-values": "npm:structured-field-values@^2.0.4"
   },
   "exclude": [
     ".test-report.xml",

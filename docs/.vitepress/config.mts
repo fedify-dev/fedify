@@ -295,6 +295,10 @@ export default withMermaid(defineConfig({
             target: ScriptTarget.ESNext,
             experimentalDecorators: true, // For @fedify/nestjs
             emitDecoratorMetadata: true, // For @fedify/nestjs
+            // Silences TS5101 about the `baseUrl` injected by @typescript/vfs
+            // when Twoslash spins up its virtual TS environment; the option
+            // is deprecated in TypeScript 6.0 and removed in 7.0.
+            ignoreDeprecations: "6.0",
             lib: ["dom", "dom.iterable", "esnext"],
             types: [
               "dom",

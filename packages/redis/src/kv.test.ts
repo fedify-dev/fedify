@@ -7,50 +7,83 @@ import process from "node:process";
 const redisUrl = process.env.REDIS_URL;
 const ignore = redisUrl == null;
 
-function getRedis(): { redis: Redis; keyPrefix: string; store: RedisKvStore } {
+async function cleanupPrefixedKeys(
+  redis: Redis,
+  keyPrefix: string,
+): Promise<void> {
+  let cursor = "0";
+  do {
+    const [nextCursor, keys] = await redis.scan(
+      cursor,
+      "MATCH",
+      `${keyPrefix}*`,
+      "COUNT",
+      "100",
+    );
+    cursor = nextCursor;
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } while (cursor !== "0");
+}
+
+function getRedis(): {
+  redis: Redis;
+  keyPrefix: string;
+  store: RedisKvStore;
+  cleanup: () => Promise<void>;
+} {
   const redis = new Redis(redisUrl!);
   const keyPrefix = `fedify_test_${crypto.randomUUID()}::`;
   const store = new RedisKvStore(redis, { keyPrefix });
-  return { redis, keyPrefix, store };
+  return {
+    redis,
+    keyPrefix,
+    store,
+    cleanup: () => cleanupPrefixedKeys(redis, keyPrefix),
+  };
 }
 
 test("RedisKvStore.get()", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, keyPrefix, store } = getRedis();
+  const { redis, keyPrefix, store, cleanup } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::bar`, '"foobar"');
     assert.strictEqual(await store.get(["foo", "bar"]), "foobar");
   } finally {
+    await cleanup();
     await redis.quit();
   }
 });
 
 test("RedisKvStore.set()", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, keyPrefix, store } = getRedis();
+  const { redis, keyPrefix, store, cleanup } = getRedis();
   try {
     await store.set(["foo", "baz"], "baz");
     assert.strictEqual(await redis.get(`${keyPrefix}foo::baz`), '"baz"');
   } finally {
+    await cleanup();
     await redis.quit();
   }
 });
 
 test("RedisKvStore.delete()", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, keyPrefix, store } = getRedis();
+  const { redis, keyPrefix, store, cleanup } = getRedis();
   try {
     await redis.set(`${keyPrefix}foo::baz`, '"baz"');
     await store.delete(["foo", "baz"]);
     assert.equal(await redis.exists(`${keyPrefix}foo::baz`), 0);
   } finally {
+    await cleanup();
     await redis.quit();
   }
 });
 
 test("RedisKvStore.list()", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, store } = getRedis();
+  const { redis, store, cleanup } = getRedis();
   try {
     await store.set(["prefix", "a"], "value-a");
     await store.set(["prefix", "b"], "value-b");
@@ -67,14 +100,14 @@ test("RedisKvStore.list()", { ignore }, async () => {
     assert(entries.some((e) => e.key[1] === "b"));
     assert(entries.some((e) => e.key[1] === "nested"));
   } finally {
-    await redis.flushdb();
+    await cleanup();
     await redis.quit();
   }
 });
 
 test("RedisKvStore.list() - single element key", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, store } = getRedis();
+  const { redis, store, cleanup } = getRedis();
   try {
     await store.set(["a"], "value-a");
     await store.set(["b"], "value-b");
@@ -87,14 +120,14 @@ test("RedisKvStore.list() - single element key", { ignore }, async () => {
     assert.strictEqual(entries.length, 1);
     assert.strictEqual(entries[0].value, "value-a");
   } finally {
-    await redis.flushdb();
+    await cleanup();
     await redis.quit();
   }
 });
 
 test("RedisKvStore.list() - empty prefix", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
-  const { redis, store } = getRedis();
+  const { redis, store, cleanup } = getRedis();
   try {
     await store.set(["a"], "value-a");
     await store.set(["b", "c"], "value-bc");
@@ -107,7 +140,7 @@ test("RedisKvStore.list() - empty prefix", { ignore }, async () => {
 
     assert.strictEqual(entries.length, 3);
   } finally {
-    await redis.flushdb();
+    await cleanup();
     await redis.quit();
   }
 });

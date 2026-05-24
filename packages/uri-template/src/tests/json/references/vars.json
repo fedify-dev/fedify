@@ -1,0 +1,58 @@
+{
+  "count": [
+    "one",
+    "two",
+    "three"
+  ],
+  "dom": [
+    "example",
+    "com"
+  ],
+  "dub": "me/too",
+  "hello": "Hello World!",
+  "half": "50%",
+  "var": "value",
+  "who": "fred",
+  "base": "http://example.com/home/",
+  "path": "/foo/bar",
+  "list": [
+    "red",
+    "green",
+    "blue"
+  ],
+  "keys": {
+    "semi": ";",
+    "dot": ".",
+    "comma": ","
+  },
+  "v": "6",
+  "x": "1024",
+  "y": "768",
+  "empty": "",
+  "empty_keys": {},
+  "undef": null,
+  "semi": ";",
+  "year": [
+    "1965",
+    "2000",
+    "2012"
+  ],
+  "empty_list": [],
+  "unicode": "페디파이",
+  "abc%20def": "spaced",
+  "%2Bvar": "plus",
+  "%7B": "open-brace",
+  "%41": "encoded-A",
+  "foo.bar": "dotted",
+  "123": "numeric",
+  "sparse": [
+    "one",
+    null,
+    "three"
+  ],
+  "nullable_keys": {
+    "a": "1",
+    "b": null,
+    "c": "3"
+  }
+}

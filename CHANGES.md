@@ -41,6 +41,21 @@ To be released.
     attributes, and `TraceActivityRecord.activityJson` is present only when the
     span event includes full activity JSON.  [[#316], [#619], [#755]]
 
+ -  Added two OpenTelemetry histograms for signature verification:
+    `activitypub.signature.verification.duration` measures end-to-end
+    verification time for HTTP Signatures, Linked Data Signatures, and
+    Object Integrity Proofs (including local key lookup and remote key
+    fetches), and `activitypub.signature.key_fetch.duration` measures
+    public key lookup duration separately so operators can isolate
+    non-fetch verification work.  Both instruments carry
+    `activitypub.signature.kind` (`http`, `linked_data`, or
+    `object_integrity`) and bounded result attributes; the verification
+    histogram additionally carries spec-bounded
+    `http_signatures.algorithm`, `ld_signatures.type`, or
+    `object_integrity_proofs.cryptosuite` when known, plus
+    `http_signatures.failure_reason` on rejected HTTP rows.
+    [[#316], [#737], [#769]]
+
  -  Added OpenTelemetry HTTP server metrics for inbound requests handled by
     `Federation.fetch()`: `fedify.http.server.request.count` (Counter) and
     `fedify.http.server.request.duration` (Histogram).  Both instruments carry
@@ -51,15 +66,160 @@ To be released.
     deliberately exclude raw URLs, query strings, and identifier values to
     keep cardinality bounded.  [[#316], [#736], [#757]]
 
+ -  Added OpenTelemetry queue task metrics covering Fedify's enqueue and
+    worker boundaries for inbox, outbox, and fanout work:
+
+     -  `fedify.queue.task.enqueued` (counter)
+     -  `fedify.queue.task.started` (counter)
+     -  `fedify.queue.task.completed` (counter)
+     -  `fedify.queue.task.failed` (counter)
+     -  `fedify.queue.task.duration` (histogram)
+     -  `fedify.queue.task.in_flight` (up/down counter, process local)
+
+    Instruments carry `fedify.queue.role`, best-effort
+    `fedify.queue.backend` (the queue implementation's constructor name),
+    and `fedify.queue.native_retrial`.  The enqueue/started/completed/
+    failed/duration instruments additionally carry
+    `activitypub.activity.type` whenever Fedify knows the activity type
+    for the queued message; the in-flight up/down counter deliberately
+    omits per-message attributes so that increment and decrement
+    operations always pair up cleanly per attribute series.  Enqueue
+    measurements additionally carry `fedify.queue.task.attempt` for
+    retries, and the completion-side instruments carry
+    `fedify.queue.task.result` (`completed`, `failed`, or `aborted`).
+    Together with `MessageQueue.getDepth()` reporting, these metrics let
+    operators distinguish a slow-draining queue from a queue that sees
+    less traffic.  [[#316], [#740], [#759]]
+
+ -  Added OpenTelemetry metrics for ActivityPub fanout and activity
+    lifecycle events, complementing the per-recipient
+    `activitypub.delivery.*` counters and the per-task
+    `fedify.queue.task.*` metrics with an activity-level view of inbox
+    and outbox pressure:
+
+     -  `activitypub.fanout.recipients` (histogram) records the number of
+        recipient inboxes produced by a single fanout enqueue.
+     -  `activitypub.inbox.activity` (counter) classifies an inbound
+        activity via the new `activitypub.processing.result` attribute
+        as `queued`, `processed`, `retried`, `rejected`, or `abandoned`.
+     -  `activitypub.outbox.activity` (counter) classifies an outbound
+        activity as `queued`, `retried`, or `abandoned`.  Per-recipient
+        `sent`/`failed` rows remain on `activitypub.delivery.sent` and
+        `activitypub.delivery.permanent_failure` and are not duplicated.
+
+    The lifecycle counters cover only Fedify-managed events: queue
+    backends with `nativeRetrial` defer retry handling and therefore do
+    not record `retried` or `abandoned`.  Recipient URLs, actor IDs,
+    and other high-cardinality identifiers are deliberately excluded
+    from the fanout histogram.  [[#316], [#742], [#770]]
+
+ -  Added OpenTelemetry metrics for public key lookups, remote JSON-LD
+    document fetches, and `lookupObject()` calls so operators can
+    observe how often Fedify hits the cache, how long remote fetches
+    take, and how `lookupObject()` resolutions split between actors,
+    non-actor objects, and unresolved lookups:
+
+     -  `activitypub.key.lookup` (counter) and
+        `activitypub.key.lookup.duration` (histogram) cover every
+        public key lookup performed by `fetchKey()` /
+        `fetchKeyDetailed()`, including signature verification paths.
+     -  `activitypub.document.fetch` (counter) and
+        `activitypub.document.fetch.duration` (histogram) cover every
+        Fedify-wrapped document or context loader invocation, including
+        the authenticated loader.
+     -  `activitypub.document.cache` (counter) records `hit` or `miss`
+        for each `kvCache()`-backed cache lookup.
+     -  `activitypub.object.lookup` (counter) records the
+        parsed-result classification of every `lookupObject()` call as
+        `actor`, `object`, or `other`.
+
+    Instruments share an `activitypub.lookup.kind` and (where
+    applicable) `activitypub.lookup.result` attribute drawn from small,
+    spec-bounded enumerations.  `activitypub.remote.host` records the
+    URL hostname only; `http.response.status_code` is recorded when an
+    HTTP response was observed; `activitypub.cache.enabled` is
+    recorded on the key and document fetch metrics whenever Fedify can
+    confidently report the cache layer's presence.  Key IDs, actor
+    IDs, object IDs, JSON-LD context URLs, full URLs, and fediverse
+    handles are deliberately excluded so attacker-controlled remotes
+    cannot inflate metric cardinality.  The existing
+    `activitypub.signature.key_fetch.duration` histogram (introduced in
+    Fedify 2.3 for signature-scoped key-fetch latency, sliced by
+    `activitypub.signature.kind`) remains in place; the new
+    `activitypub.key.lookup.duration` is the general-purpose
+    histogram that covers non-signature key fetches as well and adds
+    `http.response.status_code` and a richer
+    `activitypub.lookup.result` taxonomy.  [[#316], [#738], [#771]]
+
+ -  Added OpenTelemetry metrics for the WebFinger and actor handle
+    discovery paths so operators can graph aggregate discovery rate,
+    latency, and outcome mix without sampling spans:
+
+     -  `webfinger.lookup` (counter) and `webfinger.lookup.duration`
+        (histogram) cover outgoing `lookupWebFinger()` calls.
+     -  `webfinger.handle` (counter) and `webfinger.handle.duration`
+        (histogram) cover incoming WebFinger requests handled by
+        `Federation.fetch()`.
+     -  `activitypub.actor.discovery` (counter) and
+        `activitypub.actor.discovery.duration` (histogram) cover
+        `getActorHandle()` actor handle discovery.
+
+    Each family carries a bounded result attribute
+    (`webfinger.lookup.result`, `webfinger.handle.result`, or
+    `activitypub.actor.discovery.result`) so operators can slice
+    discovery failures by terminal outcome (found / not\_found /
+    invalid / network\_error / error for outgoing lookups;
+    resolved / invalid / not\_found / tombstoned / error for incoming
+    requests; resolved / not\_found / error for actor discovery).
+    `webfinger.resource.scheme` is bucketed to a small allow list
+    (`acct`, `http`, `https`, `mailto`, or `other`) so an
+    attacker-controlled query string cannot inflate metric
+    cardinality; `activitypub.remote.host` records the URL hostname
+    only.  Full resource URIs, lookup URLs, and handle strings are
+    deliberately excluded; they remain on the corresponding spans
+    (`webfinger.lookup`, `webfinger.handle`,
+    `activitypub.get_actor_handle`) for trace-level investigation.
+
+    `lookupWebFinger()` and `getActorHandle()` follow the opt-in
+    `lookupObject()` pattern: omitting the new `meterProvider` option
+    emits no measurement.  Applications that pass a `meterProvider`
+    to `createFederation()` get the inbound `webfinger.handle` family
+    and the federation-bound `Context.lookupWebFinger()` family wired
+    up automatically.  Direct `getActorHandle()` calls remain opt-in:
+    pass `meterProvider` through `GetActorHandleOptions` to enable
+    the discovery metrics, and the option is forwarded into the
+    nested WebFinger lookups so one discovery emits both the
+    discovery measurement and the underlying `webfinger.lookup`
+    measurements (one for the actor ID host, plus a second for the
+    alias host when cross-origin verification runs).
+    [[#316], [#739], [#772]]
+
+ -  Replaced Fedify's internal federation routing with
+    *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
+    matching.  The deprecated `Router` export from *@fedify/fedify* remains
+    available for compatibility.  [[#418], [#758] by ChanHaeng Lee]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
+[#418]: https://github.com/fedify-dev/fedify/issues/418
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
+[#737]: https://github.com/fedify-dev/fedify/issues/737
+[#738]: https://github.com/fedify-dev/fedify/issues/738
+[#739]: https://github.com/fedify-dev/fedify/issues/739
+[#740]: https://github.com/fedify-dev/fedify/issues/740
+[#742]: https://github.com/fedify-dev/fedify/issues/742
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
 [#755]: https://github.com/fedify-dev/fedify/pull/755
 [#757]: https://github.com/fedify-dev/fedify/pull/757
+[#758]: https://github.com/fedify-dev/fedify/pull/758
+[#759]: https://github.com/fedify-dev/fedify/pull/759
+[#769]: https://github.com/fedify-dev/fedify/pull/769
+[#770]: https://github.com/fedify-dev/fedify/pull/770
+[#771]: https://github.com/fedify-dev/fedify/pull/771
+[#772]: https://github.com/fedify-dev/fedify/pull/772
 
 ### @fedify/fixture
 
@@ -71,6 +231,13 @@ To be released.
 
  -  Added a `meterProvider` option to `createFederation()` so mock contexts can
     expose a test OpenTelemetry meter provider.  [[#316], [#619], [#755]]
+
+### @fedify/uri-template
+
+ -  Added *@fedify/uri-template*, a dependency-free RFC 6570 URI Template
+    implementation for expansion, variable extraction, and round-trip route
+    matching.  This package replaces Fedify's previous direct use of
+    *url-template* and *uri-template-router*.  [[#418], [#758] by ChanHaeng Lee]
 
 ### @fedify/amqp
 
@@ -117,6 +284,107 @@ To be released.
     tarball is self-contained.  [[#489]]
 
 [#489]: https://github.com/fedify-dev/fedify/issues/489
+
+
+Version 2.2.3
+-------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+[CVE-2026-42462]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9rfg-v8g9-9367
+
+
+Version 2.2.2
+-------------
+
+Released on May 15, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `doubleKnock()` so transient transport failures such as DNS hiccups
+    no longer leak raw `TypeError`s.  Idempotent authenticated document
+    fetches are retried once, and remaining transport failures are reported as
+    `FetchError` with the original error as the cause.  [[#762], [#763]]
+
+ -  Fixed a `TypeError` thrown when Activity Vocabulary constructors received
+    a `Temporal.Instant` or `Temporal.Duration` produced by an implementation
+    other than the bundled `@js-temporal/polyfill` (for example, the native
+    `Temporal` shipped with Node.js 26+).  Internal `instanceof` checks have
+    been replaced with `Symbol.toStringTag`-based guards so any spec-conformant
+    Temporal value is accepted.  Generated _\*.d.ts_ declarations no longer
+    import from `@js-temporal/polyfill`; they reference the ambient `Temporal`
+    namespace through the `esnext.temporal` lib instead, which removes the
+    nominal mismatch with native Temporal types.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+[#762]: https://github.com/fedify-dev/fedify/issues/762
+[#763]: https://github.com/fedify-dev/fedify/pull/763
+[#767]: https://github.com/fedify-dev/fedify/issues/767
+[#768]: https://github.com/fedify-dev/fedify/pull/768
+
+### @fedify/vocab-runtime
+
+ -  Added `isTemporalInstant()` and `isTemporalDuration()` type guards that
+    accept both polyfill and native `Temporal` values via `Symbol.toStringTag`.
+    [[#767], [#768]]
+
+ -  Added the `@fedify/vocab-runtime/temporal` subpath export so consumers
+    can import the new `Temporal` type guards without pulling in the rest of
+    the runtime.  [[#767], [#768]]
+
+### @fedify/postgres
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` and
+    `handlerTimeout` accept native `Temporal.Duration` values from Node.js
+    26+ without a nominal type mismatch.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+### @fedify/redis
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+### @fedify/sqlite
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+### @fedify/mysql
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` and
+    `handlerTimeout` accept native `Temporal.Duration` values from Node.js
+    26+ without a nominal type mismatch.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767]]
+
+
+Version 2.2.1
+-------------
+
+Released on May 10, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing private IPv4 addresses encoded as
+    IPv4-mapped IPv6 URL literals, such as `http://[::ffff:7f00:1]/`, which
+    could bypass private network protections in remote document loading.
 
 
 Version 2.2.0
@@ -390,6 +658,100 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.14
+--------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+
+Version 2.1.13
+--------------
+
+Released May 15, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `doubleKnock()` so transient transport failures such as DNS hiccups
+    no longer leak raw `TypeError`s.  Idempotent authenticated document
+    fetches are retried once, and remaining transport failures are reported as
+    `FetchError` with the original error as the cause.  [[#762], [#763]]
+
+ -  Fixed a `TypeError` thrown when Activity Vocabulary constructors received
+    a `Temporal.Instant` or `Temporal.Duration` produced by an implementation
+    other than the bundled `@js-temporal/polyfill` (for example, the native
+    `Temporal` shipped with Node.js 26+).  Internal `instanceof` checks have
+    been replaced with `Symbol.toStringTag`-based guards so any spec-conformant
+    Temporal value is accepted.  Generated _\*.d.ts_ declarations no longer
+    import from `@js-temporal/polyfill`; they reference the ambient `Temporal`
+    namespace through the `esnext.temporal` lib instead, which removes the
+    nominal mismatch with native Temporal types.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+### @fedify/vocab-runtime
+
+ -  Added `isTemporalInstant()` and `isTemporalDuration()` type guards that
+    accept both polyfill and native `Temporal` values via `Symbol.toStringTag`.
+    [[#767], [#768]]
+
+ -  Added the `@fedify/vocab-runtime/temporal` subpath export so consumers
+    can import the new `Temporal` type guards without pulling in the rest of
+    the runtime.  [[#767], [#768]]
+
+### @fedify/postgres
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` and
+    `handlerTimeout` accept native `Temporal.Duration` values from Node.js
+    26+ without a nominal type mismatch.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+### @fedify/redis
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+### @fedify/sqlite
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+### @fedify/mysql
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` and
+    `handlerTimeout` accept native `Temporal.Duration` values from Node.js
+    26+ without a nominal type mismatch.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767]]
+
+
+Version 2.1.12
+--------------
+
+Released on May 10, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing private IPv4 addresses encoded as
+    IPv4-mapped IPv6 URL literals, such as `http://[::ffff:7f00:1]/`, which
+    could bypass private network protections in remote document loading.
 
 
 Version 2.1.11
@@ -837,6 +1199,91 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.18
+--------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+
+Version 2.0.17
+--------------
+
+Released on May 15, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `doubleKnock()` so transient transport failures such as DNS hiccups
+    no longer leak raw `TypeError`s.  Idempotent authenticated document
+    fetches are retried once, and remaining transport failures are reported as
+    `FetchError` with the original error as the cause.  [[#762], [#763]]
+
+ -  Fixed a `TypeError` thrown when Activity Vocabulary constructors received
+    a `Temporal.Instant` or `Temporal.Duration` produced by an implementation
+    other than the bundled `@js-temporal/polyfill` (for example, the native
+    `Temporal` shipped with Node.js 26+).  Internal `instanceof` checks have
+    been replaced with `Symbol.toStringTag`-based guards so any spec-conformant
+    Temporal value is accepted.  Generated _\*.d.ts_ declarations no longer
+    import from `@js-temporal/polyfill`; they reference the ambient `Temporal`
+    namespace through the `esnext.temporal` lib instead, which removes the
+    nominal mismatch with native Temporal types.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+### @fedify/vocab-runtime
+
+ -  Added `isTemporalInstant()` and `isTemporalDuration()` type guards that
+    accept both polyfill and native `Temporal` values via `Symbol.toStringTag`.
+    [[#767], [#768]]
+
+ -  Added the `@fedify/vocab-runtime/temporal` subpath export so consumers
+    can import the new `Temporal` type guards without pulling in the rest of
+    the runtime.  [[#767], [#768]]
+
+### @fedify/postgres
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` and
+    `handlerTimeout` accept native `Temporal.Duration` values from Node.js
+    26+ without a nominal type mismatch.  TypeScript 6.0 or later is
+    required to consume the type declarations.  [[#767], [#768]]
+
+### @fedify/redis
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+### @fedify/sqlite
+
+ -  Generated _\*.d.ts_ declarations no longer import from
+    `@js-temporal/polyfill`; they reference the ambient `Temporal` namespace
+    through the `esnext.temporal` lib instead, so `pollInterval` accepts
+    native `Temporal.Duration` values from Node.js 26+ without a nominal type
+    mismatch.  TypeScript 6.0 or later is required to consume the type
+    declarations.  [[#767], [#768]]
+
+
+Version 2.0.16
+--------------
+
+Released on May 10, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing private IPv4 addresses encoded as
+    IPv4-mapped IPv6 URL literals, such as `http://[::ffff:7f00:1]/`, which
+    could bypass private network protections in remote document loading.
 
 
 Version 2.0.15
@@ -1716,6 +2163,30 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.10
+---------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+
+Version 1.10.9
+--------------
+
+Released on May 10, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing private IPv4 addresses encoded as
+    IPv4-mapped IPv6 URL literals, such as `http://[::ffff:7f00:1]/`, which
+    could bypass private network protections in remote document loading.
+
+
 Version 1.10.8
 --------------
 
@@ -1937,6 +2408,30 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.11
+--------------
+
+Released on May 21, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a security vulnerability in Linked Data Signature verification that
+    could allow certain signed activities to be interpreted differently than
+    intended.  [[CVE-2026-42462]]
+
+
+Version 1.9.10
+--------------
+
+Released on May 10, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing private IPv4 addresses encoded as
+    IPv4-mapped IPv6 URL literals, such as `http://[::ffff:7f00:1]/`, which
+    could bypass private network protections in remote document loading.
 
 
 Version 1.9.9

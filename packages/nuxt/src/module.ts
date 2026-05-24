@@ -50,7 +50,7 @@ export function resolveModulePath(
   ) {
     return resolve(rootDir, resolved);
   }
-  // Bare specifier (e.g. "@acme/federation") — pass through for the bundler
+  // Bare specifier (e.g. "@acme/federation")—pass through for the bundler
   return resolved;
 }
 

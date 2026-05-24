@@ -18,18 +18,15 @@ export default [
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
-    outputOptions(outputOptions, format) {
-      if (format === "cjs") {
-        outputOptions.intro = `
-          const { Temporal } = require("@js-temporal/polyfill");
-        `;
-      } else {
-        outputOptions.intro = `
-          import { Temporal } from "@js-temporal/polyfill";
-        `;
-      }
-      return outputOptions;
+    deps: { neverBundle: [/^node:/] },
+    banner({ format }) {
+      const js = format === "cjs"
+        ? `const { Temporal } = require("@js-temporal/polyfill");`
+        : `import { Temporal } from "@js-temporal/polyfill";`;
+      return {
+        js,
+        dts: `/// <reference lib="esnext.temporal" />`,
+      };
     },
   }),
   defineConfig({
@@ -37,7 +34,7 @@ export default [
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
       .map((f) => f.replace(sep, "/")),
     dts: false,
-    external: [/^node:/, "@fedify/fixture"],
+    deps: { neverBundle: [/^node:/, "@fedify/fixture"] },
     inputOptions: {
       onwarn(warning, defaultHandler) {
         if (

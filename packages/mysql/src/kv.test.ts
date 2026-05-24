@@ -544,7 +544,7 @@ test(
       // Set up the target key first (this triggers #expire() in set())
       await store.set(["target"], "original");
 
-      // Now insert an already-expired row directly — after the set() call so
+      // Now insert an already-expired row directly—after the set() call so
       // set()'s #expire() does not clean it up
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
@@ -588,7 +588,7 @@ test(
     try {
       await store.initialize();
 
-      // Insert a row that is already expired — it physically exists in the
+      // Insert a row that is already expired—it physically exists in the
       // table but should be treated as absent by cas().
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
@@ -596,7 +596,7 @@ test(
         [JSON.stringify(["key"]), JSON.stringify("old-value")],
       );
 
-      // cas with the actual (stale) value should fail — expired ≡ undefined
+      // cas with the actual (stale) value should fail—expired ≡ undefined
       assert.strictEqual(
         await store.cas!(["key"], "old-value", "new-value"),
         false,
@@ -635,11 +635,11 @@ test(
 
       // Insert a row that is physically present but logically expired, so
       // both concurrent CAS calls will see expectedValue=undefined as matching.
-      // This is the scenario that triggered the locking bug: without locking
+      // the scenario that triggered the locking bug: without locking
       // the expired row, SELECT ... FOR UPDATE (with the expiry predicate)
       // returned no rows and acquired no lock, allowing both concurrent
       // cas(undefined, ...) calls to proceed past the comparison and both
-      // write — violating CAS atomicity.
+      // write—violating CAS atomicity.
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
          VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,

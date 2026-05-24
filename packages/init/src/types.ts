@@ -82,7 +82,7 @@ export interface WebFrameworkInitializer {
   loggingTemplate?: string;
   /**
    * Additional files to create, keyed by relative path to file content.
-   * Do not use `".env"` as a key — use the {@link env} property instead so
+   * Do not use `".env"` as a key—use the {@link env} property instead so
    * that environment variables are properly merged with KV/MQ env vars.
    */
   files?: Record<string, string> & { ".env"?: never };

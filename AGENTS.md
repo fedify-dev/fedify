@@ -221,6 +221,11 @@ Documentation standards
 3.  Include examples for new features
 4.  For Markdown conventions, see *CONTRIBUTING.md*
 5.  For VitePress-specific guidelines, see *docs/README.md*
+6.  Formatting Preferences:
+     -  Em dash (—): In narrative text (within sentences), use em dashes
+        without surrounding spaces (e.g., `word—word`).  Spaces are only allowed
+        when em dashes are used as separators in bulleted lists (e.g.,
+        `- Item — Description`) or as placeholders in tables.
 
 
 Branch policy

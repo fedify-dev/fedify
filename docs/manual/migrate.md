@@ -1787,8 +1787,6 @@ console.log(doc);
 With `@fedify/vocab`:
 
 ~~~~ typescript twoslash
-import { Temporal } from "@js-temporal/polyfill";
-// ---cut-before---
 import { Create, Note } from "@fedify/vocab";
 
 const create = new Create({
@@ -1942,8 +1940,6 @@ AS2 document for processing.  Drop-in replacement for the idiomatic
 `activitystrea.ms` usage in most JSON-LD bridges:
 
 ~~~~ typescript twoslash
-import { Temporal } from "@js-temporal/polyfill";
-// ---cut-before---
 import { Activity, Create, Note } from "@fedify/vocab";
 
 async function buildOutbound(

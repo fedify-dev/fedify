@@ -1,8 +1,13 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestMeterProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { CryptographicKey } from "@fedify/vocab";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
+import { assertGreaterOrEqual } from "@std/assert/assert-greater-or-equal";
 import { assertRejects } from "@std/assert/assert-rejects";
 import { assertThrows } from "@std/assert/assert-throws";
 import { encodeBase64 } from "byte-encodings/base64";
@@ -17,14 +22,32 @@ import {
 import { generateCryptoKeyPair } from "./key.ts";
 import {
   attachSignature,
+  compactJsonLd,
   createSignature,
   detachSignature,
   hasSignatureLike,
+  isInvalidUrlTypeError,
   type Signature,
   signJsonLd,
+  UnsafeJsonLdError,
   verifyJsonLd,
   verifySignature,
 } from "./ld.ts";
+
+test("isInvalidUrlTypeError()", () => {
+  assert(isInvalidUrlTypeError(new TypeError("Invalid URL: http://[")));
+  assert(
+    isInvalidUrlTypeError(
+      new TypeError('"http://[" cannot be parsed as a URL.'),
+    ),
+  );
+  const error = new TypeError("Failed to parse URL") as TypeError & {
+    code?: string;
+  };
+  error.code = "ERR_INVALID_URL";
+  assert(isInvalidUrlTypeError(error));
+  assertFalse(isInvalidUrlTypeError(new TypeError("Failed to fetch")));
+});
 
 test("attachSignature()", () => {
   const sig: Signature = {
@@ -336,6 +359,1076 @@ test("verifyJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assertFalse(verified2);
+});
+
+test("verifyJsonLd() records verification duration metric", async (t) => {
+  await t.step(
+    "verified path records result=verified with bounded type",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      const m = measurements[0];
+      assertEquals(m.type, "histogram");
+      assertGreaterOrEqual(m.value, 0);
+      assertEquals(m.attributes["activitypub.signature.kind"], "linked_data");
+      assertEquals(m.attributes["activitypub.signature.result"], "verified");
+      assertEquals(m.attributes["ld_signatures.type"], "RsaSignature2017");
+    },
+  );
+
+  await t.step(
+    "missing signature records result=missing without type",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(document, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "linked_data",
+      );
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "missing",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
+
+  await t.step("invalid signature records result=rejected", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const tampered = {
+      ...testVector,
+      signature: {
+        ...testVector.signature,
+        signatureValue: encodeBase64(new Uint8Array([1, 2, 3, 4])),
+      },
+    };
+    const verified = await verifyJsonLd(tampered, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      meterProvider,
+    });
+    assertFalse(verified);
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.verification.duration",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.result"],
+      "rejected",
+    );
+    assertEquals(
+      measurements[0].attributes["ld_signatures.type"],
+      "RsaSignature2017",
+    );
+  });
+
+  await t.step(
+    "malformed (null) signature property records result=rejected, not missing",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const malformed = { ...document, signature: null };
+      const verified = await verifyJsonLd(malformed, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
+
+  await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "linked_data",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "missing signature emits no key_fetch measurement",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const verified = await verifyJsonLd(document, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.key_fetch.duration",
+        ).length,
+        0,
+      );
+    },
+  );
+
+  await t.step(
+    "cached-key retry emits two key_fetch measurements: hit then fetched",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // Prime the cache with a wrong-but-valid RSA key for the signer's
+      // keyId.  The first verification attempt uses the stale cached key,
+      // fails, and falls through to the fresh-fetch retry path inside
+      // `verifySignature()`.  The retry must record its own key_fetch
+      // measurement separately from the cached attempt.
+      const verified = await verifyJsonLd(testVector, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          async get(keyId: URL) {
+            return new CryptographicKey({
+              id: keyId,
+              owner: new URL(
+                "https://activitypub.academy/users/brauca_darradiul",
+              ),
+              publicKey:
+                (await generateCryptoKeyPair("RSASSA-PKCS1-v1_5")).publicKey,
+            });
+          },
+          set(_keyId: URL, _key: CryptographicKey) {
+            return Promise.resolve();
+          },
+        },
+      });
+      assert(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 2);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+      assertEquals(
+        measurements[1].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "unknown signature type omits the ld_signatures.type metric attribute",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const exotic = {
+        ...testVector,
+        signature: { ...testVector.signature, type: "MadeUpSignature9999" },
+      };
+      const verified = await verifyJsonLd(exotic, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertFalse(verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertFalse("ld_signatures.type" in measurements[0].attributes);
+    },
+  );
+});
+
+test("compactJsonLd() with restrictive context loader", async () => {
+  const restrictiveContextLoader = async (resource: string) => {
+    const url = new URL(resource).href;
+    if (
+      url === "https://www.w3.org/ns/activitystreams" ||
+      url === "https://w3id.org/identity/v1"
+    ) {
+      return await mockDocumentLoader(url);
+    }
+    throw new Error(`Unexpected context: ${url}`);
+  };
+  const doc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/identity/v1",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/1",
+    type: "Create",
+    actor: "https://example.com/person2",
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey3, rsaPublicKey3.id!, {
+    contextLoader: mockDocumentLoader,
+  });
+  const compacted = await compactJsonLd(signed, restrictiveContextLoader);
+  assertEquals(compacted, {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/1",
+    type: "Create",
+    actor: "https://example.com/person2",
+    signature: signed.signature,
+  });
+});
+
+test(
+  "compactJsonLd() caches repeated remote contexts across graph scan and compaction",
+  async () => {
+    const remoteUrl = "https://example.com/context";
+    let calls = 0;
+    const countingLoader = async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteUrl) {
+        calls++;
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": {
+              extra: "https://example.com/extra",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(url);
+    };
+    await compactJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://example.com/activities/remote-contexts",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: [
+          {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              remoteUrl,
+            ],
+            type: "Note",
+            content: "one",
+          },
+          {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              remoteUrl,
+            ],
+            type: "Note",
+            content: "two",
+          },
+          {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              remoteUrl,
+            ],
+            type: "Note",
+            content: "three",
+          },
+        ],
+      },
+      countingLoader,
+    );
+    // The normalization loader is request-scoped and memoized, so the
+    // pre-compaction safety scan and jsonld.compact() should both reuse the
+    // same fetched remote context payload.
+    assertEquals(calls, 1);
+  },
+);
+
+test(
+  "compactJsonLd() reuses the same remote context response for graph scan and compaction",
+  async () => {
+    const remoteUrl = "https://example.com/context";
+    let calls = 0;
+    const compacted = await compactJsonLd(
+      {
+        "@context": [
+          remoteUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/memoized-remote-context",
+        type: "Create",
+        actor: "https://example.com/person2",
+        graph: "https://example.com/custom-graph",
+        object: "https://example.com/notes/1",
+      },
+      async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteUrl) {
+          calls++;
+          if (calls > 1) {
+            throw new Error(
+              `Remote context should not be fetched twice: ${url}`,
+            );
+          }
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                graph: "https://example.com/graph",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      },
+    );
+    assertEquals(calls, 1);
+    assertEquals(compacted, {
+      "@context": [
+        "https://w3id.org/identity/v1",
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/memoized-remote-context",
+      type: "Create",
+      actor: "https://example.com/person2",
+      "https://example.com/graph": "https://example.com/custom-graph",
+      object: "https://example.com/notes/1",
+    });
+  },
+);
+
+test(
+  "compactJsonLd() preserves opaque top-level ids and resolves relative " +
+    "remote contexts against documentUrl during graph scan",
+  async () => {
+    const rootContextId = "opaque-root";
+    const rootContextUrl = "https://example.com/contexts/root";
+    const childContextUrl = "https://example.com/contexts/child";
+    const calls: string[] = [];
+    const customLoader = async (resource: string) => {
+      calls.push(resource);
+      if (resource === rootContextId) {
+        return {
+          contextUrl: null,
+          documentUrl: rootContextUrl,
+          document: {
+            "@context": {
+              "@import": "./child",
+              ext: "https://example.com/ext",
+            },
+          },
+        };
+      }
+      if (resource === childContextUrl || resource === "child") {
+        return {
+          contextUrl: null,
+          documentUrl: childContextUrl,
+          document: {
+            "@context": {
+              child: "https://example.com/child",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(resource);
+    };
+    const compacted = await compactJsonLd(
+      {
+        "@context": [
+          rootContextId,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/custom-loader-contexts",
+        type: "Create",
+        actor: "https://example.com/person2",
+        ext: "preserve-me",
+        object: {
+          type: "Note",
+          content: "Hello",
+        },
+      },
+      customLoader,
+    );
+    assertEquals(compacted, {
+      "@context": [
+        "https://w3id.org/identity/v1",
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/custom-loader-contexts",
+      type: "Create",
+      actor: "https://example.com/person2",
+      "https://example.com/ext": "preserve-me",
+      object: {
+        type: "Note",
+        content: "Hello",
+      },
+    });
+    assert(calls.includes(rootContextId));
+    assert(calls.includes(childContextUrl));
+    assertFalse(calls.includes("./child"));
+  },
+);
+
+test(
+  "compactJsonLd() preserves base URLs for property-scoped remote contexts",
+  async () => {
+    const rootContextId = "opaque-root";
+    const rootContextUrl = "https://example.com/contexts/root";
+    const childContextUrl = "https://example.com/contexts/child";
+    const calls: string[] = [];
+    const customLoader = async (resource: string) => {
+      calls.push(resource);
+      if (resource === rootContextId) {
+        return {
+          contextUrl: null,
+          documentUrl: rootContextUrl,
+          document: {
+            "@context": {
+              p: {
+                "@id": "https://example.com/p",
+                "@context": "./child",
+              },
+            },
+          },
+        };
+      }
+      if (resource === childContextUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: childContextUrl,
+          document: {
+            "@context": {
+              nested: "https://example.com/nested",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(resource);
+    };
+    const compacted = await compactJsonLd(
+      {
+        "@context": [
+          rootContextId,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/property-scoped-contexts",
+        type: "Create",
+        actor: "https://example.com/person2",
+        p: {
+          nested: "value",
+        },
+        object: "https://example.com/notes/1",
+      },
+      customLoader,
+    );
+    assertEquals(compacted, {
+      "@context": [
+        "https://w3id.org/identity/v1",
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/property-scoped-contexts",
+      type: "Create",
+      actor: "https://example.com/person2",
+      "https://example.com/p": {
+        "https://example.com/nested": "value",
+      },
+      object: "https://example.com/notes/1",
+    });
+    assert(calls.includes(rootContextId));
+    assert(calls.includes(childContextUrl));
+    assertFalse(calls.includes("./child"));
+  },
+);
+
+test("compactJsonLd() ignores unsafe-looking keys inside @json values", async () => {
+  const remoteContextUrl = "https://example.com/contexts/json";
+  const compacted = await compactJsonLd(
+    {
+      "@context": [
+        remoteContextUrl,
+        "https://www.w3.org/ns/activitystreams",
+      ],
+      id: "https://example.com/activities/json-blob",
+      type: "Create",
+      actor: "https://example.com/person2",
+      blob: {
+        graph: {
+          nested: true,
+        },
+        "@reverse": {
+          nope: true,
+        },
+        "@included": [
+          {
+            still: "raw-json",
+          },
+        ],
+      },
+      object: "https://example.com/notes/1",
+    },
+    async (resource: string) => {
+      const url = new URL(resource).href;
+      if (url === remoteContextUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": {
+              blob: {
+                "@id": "https://example.com/blob",
+                "@type": "@json",
+              },
+              graph: "@graph",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(url);
+    },
+  );
+  assertEquals(compacted, {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/activities/json-blob",
+    type: "Create",
+    "https://example.com/blob": {
+      type: "@json",
+      "@value": {
+        graph: {
+          nested: true,
+        },
+        "@reverse": {
+          nope: true,
+        },
+        "@included": [
+          {
+            still: "raw-json",
+          },
+        ],
+      },
+    },
+    actor: "https://example.com/person2",
+    object: "https://example.com/notes/1",
+  });
+});
+
+test(
+  "compactJsonLd() ignores unsafe-looking keys inside inline @json value wrappers",
+  async () => {
+    const remoteContextUrl = "https://example.com/contexts/inline-json";
+    const compacted = await compactJsonLd(
+      {
+        "@context": [
+          remoteContextUrl,
+          "https://www.w3.org/ns/activitystreams",
+        ],
+        id: "https://example.com/activities/inline-json-blob",
+        type: "Create",
+        actor: "https://example.com/person2",
+        blob: {
+          "@value": {
+            graph: {
+              nested: true,
+            },
+            "@reverse": {
+              nope: true,
+            },
+            "@included": [
+              {
+                still: "raw-json",
+              },
+            ],
+          },
+          "@type": "@json",
+        },
+        object: "https://example.com/notes/1",
+      },
+      async (resource: string) => {
+        const url = new URL(resource).href;
+        if (url === remoteContextUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                blob: "https://example.com/blob",
+                graph: "@graph",
+              },
+            },
+          };
+        }
+        return await mockDocumentLoader(url);
+      },
+    );
+    assertEquals(compacted, {
+      "@context": [
+        "https://w3id.org/identity/v1",
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/inline-json-blob",
+      type: "Create",
+      "https://example.com/blob": {
+        type: "@json",
+        "@value": {
+          graph: {
+            nested: true,
+          },
+          "@reverse": {
+            nope: true,
+          },
+          "@included": [
+            {
+              still: "raw-json",
+            },
+          ],
+        },
+      },
+      actor: "https://example.com/person2",
+      object: "https://example.com/notes/1",
+    });
+  },
+);
+
+test("verifyJsonLd() respects @graph alias overrides", async () => {
+  const doc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      { graph: "@graph" },
+      { graph: "https://example.com/graph" },
+    ],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/person2",
+    object: "https://example.com/notes/1",
+    graph: "https://example.com/custom-graph",
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey3, rsaPublicKey3.id!, {
+    contextLoader: mockDocumentLoader,
+  });
+  const verified = await verifyJsonLd(signed, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assert(verified);
+});
+
+test("compactJsonLd() respects nested @context scope for @graph aliases", async () => {
+  const doc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        graph: "https://example.com/graph",
+        meta: {
+          "@id": "https://example.com/meta",
+          "@context": { graph: "@graph" },
+        },
+      },
+    ],
+    id: "https://example.com/activities/2",
+    type: "Create",
+    actor: "https://example.com/person2",
+    object: "https://example.com/notes/2",
+    graph: "https://example.com/custom-graph",
+    meta: { value: "ok" },
+  };
+  const compacted = await compactJsonLd(doc, mockDocumentLoader);
+  assertEquals(compacted, {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/activities/2",
+    type: "Create",
+    "https://example.com/graph": "https://example.com/custom-graph",
+    actor: "https://example.com/person2",
+    object: "https://example.com/notes/2",
+    "https://example.com/meta": { value: "ok" },
+  });
+});
+
+test("compactJsonLd() resets inherited @graph aliases on @context: null", async () => {
+  const doc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      { g: "@graph" },
+    ],
+    id: "https://example.com/activities/3",
+    type: "Create",
+    actor: "https://example.com/person2",
+    object: {
+      "@context": null,
+      g: "literal",
+    },
+  };
+  const compacted = await compactJsonLd(doc, mockDocumentLoader);
+  assertEquals(compacted, {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/activities/3",
+    type: "Create",
+    actor: "https://example.com/person2",
+    object: {},
+  });
+});
+
+test("compactJsonLd() rejects same-object forward @graph alias chains", async () => {
+  await assertRejects(
+    () =>
+      compactJsonLd(
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            { a: "b", b: "@graph" },
+          ],
+          id: "https://example.com/activities/forward-graph-alias",
+          type: "Create",
+          actor: "https://example.com/person2",
+          a: [
+            {
+              id: "https://example.com/notes/forward-graph-alias",
+              type: "Note",
+              content: "Hello",
+            },
+          ],
+        },
+        mockDocumentLoader,
+      ),
+    UnsafeJsonLdError,
+    "Unsupported JSON-LD keyword: @graph.",
+  );
+});
+
+test("compactJsonLd() preserves captured @graph aliases across later overrides", async () => {
+  await assertRejects(
+    () =>
+      compactJsonLd(
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            { b: "@graph" },
+            { a: "b" },
+            { b: "https://example.com/b" },
+          ],
+          id: "https://example.com/activities/captured-graph-alias",
+          type: "Create",
+          actor: "https://example.com/person2",
+          a: [
+            {
+              id: "https://example.com/notes/captured-graph-alias",
+              type: "Note",
+              content: "Hello",
+            },
+          ],
+        },
+        mockDocumentLoader,
+      ),
+    UnsafeJsonLdError,
+    "Unsupported JSON-LD keyword: @graph.",
+  );
+});
+
+test("compactJsonLd() does not retroactively apply later @graph aliases", async () => {
+  const compacted = await compactJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { a: "b" },
+        { b: "@graph" },
+      ],
+      id: "https://example.com/activities/non-retroactive-graph-alias",
+      type: "Create",
+      actor: "https://example.com/person2",
+      a: [
+        {
+          id: "https://example.com/notes/non-retroactive-graph-alias",
+          type: "Note",
+          content: "Hello",
+        },
+      ],
+    },
+    mockDocumentLoader,
+  );
+  assertEquals(compacted, {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/activities/non-retroactive-graph-alias",
+    type: "Create",
+    b: {
+      id: "https://example.com/notes/non-retroactive-graph-alias",
+      type: "Note",
+      content: "Hello",
+    },
+    actor: "https://example.com/person2",
+  });
+});
+
+test("verifyJsonLd() rejects unsafe JSON-LD keywords", async () => {
+  const original = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/activities/undo",
+    type: "Undo",
+    actor: "https://example.com/person2",
+    object: {
+      id: "https://example.com/activities/announce",
+      type: "Announce",
+      actor: "https://example.com/person2",
+      object: "https://example.com/status/1",
+    },
+  };
+  const signed = await signJsonLd(
+    original,
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const cases: [string, unknown][] = [
+    [
+      "@reverse",
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          { rev: "@reverse" },
+        ],
+        id: "https://example.com/activities/announce",
+        type: "Announce",
+        actor: "https://example.com/person2",
+        object: "https://example.com/status/1",
+        rev: {
+          object: {
+            id: "https://example.com/activities/undo",
+            type: "Undo",
+            actor: "https://example.com/person2",
+          },
+        },
+        signature: signed.signature,
+      },
+    ],
+    [
+      "@included",
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          { inc: "@included" },
+        ],
+        id: "https://example.com/activities/announce",
+        type: "Announce",
+        actor: "https://example.com/person2",
+        object: "https://example.com/status/1",
+        inc: [{
+          id: "https://example.com/activities/undo",
+          type: "Undo",
+          actor: "https://example.com/person2",
+          object: "https://example.com/activities/announce",
+        }],
+        signature: signed.signature,
+      },
+    ],
+    [
+      "@graph",
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          { graph: "@graph" },
+        ],
+        graph: [original],
+        signature: signed.signature,
+      },
+    ],
+    [
+      "@graph",
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          { graph: "@graph" },
+        ],
+        id: "https://example.com/activities/announce",
+        type: "Announce",
+        actor: "https://example.com/person2",
+        object: "https://example.com/status/1",
+        graph: [{
+          id: "https://example.com/activities/undo",
+          type: "Undo",
+          actor: "https://example.com/person2",
+          object: "https://example.com/activities/announce",
+        }],
+        signature: signed.signature,
+      },
+    ],
+  ];
+
+  for (const [keyword, jsonLd] of cases) {
+    await assertRejects(
+      () => verifyJsonLd(jsonLd, options),
+      UnsafeJsonLdError,
+      `Unsupported JSON-LD keyword: ${keyword}.`,
+    );
+  }
+});
+
+test(
+  "compactJsonLd() rejects unsafe JSON-LD keywords inside signature objects",
+  async () => {
+    const signed = await signJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://example.com/activities/signed-signature-keywords",
+        type: "Create",
+        actor: "https://example.com/person2",
+        object: "https://example.com/notes/1",
+      },
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+      { contextLoader: mockDocumentLoader },
+    );
+    const cases: [string, unknown][] = [
+      [
+        "@reverse",
+        {
+          object: {
+            id: "https://example.com/activities/reverse-inside-signature",
+            type: "Undo",
+          },
+        },
+      ],
+      [
+        "@included",
+        [{
+          id: "https://example.com/activities/included-inside-signature",
+          type: "Undo",
+        }],
+      ],
+      [
+        "@graph",
+        [{
+          id: "https://example.com/activities/graph-inside-signature",
+          type: "Undo",
+        }],
+      ],
+    ];
+
+    for (const [keyword, value] of cases) {
+      await assertRejects(
+        () =>
+          compactJsonLd(
+            {
+              ...signed,
+              signature: {
+                ...signed.signature,
+                [keyword]: value,
+              },
+            },
+            mockDocumentLoader,
+          ),
+        UnsafeJsonLdError,
+        `Unsupported JSON-LD keyword: ${keyword}.`,
+      );
+    }
+  },
+);
+
+test("compactJsonLd() rejects inputs that compact into @graph wrappers", async () => {
+  await assertRejects(
+    () =>
+      compactJsonLd(
+        [
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://example.com/notes/graph-wrapper-1",
+            type: "Note",
+            content: "one",
+          },
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://example.com/notes/graph-wrapper-2",
+            type: "Note",
+            content: "two",
+          },
+        ],
+        mockDocumentLoader,
+      ),
+    UnsafeJsonLdError,
+    "Unsupported JSON-LD keyword: @graph.",
+  );
 });
 
 // cSpell: ignore ostatus

@@ -3,6 +3,7 @@ include = ["*.md", "**/*.md"]
 exclude = [
   "**/node_modules/**",
   "**/dist/**",
+  ".agents/skills/**",
   ".claude/skills/**",
   ".github/copilot-instructions.md",
   "AGENT.md",

@@ -4,11 +4,14 @@ import { defineConfig } from "tsdown";
 
 export default [
   defineConfig({
-    entry: ["src/mod.ts", "src/jsonld.ts"],
+    entry: ["src/mod.ts", "src/jsonld.ts", "src/temporal.ts"],
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: ["esm", "cjs"],
     platform: "neutral",
-    external: [/^node:/],
+    deps: { neverBundle: [/^node:/] },
+    banner: {
+      dts: `/// <reference lib="esnext.temporal" />`,
+    },
   }),
   defineConfig({
     outDir: "dist/tests",
@@ -16,6 +19,6 @@ export default [
       .map((f) => f.replace(sep, "/")),
     format: ["esm", "cjs"],
     platform: "node",
-    external: [/^node:/, "@fedify/fixture"],
+    deps: { neverBundle: [/^node:/, "@fedify/fixture"] },
   }),
 ];

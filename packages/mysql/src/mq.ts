@@ -114,7 +114,7 @@ export interface MysqlMessageQueueOptions {
    * The maximum time to wait for a message handler to complete before
    * the queue moves on.  This is a *soft* timeout: when a handler exceeds
    * the limit, the queue stops waiting and logs a timeout error, but it
-   * cannot cancel the handler itself — the handler's promise continues
+   * cannot cancel the handler itself—the handler's promise continues
    * running in the background.  In the ordered-key path the advisory lock
    * is always released in a `finally` block, so a timed-out handler will
    * not permanently block the same ordering key.  However, concurrent
@@ -344,7 +344,7 @@ export class MysqlMessageQueue implements MessageQueue {
         let processed = false;
 
         // Step 1: Try to process messages without an ordering key first.
-        // These don't need advisory locks — FOR UPDATE SKIP LOCKED is
+        // These don't need advisory locks—FOR UPDATE SKIP LOCKED is
         // sufficient to prevent two workers from processing the same message.
         const noKeyMsg = await this.#dequeueWithoutOrderingKey();
         if (noKeyMsg !== undefined) {
@@ -546,7 +546,7 @@ export class MysqlMessageQueue implements MessageQueue {
 
   /**
    * Initializes the message queue table if it does not already exist.
-   * Concurrent calls are coalesced — only one initialization runs at a time.
+   * Concurrent calls are coalesced—only one initialization runs at a time.
    *
    * @since 2.1.0
    */
@@ -642,7 +642,7 @@ export class MysqlMessageQueue implements MessageQueue {
       try {
         await this.#initPromise;
       } catch {
-        // Ignore initialization errors — we are dropping the table anyway.
+        // Ignore initialization errors—we are dropping the table anyway.
       }
     }
     await this.#pool.query(

@@ -67,7 +67,7 @@ Deno.serve((request) => relay.fetch(request));
 ~~~~
 
 ~~~~ typescript twoslash [Bun]
-import "@types/bun";
+import "bun";
 // ---cut-before---
 import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";

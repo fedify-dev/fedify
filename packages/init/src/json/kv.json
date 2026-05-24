@@ -75,7 +75,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:mysql2": "^3.20.0"
+      "npm:mysql2": "^3.22.3"
     },
     "imports": {
       "@fedify/mysql": {

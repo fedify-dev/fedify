@@ -367,7 +367,7 @@ async function testReply(): Promise<void> {
 
   if (!received.inReplyTo) {
     throw new Error(
-      "Received Create activity has no inReplyTo — " +
+      "Received Create activity has no inReplyTo—" +
         "cannot distinguish reply from plain mention",
     );
   }

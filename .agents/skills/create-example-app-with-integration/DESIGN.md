@@ -20,7 +20,7 @@ toggle.
     primary actions
  -  Card-based content layout with subtle shadows
  -  Monospace typesetting for handles and federation addresses
- -  No framework-specific branding in UI chrome — only the demo profile
+ -  No framework-specific branding in UI chrome—only the demo profile
     and Fedify logo
 
 
@@ -247,10 +247,17 @@ Static assets
 
 All visual assets live in *public/* and are served at the site root:
 
- -  *style.css* — Complete stylesheet
- -  *theme.js* — Dark/light class toggle script
- -  *demo-profile.png* — Demo actor avatar
- -  *fedify-logo.svg* — Fedify logo for badge and branding
+*style.css*
+:   Complete stylesheet.
+
+*theme.js*
+:   Dark/light class toggle script.
+
+*demo-profile.png*
+:   Demo actor avatar.
+
+*fedify-logo.svg*
+:   Fedify logo for badge and branding.
 
 ### Following / followers list
 
@@ -272,15 +279,26 @@ full routing specification.
 
 Top to bottom:
 
-1.  **Search** — text input with debounced lookup; result card appears
-    inline below
-2.  **User info** — profile header (gradient, avatar, name, handle,
-    bio)
-3.  **Following** — count + account list with unfollow buttons
-4.  **Followers** — count + account list
-5.  **Compose** — textarea + submit button
-6.  **Posts** — reverse-chronological post cards, each linking to the
-    detail page
+**Search**
+:   Text input with debounced lookup; result card appears
+    inline below.
+
+**User info**
+:   Profile header (gradient, avatar, name, handle,
+    bio).
+
+**Following**
+:   Count + account list with unfollow buttons.
+
+**Followers**
+:   Count + account list.
+
+**Compose**
+:   Textarea + submit button.
+
+**Posts**
+:   Reverse-chronological post cards, each linking to the
+    detail page.
 
 ### Actor profile (`/users/{identifier}`)
 

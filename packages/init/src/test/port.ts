@@ -63,7 +63,7 @@ export async function killProcessOnPort(port: number): Promise<void> {
       }
     }
   } catch {
-    // lsof not available or no process found — ignore
+    // lsof not available or no process found—ignore
   }
 }
 
@@ -146,7 +146,7 @@ export async function replacePortInApp(
     return;
   }
 
-  printErrorMessage`Unknown framework ${wf} — cannot replace port.`;
+  printErrorMessage`Unknown framework ${wf}—cannot replace port.`;
 }
 
 /**
@@ -156,7 +156,7 @@ export async function replacePortInApp(
 export async function ensurePortReleased(port: number): Promise<void> {
   const released = await waitForPortRelease(port, 5000);
   if (!released) {
-    printMessage`    Port ${String(port)} still in use — force-killing...`;
+    printMessage`    Port ${String(port)} still in use—force-killing...`;
     await killProcessOnPort(port);
     await waitForPortRelease(port, 3000);
   }

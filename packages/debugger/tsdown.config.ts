@@ -23,16 +23,13 @@ export default defineConfig({
       /^hono\//,
     ],
   },
-  outputOptions(outputOptions, format) {
-    if (format === "cjs") {
-      outputOptions.intro = `
-        const { Temporal } = require("@js-temporal/polyfill");
-      `;
-    } else {
-      outputOptions.intro = `
-        import { Temporal } from "@js-temporal/polyfill";
-      `;
-    }
-    return outputOptions;
+  banner({ format }) {
+    const js = format === "cjs"
+      ? `const { Temporal } = require("@js-temporal/polyfill");`
+      : `import { Temporal } from "@js-temporal/polyfill";`;
+    return {
+      js,
+      dts: `/// <reference lib="esnext.temporal" />`,
+    };
   },
 });

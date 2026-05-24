@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -10,6 +11,7 @@ import {
   assertEquals,
   assertExists,
   assertFalse,
+  assertGreaterOrEqual,
   assertRejects,
   assertStringIncludes,
   assertThrows,
@@ -365,6 +367,409 @@ test("verifyRequestDetailed() records failure details on span", async () => {
   );
   assertEquals(span.attributes["http_signatures.key_id"], keyId.href);
   assertEquals(span.attributes["http_signatures.key_fetch_status"], 410);
+});
+
+test("verifyRequestDetailed() records verification duration metric", async (t) => {
+  const buildSignedRequest = (): Promise<Request> =>
+    signRequest(
+      new Request("https://example.com/inbox", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/activity+json",
+          accept: "application/ld+json",
+        },
+        body: JSON.stringify({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          actor: "https://example.com/key2",
+        }),
+      }),
+      rsaPrivateKey2,
+      new URL("https://example.com/key2"),
+    );
+
+  await t.step("verified path emits one measurement", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const request = await buildSignedRequest();
+
+    const result = await verifyRequestDetailed(request, {
+      contextLoader: mockDocumentLoader,
+      documentLoader: mockDocumentLoader,
+      meterProvider,
+    });
+    assert(result.verified);
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.verification.duration",
+    );
+    assertEquals(measurements.length, 1);
+    const measurement = measurements[0];
+    assertEquals(measurement.type, "histogram");
+    assertGreaterOrEqual(measurement.value, 0);
+    assertEquals(
+      measurement.attributes["activitypub.signature.kind"],
+      "http",
+    );
+    assertEquals(
+      measurement.attributes["activitypub.signature.result"],
+      "verified",
+    );
+    assertEquals(
+      measurement.attributes["http_signatures.algorithm"],
+      "rsa-sha256",
+    );
+    assertFalse(
+      "http_signatures.failure_reason" in measurement.attributes,
+    );
+
+    // The HTTP draft-cavage verifier must also forward `meterProvider`
+    // through to `fetchKeyDetailed` so the generic
+    // `activitypub.key.lookup*` metrics land on the test provider rather
+    // than the global default.
+    const keyLookups = recorder.getMeasurements("activitypub.key.lookup");
+    assertEquals(keyLookups.length, 1);
+    assertEquals(
+      keyLookups[0].attributes["activitypub.lookup.kind"],
+      "public_key",
+    );
+    assertEquals(
+      keyLookups[0].attributes["activitypub.lookup.result"],
+      "fetched",
+    );
+  });
+
+  await t.step("missing signature is recorded as result=missing", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const result = await verifyRequestDetailed(
+      new Request("https://example.com/inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/activity+json" },
+        body: "{}",
+      }),
+      {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+      },
+    );
+    assertFalse(result.verified);
+    assertEquals(result.reason.type, "noSignature");
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.verification.duration",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.kind"],
+      "http",
+    );
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.result"],
+      "missing",
+    );
+    assertFalse(
+      "http_signatures.failure_reason" in measurements[0].attributes,
+    );
+  });
+
+  await t.step(
+    "invalid signature is recorded as result=rejected with failure_reason",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const result = await verifyRequestDetailed(
+        new Request("https://example.com/", {
+          method: "POST",
+          headers: {
+            Date: "Tue, 05 Mar 2024 07:49:44 GMT",
+            Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            Signature: 'keyId="https://example.com/key2",' +
+              'headers="(request-target) date digest",signature="AAAA"',
+          },
+          body: "",
+        }),
+        {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        },
+      );
+      assertFalse(result.verified);
+      assertEquals(result.reason.type, "invalidSignature");
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "http",
+      );
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertEquals(
+        measurements[0].attributes["http_signatures.failure_reason"],
+        "invalidSignature",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch failure is recorded as result=rejected with failure_reason=keyFetchError",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const keyId = new URL("https://gone.example/actors/alice#main-key");
+      const request = await signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/activity+json",
+            accept: "application/ld+json",
+          },
+          body: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://gone.example/actors/alice",
+          }),
+        }),
+        rsaPrivateKey2,
+        keyId,
+      );
+
+      const result = await verifyRequestDetailed(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader(url) {
+          if (url === keyId.href) {
+            throw new FetchError(
+              keyId,
+              `HTTP 410: ${keyId.href}`,
+              new Response(null, { status: 410 }),
+            );
+          }
+          return mockDocumentLoader(url);
+        },
+        meterProvider,
+      });
+      assertFalse(result.verified);
+      assertEquals(result.reason.type, "keyFetchError");
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.result"],
+        "rejected",
+      );
+      assertEquals(
+        measurements[0].attributes["http_signatures.failure_reason"],
+        "keyFetchError",
+      );
+    },
+  );
+
+  await t.step(
+    "verifyRequest() wrapper emits exactly one measurement, not two",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertExists(key);
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.verification.duration",
+        ).length,
+        1,
+      );
+    },
+  );
+
+  await t.step(
+    "cached-key retry emits one measurement, not two",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      // Prime the cache with a wrong key so the verifier fails with the cached
+      // key and falls through to the fresh-fetch retry path; both attempts
+      // must collapse to a single measurement.
+      const cache: Record<string, CryptographicKey | Multikey | null> = {
+        "https://example.com/key2": rsaPublicKey1,
+      };
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          get(keyId) {
+            return Promise.resolve(cache[keyId.href]);
+          },
+          set(keyId, k) {
+            cache[keyId.href] = k;
+            return Promise.resolve();
+          },
+        } satisfies KeyCache,
+      });
+      assertExists(key);
+      assertEquals(
+        recorder.getMeasurements(
+          "activitypub.signature.verification.duration",
+        ).length,
+        1,
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=fetched on a cold cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+      });
+      assertExists(key);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(measurements[0].type, "histogram");
+      assertGreaterOrEqual(measurements[0].value, 0);
+      assertEquals(
+        measurements[0].attributes["activitypub.signature.kind"],
+        "http",
+      );
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "fetched",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=hit when served from the key cache",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const cache: Record<string, CryptographicKey | Multikey | null> = {
+        "https://example.com/key2": rsaPublicKey2,
+      };
+      const request = await buildSignedRequest();
+      const key = await verifyRequest(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        meterProvider,
+        keyCache: {
+          get(keyId) {
+            return Promise.resolve(cache[keyId.href]);
+          },
+          set(keyId, k) {
+            cache[keyId.href] = k;
+            return Promise.resolve();
+          },
+        } satisfies KeyCache,
+      });
+      assertExists(key);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "hit",
+      );
+    },
+  );
+
+  await t.step(
+    "key fetch records result=error when the remote key returns HTTP 410",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const keyId = new URL("https://gone.example/actors/alice#main-key");
+      const request = await signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/activity+json",
+            accept: "application/ld+json",
+          },
+          body: "{}",
+        }),
+        rsaPrivateKey2,
+        keyId,
+      );
+      const result = await verifyRequestDetailed(request, {
+        contextLoader: mockDocumentLoader,
+        documentLoader(url) {
+          if (url === keyId.href) {
+            throw new FetchError(
+              keyId,
+              `HTTP 410: ${keyId.href}`,
+              new Response(null, { status: 410 }),
+            );
+          }
+          return mockDocumentLoader(url);
+        },
+        meterProvider,
+      });
+      assertFalse(result.verified);
+
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.key_fetch.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertEquals(
+        measurements[0].attributes[
+          "activitypub.signature.key_fetch.result"
+        ],
+        "error",
+      );
+    },
+  );
+
+  await t.step(
+    "draft-cavage with unknown algorithm omits the algorithm metric attribute",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const result = await verifyRequestDetailed(
+        new Request("https://example.com/", {
+          method: "POST",
+          headers: {
+            Date: "Tue, 05 Mar 2024 07:49:44 GMT",
+            Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            Signature:
+              'keyId="https://example.com/key2",algorithm="x-attacker-supplied",' +
+              'headers="(request-target) date digest",signature="AAAA"',
+          },
+          body: "",
+        }),
+        {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        },
+      );
+      assertFalse(result.verified);
+      const measurements = recorder.getMeasurements(
+        "activitypub.signature.verification.duration",
+      );
+      assertEquals(measurements.length, 1);
+      assertFalse(
+        "http_signatures.algorithm" in measurements[0].attributes,
+      );
+    },
+  );
 });
 
 test("signRequest() and verifyRequest() [rfc9421] implementation", async () => {
@@ -1896,6 +2301,199 @@ test("doubleKnock() detects redirect loops", async () => {
   fetchMock.hardReset();
 });
 
+test("doubleKnock() retries idempotent request transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    fetchMock.get("https://example.com/flaky-document", () => {
+      requestCount++;
+      if (requestCount === 1) {
+        throw new TypeError("temporary DNS failure");
+      }
+      return new Response("Success", { status: 200 });
+    });
+
+    const request = new Request("https://example.com/flaky-document");
+    const response = await doubleKnock(
+      request,
+      {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      },
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(await response.text(), "Success");
+    assertEquals(requestCount, 2);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() wraps repeated transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const failure = new TypeError("DNS lookup failed");
+    fetchMock.get("https://example.com/unreachable-document", () => {
+      requestCount++;
+      throw failure;
+    });
+
+    const request = new Request("https://example.com/unreachable-document");
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+      FetchError,
+      "DNS lookup failed",
+    );
+
+    assertEquals(error.url.href, "https://example.com/unreachable-document");
+    assertEquals(error.cause, failure);
+    assertEquals(requestCount, 2);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() does not retry non-idempotent transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const failure = new TypeError("connection reset");
+    fetchMock.post("https://example.com/flaky-inbox", () => {
+      requestCount++;
+      throw failure;
+    });
+
+    const request = new Request("https://example.com/flaky-inbox", {
+      method: "POST",
+      body: "Test activity content",
+      headers: {
+        "Content-Type": "application/activity+json",
+      },
+    });
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+      FetchError,
+      "connection reset",
+    );
+
+    assertEquals(error.url.href, "https://example.com/flaky-inbox");
+    assertEquals(error.cause, failure);
+    assertEquals(requestCount, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() preserves Request signal abort reasons", async () => {
+  const controller = new AbortController();
+  const abortReason = "request aborted";
+  controller.abort(abortReason);
+
+  const request = new Request("https://example.com/request-abort", {
+    signal: controller.signal,
+  });
+  const error = await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+      ),
+  );
+
+  assertEquals(error, abortReason);
+});
+
+test("doubleKnock() preserves Request signal aborts during retry delay", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const controller = new AbortController();
+    const abortReason = "retry aborted";
+    fetchMock.get("https://example.com/aborted-retry", () => {
+      requestCount++;
+      setTimeout(() => controller.abort(abortReason));
+      throw new TypeError("temporary DNS failure");
+    });
+
+    const request = new Request("https://example.com/aborted-retry", {
+      signal: controller.signal,
+    });
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+    );
+
+    assertEquals(error, abortReason);
+    assertEquals(requestCount, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnock() prefers Request aborts over transport errors", async () => {
+  fetchMock.spyGlobal();
+
+  try {
+    let requestCount = 0;
+    const controller = new AbortController();
+    const abortReason = "transport aborted";
+    fetchMock.get("https://example.com/abort-with-transport-error", () => {
+      requestCount++;
+      controller.abort(abortReason);
+      throw new TypeError("temporary DNS failure");
+    });
+
+    const request = new Request(
+      "https://example.com/abort-with-transport-error",
+      { signal: controller.signal },
+    );
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: rsaPrivateKey2,
+          },
+        ),
+    );
+
+    assertEquals(error, abortReason);
+    assertEquals(requestCount, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
 test("doubleKnock() async specDeterminer test", async () => {
   // Install mock fetch handler
   fetchMock.spyGlobal();
@@ -2689,7 +3287,7 @@ test(
         }
         if (requestCount === 2) {
           // Challenge retry: returns ANOTHER Accept-Signature challenge
-          // (should NOT be followed — loop prevention)
+          // (should NOT be followed—loop prevention)
           return new Response("Still Not Authorized", {
             status: 401,
             headers: {
@@ -2752,7 +3350,7 @@ test(
         requestCount++;
         if (requestCount === 1) {
           // Challenge with a header component ("x-custom-required") that is
-          // absent from the request — createRfc9421SignatureBase() will throw
+          // absent from the request—createRfc9421SignatureBase() will throw
           // "Missing header: x-custom-required".
           return new Response("Not Authorized", {
             status: 401,
@@ -2805,7 +3403,7 @@ test(
         const req = cl.request!;
         requestCount++;
         if (requestCount === 1) {
-          // Challenge with "@query-param" — a derived component that throws
+          // Challenge with "@query-param"—a derived component that throws
           // in createRfc9421SignatureBase() because it requires special params.
           return new Response("Not Authorized", {
             status: 401,
@@ -2898,10 +3496,10 @@ test(
 test(
   "doubleKnock(): Accept-Signature with multiple compatible entries fulfills all (RFC 9421 §5 MUST)",
   async () => {
-    // RFC 9421 §5: "The target message of an Accept-Signature field MUST
+    // "The target message of an Accept-Signature field MUST
     // include all labeled signatures indicated in the Accept-Signature field."
     // When both entries are compatible with the local key, the retry request
-    // must carry signatures for sig1 AND sig2 — not just the first one.
+    // must carry signatures for sig1 AND sig2—not just the first one.
     fetchMock.spyGlobal();
     let requestCount = 0;
 

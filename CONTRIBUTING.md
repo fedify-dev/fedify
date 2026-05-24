@@ -88,6 +88,9 @@ For Markdown, we have the following conventions:
  -  Wrap inline code in backticks.
  -  Wrap code blocks in quadruple tildes (`~~~~`), and specify the language with
     a single space after the opening tildes (e.g., `~~~~ bash`).
+ -  Em dash (—): In narrative text, use em dashes without surrounding
+    spaces (e.g., `word—word`).  Keep spaces only for list separators
+    (`- Item — Description`) or table placeholders.
 
 In order to build the docs,
 see the [*Building the docs* section](#building-the-docs).

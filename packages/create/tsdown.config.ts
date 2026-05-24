@@ -7,5 +7,5 @@ export default defineConfig({
   outExtensions() {
     return { js: ".js", dts: ".d.ts" };
   },
-  external: [/^node:/],
+  deps: { neverBundle: [/^node:/] },
 });

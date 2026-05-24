@@ -209,7 +209,7 @@ const scalarTypes: Record<string, ScalarType> = {
   "http://www.w3.org/2001/XMLSchema#dateTime": {
     name: "Temporal.Instant",
     typeGuard(v) {
-      return `${v} instanceof Temporal.Instant`;
+      return `isTemporalInstant(${v})`;
     },
     encoder(v) {
       return `{
@@ -239,7 +239,7 @@ const scalarTypes: Record<string, ScalarType> = {
   "http://www.w3.org/2001/XMLSchema#duration": {
     name: "Temporal.Duration",
     typeGuard(v) {
-      return `${v} instanceof Temporal.Duration`;
+      return `isTemporalDuration(${v})`;
     },
     encoder(v) {
       return `{

@@ -92,8 +92,6 @@ that contains the properties of the object.  The following shows an example of
 instantiating a `Create` object:
 
 ~~~~ typescript twoslash
-import { Temporal } from "@js-temporal/polyfill";
-// ---cut-before---
 import { Create, Note } from "@fedify/vocab";
 
 const create = new Create({
@@ -217,7 +215,6 @@ For example, the following two objects are equivalent (where dereferencing URI
 
 ~~~~ typescript twoslash
 import { Create, Note } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 // ---cut-before---
 const a = new Create({
   id: new URL("https://example.com/activities/123"),
@@ -371,8 +368,6 @@ properties.  The following shows an example of changing the `~Object.content`
 property of a `Note` object:
 
 ~~~~ typescript{8-10} twoslash
-import { Temporal } from "@js-temporal/polyfill";
-// ---cut-before---
 import { Note } from "@fedify/vocab";
 import { LanguageString } from "@fedify/vocab-runtime";
 

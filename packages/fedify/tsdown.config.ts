@@ -2,6 +2,11 @@ import { glob } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
+function isTestingHelperImporter(importer: string | undefined): boolean {
+  const normalized = importer?.replaceAll(sep, "/");
+  return normalized?.includes("/src/testing/") ?? false;
+}
+
 export default [
   defineConfig({
     entry: [
@@ -19,19 +24,20 @@ export default [
     format: ["esm", "cjs"],
     platform: "neutral",
     deps: { neverBundle: [/^node:/] },
-    outputOptions(outputOptions, format) {
-      if (format === "cjs") {
-        outputOptions.intro = `
-          const { Temporal } = require("@js-temporal/polyfill");
-          const { URLPattern } = require("urlpattern-polyfill");
-        `;
-      } else {
-        outputOptions.intro = `
-          import { Temporal } from "@js-temporal/polyfill";
-          import { URLPattern } from "urlpattern-polyfill";
-        `;
-      }
-      return outputOptions;
+    banner({ format }) {
+      const js = format === "cjs"
+        ? [
+          `const { Temporal } = require("@js-temporal/polyfill");`,
+          `const { URLPattern } = require("urlpattern-polyfill");`,
+        ].join("\n")
+        : [
+          `import { Temporal } from "@js-temporal/polyfill";`,
+          `import { URLPattern } from "urlpattern-polyfill";`,
+        ].join("\n");
+      return {
+        js,
+        dts: `/// <reference lib="esnext.temporal" />`,
+      };
     },
   }),
   defineConfig({
@@ -40,14 +46,19 @@ export default [
       ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
         .map((f) => f.replace(sep, "/")),
     ],
-    external: [/^node:/, "@fedify/fixture"],
-    // Bundle @fedify/fixture back in for src/testing/ files (needed for
-    // cfworkers), while keeping it external for test files so that
-    // pnpm pack --recursive does not try to resolve the private package:
-    noExternal: (id: string, importer: string | undefined) => {
-      if (id !== "@fedify/fixture") return false;
-      const normalized = importer?.replaceAll(sep, "/");
-      return normalized?.includes("/src/testing/") ?? false;
+    deps: {
+      neverBundle: (id: string, parentId?: string) => {
+        if (id.startsWith("node:")) return true;
+        if (id !== "@fedify/fixture") return;
+        return !isTestingHelperImporter(parentId);
+      },
+      // Bundle @fedify/fixture back in for src/testing/ files (needed for
+      // cfworkers), while keeping it external for test files so that
+      // pnpm pack --recursive does not try to resolve the private package:
+      alwaysBundle: (id: string, importer: string | undefined) => {
+        if (id !== "@fedify/fixture") return;
+        return isTestingHelperImporter(importer);
+      },
     },
     inputOptions: {
       onwarn(warning, defaultHandler) {

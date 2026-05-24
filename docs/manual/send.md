@@ -887,8 +887,11 @@ The handler receives the following information:
 
 By default, the following HTTP status codes are treated as permanent failures:
 
- -  `404 Not Found` — the inbox no longer exists
- -  `410 Gone` — the inbox is explicitly marked as gone
+`404 Not Found`
+:   The inbox no longer exists.
+
+`410 Gone`
+:   The inbox is explicitly marked as gone.
 
 You can customize which status codes are treated as permanent failures using
 the `permanentFailureStatusCodes` option in `FederationOptions`:

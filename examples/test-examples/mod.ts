@@ -107,8 +107,8 @@ interface ScriptExample {
 interface MultiHandleExample {
   name: string;
   dir: string;
-  /** Command prefix — the handle is appended as the final argument. */
-  cmd: string[];
+  /** Command prefix—the handle is appended as the final argument. */
+  cmdPrefix?: string[];
   /** Handles to try, in order.  Pass if any succeeds. */
   handles: string[];
   description: string;
@@ -401,7 +401,7 @@ async function killPortUsers(port: number): Promise<void> {
       .text();
     pids = text.trim().split("\n").filter(Boolean);
   } catch {
-    return; // lsof unavailable or no match — nothing to do.
+    return; // lsof unavailable or no match—nothing to do.
   }
   for (const pid of pids) {
     try {
@@ -560,7 +560,7 @@ async function testServerExample(
       name,
       port,
     });
-    console.log(c.dim(`  server ready — opening tunnel on port ${port}…`));
+    console.log(c.dim(`  server ready—opening tunnel on port ${port}…`));
 
     const tunnel = await startTunnel(port);
     if (tunnel == null) {
@@ -790,7 +790,7 @@ async function main(): Promise<void> {
   const unregistered: string[] = [];
   for await (const entry of Deno.readDir(EXAMPLES_DIR)) {
     if (!entry.isDirectory) continue;
-    // The test-examples directory is the test runner itself — skip it.
+    // The test-examples directory is the test runner itself—skip it.
     if (entry.name === "test-examples") continue;
     if (!registeredNames.has(entry.name)) {
       unregistered.push(entry.name);

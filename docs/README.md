@@ -91,6 +91,18 @@ pnpm add @fedify/fedify
  -  Always use relative paths for internal links.
  -  Include the `.md` extension in internal link paths.
 
+### Definition lists
+
+Prefer definition lists over bulleted lists for term-definition pairs.
+Descriptions should be written as full sentences (sentence case, ending with a
+period).  List multiple terms for one description on separate lines:
+
+~~~~ markdown
+Term 1
+Term 2
+:   Description starts with a capital letter and ends with a period.
+~~~~
+
 ### Building documentation
 
 ~~~~ bash

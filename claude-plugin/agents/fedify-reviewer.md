@@ -38,7 +38,7 @@ When reviewing Fedify code, check each of the following in order:
 *Inbox listeners*
 
  -  Are the activity types this application is designed to handle
-    registered with `.on()`?  (Only types the app actually needs — not
+    registered with `.on()`?  (Only types the app actually needs—not
     necessarily every ActivityPub activity type.)
  -  If unregistered types must be observed (rather than answered with HTTP 202),
     is there a catch-all `.on(Activity, ...)` listener?

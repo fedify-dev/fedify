@@ -22,6 +22,10 @@ import {
     parseDecimal,
     type RemoteDocument
 } from "@fedify/vocab-runtime";
+import {
+    isTemporalDuration,
+    isTemporalInstant,
+} from "@fedify/vocab-runtime/temporal";
 
 
 /** Describes an object of any kind. The Object type serves as the base type for
@@ -403,7 +407,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("endTime" in values &&             values.endTime != null) {
-          if (values.endTime instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.endTime)) {
             // @ts-ignore: type is checked above.
             this.#_219RwDanjScTv5tYCjwGZVCM7KZ9_endTime = [values.endTime];
       
@@ -635,7 +639,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("published" in values &&             values.published != null) {
-          if (values.published instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.published)) {
             // @ts-ignore: type is checked above.
             this.#_5e258TDXtuhaFRPZiGoDfEpjdMr_published = [values.published];
       
@@ -700,7 +704,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("startTime" in values &&             values.startTime != null) {
-          if (values.startTime instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.startTime)) {
             // @ts-ignore: type is checked above.
             this.#_2w3Jmue4up8iVDUA51WZqomEF438_startTime = [values.startTime];
       
@@ -768,7 +772,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("updated" in values &&             values.updated != null) {
-          if (values.updated instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.updated)) {
             // @ts-ignore: type is checked above.
             this.#_385aB7ySixcf5Un6z3VsWmThgCzQ_updated = [values.updated];
       
@@ -990,7 +994,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       
         if ("duration" in values &&             values.duration != null) {
-          if (values.duration instanceof Temporal.Duration) {
+          if (isTemporalDuration(values.duration)) {
             // @ts-ignore: type is checked above.
             this.#_3bNvLMBN1bCJETiTihM3wvi1B2JX_duration = [values.duration];
       
@@ -1378,7 +1382,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       clone.#_219RwDanjScTv5tYCjwGZVCM7KZ9_endTime = this.#_219RwDanjScTv5tYCjwGZVCM7KZ9_endTime;
         if ("endTime" in values &&             values.endTime != null) {
-          if (values.endTime instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.endTime)) {
             // @ts-ignore: type is checked above.
             clone.#_219RwDanjScTv5tYCjwGZVCM7KZ9_endTime = [values.endTime];
       
@@ -1616,7 +1620,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       clone.#_5e258TDXtuhaFRPZiGoDfEpjdMr_published = this.#_5e258TDXtuhaFRPZiGoDfEpjdMr_published;
         if ("published" in values &&             values.published != null) {
-          if (values.published instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.published)) {
             // @ts-ignore: type is checked above.
             clone.#_5e258TDXtuhaFRPZiGoDfEpjdMr_published = [values.published];
       
@@ -1681,7 +1685,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       clone.#_2w3Jmue4up8iVDUA51WZqomEF438_startTime = this.#_2w3Jmue4up8iVDUA51WZqomEF438_startTime;
         if ("startTime" in values &&             values.startTime != null) {
-          if (values.startTime instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.startTime)) {
             // @ts-ignore: type is checked above.
             clone.#_2w3Jmue4up8iVDUA51WZqomEF438_startTime = [values.startTime];
       
@@ -1750,7 +1754,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       clone.#_385aB7ySixcf5Un6z3VsWmThgCzQ_updated = this.#_385aB7ySixcf5Un6z3VsWmThgCzQ_updated;
         if ("updated" in values &&             values.updated != null) {
-          if (values.updated instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.updated)) {
             // @ts-ignore: type is checked above.
             clone.#_385aB7ySixcf5Un6z3VsWmThgCzQ_updated = [values.updated];
       
@@ -1976,7 +1980,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
       clone.#_3bNvLMBN1bCJETiTihM3wvi1B2JX_duration = this.#_3bNvLMBN1bCJETiTihM3wvi1B2JX_duration;
         if ("duration" in values &&             values.duration != null) {
-          if (values.duration instanceof Temporal.Duration) {
+          if (isTemporalDuration(values.duration)) {
             // @ts-ignore: type is checked above.
             clone.#_3bNvLMBN1bCJETiTihM3wvi1B2JX_duration = [values.duration];
       
@@ -26702,7 +26706,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
         }
       
         if ("created" in values &&             values.created != null) {
-          if (values.created instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.created)) {
             // @ts-ignore: type is checked above.
             this.#_3qzP3ukEZoUziK5FEiA1RhU4aqac = [values.created];
       
@@ -26803,7 +26807,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
         }
       clone.#_3qzP3ukEZoUziK5FEiA1RhU4aqac = this.#_3qzP3ukEZoUziK5FEiA1RhU4aqac;
         if ("created" in values &&             values.created != null) {
-          if (values.created instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.created)) {
             // @ts-ignore: type is checked above.
             clone.#_3qzP3ukEZoUziK5FEiA1RhU4aqac = [values.created];
       
@@ -80846,7 +80850,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         }
       
         if ("closed" in values &&             values.closed != null) {
-          if (values.closed instanceof Temporal.Instant || typeof values.closed === "boolean") {
+          if (isTemporalInstant(values.closed) || typeof values.closed === "boolean") {
             // @ts-ignore: type is checked above.
             this.#_3KronwL8DiiKBRcJFKQPiEHm8xb6_closed = [values.closed];
       
@@ -81001,7 +81005,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         }
       clone.#_3KronwL8DiiKBRcJFKQPiEHm8xb6_closed = this.#_3KronwL8DiiKBRcJFKQPiEHm8xb6_closed;
         if ("closed" in values &&             values.closed != null) {
-          if (values.closed instanceof Temporal.Instant || typeof values.closed === "boolean") {
+          if (isTemporalInstant(values.closed) || typeof values.closed === "boolean") {
             // @ts-ignore: type is checked above.
             clone.#_3KronwL8DiiKBRcJFKQPiEHm8xb6_closed = [values.closed];
       
@@ -82067,7 +82071,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     array = [];
     for (const v of this.#_3KronwL8DiiKBRcJFKQPiEHm8xb6_closed) {
       const element = (
-    v instanceof Temporal.Instant ? {
+    isTemporalInstant(v) ? {
         "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
         "@value": v.toString(),
       } : { "@value": v }
@@ -93395,7 +93399,7 @@ formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
         }
       
         if ("deleted" in values &&             values.deleted != null) {
-          if (values.deleted instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.deleted)) {
             // @ts-ignore: type is checked above.
             this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = [values.deleted];
       
@@ -93489,7 +93493,7 @@ formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
         }
       clone.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = this.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted;
         if ("deleted" in values &&             values.deleted != null) {
-          if (values.deleted instanceof Temporal.Instant) {
+          if (isTemporalInstant(values.deleted)) {
             // @ts-ignore: type is checked above.
             clone.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = [values.deleted];
       
