@@ -64,7 +64,9 @@ if (ignore) {
   if (!pluginBuilt) missing.push(`built loader at ${pluginPath}`);
   if (!oxlintBin) missing.push("oxlint binary on PATH or in node_modules");
   console.warn(
-    `Skipping oxlint plugin integration test — missing: ${missing.join(", ")}.\n` +
+    `Skipping oxlint plugin integration test — missing: ${
+      missing.join(", ")
+    }.\n` +
       "To enable it, run `mise run install` (or `pnpm install && pnpm --filter @fedify/lint build`) " +
       "from the repository root so both the loader and the oxlint binary are available.",
   );
