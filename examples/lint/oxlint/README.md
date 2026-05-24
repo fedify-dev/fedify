@@ -40,7 +40,7 @@ pnpm lint:fixed
 ~~~~
 
 The same tasks are also wired into *deno.json*, so you can invoke Oxlint
-through Deno (the plugin still resolves out of *node_modules*, so
+through Deno (the plugin still resolves out of *node\_modules*, so
 `pnpm install` is required first):
 
 ~~~~ sh
