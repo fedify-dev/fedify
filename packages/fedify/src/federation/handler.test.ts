@@ -1143,6 +1143,161 @@ test("handleCollection()", async () => {
   assertEquals(onUnauthorizedCalled, null);
 });
 
+test("handleCollection() records OpenTelemetry collection metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/followers"),
+    request: new Request("https://example.com/users/someone/followers", {
+      headers: { Accept: "application/activity+json" },
+    }),
+    getActorUri(identifier: string) {
+      return new URL(`https://example.com/users/${identifier}`);
+    },
+  });
+  const dispatcher: CollectionDispatcher<
+    Activity,
+    RequestContext<void>,
+    void,
+    void
+  > = (_ctx, identifier) =>
+    identifier === "someone"
+      ? {
+        items: [
+          new Create({ id: new URL("https://example.com/activities/1") }),
+          new Create({ id: new URL("https://example.com/activities/2") }),
+          new Create({ id: new URL("https://example.com/activities/3") }),
+        ],
+      }
+      : null;
+  const counter: CollectionCounter<void, void> = (_ctx, identifier) =>
+    identifier === "someone" ? 3 : null;
+
+  const response = await handleCollection(context.request, {
+    context,
+    name: "followers",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}/followers`);
+    },
+    collectionCallbacks: { dispatcher, counter },
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 200);
+
+  const requests = recorder.getMeasurements("activitypub.collection.request");
+  assertEquals(requests.length, 1);
+  assertEquals(requests[0].type, "counter");
+  assertEquals(requests[0].value, 1);
+  assertEquals(
+    requests[0].attributes["activitypub.collection.kind"],
+    "followers",
+  );
+  assertEquals(requests[0].attributes["activitypub.collection.page"], false);
+  assertEquals(
+    requests[0].attributes["fedify.collection.dispatcher"],
+    "built_in",
+  );
+  assertEquals(
+    requests[0].attributes["activitypub.collection.result"],
+    "served",
+  );
+  assertEquals(requests[0].attributes["http.response.status_code"], 200);
+  assertEquals(
+    "activitypub.collection.id" in requests[0].attributes,
+    false,
+  );
+
+  const durations = recorder.getMeasurements(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(durations[0].type, "histogram");
+  assert(durations[0].value >= 0);
+  assertEquals(
+    durations[0].attributes["activitypub.collection.result"],
+    "served",
+  );
+
+  const items = recorder.getMeasurements("activitypub.collection.page.items");
+  assertEquals(items.length, 1);
+  assertEquals(items[0].type, "histogram");
+  assertEquals(items[0].value, 3);
+  assertEquals(items[0].attributes["activitypub.collection.page"], false);
+
+  const totalItems = recorder.getMeasurements(
+    "activitypub.collection.total_items",
+  );
+  assertEquals(totalItems.length, 1);
+  assertEquals(totalItems[0].type, "histogram");
+  assertEquals(totalItems[0].value, 3);
+});
+
+test("handleCollection() records not_found collection metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/nobody/outbox"),
+    request: new Request("https://example.com/users/nobody/outbox", {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const dispatcher: CollectionDispatcher<
+    Activity,
+    RequestContext<void>,
+    void,
+    void
+  > = () => null;
+
+  const response = await handleCollection(context.request, {
+    context,
+    name: "outbox",
+    identifier: "nobody",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}/outbox`);
+    },
+    collectionCallbacks: { dispatcher },
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 404);
+
+  const requests = recorder.getMeasurements("activitypub.collection.request");
+  assertEquals(requests.length, 1);
+  assertEquals(requests[0].attributes["activitypub.collection.kind"], "outbox");
+  assertEquals(
+    requests[0].attributes["activitypub.collection.result"],
+    "not_found",
+  );
+  assertEquals(requests[0].attributes["http.response.status_code"], 404);
+
+  const durations = recorder.getMeasurements(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(
+    durations[0].attributes["activitypub.collection.result"],
+    "not_found",
+  );
+  assertEquals(
+    recorder.getMeasurements("activitypub.collection.page.items").length,
+    0,
+  );
+});
+
 test("handleInbox()", async () => {
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
@@ -4017,6 +4172,82 @@ test("handleCustomCollection()", async () => {
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
+});
+
+test("handleCustomCollection() records OpenTelemetry collection metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/custom"),
+    request: new Request("https://example.com/users/someone/custom", {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const dispatcher: CustomCollectionDispatcher<
+    Create,
+    string,
+    RequestContext<void>,
+    void
+  > = (_ctx, values) =>
+    values.identifier === "someone"
+      ? {
+        items: [
+          new Create({ id: new URL("https://example.com/activities/1") }),
+          new Create({ id: new URL("https://example.com/activities/2") }),
+        ],
+      }
+      : null;
+  const counter: CustomCollectionCounter<string, void> = (_ctx, values) =>
+    values.identifier === "someone" ? 2 : null;
+
+  const response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: { dispatcher, counter },
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 200);
+
+  const requests = recorder.getMeasurements("activitypub.collection.request");
+  assertEquals(requests.length, 1);
+  assertEquals(requests[0].attributes["activitypub.collection.kind"], "custom");
+  assertEquals(requests[0].attributes["activitypub.collection.page"], false);
+  assertEquals(
+    requests[0].attributes["fedify.collection.dispatcher"],
+    "custom",
+  );
+  assertEquals(
+    requests[0].attributes["activitypub.collection.result"],
+    "served",
+  );
+  assertEquals(requests[0].attributes["http.response.status_code"], 200);
+
+  const durations = recorder.getMeasurements(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(
+    durations[0].attributes["fedify.collection.dispatcher"],
+    "custom",
+  );
+
+  const items = recorder.getMeasurements("activitypub.collection.page.items");
+  assertEquals(items.length, 1);
+  assertEquals(items[0].value, 2);
+
+  const totalItems = recorder.getMeasurements(
+    "activitypub.collection.total_items",
+  );
+  assertEquals(totalItems.length, 1);
+  assertEquals(totalItems[0].value, 2);
 });
 
 test("handleInbox() records OpenTelemetry span events", async () => {
