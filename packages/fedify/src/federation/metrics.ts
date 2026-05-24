@@ -409,6 +409,51 @@ export interface WebFingerHandleAttributes {
   statusCode?: number;
 }
 
+/**
+ * The bounded collection kind recorded on collection request metrics.
+ * @since 2.3.0
+ */
+export type CollectionMetricKind =
+  | "inbox"
+  | "outbox"
+  | "following"
+  | "followers"
+  | "liked"
+  | "featured"
+  | "featured_tags"
+  | "custom";
+
+/**
+ * The terminal request classification recorded on collection metrics.
+ * @since 2.3.0
+ */
+export type CollectionMetricResult =
+  | "served"
+  | "not_found"
+  | "not_acceptable"
+  | "unauthorized"
+  | "error";
+
+/**
+ * Whether a collection request was handled by one of Fedify's built-in
+ * ActivityPub collection dispatchers or by an application-defined custom
+ * collection dispatcher.
+ * @since 2.3.0
+ */
+export type CollectionMetricDispatcher = "built_in" | "custom";
+
+/**
+ * Common attributes accepted by collection metric helpers.
+ * @since 2.3.0
+ */
+export interface CollectionMetricAttributes {
+  kind: CollectionMetricKind;
+  page: boolean;
+  dispatcher: CollectionMetricDispatcher;
+  result: CollectionMetricResult;
+  statusCode?: number;
+}
+
 class FederationMetrics {
   readonly deliverySent: Counter;
   readonly deliveryPermanentFailure: Counter;
@@ -435,6 +480,10 @@ class FederationMetrics {
   readonly documentCache: Counter;
   readonly webFingerHandle: Counter;
   readonly webFingerHandleDuration: Histogram;
+  readonly collectionRequest: Counter;
+  readonly collectionDispatchDuration: Histogram;
+  readonly collectionPageItems: Histogram;
+  readonly collectionTotalItems: Histogram;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -709,6 +758,56 @@ class FederationMetrics {
         },
       },
     );
+    this.collectionRequest = meter.createCounter(
+      "activitypub.collection.request",
+      {
+        description:
+          "ActivityPub collection and collection-page requests handled by " +
+          "Fedify.",
+        unit: "{request}",
+      },
+    );
+    this.collectionDispatchDuration = meter.createHistogram(
+      "activitypub.collection.dispatch.duration",
+      {
+        description: "Duration of ActivityPub collection dispatcher callbacks.",
+        unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
+      },
+    );
+    this.collectionPageItems = meter.createHistogram(
+      "activitypub.collection.page.items",
+      {
+        description: "Number of items Fedify materialized for an ActivityPub " +
+          "collection response.",
+        unit: "{item}",
+      },
+    );
+    this.collectionTotalItems = meter.createHistogram(
+      "activitypub.collection.total_items",
+      {
+        description:
+          "Total item count reported by ActivityPub collection counters.",
+        unit: "{item}",
+      },
+    );
   }
 
   recordDelivery(
@@ -935,6 +1034,55 @@ class FederationMetrics {
     this.webFingerHandle.add(1, attributes);
     this.webFingerHandleDuration.record(attrs.durationMs, attributes);
   }
+
+  recordCollectionRequest(attrs: CollectionMetricAttributes): void {
+    this.collectionRequest.add(1, buildCollectionAttributes(attrs));
+  }
+
+  recordCollectionDispatchDuration(
+    durationMs: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionDispatchDuration.record(
+      durationMs,
+      buildCollectionAttributes(attrs),
+    );
+  }
+
+  recordCollectionPageItems(
+    itemCount: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionPageItems.record(
+      itemCount,
+      buildCollectionAttributes(attrs),
+    );
+  }
+
+  recordCollectionTotalItems(
+    totalItems: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionTotalItems.record(
+      totalItems,
+      buildCollectionAttributes(attrs),
+    );
+  }
+}
+
+function buildCollectionAttributes(
+  attrs: CollectionMetricAttributes,
+): Attributes {
+  const attributes: Attributes = {
+    "activitypub.collection.kind": attrs.kind,
+    "activitypub.collection.page": attrs.page,
+    "activitypub.collection.result": attrs.result,
+    "fedify.collection.dispatcher": attrs.dispatcher,
+  };
+  if (attrs.statusCode != null) {
+    attributes["http.response.status_code"] = attrs.statusCode;
+  }
+  return attributes;
 }
 
 function buildActivityLifecycleAttributes(
@@ -1140,6 +1288,66 @@ export function recordWebFingerHandle(
   attrs: WebFingerHandleAttributes,
 ): void {
   getFederationMetrics(meterProvider).recordWebFingerHandle(attrs);
+}
+
+/**
+ * Records one `activitypub.collection.request` measurement for a
+ * collection or collection-page request handled by Fedify.
+ * @since 2.3.0
+ */
+export function recordCollectionRequest(
+  meterProvider: MeterProvider | undefined,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionRequest(attrs);
+}
+
+/**
+ * Records one `activitypub.collection.dispatch.duration` measurement for a
+ * collection dispatcher callback invocation.
+ * @since 2.3.0
+ */
+export function recordCollectionDispatchDuration(
+  meterProvider: MeterProvider | undefined,
+  durationMs: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionDispatchDuration(
+    durationMs,
+    attrs,
+  );
+}
+
+/**
+ * Records one `activitypub.collection.page.items` measurement when Fedify
+ * has materialized collection items in memory.
+ * @since 2.3.0
+ */
+export function recordCollectionPageItems(
+  meterProvider: MeterProvider | undefined,
+  itemCount: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionPageItems(
+    itemCount,
+    attrs,
+  );
+}
+
+/**
+ * Records one `activitypub.collection.total_items` measurement when a
+ * collection counter has already reported a total item count.
+ * @since 2.3.0
+ */
+export function recordCollectionTotalItems(
+  meterProvider: MeterProvider | undefined,
+  totalItems: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionTotalItems(
+    totalItems,
+    attrs,
+  );
 }
 
 /**
