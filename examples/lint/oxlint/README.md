@@ -39,6 +39,15 @@ diagnostics:
 pnpm lint:fixed
 ~~~~
 
+The same tasks are also wired into *deno.json*, so you can invoke Oxlint
+through Deno (the plugin still resolves out of *node_modules*, so
+`pnpm install` is required first):
+
+~~~~ sh
+deno task lint
+deno task lint:fixed
+~~~~
+
 
 How it works
 ------------

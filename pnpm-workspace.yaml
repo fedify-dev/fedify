@@ -99,7 +99,7 @@ catalog:
   pkijs: ^3.3.3
   mysql2: ^3.18.0
   nuxt: ^4.4.2
-  oxlint: ^1.63.0
+  oxlint: ^1.66.0
   postgres: ^3.4.7
   tsdown: ^0.21.6
   typescript: ^5.9.2
