@@ -150,6 +150,7 @@
     "npm:mysql2@^3.22.3": "3.22.3_@types+node@24.12.2",
     "npm:ora@^8.2.0": "8.2.0",
     "npm:oxlint@*": "1.66.0",
+    "npm:oxlint@^1.66.0": "1.66.0",
     "npm:pkijs@^3.2.5": "3.4.0",
     "npm:pkijs@^3.3.3": "3.4.0",
     "npm:postgres@^3.4.7": "3.4.9",
@@ -9635,7 +9636,8 @@
       "packages/lint": {
         "dependencies": [
           "npm:@types/estree@^1.0.8",
-          "npm:eslint@9"
+          "npm:eslint@9",
+          "npm:oxlint@^1.66.0"
         ],
         "packageJson": {
           "dependencies": [

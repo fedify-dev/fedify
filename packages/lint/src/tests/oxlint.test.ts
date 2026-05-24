@@ -59,6 +59,17 @@ function findOxlint(): string | null {
 const oxlintBin = findOxlint();
 const ignore = !pluginBuilt || !oxlintBin;
 
+if (ignore) {
+  const missing: string[] = [];
+  if (!pluginBuilt) missing.push(`built loader at ${pluginPath}`);
+  if (!oxlintBin) missing.push("oxlint binary on PATH or in node_modules");
+  console.warn(
+    `Skipping oxlint plugin integration test — missing: ${missing.join(", ")}.\n` +
+      "To enable it, run `mise run install` (or `pnpm install && pnpm --filter @fedify/lint build`) " +
+      "from the repository root so both the loader and the oxlint binary are available.",
+  );
+}
+
 const BAD_CODE =
   `import { createFederation, InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";

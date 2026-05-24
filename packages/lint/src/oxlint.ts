@@ -112,14 +112,19 @@ const rules: Record<
 };
 
 /**
- * Plugin object compatible with oxlint's JS plugin API.
+ * Plugin object compatible with Oxlint's JS plugin API.
+ *
+ * Kept module-private on purpose: consumers should rely on the default
+ * export and the Oxlint runtime to resolve the shape, rather than
+ * importing this type and risking drift from upstream's `Plugin`
+ * definition in `@oxlint/plugins`.
  */
-export interface OxlintPlugin {
+interface OxlintPlugin {
   meta: { name: string; version: string };
   rules: Record<string, Rule.RuleModule>;
 }
 
-export const plugin: OxlintPlugin = {
+const plugin: OxlintPlugin = {
   meta: {
     name: metadataRaw.name,
     version: metadataRaw.version,

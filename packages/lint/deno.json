@@ -8,7 +8,8 @@
   },
   "imports": {
     "eslint": "npm:eslint@^9.0.0",
-    "estree": "npm:@types/estree@^1.0.8"
+    "estree": "npm:@types/estree@^1.0.8",
+    "oxlint": "npm:oxlint@^1.66.0"
   },
   "publish": {
     "exclude": [
