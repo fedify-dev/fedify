@@ -1240,6 +1240,52 @@ test("handleCollection() records OpenTelemetry collection metrics", async () => 
   assertEquals(totalItems[0].value, 3);
 });
 
+test("handleCollection() classifies camelCase collection metric names", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/collections/featured"),
+    request: new Request(
+      "https://example.com/users/someone/collections/featured",
+      { headers: { Accept: "application/activity+json" } },
+    ),
+  });
+  const dispatcher: CollectionDispatcher<
+    Activity,
+    RequestContext<void>,
+    void,
+    void
+  > = () => ({ items: [] });
+
+  const response = await handleCollection(context.request, {
+    context,
+    name: "featuredTags",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(
+        `https://example.com/users/${identifier}/collections/featured`,
+      );
+    },
+    collectionCallbacks: { dispatcher },
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 200);
+
+  const requests = recorder.getMeasurements("activitypub.collection.request");
+  assertEquals(requests.length, 1);
+  assertEquals(
+    requests[0].attributes["activitypub.collection.kind"],
+    "featured_tags",
+  );
+});
+
 test("handleCollection() records not_found collection metrics", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
   const federation = createFederation<void>({
@@ -4210,6 +4256,8 @@ test("handleCustomCollection() records OpenTelemetry collection metrics", async 
     name: "custom collection",
     values: { identifier: "someone" },
     collectionCallbacks: { dispatcher, counter },
+    filterPredicate: (item) =>
+      item.id?.href === "https://example.com/activities/1",
     meterProvider,
     onNotFound: () => new Response("Not found", { status: 404 }),
     onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
@@ -4238,16 +4286,62 @@ test("handleCustomCollection() records OpenTelemetry collection metrics", async 
     durations[0].attributes["fedify.collection.dispatcher"],
     "custom",
   );
+  assertEquals(durations[0].attributes["http.response.status_code"], 200);
 
   const items = recorder.getMeasurements("activitypub.collection.page.items");
   assertEquals(items.length, 1);
-  assertEquals(items[0].value, 2);
+  assertEquals(items[0].value, 1);
+  assertEquals(items[0].attributes["http.response.status_code"], 200);
 
   const totalItems = recorder.getMeasurements(
     "activitypub.collection.total_items",
   );
   assertEquals(totalItems.length, 1);
   assertEquals(totalItems[0].value, 2);
+  assertEquals(totalItems[0].attributes["http.response.status_code"], 200);
+});
+
+test("handleCustomCollection() records not_found status on dispatch metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/nobody/custom"),
+    request: new Request("https://example.com/users/nobody/custom", {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const dispatcher: CustomCollectionDispatcher<
+    Create,
+    string,
+    RequestContext<void>,
+    void
+  > = () => null;
+
+  const response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "nobody" },
+    collectionCallbacks: { dispatcher },
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 404);
+
+  const durations = recorder.getMeasurements(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(
+    durations[0].attributes["activitypub.collection.result"],
+    "not_found",
+  );
+  assertEquals(durations[0].attributes["http.response.status_code"], 404);
 });
 
 test("handleCustomCollection() classifies deferred collection metrics as error", async () => {

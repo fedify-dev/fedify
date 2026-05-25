@@ -360,7 +360,10 @@ const BUILT_IN_COLLECTION_METRIC_KINDS = new Set<string>([
 ]);
 
 function getCollectionMetricKind(name: string): CollectionMetricKind {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, "_");
+  const normalized = name.trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
   return BUILT_IN_COLLECTION_METRIC_KINDS.has(normalized)
     ? normalized as CollectionMetricKind
     : "custom";
@@ -1744,6 +1747,46 @@ type CollectionMetricMeasurement = {
   totalItems?: number;
 };
 
+type PendingCollectionMetricRecorder = (
+  result: CollectionMetricResult,
+  response?: Response,
+) => void;
+
+const pendingCollectionMetricRecorders = new WeakMap<
+  object,
+  PendingCollectionMetricRecorder
+>();
+
+function deferPendingCollectionMetrics(
+  error: unknown,
+  recorder: PendingCollectionMetricRecorder,
+): boolean {
+  if (
+    error == null ||
+    (typeof error !== "object" && typeof error !== "function")
+  ) {
+    return false;
+  }
+  pendingCollectionMetricRecorders.set(error, recorder);
+  return true;
+}
+
+function recordDeferredPendingCollectionMetrics(
+  error: unknown,
+  result: CollectionMetricResult,
+  response?: Response,
+): void {
+  if (
+    error == null ||
+    (typeof error !== "object" && typeof error !== "function")
+  ) {
+    return;
+  }
+  const recorder = pendingCollectionMetricRecorders.get(error);
+  pendingCollectionMetricRecorders.delete(error);
+  recorder?.(result, response);
+}
+
 async function _handleCustomCollection<
   TItem extends URL | Object | Link | Recipient,
   TParam extends string,
@@ -1782,12 +1825,16 @@ async function _handleCustomCollection<
   ).fetchCollection(cursor);
   try {
     const response = await handler.toJsonLd().then(respondAsActivity);
-    handler.recordPendingCollectionMetrics("served");
+    handler.recordPendingCollectionMetrics("served", response);
     return response;
   } catch (e) {
-    handler.recordPendingCollectionMetrics(
-      e instanceof ItemsNotFoundError ? "not_found" : "error",
-    );
+    if (
+      !deferPendingCollectionMetrics(
+        e,
+        (result, response) =>
+          handler.recordPendingCollectionMetrics(result, response),
+      )
+    ) handler.recordPendingCollectionMetrics("error");
     throw e;
   }
 }
@@ -1855,12 +1902,16 @@ async function _handleOrderedCollection<
   ).fetchCollection(cursor);
   try {
     const response = await handler.toJsonLd().then(respondAsActivity);
-    handler.recordPendingCollectionMetrics("served");
+    handler.recordPendingCollectionMetrics("served", response);
     return response;
   } catch (e) {
-    handler.recordPendingCollectionMetrics(
-      e instanceof ItemsNotFoundError ? "not_found" : "error",
-    );
+    if (
+      !deferPendingCollectionMetrics(
+        e,
+        (result, response) =>
+          handler.recordPendingCollectionMetrics(result, response),
+      )
+    ) handler.recordPendingCollectionMetrics("error");
     throw e;
   }
 }
@@ -2003,10 +2054,12 @@ class CustomCollectionHandler<
     const { prevCursor, nextCursor } = pages;
     const partOf = new URL(id);
     partOf.searchParams.delete("cursor");
+    const items = this.filterItems(pages.items);
+    this.recordPendingCollectionItemCount(true, items.length);
     return {
       id,
       partOf,
-      items: this.filterItems(pages.items),
+      items,
       prev: this.appendToUrl(prevCursor),
       next: this.appendToUrl(nextCursor),
     };
@@ -2045,10 +2098,12 @@ class CustomCollectionHandler<
   async getPropsWithoutCursor() {
     const totalItems = await this.totalItems;
     const pages = await this.getPages({ totalItems });
+    const items = this.filterItems(pages.items);
+    this.recordPendingCollectionItemCount(false, items.length);
     return {
       id: this.#id,
       totalItems,
-      items: this.filterItems(pages.items),
+      items,
     };
   }
 
@@ -2111,7 +2166,6 @@ class CustomCollectionHandler<
       this.#pendingCollectionMetrics.push({
         page: pageMetricBase.page,
         dispatchDurationMs: durationMs,
-        itemCount: page.items.length,
         totalItems: totalItems ?? undefined,
       });
       return page;
@@ -2159,13 +2213,32 @@ class CustomCollectionHandler<
   metricAttributes(
     page: boolean,
     result: CollectionMetricResult,
+    response?: Response,
   ): CollectionMetricAttributes {
-    return collectionAttributes(this.metricBase(page), result);
+    return collectionAttributes(this.metricBase(page), result, response);
   }
 
-  recordPendingCollectionMetrics(result: CollectionMetricResult): void {
+  recordPendingCollectionItemCount(page: boolean, itemCount: number): void {
+    for (let i = this.#pendingCollectionMetrics.length - 1; i >= 0; i--) {
+      const measurement = this.#pendingCollectionMetrics[i];
+      if (
+        measurement.page === page &&
+        measurement.dispatchDurationMs != null &&
+        measurement.itemCount == null
+      ) {
+        measurement.itemCount = itemCount;
+        return;
+      }
+    }
+    this.#pendingCollectionMetrics.push({ page, itemCount });
+  }
+
+  recordPendingCollectionMetrics(
+    result: CollectionMetricResult,
+    response?: Response,
+  ): void {
     for (const measurement of this.#pendingCollectionMetrics.splice(0)) {
-      const attrs = this.metricAttributes(measurement.page, result);
+      const attrs = this.metricAttributes(measurement.page, result, response);
       if (measurement.dispatchDurationMs != null) {
         recordCollectionDispatchDuration(
           this.meterProvider,
@@ -2294,6 +2367,11 @@ function exceptWrapper<TParams extends ErrorHandlers>(
       switch (error?.constructor) {
         case ItemsNotFoundError: {
           const response = await onNotFound(request);
+          recordDeferredPendingCollectionMetrics(
+            error,
+            "not_found",
+            response,
+          );
           recordCollectionRequest(
             meterProvider,
             collectionAttributes(metricBase, "not_found", response),
@@ -2302,6 +2380,11 @@ function exceptWrapper<TParams extends ErrorHandlers>(
         }
         case UnauthorizedError: {
           const response = await onUnauthorized(request);
+          recordDeferredPendingCollectionMetrics(
+            error,
+            "unauthorized",
+            response,
+          );
           recordCollectionRequest(
             meterProvider,
             collectionAttributes(metricBase, "unauthorized", response),
@@ -2309,6 +2392,7 @@ function exceptWrapper<TParams extends ErrorHandlers>(
           return response;
         }
         default:
+          recordDeferredPendingCollectionMetrics(error, "error");
           recordCollectionRequest(
             meterProvider,
             collectionAttributes(metricBase, "error"),
