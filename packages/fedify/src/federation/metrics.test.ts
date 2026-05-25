@@ -6,6 +6,7 @@ import type { MessageQueue } from "./mq.ts";
 import {
   classifyFetchError,
   instrumentDocumentLoader,
+  recordCircuitBreakerStateChange,
   recordCollectionDispatchDuration,
   recordCollectionPageItems,
   recordCollectionRequest,
@@ -163,6 +164,29 @@ test("recordOutboxActivity() records counter with result and activity type", () 
   assertEquals(
     measurements.map((m) => m.attributes["activitypub.processing.result"]),
     ["queued", "retried", "abandoned"],
+  );
+});
+
+test("recordCircuitBreakerStateChange() records counter with bounded attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCircuitBreakerStateChange(
+    meterProvider,
+    "remote.example",
+    "half_open",
+  );
+  const measurements = recorder.getMeasurements(
+    "activitypub.circuit_breaker.state_change",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "counter");
+  assertEquals(measurements[0].value, 1);
+  assertEquals(
+    measurements[0].attributes["activitypub.remote.host"],
+    "remote.example",
+  );
+  assertEquals(
+    measurements[0].attributes["activitypub.circuit_breaker.state"],
+    "half_open",
   );
 });
 

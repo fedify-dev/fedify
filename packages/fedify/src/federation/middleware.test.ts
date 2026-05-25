@@ -6589,6 +6589,10 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     options: ConstructorParameters<typeof FederationImpl<void>>[0][
       "circuitBreaker"
     ],
+    federationOptions: Pick<
+      ConstructorParameters<typeof FederationImpl<void>>[0],
+      "meterProvider" | "tracerProvider"
+    > = {},
   ): CircuitBreakerSetup {
     const kv = new MemoryKvStore();
     const queued: Queued[] = [];
@@ -6605,6 +6609,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       kv,
       queue,
       circuitBreaker: options,
+      ...federationOptions,
     });
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
     return { federation, kv, queued };
@@ -6769,6 +6774,56 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     assertEquals(
       await kv.get(["_fedify", "circuit", "disabled.example"]),
       undefined,
+    );
+  });
+
+  await t.step("state changes are recorded in metrics and spans", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://telemetry.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation } = setup(
+      { failureThreshold: 1 },
+      { meterProvider, tracerProvider },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://telemetry.example/inbox"),
+    );
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.circuit_breaker.state_change",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      measurements[0].attributes["activitypub.circuit_breaker.state"],
+      "open",
+    );
+    const events = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.state_change",
+    );
+    assertEquals(events.length, 1);
+    assertEquals(
+      events[0].attributes?.["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.previous_state"],
+      "closed",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.state"],
+      "open",
     );
   });
 

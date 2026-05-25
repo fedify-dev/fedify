@@ -82,7 +82,11 @@ import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
-import { CircuitBreaker } from "./circuit-breaker.ts";
+import {
+  CircuitBreaker,
+  type CircuitBreakerState,
+  type CircuitBreakerStateChange,
+} from "./circuit-breaker.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
 import type {
   ActorKeyPair,
@@ -128,6 +132,7 @@ import {
   isAbortError,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
+  recordCircuitBreakerStateChange,
   recordCollectionRequest,
   recordFanoutRecipients,
   recordInboxActivity,
@@ -170,6 +175,28 @@ function parseRetryAfter(
   const nowMs = Number(now.epochMilliseconds);
   return Temporal.Duration.from({
     milliseconds: Math.max(0, retryAtMs - nowMs),
+  });
+}
+
+function toCircuitBreakerMetricState(
+  state: CircuitBreakerState,
+): "closed" | "open" | "half_open" {
+  return state === "half-open" ? "half_open" : state;
+}
+
+function recordCircuitBreakerSpanEvent(
+  span: Span,
+  remoteHost: string,
+  change: CircuitBreakerStateChange,
+): void {
+  span.addEvent("activitypub.circuit_breaker.state_change", {
+    "activitypub.remote.host": remoteHost,
+    "activitypub.circuit_breaker.previous_state": toCircuitBreakerMetricState(
+      change.previousState,
+    ),
+    "activitypub.circuit_breaker.state": toCircuitBreakerMetricState(
+      change.newState,
+    ),
   });
 }
 
@@ -406,6 +433,14 @@ export class FederationImpl<TContextData>
         kv: options.kv,
         prefix: this.kvPrefixes.circuitBreaker,
         options: options.circuitBreaker,
+        stateChangeObserver: (remoteHost, _previousState, newState) => {
+          const metricState = toCircuitBreakerMetricState(newState);
+          recordCircuitBreakerStateChange(
+            this.meterProvider,
+            remoteHost,
+            metricState,
+          );
+        },
       });
       if (
         options.kv.cas == null &&
@@ -1047,6 +1082,12 @@ export class FederationImpl<TContextData>
           );
           return;
         }
+        if (decision.probe) {
+          recordCircuitBreakerSpanEvent(span, remoteHost, {
+            previousState: "open",
+            newState: "half-open",
+          });
+        }
       }
       await sendActivity({
         keys,
@@ -1065,7 +1106,10 @@ export class FederationImpl<TContextData>
         tracerProvider: this.tracerProvider,
       });
       if (circuit != null) {
-        await circuit.recordSuccess(remoteHost);
+        const stateChange = await circuit.recordSuccess(remoteHost);
+        if (stateChange != null) {
+          recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+        }
       }
     } catch (error) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
@@ -1094,15 +1138,33 @@ export class FederationImpl<TContextData>
       ) {
         if (error instanceof SendActivityError) {
           if (error.statusCode === 429) {
-            await this.circuitBreaker.recordReachableFailure(remoteHost);
+            const stateChange = await this.circuitBreaker
+              .recordReachableFailure(remoteHost);
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
             retryAfterDelay = parseRetryAfter(error.responseHeaders);
           } else if (error.statusCode >= 500) {
-            await this.circuitBreaker.recordFailure(remoteHost);
+            const stateChange = await this.circuitBreaker.recordFailure(
+              remoteHost,
+            );
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
           } else if (error.statusCode >= 400) {
-            await this.circuitBreaker.recordReachableFailure(remoteHost);
+            const stateChange = await this.circuitBreaker
+              .recordReachableFailure(remoteHost);
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
           }
         } else {
-          await this.circuitBreaker.recordFailure(remoteHost);
+          const stateChange = await this.circuitBreaker.recordFailure(
+            remoteHost,
+          );
+          if (stateChange != null) {
+            recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+          }
         }
         const circuitDecision = await this.circuitBreaker.beforeSend(
           remoteHost,

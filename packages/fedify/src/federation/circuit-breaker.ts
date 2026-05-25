@@ -97,6 +97,10 @@ export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
   ) => void | Promise<void>;
 };
 
+/**
+ * Normalized circuit breaker options used internally by Fedify.
+ * @internal
+ */
 export interface NormalizedCircuitBreakerOptions {
   readonly failure: (timestamps: readonly Temporal.Instant[]) => boolean;
   readonly recoveryDelay: Temporal.Duration;
@@ -106,13 +110,30 @@ export interface NormalizedCircuitBreakerOptions {
   readonly onActivityDrop?: CircuitBreakerOptions["onActivityDrop"];
 }
 
+/**
+ * Constructor options for {@link CircuitBreaker}.
+ * @internal
+ */
 export interface CircuitBreakerCreateOptions {
   readonly kv: KvStore;
   readonly prefix: KvKey;
   readonly options?: CircuitBreakerOptions;
   readonly now?: () => Temporal.Instant;
+  /**
+   * Observes state changes after user callbacks have run.
+   * @internal
+   */
+  readonly stateChangeObserver?: (
+    remoteHost: string,
+    previousState: CircuitBreakerState,
+    newState: CircuitBreakerState,
+  ) => void | Promise<void>;
 }
 
+/**
+ * The delivery decision returned by {@link CircuitBreaker.beforeSend}.
+ * @internal
+ */
 export type CircuitBreakerBeforeSendDecision =
   | { readonly type: "send"; readonly probe: boolean }
   | {
@@ -123,6 +144,15 @@ export type CircuitBreakerBeforeSendDecision =
   | { readonly type: "drop"; readonly heldSince: Temporal.Instant };
 
 /**
+ * A circuit breaker state transition.
+ * @since 2.3.0
+ */
+export interface CircuitBreakerStateChange {
+  readonly previousState: CircuitBreakerState;
+  readonly newState: CircuitBreakerState;
+}
+
+/**
  * Tracks reachability state for remote outbox delivery hosts.
  * @since 2.3.0
  */
@@ -131,12 +161,16 @@ export class CircuitBreaker {
   readonly #prefix: KvKey;
   readonly #options: NormalizedCircuitBreakerOptions;
   readonly #now: () => Temporal.Instant;
+  readonly #stateChangeObserver:
+    | CircuitBreakerCreateOptions["stateChangeObserver"]
+    | undefined;
 
   constructor(options: CircuitBreakerCreateOptions) {
     this.#kv = options.kv;
     this.#prefix = options.prefix;
     this.#options = normalizeCircuitBreakerOptions(options.options ?? {});
     this.#now = options.now ?? (() => Temporal.Now.instant());
+    this.#stateChangeObserver = options.stateChangeObserver;
   }
 
   get options(): NormalizedCircuitBreakerOptions {
@@ -198,25 +232,35 @@ export class CircuitBreaker {
     }
   }
 
-  async recordSuccess(remoteHost: string): Promise<void> {
+  async recordSuccess(
+    remoteHost: string,
+  ): Promise<CircuitBreakerStateChange | undefined> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
-      if (oldState == null) return;
+      if (oldState == null) return undefined;
       if (await this.#replace(remoteHost, oldState, undefined)) {
         if (oldState.state !== "closed") {
           await this.#notifyStateChange(remoteHost, oldState.state, "closed");
+          return {
+            previousState: oldState.state,
+            newState: "closed",
+          };
         }
-        return;
+        return undefined;
       }
     }
     throw new Error(`Failed to update circuit breaker state for ${remoteHost}`);
   }
 
-  async recordReachableFailure(remoteHost: string): Promise<void> {
-    await this.recordSuccess(remoteHost);
+  async recordReachableFailure(
+    remoteHost: string,
+  ): Promise<CircuitBreakerStateChange | undefined> {
+    return await this.recordSuccess(remoteHost);
   }
 
-  async recordFailure(remoteHost: string): Promise<void> {
+  async recordFailure(
+    remoteHost: string,
+  ): Promise<CircuitBreakerStateChange | undefined> {
     const now = this.#now();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
@@ -248,8 +292,12 @@ export class CircuitBreaker {
             transition[0],
             transition[1],
           );
+          return {
+            previousState: transition[0],
+            newState: transition[1],
+          };
         }
-        return;
+        return undefined;
       }
     }
     throw new Error(`Failed to update circuit breaker state for ${remoteHost}`);
@@ -314,6 +362,15 @@ export class CircuitBreaker {
       getLogger(["fedify", "federation", "circuit"]).error(
         "An unexpected error occurred in circuit breaker state change " +
           "handler:\n{error}",
+        { remoteHost, previousState, newState, error },
+      );
+    }
+    try {
+      await this.#stateChangeObserver?.(remoteHost, previousState, newState);
+    } catch (error) {
+      getLogger(["fedify", "federation", "circuit"]).error(
+        "An unexpected error occurred in circuit breaker state change " +
+          "observer:\n{error}",
         { remoteHost, previousState, newState, error },
       );
     }

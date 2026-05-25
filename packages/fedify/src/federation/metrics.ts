@@ -76,6 +76,13 @@ export type InboxActivityResult =
 export type OutboxActivityResult = "queued" | "retried" | "abandoned";
 
 /**
+ * The bounded circuit breaker state value recorded on
+ * `activitypub.circuit_breaker.state_change`.
+ * @since 2.3.0
+ */
+export type CircuitBreakerMetricState = "closed" | "open" | "half_open";
+
+/**
  * Common attributes shared by all queue task metrics.
  * @since 2.3.0
  */
@@ -473,6 +480,7 @@ class FederationMetrics {
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
+  readonly circuitBreakerStateChange: Counter;
   readonly keyLookup: Counter;
   readonly keyLookupDuration: Histogram;
   readonly documentFetch: Counter;
@@ -648,6 +656,13 @@ class FederationMetrics {
         "live on `activitypub.delivery.*`.",
       unit: "{activity}",
     });
+    this.circuitBreakerStateChange = meter.createCounter(
+      "activitypub.circuit_breaker.state_change",
+      {
+        description: "Outbound ActivityPub delivery circuit breaker changes.",
+        unit: "{change}",
+      },
+    );
     this.keyLookup = meter.createCounter("activitypub.key.lookup", {
       description:
         "Public-key lookup attempts performed by Fedify, including both " +
@@ -976,6 +991,16 @@ class FederationMetrics {
     );
   }
 
+  recordCircuitBreakerStateChange(
+    remoteHost: string,
+    state: CircuitBreakerMetricState,
+  ): void {
+    this.circuitBreakerStateChange.add(1, {
+      "activitypub.remote.host": remoteHost,
+      "activitypub.circuit_breaker.state": state,
+    });
+  }
+
   recordKeyLookup(attrs: KeyLookupAttributes): void {
     const attributes: Attributes = {
       "activitypub.lookup.kind": "public_key",
@@ -1222,6 +1247,21 @@ export function recordOutboxActivity(
   getFederationMetrics(meterProvider).recordOutboxActivity(
     result,
     activityType,
+  );
+}
+
+/**
+ * Records one outbound delivery circuit breaker state transition.
+ * @since 2.3.0
+ */
+export function recordCircuitBreakerStateChange(
+  meterProvider: MeterProvider | undefined,
+  remoteHost: string,
+  state: CircuitBreakerMetricState,
+): void {
+  getFederationMetrics(meterProvider).recordCircuitBreakerStateChange(
+    remoteHost,
+    state,
   );
 }
 

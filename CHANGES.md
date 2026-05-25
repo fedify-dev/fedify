@@ -110,6 +110,21 @@ To be released.
     operators distinguish a slow-draining queue from a queue that sees
     less traffic.  [[#316], [#740], [#759]]
 
+ -  Added an outbound delivery circuit breaker for queued outbox delivery.
+    Fedify now tracks consecutive network and HTTP 5xx delivery failures
+    per remote host, stores the state in the configured `KvStore`, and
+    requeues messages held by an open circuit instead of repeatedly sending
+    to an unreachable server.  The circuit breaker is enabled by default
+    for queued outbox delivery and can be disabled with
+    `circuitBreaker: false`; applications can customize the failure policy,
+    recovery delay, held activity TTL, release interval, and state/drop
+    callbacks.  HTTP 429 responses do not count as circuit failures and
+    `Retry-After` is respected when present.  State changes are exposed
+    through `activitypub.circuit_breaker.state_change` metrics and
+    `activitypub.circuit_breaker.state_change` span events, and expired
+    held activities call the outbox permanent failure handler with
+    `reason: "circuit_breaker_ttl"`.  [[#620]]
+
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient
     `activitypub.delivery.*` counters and the per-task
@@ -221,6 +236,7 @@ To be released.
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
 [#619]: https://github.com/fedify-dev/fedify/issues/619
+[#620]: https://github.com/fedify-dev/fedify/issues/620
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
 [#737]: https://github.com/fedify-dev/fedify/issues/737
