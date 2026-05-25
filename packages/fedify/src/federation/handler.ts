@@ -2364,9 +2364,7 @@ function exceptWrapper<TParams extends ErrorHandlers>(
 ): (...args: Parameters<typeof handler>) => Promise<Response> {
   return async (request, handlerParams): Promise<Response> => {
     const page = new URL(request.url).searchParams.get("cursor") != null;
-    const meterProvider =
-      (handlerParams as ErrorHandlers & { meterProvider?: MeterProvider })
-        .meterProvider;
+    const { meterProvider } = handlerParams;
     const metricBase: CollectionMetricBase = {
       kind: "custom",
       page,
@@ -2425,6 +2423,7 @@ function exceptWrapper<TParams extends ErrorHandlers>(
  * @since 1.8.0
  */
 interface ErrorHandlers {
+  meterProvider?: MeterProvider;
   onNotFound(request: Request): Response | Promise<Response>;
   onUnauthorized(request: Request): Response | Promise<Response>;
 }
