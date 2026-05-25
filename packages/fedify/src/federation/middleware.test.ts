@@ -6571,6 +6571,243 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
   fetchMock.hardReset();
 });
 
+test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
+  fetchMock.spyGlobal();
+
+  interface Queued {
+    message: Message;
+    options: Parameters<MessageQueue["enqueue"]>[1];
+  }
+
+  interface CircuitBreakerSetup {
+    federation: FederationImpl<void>;
+    kv: MemoryKvStore;
+    queued: Queued[];
+  }
+
+  function setup(
+    options: ConstructorParameters<typeof FederationImpl<void>>[0][
+      "circuitBreaker"
+    ],
+  ): CircuitBreakerSetup {
+    const kv = new MemoryKvStore();
+    const queued: Queued[] = [];
+    const queue: MessageQueue = {
+      enqueue(message, options) {
+        queued.push({ message, options });
+        return Promise.resolve();
+      },
+      listen(_handler, _options) {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv,
+      queue,
+      circuitBreaker: options,
+    });
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+    return { federation, kv, queued };
+  }
+
+  function createOutboxMessage(
+    inbox: string,
+    overrides: Partial<OutboxMessage> = {},
+  ): OutboxMessage {
+    return {
+      type: "outbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com",
+      keys: [],
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/circuit",
+        actor: "https://example.com/users/alice",
+        object: { type: "Note", content: "test" },
+      },
+      activityId: "https://example.com/activity/circuit",
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      inbox,
+      sharedInbox: false,
+      actorIds: ["https://breaker.example/users/bob"],
+      started: new Date().toISOString(),
+      attempt: 0,
+      headers: {},
+      traceContext: {},
+      ...overrides,
+    };
+  }
+
+  await t.step("5xx opens circuit and holds the failed message", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://breaker.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      failureWindow: { minutes: 10 },
+      recoveryDelay: { minutes: 30 },
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://breaker.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const held = queued[0].message as OutboxMessage;
+    assertEquals(held.attempt, 0);
+    assertEquals(held.circuitHeld, true);
+    assertExists(held.circuitHeldSince);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ minutes: 30 }),
+    );
+    const state = await kv.get<Record<string, unknown>>([
+      "_fedify",
+      "circuit",
+      "breaker.example",
+    ]);
+    assertEquals(state?.state, "open");
+    assertEquals(Array.isArray(state?.failures), true);
+    assertEquals((state?.failures as unknown[]).length, 1);
+    assertExists(state?.opened);
+  });
+
+  await t.step("open circuit requeues without sending", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let requests = 0;
+    fetchMock.post("https://open.example/inbox", () => {
+      requests++;
+      return { status: 500, body: "server error" };
+    });
+    const { federation, queued } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { hours: 1 },
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://open.example/inbox"),
+    );
+    const held = queued[0].message as OutboxMessage;
+    queued.length = 0;
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://open.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: held.circuitHeldSince,
+      }),
+    );
+
+    assertEquals(requests, 1);
+    assertEquals(queued.length, 1);
+    const requeued = queued[0].message as OutboxMessage;
+    assertEquals(requeued.attempt, 0);
+    assertEquals(requeued.circuitHeld, true);
+    assertEquals(requeued.circuitHeldSince, held.circuitHeldSince);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ hours: 1 }),
+    );
+  });
+
+  await t.step("429 respects Retry-After without opening circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://rate.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "120" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { minutes: 30 },
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://rate.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 120 }),
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "rate.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("false disables circuit handling", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://disabled.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://disabled.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "disabled.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("expired held activity is dropped", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
+      null;
+    const { federation, queued } = setup({
+      failureThreshold: 1,
+      heldActivityTtl: { seconds: 0 },
+      onActivityDrop(remoteHost, details) {
+        dropped = { remoteHost, heldSince: details.heldSince };
+      },
+    });
+    let permanentFailureReason: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureReason = values.reason;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ttl.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: "2026-05-25T00:00:00Z",
+      }),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(dropped, {
+      remoteHost: "ttl.example",
+      heldSince: Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    });
+    assertEquals(permanentFailureReason, "circuit_breaker_ttl");
+  });
+
+  fetchMock.hardReset();
+});
+
 test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
   await t.step(
     "records failed result when worker re-throws (nativeRetrial)",

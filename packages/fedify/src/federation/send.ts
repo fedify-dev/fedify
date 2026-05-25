@@ -358,6 +358,7 @@ async function sendActivityInternal(
         `Failed to send activity ${activityId} to ${inbox.href} ` +
           `(${response.status} ${response.statusText}):\n${error}`,
         error,
+        response.headers,
       );
     }
 
@@ -412,22 +413,31 @@ export class SendActivityError extends Error {
   readonly responseBody: string;
 
   /**
+   * The response headers from the inbox.
+   * @since 2.3.0
+   */
+  readonly responseHeaders: Headers;
+
+  /**
    * Creates a new {@link SendActivityError}.
    * @param inbox The inbox URL.
    * @param statusCode The HTTP status code.
    * @param message The error message.
    * @param responseBody The response body.
+   * @param responseHeaders The response headers.
    */
   constructor(
     inbox: URL,
     statusCode: number,
     message: string,
     responseBody: string,
+    responseHeaders?: HeadersInit,
   ) {
     super(message);
     this.name = "SendActivityError";
     this.inbox = inbox;
     this.statusCode = statusCode;
     this.responseBody = responseBody;
+    this.responseHeaders = new Headers(responseHeaders);
   }
 }

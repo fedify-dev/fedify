@@ -82,6 +82,7 @@ import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
+import { CircuitBreaker } from "./circuit-breaker.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
 import type {
   ActorKeyPair,
@@ -151,6 +152,26 @@ import {
 } from "./send.ts";
 import { handleWebFinger } from "./webfinger.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+
+const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
+
+function parseRetryAfter(
+  headers: Headers,
+  now: Temporal.Instant = Temporal.Now.instant(),
+): Temporal.Duration | undefined {
+  const value = headers.get("Retry-After");
+  if (value == null) return undefined;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return Temporal.Duration.from({ seconds: Number(trimmed) });
+  }
+  const retryAtMs = Date.parse(trimmed);
+  if (Number.isNaN(retryAtMs)) return undefined;
+  const nowMs = Number(now.epochMilliseconds);
+  return Temporal.Duration.from({
+    milliseconds: Math.max(0, retryAtMs - nowMs),
+  });
+}
 
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
@@ -346,6 +367,7 @@ export class FederationImpl<TContextData>
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
+  circuitBreaker?: CircuitBreaker;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
   _meterProvider: MeterProvider | undefined;
@@ -378,6 +400,24 @@ export class FederationImpl<TContextData>
       this.inboxQueue = options.queue.inbox;
       this.outboxQueue = options.queue.outbox;
       this.fanoutQueue = options.queue.fanout;
+    }
+    if (options.circuitBreaker !== false) {
+      this.circuitBreaker = new CircuitBreaker({
+        kv: options.kv,
+        prefix: this.kvPrefixes.circuitBreaker,
+        options: options.circuitBreaker,
+      });
+      if (
+        options.kv.cas == null &&
+        !circuitBreakerCasWarningKvStores.has(options.kv)
+      ) {
+        circuitBreakerCasWarningKvStores.add(options.kv);
+        getLogger(["fedify", "federation", "circuit"]).warn(
+          "The configured key-value store does not support CAS; outbound " +
+            "delivery circuit breaker updates may race under concurrent " +
+            "workers.",
+        );
+      }
     }
     this.inboxQueueStarted = false;
     this.outboxQueueStarted = false;
@@ -896,13 +936,124 @@ export class FederationImpl<TContextData>
       }
       keys.push(pair);
     }
+    const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+    const parseActorIds = () =>
+      (message.actorIds ?? []).flatMap((id) => {
+        try {
+          return [new URL(id)];
+        } catch {
+          logger.warn(
+            "Invalid actorId URL in OutboxMessage: {id}",
+            { id },
+          );
+          return [];
+        }
+      });
+    const parseActivity = () =>
+      Activity.fromJsonLd(message.activity, {
+        contextLoader: this.contextLoaderFactory(loaderOptions),
+        documentLoader: rsaKeyPair == null
+          ? this.documentLoaderFactory(loaderOptions)
+          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions),
+        tracerProvider: this.tracerProvider,
+      });
+    const enqueueHeldOutboxMessage = async (
+      delay: Temporal.Duration,
+      heldSince: Temporal.Instant,
+    ) => {
+      const { outboxQueue } = this;
+      if (outboxQueue == null) return;
+      const heldMessage = {
+        ...message,
+        circuitHeld: true,
+        circuitHeldSince: heldSince.toString(),
+      } satisfies OutboxMessage;
+      await outboxQueue.enqueue(heldMessage, {
+        delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
+          ? Temporal.Duration.from({ seconds: 0 })
+          : delay,
+        orderingKey: message.orderingKey,
+      });
+      getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+        {
+          role: "outbox",
+          queue: outboxQueue,
+          activityType: heldMessage.activityType,
+        },
+        heldMessage.attempt,
+      );
+    };
     try {
+      const inbox = new URL(message.inbox);
+      const circuit = this.outboxQueue == null
+        ? undefined
+        : this.circuitBreaker;
+      const remoteHost = getRemoteHost(inbox);
+      if (circuit != null) {
+        const decision = await circuit.beforeSend(remoteHost, message);
+        if (decision.type === "hold") {
+          span.addEvent("activitypub.circuit_breaker.held", {
+            "activitypub.remote.host": remoteHost,
+            "activitypub.circuit_breaker.state": "open",
+          });
+          await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          return;
+        }
+        if (decision.type === "drop") {
+          const activity = await parseActivity();
+          await circuit.dropActivity(remoteHost, {
+            inbox,
+            activity,
+            activityId: message.activityId,
+            activityType: message.activityType,
+            actorIds: parseActorIds(),
+            heldSince: decision.heldSince,
+          });
+          if (this.outboxPermanentFailureHandler != null) {
+            const ctx = this.#createContext(
+              new URL(message.baseUrl),
+              _,
+              {
+                documentLoader: this.documentLoaderFactory(loaderOptions),
+              },
+            );
+            try {
+              await this.outboxPermanentFailureHandler(ctx, {
+                reason: "circuit_breaker_ttl",
+                inbox,
+                activity,
+                error: new SendActivityError(
+                  inbox,
+                  0,
+                  "Circuit breaker held activity expired.",
+                  "",
+                ),
+                statusCode: 0,
+                circuitHeldSince: decision.heldSince,
+                actorIds: parseActorIds(),
+              });
+            } catch (handlerError) {
+              logger.error(
+                "An unexpected error occurred in " +
+                  "outboxPermanentFailureHandler:\n{error}",
+                { ...logData, error: handlerError },
+              );
+            }
+          }
+          recordOutboxActivity(
+            this.meterProvider,
+            "abandoned",
+            message.activityType,
+          );
+          return;
+        }
+      }
       await sendActivity({
         keys,
         activity: message.activity,
         activityId: message.activityId,
         activityType: message.activityType,
-        inbox: new URL(message.inbox),
+        inbox,
         sharedInbox: message.sharedInbox,
         headers: new Headers(message.headers),
         specDeterminer: new KvSpecDeterminer(
@@ -913,6 +1064,9 @@ export class FederationImpl<TContextData>
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
       });
+      if (circuit != null) {
+        await circuit.recordSuccess(remoteHost);
+      }
     } catch (error) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       const remoteHost = (() => {
@@ -929,6 +1083,38 @@ export class FederationImpl<TContextData>
           return undefined;
         }
       })();
+      let retryAfterDelay: Temporal.Duration | undefined;
+      let circuitHold:
+        | { delay: Temporal.Duration; heldSince: Temporal.Instant }
+        | undefined;
+      if (
+        remoteHost != null &&
+        this.outboxQueue != null &&
+        this.circuitBreaker != null
+      ) {
+        if (error instanceof SendActivityError) {
+          if (error.statusCode === 429) {
+            await this.circuitBreaker.recordReachableFailure(remoteHost);
+            retryAfterDelay = parseRetryAfter(error.responseHeaders);
+          } else if (error.statusCode >= 500) {
+            await this.circuitBreaker.recordFailure(remoteHost);
+          } else if (error.statusCode >= 400) {
+            await this.circuitBreaker.recordReachableFailure(remoteHost);
+          }
+        } else {
+          await this.circuitBreaker.recordFailure(remoteHost);
+        }
+        const circuitDecision = await this.circuitBreaker.beforeSend(
+          remoteHost,
+          message,
+        );
+        if (circuitDecision.type === "hold") {
+          circuitHold = {
+            delay: circuitDecision.delay,
+            heldSince: circuitDecision.heldSince,
+          };
+        }
+      }
       span.addEvent("activitypub.delivery.failed", {
         ...(remoteHost == null
           ? {}
@@ -941,14 +1127,7 @@ export class FederationImpl<TContextData>
           ? { "http.response.status_code": error.statusCode }
           : {}),
       });
-      const loaderOptions = this.#getLoaderOptions(message.baseUrl);
-      const activity = await Activity.fromJsonLd(message.activity, {
-        contextLoader: this.contextLoaderFactory(loaderOptions),
-        documentLoader: rsaKeyPair == null
-          ? this.documentLoaderFactory(loaderOptions)
-          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions),
-        tracerProvider: this.tracerProvider,
-      });
+      const activity = await parseActivity();
       try {
         await this.onOutboxError?.(error as Error, activity);
       } catch (error) {
@@ -985,21 +1164,12 @@ export class FederationImpl<TContextData>
           );
           try {
             await this.outboxPermanentFailureHandler(ctx, {
+              reason: "http",
               inbox: new URL(message.inbox),
               activity,
               error,
               statusCode: error.statusCode,
-              actorIds: (message.actorIds ?? []).flatMap((id) => {
-                try {
-                  return [new URL(id)];
-                } catch {
-                  logger.warn(
-                    "Invalid actorId URL in OutboxMessage: {id}",
-                    { id },
-                  );
-                  return [];
-                }
-              }),
+              actorIds: parseActorIds(),
             });
           } catch (handlerError) {
             logger.error(
@@ -1017,8 +1187,21 @@ export class FederationImpl<TContextData>
         return;
       }
 
+      if (circuitHold != null) {
+        logger.error(
+          "Failed to send activity {activityId} to {inbox}; holding because " +
+            "the remote host circuit is open:\n{error}",
+          { ...logData, error },
+        );
+        await enqueueHeldOutboxMessage(
+          circuitHold.delay,
+          circuitHold.heldSince,
+        );
+        return;
+      }
+
       // Skip retry logic if the message queue backend handles retries automatically
-      if (this.outboxQueue?.nativeRetrial) {
+      if (this.outboxQueue?.nativeRetrial && retryAfterDelay == null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox}; backend will handle retry:\n{error}",
           { ...logData, error },
@@ -1026,12 +1209,13 @@ export class FederationImpl<TContextData>
         throw error;
       }
 
-      const delay = this.outboxRetryPolicy({
-        elapsedTime: Temporal.Instant.from(message.started).until(
-          Temporal.Now.instant(),
-        ),
-        attempts: message.attempt,
-      });
+      const delay = retryAfterDelay ??
+        this.outboxRetryPolicy({
+          elapsedTime: Temporal.Instant.from(message.started).until(
+            Temporal.Now.instant(),
+          ),
+          attempts: message.attempt,
+        });
       if (delay != null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox} (attempt " +

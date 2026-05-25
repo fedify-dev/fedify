@@ -315,6 +315,16 @@ export type OutboxErrorHandler = (
 export type OutboxPermanentFailureHandler<TContextData> = (
   context: Context<TContextData>,
   values: {
+    /**
+     * Why Fedify is giving up on delivery.
+     *
+     * `"http"` means the inbox returned a configured permanent-failure HTTP
+     * status.  `"circuit_breaker_ttl"` means the outbound circuit breaker held
+     * the activity until its retention period expired.
+     *
+     * @since 2.3.0
+     */
+    readonly reason: "http" | "circuit_breaker_ttl";
     /** The inbox URL that failed. */
     readonly inbox: URL;
     /** The activity that failed to deliver. */
@@ -323,6 +333,13 @@ export type OutboxPermanentFailureHandler<TContextData> = (
     readonly error: SendActivityError;
     /** The HTTP status code returned by the inbox. */
     readonly statusCode: number;
+    /**
+     * The time when the circuit breaker first held the activity, if
+     * {@link reason} is `"circuit_breaker_ttl"`.
+     *
+     * @since 2.3.0
+     */
+    readonly circuitHeldSince?: Temporal.Instant;
     /**
      * The actor IDs that were supposed to receive the activity at this inbox.
      */

@@ -243,6 +243,7 @@ test("sendActivity()", async (t) => {
 
   fetchMock.post("https://example.com/inbox2", {
     status: 500,
+    headers: { "Retry-After": "120" },
     body: "something went wrong",
   });
 
@@ -288,6 +289,7 @@ test("sendActivity()", async (t) => {
       assertEquals(e.statusCode, 500);
       assertEquals(e.inbox, new URL("https://example.com/inbox2"));
       assertEquals(e.responseBody, "something went wrong");
+      assertEquals(e.responseHeaders.get("Retry-After"), "120");
     }
   });
 
