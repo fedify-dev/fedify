@@ -6,6 +6,10 @@ import type { MessageQueue } from "./mq.ts";
 import {
   classifyFetchError,
   instrumentDocumentLoader,
+  recordCollectionDispatchDuration,
+  recordCollectionPageItems,
+  recordCollectionRequest,
+  recordCollectionTotalItems,
   recordDocumentCache,
   recordDocumentFetch,
   recordFanoutRecipients,
@@ -388,6 +392,106 @@ test("recordWebFingerHandle() omits optional attributes when not provided", () =
     "http.response.status_code" in (counter?.attributes ?? {}),
     false,
   );
+});
+
+test("recordCollectionRequest() records counter with bounded attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionRequest(meterProvider, {
+    kind: "followers",
+    page: true,
+    dispatcher: "built_in",
+    result: "served",
+    statusCode: 200,
+  });
+
+  const counter = recorder.getMeasurement("activitypub.collection.request");
+  assertEquals(counter?.type, "counter");
+  assertEquals(counter?.value, 1);
+  assertEquals(counter?.attributes["activitypub.collection.kind"], "followers");
+  assertEquals(counter?.attributes["activitypub.collection.page"], true);
+  assertEquals(counter?.attributes["fedify.collection.dispatcher"], "built_in");
+  assertEquals(counter?.attributes["activitypub.collection.result"], "served");
+  assertEquals(counter?.attributes["http.response.status_code"], 200);
+});
+
+test("recordCollectionRequest() omits status code when unavailable", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionRequest(meterProvider, {
+    kind: "custom",
+    page: false,
+    dispatcher: "custom",
+    result: "error",
+  });
+
+  const counter = recorder.getMeasurement("activitypub.collection.request");
+  assertEquals(counter?.attributes["activitypub.collection.kind"], "custom");
+  assertEquals(counter?.attributes["activitypub.collection.page"], false);
+  assertEquals(counter?.attributes["fedify.collection.dispatcher"], "custom");
+  assertEquals(counter?.attributes["activitypub.collection.result"], "error");
+  assertEquals(
+    "http.response.status_code" in (counter?.attributes ?? {}),
+    false,
+  );
+});
+
+test("recordCollectionDispatchDuration() records histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionDispatchDuration(meterProvider, 12, {
+    kind: "outbox",
+    page: false,
+    dispatcher: "built_in",
+    result: "served",
+  });
+
+  const duration = recorder.getMeasurement(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(duration?.type, "histogram");
+  assertEquals(duration?.value, 12);
+  assertEquals(duration?.attributes["activitypub.collection.kind"], "outbox");
+  assertEquals(duration?.attributes["activitypub.collection.page"], false);
+  assertEquals(
+    duration?.attributes["fedify.collection.dispatcher"],
+    "built_in",
+  );
+  assertEquals(duration?.attributes["activitypub.collection.result"], "served");
+});
+
+test("recordCollectionPageItems() records item count histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionPageItems(meterProvider, 3, {
+    kind: "featured_tags",
+    page: true,
+    dispatcher: "built_in",
+    result: "served",
+    statusCode: 200,
+  });
+
+  const items = recorder.getMeasurement("activitypub.collection.page.items");
+  assertEquals(items?.type, "histogram");
+  assertEquals(items?.value, 3);
+  assertEquals(
+    items?.attributes["activitypub.collection.kind"],
+    "featured_tags",
+  );
+  assertEquals(items?.attributes["activitypub.collection.page"], true);
+  assertEquals(items?.attributes["http.response.status_code"], 200);
+});
+
+test("recordCollectionTotalItems() records total item histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionTotalItems(meterProvider, 42, {
+    kind: "liked",
+    page: false,
+    dispatcher: "built_in",
+    result: "served",
+  });
+
+  const total = recorder.getMeasurement("activitypub.collection.total_items");
+  assertEquals(total?.type, "histogram");
+  assertEquals(total?.value, 42);
+  assertEquals(total?.attributes["activitypub.collection.kind"], "liked");
+  assertEquals(total?.attributes["activitypub.collection.page"], false);
 });
 
 test("classifyFetchError() classifies FetchError with 404 as not_found", () => {

@@ -66,6 +66,25 @@ To be released.
     deliberately exclude raw URLs, query strings, and identifier values to
     keep cardinality bounded.  [[#316], [#736], [#757]]
 
+ -  Added OpenTelemetry metrics for ActivityPub collection requests handled
+    by `Federation.fetch()` and custom collection handlers:
+
+     -  `activitypub.collection.request` (counter)
+     -  `activitypub.collection.dispatch.duration` (histogram)
+     -  `activitypub.collection.page.items` (histogram)
+     -  `activitypub.collection.total_items` (histogram)
+
+    The metrics expose bounded collection dimensions:
+    `activitypub.collection.kind`, `activitypub.collection.page`,
+    `activitypub.collection.result`, `fedify.collection.dispatcher`, and
+    optional `http.response.status_code`.  Built-in collections are classified
+    as `inbox`, `outbox`, `following`, `followers`, `liked`, `featured`, or
+    `featured_tags`; application-defined collection routes are collapsed into
+    `custom`.  Collection IDs, cursors, custom route names, actor identifiers,
+    and full URLs are deliberately excluded so dashboards can aggregate
+    collection rate, latency, item counts, and `totalItems` values without
+    attacker-controlled cardinality.  [[#316], [#741], [#777]]
+
  -  Added OpenTelemetry queue task metrics covering Fedify's enqueue and
     worker boundaries for inbox, outbox, and fanout work:
 
@@ -208,6 +227,7 @@ To be released.
 [#738]: https://github.com/fedify-dev/fedify/issues/738
 [#739]: https://github.com/fedify-dev/fedify/issues/739
 [#740]: https://github.com/fedify-dev/fedify/issues/740
+[#741]: https://github.com/fedify-dev/fedify/issues/741
 [#742]: https://github.com/fedify-dev/fedify/issues/742
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
@@ -220,6 +240,7 @@ To be released.
 [#770]: https://github.com/fedify-dev/fedify/pull/770
 [#771]: https://github.com/fedify-dev/fedify/pull/771
 [#772]: https://github.com/fedify-dev/fedify/pull/772
+[#777]: https://github.com/fedify-dev/fedify/pull/777
 
 ### @fedify/fixture
 

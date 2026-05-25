@@ -118,6 +118,8 @@ import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
+  type CollectionMetricDispatcher,
+  type CollectionMetricKind,
   getDurationMs,
   getFederationMetrics,
   getRemoteHost,
@@ -125,6 +127,7 @@ import {
   isAbortError,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
+  recordCollectionRequest,
   recordFanoutRecipients,
   recordInboxActivity,
   recordOutboxActivity,
@@ -1924,7 +1927,17 @@ export class FederationImpl<TContextData>
     // Routes that require JSON-LD Accepts header:
     if (request.method !== "POST" && !acceptsJsonLd(request)) {
       metricState.endpoint = "not_acceptable";
-      return await onNotAcceptable(request);
+      const response = await onNotAcceptable(request);
+      const collectionRoute = getCollectionMetricRoute(routeName);
+      if (collectionRoute != null) {
+        recordCollectionRequest(this._meterProvider, {
+          ...collectionRoute,
+          page: url.searchParams.get("cursor") != null,
+          result: "not_acceptable",
+          statusCode: response.status,
+        });
+      }
+      return response;
     }
     switch (routeName) {
       case "actor":
@@ -1991,6 +2004,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.outboxCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2003,6 +2017,7 @@ export class FederationImpl<TContextData>
             context,
             collectionCallbacks: this.inboxCallbacks,
             tracerProvider: this.tracerProvider,
+            meterProvider: this._meterProvider,
             onUnauthorized,
             onNotFound,
           });
@@ -2060,6 +2075,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.followingCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2093,6 +2109,7 @@ export class FederationImpl<TContextData>
             : undefined,
           collectionCallbacks: this.followersCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2105,6 +2122,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.likedCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2116,6 +2134,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.featuredCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2127,6 +2146,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.featuredTagsCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2144,6 +2164,7 @@ export class FederationImpl<TContextData>
           values: route.values,
           collectionCallbacks: callbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2162,6 +2183,7 @@ export class FederationImpl<TContextData>
           values: route.values,
           collectionCallbacks: callbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2233,6 +2255,30 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
       return "featured_tags";
     default:
       return "not_found";
+  }
+}
+
+function getCollectionMetricRoute(routeName: string):
+  | {
+    kind: CollectionMetricKind;
+    dispatcher: CollectionMetricDispatcher;
+  }
+  | undefined {
+  switch (routeName) {
+    case "inbox":
+    case "outbox":
+    case "following":
+    case "followers":
+    case "liked":
+    case "featured":
+      return { kind: routeName, dispatcher: "built_in" };
+    case "featuredTags":
+      return { kind: "featured_tags", dispatcher: "built_in" };
+    case "collection":
+    case "orderedCollection":
+      return { kind: "custom", dispatcher: "custom" };
+    default:
+      return undefined;
   }
 }
 

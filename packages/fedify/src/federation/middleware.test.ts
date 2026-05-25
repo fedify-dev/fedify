@@ -1677,6 +1677,46 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
   );
 
   await t.step(
+    "records collection metrics for not_acceptable collection requests",
+    async () => {
+      const { federation, recorder } = createTestContext();
+      const response = await federation.fetch(
+        new Request("https://example.com/users/alice/followers", {
+          method: "GET",
+          headers: { "Accept": "text/html" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 406);
+
+      const requests = recorder.getMeasurements(
+        "activitypub.collection.request",
+      );
+      assertEquals(requests.length, 1);
+      assertEquals(
+        requests[0].attributes["activitypub.collection.kind"],
+        "followers",
+      );
+      assertEquals(
+        requests[0].attributes["activitypub.collection.page"],
+        false,
+      );
+      assertEquals(
+        requests[0].attributes["fedify.collection.dispatcher"],
+        "built_in",
+      );
+      assertEquals(
+        requests[0].attributes["activitypub.collection.result"],
+        "not_acceptable",
+      );
+      assertEquals(
+        requests[0].attributes["http.response.status_code"],
+        406,
+      );
+    },
+  );
+
+  await t.step(
     "records thrown errors after classification with the matched endpoint",
     async () => {
       const { federation, recorder } = createTestContext();
