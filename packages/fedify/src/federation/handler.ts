@@ -514,7 +514,11 @@ export async function handleCollection<
                 span.setStatus({ code: SpanStatusCode.ERROR });
                 return await onNotFound(request);
               }
-              const { items } = page;
+              const items = filterCollectionItems(
+                page.items,
+                name,
+                filterPredicate,
+              );
               itemCount = items.length;
               span.setAttribute("fedify.collection.items", itemCount);
               return items;
@@ -538,7 +542,7 @@ export async function handleCollection<
         collection = new OrderedCollection({
           id: baseUri,
           totalItems: totalItemCount ?? null,
-          items: filterCollectionItems(itemsOrResponse, name, filterPredicate),
+          items: itemsOrResponse,
         });
       } else {
         const lastCursor = await collectionCallbacks.lastCursor?.(
@@ -586,9 +590,14 @@ export async function handleCollection<
               span.setStatus({ code: SpanStatusCode.ERROR });
               return await onNotFound(request);
             }
-            itemCount = page.items.length;
+            const items = filterCollectionItems(
+              page.items,
+              name,
+              filterPredicate,
+            );
+            itemCount = items.length;
             span.setAttribute("fedify.collection.items", itemCount);
-            return page;
+            return { ...page, items };
           } catch (e) {
             if (dispatchDurationMs == null) {
               dispatchDurationMs = getDurationMs(started);
@@ -623,7 +632,7 @@ export async function handleCollection<
         id: uri,
         prev,
         next,
-        items: filterCollectionItems(items, name, filterPredicate),
+        items,
         partOf,
       });
     }

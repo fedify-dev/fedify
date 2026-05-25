@@ -1286,6 +1286,101 @@ test("handleCollection() classifies camelCase collection metric names", async ()
   );
 });
 
+test("handleCollection() records filtered collection item metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/followers"),
+    request: new Request("https://example.com/users/someone/followers", {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const dispatcher: CollectionDispatcher<
+    Activity,
+    RequestContext<void>,
+    void,
+    void
+  > = () => ({
+    items: [
+      new Create({ id: new URL("https://example.com/activities/1") }),
+      new Create({ id: new URL("https://example.com/activities/2") }),
+    ],
+  });
+
+  const response = await handleCollection(context.request, {
+    context,
+    name: "followers",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}/followers`);
+    },
+    collectionCallbacks: { dispatcher },
+    filterPredicate: (item) =>
+      item.id?.href === "https://example.com/activities/1",
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 200);
+
+  const items = recorder.getMeasurements("activitypub.collection.page.items");
+  assertEquals(items.length, 1);
+  assertEquals(items[0].value, 1);
+});
+
+test("handleCollection() records filtered collection page item metrics", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/followers?cursor=2"),
+    request: new Request(
+      "https://example.com/users/someone/followers?cursor=2",
+      { headers: { Accept: "application/activity+json" } },
+    ),
+  });
+  const dispatcher: CollectionDispatcher<
+    Activity,
+    RequestContext<void>,
+    void,
+    void
+  > = () => ({
+    items: [
+      new Create({ id: new URL("https://example.com/activities/1") }),
+      new Create({ id: new URL("https://example.com/activities/2") }),
+    ],
+  });
+
+  const response = await handleCollection(context.request, {
+    context,
+    name: "followers",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}/followers`);
+    },
+    collectionCallbacks: { dispatcher },
+    filterPredicate: (item) =>
+      item.id?.href === "https://example.com/activities/1",
+    meterProvider,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+  });
+  assertEquals(response.status, 200);
+
+  const items = recorder.getMeasurements("activitypub.collection.page.items");
+  assertEquals(items.length, 1);
+  assertEquals(items[0].value, 1);
+});
+
 test("handleCollection() records not_found collection metrics", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
   const federation = createFederation<void>({
