@@ -1331,6 +1331,9 @@ test("handleCollection() records filtered collection item metrics", async () => 
   const items = recorder.getMeasurements("activitypub.collection.page.items");
   assertEquals(items.length, 1);
   assertEquals(items[0].value, 1);
+  assertEquals(items[0].attributes["activitypub.collection.page"], false);
+  assertEquals(items[0].attributes["activitypub.collection.result"], "served");
+  assertEquals(items[0].attributes["http.response.status_code"], 200);
 });
 
 test("handleCollection() records filtered collection page item metrics", async () => {
@@ -1379,6 +1382,9 @@ test("handleCollection() records filtered collection page item metrics", async (
   const items = recorder.getMeasurements("activitypub.collection.page.items");
   assertEquals(items.length, 1);
   assertEquals(items[0].value, 1);
+  assertEquals(items[0].attributes["activitypub.collection.page"], true);
+  assertEquals(items[0].attributes["activitypub.collection.result"], "served");
+  assertEquals(items[0].attributes["http.response.status_code"], 200);
 });
 
 test("handleCollection() records not_found collection metrics", async () => {
