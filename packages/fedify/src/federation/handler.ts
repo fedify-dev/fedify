@@ -339,6 +339,10 @@ export interface CollectionHandlerParameters<
     TFilter
   >;
   tracerProvider?: TracerProvider;
+  /**
+   * The meter provider for recording collection metrics.
+   * @since 2.3.0
+   */
   meterProvider?: MeterProvider;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
@@ -1711,6 +1715,10 @@ export interface CustomCollectionHandlerParameters<
     TContextData
   >;
   tracerProvider?: TracerProvider;
+  /**
+   * The meter provider for recording collection metrics.
+   * @since 2.3.0
+   */
   meterProvider?: MeterProvider;
 }
 
