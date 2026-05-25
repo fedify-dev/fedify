@@ -349,22 +349,21 @@ type CollectionMetricBase = Pick<
   "kind" | "page" | "dispatcher"
 >;
 
+const BUILT_IN_COLLECTION_METRIC_KINDS = new Set<string>([
+  "inbox",
+  "outbox",
+  "following",
+  "followers",
+  "liked",
+  "featured",
+  "featured_tags",
+]);
+
 function getCollectionMetricKind(name: string): CollectionMetricKind {
-  switch (name.trim().toLowerCase().replace(/\s+/g, "_")) {
-    case "inbox":
-    case "outbox":
-    case "following":
-    case "followers":
-    case "liked":
-    case "featured":
-    case "featured_tags":
-      return name.trim().toLowerCase().replace(
-        /\s+/g,
-        "_",
-      ) as CollectionMetricKind;
-    default:
-      return "custom";
-  }
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, "_");
+  return BUILT_IN_COLLECTION_METRIC_KINDS.has(normalized)
+    ? normalized as CollectionMetricKind
+    : "custom";
 }
 
 function collectionAttributes(
@@ -1737,6 +1736,14 @@ export const handleCustomCollection: <
     TContextData
   >,
 ) => Promise<Response> = exceptWrapper(_handleCustomCollection);
+
+type CollectionMetricMeasurement = {
+  page: boolean;
+  dispatchDurationMs?: number;
+  itemCount?: number;
+  totalItems?: number;
+};
+
 async function _handleCustomCollection<
   TItem extends URL | Object | Link | Recipient,
   TParam extends string,
@@ -1762,7 +1769,7 @@ async function _handleCustomCollection<
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
-  return await new CustomCollectionHandler(
+  const handler = new CustomCollectionHandler(
     name,
     values,
     context,
@@ -1772,9 +1779,17 @@ async function _handleCustomCollection<
     Collection,
     CollectionPage,
     filterPredicate,
-  ).fetchCollection(cursor)
-    .toJsonLd()
-    .then(respondAsActivity);
+  ).fetchCollection(cursor);
+  try {
+    const response = await handler.toJsonLd().then(respondAsActivity);
+    handler.recordPendingCollectionMetrics("served");
+    return response;
+  } catch (e) {
+    handler.recordPendingCollectionMetrics(
+      e instanceof ItemsNotFoundError ? "not_found" : "error",
+    );
+    throw e;
+  }
 }
 
 /**
@@ -1827,7 +1842,7 @@ async function _handleOrderedCollection<
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
-  return await new CustomCollectionHandler(
+  const handler = new CustomCollectionHandler(
     name,
     values,
     context,
@@ -1837,9 +1852,17 @@ async function _handleOrderedCollection<
     OrderedCollection,
     OrderedCollectionPage,
     filterPredicate,
-  ).fetchCollection(cursor)
-    .toJsonLd()
-    .then(respondAsActivity);
+  ).fetchCollection(cursor);
+  try {
+    const response = await handler.toJsonLd().then(respondAsActivity);
+    handler.recordPendingCollectionMetrics("served");
+    return response;
+  } catch (e) {
+    handler.recordPendingCollectionMetrics(
+      e instanceof ItemsNotFoundError ? "not_found" : "error",
+    );
+    throw e;
+  }
 }
 
 /**
@@ -1891,6 +1914,7 @@ class CustomCollectionHandler<
     TContextData
   >;
   #collection: Promise<TCollection | TCollectionPage> | null = null;
+  #pendingCollectionMetrics: CollectionMetricMeasurement[] = [];
 
   /**
    * Creates a new CustomCollection instance.
@@ -2001,11 +2025,10 @@ class CustomCollectionHandler<
     );
     const totalItems = await this.totalItems;
     if (totalItems != null) {
-      recordCollectionTotalItems(
-        this.meterProvider,
+      this.#pendingCollectionMetrics.push({
+        page: false,
         totalItems,
-        this.metricAttributes(false, "served"),
-      );
+      });
     }
     return {
       id: this.#id,
@@ -2085,28 +2108,18 @@ class CustomCollectionHandler<
       const page = await this.dispatch(cursor);
       const durationMs = getDurationMs(started);
       span.setAttribute(this.ATTRS.ITEMS, page.items.length);
-      const attrs = collectionAttributes(pageMetricBase, "served");
-      recordCollectionDispatchDuration(
-        this.meterProvider,
-        durationMs,
-        attrs,
-      );
-      recordCollectionPageItems(
-        this.meterProvider,
-        page.items.length,
-        attrs,
-      );
-      if (totalItems !== null) {
-        recordCollectionTotalItems(this.meterProvider, totalItems, attrs);
-      }
+      this.#pendingCollectionMetrics.push({
+        page: pageMetricBase.page,
+        dispatchDurationMs: durationMs,
+        itemCount: page.items.length,
+        totalItems: totalItems ?? undefined,
+      });
       return page;
     } catch (e) {
-      const result = e instanceof ItemsNotFoundError ? "not_found" : "error";
-      recordCollectionDispatchDuration(
-        this.meterProvider,
-        getDurationMs(started),
-        this.metricAttributes(cursor !== null, result),
-      );
+      this.#pendingCollectionMetrics.push({
+        page: cursor !== null,
+        dispatchDurationMs: getDurationMs(started),
+      });
       const message = e instanceof Error ? e.message : String(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message });
       throw e;
@@ -2148,6 +2161,33 @@ class CustomCollectionHandler<
     result: CollectionMetricResult,
   ): CollectionMetricAttributes {
     return collectionAttributes(this.metricBase(page), result);
+  }
+
+  recordPendingCollectionMetrics(result: CollectionMetricResult): void {
+    for (const measurement of this.#pendingCollectionMetrics.splice(0)) {
+      const attrs = this.metricAttributes(measurement.page, result);
+      if (measurement.dispatchDurationMs != null) {
+        recordCollectionDispatchDuration(
+          this.meterProvider,
+          measurement.dispatchDurationMs,
+          attrs,
+        );
+      }
+      if (measurement.itemCount != null) {
+        recordCollectionPageItems(
+          this.meterProvider,
+          measurement.itemCount,
+          attrs,
+        );
+      }
+      if (measurement.totalItems != null) {
+        recordCollectionTotalItems(
+          this.meterProvider,
+          measurement.totalItems,
+          attrs,
+        );
+      }
+    }
   }
 
   /**

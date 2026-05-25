@@ -4250,6 +4250,86 @@ test("handleCustomCollection() records OpenTelemetry collection metrics", async 
   assertEquals(totalItems[0].value, 2);
 });
 
+test("handleCustomCollection() classifies deferred collection metrics as error", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url: new URL("https://example.com/users/someone/custom"),
+    request: new Request("https://example.com/users/someone/custom", {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const brokenActivity = new Create({
+    id: new URL("https://example.com/activities/1"),
+  });
+  globalThis.Object.defineProperty(brokenActivity, "toJsonLd", {
+    value: () => {
+      throw new Error("serialization failed");
+    },
+  });
+  const dispatcher: CustomCollectionDispatcher<
+    Create,
+    string,
+    RequestContext<void>,
+    void
+  > = () => ({ items: [brokenActivity] });
+  const counter: CustomCollectionCounter<string, void> = () => 1;
+
+  await assertRejects(
+    () =>
+      handleCustomCollection(context.request, {
+        context,
+        name: "custom collection",
+        values: { identifier: "someone" },
+        collectionCallbacks: { dispatcher, counter },
+        meterProvider,
+        onNotFound: () => new Response("Not found", { status: 404 }),
+        onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+      }),
+    Error,
+    "serialization failed",
+  );
+
+  const requests = recorder.getMeasurements("activitypub.collection.request");
+  assertEquals(requests.length, 1);
+  assertEquals(
+    requests[0].attributes["activitypub.collection.result"],
+    "error",
+  );
+
+  const durations = recorder.getMeasurements(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(durations.length, 1);
+  assertEquals(
+    durations[0].attributes["activitypub.collection.result"],
+    "error",
+  );
+
+  const items = recorder.getMeasurements("activitypub.collection.page.items");
+  assertEquals(items.length, 1);
+  assertEquals(items[0].value, 1);
+  assertEquals(
+    items[0].attributes["activitypub.collection.result"],
+    "error",
+  );
+
+  const totalItems = recorder.getMeasurements(
+    "activitypub.collection.total_items",
+  );
+  assertEquals(totalItems.length, 1);
+  assertEquals(totalItems[0].value, 1);
+  assertEquals(
+    totalItems[0].attributes["activitypub.collection.result"],
+    "error",
+  );
+});
+
 test("handleInbox() records OpenTelemetry span events", async () => {
   const [tracerProvider, exporter] = createTestTracerProvider();
   const [meterProvider, recorder] = createTestMeterProvider();
