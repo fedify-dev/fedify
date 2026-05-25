@@ -2097,7 +2097,7 @@ class CustomCollectionHandler<
     if (totalItems != null) {
       this.#pendingCollectionMetrics.push({
         page: false,
-        totalItems,
+        totalItems: Number(totalItems),
       });
     }
     return {
@@ -2183,7 +2183,7 @@ class CustomCollectionHandler<
       this.#pendingCollectionMetrics.push({
         page: pageMetricBase.page,
         dispatchDurationMs: durationMs,
-        totalItems: totalItems ?? undefined,
+        totalItems: totalItems == null ? undefined : Number(totalItems),
       });
       return page;
     } catch (e) {
