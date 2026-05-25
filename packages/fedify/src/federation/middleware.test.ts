@@ -6644,6 +6644,13 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     };
   }
 
+  await t.step("is not created without an outbox queue", () => {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+    });
+    assertEquals(federation.circuitBreaker, undefined);
+  });
+
   await t.step("5xx opens circuit and holds the failed message", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

@@ -428,7 +428,7 @@ export class FederationImpl<TContextData>
       this.outboxQueue = options.queue.outbox;
       this.fanoutQueue = options.queue.fanout;
     }
-    if (options.circuitBreaker !== false) {
+    if (options.circuitBreaker !== false && this.outboxQueue != null) {
       this.circuitBreaker = new CircuitBreaker({
         kv: options.kv,
         prefix: this.kvPrefixes.circuitBreaker,
