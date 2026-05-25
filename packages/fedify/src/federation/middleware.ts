@@ -281,6 +281,13 @@ export interface FederationKvPrefixes {
    * @since 2.1.0
    */
   readonly acceptSignatureNonce: KvKey;
+
+  /**
+   * The key prefix used for storing outbound delivery circuit breaker state.
+   * @default `["_fedify", "circuit"]`
+   * @since 2.3.0
+   */
+  readonly circuitBreaker: KvKey;
 }
 
 /**
@@ -355,6 +362,7 @@ export class FederationImpl<TContextData>
         publicKey: ["_fedify", "publicKey"],
         httpMessageSignaturesSpec: ["_fedify", "httpMessageSignaturesSpec"],
         acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+        circuitBreaker: ["_fedify", "circuit"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };

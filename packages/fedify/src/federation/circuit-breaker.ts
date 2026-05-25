@@ -1,0 +1,398 @@
+import { getLogger } from "@logtape/logtape";
+import type { Activity } from "@fedify/vocab";
+import type { KvKey, KvStore } from "./kv.ts";
+
+/**
+ * The state of a remote host circuit breaker.
+ * @since 2.3.0
+ */
+export type CircuitBreakerState = "closed" | "open" | "half-open";
+
+/**
+ * The JSON-serializable state stored in the configured {@link KvStore}.
+ * @since 2.3.0
+ */
+export interface CircuitBreakerKvState {
+  readonly state: CircuitBreakerState;
+  readonly failures: readonly string[];
+  readonly opened?: string;
+}
+
+/**
+ * Details passed to {@link CircuitBreakerOptions.onActivityDrop} when a held
+ * activity expires before the remote host recovers.
+ * @since 2.3.0
+ */
+export interface CircuitBreakerActivityDrop {
+  /** The inbox URL that would have received the activity. */
+  readonly inbox: URL;
+  /** The activity that was dropped. */
+  readonly activity: Activity;
+  /** The activity ID, when known. */
+  readonly activityId?: string;
+  /** The activity type. */
+  readonly activityType: string;
+  /** The actor IDs represented by this inbox. */
+  readonly actorIds: readonly URL[];
+  /** The time when Fedify first held this activity. */
+  readonly heldSince: Temporal.Instant;
+}
+
+/**
+ * Configures how a remote host circuit opens after repeated delivery
+ * failures.
+ * @since 2.3.0
+ */
+export type CircuitBreakerFailurePolicy =
+  | {
+    failure(timestamps: readonly Temporal.Instant[]): boolean;
+    readonly failureThreshold?: never;
+    readonly failureWindow?: never;
+  }
+  | {
+    readonly failure?: never;
+    readonly failureThreshold?: number;
+    readonly failureWindow?: Temporal.Duration | Temporal.DurationLike;
+  };
+
+/**
+ * Options for Fedify's outbound activity circuit breaker.
+ * @since 2.3.0
+ */
+export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
+  /**
+   * How long an open circuit waits before allowing a half-open recovery probe.
+   * @default `{ minutes: 30 }`
+   */
+  readonly recoveryDelay?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
+   * How long Fedify keeps requeueing activities held by an open circuit before
+   * dropping them.
+   * @default `{ days: 7 }`
+   */
+  readonly heldActivityTtl?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
+   * How long other held activities wait while a half-open probe is in flight.
+   * @default `{ seconds: 1 }`
+   */
+  readonly releaseInterval?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
+   * Called whenever the circuit state changes.
+   */
+  readonly onStateChange?: (
+    remoteHost: string,
+    previousState: CircuitBreakerState,
+    newState: CircuitBreakerState,
+  ) => void | Promise<void>;
+
+  /**
+   * Called when an activity held by the circuit breaker expires.
+   */
+  readonly onActivityDrop?: (
+    remoteHost: string,
+    details: CircuitBreakerActivityDrop,
+  ) => void | Promise<void>;
+};
+
+export interface NormalizedCircuitBreakerOptions {
+  readonly failure: (timestamps: readonly Temporal.Instant[]) => boolean;
+  readonly recoveryDelay: Temporal.Duration;
+  readonly heldActivityTtl: Temporal.Duration;
+  readonly releaseInterval: Temporal.Duration;
+  readonly onStateChange?: CircuitBreakerOptions["onStateChange"];
+  readonly onActivityDrop?: CircuitBreakerOptions["onActivityDrop"];
+}
+
+export interface CircuitBreakerCreateOptions {
+  readonly kv: KvStore;
+  readonly prefix: KvKey;
+  readonly options?: CircuitBreakerOptions;
+  readonly now?: () => Temporal.Instant;
+}
+
+export type CircuitBreakerBeforeSendDecision =
+  | { readonly type: "send"; readonly probe: boolean }
+  | {
+    readonly type: "hold";
+    readonly delay: Temporal.Duration;
+    readonly heldSince: Temporal.Instant;
+  }
+  | { readonly type: "drop"; readonly heldSince: Temporal.Instant };
+
+/**
+ * Tracks reachability state for remote outbox delivery hosts.
+ * @since 2.3.0
+ */
+export class CircuitBreaker {
+  readonly #kv: KvStore;
+  readonly #prefix: KvKey;
+  readonly #options: NormalizedCircuitBreakerOptions;
+  readonly #now: () => Temporal.Instant;
+
+  constructor(options: CircuitBreakerCreateOptions) {
+    this.#kv = options.kv;
+    this.#prefix = options.prefix;
+    this.#options = normalizeCircuitBreakerOptions(options.options ?? {});
+    this.#now = options.now ?? (() => Temporal.Now.instant());
+  }
+
+  get options(): NormalizedCircuitBreakerOptions {
+    return this.#options;
+  }
+
+  async beforeSend(
+    remoteHost: string,
+    message: { readonly circuitHeldSince?: string },
+  ): Promise<CircuitBreakerBeforeSendDecision> {
+    const heldSince = message.circuitHeldSince == null
+      ? undefined
+      : Temporal.Instant.from(message.circuitHeldSince);
+    const now = this.#now();
+    if (
+      heldSince != null &&
+      Temporal.Instant.compare(
+          heldSince.add(this.#options.heldActivityTtl),
+          now,
+        ) <=
+        0
+    ) {
+      return { type: "drop", heldSince };
+    }
+
+    while (true) {
+      const oldState = await this.#get(remoteHost);
+      if (oldState == null || oldState.state === "closed") {
+        return { type: "send", probe: false };
+      }
+      if (oldState.state === "half-open") {
+        return {
+          type: "hold",
+          delay: this.#options.releaseInterval,
+          heldSince: heldSince ?? now,
+        };
+      }
+
+      const opened = oldState.opened == null
+        ? now
+        : Temporal.Instant.from(oldState.opened);
+      const probeAt = opened.add(this.#options.recoveryDelay);
+      if (Temporal.Instant.compare(now, probeAt) < 0) {
+        return {
+          type: "hold",
+          delay: now.until(probeAt),
+          heldSince: heldSince ?? now,
+        };
+      }
+
+      const newState = {
+        ...oldState,
+        state: "half-open",
+      } satisfies CircuitBreakerKvState;
+      if (await this.#replace(remoteHost, oldState, newState)) {
+        await this.#notifyStateChange(remoteHost, "open", "half-open");
+        return { type: "send", probe: true };
+      }
+    }
+  }
+
+  async recordSuccess(remoteHost: string): Promise<void> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const oldState = await this.#get(remoteHost);
+      if (oldState == null) return;
+      if (await this.#replace(remoteHost, oldState, undefined)) {
+        if (oldState.state !== "closed") {
+          await this.#notifyStateChange(remoteHost, oldState.state, "closed");
+        }
+        return;
+      }
+    }
+    throw new Error(`Failed to update circuit breaker state for ${remoteHost}`);
+  }
+
+  async recordReachableFailure(remoteHost: string): Promise<void> {
+    await this.recordSuccess(remoteHost);
+  }
+
+  async recordFailure(remoteHost: string): Promise<void> {
+    const now = this.#now();
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const oldState = await this.#get(remoteHost);
+      const oldFailures = oldState?.failures.map(Temporal.Instant.from) ?? [];
+      const failures = [...oldFailures, now];
+      let newState: CircuitBreakerKvState;
+      let transition: [CircuitBreakerState, CircuitBreakerState] | undefined;
+      if (oldState?.state === "open") {
+        newState = oldState;
+      } else if (
+        oldState?.state === "half-open" || this.#options.failure(failures)
+      ) {
+        newState = {
+          state: "open",
+          failures: failures.map((t) => t.toString()),
+          opened: now.toString(),
+        };
+        transition = [oldState?.state ?? "closed", "open"];
+      } else {
+        newState = {
+          state: "closed",
+          failures: failures.map((t) => t.toString()),
+        };
+      }
+      if (await this.#replace(remoteHost, oldState, newState)) {
+        if (transition != null) {
+          await this.#notifyStateChange(
+            remoteHost,
+            transition[0],
+            transition[1],
+          );
+        }
+        return;
+      }
+    }
+    throw new Error(`Failed to update circuit breaker state for ${remoteHost}`);
+  }
+
+  async dropActivity(
+    remoteHost: string,
+    details: CircuitBreakerActivityDrop,
+  ): Promise<void> {
+    try {
+      await this.#options.onActivityDrop?.(remoteHost, details);
+    } catch (error) {
+      getLogger(["fedify", "federation", "circuit"]).error(
+        "An unexpected error occurred in circuit breaker activity drop " +
+          "handler:\n{error}",
+        { remoteHost, error },
+      );
+    }
+  }
+
+  async getState(
+    remoteHost: string,
+  ): Promise<CircuitBreakerKvState | undefined> {
+    return await this.#get(remoteHost);
+  }
+
+  #key(remoteHost: string): KvKey {
+    return [...this.#prefix, remoteHost] as KvKey;
+  }
+
+  async #get(remoteHost: string): Promise<CircuitBreakerKvState | undefined> {
+    return parseCircuitBreakerKvState(
+      await this.#kv.get(this.#key(remoteHost)),
+    );
+  }
+
+  async #replace(
+    remoteHost: string,
+    oldState: CircuitBreakerKvState | undefined,
+    newState: CircuitBreakerKvState | undefined,
+  ): Promise<boolean> {
+    const key = this.#key(remoteHost);
+    if (this.#kv.cas == null) {
+      if (newState == null) {
+        await this.#kv.delete(key);
+      } else {
+        await this.#kv.set(key, newState);
+      }
+      return true;
+    }
+    return await this.#kv.cas(key, oldState, newState);
+  }
+
+  async #notifyStateChange(
+    remoteHost: string,
+    previousState: CircuitBreakerState,
+    newState: CircuitBreakerState,
+  ): Promise<void> {
+    try {
+      await this.#options.onStateChange?.(remoteHost, previousState, newState);
+    } catch (error) {
+      getLogger(["fedify", "federation", "circuit"]).error(
+        "An unexpected error occurred in circuit breaker state change " +
+          "handler:\n{error}",
+        { remoteHost, previousState, newState, error },
+      );
+    }
+  }
+}
+
+export function normalizeCircuitBreakerOptions(
+  options: CircuitBreakerOptions,
+): NormalizedCircuitBreakerOptions {
+  const recoveryDelay = toInstantDuration(
+    options.recoveryDelay ?? { minutes: 30 },
+  );
+  const heldActivityTtl = toInstantDuration(
+    options.heldActivityTtl ?? { hours: 24 * 7 },
+  );
+  const releaseInterval = toInstantDuration(
+    options.releaseInterval ?? { seconds: 1 },
+  );
+  let failure: (timestamps: readonly Temporal.Instant[]) => boolean;
+  if (options.failure == null) {
+    const failureThreshold = options.failureThreshold ?? 5;
+    const failureWindow = toInstantDuration(
+      options.failureWindow ?? { minutes: 10 },
+    );
+    failure = (timestamps) => {
+      if (timestamps.length < failureThreshold) return false;
+      const first = timestamps[timestamps.length - failureThreshold];
+      const last = timestamps[timestamps.length - 1];
+      return Temporal.Duration.compare(first.until(last), failureWindow) <= 0;
+    };
+  } else {
+    failure = options.failure;
+  }
+  return {
+    failure,
+    recoveryDelay,
+    heldActivityTtl,
+    releaseInterval,
+    onStateChange: options.onStateChange,
+    onActivityDrop: options.onActivityDrop,
+  };
+}
+
+function toInstantDuration(
+  duration: Temporal.Duration | Temporal.DurationLike,
+): Temporal.Duration {
+  const parsed = Temporal.Duration.from(duration);
+  return Temporal.Duration.from({
+    milliseconds: parsed.total({
+      unit: "millisecond",
+      relativeTo: Temporal.PlainDateTime.from("2026-01-01T00:00:00"),
+    }),
+  });
+}
+
+export function parseCircuitBreakerKvState(
+  value: unknown,
+): CircuitBreakerKvState | undefined {
+  if (typeof value !== "object" || value == null) return undefined;
+  const record = value as Record<string, unknown>;
+  if (
+    record.state !== "closed" &&
+    record.state !== "open" &&
+    record.state !== "half-open"
+  ) {
+    return undefined;
+  }
+  if (
+    !Array.isArray(record.failures) ||
+    !record.failures.every((failure) => typeof failure === "string")
+  ) {
+    return undefined;
+  }
+  if (record.opened != null && typeof record.opened !== "string") {
+    return undefined;
+  }
+  return {
+    state: record.state,
+    failures: record.failures,
+    ...(record.opened == null ? {} : { opened: record.opened }),
+  };
+}
