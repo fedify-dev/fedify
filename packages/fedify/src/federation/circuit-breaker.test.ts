@@ -27,6 +27,23 @@ test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
     ]),
     false,
   );
+  assertEquals(
+    options.pruneFailures(
+      [
+        Temporal.Instant.from("2026-05-25T00:00:00Z"),
+        Temporal.Instant.from("2026-05-25T00:09:00Z"),
+        Temporal.Instant.from("2026-05-25T00:10:00Z"),
+        Temporal.Instant.from("2026-05-25T00:11:00Z"),
+        Temporal.Instant.from("2026-05-25T00:12:00Z"),
+      ],
+      Temporal.Instant.from("2026-05-25T00:12:00Z"),
+    ).map((t) => t.toString()),
+    [
+      "2026-05-25T00:10:00Z",
+      "2026-05-25T00:11:00Z",
+      "2026-05-25T00:12:00Z",
+    ],
+  );
 });
 
 test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {
@@ -180,5 +197,39 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
     failures: ["2026-05-24T23:00:00Z"],
     opened: "2026-05-24T23:00:00Z",
     halfOpened: "2026-05-25T00:00:01Z",
+  });
+});
+
+test("CircuitBreaker prunes stale closed failure history", async () => {
+  const kv = new MemoryKvStore();
+  let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: {
+      failureThreshold: 2,
+      failureWindow: { minutes: 10 },
+    },
+  });
+
+  await circuit.recordFailure("sporadic.example");
+  assertEquals(await circuit.getState("sporadic.example"), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+
+  now = Temporal.Instant.from("2026-05-25T00:20:00Z");
+  await circuit.recordFailure("sporadic.example");
+  assertEquals(await circuit.getState("sporadic.example"), {
+    state: "closed",
+    failures: ["2026-05-25T00:20:00Z"],
+  });
+
+  now = Temporal.Instant.from("2026-05-25T00:40:00Z");
+  await circuit.recordFailure("sporadic.example");
+  assertEquals(await circuit.getState("sporadic.example"), {
+    state: "closed",
+    failures: ["2026-05-25T00:40:00Z"],
   });
 });

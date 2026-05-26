@@ -104,6 +104,10 @@ export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
  */
 export interface NormalizedCircuitBreakerOptions {
   readonly failure: (timestamps: readonly Temporal.Instant[]) => boolean;
+  readonly pruneFailures: (
+    timestamps: readonly Temporal.Instant[],
+    now: Temporal.Instant,
+  ) => readonly Temporal.Instant[];
   readonly recoveryDelay: Temporal.Duration;
   readonly heldActivityTtl: Temporal.Duration;
   readonly releaseInterval: Temporal.Duration;
@@ -284,7 +288,10 @@ export class CircuitBreaker {
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
       const oldFailures = oldState?.failures.map(Temporal.Instant.from) ?? [];
-      const failures = [...oldFailures, now];
+      const failures = this.#options.pruneFailures(
+        [...oldFailures, now],
+        now,
+      );
       let newState: CircuitBreakerKvState;
       let transition: [CircuitBreakerState, CircuitBreakerState] | undefined;
       if (oldState?.state === "open") {
@@ -409,11 +416,23 @@ export function normalizeCircuitBreakerOptions(
     options.releaseInterval ?? { seconds: 1 },
   );
   let failure: (timestamps: readonly Temporal.Instant[]) => boolean;
+  let pruneFailures: (
+    timestamps: readonly Temporal.Instant[],
+    now: Temporal.Instant,
+  ) => readonly Temporal.Instant[];
   if (options.failure == null) {
     const failureThreshold = options.failureThreshold ?? 5;
     const failureWindow = toInstantDuration(
       options.failureWindow ?? { minutes: 10 },
     );
+    pruneFailures = (timestamps, now) => {
+      const earliest = now.subtract(failureWindow);
+      return timestamps
+        .filter((timestamp) =>
+          Temporal.Instant.compare(timestamp, earliest) >= 0
+        )
+        .slice(-failureThreshold);
+    };
     failure = (timestamps) => {
       if (timestamps.length < failureThreshold) return false;
       const first = timestamps[timestamps.length - failureThreshold];
@@ -422,9 +441,11 @@ export function normalizeCircuitBreakerOptions(
     };
   } else {
     failure = options.failure;
+    pruneFailures = (timestamps) => timestamps;
   }
   return {
     failure,
+    pruneFailures,
     recoveryDelay,
     heldActivityTtl,
     releaseInterval,
