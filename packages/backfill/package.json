@@ -48,7 +48,9 @@
     "package.json",
     "README.md"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "@fedify/vocab": "workspace:*"
+  },
   "devDependencies": {
     "tsdown": "catalog:",
     "typescript": "catalog:"
