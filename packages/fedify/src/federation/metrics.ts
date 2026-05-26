@@ -285,9 +285,10 @@ export type KeyLookupResult = Exclude<LookupResult, "miss">;
 
 /**
  * Attributes accepted by {@link recordKeyLookup}.  `remoteUrl` is taken as
- * a `URL` so that the helper can derive the hostname-only
- * `activitypub.remote.host` attribute internally and refuse to record
- * high-cardinality values such as full key IDs or actor URLs.
+ * a `URL` so that the helper can derive the URL host, including any
+ * non-default port, for the `activitypub.remote.host` attribute internally
+ * and refuse to record high-cardinality values such as full key IDs or actor
+ * URLs.
  * @since 2.3.0
  */
 export interface KeyLookupAttributes {
@@ -1463,9 +1464,10 @@ export interface InstrumentDocumentLoaderOptions {
  * and as `fetched` on success.  The wrapper rethrows whatever the
  * wrapped loader throws so caller behavior is unchanged.
  *
- * The wrapper records the hostname of the requested URL on
- * `activitypub.remote.host` when the URL parses; full URLs, paths, and
- * query strings are deliberately excluded to keep cardinality bounded.
+ * The wrapper records the host of the requested URL, including any
+ * non-default port, on `activitypub.remote.host` when the URL parses; full
+ * URLs, paths, and query strings are deliberately excluded to keep
+ * cardinality bounded.
  * HTTP status codes are recorded only when the failure carries a
  * `Response` (currently, when the wrapped loader throws a
  * {@link FetchError} with a non-`null` `response`).
@@ -1602,7 +1604,7 @@ export function getFederationMetrics(
  * @since 2.3.0
  */
 export function getRemoteHost(url: URL): string {
-  return url.hostname;
+  return url.host;
 }
 
 /**

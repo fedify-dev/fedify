@@ -765,6 +765,33 @@ test("lookupObject() records activitypub.object.lookup counter", {
       );
     });
 
+    await t.step(
+      "records non-default ports for URL identifiers",
+      async () => {
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const object = await lookupObject("https://example.com:8443/object", {
+          documentLoader: (url) =>
+            Promise.resolve({
+              contextUrl: null,
+              documentUrl: url,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                id: url,
+                type: "Note",
+              },
+            }),
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        });
+        assertInstanceOf(object, Object);
+        const counter = recorder.getMeasurement("activitypub.object.lookup");
+        deepStrictEqual(
+          counter?.attributes["activitypub.remote.host"],
+          "example.com:8443",
+        );
+      },
+    );
+
     await t.step("records kind=other on null result", async () => {
       fetchMock.removeRoutes();
       fetchMock.get("begin:https://example.com/.well-known/webfinger", {

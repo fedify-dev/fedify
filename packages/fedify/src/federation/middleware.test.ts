@@ -6731,6 +6731,50 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("circuit keys include non-default ports", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let defaultPortRequests = 0;
+    fetchMock.post("https://ports.example:8443/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    fetchMock.post("https://ports.example/inbox", () => {
+      defaultPortRequests++;
+      return { status: 202, body: "" };
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { hours: 1 },
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ports.example:8443/inbox"),
+    );
+    assertEquals(
+      (await kv.get<Record<string, unknown>>([
+        "_fedify",
+        "circuit",
+        "ports.example:8443",
+      ]))?.state,
+      "open",
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "ports.example"]),
+      undefined,
+    );
+
+    queued.length = 0;
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ports.example/inbox"),
+    );
+
+    assertEquals(defaultPortRequests, 1);
+    assertEquals(queued, []);
+  });
+
   await t.step("429 respects Retry-After without opening circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

@@ -112,10 +112,11 @@ To be released.
 
  -  Added an outbound delivery circuit breaker for queued outbox delivery.
     Fedify now tracks consecutive network and HTTP 5xx delivery failures
-    per remote host, stores the state in the configured `KvStore`, and
-    requeues messages held by an open circuit instead of repeatedly sending
-    to an unreachable server.  The circuit breaker is enabled by default
-    for queued outbox delivery and can be disabled with
+    per remote host (including any non-default port), stores the state in
+    the configured `KvStore`, and requeues messages held by an open circuit
+    instead of repeatedly sending to an unreachable server.  The circuit
+    breaker is enabled by default for queued outbox delivery and can be
+    disabled with
     `circuitBreaker: false`; applications can customize the failure policy,
     recovery delay, held activity TTL, release interval, and state/drop
     callbacks.  HTTP 429 responses do not count as circuit failures and
@@ -170,10 +171,11 @@ To be released.
     Instruments share an `activitypub.lookup.kind` and (where
     applicable) `activitypub.lookup.result` attribute drawn from small,
     spec-bounded enumerations.  `activitypub.remote.host` records the
-    URL hostname only; `http.response.status_code` is recorded when an
-    HTTP response was observed; `activitypub.cache.enabled` is
-    recorded on the key and document fetch metrics whenever Fedify can
-    confidently report the cache layer's presence.  Key IDs, actor
+    URL host, including any non-default port; `http.response.status_code`
+    is recorded when an HTTP response was observed;
+    `activitypub.cache.enabled` is recorded on the key and document
+    fetch metrics whenever Fedify can confidently report the cache
+    layer's presence.  Key IDs, actor
     IDs, object IDs, JSON-LD context URLs, full URLs, and fediverse
     handles are deliberately excluded so attacker-controlled remotes
     cannot inflate metric cardinality.  The existing
@@ -208,8 +210,9 @@ To be released.
     `webfinger.resource.scheme` is bucketed to a small allow list
     (`acct`, `http`, `https`, `mailto`, or `other`) so an
     attacker-controlled query string cannot inflate metric
-    cardinality; `activitypub.remote.host` records the URL hostname
-    only.  Full resource URIs, lookup URLs, and handle strings are
+    cardinality; `activitypub.remote.host` records the URL host,
+    including any non-default port.  Full resource URIs, lookup URLs,
+    and handle strings are
     deliberately excluded; they remain on the corresponding spans
     (`webfinger.lookup`, `webfinger.handle`,
     `activitypub.get_actor_handle`) for trace-level investigation.

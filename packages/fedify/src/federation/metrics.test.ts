@@ -5,6 +5,7 @@ import { FetchError } from "@fedify/vocab-runtime";
 import type { MessageQueue } from "./mq.ts";
 import {
   classifyFetchError,
+  getRemoteHost,
   instrumentDocumentLoader,
   recordCircuitBreakerStateChange,
   recordCollectionDispatchDuration,
@@ -29,6 +30,21 @@ const noopQueue: MessageQueue = {
     return Promise.resolve();
   },
 };
+
+test("getRemoteHost() includes non-default ports", () => {
+  assertEquals(
+    getRemoteHost(new URL("https://example.com/inbox")),
+    "example.com",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:8443/inbox")),
+    "example.com:8443",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:443/inbox")),
+    "example.com",
+  );
+});
 
 test("recordFanoutRecipients() records the recipient count with activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();

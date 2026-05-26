@@ -546,7 +546,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     assertEquals(sent[0].value, 1);
     assertEquals(
       sent[0].attributes["activitypub.remote.host"],
-      "metrics.example",
+      "metrics.example:8443",
     );
     assertEquals(
       sent[0].attributes["activitypub.activity.type"],
@@ -562,7 +562,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     assertGreaterOrEqual(durations[0].value, 0);
     assertEquals(
       durations[0].attributes["activitypub.remote.host"],
-      "metrics.example",
+      "metrics.example:8443",
     );
     assertEquals(
       durations[0].attributes["activitypub.activity.type"],

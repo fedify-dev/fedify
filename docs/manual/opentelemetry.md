@@ -297,7 +297,8 @@ auditing, store it in your application before delivery and correlate it with
 
 **`activitypub.delivery.failed` event attributes:**
 
- -  `activitypub.remote.host`: The remote inbox host
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
  -  `activitypub.delivery.attempt`: The zero-based queue delivery attempt
  -  `activitypub.delivery.permanent_failure`: Whether Fedify will abandon the
     delivery instead of retrying
@@ -306,7 +307,8 @@ auditing, store it in your application before delivery and correlate it with
 
 **`activitypub.circuit_breaker.state_change` event attributes:**
 
- -  `activitypub.remote.host`: The remote inbox host
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
  -  `activitypub.circuit_breaker.previous_state`: The previous circuit state
     (`closed`, `open`, or `half_open`)
  -  `activitypub.circuit_breaker.state`: The new circuit state (`closed`,
@@ -314,7 +316,8 @@ auditing, store it in your application before delivery and correlate it with
 
 **`activitypub.circuit_breaker.held` event attributes:**
 
- -  `activitypub.remote.host`: The remote inbox host
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
  -  `activitypub.circuit_breaker.state`: The circuit state (`open`)
 
 **`activitypub.object.fetched` event attributes:**
@@ -596,9 +599,10 @@ Fedify records the following OpenTelemetry metrics:
 
     `activitypub.cache.enabled` is always present and is `true` when the
     caller passed a `KeyCache`, `false` otherwise.  `activitypub.remote.host`
-    is the hostname of the key URL.  `http.response.status_code` is
-    present only when an HTTP response was observed.  Key IDs, full key
-    URLs, and actor IDs are deliberately excluded from these metrics;
+    is the URL host of the key URL, including any non-default port.
+    `http.response.status_code` is present only when an HTTP response was
+    observed.  Key IDs, full key URLs, and actor IDs are deliberately
+    excluded from these metrics;
     they remain on the `activitypub.fetch_key` span for trace-level
     investigation.
 
@@ -628,8 +632,9 @@ Fedify records the following OpenTelemetry metrics:
     surfaces these four values at the loader boundary; `invalid` is
     reserved for the key lookup metrics, where the parser can decide
     that a successful HTTP response still does not contain a usable
-    key.  `activitypub.remote.host` records the hostname of the
-    fetched URL when the URL parses; otherwise it is omitted.
+    key.  `activitypub.remote.host` records the URL host of the
+    fetched URL, including any non-default port, when the URL parses;
+    otherwise it is omitted.
     `activitypub.cache.enabled` is `true` for Fedify's built-in
     `kvCache()`-backed document and context loaders and `false` for the
     authenticated document loader; for user-supplied factories Fedify
@@ -650,7 +655,8 @@ Fedify records the following OpenTelemetry metrics:
     when it did not.  Cache lookups that bypass the KV cache entirely
     (preloaded JSON-LD contexts and call sites without a matching cache
     rule) emit no measurement.  `activitypub.remote.host` records the
-    hostname of the looked-up URL when it parses.
+    URL host of the looked-up URL, including any non-default port, when
+    it parses.
 
 `activitypub.object.lookup`
 :   `activitypub.lookup.kind` is always present and is one of:
@@ -666,13 +672,15 @@ Fedify records the following OpenTelemetry metrics:
         in a `finally` block, so a thrown error is still counted with
         `kind=other`.
 
-    `activitypub.remote.host` is the hostname extracted from the
+    `activitypub.remote.host` is the host extracted from the
     identifier: a parsed `URL`, an `acct:user@host` URI, or a bare
-    `@user@host` / `user@host` handle.  Inputs that do not reduce
-    cleanly to an authority (paths, query strings, fragments, or
-    whitespace mixed in with the handle suffix) result in the
-    attribute being omitted, rather than recording a high-cardinality
-    value.  This counter has no companion histogram: `lookupObject()`
+    `@user@host` / `user@host` handle.  For URL identifiers and
+    handle authorities, non-default ports are included.  Inputs that
+    do not reduce cleanly to an authority (paths, query strings,
+    fragments, or whitespace mixed in with the handle suffix) result
+    in the attribute being omitted, rather than recording a
+    high-cardinality value.  This counter has no companion histogram:
+    `lookupObject()`
     drives `activitypub.document.fetch.duration` through the document
     loader, and emitting another duration here would double-count
     latency.  Use `activitypub.object.lookup` for the parsed-result
@@ -690,8 +698,9 @@ Fedify records the following OpenTelemetry metrics:
         discovery (including `TypeError`s from a malformed alias URL or
         an invalid `preferredUsername`).
 
-    `activitypub.remote.host` records `actor.id.hostname` when known
-    and is omitted otherwise.  Actor IDs and handle strings are
+    `activitypub.remote.host` records `actor.id.host`, including any
+    non-default port, when known and is omitted otherwise.  Actor IDs
+    and handle strings are
     deliberately excluded so attacker-controlled actor data cannot
     inflate metric cardinality.  Per-WebFinger-call failure detail
     (HTTP status, parse failure, network failure, etc.) lives on
@@ -730,10 +739,11 @@ Fedify records the following OpenTelemetry metrics:
     redirecting to an unusual scheme.  The corresponding span
     attribute (`webfinger.resource.scheme` on the `webfinger.lookup`
     span) still records the raw scheme for trace-level investigation.
-    `activitypub.remote.host` records the hostname of the latest URL
-    Fedify attempted, so an operator can see who actually returned a
-    failure even after one or more redirects; it is omitted only when
-    the resource itself was malformed before any URL could be built.
+    `activitypub.remote.host` records the URL host of the latest URL
+    Fedify attempted, including any non-default port, so an operator
+    can see who actually returned a failure even after one or more
+    redirects; it is omitted only when the resource itself was
+    malformed before any URL could be built.
     `http.response.status_code` is recorded only when an HTTP response
     was observed (including non-2xx errors and redirects that exceeded
     `maxRedirection`).  Full resource URIs, lookup URLs, and remote
@@ -851,8 +861,11 @@ or processed-task throughput) remain available on `fedify.queue.task.enqueued`
 `fedify.queue.task.completed`; the activity-level counters are
 intentionally not a queue-mechanism replacement.
 
-Fedify records `activitypub.remote.host` as the URL hostname only; ports, paths,
-and query strings are deliberately excluded to keep metric cardinality bounded.
+Fedify records `activitypub.remote.host` as the URL host: the hostname plus
+any non-default port.  Paths and query strings are deliberately excluded to
+keep metric cardinality bounded, but ports are preserved so distinct services
+on the same hostname do not collapse into one metric series or circuit
+breaker key.
 Activity types use the same qualified URI form as Fedify's trace attributes,
 for example `https://www.w3.org/ns/activitystreams#Create`.
 
@@ -932,7 +945,7 @@ for ActivityPub:
 | `activitypub.object.type`                    | string[] | The qualified URI(s) of the object type(s).                                                                                  | `["https://www.w3.org/ns/activitystreams#Note"]`                     |
 | `activitypub.object.in_reply_to`             | string[] | The URI(s) of the original object to which the object reply.                                                                 | `["https://example.com/object/1"]`                                   |
 | `activitypub.inboxes`                        | int      | The number of inboxes the activity is sent to.                                                                               | `12`                                                                 |
-| `activitypub.remote.host`                    | string   | The hostname of the remote ActivityPub server.                                                                               | `"example.com"`                                                      |
+| `activitypub.remote.host`                    | string   | The host of the remote ActivityPub server, including any non-default port.                                                   | `"example.com:8443"`                                                 |
 | `activitypub.shared_inbox`                   | boolean  | Whether the activity is sent to the shared inbox.                                                                            | `true`                                                               |
 | `docloader.context_url`                      | string   | The URL of the JSON-LD context document (if provided via Link header).                                                       | `"https://www.w3.org/ns/activitystreams"`                            |
 | `docloader.document_url`                     | string   | The final URL of the fetched document (after following redirects).                                                           | `"https://example.com/object/1"`                                     |

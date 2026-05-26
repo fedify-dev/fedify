@@ -93,7 +93,7 @@ function getActorDiscoveryRemoteHost(
 ): string | undefined {
   const id = actor instanceof URL ? actor : actor.id;
   if (id == null) return undefined;
-  return id.hostname === "" ? undefined : id.hostname;
+  return id.host === "" ? undefined : id.host;
 }
 
 // Subclass of TypeError that preserves the documented `throws {TypeError}`

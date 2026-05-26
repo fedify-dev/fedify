@@ -67,13 +67,13 @@ function getLookupRemoteHost(identifier: string | URL): string | undefined {
       return extractHandleHost(stripped);
     }
   }
-  if (url.hostname !== "") return url.hostname;
-  // `acct:` URIs are opaque (no `//host` form), so the URL hostname is
-  // empty.  The user and authority live in `url.pathname` as
+  if (url.host !== "") return url.host;
+  // `acct:` URIs are opaque (no `//host` form), so the URL host is empty.
+  // The user and authority live in `url.pathname` as
   // `user@host`; reuse the same handle-extraction logic, which both
   // takes only the substring after the last `@` and refuses to record
   // anything that looks like a path / query / fragment rather than a
-  // bare hostname.
+  // bare host.
   if (url.protocol === "acct:") return extractHandleHost(url.pathname);
   return undefined;
 }
@@ -87,9 +87,9 @@ function extractHandleHost(handle: string): string | undefined {
   // the metric attribute, so we drop the host entirely in those cases.
   if (/[/?#\s]/.test(candidate)) return undefined;
   // Round-trip through `URL` so the parser validates the authority and
-  // strips any port/userinfo before we record it.
+  // strips any userinfo before we record it.
   try {
-    return new URL(`https://${candidate}`).hostname || undefined;
+    return new URL(`https://${candidate}`).host || undefined;
   } catch {
     return undefined;
   }
