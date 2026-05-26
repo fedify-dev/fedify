@@ -6591,7 +6591,10 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     ],
     federationOptions: Pick<
       ConstructorParameters<typeof FederationImpl<void>>[0],
-      "meterProvider" | "tracerProvider" | "permanentFailureStatusCodes"
+      | "meterProvider"
+      | "tracerProvider"
+      | "permanentFailureStatusCodes"
+      | "outboxRetryPolicy"
     > = {},
   ): CircuitBreakerSetup {
     const kv = new MemoryKvStore();
@@ -6756,6 +6759,31 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
     assertEquals(
       await kv.get(["_fedify", "circuit", "rate.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("429 Retry-After still respects retry give-up", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://give-up.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "120" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => null },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://give-up.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "give-up.example"]),
       undefined,
     );
   });

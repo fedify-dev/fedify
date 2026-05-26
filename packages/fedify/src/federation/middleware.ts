@@ -1271,13 +1271,13 @@ export class FederationImpl<TContextData>
         throw error;
       }
 
-      const delay = retryAfterDelay ??
-        this.outboxRetryPolicy({
-          elapsedTime: Temporal.Instant.from(message.started).until(
-            Temporal.Now.instant(),
-          ),
-          attempts: message.attempt,
-        });
+      const policyDelay = this.outboxRetryPolicy({
+        elapsedTime: Temporal.Instant.from(message.started).until(
+          Temporal.Now.instant(),
+        ),
+        attempts: message.attempt,
+      });
+      const delay = policyDelay == null ? null : retryAfterDelay ?? policyDelay;
       if (delay != null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox} (attempt " +
