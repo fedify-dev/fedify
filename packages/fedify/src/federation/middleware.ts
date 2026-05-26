@@ -1182,60 +1182,68 @@ export class FederationImpl<TContextData>
         this.outboxQueue != null &&
         this.circuitBreaker != null
       ) {
-        if (error instanceof SendActivityError) {
-          if (isPermanentFailure) {
-            const stateChange = await this.circuitBreaker
-              .recordReachableFailure(remoteHost);
-            if (stateChange != null) {
-              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+        try {
+          if (error instanceof SendActivityError) {
+            if (isPermanentFailure) {
+              const stateChange = await this.circuitBreaker
+                .recordReachableFailure(remoteHost);
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
+            } else if (!isPermanentFailure && error.statusCode === 429) {
+              retryAfterDelay = parseRetryAfter(error.responseHeaders);
+              const stateChange = await this.circuitBreaker
+                .recordReachableFailure(remoteHost);
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
+            } else if (!isPermanentFailure && error.statusCode >= 500) {
+              const stateChange = await this.circuitBreaker.recordFailure(
+                remoteHost,
+              );
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
+            } else if (!isPermanentFailure && error.statusCode >= 400) {
+              const stateChange = await this.circuitBreaker
+                .recordReachableFailure(remoteHost);
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
             }
-          } else if (!isPermanentFailure && error.statusCode === 429) {
-            const stateChange = await this.circuitBreaker
-              .recordReachableFailure(remoteHost);
-            if (stateChange != null) {
-              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-            }
-            retryAfterDelay = parseRetryAfter(error.responseHeaders);
-          } else if (!isPermanentFailure && error.statusCode >= 500) {
+          } else if (!isPermanentFailure) {
             const stateChange = await this.circuitBreaker.recordFailure(
               remoteHost,
             );
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
-          } else if (!isPermanentFailure && error.statusCode >= 400) {
-            const stateChange = await this.circuitBreaker
-              .recordReachableFailure(remoteHost);
-            if (stateChange != null) {
-              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+          }
+          if (!isPermanentFailure) {
+            const circuitDecision = await this.circuitBreaker.beforeSend(
+              remoteHost,
+              message,
+            );
+            if (circuitDecision.type === "hold") {
+              circuitHold = {
+                delay: circuitDecision.delay,
+                heldSince: circuitDecision.heldSince,
+              };
+            } else if (circuitDecision.type === "drop") {
+              circuitDrop = {
+                circuit: this.circuitBreaker,
+                remoteHost,
+                inbox: new URL(message.inbox),
+                heldSince: circuitDecision.heldSince,
+              };
             }
           }
-        } else if (!isPermanentFailure) {
-          const stateChange = await this.circuitBreaker.recordFailure(
-            remoteHost,
+        } catch (circuitError) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to update circuit breaker state after delivery failure; " +
+              "falling back to normal failure handling:\n{error}",
+            { ...logData, remoteHost, error: circuitError },
           );
-          if (stateChange != null) {
-            recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-          }
-        }
-        if (!isPermanentFailure) {
-          const circuitDecision = await this.circuitBreaker.beforeSend(
-            remoteHost,
-            message,
-          );
-          if (circuitDecision.type === "hold") {
-            circuitHold = {
-              delay: circuitDecision.delay,
-              heldSince: circuitDecision.heldSince,
-            };
-          } else if (circuitDecision.type === "drop") {
-            circuitDrop = {
-              circuit: this.circuitBreaker,
-              remoteHost,
-              inbox: new URL(message.inbox),
-              heldSince: circuitDecision.heldSince,
-            };
-          }
         }
       }
       span.addEvent("activitypub.delivery.failed", {

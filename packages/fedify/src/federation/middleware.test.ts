@@ -6800,6 +6800,112 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     assertEquals(queued, []);
   });
 
+  await t.step("circuit failure errors fall back to retry", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://failure-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+    kv.cas = () => Promise.resolve(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://failure-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 3 }),
+    );
+  });
+
+  await t.step("circuit decision errors fall back to retry", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://decision-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 4 }) },
+    );
+    const originalGet = kv.get.bind(kv);
+    let getCalls = 0;
+    kv.get = (...args) => {
+      getCalls++;
+      return getCalls === 1
+        ? originalGet(...args)
+        : Promise.reject(new Error("kv get failed"));
+    };
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://decision-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 4 }),
+    );
+  });
+
+  await t.step("circuit reachable errors keep permanent failure", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { permanentFailureStatusCodes: [500] },
+    );
+    await kv.set(["_fedify", "circuit", "permanent-bookkeeping.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    const originalCas = kv.cas.bind(kv);
+    let casCalls = 0;
+    kv.cas = (...args) => {
+      casCalls++;
+      return casCalls === 1 ? originalCas(...args) : Promise.resolve(false);
+    };
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+  });
+
   await t.step("429 respects Retry-After without opening circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
