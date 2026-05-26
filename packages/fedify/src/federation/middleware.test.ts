@@ -6917,6 +6917,44 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("permanent 5xx closes half-open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-probe.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        releaseInterval: { seconds: 1 },
+      },
+      { permanentFailureStatusCodes: [500] },
+    );
+    await kv.set(["_fedify", "circuit", "permanent-probe.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-probe.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "permanent-probe.example"]),
+      undefined,
+    );
+  });
+
   await t.step("permanent 4xx closes half-open circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

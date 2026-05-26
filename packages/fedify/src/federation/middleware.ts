@@ -1183,11 +1183,7 @@ export class FederationImpl<TContextData>
         this.circuitBreaker != null
       ) {
         if (error instanceof SendActivityError) {
-          if (
-            isPermanentFailure &&
-            error.statusCode >= 400 &&
-            error.statusCode < 500
-          ) {
+          if (isPermanentFailure) {
             const stateChange = await this.circuitBreaker
               .recordReachableFailure(remoteHost);
             if (stateChange != null) {
