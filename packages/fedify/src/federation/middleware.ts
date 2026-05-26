@@ -1119,9 +1119,17 @@ export class FederationImpl<TContextData>
         tracerProvider: this.tracerProvider,
       });
       if (circuit != null) {
-        const stateChange = await circuit.recordSuccess(remoteHost);
-        if (stateChange != null) {
-          recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+        try {
+          const stateChange = await circuit.recordSuccess(remoteHost);
+          if (stateChange != null) {
+            recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+          }
+        } catch (error) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to record successful delivery in circuit breaker state; " +
+              "the activity was already delivered:\n{error}",
+            { ...logData, remoteHost, error },
+          );
         }
       }
     } catch (error) {

@@ -6775,6 +6775,30 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     assertEquals(queued, []);
   });
 
+  await t.step("post-send circuit errors do not retry delivery", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://success-bookkeeping.example/inbox", {
+      status: 202,
+      body: "",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+    });
+    await kv.set(["_fedify", "circuit", "success-bookkeeping.example"], {
+      state: "closed",
+      failures: [],
+    });
+    kv.cas = () => Promise.resolve(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://success-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+  });
+
   await t.step("429 respects Retry-After without opening circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
