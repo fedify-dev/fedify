@@ -1178,6 +1178,13 @@ export class FederationImpl<TContextData>
       const isPermanentFailure = error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
+        !isPermanentFailure &&
+        error instanceof SendActivityError &&
+        error.statusCode === 429
+      ) {
+        retryAfterDelay = parseRetryAfter(error.responseHeaders);
+      }
+      if (
         remoteHost != null &&
         this.outboxQueue != null &&
         this.circuitBreaker != null
@@ -1191,7 +1198,6 @@ export class FederationImpl<TContextData>
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
             } else if (!isPermanentFailure && error.statusCode === 429) {
-              retryAfterDelay = parseRetryAfter(error.responseHeaders);
               const stateChange = await this.circuitBreaker
                 .recordReachableFailure(remoteHost);
               if (stateChange != null) {

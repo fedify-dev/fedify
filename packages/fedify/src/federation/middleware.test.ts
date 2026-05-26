@@ -6597,10 +6597,12 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       | "permanentFailureStatusCodes"
       | "outboxRetryPolicy"
     > = {},
+    queueOptions: Pick<MessageQueue, "nativeRetrial"> = {},
   ): CircuitBreakerSetup {
     const kv = new MemoryKvStore();
     const queued: Queued[] = [];
     const queue: MessageQueue = {
+      nativeRetrial: queueOptions.nativeRetrial,
       enqueue(message, options) {
         queued.push({ message, options });
         return Promise.resolve();
@@ -6937,6 +6939,41 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       undefined,
     );
   });
+
+  await t.step(
+    "429 respects Retry-After with circuit breaker disabled",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://rate-disabled.example/inbox", {
+        status: 429,
+        headers: { "Retry-After": "120" },
+        body: "rate limited",
+      });
+      const { federation, queued, kv } = setup(false, {}, {
+        nativeRetrial: true,
+      });
+      assertEquals(federation.circuitBreaker, undefined);
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://rate-disabled.example/inbox"),
+      );
+
+      assertEquals(queued.length, 1);
+      const retry = queued[0].message as OutboxMessage;
+      assertEquals(retry.attempt, 1);
+      assertEquals(retry.circuitHeld, undefined);
+      assertEquals(
+        queued[0].options?.delay,
+        Temporal.Duration.from({ seconds: 120 }),
+      );
+      assertEquals(
+        await kv.get(["_fedify", "circuit", "rate-disabled.example"]),
+        undefined,
+      );
+    },
+  );
 
   await t.step("429 Retry-After still respects retry give-up", async () => {
     fetchMock.hardReset();
