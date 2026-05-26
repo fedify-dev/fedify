@@ -190,21 +190,21 @@ export class CircuitBreaker {
       ? undefined
       : Temporal.Instant.from(message.circuitHeldSince);
     const now = this.#now();
-    if (
-      heldSince != null &&
-      Temporal.Instant.compare(
-          heldSince.add(this.#options.heldActivityTtl),
-          now,
-        ) <=
-        0
-    ) {
-      return { type: "drop", heldSince };
-    }
 
     while (true) {
       const oldState = await this.#get(remoteHost);
       if (oldState == null || oldState.state === "closed") {
         return { type: "send", probe: false };
+      }
+      if (
+        heldSince != null &&
+        Temporal.Instant.compare(
+            heldSince.add(this.#options.heldActivityTtl),
+            now,
+          ) <=
+          0
+      ) {
+        return { type: "drop", heldSince };
       }
       if (oldState.state === "half-open") {
         const halfOpened = oldState.halfOpened == null

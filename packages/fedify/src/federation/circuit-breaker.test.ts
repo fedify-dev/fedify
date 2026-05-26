@@ -157,6 +157,19 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
   decision = await circuit.beforeSend("remote.example", {
     circuitHeldSince: "2026-05-17T00:00:00Z",
   });
+  assertEquals(decision, { type: "send", probe: false });
+
+  await kv.set(["_fedify", "circuit", "remote.example"], {
+    state: "open",
+    failures: [
+      "2026-05-25T00:00:00Z",
+      "2026-05-25T00:05:00Z",
+    ],
+    opened: "2026-05-25T00:05:00Z",
+  });
+  decision = await circuit.beforeSend("remote.example", {
+    circuitHeldSince: "2026-05-17T00:00:00Z",
+  });
   assertEquals(decision, {
     type: "drop",
     heldSince: Temporal.Instant.from("2026-05-17T00:00:00Z"),
