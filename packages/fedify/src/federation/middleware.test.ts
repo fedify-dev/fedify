@@ -6848,6 +6848,41 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("permanent 4xx closes half-open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://gone.example/inbox", {
+      status: 410,
+      body: "gone",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      releaseInterval: { seconds: 1 },
+    });
+    await kv.set(["_fedify", "circuit", "gone.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://gone.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 410);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "gone.example"]),
+      undefined,
+    );
+  });
+
   await t.step("false disables circuit handling", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

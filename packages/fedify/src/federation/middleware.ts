@@ -1147,34 +1147,43 @@ export class FederationImpl<TContextData>
       const isPermanentFailure = error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
-        !isPermanentFailure &&
         remoteHost != null &&
         this.outboxQueue != null &&
         this.circuitBreaker != null
       ) {
         if (error instanceof SendActivityError) {
-          if (error.statusCode === 429) {
+          if (
+            isPermanentFailure &&
+            error.statusCode >= 400 &&
+            error.statusCode < 500
+          ) {
+            const stateChange = await this.circuitBreaker
+              .recordReachableFailure(remoteHost);
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
+          } else if (!isPermanentFailure && error.statusCode === 429) {
             const stateChange = await this.circuitBreaker
               .recordReachableFailure(remoteHost);
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
             retryAfterDelay = parseRetryAfter(error.responseHeaders);
-          } else if (error.statusCode >= 500) {
+          } else if (!isPermanentFailure && error.statusCode >= 500) {
             const stateChange = await this.circuitBreaker.recordFailure(
               remoteHost,
             );
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
-          } else if (error.statusCode >= 400) {
+          } else if (!isPermanentFailure && error.statusCode >= 400) {
             const stateChange = await this.circuitBreaker
               .recordReachableFailure(remoteHost);
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
           }
-        } else {
+        } else if (!isPermanentFailure) {
           const stateChange = await this.circuitBreaker.recordFailure(
             remoteHost,
           );
@@ -1182,15 +1191,17 @@ export class FederationImpl<TContextData>
             recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
           }
         }
-        const circuitDecision = await this.circuitBreaker.beforeSend(
-          remoteHost,
-          message,
-        );
-        if (circuitDecision.type === "hold") {
-          circuitHold = {
-            delay: circuitDecision.delay,
-            heldSince: circuitDecision.heldSince,
-          };
+        if (!isPermanentFailure) {
+          const circuitDecision = await this.circuitBreaker.beforeSend(
+            remoteHost,
+            message,
+          );
+          if (circuitDecision.type === "hold") {
+            circuitHold = {
+              delay: circuitDecision.delay,
+              heldSince: circuitDecision.heldSince,
+            };
+          }
         }
       }
       span.addEvent("activitypub.delivery.failed", {
