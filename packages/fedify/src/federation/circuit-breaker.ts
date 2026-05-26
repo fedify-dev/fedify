@@ -16,6 +16,7 @@ export interface CircuitBreakerKvState {
   readonly state: CircuitBreakerState;
   readonly failures: readonly string[];
   readonly opened?: string;
+  readonly halfOpened?: string;
 }
 
 /**
@@ -202,11 +203,28 @@ export class CircuitBreaker {
         return { type: "send", probe: false };
       }
       if (oldState.state === "half-open") {
-        return {
-          type: "hold",
-          delay: this.#options.releaseInterval,
-          heldSince: heldSince ?? now,
-        };
+        const halfOpened = oldState.halfOpened == null
+          ? undefined
+          : Temporal.Instant.from(oldState.halfOpened);
+        if (halfOpened != null) {
+          const retryAt = halfOpened.add(this.#options.releaseInterval);
+          if (Temporal.Instant.compare(now, retryAt) < 0) {
+            return {
+              type: "hold",
+              delay: now.until(retryAt),
+              heldSince: heldSince ?? now,
+            };
+          }
+        }
+        const newState = {
+          ...oldState,
+          state: "half-open",
+          halfOpened: now.toString(),
+        } satisfies CircuitBreakerKvState;
+        if (await this.#replace(remoteHost, oldState, newState)) {
+          return { type: "send", probe: true };
+        }
+        continue;
       }
 
       const opened = oldState.opened == null
@@ -224,6 +242,7 @@ export class CircuitBreaker {
       const newState = {
         ...oldState,
         state: "half-open",
+        halfOpened: now.toString(),
       } satisfies CircuitBreakerKvState;
       if (await this.#replace(remoteHost, oldState, newState)) {
         await this.#notifyStateChange(remoteHost, "open", "half-open");
@@ -447,9 +466,13 @@ export function parseCircuitBreakerKvState(
   if (record.opened != null && typeof record.opened !== "string") {
     return undefined;
   }
+  if (record.halfOpened != null && typeof record.halfOpened !== "string") {
+    return undefined;
+  }
   return {
     state: record.state,
     failures: record.failures,
     ...(record.opened == null ? {} : { opened: record.opened }),
+    ...(record.halfOpened == null ? {} : { halfOpened: record.halfOpened }),
   };
 }

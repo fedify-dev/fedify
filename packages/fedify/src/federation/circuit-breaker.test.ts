@@ -52,11 +52,13 @@ test("parseCircuitBreakerKvState() validates stored shape", () => {
       state: "open",
       failures: ["2026-05-25T00:00:00Z"],
       opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
     }),
     {
       state: "open",
       failures: ["2026-05-25T00:00:00Z"],
       opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
     },
   );
   assertEquals(parseCircuitBreakerKvState({ state: "open" }), undefined);
@@ -124,6 +126,7 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
       "2026-05-25T00:05:00Z",
     ],
     opened: "2026-05-25T00:05:00Z",
+    halfOpened: "2026-05-25T00:35:00Z",
   });
 
   await circuit.recordSuccess("remote.example");
@@ -140,5 +143,42 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
   assertEquals(decision, {
     type: "drop",
     heldSince: Temporal.Instant.from("2026-05-17T00:00:00Z"),
+  });
+});
+
+test("CircuitBreaker recovers stale half-open probes", async () => {
+  const kv = new MemoryKvStore();
+  let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: {
+      releaseInterval: { seconds: 5 },
+    },
+  });
+
+  await kv.set(["_fedify", "circuit", "remote.example"], {
+    state: "half-open",
+    failures: ["2026-05-24T23:00:00Z"],
+    opened: "2026-05-24T23:00:00Z",
+    halfOpened: "2026-05-24T23:59:56Z",
+  });
+
+  let decision = await circuit.beforeSend("remote.example", {});
+  assertEquals(decision, {
+    type: "hold",
+    delay: Temporal.Duration.from({ seconds: 1 }),
+    heldSince: now,
+  });
+
+  now = Temporal.Instant.from("2026-05-25T00:00:01Z");
+  decision = await circuit.beforeSend("remote.example", {});
+  assertEquals(decision, { type: "send", probe: true });
+  assertEquals(await circuit.getState("remote.example"), {
+    state: "half-open",
+    failures: ["2026-05-24T23:00:00Z"],
+    opened: "2026-05-24T23:00:00Z",
+    halfOpened: "2026-05-25T00:00:01Z",
   });
 });
