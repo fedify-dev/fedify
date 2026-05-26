@@ -319,12 +319,12 @@ export type OutboxPermanentFailureHandler<TContextData> = (
      * Why Fedify is giving up on delivery.
      *
      * `"http"` means the inbox returned a configured permanent-failure HTTP
-     * status.  `"circuit_breaker_ttl"` means the outbound circuit breaker held
+     * status.  `"circuit-breaker-ttl"` means the outbound circuit breaker held
      * the activity until its retention period expired.
      *
      * @since 2.3.0
      */
-    readonly reason: "http" | "circuit_breaker_ttl";
+    readonly reason: "http" | "circuit-breaker-ttl";
     /** The inbox URL that failed. */
     readonly inbox: URL;
     /** The activity that failed to deliver. */
@@ -335,7 +335,7 @@ export type OutboxPermanentFailureHandler<TContextData> = (
     readonly statusCode: number;
     /**
      * The time when the circuit breaker first held the activity, if
-     * {@link reason} is `"circuit_breaker_ttl"`.
+     * {@link reason} is `"circuit-breaker-ttl"`.
      *
      * @since 2.3.0
      */

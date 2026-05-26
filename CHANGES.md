@@ -124,7 +124,7 @@ To be released.
     through `activitypub.circuit_breaker.state_change` metrics and
     `activitypub.circuit_breaker.state_change` span events, and expired
     held activities call the outbox permanent failure handler with
-    `reason: "circuit_breaker_ttl"`.  [[#620]]
+    `reason: "circuit-breaker-ttl"`.  [[#620]]
 
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient

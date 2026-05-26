@@ -52,6 +52,7 @@ import {
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
+import { CircuitBreaker } from "./circuit-breaker.ts";
 
 const documentLoader = getDocumentLoader();
 import type { Context, GetActorOptions } from "./context.ts";
@@ -7055,7 +7056,63 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       remoteHost: "ttl.example",
       heldSince: Temporal.Instant.from("2026-05-25T00:00:00Z"),
     });
-    assertEquals(permanentFailureReason, "circuit_breaker_ttl");
+    assertEquals(permanentFailureReason, "circuit-breaker-ttl");
+  });
+
+  await t.step("expired held probe is dropped after failed send", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+    const heldSince = Temporal.Instant.from("2026-05-25T00:00:00Z");
+    fetchMock.post("https://expired-probe.example/inbox", () => {
+      now = Temporal.Instant.from("2026-05-25T00:00:02Z");
+      return { status: 500, body: "server error" };
+    });
+    let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
+      null;
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      heldActivityTtl: { seconds: 1 },
+      releaseInterval: { seconds: 0 },
+    });
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        heldActivityTtl: { seconds: 1 },
+        releaseInterval: { seconds: 0 },
+        onActivityDrop(remoteHost, details) {
+          dropped = { remoteHost, heldSince: details.heldSince };
+        },
+      },
+    });
+    await kv.set(["_fedify", "circuit", "expired-probe.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureReason: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureReason = values.reason;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://expired-probe.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: heldSince.toString(),
+      }),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(dropped, {
+      remoteHost: "expired-probe.example",
+      heldSince,
+    });
+    assertEquals(permanentFailureReason, "circuit-breaker-ttl");
   });
 
   fetchMock.hardReset();

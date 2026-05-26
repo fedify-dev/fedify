@@ -1031,6 +1031,58 @@ export class FederationImpl<TContextData>
         heldMessage.attempt,
       );
     };
+    const dropHeldOutboxMessage = async (
+      circuit: CircuitBreaker,
+      remoteHost: string,
+      inbox: URL,
+      heldSince: Temporal.Instant,
+      activity: Awaited<ReturnType<typeof parseActivity>>,
+    ) => {
+      await circuit.dropActivity(remoteHost, {
+        inbox,
+        activity,
+        activityId: message.activityId,
+        activityType: message.activityType,
+        actorIds: parseActorIds(),
+        heldSince,
+      });
+      if (this.outboxPermanentFailureHandler != null) {
+        const ctx = this.#createContext(
+          new URL(message.baseUrl),
+          _,
+          {
+            documentLoader: this.documentLoaderFactory(loaderOptions),
+          },
+        );
+        try {
+          await this.outboxPermanentFailureHandler(ctx, {
+            reason: "circuit-breaker-ttl",
+            inbox,
+            activity,
+            error: new SendActivityError(
+              inbox,
+              0,
+              "Circuit breaker held activity expired.",
+              "",
+            ),
+            statusCode: 0,
+            circuitHeldSince: heldSince,
+            actorIds: parseActorIds(),
+          });
+        } catch (handlerError) {
+          logger.error(
+            "An unexpected error occurred in " +
+              "outboxPermanentFailureHandler:\n{error}",
+            { ...logData, error: handlerError },
+          );
+        }
+      }
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+    };
     try {
       const inbox = new URL(message.inbox);
       const circuit = this.outboxQueue == null
@@ -1049,49 +1101,12 @@ export class FederationImpl<TContextData>
         }
         if (decision.type === "drop") {
           const activity = await parseActivity();
-          await circuit.dropActivity(remoteHost, {
+          await dropHeldOutboxMessage(
+            circuit,
+            remoteHost,
             inbox,
+            decision.heldSince,
             activity,
-            activityId: message.activityId,
-            activityType: message.activityType,
-            actorIds: parseActorIds(),
-            heldSince: decision.heldSince,
-          });
-          if (this.outboxPermanentFailureHandler != null) {
-            const ctx = this.#createContext(
-              new URL(message.baseUrl),
-              _,
-              {
-                documentLoader: this.documentLoaderFactory(loaderOptions),
-              },
-            );
-            try {
-              await this.outboxPermanentFailureHandler(ctx, {
-                reason: "circuit_breaker_ttl",
-                inbox,
-                activity,
-                error: new SendActivityError(
-                  inbox,
-                  0,
-                  "Circuit breaker held activity expired.",
-                  "",
-                ),
-                statusCode: 0,
-                circuitHeldSince: decision.heldSince,
-                actorIds: parseActorIds(),
-              });
-            } catch (handlerError) {
-              logger.error(
-                "An unexpected error occurred in " +
-                  "outboxPermanentFailureHandler:\n{error}",
-                { ...logData, error: handlerError },
-              );
-            }
-          }
-          recordOutboxActivity(
-            this.meterProvider,
-            "abandoned",
-            message.activityType,
           );
           return;
         }
@@ -1152,6 +1167,14 @@ export class FederationImpl<TContextData>
       let circuitHold:
         | { delay: Temporal.Duration; heldSince: Temporal.Instant }
         | undefined;
+      let circuitDrop:
+        | {
+          circuit: CircuitBreaker;
+          remoteHost: string;
+          inbox: URL;
+          heldSince: Temporal.Instant;
+        }
+        | undefined;
       const isPermanentFailure = error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
@@ -1209,6 +1232,13 @@ export class FederationImpl<TContextData>
               delay: circuitDecision.delay,
               heldSince: circuitDecision.heldSince,
             };
+          } else if (circuitDecision.type === "drop") {
+            circuitDrop = {
+              circuit: this.circuitBreaker,
+              remoteHost,
+              inbox: new URL(message.inbox),
+              heldSince: circuitDecision.heldSince,
+            };
           }
         }
       }
@@ -1230,6 +1260,17 @@ export class FederationImpl<TContextData>
           "An unexpected error occurred in onError handler:\n{error}",
           { ...logData, error },
         );
+      }
+
+      if (circuitDrop != null) {
+        await dropHeldOutboxMessage(
+          circuitDrop.circuit,
+          circuitDrop.remoteHost,
+          circuitDrop.inbox,
+          circuitDrop.heldSince,
+          activity,
+        );
+        return;
       }
 
       // Check if the error is a permanent delivery failure

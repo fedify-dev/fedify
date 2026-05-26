@@ -101,7 +101,7 @@ or the held activity exceeds `heldActivityTtl`, which defaults to seven days.
 When a held activity expires, Fedify drops it, records it as an abandoned
 outbox activity, calls `circuitBreaker.onActivityDrop` when configured, and
 calls the outbox permanent failure handler with
-`reason: "circuit_breaker_ttl"`.
+`reason: "circuit-breaker-ttl"`.
 
 ~~~~ typescript
 const federation = createFederation<void>({
@@ -120,7 +120,7 @@ const federation = createFederation<void>({
 });
 
 federation.setOutboxPermanentFailureHandler((_ctx, failure) => {
-  if (failure.reason === "circuit_breaker_ttl") {
+  if (failure.reason === "circuit-breaker-ttl") {
     // The remote host did not recover before the held activity expired.
     return;
   }
