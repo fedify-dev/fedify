@@ -1131,7 +1131,10 @@ export class FederationImpl<TContextData>
       let circuitHold:
         | { delay: Temporal.Duration; heldSince: Temporal.Instant }
         | undefined;
+      const isPermanentFailure = error instanceof SendActivityError &&
+        this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
+        !isPermanentFailure &&
         remoteHost != null &&
         this.outboxQueue != null &&
         this.circuitBreaker != null
@@ -1182,9 +1185,7 @@ export class FederationImpl<TContextData>
           ? {}
           : { "activitypub.remote.host": remoteHost }),
         "activitypub.delivery.attempt": message.attempt,
-        "activitypub.delivery.permanent_failure":
-          error instanceof SendActivityError &&
-          this.permanentFailureStatusCodes.includes(error.statusCode),
+        "activitypub.delivery.permanent_failure": isPermanentFailure,
         ...(error instanceof SendActivityError
           ? { "http.response.status_code": error.statusCode }
           : {}),
@@ -1201,8 +1202,7 @@ export class FederationImpl<TContextData>
 
       // Check if the error is a permanent delivery failure
       if (
-        error instanceof SendActivityError &&
-        this.permanentFailureStatusCodes.includes(error.statusCode)
+        isPermanentFailure
       ) {
         getFederationMetrics(this.meterProvider).recordPermanentFailure(
           error.inbox,

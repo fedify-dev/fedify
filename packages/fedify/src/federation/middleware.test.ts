@@ -6591,7 +6591,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     ],
     federationOptions: Pick<
       ConstructorParameters<typeof FederationImpl<void>>[0],
-      "meterProvider" | "tracerProvider"
+      "meterProvider" | "tracerProvider" | "permanentFailureStatusCodes"
     > = {},
   ): CircuitBreakerSetup {
     const kv = new MemoryKvStore();
@@ -6756,6 +6756,35 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
     assertEquals(
       await kv.get(["_fedify", "circuit", "rate.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("permanent 5xx does not open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-500.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { permanentFailureStatusCodes: [500] },
+    );
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-500.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "permanent-500.example"]),
       undefined,
     );
   });
