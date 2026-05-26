@@ -6788,6 +6788,37 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("malformed Retry-After falls back to retry policy", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://huge-retry-after.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "999999999999999999999999999999" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://huge-retry-after.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({
+        seconds: 3,
+      }),
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "huge-retry-after.example"]),
+      undefined,
+    );
+  });
+
   await t.step("permanent 5xx does not open circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

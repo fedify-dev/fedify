@@ -168,14 +168,27 @@ function parseRetryAfter(
   if (value == null) return undefined;
   const trimmed = value.trim();
   if (/^\d+$/.test(trimmed)) {
-    return Temporal.Duration.from({ seconds: Number(trimmed) });
+    const seconds = Number(trimmed);
+    if (!Number.isFinite(seconds)) return undefined;
+    return parseRetryAfterDuration({ seconds });
   }
   const retryAtMs = Date.parse(trimmed);
   if (Number.isNaN(retryAtMs)) return undefined;
   const nowMs = Number(now.epochMilliseconds);
-  return Temporal.Duration.from({
+  return parseRetryAfterDuration({
     milliseconds: Math.max(0, retryAtMs - nowMs),
   });
+}
+
+function parseRetryAfterDuration(
+  durationLike: Temporal.DurationLike,
+): Temporal.Duration | undefined {
+  try {
+    return Temporal.Duration.from(durationLike);
+  } catch (error) {
+    if (error instanceof RangeError) return undefined;
+    throw error;
+  }
 }
 
 function toCircuitBreakerMetricState(
