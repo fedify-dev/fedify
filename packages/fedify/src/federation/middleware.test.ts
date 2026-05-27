@@ -6914,6 +6914,32 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("negative calendar retry delays are clamped", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://negative-calendar-delay.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued } = setup(
+      {
+        failureThreshold: 5,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ days: -1 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://negative-calendar-delay.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 0 }),
+    );
+  });
+
   await t.step("circuit hold respects retry give-up", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
