@@ -7201,6 +7201,35 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     },
   );
 
+  await t.step("asctime Retry-After date is interpreted as UTC", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const retryAfter = "Wed Dec 31 23:59:59 2036";
+    fetchMock.post("https://asctime-retry-after.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": retryAfter },
+      body: "rate limited",
+    });
+    const { federation, queued } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+    const before = Temporal.Now.instant();
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://asctime-retry-after.example/inbox"),
+    );
+
+    const after = Temporal.Now.instant();
+    const retryAtMs = Date.parse(`${retryAfter} GMT`);
+    assertEquals(queued.length, 1);
+    const delayMs = queued[0].options?.delay?.total({ unit: "millisecond" });
+    assertExists(delayMs);
+    assertEquals(delayMs <= retryAtMs - before.epochMilliseconds, true);
+    assertEquals(delayMs >= retryAtMs - after.epochMilliseconds, true);
+  });
+
   await t.step("permanent 5xx does not open circuit", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

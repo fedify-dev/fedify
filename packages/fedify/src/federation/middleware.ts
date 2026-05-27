@@ -188,7 +188,8 @@ function parseRetryAfter(
     return parseRetryAfterDuration({ seconds });
   }
   if (!retryAfterHttpDate.test(trimmed)) return undefined;
-  const retryAtMs = Date.parse(trimmed);
+  const httpDate = trimmed.endsWith("GMT") ? trimmed : `${trimmed} GMT`;
+  const retryAtMs = Date.parse(httpDate);
   if (Number.isNaN(retryAtMs)) return undefined;
   const nowMs = Number(now.epochMilliseconds);
   return parseRetryAfterDuration({
