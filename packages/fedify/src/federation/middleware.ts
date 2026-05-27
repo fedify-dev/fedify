@@ -1416,6 +1416,7 @@ export class FederationImpl<TContextData>
               delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
                 ? Temporal.Duration.from({ seconds: 0 })
                 : delay,
+              orderingKey: message.orderingKey,
             },
           );
           getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(

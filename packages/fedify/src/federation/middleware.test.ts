@@ -6957,7 +6957,9 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
 
       await federation.processQueuedTask(
         undefined,
-        createOutboxMessage("https://rate-disabled.example/inbox"),
+        createOutboxMessage("https://rate-disabled.example/inbox", {
+          orderingKey: "https://example.com/object/rate-limited",
+        }),
       );
 
       assertEquals(queued.length, 1);
@@ -6967,6 +6969,10 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       assertEquals(
         queued[0].options?.delay,
         Temporal.Duration.from({ seconds: 120 }),
+      );
+      assertEquals(
+        queued[0].options?.orderingKey,
+        "https://example.com/object/rate-limited",
       );
       assertEquals(
         await kv.get(["_fedify", "circuit", "rate-disabled.example"]),
