@@ -490,6 +490,7 @@ export function normalizeCircuitBreakerOptions(
     const failureWindow = toInstantDuration(
       options.failureWindow ?? { minutes: 10 },
     );
+    assertPositiveDuration(failureWindow, "failureWindow");
     pruneFailures = (timestamps, now) => {
       const earliest = now.subtract(failureWindow);
       return timestamps

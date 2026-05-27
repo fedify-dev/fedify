@@ -98,6 +98,11 @@ test("normalizeCircuitBreakerOptions() validates positive durations", () => {
     "heldActivityTtl",
   );
   assertThrows(
+    () => normalizeCircuitBreakerOptions({ failureWindow: { seconds: 0 } }),
+    RangeError,
+    "failureWindow",
+  );
+  assertThrows(
     () => normalizeCircuitBreakerOptions({ releaseInterval: { seconds: 0 } }),
     RangeError,
     "releaseInterval",
