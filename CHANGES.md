@@ -124,7 +124,7 @@ To be released.
     through `activitypub.circuit_breaker.state_change` metrics and
     `activitypub.circuit_breaker.state_change` span events, and expired
     held activities call the outbox permanent failure handler with
-    `reason: "circuit-breaker-ttl"`.  [[#620]]
+    `reason: "circuit-breaker-ttl"`.  [[#620], [#778]]
 
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient
@@ -260,6 +260,7 @@ To be released.
 [#771]: https://github.com/fedify-dev/fedify/pull/771
 [#772]: https://github.com/fedify-dev/fedify/pull/772
 [#777]: https://github.com/fedify-dev/fedify/pull/777
+[#778]: https://github.com/fedify-dev/fedify/pull/778
 
 ### @fedify/fixture
 
