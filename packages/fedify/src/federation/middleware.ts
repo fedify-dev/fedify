@@ -159,6 +159,21 @@ import { handleWebFinger } from "./webfinger.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
+const retryAfterHttpDate = new RegExp(
+  "^(?:" +
+    "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \\d{2} " +
+    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) " +
+    "\\d{4} \\d{2}:\\d{2}:\\d{2} GMT" +
+    "|" +
+    "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), " +
+    "\\d{2}-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-" +
+    "\\d{2} \\d{2}:\\d{2}:\\d{2} GMT" +
+    "|" +
+    "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) " +
+    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) " +
+    "(?: \\d|\\d{2}) \\d{2}:\\d{2}:\\d{2} \\d{4}" +
+    ")$",
+);
 
 function parseRetryAfter(
   headers: Headers,
@@ -172,6 +187,7 @@ function parseRetryAfter(
     if (!Number.isFinite(seconds)) return undefined;
     return parseRetryAfterDuration({ seconds });
   }
+  if (!retryAfterHttpDate.test(trimmed)) return undefined;
   const retryAtMs = Date.parse(trimmed);
   if (Number.isNaN(retryAtMs)) return undefined;
   const nowMs = Number(now.epochMilliseconds);
@@ -1110,11 +1126,12 @@ export class FederationImpl<TContextData>
           );
           return;
         }
-        if (decision.probe) {
-          recordCircuitBreakerSpanEvent(span, remoteHost, {
-            previousState: "open",
-            newState: "half-open",
-          });
+        if (decision.stateChange != null) {
+          recordCircuitBreakerSpanEvent(
+            span,
+            remoteHost,
+            decision.stateChange,
+          );
         }
       }
       await sendActivity({

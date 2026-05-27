@@ -7020,16 +7020,46 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
 
     assertEquals(queued.length, 1);
     assertEquals(
-      queued[0].options?.delay,
-      Temporal.Duration.from({
-        seconds: 3,
-      }),
+      queued[0].options?.delay?.total({ unit: "second" }),
+      3,
     );
     assertEquals(
       await kv.get(["_fedify", "circuit", "huge-retry-after.example"]),
       undefined,
     );
   });
+
+  await t.step(
+    "invalid Retry-After date falls back to retry policy",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://invalid-retry-after.example/inbox", {
+        status: 429,
+        headers: { "Retry-After": "1.5" },
+        body: "rate limited",
+      });
+      const { federation, queued, kv } = setup(
+        { failureThreshold: 1 },
+        { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+      );
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://invalid-retry-after.example/inbox"),
+      );
+
+      assertEquals(queued.length, 1);
+      assertEquals(
+        queued[0].options?.delay?.total({ unit: "second" }),
+        3,
+      );
+      assertEquals(
+        await kv.get(["_fedify", "circuit", "invalid-retry-after.example"]),
+        undefined,
+      );
+    },
+  );
 
   await t.step("permanent 5xx does not open circuit", async () => {
     fetchMock.hardReset();
@@ -7260,6 +7290,61 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       "half-open",
     );
   });
+
+  await t.step(
+    "stale half-open probe does not record open transition",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://stale-probe-telemetry.example/inbox", {
+        status: 202,
+        body: "",
+      });
+      const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const { federation, kv } = setup(
+        {
+          failureThreshold: 1,
+          recoveryDelay: { seconds: 1 },
+        },
+        { tracerProvider },
+      );
+      federation.circuitBreaker = new CircuitBreaker({
+        kv,
+        prefix: ["_fedify", "circuit"],
+        now: () => now,
+        options: {
+          failureThreshold: 1,
+          recoveryDelay: { seconds: 1 },
+        },
+      });
+      await kv.set(["_fedify", "circuit", "stale-probe-telemetry.example"], {
+        state: "half-open",
+        failures: ["2026-05-25T00:00:00Z"],
+        opened: "2026-05-25T00:00:00Z",
+        halfOpened: "2026-05-25T00:00:00Z",
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://stale-probe-telemetry.example/inbox"),
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.outbox",
+        "activitypub.circuit_breaker.state_change",
+      );
+      assertEquals(events.length, 1);
+      assertEquals(
+        events[0].attributes?.["activitypub.circuit_breaker.previous_state"],
+        "half_open",
+      );
+      assertEquals(
+        events[0].attributes?.["activitypub.circuit_breaker.state"],
+        "closed",
+      );
+    },
+  );
 
   await t.step("expired held activity is dropped", async () => {
     fetchMock.hardReset();

@@ -141,7 +141,11 @@ export interface CircuitBreakerCreateOptions {
  * @internal
  */
 export type CircuitBreakerBeforeSendDecision =
-  | { readonly type: "send"; readonly probe: boolean }
+  | {
+    readonly type: "send";
+    readonly probe: boolean;
+    readonly stateChange?: CircuitBreakerStateChange;
+  }
   | {
     readonly type: "hold";
     readonly state: "open" | "half-open";
@@ -265,7 +269,11 @@ export class CircuitBreaker {
       } satisfies CircuitBreakerKvState;
       if (await this.#replace(remoteHost, oldState, newState)) {
         await this.#notifyStateChange(remoteHost, "open", "half-open");
-        return { type: "send", probe: true };
+        return {
+          type: "send",
+          probe: true,
+          stateChange: { previousState: "open", newState: "half-open" },
+        };
       }
     }
   }

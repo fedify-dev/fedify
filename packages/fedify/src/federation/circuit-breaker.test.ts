@@ -136,7 +136,11 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
 
   now = Temporal.Instant.from("2026-05-25T00:35:00Z");
   decision = await circuit.beforeSend("remote.example", {});
-  assertEquals(decision, { type: "send", probe: true });
+  assertEquals(decision, {
+    type: "send",
+    probe: true,
+    stateChange: { previousState: "open", newState: "half-open" },
+  });
   assertEquals(await circuit.getState("remote.example"), {
     state: "half-open",
     failures: [
