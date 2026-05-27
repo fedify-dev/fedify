@@ -207,6 +207,10 @@ function parseRetryAfterDuration(
   }
 }
 
+function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
+  return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
+}
+
 function toCircuitBreakerMetricState(
   state: CircuitBreakerState,
 ): "closed" | "open" | "half_open" {
@@ -1044,9 +1048,7 @@ export class FederationImpl<TContextData>
         circuitHeldSince: heldSince.toString(),
       } satisfies OutboxMessage;
       await outboxQueue.enqueue(heldMessage, {
-        delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-          ? Temporal.Duration.from({ seconds: 0 })
-          : delay,
+        delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
       });
       getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
@@ -1422,9 +1424,7 @@ export class FederationImpl<TContextData>
           await outboxQueue.enqueue(
             retryMessage,
             {
-              delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-                ? Temporal.Duration.from({ seconds: 0 })
-                : delay,
+              delay: clampNegativeDelay(delay),
               orderingKey: message.orderingKey,
             },
           );
@@ -1568,9 +1568,7 @@ export class FederationImpl<TContextData>
             await this.inboxQueue.enqueue(
               retryMessage,
               {
-                delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-                  ? Temporal.Duration.from({ seconds: 0 })
-                  : delay,
+                delay: clampNegativeDelay(delay),
               },
             );
             if (activityType != null) {
