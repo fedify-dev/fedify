@@ -1,10 +1,25 @@
-import type * as vocab from "@fedify/vocab";
+import {
+  Activity,
+  Collection,
+  CollectionPage,
+  type Link,
+  Object as APObject,
+  OrderedCollection,
+  OrderedCollectionPage,
+} from "@fedify/vocab";
 
 import type {
   BackfillContext,
   BackfillItem,
   BackfillOptions,
 } from "./types.ts";
+
+class MaxRequestsExceeded extends Error {}
+
+interface RequestBudget {
+  readonly signal?: AbortSignal;
+  requestCount: number;
+}
 
 /**
  * Backfills post-like objects related to a seed object.
@@ -13,15 +28,154 @@ import type {
  * seen so it will not be yielded again if the collection contains it.
  */
 export async function* backfill<
-  TObject extends vocab.Object = vocab.Object,
+  TObject extends APObject = APObject,
 >(
   context: BackfillContext,
   note: TObject,
   options: BackfillOptions<TObject> = {},
 ): AsyncGenerator<BackfillItem<TObject>, void, void> {
-  void context;
-  void note;
-  void options;
+  if (options.maxItems != null && options.maxItems <= 0) return;
 
-  yield* [] satisfies BackfillItem<TObject>[];
+  const contextId = note.contextIds[0];
+  if (contextId == null) return;
+
+  const budget: RequestBudget = {
+    signal: options.signal,
+    requestCount: 0,
+  };
+  const seenIds = new Set<string>();
+  if (note.id != null) seenIds.add(note.id.href);
+
+  const collection = await loadObject(context, contextId, options, budget);
+  if (!isCollection(collection)) return;
+
+  let yielded = 0;
+  try {
+    for await (
+      const object of getCollectionItems(context, collection, options, budget)
+    ) {
+      if (!isContextPostObject(object)) continue;
+      const id = object.id ?? undefined;
+      if (id != null) {
+        if (seenIds.has(id.href)) continue;
+        seenIds.add(id.href);
+      }
+
+      options.signal?.throwIfAborted();
+      yield {
+        object: object as TObject,
+        id,
+        strategy: "context-posts",
+        origin: "collection",
+        depth: 0,
+      };
+
+      yielded++;
+      if (options.maxItems != null && yielded >= options.maxItems) return;
+    }
+  } catch (error) {
+    if (error instanceof MaxRequestsExceeded) return;
+    throw error;
+  }
+}
+
+async function* getCollectionItems(
+  context: BackfillContext,
+  collection: BackfillCollection,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<APObject | Link> {
+  yield* collection.getItems({
+    documentLoader: async (url) => {
+      const object = await loadObject(
+        context,
+        new URL(url),
+        options,
+        budget,
+        true,
+      );
+      if (object == null) throw new MaxRequestsExceeded();
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: await object.toJsonLd(),
+      };
+    },
+    crossOrigin: "trust",
+  });
+}
+
+async function loadObject(
+  context: BackfillContext,
+  iri: URL,
+  options: BackfillOptions,
+  budget: RequestBudget,
+  throwOnBudgetExceeded = false,
+): Promise<APObject | null> {
+  budget.signal?.throwIfAborted();
+  if (
+    options.maxRequests != null &&
+    budget.requestCount >= options.maxRequests
+  ) {
+    if (throwOnBudgetExceeded) throw new MaxRequestsExceeded();
+    return null;
+  }
+
+  await waitForInterval(options, budget);
+  budget.signal?.throwIfAborted();
+
+  budget.requestCount++;
+  return await context.documentLoader(iri, { signal: budget.signal });
+}
+
+async function waitForInterval(
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<void> {
+  if (options.interval == null) return;
+  const duration = typeof options.interval === "function"
+    ? options.interval(budget.requestCount)
+    : options.interval;
+  const milliseconds = durationToMilliseconds(duration);
+  if (milliseconds <= 0) return;
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(resolve, milliseconds);
+    budget.signal?.addEventListener("abort", () => {
+      clearTimeout(timeout);
+      reject(budget.signal?.reason);
+    }, { once: true });
+  });
+}
+
+function durationToMilliseconds(duration: Temporal.DurationLike): number {
+  return (
+    (duration.milliseconds ?? 0) +
+    (duration.seconds ?? 0) * 1000 +
+    (duration.minutes ?? 0) * 60 * 1000 +
+    (duration.hours ?? 0) * 60 * 60 * 1000 +
+    (duration.days ?? 0) * 24 * 60 * 60 * 1000
+  );
+}
+
+type BackfillCollection =
+  | Collection
+  | OrderedCollection
+  | CollectionPage
+  | OrderedCollectionPage;
+
+function isCollection(
+  object: APObject | null,
+): object is BackfillCollection {
+  return object instanceof Collection ||
+    object instanceof OrderedCollection ||
+    object instanceof CollectionPage ||
+    object instanceof OrderedCollectionPage;
+}
+
+function isContextPostObject(
+  object: APObject | Link,
+): object is APObject {
+  return object instanceof APObject &&
+    !(object instanceof Activity) &&
+    !isCollection(object);
 }

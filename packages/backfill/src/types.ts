@@ -1,4 +1,4 @@
-import type * as vocab from "@fedify/vocab";
+import type { Object as APObject } from "@fedify/vocab";
 
 /**
  * Backfill traversal strategy used to discover the returned object.
@@ -26,7 +26,7 @@ export interface BackfillDocumentLoaderOptions {
 export type BackfillDocumentLoader = (
   iri: URL,
   options?: BackfillDocumentLoaderOptions,
-) => Promise<vocab.Object | null>;
+) => Promise<APObject | null>;
 
 /**
  * Dependencies used by backfill traversal.
@@ -42,7 +42,7 @@ export interface BackfillContext {
  * Controls direct context collection backfill traversal.
  */
 export interface BackfillOptions<
-  TObject extends vocab.Object = vocab.Object,
+  TObject extends APObject = APObject,
 > {
   /**
    * Maximum number of items to yield.  Skipped duplicates do not count.
@@ -81,7 +81,7 @@ export interface BackfillOptions<
  * A single object discovered by backfill traversal.
  */
 export interface BackfillItem<
-  TObject extends vocab.Object = vocab.Object,
+  TObject extends APObject = APObject,
 > {
   /**
    * The discovered ActivityPub object.

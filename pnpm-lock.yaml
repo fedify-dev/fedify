@@ -871,6 +871,10 @@ importers:
         version: 6.0.3
 
   packages/backfill:
+    dependencies:
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
     devDependencies:
       tsdown:
         specifier: 'catalog:'
