@@ -86,6 +86,32 @@ test("normalizeCircuitBreakerOptions() truncates sub-millisecond durations", () 
   );
 });
 
+test("normalizeCircuitBreakerOptions() validates positive durations", () => {
+  assertThrows(
+    () => normalizeCircuitBreakerOptions({ recoveryDelay: { seconds: 0 } }),
+    RangeError,
+    "recoveryDelay",
+  );
+  assertThrows(
+    () => normalizeCircuitBreakerOptions({ heldActivityTtl: { seconds: 0 } }),
+    RangeError,
+    "heldActivityTtl",
+  );
+  assertThrows(
+    () => normalizeCircuitBreakerOptions({ releaseInterval: { seconds: 0 } }),
+    RangeError,
+    "releaseInterval",
+  );
+  assertThrows(
+    () =>
+      normalizeCircuitBreakerOptions({
+        releaseInterval: { nanoseconds: 500_000 },
+      }),
+    RangeError,
+    "releaseInterval",
+  );
+});
+
 test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
     failure: (timestamps) => timestamps.length >= 2,

@@ -221,8 +221,7 @@ export class CircuitBreaker {
           const staleAt = halfOpened.add(this.#options.recoveryDelay);
           if (Temporal.Instant.compare(now, staleAt) < 0) {
             const releaseAt = now.add(this.#options.releaseInterval);
-            const retryAt = Temporal.Instant.compare(releaseAt, now) > 0 &&
-                Temporal.Instant.compare(releaseAt, staleAt) < 0
+            const retryAt = Temporal.Instant.compare(releaseAt, staleAt) < 0
               ? releaseAt
               : staleAt;
             const cappedRetryAt = this.#capHeldRetryAt(
@@ -462,6 +461,7 @@ export class CircuitBreaker {
  * @param options The public circuit breaker options supplied to Fedify.
  * @returns The normalized failure predicate, failure pruning function,
  * duration values, and optional callbacks with defaults applied.
+ * @throws {RangeError} If any configured duration is not positive.
  * @throws {TypeError} If `failureThreshold` is not a positive integer.
  */
 export function normalizeCircuitBreakerOptions(
@@ -476,6 +476,9 @@ export function normalizeCircuitBreakerOptions(
   const releaseInterval = toInstantDuration(
     options.releaseInterval ?? { seconds: 1 },
   );
+  assertPositiveDuration(recoveryDelay, "recoveryDelay");
+  assertPositiveDuration(heldActivityTtl, "heldActivityTtl");
+  assertPositiveDuration(releaseInterval, "releaseInterval");
   let failure: (timestamps: readonly Temporal.Instant[]) => boolean;
   let pruneFailures: (
     timestamps: readonly Temporal.Instant[],
@@ -530,6 +533,15 @@ function toInstantDuration(
       }),
     ),
   });
+}
+
+function assertPositiveDuration(
+  duration: Temporal.Duration,
+  name: string,
+): void {
+  if (Temporal.Duration.compare(duration, { seconds: 0 }) <= 0) {
+    throw new RangeError(`${name} must be a positive duration.`);
+  }
 }
 
 /**

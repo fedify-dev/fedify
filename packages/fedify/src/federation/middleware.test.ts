@@ -7383,7 +7383,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       null;
     const { federation, queued } = setup({
       failureThreshold: 1,
-      heldActivityTtl: { seconds: 0 },
+      heldActivityTtl: { seconds: 1 },
       onActivityDrop(remoteHost, details) {
         dropped = { remoteHost, heldSince: details.heldSince };
       },
@@ -7412,19 +7412,19 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
   await t.step("expired held probe is dropped after failed send", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
-    let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+    let now = Temporal.Instant.from("2026-05-25T00:00:01Z");
     const heldSince = Temporal.Instant.from("2026-05-25T00:00:00Z");
     fetchMock.post("https://expired-probe.example/inbox", () => {
-      now = Temporal.Instant.from("2026-05-25T00:00:02Z");
+      now = Temporal.Instant.from("2026-05-25T00:00:03Z");
       return { status: 500, body: "server error" };
     });
     let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
       null;
     const { federation, queued, kv } = setup({
       failureThreshold: 1,
-      recoveryDelay: { seconds: 0 },
-      heldActivityTtl: { seconds: 1 },
-      releaseInterval: { seconds: 0 },
+      recoveryDelay: { seconds: 1 },
+      heldActivityTtl: { seconds: 2 },
+      releaseInterval: { seconds: 1 },
     });
     federation.circuitBreaker = new CircuitBreaker({
       kv,
@@ -7432,9 +7432,9 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       now: () => now,
       options: {
         failureThreshold: 1,
-        recoveryDelay: { seconds: 0 },
-        heldActivityTtl: { seconds: 1 },
-        releaseInterval: { seconds: 0 },
+        recoveryDelay: { seconds: 1 },
+        heldActivityTtl: { seconds: 2 },
+        releaseInterval: { seconds: 1 },
         onActivityDrop(remoteHost, details) {
           dropped = { remoteHost, heldSince: details.heldSince };
         },
