@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import {
   CircuitBreaker,
   normalizeCircuitBreakerOptions,
@@ -63,6 +63,29 @@ test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
   );
 });
 
+test("normalizeCircuitBreakerOptions() validates numeric failure policy", () => {
+  assertThrows(
+    () => normalizeCircuitBreakerOptions({ failureThreshold: 0 }),
+    TypeError,
+    "failureThreshold",
+  );
+  assertThrows(
+    () => normalizeCircuitBreakerOptions({ failureThreshold: 1.5 }),
+    TypeError,
+    "failureThreshold",
+  );
+});
+
+test("normalizeCircuitBreakerOptions() truncates sub-millisecond durations", () => {
+  const options = normalizeCircuitBreakerOptions({
+    recoveryDelay: { milliseconds: 1, nanoseconds: 500_000 },
+  });
+  assertEquals(
+    options.recoveryDelay,
+    Temporal.Duration.from({ milliseconds: 1 }),
+  );
+});
+
 test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
     failure: (timestamps) => timestamps.length >= 2,
@@ -102,6 +125,21 @@ test("parseCircuitBreakerKvState() validates stored shape", () => {
   );
   assertEquals(
     parseCircuitBreakerKvState({ state: "open", failures: [], opened: 1 }),
+    undefined,
+  );
+  assertEquals(
+    parseCircuitBreakerKvState({
+      state: "open",
+      failures: ["not an instant"],
+    }),
+    undefined,
+  );
+  assertEquals(
+    parseCircuitBreakerKvState({
+      state: "open",
+      failures: [],
+      halfOpened: "not an instant",
+    }),
     undefined,
   );
 });
@@ -179,7 +217,10 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
   decision = await circuit.beforeSend("remote.example", {
     circuitHeldSince: "2026-05-17T00:00:00Z",
   });
-  assertEquals(decision, { type: "send", probe: false });
+  assertEquals(decision, {
+    type: "drop",
+    heldSince: Temporal.Instant.from("2026-05-17T00:00:00Z"),
+  });
 
   await kv.set(["_fedify", "circuit", "remote.example"], {
     state: "open",

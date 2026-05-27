@@ -196,22 +196,22 @@ export class CircuitBreaker {
       ? undefined
       : Temporal.Instant.from(message.circuitHeldSince);
     const now = this.#now();
+    if (
+      heldSince != null &&
+      Temporal.Instant.compare(
+          heldSince.add(this.#options.heldActivityTtl),
+          now,
+        ) <=
+        0
+    ) {
+      return { type: "drop", heldSince };
+    }
     let lastConflictingState: "open" | "half-open" | undefined;
 
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
       if (oldState == null || oldState.state === "closed") {
         return { type: "send", probe: false };
-      }
-      if (
-        heldSince != null &&
-        Temporal.Instant.compare(
-            heldSince.add(this.#options.heldActivityTtl),
-            now,
-          ) <=
-          0
-      ) {
-        return { type: "drop", heldSince };
       }
       if (oldState.state === "half-open") {
         const halfOpened = oldState.halfOpened == null
@@ -455,6 +455,15 @@ export class CircuitBreaker {
   }
 }
 
+/**
+ * Normalizes user-provided circuit breaker options into the internal policy
+ * shape used while processing queued outbox deliveries.
+ *
+ * @param options The public circuit breaker options supplied to Fedify.
+ * @returns The normalized failure predicate, failure pruning function,
+ * duration values, and optional callbacks with defaults applied.
+ * @throws {TypeError} If `failureThreshold` is not a positive integer.
+ */
 export function normalizeCircuitBreakerOptions(
   options: CircuitBreakerOptions,
 ): NormalizedCircuitBreakerOptions {
@@ -474,6 +483,9 @@ export function normalizeCircuitBreakerOptions(
   ) => readonly Temporal.Instant[];
   if (options.failure == null) {
     const failureThreshold = options.failureThreshold ?? 5;
+    if (!Number.isInteger(failureThreshold) || failureThreshold <= 0) {
+      throw new TypeError("failureThreshold must be a positive integer.");
+    }
     const failureWindow = toInstantDuration(
       options.failureWindow ?? { minutes: 10 },
     );
@@ -511,16 +523,34 @@ function toInstantDuration(
 ): Temporal.Duration {
   const parsed = Temporal.Duration.from(duration);
   return Temporal.Duration.from({
-    milliseconds: parsed.total({
-      unit: "millisecond",
-      relativeTo: Temporal.PlainDateTime.from("2026-01-01T00:00:00"),
-    }),
+    milliseconds: Math.trunc(
+      parsed.total({
+        unit: "millisecond",
+        relativeTo: Temporal.PlainDateTime.from("2026-01-01T00:00:00"),
+      }),
+    ),
   });
 }
 
+/**
+ * Parses a value loaded from the circuit breaker KV store.
+ *
+ * @param value The raw KV value to validate.
+ * @returns A circuit breaker state when `value` has a recognized state and
+ * valid instant strings, or `undefined` when the stored value is malformed.
+ */
 export function parseCircuitBreakerKvState(
   value: unknown,
 ): CircuitBreakerKvState | undefined {
+  const isInstantString = (v: unknown): v is string => {
+    if (typeof v !== "string") return false;
+    try {
+      Temporal.Instant.from(v);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   if (typeof value !== "object" || value == null) return undefined;
   const record = value as Record<string, unknown>;
   if (
@@ -532,14 +562,14 @@ export function parseCircuitBreakerKvState(
   }
   if (
     !Array.isArray(record.failures) ||
-    !record.failures.every((failure) => typeof failure === "string")
+    !record.failures.every((failure) => isInstantString(failure))
   ) {
     return undefined;
   }
-  if (record.opened != null && typeof record.opened !== "string") {
+  if (record.opened != null && !isInstantString(record.opened)) {
     return undefined;
   }
-  if (record.halfOpened != null && typeof record.halfOpened !== "string") {
+  if (record.halfOpened != null && !isInstantString(record.halfOpened)) {
     return undefined;
   }
   return {
