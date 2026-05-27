@@ -1227,20 +1227,20 @@ export class FederationImpl<TContextData>
               if (stateChange != null) {
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
-            } else if (!isPermanentFailure && error.statusCode === 429) {
+            } else if (error.statusCode === 429) {
               const stateChange = await this.circuitBreaker
                 .recordReachableFailure(remoteHost);
               if (stateChange != null) {
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
-            } else if (!isPermanentFailure && error.statusCode >= 500) {
+            } else if (error.statusCode >= 500) {
               const stateChange = await this.circuitBreaker.recordFailure(
                 remoteHost,
               );
               if (stateChange != null) {
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
-            } else if (!isPermanentFailure && error.statusCode >= 400) {
+            } else if (error.statusCode >= 400) {
               const stateChange = await this.circuitBreaker
                 .recordReachableFailure(remoteHost);
               if (stateChange != null) {
