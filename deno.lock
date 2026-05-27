@@ -84,6 +84,7 @@
     "npm:@jimp/core@^1.6.1": "1.6.1",
     "npm:@jimp/wasm-webp@^1.6.1": "1.6.1",
     "npm:@js-temporal/polyfill@~0.5.1": "0.5.1",
+    "npm:@jsr/std__assert@0.226": "0.226.0",
     "npm:@multiformats/base-x@^4.0.1": "4.0.1",
     "npm:@nestjs/common@^11.0.1": "11.1.19_reflect-metadata@0.2.2_rxjs@7.8.2",
     "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
@@ -2380,6 +2381,17 @@
       "dependencies": [
         "wasm-feature-detect"
       ]
+    },
+    "@jsr/std__assert@0.226.0": {
+      "integrity": "sha512-xCuUFDfHkIZd96glKgjZbnYFqu6blu8Y53SyvDMlFDJm1Y/j+/FcW6xq7TzGFIaF5B9QecIlDfamfhzA8ZdVbg==",
+      "dependencies": [
+        "@jsr/std__internal"
+      ],
+      "tarball": "https://npm.jsr.io/~/11/@jsr/std__assert/0.226.0.tgz"
+    },
+    "@jsr/std__internal@1.0.12": {
+      "integrity": "sha512-6xReMW9p+paJgqoFRpOE2nogJFvzPfaLHLIlyADYjKMUcwDyjKZxryIbgcU+gxiTygn8yCjld1HoI0ET4/iZeA==",
+      "tarball": "https://npm.jsr.io/~/11/@jsr/std__internal/1.0.12.tgz"
     },
     "@logtape/logtape@1.3.7": {
       "integrity": "sha512-YgF+q9op97oLLPwc7TcTNIllTArVtTwkwyKky6XVzAXQcBrvFXXtMuwJSryONAyOUSItrx994O/HABOrszZyFg=="
@@ -9460,6 +9472,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@js-temporal/polyfill@~0.5.1",
+            "npm:@jsr/std__assert@0.226",
             "npm:@types/node@^24.2.1",
             "npm:json-canon@^1.0.1",
             "npm:jsonld@9",
