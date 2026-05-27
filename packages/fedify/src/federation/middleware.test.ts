@@ -7163,20 +7163,25 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       },
       { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
     );
+    const orderingKey = "https://example.com/object/unavailable";
 
     await federation.processQueuedTask(
       undefined,
-      createOutboxMessage("https://unavailable.example/inbox"),
+      createOutboxMessage("https://unavailable.example/inbox", {
+        orderingKey,
+      }),
     );
 
     assertEquals(queued.length, 1);
     const retry = queued[0].message as OutboxMessage;
     assertEquals(retry.attempt, 1);
     assertEquals(retry.circuitHeld, undefined);
+    assertEquals(retry.orderingKey, orderingKey);
     assertEquals(
       queued[0].options?.delay,
       Temporal.Duration.from({ seconds: 120 }),
     );
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
     const state = await kv.get<Record<string, unknown>>([
       "_fedify",
       "circuit",
