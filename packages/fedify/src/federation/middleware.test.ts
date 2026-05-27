@@ -7253,6 +7253,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       null;
     const { federation, queued, kv } = setup({
       failureThreshold: 1,
+      recoveryDelay: { seconds: 0 },
       heldActivityTtl: { seconds: 1 },
       releaseInterval: { seconds: 0 },
     });
@@ -7262,6 +7263,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       now: () => now,
       options: {
         failureThreshold: 1,
+        recoveryDelay: { seconds: 0 },
         heldActivityTtl: { seconds: 1 },
         releaseInterval: { seconds: 0 },
         onActivityDrop(remoteHost, details) {

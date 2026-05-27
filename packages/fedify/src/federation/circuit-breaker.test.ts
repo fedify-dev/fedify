@@ -184,6 +184,7 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
     prefix: ["_fedify", "circuit"],
     now: () => now,
     options: {
+      recoveryDelay: { seconds: 30 },
       releaseInterval: { seconds: 5 },
     },
   });
@@ -192,24 +193,30 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
     state: "half-open",
     failures: ["2026-05-24T23:00:00Z"],
     opened: "2026-05-24T23:00:00Z",
-    halfOpened: "2026-05-24T23:59:56Z",
+    halfOpened: "2026-05-24T23:59:54Z",
   });
 
   let decision = await circuit.beforeSend("remote.example", {});
   assertEquals(decision, {
     type: "hold",
-    delay: Temporal.Duration.from({ seconds: 1 }),
+    delay: Temporal.Duration.from({ seconds: 5 }),
     heldSince: now,
   });
+  assertEquals(await circuit.getState("remote.example"), {
+    state: "half-open",
+    failures: ["2026-05-24T23:00:00Z"],
+    opened: "2026-05-24T23:00:00Z",
+    halfOpened: "2026-05-24T23:59:54Z",
+  });
 
-  now = Temporal.Instant.from("2026-05-25T00:00:01Z");
+  now = Temporal.Instant.from("2026-05-25T00:00:30Z");
   decision = await circuit.beforeSend("remote.example", {});
   assertEquals(decision, { type: "send", probe: true });
   assertEquals(await circuit.getState("remote.example"), {
     state: "half-open",
     failures: ["2026-05-24T23:00:00Z"],
     opened: "2026-05-24T23:00:00Z",
-    halfOpened: "2026-05-25T00:00:01Z",
+    halfOpened: "2026-05-25T00:00:30Z",
   });
 });
 

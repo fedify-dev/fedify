@@ -75,7 +75,8 @@ export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
   readonly heldActivityTtl?: Temporal.Duration | Temporal.DurationLike;
 
   /**
-   * How long other held activities wait while a half-open probe is in flight.
+   * How often other held activities retry while a half-open probe is in
+   * flight.  The probe is treated as stale after the recovery delay.
    * @default `{ seconds: 1 }`
    */
   readonly releaseInterval?: Temporal.Duration | Temporal.DurationLike;
@@ -211,8 +212,13 @@ export class CircuitBreaker {
           ? undefined
           : Temporal.Instant.from(oldState.halfOpened);
         if (halfOpened != null) {
-          const retryAt = halfOpened.add(this.#options.releaseInterval);
-          if (Temporal.Instant.compare(now, retryAt) < 0) {
+          const staleAt = halfOpened.add(this.#options.recoveryDelay);
+          if (Temporal.Instant.compare(now, staleAt) < 0) {
+            const releaseAt = now.add(this.#options.releaseInterval);
+            const retryAt = Temporal.Instant.compare(releaseAt, now) > 0 &&
+                Temporal.Instant.compare(releaseAt, staleAt) < 0
+              ? releaseAt
+              : staleAt;
             return {
               type: "hold",
               delay: now.until(retryAt),

@@ -50,6 +50,10 @@ counted failures within ten minutes.  When the circuit is open, Fedify
 requeues affected outbox messages instead of sending them.  After the
 `recoveryDelay`, one message is allowed through as a half-open probe.  If it
 succeeds, the circuit closes; if it fails, the circuit opens again.
+While the probe is in flight, other held messages continue to be requeued at
+`releaseInterval`.  If the worker running the probe stops before recording a
+success or failure, Fedify treats the half-open probe as stale after another
+`recoveryDelay` and allows a replacement probe.
 
 
 What counts as a failure
