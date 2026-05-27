@@ -7073,6 +7073,44 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("503 respects Retry-After while counting failure", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://unavailable.example/inbox", {
+      status: 503,
+      headers: { "Retry-After": "120" },
+      body: "temporarily unavailable",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 5,
+        failureWindow: { minutes: 10 },
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://unavailable.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 120 }),
+    );
+    const state = await kv.get<Record<string, unknown>>([
+      "_fedify",
+      "circuit",
+      "unavailable.example",
+    ]);
+    assertEquals(state?.state, "closed");
+    assertEquals((state?.failures as unknown[]).length, 1);
+  });
+
   await t.step("malformed Retry-After falls back to retry policy", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

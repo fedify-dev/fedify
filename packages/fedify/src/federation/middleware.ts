@@ -1226,7 +1226,7 @@ export class FederationImpl<TContextData>
       if (
         !isPermanentFailure &&
         error instanceof SendActivityError &&
-        error.statusCode === 429
+        (error.statusCode === 429 || error.statusCode === 503)
       ) {
         retryAfterDelay = parseRetryAfter(error.responseHeaders);
       }
