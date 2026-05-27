@@ -220,6 +220,62 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
   });
 });
 
+test("CircuitBreaker caps held delays at activity TTL", async () => {
+  const kv = new MemoryKvStore();
+  const now = Temporal.Instant.from("2026-05-25T00:05:00Z");
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: {
+      recoveryDelay: { minutes: 30 },
+      heldActivityTtl: { minutes: 10 },
+      releaseInterval: { minutes: 10 },
+    },
+  });
+
+  await kv.set(["_fedify", "circuit", "new-open.example"], {
+    state: "open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+  });
+  let decision = await circuit.beforeSend("new-open.example", {});
+  assertEquals(decision.type, "hold");
+  if (decision.type === "hold") {
+    assertEquals(decision.delay.total({ unit: "minute" }), 10);
+    assertEquals(decision.heldSince.toString(), "2026-05-25T00:05:00Z");
+  }
+
+  await kv.set(["_fedify", "circuit", "open.example"], {
+    state: "open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+  });
+  decision = await circuit.beforeSend("open.example", {
+    circuitHeldSince: "2026-05-25T00:00:00Z",
+  });
+  assertEquals(decision.type, "hold");
+  if (decision.type === "hold") {
+    assertEquals(decision.delay.total({ unit: "minute" }), 5);
+    assertEquals(decision.heldSince.toString(), "2026-05-25T00:00:00Z");
+  }
+
+  await kv.set(["_fedify", "circuit", "half-open.example"], {
+    state: "half-open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+    halfOpened: "2026-05-25T00:00:00Z",
+  });
+  decision = await circuit.beforeSend("half-open.example", {
+    circuitHeldSince: "2026-05-25T00:00:00Z",
+  });
+  assertEquals(decision.type, "hold");
+  if (decision.type === "hold") {
+    assertEquals(decision.delay.total({ unit: "minute" }), 5);
+    assertEquals(decision.heldSince.toString(), "2026-05-25T00:00:00Z");
+  }
+});
+
 test("CircuitBreaker prunes stale closed failure history", async () => {
   const kv = new MemoryKvStore();
   let now = Temporal.Instant.from("2026-05-25T00:00:00Z");

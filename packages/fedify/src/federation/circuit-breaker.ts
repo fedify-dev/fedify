@@ -219,9 +219,14 @@ export class CircuitBreaker {
                 Temporal.Instant.compare(releaseAt, staleAt) < 0
               ? releaseAt
               : staleAt;
+            const cappedRetryAt = this.#capHeldRetryAt(
+              now,
+              heldSince,
+              retryAt,
+            );
             return {
               type: "hold",
-              delay: now.until(retryAt),
+              delay: now.until(cappedRetryAt),
               heldSince: heldSince ?? now,
             };
           }
@@ -242,9 +247,10 @@ export class CircuitBreaker {
         : Temporal.Instant.from(oldState.opened);
       const probeAt = opened.add(this.#options.recoveryDelay);
       if (Temporal.Instant.compare(now, probeAt) < 0) {
+        const retryAt = this.#capHeldRetryAt(now, heldSince, probeAt);
         return {
           type: "hold",
-          delay: now.until(probeAt),
+          delay: now.until(retryAt),
           heldSince: heldSince ?? now,
         };
       }
@@ -358,6 +364,18 @@ export class CircuitBreaker {
 
   #key(remoteHost: string): KvKey {
     return [...this.#prefix, remoteHost] as KvKey;
+  }
+
+  #capHeldRetryAt(
+    now: Temporal.Instant,
+    heldSince: Temporal.Instant | undefined,
+    retryAt: Temporal.Instant,
+  ): Temporal.Instant {
+    const heldFrom = heldSince ?? now;
+    const expiresAt = heldFrom.add(this.#options.heldActivityTtl);
+    return Temporal.Instant.compare(expiresAt, retryAt) < 0
+      ? expiresAt
+      : retryAt;
   }
 
   async #get(remoteHost: string): Promise<CircuitBreakerKvState | undefined> {
