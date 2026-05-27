@@ -24,6 +24,20 @@ class AlwaysConflictingKvStore extends MemoryKvStore {
   }
 }
 
+class CountingCasKvStore extends MemoryKvStore {
+  attempts = 0;
+
+  override cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    this.attempts++;
+    return super.cas(key, expectedValue, newValue, options);
+  }
+}
+
 test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
     failureThreshold: 3,
@@ -466,6 +480,31 @@ test("CircuitBreaker bounds beforeSend CAS retries", async () => {
     delay: Temporal.Duration.from({ seconds: 5 }),
     heldSince: now,
   });
+});
+
+test("CircuitBreaker skips recording failures for open circuits", async () => {
+  const kv = new CountingCasKvStore();
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:01:00Z"),
+  });
+  await kv.set(["_fedify", "circuit", "open.example"], {
+    state: "open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+  });
+
+  assertEquals(await circuit.recordFailure("open.example"), undefined);
+  assertEquals(kv.attempts, 0);
+  assertEquals(
+    await kv.get(["_fedify", "circuit", "open.example"]),
+    {
+      state: "open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+    },
+  );
 });
 
 test("CircuitBreaker prunes stale closed failure history", async () => {

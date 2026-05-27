@@ -336,6 +336,7 @@ export class CircuitBreaker {
     const now = this.#now();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
+      if (oldState?.state === "open") return undefined;
       const oldFailures = oldState?.failures.map(Temporal.Instant.from) ?? [];
       const failures = this.#options.pruneFailures(
         [...oldFailures, now],
@@ -343,9 +344,7 @@ export class CircuitBreaker {
       );
       let newState: CircuitBreakerKvState;
       let transition: [CircuitBreakerState, CircuitBreakerState] | undefined;
-      if (oldState?.state === "open") {
-        newState = oldState;
-      } else if (
+      if (
         oldState?.state === "half-open" || this.#options.failure(failures)
       ) {
         newState = {
