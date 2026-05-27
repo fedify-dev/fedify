@@ -131,6 +131,7 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
     type: "hold",
     delay: Temporal.Duration.from({ minutes: 30 }),
     heldSince: now,
+    state: "open",
   });
 
   now = Temporal.Instant.from("2026-05-25T00:35:00Z");
@@ -199,6 +200,7 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
   let decision = await circuit.beforeSend("remote.example", {});
   assertEquals(decision, {
     type: "hold",
+    state: "half-open",
     delay: Temporal.Duration.from({ seconds: 5 }),
     heldSince: now,
   });
@@ -242,6 +244,7 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
   let decision = await circuit.beforeSend("new-open.example", {});
   assertEquals(decision.type, "hold");
   if (decision.type === "hold") {
+    assertEquals(decision.state, "open");
     assertEquals(decision.delay.total({ unit: "minute" }), 10);
     assertEquals(decision.heldSince.toString(), "2026-05-25T00:05:00Z");
   }
@@ -256,6 +259,7 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
   });
   assertEquals(decision.type, "hold");
   if (decision.type === "hold") {
+    assertEquals(decision.state, "open");
     assertEquals(decision.delay.total({ unit: "minute" }), 5);
     assertEquals(decision.heldSince.toString(), "2026-05-25T00:00:00Z");
   }
@@ -271,6 +275,7 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
   });
   assertEquals(decision.type, "hold");
   if (decision.type === "hold") {
+    assertEquals(decision.state, "half-open");
     assertEquals(decision.delay.total({ unit: "minute" }), 5);
     assertEquals(decision.heldSince.toString(), "2026-05-25T00:00:00Z");
   }

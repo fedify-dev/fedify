@@ -1094,7 +1094,7 @@ export class FederationImpl<TContextData>
         if (decision.type === "hold") {
           span.addEvent("activitypub.circuit_breaker.held", {
             "activitypub.remote.host": remoteHost,
-            "activitypub.circuit_breaker.state": "open",
+            "activitypub.circuit_breaker.state": decision.state,
           });
           await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
           return;

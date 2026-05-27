@@ -144,6 +144,7 @@ export type CircuitBreakerBeforeSendDecision =
   | { readonly type: "send"; readonly probe: boolean }
   | {
     readonly type: "hold";
+    readonly state: "open" | "half-open";
     readonly delay: Temporal.Duration;
     readonly heldSince: Temporal.Instant;
   }
@@ -226,6 +227,7 @@ export class CircuitBreaker {
             );
             return {
               type: "hold",
+              state: "half-open",
               delay: now.until(cappedRetryAt),
               heldSince: heldSince ?? now,
             };
@@ -250,6 +252,7 @@ export class CircuitBreaker {
         const retryAt = this.#capHeldRetryAt(now, heldSince, probeAt);
         return {
           type: "hold",
+          state: "open",
           delay: now.until(retryAt),
           heldSince: heldSince ?? now,
         };

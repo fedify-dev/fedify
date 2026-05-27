@@ -7207,6 +7207,60 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("held half-open circuit is recorded in spans", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const now = Temporal.Instant.from("2026-05-25T00:00:30Z");
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 5 },
+        releaseInterval: { minutes: 1 },
+      },
+      { tracerProvider },
+    );
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 5 },
+        releaseInterval: { minutes: 1 },
+      },
+    });
+    await kv.set(["_fedify", "circuit", "half-open-telemetry.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://half-open-telemetry.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: "2026-05-25T00:00:00Z",
+      }),
+    );
+
+    assertEquals(queued.length, 1);
+    const events = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.held",
+    );
+    assertEquals(events.length, 1);
+    assertEquals(
+      events[0].attributes?.["activitypub.remote.host"],
+      "half-open-telemetry.example",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.state"],
+      "half-open",
+    );
+  });
+
   await t.step("expired held activity is dropped", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
