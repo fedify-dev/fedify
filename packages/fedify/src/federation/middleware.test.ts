@@ -7307,7 +7307,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
     assertEquals(
       events[0].attributes?.["activitypub.circuit_breaker.state"],
-      "half-open",
+      "half_open",
     );
   });
 

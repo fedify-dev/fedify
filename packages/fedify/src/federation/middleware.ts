@@ -236,7 +236,7 @@ function recordCircuitBreakerHeldSpanEvent(
 ): void {
   span.addEvent("activitypub.circuit_breaker.held", {
     "activitypub.remote.host": remoteHost,
-    "activitypub.circuit_breaker.state": state,
+    "activitypub.circuit_breaker.state": toCircuitBreakerMetricState(state),
   });
 }
 
