@@ -17,7 +17,7 @@ export default [
   }),
   defineConfig({
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+      .map((f) => f.replaceAll(sep, "/")),
     format: ["esm", "cjs"],
     platform: "node",
     outExtensions({ format }) {
