@@ -121,6 +121,11 @@ test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
     failure: (timestamps) => timestamps.length >= 2,
   });
+  const base = Temporal.Instant.from("2026-05-25T00:00:00Z");
+  const failures = Array.from(
+    { length: 105 },
+    (_, i) => base.add({ minutes: i }),
+  );
   assertEquals(
     options.failure([Temporal.Instant.from("2026-05-25T00:00:00Z")]),
     false,
@@ -131,6 +136,13 @@ test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {
       Temporal.Instant.from("2026-05-25T00:01:00Z"),
     ]),
     true,
+  );
+  assertEquals(
+    options.pruneFailures(
+      failures,
+      base.add({ minutes: 105 }),
+    ).map((t) => t.toString()),
+    failures.slice(-100).map((t) => t.toString()),
   );
 });
 

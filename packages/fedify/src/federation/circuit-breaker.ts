@@ -116,6 +116,8 @@ export interface NormalizedCircuitBreakerOptions {
   readonly onActivityDrop?: CircuitBreakerOptions["onActivityDrop"];
 }
 
+const MAX_CUSTOM_FAILURE_HISTORY = 100;
+
 /**
  * Constructor options for {@link CircuitBreaker}.
  * @internal
@@ -507,7 +509,8 @@ export function normalizeCircuitBreakerOptions(
     };
   } else {
     failure = options.failure;
-    pruneFailures = (timestamps) => timestamps;
+    pruneFailures = (timestamps) =>
+      timestamps.slice(-MAX_CUSTOM_FAILURE_HISTORY);
   }
   return {
     failure,
