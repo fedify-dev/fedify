@@ -6669,17 +6669,20 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       failureWindow: { minutes: 10 },
       recoveryDelay: { minutes: 30 },
     });
+    const orderingKey = "https://example.com/object/breaker";
 
     await federation.processQueuedTask(
       undefined,
-      createOutboxMessage("https://breaker.example/inbox"),
+      createOutboxMessage("https://breaker.example/inbox", { orderingKey }),
     );
 
     assertEquals(queued.length, 1);
     const held = queued[0].message as OutboxMessage;
     assertEquals(held.attempt, 0);
+    assertEquals(held.orderingKey, orderingKey);
     assertEquals(held.circuitHeld, true);
     assertExists(held.circuitHeldSince);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
     assertEquals(
       queued[0].options?.delay,
       Temporal.Duration.from({ minutes: 30 }),
@@ -6707,10 +6710,11 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       failureThreshold: 1,
       recoveryDelay: { hours: 1 },
     });
+    const orderingKey = "https://example.com/object/open";
 
     await federation.processQueuedTask(
       undefined,
-      createOutboxMessage("https://open.example/inbox"),
+      createOutboxMessage("https://open.example/inbox", { orderingKey }),
     );
     const held = queued[0].message as OutboxMessage;
     queued.length = 0;
@@ -6719,6 +6723,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       createOutboxMessage("https://open.example/inbox", {
         circuitHeld: true,
         circuitHeldSince: held.circuitHeldSince,
+        orderingKey,
       }),
     );
 
@@ -6726,8 +6731,10 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     assertEquals(queued.length, 1);
     const requeued = queued[0].message as OutboxMessage;
     assertEquals(requeued.attempt, 0);
+    assertEquals(requeued.orderingKey, orderingKey);
     assertEquals(requeued.circuitHeld, true);
     assertEquals(requeued.circuitHeldSince, held.circuitHeldSince);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
     assertEquals(
       queued[0].options?.delay,
       Temporal.Duration.from({ hours: 1 }),
@@ -6920,16 +6927,19 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       failureThreshold: 1,
       recoveryDelay: { minutes: 30 },
     });
+    const orderingKey = "https://example.com/object/rate";
 
     await federation.processQueuedTask(
       undefined,
-      createOutboxMessage("https://rate.example/inbox"),
+      createOutboxMessage("https://rate.example/inbox", { orderingKey }),
     );
 
     assertEquals(queued.length, 1);
     const retry = queued[0].message as OutboxMessage;
     assertEquals(retry.attempt, 1);
+    assertEquals(retry.orderingKey, orderingKey);
     assertEquals(retry.circuitHeld, undefined);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
     assertEquals(
       queued[0].options?.delay,
       Temporal.Duration.from({ seconds: 120 }),
