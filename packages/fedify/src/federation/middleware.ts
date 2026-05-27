@@ -1254,31 +1254,15 @@ export class FederationImpl<TContextData>
       ) {
         try {
           if (error instanceof SendActivityError) {
-            if (isPermanentFailure) {
-              const stateChange = await this.circuitBreaker
-                .recordReachableFailure(remoteHost);
-              if (stateChange != null) {
-                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-              }
-            } else if (error.statusCode === 429) {
-              const stateChange = await this.circuitBreaker
-                .recordReachableFailure(remoteHost);
-              if (stateChange != null) {
-                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-              }
-            } else if (error.statusCode >= 500) {
-              const stateChange = await this.circuitBreaker.recordFailure(
-                remoteHost,
-              );
-              if (stateChange != null) {
-                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-              }
-            } else if (error.statusCode >= 400) {
-              const stateChange = await this.circuitBreaker
-                .recordReachableFailure(remoteHost);
-              if (stateChange != null) {
-                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
-              }
+            const { statusCode } = error;
+            const stateChange = isPermanentFailure || statusCode === 429 ||
+                (statusCode >= 400 && statusCode < 500)
+              ? await this.circuitBreaker.recordReachableFailure(remoteHost)
+              : statusCode >= 500
+              ? await this.circuitBreaker.recordFailure(remoteHost)
+              : undefined;
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
           } else if (isTransportDeliveryError(error)) {
             const stateChange = await this.circuitBreaker.recordFailure(
