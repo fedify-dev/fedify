@@ -1029,8 +1029,9 @@ export class FederationImpl<TContextData>
       keys.push(pair);
     }
     const loaderOptions = this.#getLoaderOptions(message.baseUrl);
-    const parseActorIds = () =>
-      (message.actorIds ?? []).flatMap((id) => {
+    let parsedActorIds: URL[] | undefined;
+    const getActorIds = () => {
+      parsedActorIds ??= (message.actorIds ?? []).flatMap((id) => {
         try {
           return [new URL(id)];
         } catch {
@@ -1041,6 +1042,8 @@ export class FederationImpl<TContextData>
           return [];
         }
       });
+      return parsedActorIds;
+    };
     const parseActivity = () =>
       Activity.fromJsonLd(message.activity, {
         contextLoader: this.contextLoaderFactory(loaderOptions),
@@ -1085,7 +1088,7 @@ export class FederationImpl<TContextData>
         activity,
         activityId: message.activityId,
         activityType: message.activityType,
-        actorIds: parseActorIds(),
+        actorIds: getActorIds(),
         heldSince,
       });
       if (this.outboxPermanentFailureHandler != null) {
@@ -1109,7 +1112,7 @@ export class FederationImpl<TContextData>
             ),
             statusCode: 0,
             circuitHeldSince: heldSince,
-            actorIds: parseActorIds(),
+            actorIds: getActorIds(),
           });
         } catch (handlerError) {
           logger.error(
@@ -1370,7 +1373,7 @@ export class FederationImpl<TContextData>
               activity,
               error,
               statusCode: error.statusCode,
-              actorIds: parseActorIds(),
+              actorIds: getActorIds(),
             });
           } catch (handlerError) {
             logger.error(
