@@ -192,9 +192,7 @@ export class CircuitBreaker {
     remoteHost: string,
     message: { readonly circuitHeldSince?: string },
   ): Promise<CircuitBreakerBeforeSendDecision> {
-    const heldSince = message.circuitHeldSince == null
-      ? undefined
-      : Temporal.Instant.from(message.circuitHeldSince);
+    const heldSince = parseHeldSince(message.circuitHeldSince);
     const now = this.#now();
     if (
       heldSince != null &&
@@ -541,6 +539,21 @@ function assertPositiveDuration(
 ): void {
   if (Temporal.Duration.compare(duration, { seconds: 0 }) <= 0) {
     throw new RangeError(`${name} must be a positive duration.`);
+  }
+}
+
+function parseHeldSince(
+  value: string | undefined,
+): Temporal.Instant | undefined {
+  if (value == null) return undefined;
+  try {
+    return Temporal.Instant.from(value);
+  } catch (error) {
+    getLogger(["fedify", "federation", "circuit"]).warn(
+      "Invalid circuitHeldSince value in queued outbox message: {value}",
+      { value, error },
+    );
+    return undefined;
   }
 }
 

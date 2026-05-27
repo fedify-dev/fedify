@@ -369,6 +369,34 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
   }
 });
 
+test("CircuitBreaker ignores malformed held timestamps", async () => {
+  const kv = new MemoryKvStore();
+  const now = Temporal.Instant.from("2026-05-25T00:05:00Z");
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: { recoveryDelay: { minutes: 30 } },
+  });
+
+  await kv.set(["_fedify", "circuit", "malformed-held.example"], {
+    state: "open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+  });
+
+  const decision = await circuit.beforeSend("malformed-held.example", {
+    circuitHeldSince: "not an instant",
+  });
+
+  assertEquals(decision, {
+    type: "hold",
+    state: "open",
+    delay: Temporal.Duration.from({ minutes: 25 }),
+    heldSince: now,
+  });
+});
+
 test("CircuitBreaker bounds beforeSend CAS retries", async () => {
   let kv = new AlwaysConflictingKvStore();
   const now = Temporal.Instant.from("2026-05-25T00:30:00Z");
