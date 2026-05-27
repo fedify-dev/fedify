@@ -9,9 +9,11 @@
 
 *This package is available since Fedify 2.3.0.*
 
-This package provides the scaffold for ActivityPub backfill support in the
-[Fedify] ecosystem.  It is intended to host APIs for retrieving and processing
-historical federated content, but the implementation has not been added yet.
+This package provides ActivityPub conversation backfill support for the
+[Fedify] ecosystem.  It can retrieve post-like objects from a seed object's
+context collection, following the direct FEP-f228-style path where the
+context dereferences to a `Collection`, `OrderedCollection`, `CollectionPage`,
+or `OrderedCollectionPage`.
 
 [JSR badge]: https://jsr.io/badges/@fedify/backfill
 [JSR]: https://jsr.io/@fedify/backfill
@@ -50,9 +52,28 @@ bun add @fedify/backfill
 :::
 
 
-Status
-------
+Usage
+-----
 
-The package structure and publishing metadata are in place.  Public runtime
-APIs will be added in follow-up changes once the backfill workflow and data
-model are finalized.
+The `backfill()` function accepts a backfill context, a seed object, and
+traversal options:
+
+~~~~ typescript
+import { backfill } from "@fedify/backfill";
+import { lookupObject } from "@fedify/vocab";
+
+const documentLoader = (iri: URL, options?: { signal?: AbortSignal }) =>
+  lookupObject(iri, { signal: options?.signal });
+
+for await (
+  const item of backfill({ documentLoader }, note, {
+    maxItems: 20,
+    maxRequests: 50,
+  })
+) {
+  console.log(item.id?.href);
+}
+~~~~
+
+The seed object itself is not yielded.  If it appears in the discovered
+collection, it is skipped by ID.
