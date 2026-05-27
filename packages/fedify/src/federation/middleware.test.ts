@@ -6809,6 +6809,26 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     assertEquals(queued, []);
   });
 
+  await t.step("pre-send circuit errors do not block delivery", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let requests = 0;
+    fetchMock.post("https://presend-bookkeeping.example/inbox", () => {
+      requests++;
+      return { status: 202, body: "" };
+    });
+    const { federation, queued, kv } = setup({ failureThreshold: 1 });
+    kv.get = () => Promise.reject(new Error("kv get failed"));
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://presend-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(requests, 1);
+    assertEquals(queued, []);
+  });
+
   await t.step("circuit failure errors fall back to retry", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

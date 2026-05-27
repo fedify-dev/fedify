@@ -84,6 +84,7 @@ import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import {
   CircuitBreaker,
+  type CircuitBreakerBeforeSendDecision,
   type CircuitBreakerState,
   type CircuitBreakerStateChange,
 } from "./circuit-breaker.ts";
@@ -1123,8 +1124,19 @@ export class FederationImpl<TContextData>
         ? undefined
         : this.circuitBreaker;
       const remoteHost = getRemoteHost(inbox);
+      let decision: CircuitBreakerBeforeSendDecision | undefined;
       if (circuit != null) {
-        const decision = await circuit.beforeSend(remoteHost, message);
+        try {
+          decision = await circuit.beforeSend(remoteHost, message);
+        } catch (circuitError) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to check circuit breaker state before sending; " +
+              "proceeding with delivery:\n{error}",
+            { ...logData, remoteHost, error: circuitError },
+          );
+        }
+      }
+      if (decision != null && circuit != null) {
         if (decision.type === "hold") {
           recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
           await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
