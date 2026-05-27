@@ -6839,6 +6839,37 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("circuit hold respects retry give-up", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://hold-give-up.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 30 },
+      },
+      { outboxRetryPolicy: () => null },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://hold-give-up.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(
+      (await kv.get<Record<string, unknown>>([
+        "_fedify",
+        "circuit",
+        "hold-give-up.example",
+      ]))?.state,
+      "open",
+    );
+  });
+
   await t.step("circuit decision errors fall back to retry", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

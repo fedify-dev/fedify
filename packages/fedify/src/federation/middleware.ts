@@ -1205,6 +1205,20 @@ export class FederationImpl<TContextData>
           heldSince: Temporal.Instant;
         }
         | undefined;
+      let retryPolicyDelay: Temporal.Duration | null | undefined;
+      let policyDelayCalculated = false;
+      const getPolicyDelay = () => {
+        if (!policyDelayCalculated) {
+          retryPolicyDelay = this.outboxRetryPolicy({
+            elapsedTime: Temporal.Instant.from(message.started).until(
+              Temporal.Now.instant(),
+            ),
+            attempts: message.attempt,
+          });
+          policyDelayCalculated = true;
+        }
+        return retryPolicyDelay;
+      };
       const isPermanentFailure = error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
@@ -1364,7 +1378,7 @@ export class FederationImpl<TContextData>
         return;
       }
 
-      if (circuitHold != null) {
+      if (circuitHold != null && getPolicyDelay() != null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox}; holding because " +
             "the remote host circuit is open:\n{error}",
@@ -1391,12 +1405,7 @@ export class FederationImpl<TContextData>
         throw error;
       }
 
-      const policyDelay = this.outboxRetryPolicy({
-        elapsedTime: Temporal.Instant.from(message.started).until(
-          Temporal.Now.instant(),
-        ),
-        attempts: message.attempt,
-      });
+      const policyDelay = getPolicyDelay();
       const delay = policyDelay == null ? null : retryAfterDelay ?? policyDelay;
       if (delay != null) {
         logger.error(
