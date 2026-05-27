@@ -162,6 +162,44 @@ describe("backfill", () => {
     ]);
   });
 
+  test("failed URL collection items are skipped", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const missingItemId = new URL("https://example.com/notes/missing");
+    const failedItemId = new URL("https://example.com/notes/failed");
+    const itemId = new URL("https://example.com/notes/2");
+    const item = new Note({
+      id: itemId,
+      content: "hello",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [missingItemId, failedItemId, itemId],
+            }),
+          );
+        }
+        if (iri.href === missingItemId.href) return Promise.resolve(null);
+        if (iri.href === failedItemId.href) {
+          return Promise.reject(new Error("failed to load"));
+        }
+        if (iri.href === itemId.href) return Promise.resolve(item);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note);
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].id?.href, itemId.href);
+  });
+
   test("seed is not yielded again when present in collection", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const note = new Note({

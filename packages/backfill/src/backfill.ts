@@ -87,14 +87,21 @@ async function* getCollectionItems(
 ): AsyncIterable<APObject | Link> {
   yield* collection.getItems({
     documentLoader: async (url) => {
-      const object = await loadObject(
-        context,
-        new URL(url),
-        options,
-        budget,
-        true,
-      );
-      if (object == null) throw new MaxRequestsExceeded();
+      let object: APObject | null;
+      try {
+        object = await loadObject(
+          context,
+          new URL(url),
+          options,
+          budget,
+          true,
+        );
+      } catch (error) {
+        if (error instanceof MaxRequestsExceeded) throw error;
+        budget.signal?.throwIfAborted();
+        return skippedCollectionItemDocument(url);
+      }
+      if (object == null) return skippedCollectionItemDocument(url);
       return {
         contextUrl: null,
         documentUrl: url,
@@ -103,6 +110,17 @@ async function* getCollectionItems(
     },
     crossOrigin: "trust",
   });
+}
+
+function skippedCollectionItemDocument(url: string) {
+  return {
+    contextUrl: null,
+    documentUrl: url,
+    document: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Activity",
+    },
+  };
 }
 
 async function loadObject(
@@ -139,15 +157,27 @@ async function waitForInterval(
   const milliseconds = durationToMilliseconds(duration);
   if (milliseconds <= 0) return;
   await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    budget.signal?.addEventListener("abort", () => {
+    if (budget.signal?.aborted) {
+      reject(budget.signal.reason);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      budget.signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    const onAbort = () => {
       clearTimeout(timeout);
       reject(budget.signal?.reason);
-    }, { once: true });
+    };
+    budget.signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
 function durationToMilliseconds(duration: Temporal.DurationLike): number {
+  if (typeof duration === "string") {
+    return Temporal.Duration.from(duration).total({ unit: "milliseconds" });
+  }
+
   return (
     (duration.milliseconds ?? 0) +
     (duration.seconds ?? 0) * 1000 +
