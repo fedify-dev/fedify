@@ -229,6 +229,17 @@ function recordCircuitBreakerSpanEvent(
   });
 }
 
+function recordCircuitBreakerHeldSpanEvent(
+  span: Span,
+  remoteHost: string,
+  state: "open" | "half-open",
+): void {
+  span.addEvent("activitypub.circuit_breaker.held", {
+    "activitypub.remote.host": remoteHost,
+    "activitypub.circuit_breaker.state": state,
+  });
+}
+
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
     typeof (error as Error & { details?: { code?: unknown } }).details ===
@@ -1108,10 +1119,7 @@ export class FederationImpl<TContextData>
       if (circuit != null) {
         const decision = await circuit.beforeSend(remoteHost, message);
         if (decision.type === "hold") {
-          span.addEvent("activitypub.circuit_breaker.held", {
-            "activitypub.remote.host": remoteHost,
-            "activitypub.circuit_breaker.state": decision.state,
-          });
+          recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
           await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
           return;
         }
@@ -1182,7 +1190,12 @@ export class FederationImpl<TContextData>
       })();
       let retryAfterDelay: Temporal.Duration | undefined;
       let circuitHold:
-        | { delay: Temporal.Duration; heldSince: Temporal.Instant }
+        | {
+          delay: Temporal.Duration;
+          heldSince: Temporal.Instant;
+          remoteHost: string;
+          state: "open" | "half-open";
+        }
         | undefined;
       let circuitDrop:
         | {
@@ -1251,6 +1264,8 @@ export class FederationImpl<TContextData>
               circuitHold = {
                 delay: circuitDecision.delay,
                 heldSince: circuitDecision.heldSince,
+                remoteHost,
+                state: circuitDecision.state,
               };
             } else if (circuitDecision.type === "drop") {
               circuitDrop = {
@@ -1354,6 +1369,11 @@ export class FederationImpl<TContextData>
           "Failed to send activity {activityId} to {inbox}; holding because " +
             "the remote host circuit is open:\n{error}",
           { ...logData, error },
+        );
+        recordCircuitBreakerHeldSpanEvent(
+          span,
+          circuitHold.remoteHost,
+          circuitHold.state,
         );
         await enqueueHeldOutboxMessage(
           circuitHold.delay,

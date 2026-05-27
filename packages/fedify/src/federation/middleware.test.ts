@@ -7196,7 +7196,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     });
     const [meterProvider, recorder] = createTestMeterProvider();
     const [tracerProvider, exporter] = createTestTracerProvider();
-    const { federation } = setup(
+    const { federation, queued } = setup(
       { failureThreshold: 1 },
       { meterProvider, tracerProvider },
     );
@@ -7206,6 +7206,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       createOutboxMessage("https://telemetry.example/inbox"),
     );
 
+    assertEquals(queued.length, 1);
     const measurements = recorder.getMeasurements(
       "activitypub.circuit_breaker.state_change",
     );
@@ -7233,6 +7234,19 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
     assertEquals(
       events[0].attributes?.["activitypub.circuit_breaker.state"],
+      "open",
+    );
+    const heldEvents = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.held",
+    );
+    assertEquals(heldEvents.length, 1);
+    assertEquals(
+      heldEvents[0].attributes?.["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      heldEvents[0].attributes?.["activitypub.circuit_breaker.state"],
       "open",
     );
   });
