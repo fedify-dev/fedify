@@ -190,6 +190,16 @@ export class CircuitBreaker {
     return this.#options;
   }
 
+  capHeldDelay(
+    heldSince: Temporal.Instant,
+    delay: Temporal.Duration,
+  ): Temporal.Duration {
+    const now = this.#now();
+    return now.until(
+      this.#capHeldRetryAt(now, heldSince, now.add(delay)),
+    );
+  }
+
   async beforeSend(
     remoteHost: string,
     message: { readonly circuitHeldSince?: string },

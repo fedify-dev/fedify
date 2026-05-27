@@ -213,6 +213,13 @@ function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
   return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
 }
 
+function maxDelay(
+  first: Temporal.Duration,
+  second: Temporal.Duration,
+): Temporal.Duration {
+  return Temporal.Duration.compare(first, second) >= 0 ? first : second;
+}
+
 function isTransportDeliveryError(error: unknown): boolean {
   return error instanceof FetchError || isAbortError(error);
 }
@@ -1392,8 +1399,15 @@ export class FederationImpl<TContextData>
           circuitHold.remoteHost,
           circuitHold.state,
         );
+        const circuit = this.circuitBreaker;
+        const holdDelay = retryAfterDelay == null || circuit == null
+          ? circuitHold.delay
+          : circuit.capHeldDelay(
+            circuitHold.heldSince,
+            maxDelay(circuitHold.delay, retryAfterDelay),
+          );
         await enqueueHeldOutboxMessage(
-          circuitHold.delay,
+          holdDelay,
           circuitHold.heldSince,
         );
         return;
