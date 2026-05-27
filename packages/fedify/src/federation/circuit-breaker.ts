@@ -196,8 +196,9 @@ export class CircuitBreaker {
       ? undefined
       : Temporal.Instant.from(message.circuitHeldSince);
     const now = this.#now();
+    let lastConflictingState: "open" | "half-open" | undefined;
 
-    while (true) {
+    for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
       if (oldState == null || oldState.state === "closed") {
         return { type: "send", probe: false };
@@ -245,6 +246,7 @@ export class CircuitBreaker {
         if (await this.#replace(remoteHost, oldState, newState)) {
           return { type: "send", probe: true };
         }
+        lastConflictingState = "half-open";
         continue;
       }
 
@@ -275,7 +277,22 @@ export class CircuitBreaker {
           stateChange: { previousState: "open", newState: "half-open" },
         };
       }
+      lastConflictingState = "open";
     }
+    if (lastConflictingState != null) {
+      const retryAt = this.#capHeldRetryAt(
+        now,
+        heldSince,
+        now.add(this.#options.releaseInterval),
+      );
+      return {
+        type: "hold",
+        state: lastConflictingState,
+        delay: now.until(retryAt),
+        heldSince: heldSince ?? now,
+      };
+    }
+    throw new Error(`Failed to update circuit breaker state for ${remoteHost}`);
   }
 
   async recordSuccess(

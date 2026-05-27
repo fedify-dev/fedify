@@ -5,7 +5,24 @@ import {
   normalizeCircuitBreakerOptions,
   parseCircuitBreakerKvState,
 } from "./circuit-breaker.ts";
-import { MemoryKvStore } from "./kv.ts";
+import { type KvKey, type KvStoreSetOptions, MemoryKvStore } from "./kv.ts";
+
+class AlwaysConflictingKvStore extends MemoryKvStore {
+  attempts = 0;
+
+  override cas(
+    _key: KvKey,
+    _expectedValue: unknown,
+    _newValue: unknown,
+    _options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    this.attempts++;
+    if (this.attempts > 10) {
+      throw new Error("beforeSend did not stop retrying CAS misses");
+    }
+    return Promise.resolve(false);
+  }
+}
 
 test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
@@ -283,6 +300,60 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
     assertEquals(decision.delay.total({ unit: "minute" }), 5);
     assertEquals(decision.heldSince.toString(), "2026-05-25T00:00:00Z");
   }
+});
+
+test("CircuitBreaker bounds beforeSend CAS retries", async () => {
+  let kv = new AlwaysConflictingKvStore();
+  const now = Temporal.Instant.from("2026-05-25T00:30:00Z");
+  let circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: {
+      recoveryDelay: { minutes: 30 },
+      releaseInterval: { seconds: 5 },
+    },
+  });
+  await kv.set(["_fedify", "circuit", "open.example"], {
+    state: "open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+  });
+
+  let decision = await circuit.beforeSend("open.example", {});
+  assertEquals(kv.attempts, 10);
+  assertEquals(decision, {
+    type: "hold",
+    state: "open",
+    delay: Temporal.Duration.from({ seconds: 5 }),
+    heldSince: now,
+  });
+
+  kv = new AlwaysConflictingKvStore();
+  circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: {
+      recoveryDelay: { minutes: 30 },
+      releaseInterval: { seconds: 5 },
+    },
+  });
+  await kv.set(["_fedify", "circuit", "half-open.example"], {
+    state: "half-open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+    halfOpened: "2026-05-25T00:00:00Z",
+  });
+
+  decision = await circuit.beforeSend("half-open.example", {});
+  assertEquals(kv.attempts, 10);
+  assertEquals(decision, {
+    type: "hold",
+    state: "half-open",
+    delay: Temporal.Duration.from({ seconds: 5 }),
+    heldSince: now,
+  });
 });
 
 test("CircuitBreaker prunes stale closed failure history", async () => {
