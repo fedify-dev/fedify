@@ -13,6 +13,7 @@ import {
   Person,
   Service,
 } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -292,6 +293,53 @@ test("sendActivity()", async (t) => {
       assertEquals(e.responseHeaders.get("Retry-After"), "120");
     }
   });
+
+  await t.step(
+    "signed challenge retry transport errors throw FetchError",
+    async () => {
+      const activity: unknown = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Create",
+        "id": "https://example.com/activity",
+        "actor": "https://example.com/person",
+      };
+      const failure = new TypeError("challenge retry connection reset");
+      let requestCount = 0;
+      fetchMock.post("https://example.com/inbox-challenge-reset", () => {
+        requestCount++;
+        if (requestCount === 1) {
+          return new Response("Unauthorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri" "@authority" ' +
+                '"content-digest");created;nonce="retry-nonce"',
+            },
+          });
+        }
+        throw failure;
+      });
+
+      const error = await assertRejects(
+        () =>
+          sendActivity({
+            activity,
+            activityId: "https://example.com/activity",
+            keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+            inbox: new URL("https://example.com/inbox-challenge-reset"),
+          }),
+        FetchError,
+        "challenge retry connection reset",
+      );
+
+      assertEquals(
+        error.url.href,
+        "https://example.com/inbox-challenge-reset",
+      );
+      assertEquals(error.cause, failure);
+      assertEquals(requestCount, 2);
+    },
+  );
 
   fetchMock.post("https://example.com/inbox-gone", {
     status: 410,

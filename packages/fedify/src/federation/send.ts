@@ -315,9 +315,9 @@ async function sendActivityInternal(
       ? await fetch(request)
       : await doubleKnock(request, rsaKey, { tracerProvider, specDeterminer });
   } catch (error) {
-    const transportError = rsaKey == null
-      ? createFetchError(inbox.href, error)
-      : error;
+    const transportError = error instanceof FetchError
+      ? error
+      : createFetchError(inbox.href, error);
     logger.error(
       "Failed to send activity {activityId} to {inbox}:\n{error}",
       {
