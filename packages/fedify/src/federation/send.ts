@@ -1,4 +1,5 @@
 import type { Recipient } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Attributes,
@@ -314,12 +315,15 @@ async function sendActivityInternal(
       ? await fetch(request)
       : await doubleKnock(request, rsaKey, { tracerProvider, specDeterminer });
   } catch (error) {
+    const transportError = rsaKey == null
+      ? createFetchError(inbox.href, error)
+      : error;
     logger.error(
       "Failed to send activity {activityId} to {inbox}:\n{error}",
       {
         activityId,
         inbox: inbox.href,
-        error,
+        error: transportError,
       },
     );
     federationMetrics.recordDelivery(
@@ -328,7 +332,7 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    throw error;
+    throw transportError;
   }
   try {
     if (!response.ok) {
@@ -385,6 +389,13 @@ async function sendActivityInternal(
       activityType,
     );
   }
+}
+
+function createFetchError(url: string, cause: unknown): FetchError {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const error = new FetchError(url, message);
+  error.cause = cause;
+  return error;
 }
 
 /**

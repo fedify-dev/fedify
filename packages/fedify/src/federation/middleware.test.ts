@@ -6839,6 +6839,35 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
   });
 
+  await t.step("local delivery errors do not open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://local-error.example/inbox", {
+        headers: { "Invalid Header": "x" },
+      }),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 3 }),
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "local-error.example"]),
+      undefined,
+    );
+  });
+
   await t.step("calendar retry delays are enqueued", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();

@@ -211,6 +211,10 @@ function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
   return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
 }
 
+function isTransportDeliveryError(error: unknown): boolean {
+  return error instanceof FetchError || isAbortError(error);
+}
+
 function toCircuitBreakerMetricState(
   state: CircuitBreakerState,
 ): "closed" | "open" | "half_open" {
@@ -1263,7 +1267,7 @@ export class FederationImpl<TContextData>
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
             }
-          } else if (!isPermanentFailure) {
+          } else if (isTransportDeliveryError(error)) {
             const stateChange = await this.circuitBreaker.recordFailure(
               remoteHost,
             );
