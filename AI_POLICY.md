@@ -3,7 +3,7 @@
 AI usage policy
 ===============
 
-This policy is inspired by [Ghostty's AI policy][1].
+This policy is inspired by [Ghostty's AI policy][1] and [Fedify's AI policy][2].
 
 The Fedify project has the following rules for AI usage:
 
@@ -46,6 +46,7 @@ exempt from these rules and may use AI tools at their discretion; they've
 proven themselves trustworthy to apply good judgment.
 
 [1]: https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md
+[2]: https://github.com/fedify-dev/fedify/blob/main/AI_POLICY.md
 
 
 Disclosing AI assistance in commit messages
