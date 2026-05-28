@@ -180,19 +180,54 @@ A patch set should include the following:
 Feature pull requests should target the *main* branch for non-breaking changes,
 or the *next* branch for breaking changes.
 
-### Writing tests with `@fedify/fixture`
+### Writing tests with `node:test`
 
-The monorepo-private [`@fedify/fixture`] package provides the shared test
-infrastructure used across every workspace package.  Reach for it whenever you
-add or modify a unit test:
+Deno, Node.js, and Bun all support the `node:test` and `node:assert/strict`
+built-in modules, so use them directly in new test files unless your package
+requires Cloudflare Workers testing (see the exception below).
 
- -  `test()`: A drop-in `Deno.test()`-compatible wrapper that runs the same
-    test on Deno, Node.js, Bun, and the Cloudflare Workers harness.
- -  `testDefinitions`: The array of every registered `test()`, consumed by
-    the Workers test runner.
+A typical test file looks like this:
+
+~~~~ typescript
+import { describe, it } from "node:test";
+import { deepStrictEqual, ok } from "node:assert/strict";
+
+describe("my feature", () => {
+  it("does the thing", () => {
+    deepStrictEqual(1 + 1, 2);
+  });
+});
+~~~~
+
+Run the tests with `mise run test:deno`, `mise run test:node`, or
+`mise run test:bun` as appropriate.
+
+### Cloudflare Workers exception: `@fedify/fixture`
+
+The `@fedify/fedify` and `@fedify/vocab` packages must continue using the
+`test()` function from the monorepo-private [`@fedify/fixture`] package.
+Those packages include a Cloudflare Workers test harness
+(*packages/fedify/src/cfworkers/*) that drives the test suite by iterating
+over the `testDefinitions` array exported from `@fedify/fixture`.  Using
+`node:test` directly would not populate that array, breaking CF Workers tests.
+
+For these two packages, use the `@fedify/fixture` `test()` wrapper:
+
+~~~~ typescript
+import { test } from "@fedify/fixture";
+import { deepStrictEqual } from "node:assert/strict";
+
+test("my feature does the thing", () => {
+  deepStrictEqual(1 + 1, 2);
+});
+~~~~
+
+The `@fedify/fixture` package also provides utilities that any package can
+import in `*.test.ts` files, regardless of which test runner is used:
+
  -  `mockDocumentLoader()`: A document loader that resolves
-    ActivityPub/JSON-LD URLs from on-disk fixtures under
-    *packages/fixture/src/fixtures/* instead of issuing real HTTP requests.
+    ActivityPub/JSON-LD URLs from on-disk fixtures instead of issuing real
+    HTTP requests.
  -  `TestSpanExporter`/`createTestTracerProvider()`: Helpers for asserting
     on OpenTelemetry spans and events recorded by the code under test.
 
