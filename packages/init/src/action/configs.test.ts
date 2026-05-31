@@ -21,6 +21,7 @@ function createInitData(): InitCommandData {
     messageQueue: "denokv",
     dryRun: false,
     allowNonEmpty: false,
+    skipInstall: false,
     testMode: false,
     dir: "/tmp/example",
     initializer: {
@@ -166,6 +167,7 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     messageQueue: "in-process",
     dryRun: false,
     allowNonEmpty: false,
+    skipInstall: false,
     testMode: false,
     dir,
   });
@@ -179,6 +181,7 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     messageQueue: "in-process",
     dryRun: false,
     allowNonEmpty: false,
+    skipInstall: false,
     testMode: false,
     dir,
     initializer,
@@ -199,6 +202,7 @@ async function createNuxtNpmInitData(dir: string): Promise<InitCommandData> {
     messageQueue: "in-process",
     dryRun: false,
     allowNonEmpty: false,
+    skipInstall: false,
     testMode: false,
     dir,
   });
@@ -212,6 +216,7 @@ async function createNuxtNpmInitData(dir: string): Promise<InitCommandData> {
     messageQueue: "in-process",
     dryRun: false,
     allowNonEmpty: false,
+    skipInstall: false,
     testMode: false,
     dir,
     initializer,

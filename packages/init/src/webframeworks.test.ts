@@ -17,6 +17,7 @@ test("Nitro template loads LogTape during server startup", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -38,6 +39,7 @@ test("Next.js template loads LogTape through instrumentation", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -61,6 +63,7 @@ test("Astro template loads LogTape through middleware", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -81,6 +84,7 @@ test("SolidStart template loads LogTape through middleware", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);

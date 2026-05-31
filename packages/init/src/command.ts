@@ -77,6 +77,10 @@ export const initOptions = object("Initialization options", {
     description:
       message`Allow initializing in a non-empty directory when the selected framework scaffolder supports it, failing if any generated file already exists.`,
   }),
+  skipInstall: option("--skip-install", {
+    description:
+      message`Skip installing dependencies after scaffolding the project.`,
+  }),
 });
 
 /**

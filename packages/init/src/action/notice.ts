@@ -117,6 +117,16 @@ ${instruction}
 Start by editing the ${text(federationFile)} file to define your federation!
 `;
 
+/** Prints a notice that dependency installation was skipped and how to install them manually. */
+export const noticeSkippedInstall = (
+  { packageManager }: InitCommandData,
+) =>
+  printMessage`
+Dependencies were not installed.  Run ${
+    text(`${packageManager} install`)
+  } in the project directory to install them.
+`;
+
 /**
  * Returns an error handler that prints a formatted error message when
  * a dependency installation command fails, then throws.

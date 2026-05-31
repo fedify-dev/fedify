@@ -11,6 +11,7 @@ import {
   noticeHowToRun,
   noticeOptions,
   noticePrecommand,
+  noticeSkippedInstall,
 } from "./notice.ts";
 import {
   assertNoGeneratedFileConflicts,
@@ -23,6 +24,7 @@ import {
   hasCommand,
   installDependencies,
   isDry,
+  isSkipInstall,
   runPrecommand,
 } from "./utils.ts";
 
@@ -39,7 +41,9 @@ import {
  *    - If dry run, executes `handleDryRun`.
  *    - Otherwise, executes `handleHydRun`.
  * 7. Recommends configuration environment via `recommendConfigEnv`.
- * 8. Shows how to run the project via `noticeHowToRun`.
+ * 8. If installation was skipped and not a dry run, prints how to install
+ *    dependencies manually via `noticeSkippedInstall`.
+ * 9. Shows how to run the project via `noticeHowToRun`.
  */
 const runInit = (options: InitCommand) =>
   pipe(
@@ -52,6 +56,7 @@ const runInit = (options: InitCommand) =>
     when(isDry, handleDryRun),
     unless(isDry, handleHydRun),
     tap(recommendConfigEnv),
+    tap(unless(isDry, when(isSkipInstall, noticeSkippedInstall))),
     tap(noticeHowToRun),
   );
 
@@ -76,5 +81,5 @@ const handleHydRun = (data: InitCommandData) =>
     tap(assertNoGeneratedFileConflicts),
     tap(when(hasCommand, runPrecommand)),
     tap(patchFiles),
-    tap(installDependencies),
+    tap(unless(isSkipInstall, installDependencies)),
   );
