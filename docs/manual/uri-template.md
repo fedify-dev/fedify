@@ -502,8 +502,8 @@ federation.setActorDispatcher(
 ~~~~
 
 
-Standalone `@fedify/uri-template` package {#uri-template-package}
------------------------------------------------------------------
+Standalone `@fedify/uri-template` package                {#uri-template-package}
+--------------------------------------------------------------------------------
 
 The routing engine described above is published on its own as the
 [`@fedify/uri-template`][@fedify/uri-template] package.  It has zero runtime
